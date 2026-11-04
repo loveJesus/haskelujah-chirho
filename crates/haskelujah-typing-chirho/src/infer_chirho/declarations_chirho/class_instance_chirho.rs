@@ -28,33 +28,58 @@ impl InferCtxChirho {
         {
             let class_name_chirho = name_chirho.text_chirho().to_string();
 
-            // Generate fresh type variables for all class params
-            let class_tv_chirho = TyVarChirho(self.next_var_chirho);
-            self.next_var_chirho += 1;
-
-            let extra_vars_chirho: Vec<TyVarChirho> = type_vars_chirho
-                .iter()
-                .skip(1)
-                .map(|_| {
-                    let v_chirho = TyVarChirho(self.next_var_chirho);
-                    self.next_var_chirho += 1;
-                    v_chirho
+            let (head_chirho, class_scoped_tyvars_chirho) =
+                self.data_head_type_chirho(name_chirho.text_chirho(), type_vars_chirho);
+            let (_, arguments_chirho) = super::collect_app_spine_chirho(&head_chirho);
+            let schema_chirho = name_chirho
+                .type_constructor_chirho()
+                .and_then(|declaration_chirho| {
+                    self.type_families_chirho
+                        .declaration_schemes_chirho()
+                        .get_chirho(&declaration_chirho.type_key_chirho())
                 })
-                .collect();
-
-            let mut class_scoped_tyvars_chirho = HashMap::new();
-            if let Some(first_var_chirho) = type_vars_chirho.first() {
-                class_scoped_tyvars_chirho
-                    .insert(first_var_chirho.text_chirho().to_string(), class_tv_chirho);
-            }
-            for (ast_var_chirho, ty_var_chirho) in type_vars_chirho
+                .cloned();
+            let (kind_tys_chirho, visible_tys_chirho) = if let Some(schema_chirho) = schema_chirho {
+                let (hidden_chirho, visible_chirho): (Vec<_>, Vec<_>) = schema_chirho.binders_chirho.iter().zip(arguments_chirho).partition(|(binder_chirho, _)| binder_chirho.visibility_chirho != crate::ty_chirho::declarations_chirho::TelescopeVisibilityChirho::RequiredChirho);
+                (
+                    hidden_chirho
+                        .into_iter()
+                        .map(|(_, ty_chirho)| ty_chirho)
+                        .collect::<Vec<_>>(),
+                    visible_chirho
+                        .into_iter()
+                        .map(|(_, ty_chirho)| ty_chirho)
+                        .collect::<Vec<_>>(),
+                )
+            } else {
+                (Vec::new(), arguments_chirho)
+            };
+            let visible_vars_chirho = visible_tys_chirho
                 .iter()
-                .skip(1)
-                .zip(extra_vars_chirho.iter().copied())
-            {
-                class_scoped_tyvars_chirho
-                    .insert(ast_var_chirho.text_chirho().to_string(), ty_var_chirho);
-            }
+                .filter_map(|ty_chirho| {
+                    if let TyChirho::VarChirho(variable_chirho) = ty_chirho {
+                        Some(*variable_chirho)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+            let class_tv_chirho = visible_vars_chirho.first().copied().unwrap_or_else(|| {
+                let variable_chirho = TyVarChirho(self.next_var_chirho);
+                self.next_var_chirho += 1;
+                variable_chirho
+            });
+            let extra_vars_chirho = visible_vars_chirho.into_iter().skip(1).collect::<Vec<_>>();
+            let kind_vars_chirho = kind_tys_chirho
+                .iter()
+                .filter_map(|ty_chirho| {
+                    if let TyChirho::VarChirho(variable_chirho) = ty_chirho {
+                        Some(*variable_chirho)
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
 
             // Superclasses from context
             let supers_chirho: Vec<String> = context_chirho
@@ -80,7 +105,7 @@ impl InferCtxChirho {
 
                 let class_pred_chirho =
                     SchemePredChirho::legacy_chirho(crate::ty_chirho::SchemePredPartsChirho {
-                        kind_tys_chirho: Vec::new(),
+                        kind_tys_chirho: kind_tys_chirho.clone(),
                         class_name_chirho: class_name_chirho.clone(),
                         ty_chirho: TyChirho::VarChirho(class_tv_chirho),
                         extra_tys_chirho: extra_vars_chirho
@@ -158,7 +183,7 @@ impl InferCtxChirho {
             self.class_env_chirho
                 .add_class_chirho(ClassDeclChirho::legacy_chirho(
                     crate::class_chirho::ClassDeclPartsChirho {
-                        kind_vars_chirho: Vec::new(),
+                        kind_vars_chirho,
                         name_chirho: class_name_chirho.clone(),
                         supers_chirho,
                         var_chirho: class_tv_chirho,
@@ -175,6 +200,7 @@ impl InferCtxChirho {
             // instance that leaves the family undefined.
             let class_params_chirho: Vec<String> = type_vars_chirho
                 .iter()
+                .filter(|binder_chirho| binder_chirho.is_visible_chirho())
                 .map(|param_chirho| param_chirho.text_chirho().to_string())
                 .collect();
             for atf_chirho in associated_tfs_chirho {
@@ -333,7 +359,12 @@ impl InferCtxChirho {
             for atfi_chirho in assoc_tf_instances_chirho {
                 self.register_family_instance_ast_chirho(
                     atfi_chirho.family_name_chirho.full_name_chirho(),
-                    &atfi_chirho.lhs_types_chirho,
+                    &atfi_chirho
+                        .kind_args_chirho
+                        .iter()
+                        .chain(&atfi_chirho.lhs_types_chirho)
+                        .cloned()
+                        .collect::<Vec<_>>(),
                     &atfi_chirho.rhs_chirho,
                     atfi_chirho.span_chirho,
                     Some(0),

@@ -8,6 +8,7 @@ mod compiler_schemes_chirho;
 mod constructors_chirho;
 mod declarations_chirho;
 mod dependencies_chirho;
+pub use dependencies_chirho::source_declaration_dependencies_chirho;
 mod module_chirho;
 mod state_chirho;
 mod surface_chirho;
@@ -45,6 +46,12 @@ pub struct ElaborationResultChirho {
 
 type SourceVariablesChirho = Vec<(String, TyVarChirho, TyChirho)>;
 
+#[derive(Default)]
+struct DeclarationVariablesChirho {
+    written_chirho: SourceVariablesChirho,
+    publication_chirho: crate::subst_chirho::SubstChirho,
+}
+
 struct TypeElaboratorChirho<'scope_chirho> {
     state_chirho: ElaborationStateChirho,
     registry_chirho: TypeFamilyEnvChirho,
@@ -57,9 +64,10 @@ struct TypeElaboratorChirho<'scope_chirho> {
     signature_variables_chirho: HashMap<String, SourceVariablesChirho>,
     signature_undo_chirho: Vec<(String, Option<SourceVariablesChirho>)>,
     type_depth_chirho: usize,
+    rechecking_chirho: bool,
     variables_chirho: HashMap<String, (TyVarChirho, TyChirho)>,
     scope_undo_chirho: Vec<(String, Option<(TyVarChirho, TyChirho)>)>,
-    declaration_variables_chirho: HashMap<Arc<str>, SourceVariablesChirho>,
+    declaration_variables_chirho: HashMap<Arc<str>, DeclarationVariablesChirho>,
     current_declaration_chirho: Option<Arc<str>>,
     declaration_contracts_chirho: HashMap<Arc<str>, Arc<DeclarationSchemeChirho>>,
 }
@@ -168,60 +176,32 @@ pub fn elaborate_module_chirho(
     module_chirho: &mut ModuleChirho,
     imports_chirho: ElaborationImportsChirho<'_>,
 ) -> Result<ElaborationResultChirho, ElaborationErrorChirho> {
-    let mut state_chirho = ElaborationStateChirho::new_chirho()?;
-    // Snapshots share branches and schemes through Arc. Charge their map keys
-    // before cloning the maps; no source/interface is guessed from scan order.
-    for definition_chirho in imports_chirho.registry_chirho.definitions_chirho() {
-        let key_chirho = definition_chirho.id_chirho().key_chirho();
-        state_chirho.charge_chirho(
-            key_chirho.len() + 1,
-            key_chirho.len() + 1,
-            module_chirho.span_chirho,
-        )?;
-    }
-    for (key_chirho, _) in imports_chirho
-        .registry_chirho
-        .declaration_schemes_chirho()
-        .iter_chirho()
-    {
-        state_chirho.charge_chirho(
-            key_chirho.len() + 1,
-            key_chirho.len() + 1,
-            module_chirho.span_chirho,
-        )?;
-    }
-    let mut elaborator_chirho = TypeElaboratorChirho {
-        state_chirho,
-        registry_chirho: imports_chirho.registry_chirho.clone(),
-        type_scope_chirho: imports_chirho.type_scope_chirho,
-        family_scope_chirho: imports_chirho.family_scope_chirho,
-        promotion_scope_chirho: imports_chirho.promotion_scope_chirho,
-        builtin_classes_chirho: imports_chirho.builtin_classes_chirho,
-        star_is_type_chirho:
-            haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(
-                module_chirho,
-                "StarIsType",
-                true,
-            ),
-        scoped_type_variables_chirho:
-            haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(
-                module_chirho,
-                "ScopedTypeVariables",
-                false,
-            ),
-        signature_variables_chirho: HashMap::new(),
-        signature_undo_chirho: Vec::new(),
-        type_depth_chirho: 0,
-        variables_chirho: HashMap::new(),
-        scope_undo_chirho: Vec::new(),
-        declaration_variables_chirho: HashMap::new(),
-        current_declaration_chirho: None,
-        declaration_contracts_chirho: HashMap::new(),
-    };
+    elaborate_module_under_policy_chirho(module_chirho, imports_chirho, true)
+}
+
+/// The authoritative cold source path checks declaration kinds and family
+/// equations with the same engine, while leaving value bodies uninferred.
+pub fn elaborate_declaration_module_chirho(
+    module_chirho: &mut ModuleChirho,
+    imports_chirho: ElaborationImportsChirho<'_>,
+) -> Result<ElaborationResultChirho, ElaborationErrorChirho> {
+    elaborate_module_under_policy_chirho(module_chirho, imports_chirho, false)
+}
+
+fn elaborate_module_under_policy_chirho(
+    module_chirho: &mut ModuleChirho,
+    imports_chirho: ElaborationImportsChirho<'_>,
+    values_chirho: bool,
+) -> Result<ElaborationResultChirho, ElaborationErrorChirho> {
+    let mut elaborator_chirho = TypeElaboratorChirho::new_chirho(module_chirho, imports_chirho)?;
     elaborator_chirho.predeclare_chirho(module_chirho)?;
     elaborator_chirho.predeclare_constructors_chirho(module_chirho)?;
     elaborator_chirho.elaborate_declarations_chirho(module_chirho)?;
-    elaborator_chirho.elaborate_values_chirho(module_chirho)?;
+    if values_chirho {
+        elaborator_chirho.elaborate_values_chirho(module_chirho)?;
+    } else {
+        elaborator_chirho.elaborate_family_instances_chirho(module_chirho)?;
+    }
     for index_chirho in 0..elaborator_chirho.state_chirho.next_variable_chirho {
         let variable_chirho = TyVarChirho(index_chirho);
         let term_chirho = elaborator_chirho.state_chirho.resolve_chirho(
@@ -255,4 +235,63 @@ pub fn elaborate_module_chirho(
         state_chirho: elaborator_chirho.state_chirho,
         registry_chirho: elaborator_chirho.registry_chirho,
     })
+}
+
+impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
+    fn new_chirho(
+        module_chirho: &ModuleChirho,
+        imports_chirho: ElaborationImportsChirho<'scope_chirho>,
+    ) -> Result<Self, ElaborationErrorChirho> {
+        let mut state_chirho = ElaborationStateChirho::new_chirho()?;
+        // Snapshots share branches and schemes through Arc. Charge their map keys
+        // before cloning the maps; no source/interface is guessed from scan order.
+        for definition_chirho in imports_chirho.registry_chirho.definitions_chirho() {
+            let key_chirho = definition_chirho.id_chirho().key_chirho();
+            state_chirho.charge_chirho(
+                key_chirho.len() + 1,
+                key_chirho.len() + 1,
+                module_chirho.span_chirho,
+            )?;
+        }
+        for (key_chirho, _) in imports_chirho
+            .registry_chirho
+            .declaration_schemes_chirho()
+            .iter_chirho()
+        {
+            state_chirho.charge_chirho(
+                key_chirho.len() + 1,
+                key_chirho.len() + 1,
+                module_chirho.span_chirho,
+            )?;
+        }
+        Ok(Self {
+            state_chirho,
+            registry_chirho: imports_chirho.registry_chirho.clone(),
+            type_scope_chirho: imports_chirho.type_scope_chirho,
+            family_scope_chirho: imports_chirho.family_scope_chirho,
+            promotion_scope_chirho: imports_chirho.promotion_scope_chirho,
+            builtin_classes_chirho: imports_chirho.builtin_classes_chirho,
+            star_is_type_chirho:
+                haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(
+                    module_chirho,
+                    "StarIsType",
+                    true,
+                ),
+            scoped_type_variables_chirho:
+                haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(
+                    module_chirho,
+                    "ScopedTypeVariables",
+                    false,
+                ),
+            signature_variables_chirho: HashMap::new(),
+            signature_undo_chirho: Vec::new(),
+            type_depth_chirho: 0,
+            rechecking_chirho: false,
+            variables_chirho: HashMap::new(),
+            scope_undo_chirho: Vec::new(),
+            declaration_variables_chirho: HashMap::new(),
+            current_declaration_chirho: None,
+            declaration_contracts_chirho: HashMap::new(),
+        })
+    }
 }

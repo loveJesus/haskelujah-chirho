@@ -155,6 +155,8 @@ mod ast_conversion_chirho;
 mod ast_conversion_tests_chirho;
 #[path = "infer_chirho/types_chirho/ast_types_chirho.rs"]
 mod ast_types_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/checked_families_chirho.rs"]
+mod checked_families_chirho;
 #[path = "infer_chirho/types_chirho/families_chirho/closed_family_apartness_chirho.rs"]
 mod closed_family_apartness_chirho;
 #[cfg(test)]
@@ -415,6 +417,7 @@ pub struct MethodOccurrenceRecordChirho {
 /// The inference context — carries mutable state during inference.
 pub struct InferCtxChirho {
     non_deferrable_diagnostics_chirho: DiagnosticBundleChirho,
+    definition_type_conversion_chirho: bool,
     elaboration_owner_chirho: Option<
         haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ElaborationOwnerChirho,
     >,
@@ -809,10 +812,7 @@ fn infer_module_with_elaboration_state_chirho(
         return ctx_chirho.finish_chirho();
     }
     if let Some(state_chirho) = state_chirho {
-        ctx_chirho.elaboration_owner_chirho = Some(state_chirho.owner_chirho);
-        ctx_chirho.next_var_chirho = state_chirho.next_variable_chirho;
-        ctx_chirho.elaboration_substitution_chirho = state_chirho.substitution_chirho;
-        ctx_chirho.elaboration_variable_kinds_chirho = state_chirho.variable_kinds_chirho;
+        ctx_chirho.adopt_elaboration_state_chirho(state_chirho);
     }
     ctx_chirho.set_imported_type_name_preferences_chirho(
         safe_unqualified_imported_type_names_chirho,

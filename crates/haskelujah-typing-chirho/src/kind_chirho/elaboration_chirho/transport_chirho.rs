@@ -3,7 +3,6 @@
 //! Owner-checked surface metadata and one canonical declaration identity.
 
 use super::*;
-use crate::infer_chirho::TypeFamilyIdChirho;
 use haskelujah_ast_chirho::name_chirho::{
     CompilerTypeConstructorChirho, NameChirho, RawNameChirho, TypeConstructorDeclarationChirho,
     TypeConstructorIdentityChirho, TypeConstructorRoleChirho,
@@ -82,38 +81,7 @@ impl TypeElaboratorChirho<'_> {
             module_bytes_chirho + name_bytes_chirho + 128,
             span_chirho,
         )?;
-        let key_chirho = match &declaration_chirho.identity_chirho {
-            TypeConstructorIdentityChirho::CompilerChirho(
-                CompilerTypeConstructorChirho::TypeUniverseChirho,
-            ) => state_chirho::TYPE_UNIVERSE_KEY_CHIRHO.to_owned(),
-            TypeConstructorIdentityChirho::CompilerChirho(
-                CompilerTypeConstructorChirho::ConstraintUniverseChirho,
-            ) => state_chirho::CONSTRAINT_UNIVERSE_KEY_CHIRHO.to_owned(),
-            TypeConstructorIdentityChirho::CompilerChirho(
-                CompilerTypeConstructorChirho::ClassChirho(class_chirho),
-            ) => format!("%class:compiler:{}", class_chirho.legacy_name_chirho()),
-            TypeConstructorIdentityChirho::CompilerChirho(constructor_chirho) => {
-                constructor_chirho.name_chirho().to_owned()
-            }
-            TypeConstructorIdentityChirho::SourceChirho {
-                defining_module_chirho,
-                name_chirho,
-            } if matches!(
-                declaration_chirho.role_chirho,
-                TypeConstructorRoleChirho::TypeFamilyChirho
-                    | TypeConstructorRoleChirho::DataFamilyChirho
-            ) =>
-            {
-                TypeFamilyIdChirho::SourceChirho {
-                    module_chirho: defining_module_chirho.clone(),
-                    name_chirho: name_chirho.clone(),
-                }
-                .key_chirho()
-            }
-            TypeConstructorIdentityChirho::SourceChirho { .. } => {
-                declaration_chirho.identity_chirho.key_chirho()
-            }
-        };
+        let key_chirho = declaration_chirho.type_key_chirho();
         Ok(Arc::from(key_chirho))
     }
 

@@ -379,6 +379,7 @@ impl InferCtxChirho {
         Self {
             non_deferrable_diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             next_var_chirho: 0,
+            definition_type_conversion_chirho: false,
             elaboration_owner_chirho: None,
             elaboration_substitution_chirho: SubstChirho::empty_chirho(),
             elaboration_variable_kinds_chirho: HashMap::new(),
@@ -623,6 +624,16 @@ impl InferCtxChirho {
                 },
             )
             .collect()
+    }
+
+    pub(super) fn adopt_elaboration_state_chirho(
+        &mut self,
+        state_chirho: crate::kind_chirho::elaboration_chirho::ElaborationStateChirho,
+    ) {
+        self.elaboration_owner_chirho = Some(state_chirho.owner_chirho);
+        self.next_var_chirho = state_chirho.next_variable_chirho;
+        self.elaboration_substitution_chirho = state_chirho.substitution_chirho;
+        self.elaboration_variable_kinds_chirho = state_chirho.variable_kinds_chirho;
     }
 
     /// Consume the context and return the final result.

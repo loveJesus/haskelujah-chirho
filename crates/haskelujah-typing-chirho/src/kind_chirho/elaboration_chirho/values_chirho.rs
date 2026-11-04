@@ -33,6 +33,36 @@ impl TypeElaboratorChirho<'_> {
         Ok(())
     }
 
+    pub(super) fn elaborate_family_instances_chirho(
+        &mut self,
+        module_chirho: &mut ModuleChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        for declaration_chirho in &mut module_chirho.decls_chirho {
+            self.scoped_chirho(|this_chirho| match declaration_chirho {
+                DeclChirho::TypeFamilyInstanceDeclChirho {
+                    family_name_chirho,
+                    kind_args_chirho,
+                    lhs_types_chirho,
+                    rhs_chirho,
+                    span_chirho,
+                } => this_chirho.elaborate_family_application_chirho(
+                    family_name_chirho,
+                    kind_args_chirho,
+                    lhs_types_chirho,
+                    rhs_chirho,
+                    *span_chirho,
+                ),
+                // The cold declaration projection retains no method bodies.
+                // Reuse the ordinary context/head scope before its equations.
+                DeclChirho::InstanceDeclChirho { .. } => {
+                    this_chirho.value_declaration_chirho(declaration_chirho)
+                }
+                _ => Ok(()),
+            })?;
+        }
+        Ok(())
+    }
+
     fn value_declaration_chirho(
         &mut self,
         declaration_chirho: &mut DeclChirho,

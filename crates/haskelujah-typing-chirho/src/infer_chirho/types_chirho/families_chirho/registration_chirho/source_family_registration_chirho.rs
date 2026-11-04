@@ -15,11 +15,16 @@ use haskelujah_diagnostics_chirho::DiagnosticBundleChirho;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+#[path = "source_declarations_chirho.rs"]
+mod source_declarations_chirho;
+
 /// Every scope is built by the same naming admission as the checked frontend.
 pub struct SourceFamilyRegistrationContextChirho<'source_chirho> {
     pub registry_chirho: &'source_chirho TypeFamilyRegistryChirho,
     pub family_scope_chirho: Arc<TypeFamilyScopeChirho>,
     pub promotion_scope_chirho: Arc<PromotionScopeChirho>,
+    pub type_scope_chirho: Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>,
+    pub builtin_classes_chirho: haskelujah_ast_chirho::name_chirho::BuiltinClassScopeChirho,
     pub imported_synonyms_chirho: &'source_chirho HashMap<String, (Vec<String>, TypeChirho)>,
     pub safe_unqualified_type_names_chirho: &'source_chirho HashSet<String>,
     pub preferred_qualified_type_names_chirho: &'source_chirho HashMap<String, String>,
@@ -34,15 +39,38 @@ pub struct SourceFamilyRegistrationResultChirho {
 fn context_chirho(
     module_chirho: &ModuleChirho,
     imports_chirho: SourceFamilyRegistrationContextChirho<'_>,
-) -> Result<InferCtxChirho, DiagnosticBundleChirho> {
+) -> Result<(ModuleChirho, InferCtxChirho), DiagnosticBundleChirho> {
+    let mut owned_chirho = source_declarations_chirho::declaration_module_chirho(module_chirho)?;
+    let elaboration_chirho =
+        crate::kind_chirho::elaboration_chirho::elaborate_declaration_module_chirho(
+            &mut owned_chirho,
+            crate::kind_chirho::elaboration_chirho::ElaborationImportsChirho {
+                registry_chirho: imports_chirho.registry_chirho,
+                type_scope_chirho: &imports_chirho.type_scope_chirho,
+                family_scope_chirho: &imports_chirho.family_scope_chirho,
+                promotion_scope_chirho: &imports_chirho.promotion_scope_chirho,
+                builtin_classes_chirho: &imports_chirho.builtin_classes_chirho,
+            },
+        )
+        .map_err(|error_chirho| {
+            DiagnosticBundleChirho::new_chirho(vec![
+                haskelujah_diagnostics_chirho::DiagnosticChirho::error_chirho(
+                    error_chirho.message_chirho,
+                    error_chirho.span_chirho,
+                ),
+            ])
+        })?;
+    let module_chirho = &owned_chirho;
     let mut context_chirho = InferCtxChirho::new_chirho();
+    context_chirho.adopt_elaboration_state_chirho(elaboration_chirho.state_chirho);
+    context_chirho.type_constructor_scope_chirho = Some(imports_chirho.type_scope_chirho);
     context_chirho.set_imported_type_name_preferences_chirho(
         imports_chirho.safe_unqualified_type_names_chirho,
         imports_chirho.preferred_qualified_type_names_chirho,
     );
     if let Err(error_chirho) = context_chirho
         .type_families_chirho
-        .merge_chirho(imports_chirho.registry_chirho)
+        .merge_chirho(&elaboration_chirho.registry_chirho)
     {
         context_chirho
             .family_registration_error_chirho(error_chirho.to_string(), module_chirho.span_chirho);
@@ -103,13 +131,19 @@ fn context_chirho(
             );
         }
     }
-    Ok(context_chirho)
+    Ok((owned_chirho, context_chirho))
 }
 
 fn finish_chirho(
     context_chirho: InferCtxChirho,
 ) -> Result<SourceFamilyRegistrationResultChirho, DiagnosticBundleChirho> {
     let result_chirho = context_chirho.finish_chirho();
+    if result_chirho
+        .non_deferrable_diagnostics_chirho
+        .has_errors_chirho()
+    {
+        return Err(result_chirho.non_deferrable_diagnostics_chirho);
+    }
     if result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(result_chirho.diagnostics_chirho);
     }
@@ -127,7 +161,8 @@ pub fn predeclare_source_open_families_chirho(
     module_chirho: &ModuleChirho,
     imports_chirho: SourceFamilyRegistrationContextChirho<'_>,
 ) -> Result<SourceFamilyRegistrationResultChirho, DiagnosticBundleChirho> {
-    let mut context_chirho = context_chirho(module_chirho, imports_chirho)?;
+    let (owned_chirho, mut context_chirho) = context_chirho(module_chirho, imports_chirho)?;
+    let module_chirho = &owned_chirho;
     for declaration_chirho in &module_chirho.decls_chirho {
         match declaration_chirho {
             DeclChirho::TypeFamilyDeclChirho {
@@ -182,7 +217,8 @@ pub fn register_source_module_families_chirho(
     module_chirho: &ModuleChirho,
     imports_chirho: SourceFamilyRegistrationContextChirho<'_>,
 ) -> Result<SourceFamilyRegistrationResultChirho, DiagnosticBundleChirho> {
-    let mut context_chirho = context_chirho(module_chirho, imports_chirho)?;
+    let (owned_chirho, mut context_chirho) = context_chirho(module_chirho, imports_chirho)?;
+    let module_chirho = &owned_chirho;
     context_chirho.register_module_families_chirho(module_chirho);
     // Associated defaults and explicit instance-body family equations are
     // registered by these declaration-only methods in ordinary inference too.

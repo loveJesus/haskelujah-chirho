@@ -569,6 +569,41 @@ pub struct TypeConstructorDeclarationChirho {
 }
 
 impl TypeConstructorDeclarationChirho {
+    /// Canonical type/kind head selected by this positive declaration producer.
+    /// Printed source spellings never manufacture one of these identities.
+    pub fn type_key_chirho(&self) -> String {
+        match &self.identity_chirho {
+            TypeConstructorIdentityChirho::CompilerChirho(
+                CompilerTypeConstructorChirho::TypeUniverseChirho,
+            ) => "%universe:type".to_owned(),
+            TypeConstructorIdentityChirho::CompilerChirho(
+                CompilerTypeConstructorChirho::ConstraintUniverseChirho,
+            ) => "%universe:constraint".to_owned(),
+            TypeConstructorIdentityChirho::CompilerChirho(
+                CompilerTypeConstructorChirho::ClassChirho(class_chirho),
+            ) => format!("%class:compiler:{}", class_chirho.legacy_name_chirho()),
+            TypeConstructorIdentityChirho::CompilerChirho(constructor_chirho) => {
+                constructor_chirho.name_chirho().to_owned()
+            }
+            TypeConstructorIdentityChirho::SourceChirho {
+                defining_module_chirho,
+                name_chirho,
+            } if matches!(
+                self.role_chirho,
+                TypeConstructorRoleChirho::TypeFamilyChirho
+                    | TypeConstructorRoleChirho::DataFamilyChirho
+            ) =>
+            {
+                format!(
+                    "%family:source:{}:{defining_module_chirho}:{}:{name_chirho}",
+                    defining_module_chirho.len(),
+                    name_chirho.len()
+                )
+            }
+            TypeConstructorIdentityChirho::SourceChirho { .. } => self.identity_chirho.key_chirho(),
+        }
+    }
+
     pub fn source_chirho(
         defining_module_chirho: &str,
         name_chirho: &str,

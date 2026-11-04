@@ -9,6 +9,62 @@ use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 
 impl TypeElaboratorChirho<'_> {
+    fn recheck_declaration_bodies_chirho(
+        &mut self,
+        module_chirho: &mut ModuleChirho,
+        group_chirho: &[usize],
+    ) -> Result<(), ElaborationErrorChirho> {
+        let previous_chirho = self.rechecking_chirho;
+        self.rechecking_chirho = true;
+        let result_chirho = (|| {
+            for index_chirho in group_chirho {
+                match &mut module_chirho.decls_chirho[*index_chirho] {
+                    DeclChirho::TypeAliasDeclChirho {
+                        name_chirho,
+                        rhs_chirho,
+                        ..
+                    } => {
+                        let key_chirho = self.local_key_chirho(name_chirho)?;
+                        self.scoped_chirho(|this_chirho| {
+                            this_chirho
+                                .bind_header_scope_chirho(&key_chirho, name_chirho.span_chirho())?;
+                            let typed_chirho = this_chirho.infer_type_chirho(rhs_chirho)?;
+                            let body_chirho = this_chirho.state_chirho.resolve_chirho(
+                                &typed_chirho.term_chirho,
+                                name_chirho.span_chirho(),
+                            )?;
+                            let publication_chirho = &this_chirho.declaration_variables_chirho
+                                [&key_chirho]
+                                .publication_chirho;
+                            let body_chirho = publication_chirho.apply_ty_chirho(&body_chirho);
+                            this_chirho
+                                .registry_chirho
+                                .declaration_schemes_mut_chirho()
+                                .complete_synonym_body_chirho(&key_chirho, body_chirho)
+                                .map_err(|message_chirho| {
+                                    Self::error_chirho(message_chirho, name_chirho.span_chirho())
+                                })
+                        })?;
+                    }
+                    DeclChirho::TypeFamilyDeclChirho {
+                        name_chirho,
+                        equations_chirho,
+                        ..
+                    } => {
+                        let key_chirho = self.local_key_chirho(name_chirho)?;
+                        for equation_chirho in equations_chirho {
+                            self.elaborate_equation_chirho(equation_chirho, &key_chirho)?;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Ok(())
+        })();
+        self.rechecking_chirho = previous_chirho;
+        result_chirho
+    }
+
     pub(super) fn scoped_chirho<ResultChirho>(
         &mut self,
         action_chirho: impl FnOnce(&mut Self) -> Result<ResultChirho, ElaborationErrorChirho>,
@@ -158,8 +214,8 @@ impl TypeElaboratorChirho<'_> {
     ) -> Result<(), ElaborationErrorChirho> {
         for group_chirho in self.declaration_groups_chirho(module_chirho)? {
             let mut keys_chirho = Vec::new();
-            for index_chirho in group_chirho {
-                let declaration_chirho = &mut module_chirho.decls_chirho[index_chirho];
+            for index_chirho in &group_chirho {
+                let declaration_chirho = &mut module_chirho.decls_chirho[*index_chirho];
                 let name_chirho = match declaration_chirho {
                     DeclChirho::DataDeclChirho { name_chirho, .. }
                     | DeclChirho::NewtypeDeclChirho { name_chirho, .. }
@@ -190,6 +246,7 @@ impl TypeElaboratorChirho<'_> {
                     .is_some_and(|scheme_chirho| scheme_chirho.promoted_chirho)
             });
             self.finish_catalogue_chirho(keys_chirho, module_chirho.span_chirho)?;
+            self.recheck_declaration_bodies_chirho(module_chirho, &group_chirho)?;
         }
         Ok(())
     }
@@ -365,6 +422,7 @@ impl TypeElaboratorChirho<'_> {
                 .get(key_chirho)
                 .map(|variables_chirho| {
                     variables_chirho
+                        .written_chirho
                         .iter()
                         .map(|(name_chirho, _, _)| name_chirho.clone())
                         .collect::<Vec<_>>()
@@ -418,7 +476,7 @@ impl TypeElaboratorChirho<'_> {
             syntax_chirho = TypeChirho::KindApplicationChirho {
                 fun_chirho: Box::new(syntax_chirho),
                 arg_chirho: Box::new(argument_chirho),
-                written_chirho: true,
+                written_chirho: !self.rechecking_chirho,
                 span_chirho,
             };
         }

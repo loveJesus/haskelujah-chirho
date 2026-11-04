@@ -10,6 +10,9 @@ use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
 use haskelujah_span_chirho::FileIdChirho;
 use haskelujah_typing_chirho::infer_chirho::seed_type_family_registry_chirho;
 
+#[path = "kind_transport_tests_chirho.rs"]
+mod kind_transport_tests_chirho;
+
 fn module_chirho(source_chirho: &str) -> ModuleChirho {
     let tree_chirho =
         ParserChirho::new_chirho(source_chirho, FileIdChirho::SYNTHETIC_CHIRHO).parse_chirho();

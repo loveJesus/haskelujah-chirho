@@ -28,6 +28,9 @@ impl DesugarCtxChirho {
                 Self::type_key_from_ast_chirho(arg_chirho, scope_chirho)
             ),
             TypeChirho::ConChirho(name_chirho) => {
+                if let Some(declaration_chirho) = name_chirho.type_constructor_chirho() {
+                    return declaration_chirho.type_key_chirho();
+                }
                 unquoted_promoted_spelling_chirho(name_chirho, scope_chirho)
                     .unwrap_or_else(|| name_chirho.text_chirho().to_string())
             }

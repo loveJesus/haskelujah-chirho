@@ -578,8 +578,9 @@ impl TypeElaboratorChirho<'_> {
         let mut extra_arguments_chirho = Vec::new();
         for (kind_argument_chirho, written_chirho, mut argument_chirho) in arguments_chirho {
             while let Some(binder_chirho) = binders_chirho.get(cursor_chirho) {
-                let automatic_chirho = binder_chirho.visibility_chirho
+                let automatic_chirho = (binder_chirho.visibility_chirho
                     == TelescopeVisibilityChirho::InferredChirho
+                    && (!kind_argument_chirho || written_chirho))
                     || (!kind_argument_chirho
                         && binder_chirho.visibility_chirho
                             != TelescopeVisibilityChirho::RequiredChirho);
@@ -786,7 +787,7 @@ impl TypeElaboratorChirho<'_> {
                     syntax_chirho = TypeChirho::KindApplicationChirho {
                         fun_chirho: Box::new(syntax_chirho),
                         arg_chirho: Box::new(argument_chirho),
-                        written_chirho: true,
+                        written_chirho: !self.rechecking_chirho,
                         span_chirho,
                     };
                 }

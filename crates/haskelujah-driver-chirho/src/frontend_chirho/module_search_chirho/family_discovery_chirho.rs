@@ -335,7 +335,68 @@ pub(crate) fn register_discovered_type_families_chirho(
     }
     let mut registry_chirho = context_chirho.registry_chirho.clone();
     let mut ifaces_chirho = context_chirho.ifaces_chirho.clone();
+    // Preserve naming's positive declaration identities while private family
+    // publication temporarily omits definitions whose reduction bodies are pending.
+    let mut declaration_ifaces_chirho = ifaces_chirho.clone();
+    for _round_chirho in 0..ordered_chirho.len() {
+        for module_chirho in &ordered_chirho {
+            work_chirho = work_chirho.checked_sub(1).ok_or_else(|| {
+                family_frontend_diagnostics_chirho(
+                    "source declaration interface work bound exhausted",
+                    module_chirho.span_chirho,
+                )
+            })?;
+            let iface_chirho = haskelujah_naming_chirho::build_iface_with_imports_chirho(
+                module_chirho,
+                &declaration_ifaces_chirho,
+            )
+            .map_err(|error_chirho| {
+                DiagnosticBundleChirho::new_chirho(vec![constructor_signature_diagnostic_chirho(
+                    error_chirho,
+                    &module_chirho.name_chirho.full_name_chirho(),
+                )])
+            })?;
+            admit_authoritative_iface_chirho(&mut declaration_ifaces_chirho, iface_chirho);
+        }
+    }
+    let mut kind_dependencies_chirho = BTreeMap::new();
     for module_chirho in &ordered_chirho {
+        let type_scope_chirho = haskelujah_naming_chirho::build_type_constructor_scope_chirho(
+            module_chirho,
+            &declaration_ifaces_chirho,
+        );
+        let family_scope_chirho =
+            build_type_family_scope_chirho(module_chirho, &ifaces_chirho, &registry_chirho)
+                .map_err(|error_chirho| {
+                    family_frontend_diagnostics_chirho(error_chirho, module_chirho.span_chirho)
+                })?;
+        let promotion_scope_chirho = haskelujah_naming_chirho::build_promotion_scope_chirho(
+            module_chirho,
+            &declaration_ifaces_chirho,
+        );
+        let builtin_classes_chirho = haskelujah_naming_chirho::build_builtin_class_scope_chirho(
+            module_chirho,
+            &declaration_ifaces_chirho,
+        );
+        let dependencies_chirho = haskelujah_typing_chirho::kind_chirho::elaboration_chirho::source_declaration_dependencies_chirho(module_chirho, haskelujah_typing_chirho::kind_chirho::elaboration_chirho::ElaborationImportsChirho { registry_chirho: &registry_chirho, type_scope_chirho: &type_scope_chirho, family_scope_chirho: &family_scope_chirho, promotion_scope_chirho: &promotion_scope_chirho, builtin_classes_chirho: &builtin_classes_chirho }, &ordered_chirho).map_err(|error_chirho| family_frontend_diagnostics_chirho(error_chirho.message_chirho, error_chirho.span_chirho))?;
+        kind_dependencies_chirho.insert(
+            module_chirho.name_chirho.full_name_chirho(),
+            dependencies_chirho,
+        );
+    }
+    let mut staged_chirho = BTreeSet::new();
+    let mut unstaged_chirho = ordered_chirho.clone();
+    while !unstaged_chirho.is_empty() {
+        let Some(index_chirho) = unstaged_chirho.iter().position(|module_chirho| {
+            kind_dependencies_chirho[&module_chirho.name_chirho.full_name_chirho()]
+                .is_subset(&staged_chirho)
+        }) else {
+            return Err(family_frontend_diagnostics_chirho(
+                "source declaration kind cycle has no checked telescope contract",
+                checked_chirho.span_chirho,
+            ));
+        };
+        let module_chirho = unstaged_chirho.remove(index_chirho);
         let scope_chirho = Arc::new(
             build_type_family_scope_chirho(module_chirho, &ifaces_chirho, &registry_chirho)
                 .map_err(|error_chirho| {
@@ -356,8 +417,18 @@ pub(crate) fn register_discovered_type_families_chirho(
                 promotion_scope_chirho: Arc::new(
                     haskelujah_naming_chirho::build_promotion_scope_chirho(
                         module_chirho,
-                        &ifaces_chirho,
+                        &declaration_ifaces_chirho,
                     ),
+                ),
+                type_scope_chirho: Arc::new(
+                    haskelujah_naming_chirho::build_type_constructor_scope_chirho(
+                        module_chirho,
+                        &declaration_ifaces_chirho,
+                    ),
+                ),
+                builtin_classes_chirho: haskelujah_naming_chirho::build_builtin_class_scope_chirho(
+                    module_chirho,
+                    &declaration_ifaces_chirho,
                 ),
                 imported_synonyms_chirho: context_chirho.imported_synonyms_chirho,
                 safe_unqualified_type_names_chirho: &safe_names_chirho,
@@ -365,6 +436,14 @@ pub(crate) fn register_discovered_type_families_chirho(
             },
         )?;
         registry_chirho = result_chirho.registry_chirho;
+        staged_chirho.insert(module_chirho.name_chirho.full_name_chirho());
+        propagate_headers_chirho(
+            &ordered_chirho,
+            &mut ifaces_chirho,
+            &mut registry_chirho,
+            &mut work_chirho,
+            &diagnostics_chirho,
+        )?;
     }
     propagate_headers_chirho(
         &ordered_chirho,
@@ -411,8 +490,18 @@ pub(crate) fn register_discovered_type_families_chirho(
                 promotion_scope_chirho: Arc::new(
                     haskelujah_naming_chirho::build_promotion_scope_chirho(
                         module_chirho,
-                        &ifaces_chirho,
+                        &declaration_ifaces_chirho,
                     ),
+                ),
+                type_scope_chirho: Arc::new(
+                    haskelujah_naming_chirho::build_type_constructor_scope_chirho(
+                        module_chirho,
+                        &declaration_ifaces_chirho,
+                    ),
+                ),
+                builtin_classes_chirho: haskelujah_naming_chirho::build_builtin_class_scope_chirho(
+                    module_chirho,
+                    &declaration_ifaces_chirho,
                 ),
                 imported_synonyms_chirho: context_chirho.imported_synonyms_chirho,
                 safe_unqualified_type_names_chirho: &safe_names_chirho,

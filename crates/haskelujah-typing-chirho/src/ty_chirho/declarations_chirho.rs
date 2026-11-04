@@ -133,6 +133,32 @@ impl DeclarationSchemesChirho {
         Ok(())
     }
 
+    /// A private module elaborator completes an SCC's transparent bodies only
+    /// after all its kind headers are checked. The fixed telescope is unchanged.
+    pub(crate) fn complete_synonym_body_chirho(
+        &mut self,
+        identity_chirho: &str,
+        body_chirho: TyChirho,
+    ) -> Result<(), String> {
+        let previous_chirho = self
+            .definitions_chirho
+            .get(identity_chirho)
+            .ok_or_else(|| "missing checked synonym declaration".to_owned())?;
+        if previous_chirho.owner_chirho.is_some()
+            || previous_chirho.role_chirho != TypeConstructorRoleChirho::TypeSynonymChirho
+        {
+            return Err("only a checked synonym owns a transparent body".to_owned());
+        }
+        let mut completed_chirho = previous_chirho.as_ref().clone();
+        completed_chirho.synonym_rhs_chirho = Some(body_chirho);
+        validate_published_chirho(&completed_chirho)?;
+        self.definitions_chirho.insert(
+            completed_chirho.identity_chirho.clone(),
+            Arc::new(completed_chirho),
+        );
+        Ok(())
+    }
+
     pub fn merge_chirho(&mut self, other_chirho: &Self) -> Result<(), String> {
         // Validate the entire merge before publishing any new header.
         for (identity_chirho, scheme_chirho) in &other_chirho.definitions_chirho {

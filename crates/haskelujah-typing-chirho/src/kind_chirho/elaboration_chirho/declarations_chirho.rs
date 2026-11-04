@@ -159,8 +159,13 @@ impl TypeElaboratorChirho<'_> {
                 .insert(key_chirho.clone(), previous_chirho);
         }
         name_chirho.set_type_constructor_chirho(Some(proof_chirho));
-        self.declaration_variables_chirho
-            .insert(key_chirho, source_binders_chirho);
+        self.declaration_variables_chirho.insert(
+            key_chirho,
+            DeclarationVariablesChirho {
+                written_chirho: source_binders_chirho,
+                publication_chirho: SubstChirho::empty_chirho(),
+            },
+        );
         self.close_scope_chirho(mark_chirho);
         Ok(())
     }
@@ -221,9 +226,9 @@ impl TypeElaboratorChirho<'_> {
             ));
         };
         // Copy one bounded entry at a time; no per-scope map snapshot.
-        for index_chirho in 0..variables_chirho.len() {
+        for index_chirho in 0..variables_chirho.written_chirho.len() {
             let (name_chirho, variable_chirho, kind_chirho) =
-                &self.declaration_variables_chirho[key_chirho][index_chirho];
+                &self.declaration_variables_chirho[key_chirho].written_chirho[index_chirho];
             let name_chirho = self.state_chirho.name_chirho(name_chirho, span_chirho)?;
             let variable_chirho = *variable_chirho;
             let kind_chirho = self.state_chirho.copy_chirho(kind_chirho, span_chirho)?;
@@ -423,6 +428,10 @@ impl TypeElaboratorChirho<'_> {
                     span_chirho,
                 ));
             }
+            self.declaration_variables_chirho
+                .entry(key_chirho.clone())
+                .or_default()
+                .publication_chirho = rename_chirho;
             self.registry_chirho
                 .declaration_schemes_mut_chirho()
                 .publish_chirho(exported_chirho)

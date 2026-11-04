@@ -284,6 +284,7 @@ impl TypeElaboratorChirho<'_> {
                         .get(parent_key_chirho)
                         .map(|variables_chirho| {
                             variables_chirho
+                                .written_chirho
                                 .iter()
                                 .map(|(name_chirho, _, _)| name_chirho.clone())
                                 .collect::<Vec<_>>()

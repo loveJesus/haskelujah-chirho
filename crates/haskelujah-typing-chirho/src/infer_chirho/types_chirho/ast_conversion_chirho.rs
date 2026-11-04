@@ -141,7 +141,15 @@ impl InferCtxChirho {
                     .get_chirho(key_chirho)
             })
             .cloned();
-        let mut result_chirho = TyChirho::ConChirho(name_chirho.to_owned());
+        let mut result_chirho = TyChirho::ConChirho(
+            self.type_constructor_scope_chirho
+                .as_ref()
+                .and_then(|scope_chirho| scope_chirho.declaration_chirho(name_chirho))
+                .map_or_else(
+                    || name_chirho.to_owned(),
+                    |declaration_chirho| declaration_chirho.type_key_chirho(),
+                ),
+        );
         if let Some(scheme_chirho) = scheme_chirho {
             use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
             let mut mapping_chirho = crate::subst_chirho::SubstChirho::empty_chirho();
@@ -225,6 +233,9 @@ impl InferCtxChirho {
                 let arg_chirho = self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho);
                 let applied_chirho =
                     TyChirho::AppChirho(Box::new(fun_chirho), Box::new(arg_chirho));
+                if self.definition_type_conversion_chirho {
+                    return applied_chirho;
+                }
                 let expanded_chirho = self.expand_type_synonyms_chirho(&applied_chirho);
                 self.reduce_type_families_in_ty_chirho(&expanded_chirho)
             }
@@ -239,8 +250,20 @@ impl InferCtxChirho {
             }
             TypeChirho::ConChirho(name_chirho) => {
                 if let Some(key_chirho) = self.family_reference_key_chirho(name_chirho) {
-                    return self
-                        .reduce_type_families_in_ty_chirho(&TyChirho::ConChirho(key_chirho));
+                    let typed_chirho = TyChirho::ConChirho(key_chirho);
+                    return if self.definition_type_conversion_chirho {
+                        typed_chirho
+                    } else {
+                        self.reduce_type_families_in_ty_chirho(&typed_chirho)
+                    };
+                }
+                if let Some(declaration_chirho) = name_chirho.type_constructor_chirho() {
+                    let typed_chirho = TyChirho::ConChirho(declaration_chirho.type_key_chirho());
+                    return if self.definition_type_conversion_chirho {
+                        typed_chirho
+                    } else {
+                        self.expand_type_synonyms_chirho(&typed_chirho)
+                    };
                 }
                 // An unquoted promoted constructor keeps its identity key (row 686).
                 if let Some(spelling_chirho) = unquoted_promoted_spelling_chirho(
@@ -253,7 +276,11 @@ impl InferCtxChirho {
                     self.normalize_imported_type_name_chirho(&name_chirho.full_name_chirho());
                 let raw_chirho = TyChirho::ConChirho(text_chirho);
                 // Eagerly expand nullary type synonyms (e.g. String → [Char])
-                self.expand_type_synonyms_chirho(&raw_chirho)
+                if self.definition_type_conversion_chirho {
+                    raw_chirho
+                } else {
+                    self.expand_type_synonyms_chirho(&raw_chirho)
+                }
             }
             TypeChirho::AppChirho {
                 fun_chirho,
@@ -263,6 +290,9 @@ impl InferCtxChirho {
                 let f_chirho = self.ast_type_to_ty_chirho(fun_chirho, var_map_chirho);
                 let a_chirho = self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho);
                 let raw_chirho = TyChirho::AppChirho(Box::new(f_chirho), Box::new(a_chirho));
+                if self.definition_type_conversion_chirho {
+                    return raw_chirho;
+                }
                 // Expand parameterised type synonyms (e.g. Pair Int → (Int, Int))
                 let expanded_chirho = self.expand_type_synonyms_chirho(&raw_chirho);
                 // Reduce type family applications (e.g. F Int → Bool)

@@ -24,11 +24,25 @@ impl InferCtxChirho {
 
     pub(super) fn normalize_imported_type_name_chirho(&self, name_text_chirho: &str) -> String {
         // A promoted-constructor key keeps its whole identity (row 686).
-        if is_promoted_key_chirho(name_text_chirho) || is_type_family_key_chirho(name_text_chirho) {
+        if is_promoted_key_chirho(name_text_chirho)
+            || is_type_family_key_chirho(name_text_chirho)
+            || self
+                .type_families_chirho
+                .declaration_schemes_chirho()
+                .get_chirho(name_text_chirho)
+                .is_some()
+        {
             return name_text_chirho.to_string();
         }
         if let Some(key_chirho) = self.family_name_key_chirho(name_text_chirho) {
             return key_chirho;
+        }
+        if let Some(declaration_chirho) = self
+            .type_constructor_scope_chirho
+            .as_ref()
+            .and_then(|scope_chirho| scope_chirho.declaration_chirho(name_text_chirho))
+        {
+            return declaration_chirho.type_key_chirho();
         }
         let bare_name_chirho = strip_name_qualifier_chirho(name_text_chirho);
         if self
@@ -108,7 +122,19 @@ impl InferCtxChirho {
         &self,
         name_chirho: &str,
     ) -> Option<&(Vec<String>, TyChirho)> {
-        if is_type_family_key_chirho(name_chirho) || is_promoted_key_chirho(name_chirho) {
+        if is_type_family_key_chirho(name_chirho)
+            || is_promoted_key_chirho(name_chirho)
+            || self
+                .type_families_chirho
+                .declaration_schemes_chirho()
+                .get_chirho(name_chirho)
+                .is_some()
+            || self
+                .type_constructor_scope_chirho
+                .as_ref()
+                .and_then(|scope_chirho| scope_chirho.declaration_chirho(name_chirho))
+                .is_some()
+        {
             return None;
         }
         self.type_synonyms_chirho.get(name_chirho).or_else(|| {
@@ -123,6 +149,44 @@ impl InferCtxChirho {
     fn expand_syn_chirho(&self, ty_chirho: &TyChirho, depth_chirho: usize) -> TyChirho {
         if depth_chirho > 100 {
             return ty_chirho.clone(); // guard against cycles
+        }
+        let mut head_chirho = ty_chirho;
+        let mut arguments_chirho = Vec::new();
+        while let TyChirho::AppChirho(fun_chirho, argument_chirho) = head_chirho {
+            arguments_chirho.push(argument_chirho.as_ref());
+            head_chirho = fun_chirho;
+        }
+        arguments_chirho.reverse();
+        if let TyChirho::ConChirho(name_chirho) = head_chirho {
+            let key_chirho = self.normalize_imported_type_name_chirho(name_chirho);
+            if let Some(scheme_chirho) = self
+                .type_families_chirho
+                .declaration_schemes_chirho()
+                .get_chirho(&key_chirho)
+                && scheme_chirho.owner_chirho.is_none()
+                && !scheme_chirho.held_chirho
+                && arguments_chirho.len() >= scheme_chirho.reduction_arity_chirho
+                && let Some(rhs_chirho) = &scheme_chirho.synonym_rhs_chirho
+            {
+                let mut substitution_chirho = crate::subst_chirho::SubstChirho::empty_chirho();
+                for (binder_chirho, argument_chirho) in
+                    scheme_chirho.binders_chirho.iter().zip(&arguments_chirho)
+                {
+                    substitution_chirho.insert_chirho(
+                        binder_chirho.variable_chirho,
+                        self.expand_syn_chirho(argument_chirho, depth_chirho + 1),
+                    );
+                }
+                let body_chirho = substitution_chirho.apply_ty_chirho(rhs_chirho);
+                let mut expanded_chirho = self.expand_syn_chirho(&body_chirho, depth_chirho + 1);
+                for argument_chirho in &arguments_chirho[scheme_chirho.reduction_arity_chirho..] {
+                    expanded_chirho = TyChirho::AppChirho(
+                        Box::new(expanded_chirho),
+                        Box::new(self.expand_syn_chirho(argument_chirho, depth_chirho + 1)),
+                    );
+                }
+                return expanded_chirho;
+            }
         }
         match ty_chirho {
             TyChirho::ConChirho(name_chirho) => {

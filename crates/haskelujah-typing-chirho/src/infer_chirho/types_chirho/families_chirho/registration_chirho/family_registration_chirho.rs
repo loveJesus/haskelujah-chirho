@@ -298,6 +298,9 @@ impl InferCtxChirho {
         arity_chirho: usize,
         span_chirho: SpanChirho,
     ) {
+        let arity_chirho = self
+            .checked_family_arity_chirho(&name_chirho)
+            .unwrap_or(arity_chirho);
         let id_chirho = TypeFamilyIdChirho::SourceChirho {
             module_chirho: self.family_module_name_chirho.clone(),
             name_chirho: name_chirho.clone(),
@@ -493,6 +496,20 @@ impl InferCtxChirho {
                 );
             }
         }
+        if self.elaboration_owner_chirho.is_some() {
+            if let Some((lhs_chirho, rhs_chirho, _)) =
+                self.checked_family_terms_chirho(&lhs_chirho, &rhs_chirho)
+            {
+                self.register_family_instance_at_chirho(
+                    name_chirho,
+                    lhs_chirho,
+                    rhs_chirho,
+                    span_chirho,
+                    ordinal_chirho,
+                );
+            }
+            return;
+        }
         let parameters_chirho = collect_free_type_vars_from_ast_chirho(&lhs_chirho);
         let lhs_chirho = lhs_chirho
             .iter()
@@ -602,8 +619,11 @@ impl InferCtxChirho {
     }
 
     pub(super) fn register_module_families_chirho(&mut self, module_chirho: &ModuleChirho) {
-        let predeclared_chirho =
-            predeclared_family_arities_chirho(module_chirho, &self.family_module_name_chirho);
+        let predeclared_chirho = predeclared_family_arities_chirho(
+            module_chirho,
+            &self.family_module_name_chirho,
+            &self.type_families_chirho,
+        );
         for declaration_chirho in &module_chirho.decls_chirho {
             if let DeclChirho::ClassDeclChirho {
                 associated_tfs_chirho,
@@ -640,6 +660,9 @@ impl InferCtxChirho {
                 .iter()
                 .filter(|variable_chirho| variable_chirho.is_visible_chirho())
                 .count();
+            let arity_chirho = self
+                .checked_family_arity_chirho(&name_chirho.full_name_chirho())
+                .unwrap_or(arity_chirho);
             if !closed_chirho {
                 self.register_open_family_chirho(
                     name_chirho.text_chirho().to_owned(),
@@ -661,19 +684,29 @@ impl InferCtxChirho {
                 };
                 let mut held_chirho = held_boundary_chirho || equation_chirho.is_held_chirho();
                 if !held_chirho {
-                    held_chirho = !equation_chirho.lhs_types_chirho.iter().all(|ty_chirho| {
-                        family_rhs_supported_chirho(ty_chirho, true, &mut work_chirho, 0)
-                    }) || !family_rhs_supported_chirho(
-                        &equation_chirho.rhs_chirho,
-                        false,
-                        &mut work_chirho,
-                        0,
-                    );
+                    held_chirho = !equation_chirho
+                        .kind_args_chirho
+                        .iter()
+                        .chain(&equation_chirho.lhs_types_chirho)
+                        .all(|ty_chirho| {
+                            family_rhs_supported_chirho(ty_chirho, true, &mut work_chirho, 0)
+                        })
+                        || !family_rhs_supported_chirho(
+                            &equation_chirho.rhs_chirho,
+                            false,
+                            &mut work_chirho,
+                            0,
+                        );
                 }
                 let (mut lhs_chirho, rhs_chirho, parameters_chirho) = if held_chirho {
                     held_equation_inputs_chirho(arity_chirho, index_chirho)
                 } else {
-                    let mut lhs_ast_chirho = equation_chirho.lhs_types_chirho.clone();
+                    let mut lhs_ast_chirho = equation_chirho
+                        .kind_args_chirho
+                        .iter()
+                        .chain(&equation_chirho.lhs_types_chirho)
+                        .cloned()
+                        .collect::<Vec<_>>();
                     let mut rhs_ast_chirho = equation_chirho.rhs_chirho.clone();
                     let mut wildcard_chirho = 0;
                     for ty_chirho in &mut lhs_ast_chirho {
@@ -706,23 +739,34 @@ impl InferCtxChirho {
                     } else {
                         let parameters_chirho =
                             collect_free_type_vars_from_ast_chirho(&lhs_ast_chirho);
-                        let lhs_chirho = lhs_ast_chirho
-                            .iter()
-                            .map(|ty_chirho| {
+                        if self.elaboration_owner_chirho.is_some() {
+                            match self.checked_family_terms_chirho(&lhs_ast_chirho, &rhs_ast_chirho)
+                            {
+                                Some(terms_chirho) => terms_chirho,
+                                None => {
+                                    held_chirho = true;
+                                    held_equation_inputs_chirho(arity_chirho, index_chirho)
+                                }
+                            }
+                        } else {
+                            let lhs_chirho = lhs_ast_chirho
+                                .iter()
+                                .map(|ty_chirho| {
+                                    self.expand_type_synonyms_chirho(&ast_type_to_syn_rhs_chirho(
+                                        ty_chirho,
+                                        &parameters_chirho,
+                                        self.promotion_scope_chirho.as_deref(),
+                                    ))
+                                })
+                                .collect();
+                            let rhs_chirho =
                                 self.expand_type_synonyms_chirho(&ast_type_to_syn_rhs_chirho(
-                                    ty_chirho,
+                                    &rhs_ast_chirho,
                                     &parameters_chirho,
                                     self.promotion_scope_chirho.as_deref(),
-                                ))
-                            })
-                            .collect();
-                        let rhs_chirho =
-                            self.expand_type_synonyms_chirho(&ast_type_to_syn_rhs_chirho(
-                                &rhs_ast_chirho,
-                                &parameters_chirho,
-                                self.promotion_scope_chirho.as_deref(),
-                            ));
-                        (lhs_chirho, rhs_chirho, parameters_chirho)
+                                ));
+                            (lhs_chirho, rhs_chirho, parameters_chirho)
+                        }
                     }
                 };
                 if lhs_chirho.len() != arity_chirho {
@@ -793,15 +837,19 @@ impl InferCtxChirho {
         for declaration_chirho in &module_chirho.decls_chirho {
             if let DeclChirho::TypeFamilyInstanceDeclChirho {
                 family_name_chirho,
+                kind_args_chirho,
                 lhs_types_chirho,
                 rhs_chirho,
                 span_chirho,
-                ..
             } = declaration_chirho
             {
                 self.register_family_instance_ast_chirho(
                     family_name_chirho.full_name_chirho(),
-                    lhs_types_chirho,
+                    &kind_args_chirho
+                        .iter()
+                        .chain(lhs_types_chirho)
+                        .cloned()
+                        .collect::<Vec<_>>(),
                     rhs_chirho,
                     *span_chirho,
                     Some(0),
@@ -852,6 +900,7 @@ fn family_head_with_predeclared_chirho(
 fn predeclared_family_arities_chirho(
     module_chirho: &ModuleChirho,
     module_name_chirho: &str,
+    registry_chirho: &TypeFamilyRegistryChirho,
 ) -> HashMap<String, usize> {
     let mut arities_chirho = HashMap::new();
     for declaration_chirho in &module_chirho.decls_chirho {
@@ -891,6 +940,14 @@ fn predeclared_family_arities_chirho(
                 }
             }
             _ => {}
+        }
+    }
+    for (key_chirho, arity_chirho) in &mut arities_chirho {
+        if let Some(scheme_chirho) = registry_chirho
+            .declaration_schemes_chirho()
+            .get_chirho(key_chirho)
+        {
+            *arity_chirho = scheme_chirho.reduction_arity_chirho;
         }
     }
     arities_chirho

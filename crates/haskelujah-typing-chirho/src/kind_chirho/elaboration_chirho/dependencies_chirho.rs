@@ -140,6 +140,15 @@ impl TypeElaboratorChirho<'_> {
             if let Some(index_chirho) = constructor_owners_chirho.get(&written_chirho) {
                 references_chirho.insert(*index_chirho);
             }
+            if let Some(key_chirho) =
+                haskelujah_ast_chirho::promotion_chirho::quoted_promoted_spelling_chirho(
+                    name_chirho,
+                    Some(self.promotion_scope_chirho),
+                )
+                && let Some(index_chirho) = constructor_owners_chirho.get(&key_chirho)
+            {
+                references_chirho.insert(*index_chirho);
+            }
             return Ok(());
         }
         if let Some(proof_chirho) = self.declaration_chirho(name_chirho)? {
@@ -148,6 +157,15 @@ impl TypeElaboratorChirho<'_> {
             if let Some(index_chirho) = indices_chirho.get(&key_chirho) {
                 references_chirho.insert(*index_chirho);
             }
+        }
+        if let Some(key_chirho) =
+            haskelujah_ast_chirho::promotion_chirho::unquoted_promoted_spelling_chirho(
+                name_chirho,
+                Some(self.promotion_scope_chirho),
+            )
+            && let Some(index_chirho) = constructor_owners_chirho.get(&key_chirho)
+        {
+            references_chirho.insert(*index_chirho);
         }
         Ok(())
     }
@@ -547,6 +565,15 @@ impl TypeElaboratorChirho<'_> {
                             )?;
                         }
                     }
+                    if let Some(rhs_chirho) = &family_chirho.default_rhs_chirho {
+                        self.type_references_chirho(
+                            rhs_chirho,
+                            indices_chirho,
+                            constructor_owners_chirho,
+                            references_chirho,
+                            0,
+                        )?;
+                    }
                     if let Some(kind_chirho) = &family_chirho.result_kind_chirho {
                         self.type_references_chirho(
                             kind_chirho,
@@ -558,6 +585,93 @@ impl TypeElaboratorChirho<'_> {
                     }
                 }
                 (type_vars_chirho.as_slice(), None, &[][..])
+            }
+            DeclChirho::TypeFamilyInstanceDeclChirho {
+                family_name_chirho,
+                kind_args_chirho,
+                lhs_types_chirho,
+                rhs_chirho,
+                ..
+            } => {
+                self.reference_chirho(
+                    family_name_chirho,
+                    false,
+                    indices_chirho,
+                    constructor_owners_chirho,
+                    references_chirho,
+                )?;
+                for ty_chirho in kind_args_chirho
+                    .iter()
+                    .chain(lhs_types_chirho)
+                    .chain(std::iter::once(rhs_chirho))
+                {
+                    self.type_references_chirho(
+                        ty_chirho,
+                        indices_chirho,
+                        constructor_owners_chirho,
+                        references_chirho,
+                        0,
+                    )?;
+                }
+                (&[][..], None, &[][..])
+            }
+            DeclChirho::InstanceDeclChirho {
+                context_chirho,
+                class_chirho,
+                kind_args_chirho,
+                types_chirho,
+                assoc_tf_instances_chirho,
+                ..
+            } => {
+                self.reference_chirho(
+                    class_chirho,
+                    false,
+                    indices_chirho,
+                    constructor_owners_chirho,
+                    references_chirho,
+                )?;
+                for constraint_chirho in context_chirho {
+                    self.constraint_references_chirho(
+                        constraint_chirho,
+                        indices_chirho,
+                        constructor_owners_chirho,
+                        references_chirho,
+                        0,
+                    )?;
+                }
+                for ty_chirho in kind_args_chirho.iter().chain(types_chirho) {
+                    self.type_references_chirho(
+                        ty_chirho,
+                        indices_chirho,
+                        constructor_owners_chirho,
+                        references_chirho,
+                        0,
+                    )?;
+                }
+                for equation_chirho in assoc_tf_instances_chirho {
+                    self.reference_chirho(
+                        &equation_chirho.family_name_chirho,
+                        false,
+                        indices_chirho,
+                        constructor_owners_chirho,
+                        references_chirho,
+                    )?;
+                    for ty_chirho in equation_chirho
+                        .kind_args_chirho
+                        .iter()
+                        .chain(&equation_chirho.lhs_types_chirho)
+                        .chain(std::iter::once(&equation_chirho.rhs_chirho))
+                    {
+                        self.type_references_chirho(
+                            ty_chirho,
+                            indices_chirho,
+                            constructor_owners_chirho,
+                            references_chirho,
+                            0,
+                        )?;
+                    }
+                }
+                (&[][..], None, &[][..])
             }
             _ => return Ok(()),
         };
@@ -698,4 +812,90 @@ impl TypeElaboratorChirho<'_> {
         }
         Ok(())
     }
+}
+
+/// Checked source scheduling uses the same bounded declaration walker as local
+/// SCC elaboration. Importing a module alone does not create a type dependency.
+pub fn source_declaration_dependencies_chirho(
+    module_chirho: &ModuleChirho,
+    imports_chirho: ElaborationImportsChirho<'_>,
+    modules_chirho: &[&ModuleChirho],
+) -> Result<BTreeSet<String>, ElaborationErrorChirho> {
+    use haskelujah_ast_chirho::name_chirho::TypeConstructorIdentityChirho;
+    let mut elaborator_chirho = TypeElaboratorChirho::new_chirho(module_chirho, imports_chirho)?;
+    let mut names_chirho = Vec::new();
+    let mut indices_chirho = HashMap::new();
+    let mut constructors_chirho = HashMap::new();
+    for (index_chirho, source_chirho) in modules_chirho.iter().enumerate() {
+        let module_name_chirho = source_chirho.name_chirho.full_name_chirho();
+        elaborator_chirho.state_chirho.charge_chirho(
+            module_name_chirho.len() + 1,
+            module_name_chirho.len() + 1,
+            module_chirho.span_chirho,
+        )?;
+        names_chirho.push(module_name_chirho.clone());
+        for declaration_chirho in &source_chirho.decls_chirho {
+            let members_chirho = match declaration_chirho {
+                DeclChirho::DataDeclChirho {
+                    constructors_chirho,
+                    ..
+                } => constructors_chirho.as_slice(),
+                DeclChirho::NewtypeDeclChirho {
+                    constructor_chirho, ..
+                } => std::slice::from_ref(constructor_chirho),
+                _ => &[],
+            };
+            for constructor_chirho in members_chirho {
+                let name_chirho = match constructor_chirho {
+                    ConDeclChirho::OrdinaryChirho { name_chirho, .. }
+                    | ConDeclChirho::RecordChirho { name_chirho, .. }
+                    | ConDeclChirho::GadtChirho { name_chirho, .. } => name_chirho,
+                };
+                elaborator_chirho.state_chirho.charge_chirho(
+                    module_name_chirho.len() + name_chirho.text_chirho().len() + 128,
+                    module_name_chirho.len() + name_chirho.text_chirho().len() + 128,
+                    name_chirho.span_chirho(),
+                )?;
+                let key_chirho =
+                    haskelujah_ast_chirho::promotion_chirho::PromotedKeyChirho::source_chirho(
+                        &module_name_chirho,
+                        name_chirho.text_chirho(),
+                    );
+                constructors_chirho.insert(key_chirho.as_str_chirho().to_owned(), index_chirho);
+            }
+        }
+    }
+    for (_, declaration_chirho) in elaborator_chirho.type_scope_chirho.iter_chirho() {
+        if let TypeConstructorIdentityChirho::SourceChirho {
+            defining_module_chirho,
+            ..
+        } = &declaration_chirho.identity_chirho
+            && let Some(index_chirho) = names_chirho
+                .iter()
+                .position(|name_chirho| name_chirho == defining_module_chirho)
+        {
+            let key_chirho = declaration_chirho.type_key_chirho();
+            elaborator_chirho.state_chirho.charge_chirho(
+                key_chirho.len() + 1,
+                key_chirho.len() + 1,
+                module_chirho.span_chirho,
+            )?;
+            indices_chirho.insert(Arc::from(key_chirho), index_chirho);
+        }
+    }
+    let mut references_chirho = BTreeSet::new();
+    for declaration_chirho in &module_chirho.decls_chirho {
+        elaborator_chirho.declaration_references_chirho(
+            declaration_chirho,
+            &indices_chirho,
+            &constructors_chirho,
+            &mut references_chirho,
+        )?;
+    }
+    let own_chirho = module_chirho.name_chirho.full_name_chirho();
+    Ok(references_chirho
+        .into_iter()
+        .filter(|index_chirho| names_chirho[*index_chirho] != own_chirho)
+        .map(|index_chirho| names_chirho[index_chirho].clone())
+        .collect())
 }

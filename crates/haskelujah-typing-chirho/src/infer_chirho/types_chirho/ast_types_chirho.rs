@@ -58,6 +58,11 @@ pub(super) fn ast_type_to_syn_rhs_chirho(
             name_chirho
                 .family_key_chirho()
                 .map(str::to_owned)
+                .or_else(|| {
+                    name_chirho
+                        .type_constructor_chirho()
+                        .map(|declaration_chirho| declaration_chirho.type_key_chirho())
+                })
                 .or_else(|| unquoted_promoted_spelling_chirho(name_chirho, scope_chirho))
                 .unwrap_or_else(|| name_chirho.full_name_chirho()),
         ),

@@ -238,10 +238,17 @@ impl LowerCtxChirho {
             )
             .filter(|idx_chirho| *idx_chirho > 0)
         {
-            return self.lower_type_from_token_slice_chirho(
-                &tokens_chirho[..double_colon_idx_chirho],
+            return TypeChirho::KindAnnotationChirho {
+                ty_chirho: Box::new(self.lower_type_from_token_slice_chirho(
+                    &tokens_chirho[..double_colon_idx_chirho],
+                    span_chirho,
+                )),
+                kind_chirho: Box::new(self.lower_type_from_token_slice_chirho(
+                    &tokens_chirho[double_colon_idx_chirho + 1..],
+                    span_chirho,
+                )),
                 span_chirho,
-            );
+            };
         }
 
         if let Some(arrow_idx_chirho) = self
@@ -334,6 +341,16 @@ impl LowerCtxChirho {
                     } else {
                         idx_chirho += 1;
                     }
+                }
+                TokenKindChirho::IntegerLiteralChirho
+                | TokenKindChirho::StringLiteralChirho
+                | TokenKindChirho::CharLiteralChirho => {
+                    let (token_chirho, token_span_chirho) = tokens_chirho[idx_chirho];
+                    atom_tys_chirho.push(TypeChirho::LitChirho {
+                        value_chirho: token_chirho.text_chirho().to_owned(),
+                        span_chirho: token_span_chirho,
+                    });
+                    idx_chirho += 1;
                 }
                 TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho => {
                     let (tok_chirho, tok_span_chirho) = tokens_chirho[idx_chirho];
