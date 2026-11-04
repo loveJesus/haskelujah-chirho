@@ -4,7 +4,10 @@
 //! Moved from `infer_chirho.rs` in row 661.
 
 use super::InferCtxChirho;
-use super::{UNBOUND_VAR_CODE_CHIRHO, infer_lit_chirho, strip_name_qualifier_chirho};
+use super::{
+    TYPED_HOLE_CODE_CHIRHO, UNBOUND_CONSTRUCTOR_CODE_CHIRHO, UNBOUND_VAR_CODE_CHIRHO,
+    infer_lit_chirho, strip_name_qualifier_chirho,
+};
 use crate::class_chirho::PredChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, TyChirho, TyVarChirho};
@@ -82,20 +85,25 @@ impl InferCtxChirho {
                         (SubstChirho::empty_chirho(), ty_chirho)
                     }
                     None => {
-                        // Typed holes: `_` or `_foo` in expression position are
-                        // treated as holes — emit a warning, not an error, and
-                        // assign a fresh type variable. This lets code with holes
-                        // compile (for type exploration / incremental development).
+                        // Typed holes (row 695): an unbound unqualified `_` or `_foo` in
+                        // expression position is GHC-88464, an error unless the caller defers
+                        // typed holes. The driver's deferral policy decides that from real
+                        // options. A bound `_foo` took the scheme arm above, and a qualified
+                        // spelling is an unbound variable, not a hole. The hole still gets a
+                        // fresh type so the rest of the module is checked.
+                        // workflow: compiler-pipeline-chirho/error-deferral-chirho
                         if text_chirho.starts_with('?') {
                             // ImplicitParams: `?x` is an implicit parameter.
                             // Assign a fresh type variable so it can unify
                             // with whatever the constraint provides.
                             let ip_ty_chirho = self.fresh_var_chirho();
                             (SubstChirho::empty_chirho(), ip_ty_chirho)
-                        } else if text_chirho.starts_with('_') {
+                        } else if text_chirho.starts_with('_')
+                            && name_chirho.qualifier_chirho().is_none()
+                        {
                             let hole_ty_chirho = self.fresh_var_chirho();
-                            let diag_chirho = DiagnosticChirho::warning_with_code_chirho(
-                                ErrorCodeChirho::warning_chirho(4200),
+                            let diag_chirho = DiagnosticChirho::error_with_code_chirho(
+                                ErrorCodeChirho::error_chirho(TYPED_HOLE_CODE_CHIRHO),
                                 format!("found hole: `{text_chirho}` :: _"),
                                 span_chirho,
                             );
@@ -984,11 +992,12 @@ impl InferCtxChirho {
                     None => {
                         // A record construction needs a data constructor in scope;
                         // `Int{}` names a type, not a constructor (T23739c). The
-                        // Var arm reports a scheme-less name the same way.
+                        // Var arm reports a scheme-less name the same way. Its own code keeps
+                        // `-fdefer-out-of-scope-variables`, which reaches only variables, off it.
                         // workflow: language-features-chirho/rigid-type-variables-chirho (records)
                         self.diagnostics_chirho.push_chirho(
                             DiagnosticChirho::error_with_code_chirho(
-                                ErrorCodeChirho::error_chirho(UNBOUND_VAR_CODE_CHIRHO),
+                                ErrorCodeChirho::error_chirho(UNBOUND_CONSTRUCTOR_CODE_CHIRHO),
                                 format!("unbound constructor: `{con_text_chirho}`"),
                                 con_chirho.span_chirho(),
                             ),

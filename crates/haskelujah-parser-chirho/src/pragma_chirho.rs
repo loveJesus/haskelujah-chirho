@@ -8,9 +8,13 @@
 //! module reads only actual pragma tokens, computes the extension state, and reclassifies those
 //! two words before layout. Strings and ordinary comments cannot accidentally enable an extension.
 //!
-//! workflow: recursive-do-chirho
+//! The module header's `OPTIONS_GHC` option words are read here from the same real pragma
+//! tokens, for the driver's error-deferral policy.
+//!
+//! workflow: recursive-do-chirho, compiler-pipeline-chirho/error-deferral-chirho
 
-use crate::lexer_chirho::{RawTokenChirho, RawTokenKindChirho};
+use crate::lexer_chirho::{LexerChirho, RawTokenChirho, RawTokenKindChirho};
+use haskelujah_span_chirho::FileIdChirho;
 
 /// Extensions enabled by GHC2021.
 ///
@@ -87,9 +91,7 @@ pub fn pragma_extensions_from_inner_chirho(inner_chirho: &str) -> Vec<String> {
             .collect();
     }
 
-    if keyword_chirho.eq_ignore_ascii_case("OPTIONS_GHC")
-        || keyword_chirho.eq_ignore_ascii_case("OPTIONS")
-    {
+    if is_options_keyword_chirho(keyword_chirho) {
         return rest_chirho
             .split_whitespace()
             .filter_map(|word_chirho| word_chirho.strip_prefix("-X"))
@@ -99,6 +101,53 @@ pub fn pragma_extensions_from_inner_chirho(inner_chirho: &str) -> Vec<String> {
     }
 
     Vec::new()
+}
+
+/// `OPTIONS_GHC`, or its legacy spelling `OPTIONS`; pragma keywords ignore case.
+fn is_options_keyword_chirho(keyword_chirho: &str) -> bool {
+    keyword_chirho.eq_ignore_ascii_case("OPTIONS_GHC")
+        || keyword_chirho.eq_ignore_ascii_case("OPTIONS")
+}
+
+/// The option words of one `OPTIONS_GHC` pragma, given the text between `{-#` and `#-}`, in
+/// source order. Every other pragma has none.
+pub fn pragma_ghc_options_from_inner_chirho(inner_chirho: &str) -> Vec<String> {
+    match inner_chirho.trim().split_once(char::is_whitespace) {
+        Some((keyword_chirho, rest_chirho)) if is_options_keyword_chirho(keyword_chirho) => {
+            rest_chirho.split_whitespace().map(str::to_string).collect()
+        }
+        _ => Vec::new(),
+    }
+}
+
+/// The option words of the module header's `OPTIONS_GHC` pragmas, in source order.
+///
+/// GHC reads them only from the file header: the pragmas before the first token that is
+/// neither a pragma nor a comment. Only real pragma tokens count, so a flag spelled in a
+/// comment, in a string literal or in a pragma after the header is not an option. Lexing
+/// stops where the header ends.
+/// workflow: compiler-pipeline-chirho/error-deferral-chirho
+pub fn header_ghc_options_chirho(source_chirho: &str, file_id_chirho: FileIdChirho) -> Vec<String> {
+    let mut lexer_chirho = LexerChirho::new_chirho(source_chirho, file_id_chirho);
+    let mut options_chirho = Vec::new();
+    loop {
+        let token_chirho = lexer_chirho.next_token_chirho();
+        match token_chirho.kind_chirho {
+            RawTokenKindChirho::PragmaChirho => {
+                let start_chirho = token_chirho.span_chirho.start_chirho().as_usize_chirho();
+                let end_chirho = token_chirho.span_chirho.end_chirho().as_usize_chirho();
+                if let Some(inner_chirho) = source_chirho
+                    .get(start_chirho..end_chirho)
+                    .and_then(|text_chirho| text_chirho.strip_prefix("{-#"))
+                    .and_then(|text_chirho| text_chirho.strip_suffix("#-}"))
+                {
+                    options_chirho.extend(pragma_ghc_options_from_inner_chirho(inner_chirho));
+                }
+            }
+            kind_chirho if kind_chirho.is_trivia_chirho() => {}
+            _ => return options_chirho,
+        }
+    }
 }
 
 /// Parse a complete pragma token such as `{-# LANGUAGE RecursiveDo #-}`.
@@ -194,8 +243,6 @@ pub fn classify_contextual_keywords_chirho(
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
-    use crate::lexer_chirho::LexerChirho;
-    use haskelujah_span_chirho::FileIdChirho;
 
     fn classified_kinds_chirho(source_chirho: &str) -> Vec<RawTokenKindChirho> {
         let mut lexer_chirho =

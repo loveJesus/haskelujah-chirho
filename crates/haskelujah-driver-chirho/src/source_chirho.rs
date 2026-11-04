@@ -8,10 +8,11 @@ pub(crate) mod cpp_chirho;
 mod tests_chirho;
 
 use super::{
-    DiagnosticBundleChirho, FrontendResultChirho, ImportedTypeSynonymsChirho, SourceFileChirho,
-    SourceMapChirho, merge_stdlib_frontend_artifacts_chirho, preprocess_cpp_chirho,
-    run_frontend_chirho, run_frontend_with_type_synonyms_and_type_families_chirho,
-    seed_builtin_type_families_chirho, source_imports_stdlib_chirho,
+    DiagnosticBundleChirho, FrontendImportsChirho, FrontendOptionsChirho, FrontendResultChirho,
+    ImportedTypeSynonymsChirho, SourceFileChirho, SourceMapChirho,
+    merge_stdlib_frontend_artifacts_chirho, preprocess_cpp_chirho,
+    run_frontend_with_options_chirho, seed_builtin_type_families_chirho,
+    source_imports_stdlib_chirho,
 };
 use haskelujah_naming_chirho::ModuleIfaceChirho;
 
@@ -33,6 +34,23 @@ pub(crate) fn typecheck_source_with_ifaces_chirho(
     source_chirho: &str,
     source_map_chirho: &mut SourceMapChirho,
     file_name_chirho: &str,
+) -> Result<(FrontendResultChirho, Vec<ModuleIfaceChirho>), DiagnosticBundleChirho> {
+    typecheck_source_with_ifaces_and_options_chirho(
+        source_chirho,
+        source_map_chirho,
+        file_name_chirho,
+        &FrontendOptionsChirho::default(),
+    )
+}
+
+/// [`typecheck_source_with_ifaces_chirho`] under the caller's GHC options, which apply before
+/// the module header's own `OPTIONS_GHC` pragmas (row 695).
+/// workflow: compiler-pipeline-chirho/error-deferral-chirho
+pub(crate) fn typecheck_source_with_ifaces_and_options_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    file_name_chirho: &str,
+    options_chirho: &FrontendOptionsChirho,
 ) -> Result<(FrontendResultChirho, Vec<ModuleIfaceChirho>), DiagnosticBundleChirho> {
     // Run CPP preprocessing if {-# LANGUAGE CPP #-} is present
     let preprocessed_chirho = preprocess_cpp_chirho(source_chirho);
@@ -58,25 +76,21 @@ pub(crate) fn typecheck_source_with_ifaces_chirho(
         );
     }
 
-    let frontend_chirho = if imported_types_chirho.is_empty()
-        && imported_type_synonyms_chirho.is_empty()
-        && imported_type_families_chirho.is_empty()
-    {
-        run_frontend_chirho(
-            effective_source_chirho,
-            file_id_chirho,
-            &builtin_ifaces_chirho,
-            &imported_types_chirho,
-        )
-    } else {
-        run_frontend_with_type_synonyms_and_type_families_chirho(
-            effective_source_chirho,
-            file_id_chirho,
-            &builtin_ifaces_chirho,
-            &imported_types_chirho,
-            &imported_type_synonyms_chirho,
-            &imported_type_families_chirho,
-        )
-    }?;
+    // The builtin family seed is never empty, so this is the one call the earlier branch on
+    // emptiness always took.
+    let imported_class_env_chirho =
+        haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho();
+    let frontend_chirho = run_frontend_with_options_chirho(
+        effective_source_chirho,
+        file_id_chirho,
+        FrontendImportsChirho {
+            ifaces_chirho: &builtin_ifaces_chirho,
+            types_chirho: &imported_types_chirho,
+            type_synonyms_chirho: &imported_type_synonyms_chirho,
+            type_families_chirho: &imported_type_families_chirho,
+            class_env_chirho: &imported_class_env_chirho,
+        },
+        options_chirho,
+    )?;
     Ok((frontend_chirho, builtin_ifaces_chirho))
 }
