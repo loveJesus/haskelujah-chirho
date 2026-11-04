@@ -10,6 +10,8 @@
 mod cabal_build_chirho;
 #[path = "backend_chirho/compile_backend_chirho.rs"]
 mod compile_backend_chirho;
+#[path = "backend_chirho/constructor_maps_chirho.rs"]
+mod constructor_maps_chirho;
 #[path = "native_link_chirho/core_merge_chirho.rs"]
 mod core_merge_chirho;
 #[path = "frontend_chirho/cpp_preprocess_chirho.rs"]
@@ -113,6 +115,7 @@ use type_names_chirho::{
 
 // The moved backend helpers that lib.rs and other driver modules reach (row 691).
 use compile_backend_chirho::compile_backend_chirho;
+use constructor_maps_chirho::{build_con_type_map_chirho, build_newtype_info_chirho};
 
 use source_chirho::cpp_chirho::{configure_cpp_command_chirho, temporary_source_file_chirho};
 use std::io;
@@ -436,159 +439,6 @@ pub struct CompileResultChirho {
     pub wasm_bytes_chirho: Vec<u8>,
     /// Set of newtype constructor names — these are identity at runtime.
     pub newtype_cons_chirho: std::collections::HashSet<String>,
-}
-
-/// Extract the first argument type from a GADT type signature.
-/// Peels through forall and qualified types, then returns the first `arg` from
-/// `arg -> result`.  Returns `None` for non-function types (nullary GADT ctors).
-fn extract_first_fun_arg_chirho(
-    ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirho,
-) -> Option<haskelujah_ast_chirho::ty_chirho::TypeChirho> {
-    use haskelujah_ast_chirho::ty_chirho::TypeChirho;
-    match ty_chirho {
-        TypeChirho::FunChirho { arg_chirho, .. } => Some((**arg_chirho).clone()),
-        TypeChirho::ForallChirho { body_chirho, .. } => extract_first_fun_arg_chirho(body_chirho),
-        TypeChirho::QualChirho { body_chirho, .. } => extract_first_fun_arg_chirho(body_chirho),
-        TypeChirho::ParenChirho { inner_chirho, .. } => extract_first_fun_arg_chirho(inner_chirho),
-        _ => None,
-    }
-}
-
-/// Build a mapping from data constructor names to their parent type name.
-/// Used by the dictionary-passing transform to select the correct instance
-/// dictionary when a class method is applied to a constructor value.
-fn build_con_type_map_chirho(
-    module_chirho: &ModuleChirho,
-) -> std::collections::HashMap<String, String> {
-    let mut map_chirho = std::collections::HashMap::new();
-    for decl_chirho in &module_chirho.decls_chirho {
-        if let haskelujah_ast_chirho::decl_chirho::DeclChirho::DataDeclChirho {
-            name_chirho,
-            constructors_chirho,
-            ..
-        } = decl_chirho
-        {
-            let type_name_chirho = name_chirho.text_chirho().to_string();
-            for con_chirho in constructors_chirho {
-                let con_name_chirho = match con_chirho {
-                    haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
-                        name_chirho: cn_chirho,
-                        ..
-                    } => cn_chirho.text_chirho().to_string(),
-                    haskelujah_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
-                        name_chirho: cn_chirho,
-                        ..
-                    } => cn_chirho.text_chirho().to_string(),
-                    haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
-                        name_chirho: cn_chirho,
-                        ..
-                    } => cn_chirho.text_chirho().to_string(),
-                };
-                map_chirho.insert(con_name_chirho, type_name_chirho.clone());
-            }
-        }
-    }
-    // Also include newtype constructors
-    for decl_chirho in &module_chirho.decls_chirho {
-        if let haskelujah_ast_chirho::decl_chirho::DeclChirho::NewtypeDeclChirho {
-            name_chirho,
-            constructor_chirho,
-            ..
-        } = decl_chirho
-        {
-            let type_name_chirho = name_chirho.text_chirho().to_string();
-            let con_name_chirho = match constructor_chirho {
-                haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
-                    name_chirho: cn_chirho,
-                    ..
-                } => cn_chirho.text_chirho().to_string(),
-                haskelujah_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
-                    name_chirho: cn_chirho,
-                    ..
-                } => cn_chirho.text_chirho().to_string(),
-                haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
-                    name_chirho: cn_chirho,
-                    ..
-                } => cn_chirho.text_chirho().to_string(),
-            };
-            map_chirho.insert(con_name_chirho, type_name_chirho);
-        }
-    }
-    // Also include built-in constructors
-    map_chirho.insert("True".to_string(), "Bool".to_string());
-    map_chirho.insert("False".to_string(), "Bool".to_string());
-    map_chirho
-}
-
-/// Build a mapping from newtype type name to (constructor name, underlying type key).
-fn build_newtype_info_chirho(
-    module_chirho: &ModuleChirho,
-) -> std::collections::HashMap<String, (String, String)> {
-    let mut map_chirho = std::collections::HashMap::new();
-    for decl_chirho in &module_chirho.decls_chirho {
-        if let haskelujah_ast_chirho::decl_chirho::DeclChirho::NewtypeDeclChirho {
-            name_chirho,
-            constructor_chirho,
-            ..
-        } = decl_chirho
-        {
-            let type_name_chirho = name_chirho.text_chirho().to_string();
-            let con_name_chirho = match constructor_chirho {
-                haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
-                    name_chirho: cn_chirho,
-                    fields_chirho,
-                    ..
-                } => {
-                    let underlying_chirho = fields_chirho
-                        .first()
-                        .map(|(_s_chirho, ty_chirho)| {
-                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(ty_chirho)
-                        })
-                        .unwrap_or_else(|| "()".to_string());
-                    (cn_chirho.text_chirho().to_string(), underlying_chirho)
-                }
-                haskelujah_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
-                    name_chirho: cn_chirho,
-                    fields_chirho,
-                    ..
-                } => {
-                    let underlying_chirho = fields_chirho
-                        .first()
-                        .map(|fd_chirho| {
-                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(&fd_chirho.ty_chirho)
-                        })
-                        .unwrap_or_else(|| "()".to_string());
-                    (cn_chirho.text_chirho().to_string(), underlying_chirho)
-                }
-                haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
-                    name_chirho: cn_chirho,
-                    ty_chirho,
-                    ..
-                } => {
-                    // Extract the first argument type from the GADT type signature.
-                    // E.g. `forall a. Ctx => Int -> T a` → underlying is `Int`.
-                    let underlying_chirho = extract_first_fun_arg_chirho(ty_chirho)
-                        .map(|arg_ty_chirho| {
-                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(&arg_ty_chirho)
-                        })
-                        .unwrap_or_else(|| "()".to_string());
-                    (cn_chirho.text_chirho().to_string(), underlying_chirho)
-                }
-            };
-            map_chirho.insert(type_name_chirho, con_name_chirho);
-        }
-    }
-    for (type_name_chirho, con_name_chirho, underlying_chirho) in [
-        ("Sum", "Sum", "Int"),
-        ("Product", "Product", "Int"),
-        ("All", "All", "Bool"),
-        ("Any", "Any", "Bool"),
-    ] {
-        map_chirho
-            .entry(type_name_chirho.to_string())
-            .or_insert((con_name_chirho.to_string(), underlying_chirho.to_string()));
-    }
-    map_chirho
 }
 
 /// Run only the frontend pipeline and return non-fatal warnings.
