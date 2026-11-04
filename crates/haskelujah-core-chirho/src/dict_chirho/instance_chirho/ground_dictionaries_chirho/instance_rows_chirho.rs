@@ -153,7 +153,7 @@ impl InstanceRowsChirho {
             .filter_map(|(instance_chirho, _)| {
                 self.row_key_chirho(instance_chirho)
                     .ok()
-                    .map(|row_key_chirho| (instance_chirho, row_key_chirho))
+                    .map(|row_key_chirho| (instance_chirho.as_ref(), row_key_chirho))
             })
     }
 }
