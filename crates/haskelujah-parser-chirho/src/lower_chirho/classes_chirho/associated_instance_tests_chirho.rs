@@ -345,7 +345,8 @@ fn class_families_chirho(source_chirho: &str, class_chirho: &str) -> Vec<String>
             let params_chirho: Vec<&str> = family_chirho
                 .type_vars_chirho
                 .iter()
-                .map(|name_chirho| name_chirho.text_chirho())
+                .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+                .map(|binder_chirho| binder_chirho.name_chirho.text_chirho())
                 .collect();
             let mut text_chirho = format!(
                 "{} [{}]",
@@ -365,6 +366,69 @@ fn class_families_chirho(source_chirho: &str, class_chirho: &str) -> Vec<String>
             text_chirho
         })
         .collect()
+}
+
+/// A written default keeps its full scoped telescope while its family arguments
+/// contain only the visible binders. Check the actual carrier, not the summary.
+fn assert_default_telescope_chirho(
+    source_chirho: &str,
+    class_chirho: &str,
+    family_name_chirho: &str,
+    expected_binders_chirho: &[(&str, bool)],
+    expected_kind_chirho: &str,
+) {
+    let module_chirho = parse_and_lower_chirho(source_chirho);
+    let DeclChirho::ClassDeclChirho {
+        associated_tfs_chirho,
+        ..
+    } = find_class_decl_chirho(&module_chirho, class_chirho)
+    else {
+        panic!("class declaration");
+    };
+    let family_chirho = associated_tfs_chirho
+        .iter()
+        .find(|family_chirho| {
+            family_chirho.name_chirho.text_chirho() == family_name_chirho
+                && family_chirho.default_rhs_chirho.is_some()
+        })
+        .expect("written associated default");
+    assert_eq!(
+        family_chirho
+            .type_vars_chirho
+            .iter()
+            .map(|binder_chirho| {
+                (
+                    binder_chirho.name_chirho.text_chirho(),
+                    binder_chirho.is_visible_chirho(),
+                )
+            })
+            .collect::<Vec<_>>(),
+        expected_binders_chirho
+    );
+    let scope_chirho = family_chirho
+        .default_binders_chirho
+        .as_ref()
+        .expect("full default scope");
+    assert_eq!(scope_chirho, &family_chirho.type_vars_chirho);
+    assert_eq!(
+        family_chirho.type_vars_chirho[0]
+            .kind_annotation_chirho
+            .as_deref()
+            .map(type_shape_chirho)
+            .as_deref(),
+        Some(expected_kind_chirho)
+    );
+    assert_eq!(
+        family_chirho
+            .default_params_chirho
+            .iter()
+            .map(|name_chirho| name_chirho.text_chirho())
+            .collect::<Vec<_>>(),
+        expected_binders_chirho
+            .iter()
+            .filter_map(|&(name_chirho, visible_chirho)| visible_chirho.then_some(name_chirho))
+            .collect::<Vec<_>>()
+    );
 }
 
 #[test]
@@ -397,6 +461,27 @@ class ListChirho (f :: [k]) where
         class_families_chirho(source_chirho, "ListChirho"),
         ["ItemChirho [f]", "ItemChirho [f] scope [f k] = (Proxy k)"]
     );
+    assert_default_telescope_chirho(
+        source_chirho,
+        "FunctorChirho",
+        "DomChirho",
+        &[("f", true), ("i", false), ("j", false)],
+        "(i -> j)",
+    );
+    assert_default_telescope_chirho(
+        source_chirho,
+        "BoxChirho",
+        "ElemChirho",
+        &[("f", true), ("k", false)],
+        "(Maybe k)",
+    );
+    assert_default_telescope_chirho(
+        source_chirho,
+        "ListChirho",
+        "ItemChirho",
+        &[("f", true), ("k", false)],
+        "[k]",
+    );
 }
 
 #[test]
@@ -418,6 +503,20 @@ class LiftChirho (g :: (forall k. k -> Type) -> j) where
     assert_eq!(
         class_families_chirho(source_chirho, "LiftChirho"),
         ["OutChirho [g]", "OutChirho [g] scope [g j] = (Proxy j)"]
+    );
+    assert_default_telescope_chirho(
+        source_chirho,
+        "ApplyChirho",
+        "ResChirho",
+        &[("f", true)],
+        "forall k. (k -> Type)",
+    );
+    assert_default_telescope_chirho(
+        source_chirho,
+        "LiftChirho",
+        "OutChirho",
+        &[("g", true), ("j", false)],
+        "(forall k. (k -> Type) -> j)",
     );
 }
 

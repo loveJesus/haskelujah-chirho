@@ -74,6 +74,28 @@ fn render_chirho(ty_chirho: &TypeChirho) -> String {
             render_chirho(fun_chirho),
             render_chirho(arg_chirho)
         ),
+        TypeChirho::KindApplicationChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => {
+            format!(
+                "({} @{})",
+                render_chirho(fun_chirho),
+                render_chirho(arg_chirho)
+            )
+        }
+        TypeChirho::KindAnnotationChirho {
+            ty_chirho,
+            kind_chirho,
+            ..
+        } => {
+            format!(
+                "({} :: {})",
+                render_chirho(ty_chirho),
+                render_chirho(kind_chirho)
+            )
+        }
         TypeChirho::ParenChirho { inner_chirho, .. } => render_chirho(inner_chirho),
         TypeChirho::ListChirho { element_chirho, .. } => {
             format!("[{}]", render_chirho(element_chirho))
@@ -108,7 +130,12 @@ fn shape_chirho(equation_chirho: &TypeFamilyEquationChirho) -> String {
         .iter()
         .map(render_chirho)
         .collect();
+    let kind_arguments_chirho = equation_chirho
+        .kind_args_chirho
+        .iter()
+        .map(|kind_chirho| format!("@{}", render_chirho(kind_chirho)));
     std::iter::once(head_chirho)
+        .chain(kind_arguments_chirho)
         .chain(arguments_chirho)
         .collect::<Vec<_>>()
         .join(" ")
@@ -464,8 +491,70 @@ type KindedChirho b = '( '[Int, Bool] :: [Type], b )
         [
             "(('(,) Int) Bool)",
             "((('(,,) Int) Bool) Char)",
-            "(('(,) '[Int,Bool]) b)",
+            "(('(,) ('[Int,Bool] :: [Type])) b)",
         ]
+    );
+    let module_chirho = parse_and_lower_chirho(source_chirho);
+    let rhs_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .find_map(|decl_chirho| match decl_chirho {
+            DeclChirho::TypeAliasDeclChirho {
+                name_chirho,
+                rhs_chirho,
+                ..
+            } if name_chirho.text_chirho() == "KindedChirho" => Some(rhs_chirho),
+            _ => None,
+        })
+        .expect("kinded promoted tuple synonym");
+    let TypeChirho::AppChirho {
+        fun_chirho,
+        arg_chirho,
+        ..
+    } = rhs_chirho
+    else {
+        panic!("tuple second argument");
+    };
+    assert!(
+        matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "b")
+    );
+    let TypeChirho::AppChirho {
+        fun_chirho,
+        arg_chirho,
+        ..
+    } = fun_chirho.as_ref()
+    else {
+        panic!("tuple first argument");
+    };
+    assert!(
+        matches!(fun_chirho.as_ref(), TypeChirho::PromotedConChirho { name_chirho, .. } if name_chirho.text_chirho() == "(,)")
+    );
+    let TypeChirho::KindAnnotationChirho {
+        ty_chirho,
+        kind_chirho,
+        ..
+    } = arg_chirho.as_ref()
+    else {
+        panic!("first element annotation retained");
+    };
+    let TypeChirho::PromotedListChirho {
+        elements_chirho, ..
+    } = ty_chirho.as_ref()
+    else {
+        panic!("annotated promoted list");
+    };
+    assert_eq!(
+        elements_chirho
+            .iter()
+            .map(render_chirho)
+            .collect::<Vec<_>>(),
+        ["Int", "Bool"]
+    );
+    let TypeChirho::ListChirho { element_chirho, .. } = kind_chirho.as_ref() else {
+        panic!("list kind retained");
+    };
+    assert!(
+        matches!(element_chirho.as_ref(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "Type")
     );
 }
 
@@ -503,7 +592,34 @@ type family FooChirho a where
             .iter()
             .all(|equation_chirho| !equation_chirho.malformed_chirho)
     );
-    assert_eq!(render_chirho(&equations_chirho[0].rhs_chirho), "Int");
+    assert_eq!(
+        render_chirho(&equations_chirho[0].rhs_chirho),
+        "(Int :: Type)"
+    );
+    let TypeChirho::KindAnnotationChirho {
+        ty_chirho,
+        kind_chirho,
+        ..
+    } = &equations_chirho[0].rhs_chirho
+    else {
+        panic!("right-side kind annotation retained");
+    };
+    assert!(
+        matches!(ty_chirho.as_ref(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "Int")
+    );
+    assert!(
+        matches!(kind_chirho.as_ref(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "Type")
+    );
+    for (child_chirho, written_chirho) in
+        [(ty_chirho.as_ref(), "Int"), (kind_chirho.as_ref(), "Type")]
+    {
+        let span_chirho = child_chirho.span_chirho();
+        assert_eq!(
+            &source_chirho[span_chirho.start_chirho().as_usize_chirho()
+                ..span_chirho.end_chirho().as_usize_chirho()],
+            written_chirho
+        );
+    }
     let kind_sigs_chirho =
         include_str!("../../../../../ghc-tests-chirho/parser-chirho/should_compile/KindSigs.hs");
     let foo_chirho = equations_of_chirho(kind_sigs_chirho, "Foo");

@@ -265,15 +265,15 @@ fn equalities_and_synonym_applications_keep_both_sides_chirho() {
 }
 
 #[test]
-fn a_kind_annotated_argument_is_the_annotated_type_chirho() {
+fn a_kind_annotated_argument_keeps_its_type_and_kind_chirho() {
     check_contexts_chirho(&[
         (
             "instance KnownChirho (n :: Nat) => CChirho (ProxyChirho n)",
-            "KnownChirho var(n)",
+            "KnownChirho (var(n) :: Nat)",
         ),
         (
             "class (KnownChirho (n :: Nat), Eq a) => SizedChirho n a",
-            "KnownChirho var(n); Eq var(a)",
+            "KnownChirho (var(n) :: Nat); Eq var(a)",
         ),
     ]);
 }

@@ -234,6 +234,44 @@ type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
         "RHS kind annotation should not drop the `k` argument: {:?}",
         rhs_chirho
     );
+    let TypeChirho::KindAnnotationChirho {
+        ty_chirho,
+        kind_chirho,
+        ..
+    } = rhs_chirho
+    else {
+        panic!("expected the annotation around the complete function RHS");
+    };
+    assert!(
+        matches!(kind_chirho.as_ref(), TypeChirho::ConChirho(name_chirho)
+        if name_chirho.text_chirho() == "Type")
+    );
+    let TypeChirho::FunChirho {
+        arg_chirho,
+        result_chirho,
+        ..
+    } = ty_chirho.as_ref()
+    else {
+        panic!("expected the complete function under the annotation");
+    };
+    for (application_chirho, variable_chirho) in [(arg_chirho, "a"), (result_chirho, "k")] {
+        let TypeChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } = application_chirho.as_ref()
+        else {
+            panic!("expected a complete Proxy application");
+        };
+        assert!(
+            matches!(fun_chirho.as_ref(), TypeChirho::ConChirho(name_chirho)
+            if name_chirho.text_chirho() == "Proxy")
+        );
+        assert!(
+            matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho)
+            if name_chirho.text_chirho() == variable_chirho)
+        );
+    }
 }
 
 #[test]

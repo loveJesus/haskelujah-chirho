@@ -183,12 +183,12 @@ impl ParserChirho<'_> {
         self.builder_chirho.finish_node_chirho();
     }
 
-    /// Parse a closed equation's right side with GHC's optional kind annotation
+    /// Parse a declaration's right side with its optional kind annotation
     /// (`F a = Int :: Type`), kept as one kind-annotated type. A `::` that ends the
-    /// equation (`F a = Int ::`) stays a bare token in the equation node, so lowering
-    /// reports the equation incomplete, as GHC rejects it (row 686, KindSigs).
+    /// declaration stays a bare token in its node, so an incomplete family equation
+    /// remains incomplete, as GHC rejects it (row 686, KindSigs).
     /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
-    fn parse_family_equation_rhs_chirho(&mut self) {
+    fn parse_type_with_optional_kind_chirho(&mut self) {
         let rhs_start_chirho = self.pos_chirho;
         let rhs_chirho = self.builder_chirho.checkpoint_chirho();
         self.parse_type_chirho();
@@ -259,7 +259,7 @@ impl ParserChirho<'_> {
         if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
             self.bump_chirho(); // =
             self.eat_trivia_chirho();
-            self.parse_family_equation_rhs_chirho();
+            self.parse_type_with_optional_kind_chirho();
         }
         self.builder_chirho.finish_node_chirho();
     }
@@ -324,7 +324,7 @@ impl ParserChirho<'_> {
         if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
             self.bump_chirho(); // =
             self.eat_trivia_chirho();
-            self.parse_type_chirho();
+            self.parse_type_with_optional_kind_chirho();
             // `= r | r -> a` is an injectivity annotation. It belongs to this
             // declaration, an associated family's result binder, never to the
             // class body's next member (row 686: T6018, T26255a).

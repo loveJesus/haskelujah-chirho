@@ -456,9 +456,8 @@ fn lower_newtype_record_function_returning_tuple_application_chirho() {
 
 #[test]
 fn lower_data_binder_kind_never_becomes_the_declaration_kind_chirho() {
-    // `[Symbol]` is a kind our kind grammar cannot read yet. It belongs to the
-    // BINDER; recording it as the declaration's own return kind gave `A` a
-    // fabricated kind (and dropped the brackets on the way).
+    // `[Symbol]` belongs to the binder. Its full syntax must survive there;
+    // recording it as the declaration's return kind fabricated `A`'s kind.
     let module_chirho = parse_and_lower_chirho("module M where\ndata A (b :: [Symbol]) = A\n");
     match &module_chirho.decls_chirho[0] {
         DeclChirho::DataDeclChirho {
@@ -468,7 +467,22 @@ fn lower_data_binder_kind_never_becomes_the_declaration_kind_chirho() {
         } => {
             assert_eq!(type_vars_chirho.len(), 1);
             assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "b");
-            assert_eq!(type_vars_chirho[0].kind_annotation_chirho, None);
+            assert_eq!(
+                type_vars_chirho[0]
+                    .kind_annotation_chirho
+                    .as_deref()
+                    .map(type_shape_chirho),
+                Some("[Symbol]".to_string())
+            );
+            let Some(TypeChirho::ListChirho { element_chirho, .. }) =
+                type_vars_chirho[0].kind_annotation_chirho.as_deref()
+            else {
+                panic!("expected the binder's retained list kind");
+            };
+            assert!(
+                matches!(element_chirho.as_ref(), TypeChirho::ConChirho(name_chirho)
+                if name_chirho.text_chirho() == "Symbol")
+            );
             assert!(
                 kind_sig_chirho.is_none(),
                 "a binder's kind must not become the declaration's kind: {kind_sig_chirho:?}"
@@ -617,7 +631,7 @@ data MyList a = Nil | Cons a (MyList a)\n",
 }
 
 #[test]
-fn lower_flat_record_field_visible_type_application_erases_invisible_arg_chirho() {
+fn lower_flat_record_field_visible_type_application_retains_kind_arg_chirho() {
     let module_chirho = parse_and_lower_chirho(
         "{-# LANGUAGE TypeApplications #-}\n\
 module M where\n\
@@ -640,9 +654,39 @@ data BoxChirho fChirho aChirho = BoxChirho { unBoxChirho :: AppChirho @fChirho a
 
     assert_eq!(
         type_shape_chirho(&fields_chirho[0].ty_chirho),
-        "(AppChirho aChirho)",
-        "flat visible @fChirho should not become an ordinary type argument: {:?}",
+        "((AppChirho @fChirho) aChirho)",
+        "flat visible @fChirho must remain separate from the ordinary argument: {:?}",
         fields_chirho[0].ty_chirho
+    );
+    let TypeChirho::AppChirho {
+        fun_chirho,
+        arg_chirho,
+        ..
+    } = &fields_chirho[0].ty_chirho
+    else {
+        panic!("expected one ordinary field type argument");
+    };
+    assert!(
+        matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho)
+        if name_chirho.text_chirho() == "aChirho")
+    );
+    let TypeChirho::KindApplicationChirho {
+        fun_chirho,
+        arg_chirho,
+        written_chirho,
+        ..
+    } = fun_chirho.as_ref()
+    else {
+        panic!("expected the written hidden kind prefix");
+    };
+    assert!(*written_chirho);
+    assert!(
+        matches!(fun_chirho.as_ref(), TypeChirho::ConChirho(name_chirho)
+        if name_chirho.text_chirho() == "AppChirho")
+    );
+    assert!(
+        matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho)
+        if name_chirho.text_chirho() == "fChirho")
     );
 }
 
