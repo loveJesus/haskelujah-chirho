@@ -379,6 +379,9 @@ impl InferCtxChirho {
         Self {
             non_deferrable_diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             next_var_chirho: 0,
+            elaboration_owner_chirho: None,
+            elaboration_substitution_chirho: SubstChirho::empty_chirho(),
+            elaboration_variable_kinds_chirho: HashMap::new(),
             env_chirho,
             class_env_chirho,
             deferred_preds_chirho: Vec::new(),

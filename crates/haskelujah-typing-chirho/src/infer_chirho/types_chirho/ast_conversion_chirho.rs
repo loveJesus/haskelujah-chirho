@@ -15,6 +15,105 @@ use haskelujah_ast_chirho::promotion_chirho::{
 };
 
 impl InferCtxChirho {
+    /// Producer-qualified identities take precedence over spelling. A foreign meta
+    /// is an invariant failure and cannot be deferred or published.
+    pub(super) fn surface_variable_chirho(
+        &mut self,
+        name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
+        variables_chirho: &mut HashMap<String, TyVarChirho>,
+    ) -> TyVarChirho {
+        use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
+        match name_chirho.type_variable_chirho() {
+            Some(ScopedTypeVariableIdChirho::InferenceChirho {
+                owner_chirho,
+                variable_chirho,
+            }) if Some(*owner_chirho) == self.elaboration_owner_chirho
+                && variable_chirho.0 < self.next_var_chirho
+                && self
+                    .elaboration_variable_kinds_chirho
+                    .contains_key(variable_chirho) =>
+            {
+                variables_chirho.insert(name_chirho.text_chirho().to_owned(), *variable_chirho);
+                *variable_chirho
+            }
+            Some(ScopedTypeVariableIdChirho::QuantifiedChirho {
+                declaration_chirho,
+                index_chirho,
+            }) => {
+                let source_chirho = name_chirho.type_variable_chirho().unwrap();
+                let proven_chirho = self
+                    .type_families_chirho
+                    .declaration_schemes_chirho()
+                    .get_chirho(declaration_chirho)
+                    .is_some_and(|scheme_chirho| {
+                        scheme_chirho
+                            .source_variables_chirho
+                            .iter()
+                            .any(|mapping_chirho| &mapping_chirho.source_chirho == source_chirho)
+                    });
+                if proven_chirho {
+                    let key_chirho = format!(
+                        "%quantifier:{}:{declaration_chirho}:{index_chirho}",
+                        declaration_chirho.len()
+                    );
+                    if let Some(variable_chirho) = variables_chirho.get(&key_chirho) {
+                        return *variable_chirho;
+                    }
+                    let variable_chirho = TyVarChirho(self.next_var_chirho);
+                    self.next_var_chirho += 1;
+                    variables_chirho.insert(key_chirho, variable_chirho);
+                    variable_chirho
+                } else {
+                    self.invalid_surface_variable_chirho(name_chirho)
+                }
+            }
+            Some(_) => self.invalid_surface_variable_chirho(name_chirho),
+            None => {
+                if let Some(variable_chirho) = variables_chirho.get(name_chirho.text_chirho()) {
+                    return *variable_chirho;
+                }
+                let variable_chirho = TyVarChirho(self.next_var_chirho);
+                self.next_var_chirho += 1;
+                variables_chirho.insert(name_chirho.text_chirho().to_owned(), variable_chirho);
+                variable_chirho
+            }
+        }
+    }
+
+    pub(super) fn surface_binder_variable_chirho(
+        &mut self,
+        name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
+        variables_chirho: &mut HashMap<String, TyVarChirho>,
+    ) -> TyVarChirho {
+        if name_chirho.type_variable_chirho().is_none() {
+            let variable_chirho = TyVarChirho(self.next_var_chirho);
+            self.next_var_chirho += 1;
+            return variable_chirho;
+        }
+        let previous_chirho = variables_chirho.get(name_chirho.text_chirho()).copied();
+        let variable_chirho = self.surface_variable_chirho(name_chirho, variables_chirho);
+        if let Some(previous_chirho) = previous_chirho {
+            variables_chirho.insert(name_chirho.text_chirho().to_owned(), previous_chirho);
+        } else {
+            variables_chirho.remove(name_chirho.text_chirho());
+        }
+        variable_chirho
+    }
+
+    fn invalid_surface_variable_chirho(
+        &mut self,
+        name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
+    ) -> TyVarChirho {
+        self.non_deferrable_diagnostics_chirho
+            .push_chirho(DiagnosticChirho::error_chirho(
+                "foreign or unbound canonical type variable at the kind/type inference boundary",
+                name_chirho.span_chirho(),
+            ));
+        let variable_chirho = TyVarChirho(self.next_var_chirho);
+        self.next_var_chirho += 1;
+        variable_chirho
+    }
+
     /// Open every declaration-head binder lexically, but apply only visible
     /// parameters to the constructor result. Used by data and newtype schemes
     /// (and consequently their record selectors); see declaration-kinds-chirho.
@@ -24,15 +123,79 @@ impl InferCtxChirho {
         binders_chirho: &[AstTyVarChirho],
     ) -> (TyChirho, HashMap<String, TyVarChirho>) {
         let mut variables_chirho = HashMap::with_capacity(binders_chirho.len());
-        let mut result_chirho = TyChirho::ConChirho(name_chirho.to_owned());
         for binder_chirho in binders_chirho {
-            let variable_chirho = TyVarChirho(self.next_var_chirho);
-            self.next_var_chirho += 1;
+            let variable_chirho = self
+                .surface_binder_variable_chirho(&binder_chirho.name_chirho, &mut variables_chirho);
             variables_chirho.insert(binder_chirho.text_chirho().to_owned(), variable_chirho);
-            if binder_chirho.is_visible_chirho() {
+        }
+        let key_chirho = self
+            .type_constructor_scope_chirho
+            .as_ref()
+            .and_then(|scope_chirho| scope_chirho.declaration_chirho(name_chirho))
+            .map(|declaration_chirho| declaration_chirho.identity_chirho.key_chirho());
+        let scheme_chirho = key_chirho
+            .as_ref()
+            .and_then(|key_chirho| {
+                self.type_families_chirho
+                    .declaration_schemes_chirho()
+                    .get_chirho(key_chirho)
+            })
+            .cloned();
+        let mut result_chirho = TyChirho::ConChirho(name_chirho.to_owned());
+        if let Some(scheme_chirho) = scheme_chirho {
+            use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
+            let mut mapping_chirho = crate::subst_chirho::SubstChirho::empty_chirho();
+            for source_chirho in &scheme_chirho.source_variables_chirho {
+                if let ScopedTypeVariableIdChirho::QuantifiedChirho { index_chirho, .. } =
+                    &source_chirho.source_chirho
+                    && let Some(binder_chirho) = binders_chirho.get(*index_chirho as usize)
+                {
+                    let variable_chirho = variables_chirho[binder_chirho.text_chirho()];
+                    mapping_chirho.insert_chirho(
+                        source_chirho.variable_chirho,
+                        TyChirho::VarChirho(variable_chirho),
+                    );
+                    if let Some(actual_kind_chirho) =
+                        self.elaboration_variable_kinds_chirho.get(&variable_chirho)
+                        && let Some(typed_binder_chirho) =
+                            scheme_chirho.binders_chirho.iter().find(|binder_chirho| {
+                                binder_chirho.variable_chirho == source_chirho.variable_chirho
+                            })
+                    {
+                        crate::ty_chirho::declarations_chirho::map_telescope_kind_variables_chirho(
+                            &typed_binder_chirho.kind_chirho,
+                            actual_kind_chirho,
+                            &mut mapping_chirho,
+                        );
+                    }
+                }
+            }
+            for binder_chirho in &scheme_chirho.binders_chirho {
+                let argument_chirho = if let Some(argument_chirho) =
+                    mapping_chirho.lookup_chirho(&binder_chirho.variable_chirho)
+                {
+                    argument_chirho.clone()
+                } else {
+                    let variable_chirho = TyVarChirho(self.next_var_chirho);
+                    self.next_var_chirho += 1;
+                    let argument_chirho = TyChirho::VarChirho(variable_chirho);
+                    mapping_chirho
+                        .insert_chirho(binder_chirho.variable_chirho, argument_chirho.clone());
+                    argument_chirho
+                };
+                result_chirho =
+                    TyChirho::AppChirho(Box::new(result_chirho), Box::new(argument_chirho));
+            }
+        } else {
+            for binder_chirho in binders_chirho
+                .iter()
+                .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+            {
                 result_chirho = TyChirho::AppChirho(
                     Box::new(result_chirho),
-                    Box::new(TyChirho::VarChirho(variable_chirho)),
+                    Box::new(TyChirho::VarChirho(
+                        variables_chirho[binder_chirho.text_chirho()],
+                    )),
                 );
             }
         }
@@ -67,17 +230,12 @@ impl InferCtxChirho {
             }
             TypeChirho::VarChirho(name_chirho) => {
                 let text_chirho = name_chirho.text_chirho().to_string();
-                let tv_chirho = *var_map_chirho
-                    .entry(text_chirho.clone())
-                    .or_insert_with(|| {
-                        let v_chirho = TyVarChirho(self.next_var_chirho);
-                        self.next_var_chirho += 1;
-                        v_chirho
-                    });
+                let tv_chirho = self.surface_variable_chirho(name_chirho, var_map_chirho);
                 self.tyvar_source_names_chirho
                     .entry(tv_chirho)
                     .or_insert(text_chirho);
-                TyChirho::VarChirho(tv_chirho)
+                self.elaboration_substitution_chirho
+                    .apply_ty_chirho(&TyChirho::VarChirho(tv_chirho))
             }
             TypeChirho::ConChirho(name_chirho) => {
                 if let Some(key_chirho) = self.family_reference_key_chirho(name_chirho) {
@@ -225,8 +383,8 @@ impl InferCtxChirho {
         let mut bound_vars_chirho = Vec::with_capacity(vars_chirho.len());
         for var_chirho in vars_chirho {
             let name_chirho = var_chirho.text_chirho().to_string();
-            let fresh_chirho = TyVarChirho(self.next_var_chirho);
-            self.next_var_chirho += 1;
+            let fresh_chirho =
+                self.surface_binder_variable_chirho(&var_chirho.name_chirho, var_map_chirho);
             self.tyvar_source_names_chirho
                 .insert(fresh_chirho, name_chirho);
             bound_vars_chirho.push(fresh_chirho);

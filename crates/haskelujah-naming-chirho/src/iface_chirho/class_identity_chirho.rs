@@ -15,7 +15,9 @@ use std::collections::hash_map::Entry;
 
 use crate::promotion_scope_chirho::{declared_type_names_chirho, spelling_chirho};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::name_chirho::{BuiltinClassChirho, BuiltinClassScopeChirho};
+use haskelujah_ast_chirho::name_chirho::{
+    BuiltinClassChirho, BuiltinClassScopeChirho, CompilerClassChirho,
+};
 
 use super::{IfaceOriginChirho, ModuleIfaceChirho};
 use crate::env_chirho::NamespaceChirho;
@@ -37,6 +39,7 @@ const TYPE_PARAMETER_CHIRHO: &[u8] = &[0];
 const CONSTRUCTOR_PARAMETER_CHIRHO: &[u8] = &[1];
 
 const fn entry_chirho(
+    identity_chirho: CompilerClassChirho,
     module_chirho: &'static str,
     name_chirho: &'static str,
     parameter_arities_chirho: &'static [u8],
@@ -45,6 +48,7 @@ const fn entry_chirho(
 ) -> BuiltinClassEntryChirho {
     BuiltinClassEntryChirho {
         class_chirho: BuiltinClassChirho {
+            identity_chirho,
             module_chirho,
             name_chirho,
             parameter_arities_chirho,
@@ -62,6 +66,7 @@ const fn entry_chirho(
 /// workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
 const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
     entry_chirho(
+        CompilerClassChirho::EqChirho,
         "GHC.Classes",
         "Eq",
         TYPE_PARAMETER_CHIRHO,
@@ -69,6 +74,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "Data.Eq", "GHC.Classes"],
     ),
     entry_chirho(
+        CompilerClassChirho::OrdChirho,
         "GHC.Classes",
         "Ord",
         TYPE_PARAMETER_CHIRHO,
@@ -76,6 +82,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "Data.Ord", "GHC.Classes"],
     ),
     entry_chirho(
+        CompilerClassChirho::ShowChirho,
         "GHC.Show",
         "Show",
         TYPE_PARAMETER_CHIRHO,
@@ -83,6 +90,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "Text.Show", "GHC.Show"],
     ),
     entry_chirho(
+        CompilerClassChirho::EnumChirho,
         "GHC.Enum",
         "Enum",
         TYPE_PARAMETER_CHIRHO,
@@ -90,6 +98,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "GHC.Enum"],
     ),
     entry_chirho(
+        CompilerClassChirho::BoundedChirho,
         "GHC.Enum",
         "Bounded",
         TYPE_PARAMETER_CHIRHO,
@@ -97,6 +106,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "GHC.Enum"],
     ),
     entry_chirho(
+        CompilerClassChirho::NumChirho,
         "GHC.Num",
         "Num",
         TYPE_PARAMETER_CHIRHO,
@@ -104,6 +114,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "GHC.Num"],
     ),
     entry_chirho(
+        CompilerClassChirho::IntegralChirho,
         "GHC.Real",
         "Integral",
         TYPE_PARAMETER_CHIRHO,
@@ -111,6 +122,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "GHC.Real"],
     ),
     entry_chirho(
+        CompilerClassChirho::FractionalChirho,
         "GHC.Real",
         "Fractional",
         TYPE_PARAMETER_CHIRHO,
@@ -118,6 +130,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "GHC.Real"],
     ),
     entry_chirho(
+        CompilerClassChirho::FloatingChirho,
         "GHC.Float",
         "Floating",
         TYPE_PARAMETER_CHIRHO,
@@ -125,6 +138,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "GHC.Float"],
     ),
     entry_chirho(
+        CompilerClassChirho::SemigroupChirho,
         "GHC.Base",
         "Semigroup",
         TYPE_PARAMETER_CHIRHO,
@@ -132,6 +146,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "Data.Semigroup", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::MonoidChirho,
         "GHC.Base",
         "Monoid",
         TYPE_PARAMETER_CHIRHO,
@@ -139,6 +154,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "Data.Monoid", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::FunctorChirho,
         "GHC.Base",
         "Functor",
         CONSTRUCTOR_PARAMETER_CHIRHO,
@@ -146,6 +162,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "Data.Functor", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::ApplicativeChirho,
         "GHC.Base",
         "Applicative",
         CONSTRUCTOR_PARAMETER_CHIRHO,
@@ -153,6 +170,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "Control.Applicative", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::MonadChirho,
         "GHC.Base",
         "Monad",
         CONSTRUCTOR_PARAMETER_CHIRHO,
@@ -160,6 +178,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "Control.Monad", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::MonadFailChirho,
         "Control.Monad.Fail",
         "MonadFail",
         CONSTRUCTOR_PARAMETER_CHIRHO,
@@ -167,6 +186,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "Control.Monad", "Control.Monad.Fail"],
     ),
     entry_chirho(
+        CompilerClassChirho::FoldableChirho,
         "Data.Foldable",
         "Foldable",
         CONSTRUCTOR_PARAMETER_CHIRHO,
@@ -174,6 +194,7 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         &["Prelude", "Data.Foldable"],
     ),
     entry_chirho(
+        CompilerClassChirho::TraversableChirho,
         "Data.Traversable",
         "Traversable",
         CONSTRUCTOR_PARAMETER_CHIRHO,

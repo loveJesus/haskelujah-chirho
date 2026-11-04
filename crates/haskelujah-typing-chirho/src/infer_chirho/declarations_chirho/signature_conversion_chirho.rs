@@ -482,8 +482,8 @@ impl InferCtxChirho {
                 ..
             } => {
                 for name_chirho in vars_chirho {
-                    let fresh_chirho = TyVarChirho(self.next_var_chirho);
-                    self.next_var_chirho += 1;
+                    let fresh_chirho = self
+                        .surface_binder_variable_chirho(&name_chirho.name_chirho, var_map_chirho);
                     let text_chirho = name_chirho.text_chirho().to_string();
                     var_map_chirho.insert(text_chirho.clone(), fresh_chirho);
                     self.tyvar_source_names_chirho

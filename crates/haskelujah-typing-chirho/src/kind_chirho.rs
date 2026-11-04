@@ -35,6 +35,7 @@ mod conversion_chirho;
 #[cfg(test)]
 mod declaration_tests_chirho;
 mod declarations_chirho;
+pub mod elaboration_chirho;
 mod module_pass_chirho;
 mod scope_chirho;
 #[cfg(test)]

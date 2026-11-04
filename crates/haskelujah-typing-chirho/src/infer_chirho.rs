@@ -40,6 +40,7 @@ mod evidence_chirho;
 mod class_instance_chirho;
 #[path = "infer_chirho/declarations_chirho/dependency_chirho.rs"]
 mod dependency_chirho;
+pub(crate) use dependency_chirho::dependency_groups_chirho;
 #[path = "infer_chirho/declarations_chirho/gadt_constructors_chirho.rs"]
 mod gadt_constructors_chirho;
 #[path = "infer_chirho/declarations_chirho/instance_obligations_chirho.rs"]
@@ -414,6 +415,11 @@ pub struct MethodOccurrenceRecordChirho {
 /// The inference context — carries mutable state during inference.
 pub struct InferCtxChirho {
     non_deferrable_diagnostics_chirho: DiagnosticBundleChirho,
+    elaboration_owner_chirho: Option<
+        haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ElaborationOwnerChirho,
+    >,
+    elaboration_substitution_chirho: SubstChirho,
+    elaboration_variable_kinds_chirho: HashMap<TyVarChirho, TyChirho>,
     /// Fresh type variable counter.
     next_var_chirho: u32,
     /// Type environment (scoped).
@@ -766,6 +772,24 @@ pub fn infer_module_with_import_context_chirho(
     module_chirho: &ModuleChirho,
     context_chirho: InferenceImportContextChirho<'_>,
 ) -> InferResultChirho {
+    infer_module_with_elaboration_state_chirho(module_chirho, context_chirho, None)
+}
+
+/// Adopt the checked module's exact kind/type variable owner, supply and substitution.
+/// Workflow: language-features-chirho/declaration-kinds-chirho.
+pub fn infer_elaborated_module_chirho(
+    module_chirho: &ModuleChirho,
+    context_chirho: InferenceImportContextChirho<'_>,
+    state_chirho: crate::kind_chirho::elaboration_chirho::ElaborationStateChirho,
+) -> InferResultChirho {
+    infer_module_with_elaboration_state_chirho(module_chirho, context_chirho, Some(state_chirho))
+}
+
+fn infer_module_with_elaboration_state_chirho(
+    module_chirho: &ModuleChirho,
+    context_chirho: InferenceImportContextChirho<'_>,
+    state_chirho: Option<crate::kind_chirho::elaboration_chirho::ElaborationStateChirho>,
+) -> InferResultChirho {
     let InferenceImportContextChirho {
         imported_types_chirho,
         imported_type_synonyms_chirho,
@@ -783,6 +807,12 @@ pub fn infer_module_with_import_context_chirho(
         InferCtxChirho::new_with_imported_class_env_chirho(imported_class_env_chirho);
     if ctx_chirho.has_non_deferrable_failure_chirho() {
         return ctx_chirho.finish_chirho();
+    }
+    if let Some(state_chirho) = state_chirho {
+        ctx_chirho.elaboration_owner_chirho = Some(state_chirho.owner_chirho);
+        ctx_chirho.next_var_chirho = state_chirho.next_variable_chirho;
+        ctx_chirho.elaboration_substitution_chirho = state_chirho.substitution_chirho;
+        ctx_chirho.elaboration_variable_kinds_chirho = state_chirho.variable_kinds_chirho;
     }
     ctx_chirho.set_imported_type_name_preferences_chirho(
         safe_unqualified_imported_type_names_chirho,

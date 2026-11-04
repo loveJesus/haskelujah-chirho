@@ -4,7 +4,9 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
-use crate::iface_chirho::builtin_chirho::{mk_data_type_chirho, mk_type_chirho, mk_val_chirho};
+use crate::iface_chirho::builtin_chirho::{
+    mk_class_type_chirho, mk_data_type_chirho, mk_type_chirho, mk_val_chirho,
+};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 use haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho;
 
@@ -101,7 +103,11 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Typeable", "TypeRep", "Proxy"] {
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TypeableChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for name_chirho in &["TypeRep", "Proxy"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -126,7 +132,11 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Typeable", "TypeRep", "SomeTypeRep", "TyCon"] {
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TypeableChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for name_chirho in &["TypeRep", "SomeTypeRep", "TyCon"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -192,9 +202,12 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TypeableChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in &[
             "Data",
-            "Typeable",
             "DataType",
             "Constr",
             "ConstrRep",
@@ -235,7 +248,9 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Typeable", &[]);
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TypeableChirho,
+        );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("TypeRep", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -330,10 +345,13 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TypeableChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in [
             "TypeRep",
             "SomeTypeRep",
-            "Typeable",
             "TyCon",
             "KindRep",
             "TypeLitSort",
@@ -461,7 +479,11 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
     // Data.Typeable
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Typeable", "TypeRep", "Proxy"] {
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TypeableChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for name_chirho in &["TypeRep", "Proxy"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -500,14 +522,11 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
     // Data.Data
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &[
-            "Data",
-            "Typeable",
-            "Constr",
-            "DataType",
-            "DataRep",
-            "ConstrRep",
-        ] {
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TypeableChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for name_chirho in &["Data", "Constr", "DataType", "DataRep", "ConstrRep"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -604,7 +623,11 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Typeable", "TypeRep", "TyCon"] {
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TypeableChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for name_chirho in &["TypeRep", "TyCon"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -617,10 +640,15 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
     // Data.Kind
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Type", "Constraint", "FUN"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+        for constructor_chirho in [
+            CompilerTypeConstructorChirho::TypeUniverseChirho,
+            CompilerTypeConstructorChirho::ConstraintUniverseChirho,
+        ] {
+            let (k_chirho, v_chirho) = mk_data_type_chirho(constructor_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
+        let (k_chirho, v_chirho) = mk_type_chirho("FUN", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "Data.Kind".to_string(),
             exports_chirho,
@@ -718,14 +746,11 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &[
-            "Data",
-            "DataType",
-            "Constr",
-            "ConstrRep",
-            "Fixity",
-            "Typeable",
-        ] {
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TypeableChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for name_chirho in &["Data", "DataType", "Constr", "ConstrRep", "Fixity"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }

@@ -190,6 +190,17 @@ fn mk_data_type_chirho(
     (name_chirho, ty_chirho)
 }
 
+/// A positive class producer supplies the compiler identity directly. No generic
+/// interface entry is upgraded from its public spelling.
+fn mk_class_type_chirho(
+    class_chirho: haskelujah_ast_chirho::name_chirho::CompilerClassChirho,
+) -> (String, IfaceTypeChirho) {
+    mk_data_type_chirho(
+        CompilerTypeConstructorChirho::ClassChirho(class_chirho),
+        &[],
+    )
+}
+
 /// Build synthetic module interfaces for built-in modules like `Data.Map`,
 /// `Data.Set`, `Data.List`, `Data.Char`, `Data.Maybe`, `Data.Either`.
 /// These are generated at compile time and don't correspond to source files.

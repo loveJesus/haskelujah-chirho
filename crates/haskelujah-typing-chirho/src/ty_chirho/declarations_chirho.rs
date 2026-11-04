@@ -116,14 +116,31 @@ impl DeclarationSchemesChirho {
         )
     }
 
+    /// Replace only a provisional local header after validating the complete
+    /// checked telescope. Imported published contracts remain immutable.
+    pub fn publish_chirho(&mut self, scheme_chirho: DeclarationSchemeChirho) -> Result<(), String> {
+        validate_published_chirho(&scheme_chirho)?;
+        if let Some(previous_chirho) = self.definitions_chirho.get(&scheme_chirho.identity_chirho)
+            && previous_chirho.owner_chirho.is_none()
+            && previous_chirho.as_ref() != &scheme_chirho
+        {
+            return Err("incompatible published declaration telescope".to_owned());
+        }
+        self.definitions_chirho.insert(
+            scheme_chirho.identity_chirho.clone(),
+            Arc::new(scheme_chirho),
+        );
+        Ok(())
+    }
+
     pub fn merge_chirho(&mut self, other_chirho: &Self) -> Result<(), String> {
         // Validate the entire merge before publishing any new header.
         for (identity_chirho, scheme_chirho) in &other_chirho.definitions_chirho {
             validate_published_chirho(scheme_chirho)?;
-            if let Some(previous_chirho) = self.definitions_chirho.get(identity_chirho) {
-                if previous_chirho != scheme_chirho {
-                    return Err("incompatible declaration telescopes".to_owned());
-                }
+            if let Some(previous_chirho) = self.definitions_chirho.get(identity_chirho)
+                && previous_chirho != scheme_chirho
+            {
+                return Err("incompatible declaration telescopes".to_owned());
             }
         }
         for (identity_chirho, scheme_chirho) in &other_chirho.definitions_chirho {
@@ -194,3 +211,49 @@ fn validate_published_chirho(scheme_chirho: &DeclarationSchemeChirho) -> Result<
 #[cfg(test)]
 #[path = "declarations_tests_chirho.rs"]
 mod tests_chirho;
+
+/// Map a checked telescope's bound kind variables to the corresponding current
+/// declaration variables. Constructor schemes retain the complete hidden prefix.
+pub(crate) fn map_telescope_kind_variables_chirho(
+    template_chirho: &TyChirho,
+    actual_chirho: &TyChirho,
+    mapping_chirho: &mut crate::subst_chirho::SubstChirho,
+) {
+    match (template_chirho, actual_chirho) {
+        (TyChirho::VarChirho(variable_chirho), actual_chirho) => {
+            if mapping_chirho.lookup_chirho(variable_chirho).is_none() {
+                mapping_chirho.insert_chirho(*variable_chirho, actual_chirho.clone());
+            }
+        }
+        (
+            TyChirho::AppChirho(left_chirho, right_chirho),
+            TyChirho::AppChirho(actual_left_chirho, actual_right_chirho),
+        )
+        | (
+            TyChirho::FunChirho(left_chirho, right_chirho, _),
+            TyChirho::FunChirho(actual_left_chirho, actual_right_chirho, _),
+        ) => {
+            map_telescope_kind_variables_chirho(left_chirho, actual_left_chirho, mapping_chirho);
+            map_telescope_kind_variables_chirho(right_chirho, actual_right_chirho, mapping_chirho);
+        }
+        (TyChirho::ListChirho(element_chirho), TyChirho::ListChirho(actual_element_chirho)) => {
+            map_telescope_kind_variables_chirho(
+                element_chirho,
+                actual_element_chirho,
+                mapping_chirho,
+            )
+        }
+        (TyChirho::TupleChirho(elements_chirho), TyChirho::TupleChirho(actual_elements_chirho)) => {
+            for (element_chirho, actual_element_chirho) in
+                elements_chirho.iter().zip(actual_elements_chirho)
+            {
+                map_telescope_kind_variables_chirho(
+                    element_chirho,
+                    actual_element_chirho,
+                    mapping_chirho,
+                );
+            }
+        }
+        _ => {}
+    }
+}

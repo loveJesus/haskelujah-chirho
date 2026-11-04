@@ -158,7 +158,6 @@ use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
 use haskelujah_typing_chirho::infer_chirho::{
     InferResultChirho, InferenceImportContextChirho, TypeFamilyEnvChirho,
-    infer_module_with_import_context_chirho,
 };
 
 use module_search_chirho::{

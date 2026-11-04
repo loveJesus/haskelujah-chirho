@@ -112,7 +112,6 @@ pub(crate) fn run_frontend_under_deferral_chirho(
     // The declarations written in source: deriving (Phase 2.5) appends its instances
     // after them, and the kind pass judges only written builtin instance heads (K01).
     // workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
-    let written_decl_count_chirho = module_chirho.decls_chirho.len();
     let splice_warnings_chirho = splice_result_chirho.warnings_chirho;
 
     // Phase 2.4: Declaration validity (row 683), judged on the module as written,
@@ -191,16 +190,26 @@ pub(crate) fn run_frontend_under_deferral_chirho(
     // workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
     let builtin_class_scope_chirho =
         haskelujah_naming_chirho::build_builtin_class_scope_chirho(&module_chirho, ifaces_chirho);
-    let kind_result_chirho = haskelujah_typing_chirho::infer_module_kinds_with_imports_chirho(
-        &module_chirho,
-        haskelujah_typing_chirho::KindImportsChirho {
-            builtin_classes_chirho: &builtin_class_scope_chirho,
-            written_decl_count_chirho,
-        },
-    );
-    if kind_result_chirho.diagnostics_chirho.has_errors_chirho() {
-        return Err(kind_result_chirho.diagnostics_chirho);
-    }
+    let elaboration_chirho =
+        haskelujah_typing_chirho::kind_chirho::elaboration_chirho::elaborate_module_chirho(
+            &mut module_chirho,
+            haskelujah_typing_chirho::kind_chirho::elaboration_chirho::ElaborationImportsChirho {
+                registry_chirho: &merged_imported_type_families_chirho,
+                type_scope_chirho: &type_constructor_scope_chirho,
+                family_scope_chirho: &family_scope_chirho,
+                promotion_scope_chirho: &promotion_scope_chirho,
+                builtin_classes_chirho: &builtin_class_scope_chirho,
+            },
+        )
+        .map_err(|error_chirho| {
+            let mut diagnostics_chirho = DiagnosticBundleChirho::default();
+            diagnostics_chirho.push_chirho(DiagnosticChirho::error_chirho(
+                error_chirho.message_chirho,
+                error_chirho.span_chirho,
+            ));
+            diagnostics_chirho
+        })?;
+    merged_imported_type_families_chirho = elaboration_chirho.registry_chirho;
 
     // Phase 3.9: Seed the type environment with placeholder types for
     // imported values that don't have explicit type schemes. This allows
@@ -398,23 +407,25 @@ pub(crate) fn run_frontend_under_deferral_chirho(
 
     // Phase 4: Type inference — use import-aware variant when upstream
     // type schemes are available, plain variant otherwise.
-    let mut infer_result_chirho = infer_module_with_import_context_chirho(
-        &module_chirho,
-        InferenceImportContextChirho {
-            imported_types_chirho: &merged_imported_types_chirho,
-            imported_type_synonyms_chirho: &merged_imported_type_synonyms_chirho,
-            imported_type_families_chirho: &merged_imported_type_families_chirho,
-            imported_class_env_chirho,
-            unavailable_selectors_chirho: &unavailable_selectors_chirho,
-            imported_record_field_names_chirho: &merged_imported_record_field_names_chirho,
-            safe_unqualified_imported_type_names_chirho:
-                &safe_unqualified_imported_type_names_chirho,
-            preferred_qualified_type_names_chirho: &preferred_qualified_type_names_chirho,
-            promotion_scope_chirho: Some(promotion_scope_chirho.clone()),
-            family_scope_chirho: Some(family_scope_chirho),
-            type_constructor_scope_chirho: Some(type_constructor_scope_chirho),
-        },
-    );
+    let mut infer_result_chirho =
+        haskelujah_typing_chirho::infer_chirho::infer_elaborated_module_chirho(
+            &module_chirho,
+            InferenceImportContextChirho {
+                imported_types_chirho: &merged_imported_types_chirho,
+                imported_type_synonyms_chirho: &merged_imported_type_synonyms_chirho,
+                imported_type_families_chirho: &merged_imported_type_families_chirho,
+                imported_class_env_chirho,
+                unavailable_selectors_chirho: &unavailable_selectors_chirho,
+                imported_record_field_names_chirho: &merged_imported_record_field_names_chirho,
+                safe_unqualified_imported_type_names_chirho:
+                    &safe_unqualified_imported_type_names_chirho,
+                preferred_qualified_type_names_chirho: &preferred_qualified_type_names_chirho,
+                promotion_scope_chirho: Some(promotion_scope_chirho.clone()),
+                family_scope_chirho: Some(family_scope_chirho),
+                type_constructor_scope_chirho: Some(type_constructor_scope_chirho),
+            },
+            elaboration_chirho.state_chirho,
+        );
     if infer_result_chirho
         .non_deferrable_diagnostics_chirho
         .has_errors_chirho()

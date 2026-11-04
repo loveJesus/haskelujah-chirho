@@ -409,6 +409,10 @@ pub enum TypeConstructorRoleChirho {
 /// producer. Generic builtin interface entries do not acquire one by spelling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CompilerTypeConstructorChirho {
+    ClassChirho(CompilerClassChirho),
+    EqualityChirho(bool),
+    NatChirho,
+    SymbolChirho,
     BoolChirho,
     OrderingChirho,
     MaybeChirho,
@@ -431,6 +435,11 @@ pub enum CompilerTypeConstructorChirho {
 impl CompilerTypeConstructorChirho {
     pub fn name_chirho(self) -> &'static str {
         match self {
+            Self::ClassChirho(class_chirho) => class_chirho.legacy_name_chirho(),
+            Self::EqualityChirho(false) => "~",
+            Self::EqualityChirho(true) => "~~",
+            Self::NatChirho => "Nat",
+            Self::SymbolChirho => "Symbol",
             Self::BoolChirho => "Bool",
             Self::OrderingChirho => "Ordering",
             Self::MaybeChirho => "Maybe",
@@ -578,6 +587,12 @@ impl TypeConstructorDeclarationChirho {
         Self {
             identity_chirho: TypeConstructorIdentityChirho::CompilerChirho(constructor_chirho),
             role_chirho: match constructor_chirho {
+                CompilerTypeConstructorChirho::ClassChirho(_) => {
+                    TypeConstructorRoleChirho::ClassChirho
+                }
+                CompilerTypeConstructorChirho::EqualityChirho(_) => {
+                    TypeConstructorRoleChirho::UnknownChirho
+                }
                 CompilerTypeConstructorChirho::TypeUniverseChirho
                 | CompilerTypeConstructorChirho::ConstraintUniverseChirho => {
                     TypeConstructorRoleChirho::UniverseChirho
@@ -662,6 +677,7 @@ impl TypeConstructorScopeChirho {
 /// workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BuiltinClassChirho {
+    pub identity_chirho: CompilerClassChirho,
     /// The base module documented as the class's home.
     pub module_chirho: &'static str,
     /// The class name as interfaces list it.

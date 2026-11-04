@@ -6,7 +6,9 @@
 
 use super::*;
 use haskelujah_ast_chirho::decl_chirho::{ClassMethodChirho, ConDeclChirho, StrictnessChirho};
-use haskelujah_ast_chirho::name_chirho::{BuiltinClassChirho, NameChirho, RawNameChirho};
+use haskelujah_ast_chirho::name_chirho::{
+    BuiltinClassChirho, CompilerClassChirho, NameChirho, RawNameChirho,
+};
 
 const HEAD_ERROR_CHIRHO: &str = "kind mismatch in the instance head";
 const TYPE_POSITION_ERROR_CHIRHO: &str = "is a constraint";
@@ -98,16 +100,20 @@ fn signature_chirho(binding_text_chirho: &str, ty_chirho: TypeChirho) -> DeclChi
     }
 }
 
-fn builtin_class_chirho(name_text_chirho: &'static str, arity_chirho: u8) -> BuiltinClassChirho {
+fn builtin_class_chirho(
+    identity_chirho: CompilerClassChirho,
+    arity_chirho: u8,
+) -> BuiltinClassChirho {
     BuiltinClassChirho {
+        identity_chirho,
         module_chirho: "GHC.Base",
-        name_chirho: name_text_chirho,
+        name_chirho: identity_chirho.legacy_name_chirho(),
         parameter_arities_chirho: if arity_chirho == 0 { &[0] } else { &[1] },
     }
 }
 
 /// A scope binding each spelling to a builtin class of the given parameter arity.
-fn scope_chirho(spellings_chirho: &[(&str, &'static str, u8)]) -> BuiltinClassScopeChirho {
+fn scope_chirho(spellings_chirho: &[(&str, CompilerClassChirho, u8)]) -> BuiltinClassScopeChirho {
     BuiltinClassScopeChirho::new_chirho(
         spellings_chirho
             .iter()
@@ -176,9 +182,9 @@ fn box_chirho() -> DeclChirho {
 
 #[test]
 fn a_builtin_class_head_of_another_kind_is_reported_under_any_extensions_chirho() {
-    let functor_chirho = scope_chirho(&[("Functor", "Functor", 1)]);
-    let eq_chirho = scope_chirho(&[("Eq", "Eq", 0)]);
-    let foldable_chirho = scope_chirho(&[("Foldable", "Foldable", 1)]);
+    let functor_chirho = scope_chirho(&[("Functor", CompilerClassChirho::FunctorChirho, 1)]);
+    let eq_chirho = scope_chirho(&[("Eq", CompilerClassChirho::EqChirho, 0)]);
+    let foldable_chirho = scope_chirho(&[("Foldable", CompilerClassChirho::FoldableChirho, 1)]);
     for (label_chirho, scope_chirho, module_chirho) in [
         (
             "CN01",
@@ -258,12 +264,14 @@ fn a_qualified_head_is_judged_only_by_its_proven_spelling_chirho() {
         ],
     );
     let (count_chirho, text_chirho) = kind_errors_chirho(
-        &scope_chirho(&[("P.Functor", "Functor", 1)]),
+        &scope_chirho(&[("P.Functor", CompilerClassChirho::FunctorChirho, 1)]),
         &module_chirho,
     );
     assert_eq!(count_chirho, 1, "CN03: {text_chirho}");
-    let (count_chirho, text_chirho) =
-        kind_errors_chirho(&scope_chirho(&[("Functor", "Functor", 1)]), &module_chirho);
+    let (count_chirho, text_chirho) = kind_errors_chirho(
+        &scope_chirho(&[("Functor", CompilerClassChirho::FunctorChirho, 1)]),
+        &module_chirho,
+    );
     assert_eq!(
         count_chirho, 0,
         "an unproven qualified spelling: {text_chirho}"
@@ -288,7 +296,7 @@ fn a_builtin_class_written_as_a_field_is_a_constraint_chirho() {
             )],
         );
         let (count_chirho, text_chirho) = kind_errors_chirho(
-            &scope_chirho(&[(spelling_chirho, "Show", 0)]),
+            &scope_chirho(&[(spelling_chirho, CompilerClassChirho::ShowChirho, 0)]),
             &module_chirho,
         );
         assert_eq!(count_chirho, 1, "{label_chirho}: {text_chirho}");
@@ -302,9 +310,9 @@ fn a_builtin_class_written_as_a_field_is_a_constraint_chirho() {
 #[test]
 fn proven_builtin_heads_of_the_right_kind_and_unjudged_shapes_hold_chirho() {
     let scope_chirho = scope_chirho(&[
-        ("Functor", "Functor", 1),
-        ("P.Functor", "Functor", 1),
-        ("Show", "Show", 0),
+        ("Functor", CompilerClassChirho::FunctorChirho, 1),
+        ("P.Functor", CompilerClassChirho::FunctorChirho, 1),
+        ("Show", CompilerClassChirho::ShowChirho, 0),
     ]);
     let module_chirho = module_chirho(
         &["FlexibleInstances"],
@@ -374,8 +382,10 @@ fn a_local_homonym_is_never_seeded_as_the_builtin_class_chirho() {
             instance_chirho(name_chirho("Functor"), con_chirho("Bool")),
         ],
     );
-    let (count_chirho, text_chirho) =
-        kind_errors_chirho(&scope_chirho(&[("Functor", "Functor", 1)]), &module_chirho);
+    let (count_chirho, text_chirho) = kind_errors_chirho(
+        &scope_chirho(&[("Functor", CompilerClassChirho::FunctorChirho, 1)]),
+        &module_chirho,
+    );
     assert_eq!(count_chirho, 0, "{text_chirho}");
 }
 
@@ -416,7 +426,10 @@ fn builtin_class_kinds_hold_where_a_constraint_is_expected_chirho() {
         ],
     );
     let (count_chirho, text_chirho) = kind_errors_chirho(
-        &scope_chirho(&[("Show", "Show", 0), ("Eq", "Eq", 0)]),
+        &scope_chirho(&[
+            ("Show", CompilerClassChirho::ShowChirho, 0),
+            ("Eq", CompilerClassChirho::EqChirho, 0),
+        ]),
         &module_chirho,
     );
     assert_eq!(count_chirho, 0, "{text_chirho}");
@@ -434,7 +447,7 @@ fn only_written_builtin_instance_heads_are_judged_chirho() {
             instance_chirho(name_chirho("Functor"), con_chirho("FlagChirho")),
         ],
     );
-    let scope_chirho = scope_chirho(&[("Functor", "Functor", 1)]);
+    let scope_chirho = scope_chirho(&[("Functor", CompilerClassChirho::FunctorChirho, 1)]);
     for (written_chirho, errors_chirho) in [(2, 1), (1, 0)] {
         let result_chirho = infer_module_kinds_with_imports_chirho(
             &module_chirho,

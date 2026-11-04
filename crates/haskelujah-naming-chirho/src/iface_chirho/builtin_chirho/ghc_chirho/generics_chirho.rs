@@ -4,9 +4,12 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho;
 use haskelujah_span_chirho::SpanChirho;
 
-use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
+use crate::iface_chirho::builtin_chirho::{
+    mk_class_type_chirho, mk_data_type_chirho, mk_type_chirho, mk_val_chirho,
+};
 use crate::iface_chirho::{IfaceExportsChirho, IfaceTypeChirho, ModuleIfaceChirho};
 
 /// Push the interfaces for generics, type-level literals, records, stacks and exceptions in `GHC.*`.
@@ -28,17 +31,25 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &[
-            "Nat",
-            "Symbol",
-            "KnownNat",
-            "KnownChar",
-            "KnownSymbol",
-            "SomeNat",
-            "SomeSymbol",
-            "TypeError",
-            "ErrorMessage",
-        ] {
+        let (k_chirho, v_chirho) =
+            mk_data_type_chirho(CompilerTypeConstructorChirho::NatChirho, &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) =
+            mk_data_type_chirho(CompilerTypeConstructorChirho::SymbolChirho, &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::KnownNatChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::KnownCharChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::KnownSymbolChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for name_chirho in &["SomeNat", "SomeSymbol", "TypeError", "ErrorMessage"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -203,8 +214,15 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
+        let (k_chirho, v_chirho) =
+            mk_data_type_chirho(CompilerTypeConstructorChirho::NatChirho, &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::KnownNatChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in &[
-            "Natural", "Nat", "KnownNat", "SomeNat", "SNat", "CmpNat", "Div", "Mod", "Log2", "<=?",
+            "Natural", "SomeNat", "SNat", "CmpNat", "Div", "Mod", "Log2", "<=?",
         ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -420,17 +438,25 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
     // GHC.TypeLits
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &[
-            "Nat",
-            "Symbol",
-            "KnownNat",
-            "KnownChar",
-            "KnownSymbol",
-            "SomeNat",
-            "SomeSymbol",
-            "TypeError",
-            "ErrorMessage",
-        ] {
+        let (k_chirho, v_chirho) =
+            mk_data_type_chirho(CompilerTypeConstructorChirho::NatChirho, &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) =
+            mk_data_type_chirho(CompilerTypeConstructorChirho::SymbolChirho, &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::KnownNatChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::KnownCharChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::KnownSymbolChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for name_chirho in &["SomeNat", "SomeSymbol", "TypeError", "ErrorMessage"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -459,7 +485,14 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
     // GHC.TypeNats (re-exports from GHC.TypeLits plus extras)
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Nat", "KnownNat", "SomeNat", "<=?"] {
+        let (k_chirho, v_chirho) =
+            mk_data_type_chirho(CompilerTypeConstructorChirho::NatChirho, &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::KnownNatChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for name_chirho in &["SomeNat", "<=?"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
@@ -558,12 +591,25 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
+        let (k_chirho, v_chirho) =
+            mk_data_type_chirho(CompilerTypeConstructorChirho::NatChirho, &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) =
+            mk_data_type_chirho(CompilerTypeConstructorChirho::SymbolChirho, &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::KnownNatChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::KnownCharChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::KnownSymbolChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in &[
-            "Nat",
-            "Symbol",
-            "KnownNat",
-            "KnownChar",
-            "KnownSymbol",
             "SomeNat",
             "SomeSymbol",
             "TypeError",
@@ -590,7 +636,14 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &["Nat", "KnownNat", "SomeNat", "CmpNat", "<=?"] {
+        let (k_chirho, v_chirho) =
+            mk_data_type_chirho(CompilerTypeConstructorChirho::NatChirho, &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_class_type_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::KnownNatChirho,
+        );
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        for name_chirho in &["SomeNat", "CmpNat", "<=?"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
