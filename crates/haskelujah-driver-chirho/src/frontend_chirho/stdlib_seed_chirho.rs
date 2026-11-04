@@ -108,10 +108,10 @@ fn find_stdlib_dir_chirho() -> Option<PathBuf> {
         .ancestors()
         .nth(2)
         .map(|path_chirho| path_chirho.join("stdlib-chirho"));
-    if let Some(manifest_stdlib_dir_chirho) = manifest_stdlib_dir_chirho {
-        if stdlib_dir_is_valid_chirho(&manifest_stdlib_dir_chirho) {
-            return Some(manifest_stdlib_dir_chirho);
-        }
+    if let Some(manifest_stdlib_dir_chirho) = manifest_stdlib_dir_chirho
+        && stdlib_dir_is_valid_chirho(&manifest_stdlib_dir_chirho)
+    {
+        return Some(manifest_stdlib_dir_chirho);
     }
 
     if let Ok(current_exe_chirho) = std::env::current_exe() {
