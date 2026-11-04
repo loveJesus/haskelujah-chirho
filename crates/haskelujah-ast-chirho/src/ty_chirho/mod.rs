@@ -8,6 +8,8 @@ use haskelujah_span_chirho::SpanChirho;
 use crate::decl_chirho::TyVarChirho;
 use crate::name_chirho::NameChirho;
 
+pub mod inference_variables_chirho;
+
 /// Multiplicity annotation for LinearTypes (`a %1 -> b`, `a %Many -> b`).
 #[derive(Debug, Clone, PartialEq)]
 pub enum MultiplicityChirho {
@@ -33,6 +35,20 @@ pub enum TypeChirho {
         /// Type argument supplied to the function type.
         arg_chirho: Box<TypeChirho>,
         /// Span covering the whole type application.
+        span_chirho: SpanChirho,
+    },
+    /// A retained written kind annotation (`a :: k`).
+    KindAnnotationChirho {
+        ty_chirho: Box<TypeChirho>,
+        kind_chirho: Box<TypeChirho>,
+        span_chirho: SpanChirho,
+    },
+    /// A kind argument, written with `@` or elaborated from a declaration's
+    /// telescope. It never counts as an ordinary written type argument.
+    KindApplicationChirho {
+        fun_chirho: Box<TypeChirho>,
+        arg_chirho: Box<TypeChirho>,
+        written_chirho: bool,
         span_chirho: SpanChirho,
     },
     /// Function type (`a -> b`, `a %1 -> b`, `a ⊸ b`).
@@ -123,10 +139,19 @@ pub enum TypeChirho {
 /// A constraint in a type context.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConstraintChirho {
+    /// A written sort annotation on a complete constraint expression.
+    KindAnnotationChirho {
+        constraint_chirho: Box<ConstraintChirho>,
+        kind_chirho: Box<TypeChirho>,
+        span_chirho: SpanChirho,
+    },
     /// A simple class constraint such as `Eq a` or `Show (Maybe a)`.
     ClassChirho {
         class_chirho: NameChirho,
         args_chirho: Vec<TypeChirho>,
+        /// Hidden kind arguments retain their own prefix, never primary/extra
+        /// ordinary class arguments.
+        kind_args_chirho: Vec<TypeChirho>,
         span_chirho: SpanChirho,
     },
     /// A quantified constraint such as `forall a. Eq a => Show (f a)`.
@@ -139,11 +164,24 @@ pub enum ConstraintChirho {
 }
 
 impl ConstraintChirho {
+    /// An annotation preserves its check and source span, while consumers of
+    /// the predicate itself share one transparent structural view.
+    pub fn unannotated_chirho(&self) -> &Self {
+        let mut current_chirho = self;
+        while let Self::KindAnnotationChirho {
+            constraint_chirho, ..
+        } = current_chirho
+        {
+            current_chirho = constraint_chirho;
+        }
+        current_chirho
+    }
+
     pub fn span_chirho(&self) -> SpanChirho {
         match self {
-            Self::ClassChirho { span_chirho, .. } | Self::QuantifiedChirho { span_chirho, .. } => {
-                *span_chirho
-            }
+            Self::ClassChirho { span_chirho, .. }
+            | Self::QuantifiedChirho { span_chirho, .. }
+            | Self::KindAnnotationChirho { span_chirho, .. } => *span_chirho,
         }
     }
 
@@ -151,6 +189,9 @@ impl ConstraintChirho {
         match self {
             Self::ClassChirho { class_chirho, .. } => Some(class_chirho),
             Self::QuantifiedChirho { .. } => None,
+            Self::KindAnnotationChirho {
+                constraint_chirho, ..
+            } => constraint_chirho.simple_class_chirho(),
         }
     }
 
@@ -158,6 +199,9 @@ impl ConstraintChirho {
         match self {
             Self::ClassChirho { args_chirho, .. } => Some(args_chirho.as_slice()),
             Self::QuantifiedChirho { .. } => None,
+            Self::KindAnnotationChirho {
+                constraint_chirho, ..
+            } => constraint_chirho.simple_args_chirho(),
         }
     }
 }
@@ -169,6 +213,8 @@ impl TypeChirho {
             Self::VarChirho(n_chirho) => n_chirho.span_chirho(),
             Self::ConChirho(n_chirho) => n_chirho.span_chirho(),
             Self::AppChirho { span_chirho, .. }
+            | Self::KindAnnotationChirho { span_chirho, .. }
+            | Self::KindApplicationChirho { span_chirho, .. }
             | Self::FunChirho { span_chirho, .. }
             | Self::TupleChirho { span_chirho, .. }
             | Self::ListChirho { span_chirho, .. }
@@ -180,6 +226,62 @@ impl TypeChirho {
             | Self::PromotedListChirho { span_chirho, .. }
             | Self::WildcardChirho { span_chirho }
             | Self::LitChirho { span_chirho, .. } => *span_chirho,
+        }
+    }
+}
+
+/// The former restricted kind syntax is a compatibility construction view.
+/// Written producers retain TypeChirho directly and never project through it.
+impl From<crate::decl_chirho::AstKindChirho> for TypeChirho {
+    fn from(kind_chirho: crate::decl_chirho::AstKindChirho) -> Self {
+        use crate::decl_chirho::AstKindChirho;
+        use crate::name_chirho::{
+            CompilerTypeConstructorChirho, RawNameChirho, TypeConstructorDeclarationChirho,
+        };
+        let name_chirho = |text_chirho: &str| {
+            NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                text_chirho,
+                SpanChirho::DUMMY_CHIRHO,
+            ))
+        };
+        match kind_chirho {
+            AstKindChirho::StarChirho => {
+                let mut written_chirho = name_chirho("*");
+                written_chirho.set_type_constructor_chirho(Some(
+                    TypeConstructorDeclarationChirho::compiler_data_chirho(
+                        CompilerTypeConstructorChirho::TypeUniverseChirho,
+                    ),
+                ));
+                Self::ConChirho(written_chirho)
+            }
+            AstKindChirho::ConstraintChirho => {
+                let mut written_chirho = name_chirho("Constraint");
+                written_chirho.set_type_constructor_chirho(Some(
+                    TypeConstructorDeclarationChirho::compiler_data_chirho(
+                        CompilerTypeConstructorChirho::ConstraintUniverseChirho,
+                    ),
+                ));
+                Self::ConChirho(written_chirho)
+            }
+            AstKindChirho::VarChirho(text_chirho) => {
+                let written_chirho = name_chirho(&text_chirho);
+                if text_chirho.chars().next().is_some_and(char::is_uppercase) {
+                    Self::ConChirho(written_chirho)
+                } else {
+                    Self::VarChirho(written_chirho)
+                }
+            }
+            AstKindChirho::AppChirho(fun_chirho, arg_chirho) => Self::AppChirho {
+                fun_chirho: Box::new((*fun_chirho).into()),
+                arg_chirho: Box::new((*arg_chirho).into()),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            AstKindChirho::ArrowChirho(arg_chirho, result_chirho) => Self::FunChirho {
+                arg_chirho: Box::new((*arg_chirho).into()),
+                mult_chirho: None,
+                result_chirho: Box::new((*result_chirho).into()),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
         }
     }
 }

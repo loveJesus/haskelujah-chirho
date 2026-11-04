@@ -156,7 +156,6 @@ impl LowerCtxChirho {
         let mut type_vars_chirho = Vec::new();
         let mut skip_until_child_idx_chirho: Option<usize> = None;
         let mut next_binder_is_visible_kind_chirho = false;
-        let mut visible_kind_binder_names_chirho = HashSet::new();
         for (tok_chirho, s_chirho, tok_idx_chirho) in head_tokens_chirho {
             if skip_until_child_idx_chirho
                 .is_some_and(|skip_idx_chirho| *tok_idx_chirho < skip_idx_chirho)
@@ -184,8 +183,6 @@ impl LowerCtxChirho {
             } else if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho {
                 let type_var_name_chirho = self.name_from_token_chirho(tok_chirho, *s_chirho);
                 if next_binder_is_visible_kind_chirho {
-                    visible_kind_binder_names_chirho
-                        .insert(type_var_name_chirho.text_chirho().to_string());
                     next_binder_is_visible_kind_chirho = false;
                 } else {
                     type_vars_chirho.push(type_var_name_chirho.into());
@@ -271,7 +268,6 @@ impl LowerCtxChirho {
             where_decls_chirho,
             &default_impls_chirho,
             &default_sigs_chirho,
-            &visible_kind_binder_names_chirho,
         );
         DeclChirho::ClassDeclChirho {
             context_chirho,
@@ -441,6 +437,7 @@ impl LowerCtxChirho {
                 // or `type instance F args = rhs`, with its written arguments in order.
                 DeclChirho::TypeFamilyInstanceDeclChirho {
                     family_name_chirho,
+                    kind_args_chirho,
                     lhs_types_chirho,
                     rhs_chirho,
                     span_chirho,
@@ -448,6 +445,7 @@ impl LowerCtxChirho {
                     assoc_tf_insts_chirho.push(
                         haskelujah_ast_chirho::decl_chirho::AssocTfInstanceChirho {
                             family_name_chirho,
+                            kind_args_chirho,
                             lhs_types_chirho,
                             rhs_chirho,
                             span_chirho,
@@ -460,6 +458,7 @@ impl LowerCtxChirho {
             .collect();
 
         DeclChirho::InstanceDeclChirho {
+            kind_args_chirho: Vec::new(),
             context_chirho,
             class_chirho: class_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
             types_chirho: instance_type_chirho,

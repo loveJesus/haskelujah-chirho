@@ -242,6 +242,7 @@ pub(in crate::dict_chirho) fn readable_instance_chirho(instance_chirho: &InstDec
     format!(
         "{}",
         PredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: instance_chirho.class_name_chirho.clone(),
             ty_chirho: lettered_chirho(&instance_chirho.head_ty_chirho, &mut letters_chirho),
             extra_tys_chirho: instance_chirho
@@ -259,6 +260,7 @@ fn readable_pred_chirho(pred_chirho: &PredChirho) -> String {
     format!(
         "{}",
         PredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: pred_chirho.class_name_chirho.clone(),
             ty_chirho: lettered_chirho(&pred_chirho.ty_chirho, &mut letters_chirho),
             extra_tys_chirho: pred_chirho

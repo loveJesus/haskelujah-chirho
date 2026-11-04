@@ -284,6 +284,16 @@ pub fn stamp_promotions_chirho(ty_chirho: &mut TypeChirho, scope_chirho: &Promot
             fun_chirho,
             arg_chirho,
             ..
+        }
+        | TypeChirho::KindApplicationChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        }
+        | TypeChirho::KindAnnotationChirho {
+            ty_chirho: fun_chirho,
+            kind_chirho: arg_chirho,
+            ..
         } => {
             stamp_promotions_chirho(fun_chirho, scope_chirho);
             stamp_promotions_chirho(arg_chirho, scope_chirho);
@@ -322,8 +332,21 @@ pub fn stamp_promotions_chirho(ty_chirho: &mut TypeChirho, scope_chirho: &Promot
             }
             stamp_promotions_chirho(body_chirho, scope_chirho);
         }
-        TypeChirho::ForallChirho { body_chirho, .. }
-        | TypeChirho::RequiredForallChirho { body_chirho, .. } => {
+        TypeChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        }
+        | TypeChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        } => {
+            for binder_chirho in vars_chirho {
+                if let Some(kind_chirho) = &mut binder_chirho.kind_annotation_chirho {
+                    stamp_promotions_chirho(kind_chirho, scope_chirho);
+                }
+            }
             stamp_promotions_chirho(body_chirho, scope_chirho);
         }
         TypeChirho::VarChirho(_)
@@ -337,16 +360,34 @@ fn stamp_constraint_promotions_chirho(
     scope_chirho: &PromotionScopeChirho,
 ) {
     match constraint_chirho {
-        ConstraintChirho::ClassChirho { args_chirho, .. } => {
-            for arg_chirho in args_chirho {
+        ConstraintChirho::ClassChirho {
+            args_chirho,
+            kind_args_chirho,
+            ..
+        } => {
+            for arg_chirho in kind_args_chirho.iter_mut().chain(args_chirho) {
                 stamp_promotions_chirho(arg_chirho, scope_chirho);
             }
         }
+        ConstraintChirho::KindAnnotationChirho {
+            constraint_chirho,
+            kind_chirho,
+            ..
+        } => {
+            stamp_constraint_promotions_chirho(constraint_chirho, scope_chirho);
+            stamp_promotions_chirho(kind_chirho, scope_chirho);
+        }
         ConstraintChirho::QuantifiedChirho {
+            vars_chirho,
             context_chirho,
             body_chirho,
             ..
         } => {
+            for binder_chirho in vars_chirho {
+                if let Some(kind_chirho) = &mut binder_chirho.kind_annotation_chirho {
+                    stamp_promotions_chirho(kind_chirho, scope_chirho);
+                }
+            }
             for context_constraint_chirho in context_chirho {
                 stamp_constraint_promotions_chirho(context_constraint_chirho, scope_chirho);
             }

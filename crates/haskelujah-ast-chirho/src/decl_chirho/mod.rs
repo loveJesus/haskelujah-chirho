@@ -48,6 +48,8 @@ pub enum AstKindChirho {
 /// `F Int = Bool`, `Succ a + b = Succ (a + b)` or `forall x. F [x] = x`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeFamilyEquationChirho {
+    /// Elaborated hidden kind prefix, independent of the written visible LHS.
+    pub kind_args_chirho: Vec<TypeChirho>,
     /// The type constructor heading the left side, in any written form: prefix,
     /// infix, `(op)` prefix, backtick or parenthesized (`(F a) b`). `None` when no
     /// type constructor heads it (`a Int = …`, `3 = …`); validity reports that.
@@ -93,6 +95,14 @@ pub enum TyVarVisibilityChirho {
     InvisibleChirho,
 }
 
+/// Whether an invisible quantifier can be selected by written `@` syntax.
+/// This is independent of declaration-head/required argument visibility.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TyVarSpecificityChirho {
+    SpecifiedChirho,
+    InferredChirho,
+}
+
 /// A type variable, optionally annotated with a kind signature.
 ///
 /// Without KindSignatures: `data Foo a = ...` → `TyVarChirho { name: a, kind: None }`
@@ -102,9 +112,10 @@ pub struct TyVarChirho {
     /// The source name of the type variable.
     pub name_chirho: NameChirho,
     /// Optional kind annotation supplied in source.
-    pub kind_annotation_chirho: Option<AstKindChirho>,
+    pub kind_annotation_chirho: Option<Box<TypeChirho>>,
     /// Head binders remain in lexical scope even when they are invisible.
     pub visibility_chirho: TyVarVisibilityChirho,
+    pub specificity_chirho: TyVarSpecificityChirho,
 }
 
 impl TyVarChirho {
@@ -114,15 +125,17 @@ impl TyVarChirho {
             name_chirho,
             kind_annotation_chirho: None,
             visibility_chirho: TyVarVisibilityChirho::VisibleChirho,
+            specificity_chirho: TyVarSpecificityChirho::SpecifiedChirho,
         }
     }
 
     /// Create a type variable with a kind annotation.
-    pub fn annotated_chirho(name_chirho: NameChirho, kind_chirho: AstKindChirho) -> Self {
+    pub fn annotated_chirho(name_chirho: NameChirho, kind_chirho: impl Into<TypeChirho>) -> Self {
         Self {
             name_chirho,
-            kind_annotation_chirho: Some(kind_chirho),
+            kind_annotation_chirho: Some(Box::new(kind_chirho.into())),
             visibility_chirho: TyVarVisibilityChirho::VisibleChirho,
+            specificity_chirho: TyVarSpecificityChirho::SpecifiedChirho,
         }
     }
 
@@ -295,6 +308,8 @@ pub enum DeclChirho {
     },
     /// Open type family instance (`type instance F Int = Bool`).
     TypeFamilyInstanceDeclChirho {
+        /// Hidden kind arguments selected by this equation.
+        kind_args_chirho: Vec<TypeChirho>,
         /// Family being instantiated.
         family_name_chirho: NameChirho,
         /// Left-hand-side instance arguments.
@@ -324,6 +339,8 @@ pub enum DeclChirho {
     },
     /// Instance declaration.
     InstanceDeclChirho {
+        /// Hidden class arguments, excluded from ordinary parameter positions.
+        kind_args_chirho: Vec<TypeChirho>,
         /// Constraints required by the instance head.
         context_chirho: Vec<ConstraintChirho>,
         /// Class implemented by the instance.
@@ -532,8 +549,12 @@ pub struct ClassMethodChirho {
 pub struct AssocTypeFamilyChirho {
     /// Name of the associated type family.
     pub name_chirho: NameChirho,
-    /// Family parameters declared in the class body.
-    pub type_vars_chirho: Vec<NameChirho>,
+    /// Complete written family telescope, including hidden binders and kinds.
+    /// Visible application arity projects only binders whose visibility is visible.
+    pub type_vars_chirho: Vec<TyVarChirho>,
+    /// The written result kind. Its arrows and named result binder are never
+    /// additional declaration parameters.
+    pub result_kind_chirho: Option<TypeChirho>,
     /// Whether the class member is a data family rather than a type family.
     pub data_family_chirho: bool,
     /// Optional default: `type FamilyName a = DefaultType`.
@@ -555,6 +576,8 @@ pub struct AssocTypeFamilyChirho {
 /// `type FamilyName ConcreteType = ResultType`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AssocTfInstanceChirho {
+    /// Hidden family kind prefix, separate from written ordinary arguments.
+    pub kind_args_chirho: Vec<TypeChirho>,
     /// Associated family name being instantiated.
     pub family_name_chirho: NameChirho,
     /// Concrete left-hand-side arguments for the instance.

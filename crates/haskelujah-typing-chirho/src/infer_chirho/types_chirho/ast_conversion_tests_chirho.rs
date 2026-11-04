@@ -171,6 +171,7 @@ fn nested_forall_shadows_restore_each_lexical_scope_chirho() {
 fn eq_context_chirho(body_chirho: TypeChirho) -> TypeChirho {
     TypeChirho::QualChirho {
         context_chirho: vec![ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: name_chirho("Eq"),
             args_chirho: vec![var_chirho("aChirho")],
             span_chirho: SpanChirho::DUMMY_CHIRHO,

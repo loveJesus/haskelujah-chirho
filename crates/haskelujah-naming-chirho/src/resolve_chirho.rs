@@ -699,9 +699,22 @@ fn type_con_names_chirho(ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirh
             fun_chirho,
             arg_chirho,
             ..
+        }
+        | TypeChirho::KindApplicationChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
         } => {
             result_chirho.extend(type_con_names_chirho(fun_chirho));
             result_chirho.extend(type_con_names_chirho(arg_chirho));
+        }
+        TypeChirho::KindAnnotationChirho {
+            ty_chirho,
+            kind_chirho,
+            ..
+        } => {
+            result_chirho.extend(type_con_names_chirho(ty_chirho));
+            result_chirho.extend(type_con_names_chirho(kind_chirho));
         }
         TypeChirho::FunChirho {
             arg_chirho,
@@ -724,8 +737,21 @@ fn type_con_names_chirho(ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirh
         TypeChirho::ParenChirho { inner_chirho, .. } => {
             result_chirho.extend(type_con_names_chirho(inner_chirho));
         }
-        TypeChirho::ForallChirho { body_chirho, .. }
-        | TypeChirho::RequiredForallChirho { body_chirho, .. } => {
+        TypeChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        }
+        | TypeChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        } => {
+            for binder_chirho in vars_chirho {
+                if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                    result_chirho.extend(type_con_names_chirho(kind_chirho));
+                }
+            }
             result_chirho.extend(type_con_names_chirho(body_chirho));
         }
         TypeChirho::QualChirho { body_chirho, .. } => {
@@ -766,6 +792,7 @@ pub fn check_orphan_instances_chirho(module_chirho: &ModuleChirho) -> Diagnostic
     for decl_chirho in &module_chirho.decls_chirho {
         if let haskelujah_ast_chirho::decl_chirho::DeclChirho::InstanceDeclChirho {
             class_chirho,
+            kind_args_chirho,
             types_chirho,
             span_chirho,
             ..
@@ -775,7 +802,7 @@ pub fn check_orphan_instances_chirho(module_chirho: &ModuleChirho) -> Diagnostic
 
             // Collect all type constructors from the instance head types.
             let mut head_cons_chirho: Vec<String> = Vec::new();
-            for ty_chirho in types_chirho {
+            for ty_chirho in kind_args_chirho.iter().chain(types_chirho) {
                 head_cons_chirho.extend(type_con_names_chirho(ty_chirho));
             }
 
@@ -1743,6 +1770,7 @@ mod tests_chirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 DeclChirho::InstanceDeclChirho {
+                    kind_args_chirho: Vec::new(),
                     context_chirho: vec![],
                     class_chirho: dummy_name_chirho("MyClass"),
                     types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Int"))],
@@ -1777,6 +1805,7 @@ mod tests_chirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 DeclChirho::InstanceDeclChirho {
+                    kind_args_chirho: Vec::new(),
                     context_chirho: vec![],
                     class_chirho: dummy_name_chirho("Show"),
                     types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Color"))],
@@ -1802,6 +1831,7 @@ mod tests_chirho {
 
         let module_chirho = mk_module_chirho(
             vec![DeclChirho::InstanceDeclChirho {
+                kind_args_chirho: Vec::new(),
                 context_chirho: vec![],
                 class_chirho: dummy_name_chirho("Show"),
                 types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Int"))],
@@ -1851,6 +1881,7 @@ mod tests_chirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 DeclChirho::InstanceDeclChirho {
+                    kind_args_chirho: Vec::new(),
                     context_chirho: vec![],
                     class_chirho: dummy_name_chirho("Show"),
                     types_chirho: vec![TypeChirho::AppChirho {
@@ -1881,6 +1912,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(
             vec![
                 DeclChirho::InstanceDeclChirho {
+                    kind_args_chirho: Vec::new(),
                     context_chirho: vec![],
                     class_chirho: dummy_name_chirho("Show"),
                     types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Int"))],
@@ -1889,6 +1921,7 @@ mod tests_chirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 DeclChirho::InstanceDeclChirho {
+                    kind_args_chirho: Vec::new(),
                     context_chirho: vec![],
                     class_chirho: dummy_name_chirho("Eq"),
                     types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Bool"))],

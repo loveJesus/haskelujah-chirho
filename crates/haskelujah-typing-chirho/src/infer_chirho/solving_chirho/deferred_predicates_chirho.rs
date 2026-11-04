@@ -53,6 +53,7 @@ impl InferCtxChirho {
             .given_preds_chirho
             .iter()
             .map(|pred_chirho| PredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
                 ty_chirho: self.normalize_ty_chirho(
                     &final_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
@@ -112,6 +113,7 @@ impl InferCtxChirho {
                 .map(|t_chirho| self.normalize_ty_chirho(&t_chirho))
                 .collect();
             let mut resolved_pred_chirho = PredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
                 ty_chirho: resolved_ty_chirho,
                 extra_tys_chirho: resolved_extra_tys_chirho,
@@ -284,6 +286,7 @@ impl InferCtxChirho {
                 continue;
             }
             let defaulted_pred_chirho = PredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
                 ty_chirho: default_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
                 extra_tys_chirho: pred_chirho
@@ -315,6 +318,7 @@ impl InferCtxChirho {
             // substitution to extras too (apply_subst_all_chirho maintains
             // only the primary type during inference).
             let fully_resolved_pred_chirho = PredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: defaulted_pred_chirho.class_name_chirho.clone(),
                 ty_chirho: final_subst_chirho.apply_ty_chirho(&defaulted_pred_chirho.ty_chirho),
                 extra_tys_chirho: defaulted_pred_chirho

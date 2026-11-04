@@ -365,6 +365,7 @@ pub(super) fn derive_show_chirho(
         .iter()
         .map(
             |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                kind_args_chirho: Vec::new(),
                 class_chirho: var_name_chirho("Show"),
                 args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
                 span_chirho: gen_span_chirho(),
@@ -373,6 +374,7 @@ pub(super) fn derive_show_chirho(
         .collect();
 
     DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho,
         class_chirho: var_name_chirho("Show"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],

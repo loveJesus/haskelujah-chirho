@@ -402,6 +402,7 @@ fn derive_anyclass_chirho(
         types_chirho.push(TypeChirho::VarChirho(tv_chirho.name_chirho.clone()));
     }
     DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: class_name_chirho.clone(),
         types_chirho,
@@ -439,6 +440,7 @@ fn derive_via_chirho(
     // type's methods by unwrapping the newtype. The via type's class instance
     // is already available in the environment, so no context constraint needed.
     DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: class_name_chirho.clone(),
         types_chirho: vec![TypeChirho::ConChirho(type_name_chirho.clone())],
@@ -842,6 +844,7 @@ fn derive_eq_chirho(
         .iter()
         .map(
             |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                kind_args_chirho: Vec::new(),
                 class_chirho: var_name_chirho("Eq"),
                 args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
                 span_chirho: gen_span_chirho(),
@@ -850,6 +853,7 @@ fn derive_eq_chirho(
         .collect();
 
     DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho,
         class_chirho: var_name_chirho("Eq"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
@@ -991,6 +995,7 @@ fn derive_ord_chirho(
         .iter()
         .map(
             |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                kind_args_chirho: Vec::new(),
                 class_chirho: var_name_chirho("Ord"),
                 args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
                 span_chirho: gen_span_chirho(),
@@ -999,6 +1004,7 @@ fn derive_ord_chirho(
         .collect();
 
     DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho,
         class_chirho: var_name_chirho("Ord"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
@@ -1179,6 +1185,7 @@ fn derive_enum_chirho(
     };
 
     Ok(DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: var_name_chirho("Enum"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
@@ -1257,6 +1264,7 @@ fn derive_bounded_chirho(
     };
 
     Ok(DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: var_name_chirho("Bounded"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
@@ -1387,6 +1395,7 @@ fn derive_read_chirho(
         .iter()
         .map(
             |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                kind_args_chirho: Vec::new(),
                 class_chirho: var_name_chirho("Read"),
                 args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
                 span_chirho: gen_span_chirho(),
@@ -1395,6 +1404,7 @@ fn derive_read_chirho(
         .collect();
 
     DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho,
         class_chirho: var_name_chirho("Read"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
@@ -1453,6 +1463,7 @@ fn derive_newtype_gnd_chirho(
     // Build context: ClassChirho underlyingType
     let context_chirho = vec![
         haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: class_name_chirho.clone(),
             args_chirho: vec![underlying_type_chirho],
             span_chirho: gen_span_chirho(),
@@ -1460,6 +1471,7 @@ fn derive_newtype_gnd_chirho(
     ];
 
     DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho,
         class_chirho: class_name_chirho.clone(),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
@@ -1602,6 +1614,7 @@ fn derive_functor_chirho(
         .filter(|_| false) // No Functor constraints on other vars needed
         .map(
             |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
+                kind_args_chirho: Vec::new(),
                 class_chirho: var_name_chirho("Functor"),
                 args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
                 span_chirho: gen_span_chirho(),
@@ -1625,6 +1638,7 @@ fn derive_functor_chirho(
     };
 
     Ok(DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho,
         class_chirho: var_name_chirho("Functor"),
         types_chirho: vec![instance_ty_chirho],
@@ -1716,6 +1730,7 @@ fn derive_foldable_chirho(
     };
 
     Ok(DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: var_name_chirho("Foldable"),
         types_chirho: vec![instance_ty_chirho],
@@ -1823,6 +1838,7 @@ fn derive_traversable_chirho(
     };
 
     Ok(DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: var_name_chirho("Traversable"),
         types_chirho: vec![instance_ty_chirho],
@@ -1925,6 +1941,7 @@ fn derive_generic_chirho(
     };
 
     Ok(DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: var_name_chirho("Generic"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],

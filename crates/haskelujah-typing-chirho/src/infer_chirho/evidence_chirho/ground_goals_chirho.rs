@@ -95,6 +95,7 @@ pub(crate) fn ground_pred_chirho(
     let ty_chirho = arguments_chirho.next()??;
     let extra_tys_chirho = arguments_chirho.collect::<Option<Vec<_>>>()?;
     Some(PredChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: class_chirho.to_owned(),
         ty_chirho,
         extra_tys_chirho,

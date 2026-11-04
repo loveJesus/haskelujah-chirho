@@ -266,15 +266,22 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
                 exports_chirho.values_chirho.insert(k_chirho, v_chirho);
             }
         }
+        // Compiler primitive type identities are minted at this actual seed,
+        // independently of whether their constructors are exported.
+        for constructor_chirho in &[
+            CompilerTypeConstructorChirho::IntChirho,
+            CompilerTypeConstructorChirho::IntegerChirho,
+            CompilerTypeConstructorChirho::CharChirho,
+            CompilerTypeConstructorChirho::FloatChirho,
+            CompilerTypeConstructorChirho::DoubleChirho,
+            CompilerTypeConstructorChirho::IoChirho,
+        ] {
+            let (key_chirho, ty_chirho) = mk_data_type_chirho(*constructor_chirho, &[]);
+            exports_chirho.types_chirho.insert(key_chirho, ty_chirho);
+        }
         // Prelude types without data constructors
         for name_chirho in &[
-            "IO",
             "String",
-            "Char",
-            "Int",
-            "Integer",
-            "Float",
-            "Double",
             "Rational",
             "ShowS",
             "ReadS",

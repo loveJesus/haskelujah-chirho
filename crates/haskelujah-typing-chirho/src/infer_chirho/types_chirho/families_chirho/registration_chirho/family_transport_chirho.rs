@@ -37,8 +37,14 @@ pub fn stamp_family_references_chirho(
         }
         *budget_chirho -= 1;
         match constraint_value_chirho {
-            ConstraintChirho::ClassChirho { args_chirho, .. } => {
-                args_chirho.iter_mut().all(|argument_chirho| {
+            ConstraintChirho::ClassChirho {
+                args_chirho,
+                kind_args_chirho,
+                ..
+            } => kind_args_chirho
+                .iter_mut()
+                .chain(args_chirho)
+                .all(|argument_chirho| {
                     walk_chirho(
                         argument_chirho,
                         scope_chirho,
@@ -47,7 +53,27 @@ pub fn stamp_family_references_chirho(
                         budget_chirho,
                         depth_chirho + 1,
                     )
-                })
+                }),
+            ConstraintChirho::KindAnnotationChirho {
+                constraint_chirho,
+                kind_chirho,
+                ..
+            } => {
+                walk_constraint_chirho(
+                    constraint_chirho,
+                    scope_chirho,
+                    registry_chirho,
+                    module_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                ) && walk_chirho(
+                    kind_chirho,
+                    scope_chirho,
+                    registry_chirho,
+                    module_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )
             }
             ConstraintChirho::QuantifiedChirho {
                 context_chirho,
@@ -104,6 +130,16 @@ pub fn stamp_family_references_chirho(
             TypeChirho::AppChirho {
                 fun_chirho,
                 arg_chirho,
+                ..
+            }
+            | TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            }
+            | TypeChirho::KindAnnotationChirho {
+                ty_chirho: fun_chirho,
+                kind_chirho: arg_chirho,
                 ..
             }
             | TypeChirho::FunChirho {
@@ -242,6 +278,16 @@ pub(super) fn family_rhs_supported_chirho(
         TypeChirho::AppChirho {
             fun_chirho,
             arg_chirho,
+            ..
+        }
+        | TypeChirho::KindApplicationChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        }
+        | TypeChirho::KindAnnotationChirho {
+            ty_chirho: fun_chirho,
+            kind_chirho: arg_chirho,
             ..
         } => {
             family_rhs_supported_chirho(fun_chirho, pattern_chirho, work_chirho, depth_chirho + 1)

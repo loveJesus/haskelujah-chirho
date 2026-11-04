@@ -226,6 +226,7 @@ impl InferCtxChirho {
                 && !contains_skolem_chirho(&rhs_chirho)
             {
                 predicates_chirho.push(SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "~".to_owned(),
                     ty_chirho: lhs_chirho,
                     extra_tys_chirho: vec![rhs_chirho],

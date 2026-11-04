@@ -484,23 +484,27 @@ fn constraint_shape_chirho(constraint_chirho: &ConstraintChirho) -> String {
     match constraint_chirho {
         ConstraintChirho::ClassChirho {
             class_chirho,
+            kind_args_chirho,
             args_chirho,
             ..
-        } => {
-            if args_chirho.is_empty() {
-                class_chirho.text_chirho().to_string()
-            } else {
-                format!(
-                    "{} {}",
-                    class_chirho.text_chirho(),
-                    args_chirho
-                        .iter()
-                        .map(type_shape_chirho)
-                        .collect::<Vec<_>>()
-                        .join(" ")
-                )
-            }
-        }
+        } => std::iter::once(class_chirho.text_chirho().to_string())
+            .chain(
+                kind_args_chirho
+                    .iter()
+                    .map(|kind_chirho| format!("@{}", type_shape_chirho(kind_chirho))),
+            )
+            .chain(args_chirho.iter().map(type_shape_chirho))
+            .collect::<Vec<_>>()
+            .join(" "),
+        ConstraintChirho::KindAnnotationChirho {
+            constraint_chirho,
+            kind_chirho,
+            ..
+        } => format!(
+            "({} :: {})",
+            constraint_shape_chirho(constraint_chirho),
+            type_shape_chirho(kind_chirho)
+        ),
         ConstraintChirho::QuantifiedChirho {
             vars_chirho,
             context_chirho,
@@ -614,6 +618,24 @@ pub(super) fn type_shape_chirho(ty_chirho: &TypeChirho) -> String {
             "({} {})",
             type_shape_chirho(fun_chirho),
             type_shape_chirho(arg_chirho)
+        ),
+        TypeChirho::KindApplicationChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => format!(
+            "({} @{})",
+            type_shape_chirho(fun_chirho),
+            type_shape_chirho(arg_chirho)
+        ),
+        TypeChirho::KindAnnotationChirho {
+            ty_chirho,
+            kind_chirho,
+            ..
+        } => format!(
+            "({} :: {})",
+            type_shape_chirho(ty_chirho),
+            type_shape_chirho(kind_chirho)
         ),
         TypeChirho::FunChirho {
             arg_chirho,

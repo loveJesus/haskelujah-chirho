@@ -168,7 +168,8 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
         }],
         associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
             name_chirho: dummy_name_chirho("Rep"),
-            type_vars_chirho: vec![dummy_name_chirho("f")],
+            result_kind_chirho: None,
+            type_vars_chirho: vec![dummy_name_chirho("f").into()],
             data_family_chirho: false,
             default_rhs_chirho: None,
             default_params_chirho: vec![],
@@ -180,6 +181,7 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
     };
 
     let instance_decl_ast_chirho = DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: dummy_name_chirho("Representable"),
         types_chirho: vec![product_head_ast_chirho.clone()],
@@ -322,7 +324,8 @@ fn infer_proxy_index_instance_method_reduces_rep_to_unit_chirho() {
                 associated_tfs_chirho: vec![
                     haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
                         name_chirho: dummy_name_chirho("Rep"),
-                        type_vars_chirho: vec![dummy_name_chirho("f")],
+                        result_kind_chirho: None,
+                        type_vars_chirho: vec![dummy_name_chirho("f").into()],
                         data_family_chirho: false,
                         default_rhs_chirho: None,
                         default_params_chirho: vec![],
@@ -334,6 +337,7 @@ fn infer_proxy_index_instance_method_reduces_rep_to_unit_chirho() {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             DeclChirho::InstanceDeclChirho {
+                kind_args_chirho: Vec::new(),
                 context_chirho: vec![],
                 class_chirho: dummy_name_chirho("Representable"),
                 types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Proxy"))],
@@ -477,7 +481,8 @@ fn infer_tabulate_application_after_tuple_projection_keeps_component_functor_chi
         }],
         associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
             name_chirho: dummy_name_chirho("Rep"),
-            type_vars_chirho: vec![dummy_name_chirho("f")],
+            result_kind_chirho: None,
+            type_vars_chirho: vec![dummy_name_chirho("f").into()],
             data_family_chirho: false,
             default_rhs_chirho: None,
             default_params_chirho: vec![],

@@ -93,6 +93,16 @@ impl<'a> SignatureOccurrencesChirho<'a> {
                 fun_chirho,
                 arg_chirho,
                 ..
+            }
+            | TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            }
+            | TypeChirho::KindAnnotationChirho {
+                ty_chirho: fun_chirho,
+                kind_chirho: arg_chirho,
+                ..
             } => {
                 self.type_chirho(fun_chirho);
                 self.type_chirho(arg_chirho);
@@ -145,6 +155,11 @@ impl<'a> SignatureOccurrencesChirho<'a> {
                 ..
             } => {
                 self.enter_chirho(vars_chirho);
+                for binder_chirho in vars_chirho {
+                    if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                        self.type_chirho(kind_chirho);
+                    }
+                }
                 self.type_chirho(body_chirho);
                 self.leave_chirho(vars_chirho);
             }
@@ -157,8 +172,20 @@ impl<'a> SignatureOccurrencesChirho<'a> {
 
     fn constraint_chirho(&mut self, constraint_chirho: &'a ConstraintChirho) {
         match constraint_chirho {
-            ConstraintChirho::ClassChirho { args_chirho, .. } => {
-                for arg_chirho in args_chirho {
+            ConstraintChirho::KindAnnotationChirho {
+                constraint_chirho,
+                kind_chirho,
+                ..
+            } => {
+                self.constraint_chirho(constraint_chirho);
+                self.type_chirho(kind_chirho);
+            }
+            ConstraintChirho::ClassChirho {
+                args_chirho,
+                kind_args_chirho,
+                ..
+            } => {
+                for arg_chirho in kind_args_chirho.iter().chain(args_chirho) {
                     self.type_chirho(arg_chirho);
                 }
             }

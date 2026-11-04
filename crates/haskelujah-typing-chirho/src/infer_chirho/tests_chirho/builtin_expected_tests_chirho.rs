@@ -89,6 +89,7 @@ fn seed_builtins_include_polymorphic_monadfix_method_chirho() {
         &SchemeChirho {
             vars_chirho: vec![mfix_m_chirho, mfix_a_chirho],
             preds_chirho: vec![SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "MonadFix".to_string(),
                 ty_chirho: TyChirho::VarChirho(mfix_m_chirho),
                 extra_tys_chirho: vec![],
@@ -156,6 +157,7 @@ fn builtin_enum_from_to_is_enum_polymorphic_chirho() {
         &SchemeChirho {
             vars_chirho: vec![ef_a_chirho],
             preds_chirho: vec![SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "Enum".to_string(),
                 ty_chirho: TyChirho::VarChirho(ef_a_chirho),
                 extra_tys_chirho: vec![],

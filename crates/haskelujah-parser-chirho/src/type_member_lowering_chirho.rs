@@ -23,7 +23,6 @@ pub(crate) fn partition_class_members_chirho(
     where_decls_chirho: Vec<DeclChirho>,
     default_impls_chirho: &HashMap<String, Vec<MatchArmChirho>>,
     default_sigs_chirho: &HashMap<String, String>,
-    visible_kind_binder_names_chirho: &HashSet<String>,
 ) -> (Vec<ClassMethodChirho>, Vec<AssocTypeFamilyChirho>) {
     // `type Member :: Kind` currently reaches AST lowering as two type
     // signatures with the same span: the recovery name `type` and the real
@@ -59,6 +58,7 @@ pub(crate) fn partition_class_members_chirho(
                         name_chirho,
                         data_family_chirho: false,
                         type_vars_chirho: Vec::new(),
+                        result_kind_chirho: Some(ty_chirho),
                         default_rhs_chirho: None,
                         default_params_chirho: Vec::new(),
                         default_binders_chirho: None,
@@ -81,39 +81,43 @@ pub(crate) fn partition_class_members_chirho(
                 name_chirho,
                 type_vars_chirho,
                 data_family_chirho,
-                equations_chirho,
+                result_kind_chirho,
+                mut equations_chirho,
                 span_chirho,
                 ..
             } => {
+                let default_equation_chirho = (equations_chirho.len() == 1)
+                    .then(|| equations_chirho.pop().expect("one equation"));
+                let default_params_chirho = default_equation_chirho
+                    .as_ref()
+                    .map(|equation_chirho| {
+                        equation_chirho
+                            .lhs_types_chirho
+                            .iter()
+                            .map(|lhs_ty_chirho| match lhs_ty_chirho {
+                                TypeChirho::VarChirho(name_chirho) => Some(name_chirho.clone()),
+                                _ => None,
+                            })
+                            .collect::<Option<Vec<NameChirho>>>()
+                            .unwrap_or_default()
+                    })
+                    .unwrap_or_default();
                 let default_rhs_chirho =
-                    (equations_chirho.len() == 1).then(|| equations_chirho[0].rhs_chirho.clone());
-                let default_params_chirho = if equations_chirho.len() == 1 {
-                    equations_chirho[0]
-                        .lhs_types_chirho
-                        .iter()
-                        .map(|lhs_ty_chirho| match lhs_ty_chirho {
-                            TypeChirho::VarChirho(name_chirho) => Some(name_chirho.clone()),
-                            _ => None,
-                        })
-                        .collect::<Option<Vec<NameChirho>>>()
-                        .unwrap_or_default()
-                } else {
-                    Vec::new()
-                };
+                    default_equation_chirho.map(|equation_chirho| equation_chirho.rhs_chirho);
+                // A default owns the complete scoped CST binder account,
+                // including invisible kind-only names. It is not a second
+                // canonical header when a bodiless declaration accompanies it.
+                let default_binders_chirho = default_rhs_chirho
+                    .as_ref()
+                    .map(|_| type_vars_chirho.clone());
                 associated_types_chirho.push(AssocTypeFamilyChirho {
                     name_chirho,
                     data_family_chirho,
-                    type_vars_chirho: type_vars_chirho
-                        .into_iter()
-                        .filter(|type_var_chirho| {
-                            !visible_kind_binder_names_chirho
-                                .contains(type_var_chirho.name_chirho.text_chirho())
-                        })
-                        .map(|type_var_chirho| type_var_chirho.name_chirho)
-                        .collect(),
+                    type_vars_chirho,
+                    result_kind_chirho,
                     default_rhs_chirho,
                     default_params_chirho,
-                    default_binders_chirho: None,
+                    default_binders_chirho,
                     span_chirho,
                 });
             }
@@ -133,20 +137,12 @@ pub(crate) fn partition_class_members_chirho(
                         if placeholder_chirho.text_chirho().is_empty()
                 );
                 let default_binders_chirho = (!bodiless_chirho).then(|| type_vars_chirho.clone());
-                let type_var_names_chirho: Vec<NameChirho> = type_vars_chirho
-                    .into_iter()
-                    .filter(|type_var_chirho| {
-                        type_var_chirho.is_visible_chirho()
-                            && !visible_kind_binder_names_chirho
-                                .contains(type_var_chirho.name_chirho.text_chirho())
-                    })
-                    .map(|type_var_chirho| type_var_chirho.name_chirho)
-                    .collect();
                 let default_rhs_chirho = (!bodiless_chirho).then_some(rhs_chirho);
                 associated_types_chirho.push(AssocTypeFamilyChirho {
                     name_chirho,
                     data_family_chirho: false,
-                    type_vars_chirho: type_var_names_chirho,
+                    type_vars_chirho,
+                    result_kind_chirho: None,
                     default_rhs_chirho,
                     default_params_chirho: Vec::new(),
                     default_binders_chirho,
@@ -156,20 +152,18 @@ pub(crate) fn partition_class_members_chirho(
             DeclChirho::DataDeclChirho {
                 name_chirho,
                 type_vars_chirho,
+                kind_sig_chirho,
                 span_chirho,
                 ..
             } => {
                 associated_types_chirho.push(AssocTypeFamilyChirho {
                     name_chirho,
                     data_family_chirho: true,
-                    type_vars_chirho: type_vars_chirho
-                        .into_iter()
-                        .filter(|type_var_chirho| {
-                            !visible_kind_binder_names_chirho
-                                .contains(type_var_chirho.name_chirho.text_chirho())
-                        })
-                        .map(|type_var_chirho| type_var_chirho.name_chirho)
-                        .collect(),
+                    type_vars_chirho,
+                    result_kind_chirho: kind_sig_chirho.and_then(|kind_chirho| match kind_chirho {
+                        haskelujah_ast_chirho::decl_chirho::DataKindSigChirho::ResultChirho(result_chirho) => Some(result_chirho),
+                        haskelujah_ast_chirho::decl_chirho::DataKindSigChirho::StandaloneChirho { result_chirho, .. } => result_chirho,
+                    }),
                     default_rhs_chirho: None,
                     default_params_chirho: Vec::new(),
                     default_binders_chirho: None,

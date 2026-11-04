@@ -3,7 +3,7 @@
 //! Lowering tests: Kinds, promoted types and kind-annotated binders.
 //! Moved from `lower_chirho.rs`'s tests in row 641.
 
-use haskelujah_ast_chirho::decl_chirho::{AstKindChirho, DataKindSigChirho, DeclChirho};
+use haskelujah_ast_chirho::decl_chirho::{DataKindSigChirho, DeclChirho};
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, RhsChirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 
@@ -20,11 +20,11 @@ fn lower_kind_sig_arrow_kind_chirho() {
             assert_eq!(type_vars_chirho.len(), 1);
             assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "f");
             assert_eq!(
-                type_vars_chirho[0].kind_annotation_chirho,
-                Some(AstKindChirho::ArrowChirho(
-                    Box::new(AstKindChirho::StarChirho),
-                    Box::new(AstKindChirho::StarChirho),
-                ))
+                type_vars_chirho[0]
+                    .kind_annotation_chirho
+                    .as_deref()
+                    .map(type_shape_chirho),
+                Some("(* -> *)".to_string())
             );
         }
         other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
@@ -82,8 +82,11 @@ fn lower_wildcard_head_binder_is_bound_not_a_declaration_kind_chirho() {
             assert_eq!(type_vars_chirho.len(), 1, "`_` is a binder like any other");
             assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "_");
             assert_eq!(
-                type_vars_chirho[0].kind_annotation_chirho,
-                Some(AstKindChirho::ConstraintChirho)
+                type_vars_chirho[0]
+                    .kind_annotation_chirho
+                    .as_deref()
+                    .map(type_shape_chirho),
+                Some("Constraint".to_string())
             );
             assert!(kind_sig_chirho.is_none());
         }
@@ -136,7 +139,7 @@ data AppChirho :: forall (fChirho :: Type -> Type). Type -> Type where\n",
 }
 
 #[test]
-fn lower_visible_type_application_in_type_spine_erases_invisible_arg_chirho() {
+fn lower_visible_type_application_in_type_spine_retains_kind_arg_chirho() {
     let module_chirho = parse_and_lower_chirho(
         "{-# LANGUAGE TypeApplications #-}\n\
 module M where\n\
@@ -159,8 +162,8 @@ type VisibleChirho fChirho aChirho = AppChirho @fChirho aChirho\n",
 
     assert_eq!(
         type_shape_chirho(rhs_chirho),
-        "(AppChirho aChirho)",
-        "visible @fChirho should not become an ordinary AppChirho argument: {:?}",
+        "((AppChirho @fChirho) aChirho)",
+        "visible @fChirho must remain a separate kind application: {:?}",
         rhs_chirho
     );
 }
@@ -227,7 +230,7 @@ type S @(k :: Type) (a :: k) = Proxy a -> Proxy k :: Type\n",
 
     assert_eq!(
         type_shape_chirho(rhs_chirho),
-        "((Proxy a) -> (Proxy k))",
+        "(((Proxy a) -> (Proxy k)) :: Type)",
         "RHS kind annotation should not drop the `k` argument: {:?}",
         rhs_chirho
     );
@@ -243,54 +246,134 @@ fn lower_parenthesized_type_keeps_prefix_before_top_level_kind_annotation_chirho
         .iter()
         .find(|decl_chirho| matches!(decl_chirho, DeclChirho::TypeAliasDeclChirho { .. }))
         .expect("should have TypeAliasDecl");
-    match decl_chirho {
-        DeclChirho::TypeAliasDeclChirho { rhs_chirho, .. } => match rhs_chirho {
-            TypeChirho::ParenChirho { inner_chirho, .. } => match inner_chirho.as_ref() {
-                TypeChirho::AppChirho {
-                    fun_chirho,
-                    arg_chirho,
-                    ..
-                } => {
-                    assert!(
-                        matches!(
-                            fun_chirho.as_ref(),
-                            TypeChirho::ParenChirho { .. } | TypeChirho::ConChirho(_)
-                        ),
-                        "expected preserved :~~: prefix head, got {:?}",
-                        fun_chirho
-                    );
-                    match arg_chirho.as_ref() {
-                        TypeChirho::ParenChirho { inner_chirho, .. } => {
-                            match inner_chirho.as_ref() {
-                                TypeChirho::VarChirho(name_chirho) => {
-                                    assert_eq!(name_chirho.text_chirho(), "a");
-                                }
-                                other_chirho => {
-                                    panic!(
-                                        "expected annotated argument to lower to `a`, got {:?}",
-                                        other_chirho
-                                    )
-                                }
-                            }
-                        }
-                        other_chirho => {
-                            panic!(
-                                "expected preserved parenthesized argument, got {:?}",
-                                other_chirho
-                            )
-                        }
-                    }
-                }
-                other_chirho => panic!(
-                    "expected prefix application before top-level kind annotation, got {:?}",
-                    other_chirho
-                ),
-            },
-            other_chirho => panic!(
-                "expected parenthesized rhs for kind-annotated type, got {:?}",
-                other_chirho
-            ),
-        },
-        _ => unreachable!(),
+    let DeclChirho::TypeAliasDeclChirho { rhs_chirho, .. } = decl_chirho else {
+        panic!("expected type alias");
+    };
+    assert_eq!(
+        type_shape_chirho(rhs_chirho),
+        "((:~~: (a :: k1)) :: (k2 -> Type))",
+        "both nested annotations retain their complete prefix and kind"
+    );
+}
+
+#[test]
+fn declaration_binder_kinds_keep_applied_tuple_and_list_types_chirho() {
+    for (kind_chirho, shape_chirho) in [
+        ("Maybe kChirho", "(Maybe kChirho)"),
+        ("(Type, Type)", "(Type, Type)"),
+        ("[kChirho]", "[kChirho]"),
+        ("'Just kChirho", "('Just kChirho)"),
+        ("'(Type, Type)", "(('(,) Type) Type)"),
+        ("'[Type, Type]", "'[Type, Type]"),
+        (
+            "forall kChirho. kChirho -> Type",
+            "forall kChirho. (kChirho -> Type)",
+        ),
+    ] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE PolyKinds, DataKinds, RankNTypes #-}}\nmodule BinderKindsChirho where\ndata FChirho (aChirho :: {kind_chirho}) bChirho = FChirho\n"
+        );
+        let module_chirho = parse_and_lower_chirho(&source_chirho);
+        let DeclChirho::DataDeclChirho {
+            type_vars_chirho, ..
+        } = &module_chirho.decls_chirho[0]
+        else {
+            panic!("expected data declaration");
+        };
+        assert_eq!(
+            type_vars_chirho.len(),
+            2,
+            "the kind must not become declaration binders"
+        );
+        assert_eq!(
+            type_vars_chirho[0]
+                .kind_annotation_chirho
+                .as_deref()
+                .map(type_shape_chirho)
+                .as_deref(),
+            Some(shape_chirho),
+            "kind {kind_chirho}"
+        );
+        assert_eq!(type_vars_chirho[1].name_chirho.text_chirho(), "bChirho");
     }
+}
+
+#[test]
+fn forall_binder_kinds_keep_nominal_application_and_scope_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE PolyKinds, RankNTypes #-}\nmodule ForallKindChirho where\nvalueChirho :: forall (aChirho :: Maybe kChirho). Proxy aChirho -> Proxy aChirho\n",
+    );
+    let DeclChirho::TypeSigChirho { ty_chirho, .. } = &module_chirho.decls_chirho[0] else {
+        panic!("expected signature");
+    };
+    let TypeChirho::ForallChirho { vars_chirho, .. } = ty_chirho else {
+        panic!("expected forall");
+    };
+    assert_eq!(vars_chirho.len(), 1);
+    assert_eq!(
+        vars_chirho[0]
+            .kind_annotation_chirho
+            .as_deref()
+            .map(type_shape_chirho)
+            .as_deref(),
+        Some("(Maybe kChirho)")
+    );
+}
+
+#[test]
+fn retained_kind_nodes_keep_their_written_source_ranges_chirho() {
+    let source_chirho = "{-# LANGUAGE PolyKinds, TypeApplications #-}\nmodule KindRangesChirho where\ntype FChirho (aChirho :: Maybe kChirho) = Proxy @(Maybe kChirho) aChirho\n";
+    let module_chirho = parse_and_lower_chirho(source_chirho);
+    let DeclChirho::TypeAliasDeclChirho {
+        type_vars_chirho,
+        rhs_chirho,
+        ..
+    } = &module_chirho.decls_chirho[0]
+    else {
+        panic!("expected alias");
+    };
+    let binder_kind_chirho = type_vars_chirho[0]
+        .kind_annotation_chirho
+        .as_deref()
+        .expect("retained binder kind");
+    assert_eq!(
+        binder_kind_chirho
+            .span_chirho()
+            .text_chirho(source_chirho)
+            .map(str::trim),
+        Some("Maybe kChirho")
+    );
+    let TypeChirho::AppChirho { fun_chirho, .. } = rhs_chirho else {
+        panic!("ordinary argument remains outside hidden prefix");
+    };
+    let TypeChirho::KindApplicationChirho {
+        arg_chirho,
+        written_chirho,
+        ..
+    } = fun_chirho.as_ref()
+    else {
+        panic!("retained explicit kind application");
+    };
+    assert!(*written_chirho);
+    assert_eq!(
+        arg_chirho
+            .span_chirho()
+            .text_chirho(source_chirho)
+            .map(str::trim),
+        Some("(Maybe kChirho)")
+    );
+}
+
+#[test]
+fn a_kind_annotation_preserves_the_explicit_kind_prefix_to_its_left_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE TypeApplications #-}\nmodule AnnotatedPrefixChirho where\ntype XChirho = (FChirho @Type Int :: Maybe kChirho)\n",
+    );
+    let DeclChirho::TypeAliasDeclChirho { rhs_chirho, .. } = &module_chirho.decls_chirho[0] else {
+        panic!("expected alias");
+    };
+    assert_eq!(
+        type_shape_chirho(rhs_chirho),
+        "(((FChirho @Type) Int) :: (Maybe kChirho))"
+    );
 }

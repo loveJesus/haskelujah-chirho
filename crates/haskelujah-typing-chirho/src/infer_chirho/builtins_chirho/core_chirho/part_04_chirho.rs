@@ -18,6 +18,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         SchemeChirho {
             vars_chirho: vec![randomgen_g_chirho],
             preds_chirho: vec![SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "RandomGen".to_string(),
                 ty_chirho: TyChirho::VarChirho(randomgen_g_chirho),
                 extra_tys_chirho: vec![],
@@ -33,6 +34,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         SchemeChirho {
             vars_chirho: vec![randomgen_g_chirho],
             preds_chirho: vec![SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "SplitGen".to_string(),
                 ty_chirho: TyChirho::VarChirho(randomgen_g_chirho),
                 extra_tys_chirho: vec![],
@@ -48,6 +50,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         SchemeChirho {
             vars_chirho: vec![randomgen_g_chirho],
             preds_chirho: vec![SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "RandomGen".to_string(),
                 ty_chirho: TyChirho::VarChirho(randomgen_g_chirho),
                 extra_tys_chirho: vec![],
@@ -66,6 +69,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         SchemeChirho {
             vars_chirho: vec![randomgen_g_chirho],
             preds_chirho: vec![SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "RandomGen".to_string(),
                 ty_chirho: TyChirho::VarChirho(randomgen_g_chirho),
                 extra_tys_chirho: vec![],
@@ -100,11 +104,13 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
     ]);
     let random_preds_chirho = vec![
         SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "Random".to_string(),
             ty_chirho: TyChirho::VarChirho(random_a_chirho),
             extra_tys_chirho: vec![],
         },
         SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "RandomGen".to_string(),
             ty_chirho: TyChirho::VarChirho(randomgen_g_chirho),
             extra_tys_chirho: vec![],
@@ -136,6 +142,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         },
     );
     let random_io_pred_chirho = SchemePredChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: "Random".to_string(),
         ty_chirho: TyChirho::VarChirho(random_a_chirho),
         extra_tys_chirho: vec![],
@@ -600,6 +607,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
             Box::new(TyChirho::VarChirho(storable_a_chirho)),
         );
         let storable_pred_chirho = SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "Storable".to_string(),
             ty_chirho: TyChirho::VarChirho(storable_a_chirho),
             extra_tys_chirho: vec![],
@@ -696,6 +704,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho("Foreign.Storable.poke".to_string(), poke_scheme_chirho);
 
         let storable_pred_chirho = SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "Storable".to_string(),
             ty_chirho: TyChirho::VarChirho(storable_a_chirho),
             extra_tys_chirho: vec![],

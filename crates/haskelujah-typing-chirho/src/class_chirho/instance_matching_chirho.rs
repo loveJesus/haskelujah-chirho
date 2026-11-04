@@ -20,14 +20,21 @@ impl ClassEnvChirho {
     ) -> Option<Vec<PredChirho>> {
         if inst_chirho.class_name_chirho != pred_chirho.class_name_chirho
             || inst_chirho.extra_head_tys_chirho.len() != pred_chirho.extra_tys_chirho.len()
+            || inst_chirho.kind_tys_chirho.len() != pred_chirho.kind_tys_chirho.len()
         {
             return None;
         }
         let mut bindings_chirho = HashMap::new();
-        let patterns_chirho =
-            std::iter::once(&inst_chirho.head_ty_chirho).chain(&inst_chirho.extra_head_tys_chirho);
-        let targets_chirho =
-            std::iter::once(&pred_chirho.ty_chirho).chain(&pred_chirho.extra_tys_chirho);
+        let patterns_chirho = inst_chirho
+            .kind_tys_chirho
+            .iter()
+            .chain(std::iter::once(&inst_chirho.head_ty_chirho))
+            .chain(&inst_chirho.extra_head_tys_chirho);
+        let targets_chirho = pred_chirho
+            .kind_tys_chirho
+            .iter()
+            .chain(std::iter::once(&pred_chirho.ty_chirho))
+            .chain(&pred_chirho.extra_tys_chirho);
         for (pattern_chirho, target_chirho) in patterns_chirho.zip(targets_chirho) {
             if !match_consistently_chirho(pattern_chirho, target_chirho, &mut bindings_chirho) {
                 return None;
@@ -42,6 +49,11 @@ impl ClassEnvChirho {
                 .context_chirho
                 .iter()
                 .map(|context_chirho| PredChirho {
+                    kind_tys_chirho: context_chirho
+                        .kind_tys_chirho
+                        .iter()
+                        .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
+                        .collect(),
                     class_name_chirho: context_chirho.class_name_chirho.clone(),
                     ty_chirho: subst_chirho.apply_ty_chirho(&context_chirho.ty_chirho),
                     extra_tys_chirho: context_chirho

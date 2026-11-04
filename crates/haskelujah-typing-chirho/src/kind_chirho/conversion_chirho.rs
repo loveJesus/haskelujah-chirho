@@ -8,17 +8,10 @@ use super::*;
 impl KindInferCtxChirho {
     /// Convert AST kind to internal kind, allocating fresh kind vars for PolyKinds.
     /// Same kind variable name maps to the same KindVarChirho within a declaration.
-    pub(super) fn ast_kind_to_kind_ctx_chirho(&mut self, ast_chirho: &AstKindChirho) -> KindChirho {
-        match ast_chirho {
-            AstKindChirho::StarChirho => KindChirho::StarChirho,
-            AstKindChirho::ArrowChirho(a_chirho, b_chirho) => KindChirho::arrow_chirho(
-                self.ast_kind_to_kind_ctx_chirho(a_chirho),
-                self.ast_kind_to_kind_ctx_chirho(b_chirho),
-            ),
-            AstKindChirho::ConstraintChirho => KindChirho::ConstraintChirho,
-            AstKindChirho::AppChirho(_, _) => KindChirho::StarChirho,
-            AstKindChirho::VarChirho(name_chirho) => self.named_kind_variable_chirho(name_chirho),
-        }
+    pub(super) fn ast_kind_to_kind_ctx_chirho(&mut self, ast_chirho: &TypeChirho) -> KindChirho {
+        // Compatibility view only. Row688's semantic elaborator consumes the
+        // full Type tree in the common declaration scheme authority.
+        self.type_to_kind_chirho(ast_chirho)
     }
 
     fn named_kind_variable_chirho(&mut self, name_chirho: &str) -> KindChirho {
@@ -41,6 +34,7 @@ impl KindInferCtxChirho {
             ConstraintChirho::ClassChirho {
                 class_chirho,
                 args_chirho,
+                kind_args_chirho,
                 span_chirho,
             } => {
                 self.report_type_at_constraint_position_chirho(
@@ -48,10 +42,18 @@ impl KindInferCtxChirho {
                     args_chirho,
                     *span_chirho,
                 );
-                for arg_chirho in args_chirho {
+                for arg_chirho in kind_args_chirho.iter().chain(args_chirho) {
                     let _k_chirho = self.infer_type_kind_chirho(arg_chirho);
                 }
                 KindChirho::ConstraintChirho
+            }
+            ConstraintChirho::KindAnnotationChirho {
+                constraint_chirho,
+                kind_chirho,
+                ..
+            } => {
+                let _annotation_chirho = self.infer_type_kind_chirho(kind_chirho);
+                self.infer_constraint_kind_chirho(constraint_chirho)
             }
             ConstraintChirho::QuantifiedChirho {
                 vars_chirho,
@@ -86,6 +88,17 @@ impl KindInferCtxChirho {
         }
 
         match ty_chirho {
+            TypeChirho::KindAnnotationChirho { ty_chirho, .. } => {
+                self.type_to_kind_chirho(ty_chirho)
+            }
+            TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                let _argument_chirho = self.infer_type_kind_chirho(arg_chirho);
+                self.type_to_kind_chirho(fun_chirho)
+            }
             TypeChirho::ConChirho(name_chirho)
                 if name_chirho.text_chirho() == "Type" || name_chirho.text_chirho() == "*" =>
             {
@@ -185,6 +198,22 @@ impl KindInferCtxChirho {
     /// Infer the kind of a type expression.
     pub(super) fn infer_type_kind_chirho(&mut self, ty_chirho: &TypeChirho) -> KindChirho {
         match ty_chirho {
+            TypeChirho::KindAnnotationChirho {
+                ty_chirho,
+                kind_chirho,
+                ..
+            } => {
+                let _annotation_chirho = self.infer_type_kind_chirho(kind_chirho);
+                self.infer_type_kind_chirho(ty_chirho)
+            }
+            TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                let _argument_chirho = self.infer_type_kind_chirho(arg_chirho);
+                self.infer_type_kind_chirho(fun_chirho)
+            }
             TypeChirho::VarChirho(name_chirho) => {
                 let text_chirho = name_chirho.text_chirho();
                 if let Some(k_chirho) = self.env_chirho.lookup_chirho(text_chirho) {

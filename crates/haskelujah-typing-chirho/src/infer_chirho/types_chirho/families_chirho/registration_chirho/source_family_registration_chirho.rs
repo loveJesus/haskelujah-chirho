@@ -159,7 +159,11 @@ pub fn predeclare_source_open_families_chirho(
                     {
                         context_chirho.register_open_family_chirho(
                             family_chirho.name_chirho.text_chirho().to_owned(),
-                            family_chirho.type_vars_chirho.len(),
+                            family_chirho
+                                .type_vars_chirho
+                                .iter()
+                                .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+                                .count(),
                             family_chirho.span_chirho,
                         );
                     }

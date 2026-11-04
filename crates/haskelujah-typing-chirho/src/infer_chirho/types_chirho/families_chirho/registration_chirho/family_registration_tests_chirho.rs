@@ -35,6 +35,7 @@ fn equation_chirho(
     rhs_chirho: TypeChirho,
 ) -> TypeFamilyEquationChirho {
     TypeFamilyEquationChirho {
+        kind_args_chirho: Vec::new(),
         head_chirho: Some(dummy_name_chirho(name_chirho)),
         explicit_binders_chirho: None,
         unwritten_binders_chirho: vec![],
@@ -333,6 +334,7 @@ fn qualified_constraint_arguments_are_stamped_without_rebinding_imports_chirho()
         context_chirho: vec![ConstraintChirho::QuantifiedChirho {
             vars_chirho: vec![],
             context_chirho: vec![ConstraintChirho::ClassChirho {
+                kind_args_chirho: Vec::new(),
                 class_chirho: dummy_name_chirho("Eq"),
                 args_chirho: vec![syntax_app_chirho(
                     "FChirho",
@@ -341,6 +343,7 @@ fn qualified_constraint_arguments_are_stamped_without_rebinding_imports_chirho()
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             body_chirho: Box::new(ConstraintChirho::ClassChirho {
+                kind_args_chirho: Vec::new(),
                 class_chirho: dummy_name_chirho("Show"),
                 args_chirho: vec![TypeChirho::ConChirho(preserved_chirho)],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -429,7 +432,8 @@ fn associated_header_and_default_supply_one_catalogue_declaration_chirho() {
     let associated_chirho =
         |default_chirho: bool| haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
             name_chirho: dummy_name_chirho("RepChirho"),
-            type_vars_chirho: vec![dummy_name_chirho("aChirho")],
+            result_kind_chirho: None,
+            type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],
             data_family_chirho: false,
             default_rhs_chirho: default_chirho.then(|| syntax_app_chirho("Int", vec![])),
             default_params_chirho: vec![],
@@ -548,6 +552,7 @@ fn source_d1_data_family_shadows_the_bare_generic_alias_only_chirho() {
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
     let instance_chirho = |name_chirho, start_chirho| DeclChirho::TypeFamilyInstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         family_name_chirho: dummy_name_chirho("F"),
         lhs_types_chirho: vec![syntax_app_chirho(
             name_chirho,
@@ -717,7 +722,8 @@ fn source_class_valued_associated_rhs_reduces_and_reapplies_extra_arguments_chir
             "E",
             vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
                 name_chirho: dummy_name_chirho("C"),
-                type_vars_chirho: vec![dummy_name_chirho("aChirho")],
+                result_kind_chirho: None,
+                type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],
                 data_family_chirho: false,
                 default_rhs_chirho: None,
                 default_params_chirho: vec![],

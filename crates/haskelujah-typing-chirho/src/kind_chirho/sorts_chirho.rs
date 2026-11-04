@@ -132,6 +132,12 @@ impl KindInferCtxChirho {
             TypeChirho::AppChirho { fun_chirho, .. } => {
                 self.has_known_constraint_head_chirho(fun_chirho)
             }
+            TypeChirho::KindApplicationChirho { fun_chirho, .. } => {
+                self.has_known_constraint_head_chirho(fun_chirho)
+            }
+            TypeChirho::KindAnnotationChirho { ty_chirho, .. } => {
+                self.has_known_constraint_head_chirho(ty_chirho)
+            }
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 self.has_known_constraint_head_chirho(inner_chirho)
             }

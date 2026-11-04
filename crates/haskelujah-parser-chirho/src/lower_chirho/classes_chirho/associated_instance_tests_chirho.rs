@@ -57,7 +57,8 @@ fn associated_parameters_chirho(source_chirho: &str, class_chirho: &str) -> Vec<
                 family_chirho
                     .type_vars_chirho
                     .iter()
-                    .map(|name_chirho| name_chirho.text_chirho().to_string()),
+                    .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+                    .map(|binder_chirho| binder_chirho.name_chirho.text_chirho().to_string()),
             );
             words_chirho.join(" ")
         })
@@ -506,4 +507,138 @@ type family F @(k :: Type) (a :: k) :: k where
         equations_chirho[0].lhs_types_chirho.len(),
         visible_chirho.len()
     );
+}
+
+#[test]
+fn associated_headers_keep_their_full_telescope_and_result_kind_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE PolyKinds, TypeAbstractions, TypeFamilies #-}\nmodule AssociatedKindsChirho where\nclass CChirho @kChirho (aChirho :: kChirho) where\n  type FChirho @kChirho (xChirho :: Maybe kChirho) :: Either kChirho Bool\n",
+    );
+    let DeclChirho::ClassDeclChirho {
+        associated_tfs_chirho,
+        ..
+    } = find_class_decl_chirho(&module_chirho, "CChirho")
+    else {
+        panic!("class");
+    };
+    let family_chirho = &associated_tfs_chirho[0];
+    assert_eq!(family_chirho.type_vars_chirho.len(), 2);
+    assert!(!family_chirho.type_vars_chirho[0].is_visible_chirho());
+    assert!(family_chirho.type_vars_chirho[1].is_visible_chirho());
+    assert_eq!(
+        family_chirho.type_vars_chirho[1]
+            .kind_annotation_chirho
+            .as_deref()
+            .map(type_shape_chirho)
+            .as_deref(),
+        Some("(Maybe kChirho)")
+    );
+    assert_eq!(
+        family_chirho
+            .result_kind_chirho
+            .as_ref()
+            .map(type_shape_chirho)
+            .as_deref(),
+        Some("((Either kChirho) Bool)")
+    );
+    assert_eq!(
+        associated_parameters_chirho(
+            "module M where\nclass CChirho aChirho where\n  type FChirho @kChirho (xChirho :: Maybe kChirho) :: Either kChirho Bool\n",
+            "CChirho"
+        ),
+        ["FChirho xChirho"]
+    );
+}
+
+#[test]
+fn a_plain_member_binder_is_not_hidden_by_the_class_binders_spelling_chirho() {
+    assert_eq!(
+        associated_parameters_chirho(
+            "{-# LANGUAGE TypeAbstractions, TypeFamilies #-}\nmodule M where\nclass CChirho @kChirho aChirho where\n  type FChirho kChirho aChirho\n",
+            "CChirho"
+        ),
+        ["FChirho kChirho aChirho"]
+    );
+}
+
+#[test]
+fn associated_result_injectivity_keeps_its_kind_and_following_method_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE TypeFamilies, TypeFamilyDependencies #-}\nmodule AssociatedResultChirho where\nclass CChirho aChirho where\n  type FChirho aChirho = (rChirho :: Type) | rChirho -> aChirho\n  methodChirho :: aChirho -> aChirho\n",
+    );
+    let DeclChirho::ClassDeclChirho {
+        associated_tfs_chirho,
+        methods_chirho,
+        ..
+    } = find_class_decl_chirho(&module_chirho, "CChirho")
+    else {
+        panic!("class");
+    };
+    let family_chirho = &associated_tfs_chirho[0];
+    assert_eq!(family_chirho.type_vars_chirho.len(), 1);
+    assert_eq!(
+        family_chirho
+            .result_kind_chirho
+            .as_ref()
+            .map(type_shape_chirho)
+            .as_deref(),
+        Some("Type")
+    );
+    assert!(family_chirho.default_rhs_chirho.is_none());
+    assert!(family_chirho.default_binders_chirho.is_none());
+    assert!(
+        methods_chirho
+            .iter()
+            .any(|method_chirho| method_chirho.name_chirho.text_chirho() == "methodChirho")
+    );
+}
+
+#[test]
+fn written_defaults_keep_scoped_kind_names_after_the_canonical_family_route_chirho() {
+    for (kind_chirho, expected_chirho) in [
+        ("iChirho -> jChirho", vec!["fChirho", "iChirho", "jChirho"]),
+        ("Maybe kChirho", vec!["fChirho", "kChirho"]),
+        ("[kChirho]", vec!["fChirho", "kChirho"]),
+        ("forall kChirho. kChirho -> Type", vec!["fChirho"]),
+    ] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE PolyKinds, RankNTypes, TypeFamilies #-}}\nmodule ScopedDefaultChirho where\nclass CChirho aChirho where\n  type FChirho (fChirho :: {kind_chirho}) = fChirho\n"
+        );
+        let module_chirho = parse_and_lower_chirho(&source_chirho);
+        let DeclChirho::ClassDeclChirho {
+            associated_tfs_chirho,
+            ..
+        } = find_class_decl_chirho(&module_chirho, "CChirho")
+        else {
+            panic!("class");
+        };
+        let family_chirho = &associated_tfs_chirho[0];
+        let binders_chirho = family_chirho
+            .default_binders_chirho
+            .as_ref()
+            .expect("written default scope retained");
+        assert_eq!(
+            binders_chirho
+                .iter()
+                .map(|binder_chirho| binder_chirho.name_chirho.text_chirho())
+                .collect::<Vec<_>>(),
+            expected_chirho
+        );
+        assert_eq!(
+            family_chirho
+                .default_params_chirho
+                .iter()
+                .map(|name_chirho| name_chirho.text_chirho())
+                .collect::<Vec<_>>(),
+            ["fChirho"]
+        );
+        assert_eq!(
+            family_chirho
+                .type_vars_chirho
+                .iter()
+                .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+                .count(),
+            1
+        );
+    }
 }

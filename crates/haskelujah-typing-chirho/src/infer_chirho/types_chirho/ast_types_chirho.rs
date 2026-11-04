@@ -26,6 +26,25 @@ pub(super) fn ast_type_to_syn_rhs_chirho(
     scope_chirho: Option<&PromotionScopeChirho>,
 ) -> TyChirho {
     match ty_chirho {
+        TypeChirho::KindAnnotationChirho { ty_chirho, .. } => {
+            ast_type_to_syn_rhs_chirho(ty_chirho, params_chirho, scope_chirho)
+        }
+        TypeChirho::KindApplicationChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => TyChirho::AppChirho(
+            Box::new(ast_type_to_syn_rhs_chirho(
+                fun_chirho,
+                params_chirho,
+                scope_chirho,
+            )),
+            Box::new(ast_type_to_syn_rhs_chirho(
+                arg_chirho,
+                params_chirho,
+                scope_chirho,
+            )),
+        ),
         TypeChirho::VarChirho(name_chirho) => {
             let text_chirho = name_chirho.text_chirho().to_string();
             if params_chirho.contains(&text_chirho) {
@@ -233,6 +252,16 @@ pub(super) fn collect_free_type_vars_from_ast_chirho(types_chirho: &[TypeChirho]
                 arg_chirho,
                 ..
             }
+            | TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            }
+            | TypeChirho::KindAnnotationChirho {
+                ty_chirho: fun_chirho,
+                kind_chirho: arg_chirho,
+                ..
+            }
             | TypeChirho::FunChirho {
                 arg_chirho: fun_chirho,
                 result_chirho: arg_chirho,
@@ -276,6 +305,11 @@ pub(super) fn collect_free_type_vars_from_ast_chirho(types_chirho: &[TypeChirho]
                         .iter()
                         .map(|variable_chirho| variable_chirho.text_chirho().to_owned()),
                 );
+                for binder_chirho in vars_chirho {
+                    if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                        walk_chirho(kind_chirho, variables_chirho, seen_chirho, bound_chirho);
+                    }
+                }
                 walk_chirho(body_chirho, variables_chirho, seen_chirho, bound_chirho);
                 bound_chirho.truncate(prior_chirho);
             }

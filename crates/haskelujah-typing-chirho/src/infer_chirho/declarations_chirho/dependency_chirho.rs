@@ -394,6 +394,13 @@ pub(super) fn binding_groups_chirho(
         }
     }
 
+    dependency_groups_chirho(&adj_chirho)
+}
+
+/// Shared dependency graph grouping; callers retain their own reference and
+/// binder admission rules. The kind elaborator preflights depth/work first.
+pub(crate) fn dependency_groups_chirho(adj_chirho: &[Vec<usize>]) -> Vec<Vec<usize>> {
+    let n_chirho = adj_chirho.len();
     // Tarjan's SCC
     let mut tarjan_chirho = TarjanStateChirho {
         index_chirho: 0,
@@ -450,7 +457,7 @@ pub(super) fn binding_groups_chirho(
 
     for v_chirho in 0..n_chirho {
         if tarjan_chirho.indices_chirho[v_chirho].is_none() {
-            tarjan_chirho.strongconnect_chirho(v_chirho, &adj_chirho);
+            tarjan_chirho.strongconnect_chirho(v_chirho, adj_chirho);
         }
     }
 

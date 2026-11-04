@@ -14,6 +14,7 @@ fn predicate_chirho(
     subst_chirho: &SubstChirho,
 ) -> PredChirho {
     PredChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: pred_chirho.class_name_chirho.clone(),
         ty_chirho: ctx_chirho
             .normalize_ty_chirho(&subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho)),
@@ -113,6 +114,7 @@ impl InferCtxChirho {
         let wanted_chirho = predicate_chirho(
             self,
             &PredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: class_chirho.to_owned(),
                 ty_chirho: ty_chirho.clone(),
                 extra_tys_chirho: extras_chirho.to_vec(),

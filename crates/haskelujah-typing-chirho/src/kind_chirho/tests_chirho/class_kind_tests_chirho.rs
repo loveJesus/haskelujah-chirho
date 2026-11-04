@@ -162,6 +162,7 @@ fn local_tagged_decl_shadows_builtin_tagged_kind_chirho() {
 fn class_associated_type_family_shadows_builtin_rep_chirho() {
     let module_chirho = mk_module_chirho(vec![DeclChirho::ClassDeclChirho {
         context_chirho: vec![ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: mk_name_chirho("Contravariant"),
             args_chirho: vec![TypeChirho::VarChirho(mk_name_chirho("f"))],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -210,7 +211,8 @@ fn class_associated_type_family_shadows_builtin_rep_chirho() {
         ],
         associated_tfs_chirho: vec![AssocTypeFamilyChirho {
             name_chirho: mk_name_chirho("Rep"),
-            type_vars_chirho: vec![mk_name_chirho("f")],
+            result_kind_chirho: None,
+            type_vars_chirho: vec![mk_name_chirho("f").into()],
             data_family_chirho: false,
             default_rhs_chirho: None,
             default_params_chirho: vec![],
@@ -255,6 +257,7 @@ fn mk_class_and_instance_module_chirho(
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         },
         DeclChirho::InstanceDeclChirho {
+            kind_args_chirho: Vec::new(),
             context_chirho: vec![],
             class_chirho: mk_name_chirho("CChirho"),
             types_chirho: instance_head_types_chirho,
@@ -316,6 +319,7 @@ fn instance_head_of_undeclared_class_is_not_judged_chirho() {
     // The class is not declared here, so its arity is unknown to us and no
     // verdict may be reached — an imported class could have any arity.
     let module_chirho = mk_module_chirho(vec![DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: mk_name_chirho("SomeImportedClassChirho"),
         types_chirho: vec![TypeChirho::ConChirho(mk_name_chirho("Int"))],

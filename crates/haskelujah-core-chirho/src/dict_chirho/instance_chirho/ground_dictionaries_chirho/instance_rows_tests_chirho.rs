@@ -23,6 +23,7 @@ fn span_chirho(start_chirho: u32) -> SpanChirho {
 fn context_instance_chirho(head_chirho: &str, var_chirho: u32) -> InstDeclChirho {
     let a_chirho = TyChirho::VarChirho(TyVarChirho(var_chirho));
     InstDeclChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: "SizeChirho".to_string(),
         head_ty_chirho: TyChirho::AppChirho(
             Box::new(TyChirho::ConChirho(head_chirho.to_string())),

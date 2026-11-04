@@ -512,6 +512,9 @@ pub enum TypeFamilyAliasResolutionChirho {
 /// Definitions are stored once; aliases retain ambiguity without copying rows.
 #[derive(Clone, Debug, Default)]
 pub struct TypeFamilyRegistryChirho {
+    /// Common canonical telescopes, including ordinary/promoted constructors,
+    /// classes and synonyms. Not a second family-specific kind environment.
+    declaration_schemes_chirho: crate::ty_chirho::declarations_chirho::DeclarationSchemesChirho,
     definitions_chirho: HashMap<String, Arc<TypeFamilyDefinitionChirho>>,
     export_aliases_chirho: HashMap<String, BTreeSet<String>>,
     published_modules_chirho: HashMap<String, BTreeSet<String>>,
@@ -521,6 +524,18 @@ pub struct TypeFamilyRegistryChirho {
 impl TypeFamilyRegistryChirho {
     pub fn new_chirho() -> Self {
         Self::default()
+    }
+
+    pub fn declaration_schemes_chirho(
+        &self,
+    ) -> &crate::ty_chirho::declarations_chirho::DeclarationSchemesChirho {
+        &self.declaration_schemes_chirho
+    }
+
+    pub fn declaration_schemes_mut_chirho(
+        &mut self,
+    ) -> &mut crate::ty_chirho::declarations_chirho::DeclarationSchemesChirho {
+        &mut self.declaration_schemes_chirho
     }
 
     pub fn definition_chirho(&self, key_chirho: &str) -> Option<&Arc<TypeFamilyDefinitionChirho>> {
@@ -536,7 +551,9 @@ impl TypeFamilyRegistryChirho {
     }
 
     pub fn is_empty_chirho(&self) -> bool {
-        self.definitions_chirho.is_empty() && self.constructor_origins_chirho.is_empty_chirho()
+        self.definitions_chirho.is_empty()
+            && self.constructor_origins_chirho.is_empty_chirho()
+            && self.declaration_schemes_chirho.is_empty_chirho()
     }
 
     /// Render internal family identities only at a diagnostic boundary. This
@@ -729,6 +746,10 @@ impl TypeFamilyRegistryChirho {
         &mut self,
         incoming_chirho: &Self,
     ) -> Result<(), TypeFamilyDefinitionErrorChirho> {
+        let mut declaration_schemes_chirho = self.declaration_schemes_chirho.clone();
+        declaration_schemes_chirho
+            .merge_chirho(&incoming_chirho.declaration_schemes_chirho)
+            .map_err(family_definition_error_chirho)?;
         let mut constructor_origins_chirho = self.constructor_origins_chirho.clone();
         constructor_origins_chirho
             .merge_chirho(&incoming_chirho.constructor_origins_chirho)
@@ -766,6 +787,7 @@ impl TypeFamilyRegistryChirho {
                 .extend(aliases_chirho.iter().cloned());
         }
         self.constructor_origins_chirho = constructor_origins_chirho;
+        self.declaration_schemes_chirho = declaration_schemes_chirho;
         Ok(())
     }
 }

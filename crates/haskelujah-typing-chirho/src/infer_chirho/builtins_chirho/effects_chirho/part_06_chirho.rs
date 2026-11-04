@@ -535,6 +535,7 @@ pub(super) fn seed_part_06_chirho(env_chirho: &mut TyEnvChirho) {
         let map_insert_scheme_chirho = SchemeChirho {
             vars_chirho: vec![k_chirho, v_chirho],
             preds_chirho: vec![SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "Ord".to_string(),
                 ty_chirho: TyChirho::VarChirho(k_chirho),
                 extra_tys_chirho: vec![],
@@ -572,6 +573,7 @@ pub(super) fn seed_part_06_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![k_chirho, v_chirho],
                 preds_chirho: vec![SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
                     extra_tys_chirho: vec![],
@@ -590,6 +592,7 @@ pub(super) fn seed_part_06_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![k_chirho, v_chirho],
                 preds_chirho: vec![SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
                     extra_tys_chirho: vec![],
@@ -608,6 +611,7 @@ pub(super) fn seed_part_06_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![k_chirho, v_chirho],
                 preds_chirho: vec![SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
                     extra_tys_chirho: vec![],
@@ -659,6 +663,7 @@ pub(super) fn seed_part_06_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![k_chirho, v_chirho],
                 preds_chirho: vec![SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
                     extra_tys_chirho: vec![],
@@ -674,6 +679,7 @@ pub(super) fn seed_part_06_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![k_chirho, v_chirho],
                 preds_chirho: vec![SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
                     extra_tys_chirho: vec![],
@@ -702,6 +708,7 @@ pub(super) fn seed_part_06_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![k_chirho, v_chirho],
                 preds_chirho: vec![SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
                     extra_tys_chirho: vec![],
@@ -720,6 +727,7 @@ pub(super) fn seed_part_06_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![k_chirho, v_chirho],
                 preds_chirho: vec![SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(k_chirho),
                     extra_tys_chirho: vec![],
@@ -749,6 +757,7 @@ pub(super) fn seed_part_06_chirho(env_chirho: &mut TyEnvChirho) {
         let map_delete_scheme_chirho = SchemeChirho {
             vars_chirho: vec![k_chirho, v_chirho],
             preds_chirho: vec![SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "Ord".to_string(),
                 ty_chirho: TyChirho::VarChirho(k_chirho),
                 extra_tys_chirho: vec![],
@@ -921,6 +930,7 @@ pub(super) fn seed_part_06_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![source_k_chirho, target_k_chirho, v_chirho],
                 preds_chirho: vec![SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(target_k_chirho),
                     extra_tys_chirho: vec![],

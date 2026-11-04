@@ -4,13 +4,17 @@
 
 use super::gadt_projection_chirho::*;
 use super::{
-    AstKindChirho, ConDeclChirho, DataKindSigChirho, DeclChirho, FieldDeclChirho,
-    GadtConArgsChirho, GadtConFieldChirho, GadtConPrefixChirho, GadtConSignatureChirho,
-    StrictnessChirho, TyVarChirho,
+    AssocTfInstanceChirho, AssocTypeFamilyChirho, AstKindChirho, ConDeclChirho, DataKindSigChirho,
+    DeclChirho, FieldDeclChirho, GadtConArgsChirho, GadtConFieldChirho, GadtConPrefixChirho,
+    GadtConSignatureChirho, StrictnessChirho, TyVarChirho, TypeFamilyEquationChirho,
 };
 use crate::module_chirho::ModuleChirho;
-use crate::name_chirho::{DefIdChirho, NameChirho, RawNameChirho, ResolvedNameChirho};
+use crate::name_chirho::{
+    DefIdChirho, NameChirho, RawNameChirho, ResolvedNameChirho, TypeConstructorDeclarationChirho,
+    TypeConstructorRoleChirho,
+};
 use crate::promotion_chirho::{PromotedKeyChirho, PromotionResolutionChirho};
+use crate::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
 use crate::ty_chirho::{ConstraintChirho, MultiplicityChirho, TypeChirho};
 use haskelujah_span_chirho::SpanChirho;
 
@@ -108,17 +112,40 @@ fn a_stream_shares_its_output_allowance_and_keeps_the_first_error_chirho() {
 #[test]
 fn full_name_transport_metadata_is_charged_for_raw_and_resolved_names_chirho() {
     for resolved_chirho in [false, true] {
-        for component_chirho in 0..4 {
+        for component_chirho in 0..7 {
             let mut raw_chirho =
                 RawNameChirho::unqualified_chirho("XChirho", SpanChirho::DUMMY_CHIRHO);
             match component_chirho {
                 0 => raw_chirho.text_chirho = "x".repeat(1024),
                 1 => raw_chirho.qualifier_chirho = Some("q".repeat(1024)),
                 2 => raw_chirho.family_key_chirho = Some("f".repeat(1024)),
-                _ => {
+                3 => {
                     raw_chirho.promotion_chirho = Some(PromotionResolutionChirho::ResolvedChirho(
                         PromotedKeyChirho::source_chirho(&"p".repeat(1024), "CChirho"),
                     ))
+                }
+                4 => {
+                    raw_chirho.type_variable_chirho =
+                        Some(ScopedTypeVariableIdChirho::QuantifiedChirho {
+                            declaration_chirho: std::sync::Arc::from("d".repeat(1024)),
+                            index_chirho: 0,
+                        })
+                }
+                5 => {
+                    raw_chirho.type_constructor_chirho =
+                        Some(TypeConstructorDeclarationChirho::source_chirho(
+                            &"m".repeat(1024),
+                            "TChirho",
+                            TypeConstructorRoleChirho::DataChirho,
+                        ))
+                }
+                _ => {
+                    raw_chirho.type_constructor_chirho =
+                        Some(TypeConstructorDeclarationChirho::source_chirho(
+                            "MChirho",
+                            &"t".repeat(1024),
+                            TypeConstructorRoleChirho::TypeFamilyChirho,
+                        ))
                 }
             }
             let mut signature_chirho = signature_chirho();
@@ -187,6 +214,7 @@ fn quantified_context_bodies_and_nested_binder_kinds_are_charged_chirho() {
                 vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("aChirho"))],
                 context_chirho: vec![],
                 body_chirho: Box::new(ConstraintChirho::ClassChirho {
+                    kind_args_chirho: Vec::new(),
                     class_chirho: name_chirho("CChirho"),
                     args_chirho: vec![TypeChirho::PromotedListChirho {
                         elements_chirho: vec![TypeChirho::LitChirho {
@@ -522,4 +550,285 @@ fn accessor_amplification_counts_full_constructor_and_field_name_metadata_chirho
         .limit_chirho,
         GadtProjectionLimitChirho::OutputChirho
     );
+}
+
+fn heavy_kind_chirho() -> TypeChirho {
+    TypeChirho::AppChirho {
+        fun_chirho: Box::new(con_chirho("KChirho")),
+        arg_chirho: Box::new(con_chirho(&"k".repeat(1024))),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+#[test]
+fn full_type_kind_nodes_and_constraint_prefixes_are_precharged_chirho() {
+    let span_chirho = SpanChirho::DUMMY_CHIRHO;
+    let ordinary_predicate_chirho = || ConstraintChirho::ClassChirho {
+        class_chirho: name_chirho("CChirho"),
+        kind_args_chirho: vec![],
+        args_chirho: vec![con_chirho("Int")],
+        span_chirho,
+    };
+    let mut fixtures_chirho = vec![
+        TypeChirho::KindAnnotationChirho {
+            ty_chirho: Box::new(con_chirho("XChirho")),
+            kind_chirho: Box::new(heavy_kind_chirho()),
+            span_chirho,
+        },
+        TypeChirho::KindApplicationChirho {
+            fun_chirho: Box::new(con_chirho("XChirho")),
+            arg_chirho: Box::new(heavy_kind_chirho()),
+            written_chirho: false,
+            span_chirho,
+        },
+    ];
+    fixtures_chirho.push(TypeChirho::ForallChirho {
+        vars_chirho: vec![TyVarChirho::annotated_chirho(
+            name_chirho("aChirho"),
+            heavy_kind_chirho(),
+        )],
+        body_chirho: Box::new(con_chirho("XChirho")),
+        span_chirho,
+    });
+    let mut prefix_chirho = ordinary_predicate_chirho();
+    let ConstraintChirho::ClassChirho {
+        kind_args_chirho, ..
+    } = &mut prefix_chirho
+    else {
+        unreachable!()
+    };
+    kind_args_chirho.push(heavy_kind_chirho());
+    for predicate_chirho in [
+        prefix_chirho,
+        ConstraintChirho::KindAnnotationChirho {
+            constraint_chirho: Box::new(ordinary_predicate_chirho()),
+            kind_chirho: Box::new(heavy_kind_chirho()),
+            span_chirho,
+        },
+    ] {
+        fixtures_chirho.push(TypeChirho::QualChirho {
+            context_chirho: vec![predicate_chirho],
+            body_chirho: Box::new(con_chirho("XChirho")),
+            span_chirho,
+        });
+    }
+    for ty_chirho in fixtures_chirho {
+        let mut fixture_chirho = signature_chirho();
+        fixture_chirho.result_ty_chirho = ty_chirho;
+        assert_output_error_chirho(&fixture_chirho);
+        assert!(check_projection_chirho(&fixture_chirho, &mut budget_chirho(1 << 16), 3).is_ok());
+    }
+}
+
+fn family_equation_chirho() -> TypeFamilyEquationChirho {
+    TypeFamilyEquationChirho {
+        kind_args_chirho: vec![],
+        head_chirho: Some(name_chirho("FChirho")),
+        explicit_binders_chirho: None,
+        unwritten_binders_chirho: vec![],
+        lhs_types_chirho: vec![],
+        rhs_chirho: con_chirho("Int"),
+        malformed_chirho: false,
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+fn family_chirho(equations_chirho: Vec<TypeFamilyEquationChirho>) -> DeclChirho {
+    DeclChirho::TypeFamilyDeclChirho {
+        name_chirho: name_chirho("FChirho"),
+        type_vars_chirho: vec![],
+        result_kind_chirho: None,
+        standalone_kind_chirho: None,
+        data_family_chirho: false,
+        closed_chirho: true,
+        equations_chirho,
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+#[test]
+fn hidden_family_and_instance_prefixes_and_written_kinds_are_precharged_chirho() {
+    let span_chirho = SpanChirho::DUMMY_CHIRHO;
+    let mut fixtures_chirho = Vec::new();
+    let mut equation_chirho = family_equation_chirho();
+    equation_chirho.kind_args_chirho.push(heavy_kind_chirho());
+    fixtures_chirho.push(family_chirho(vec![equation_chirho]));
+    let mut equation_chirho = family_equation_chirho();
+    equation_chirho.explicit_binders_chirho = Some(vec![TyVarChirho::annotated_chirho(
+        name_chirho("aChirho"),
+        heavy_kind_chirho(),
+    )]);
+    fixtures_chirho.push(family_chirho(vec![equation_chirho]));
+    for standalone_chirho in [false, true] {
+        let mut fixture_chirho = family_chirho(vec![]);
+        let DeclChirho::TypeFamilyDeclChirho {
+            result_kind_chirho,
+            standalone_kind_chirho,
+            ..
+        } = &mut fixture_chirho
+        else {
+            unreachable!()
+        };
+        if standalone_chirho {
+            *standalone_kind_chirho = Some(heavy_kind_chirho());
+        } else {
+            *result_kind_chirho = Some(heavy_kind_chirho());
+        }
+        fixtures_chirho.push(fixture_chirho);
+    }
+    fixtures_chirho.push(DeclChirho::TypeFamilyInstanceDeclChirho {
+        kind_args_chirho: vec![heavy_kind_chirho()],
+        family_name_chirho: name_chirho("FChirho"),
+        lhs_types_chirho: vec![],
+        rhs_chirho: con_chirho("Int"),
+        span_chirho,
+    });
+    for associated_chirho in [false, true] {
+        fixtures_chirho.push(DeclChirho::InstanceDeclChirho {
+            kind_args_chirho: if associated_chirho {
+                vec![]
+            } else {
+                vec![heavy_kind_chirho()]
+            },
+            context_chirho: vec![],
+            class_chirho: name_chirho("CChirho"),
+            types_chirho: vec![con_chirho("Int")],
+            methods_chirho: vec![],
+            assoc_tf_instances_chirho: if associated_chirho {
+                vec![AssocTfInstanceChirho {
+                    kind_args_chirho: vec![heavy_kind_chirho()],
+                    family_name_chirho: name_chirho("FChirho"),
+                    lhs_types_chirho: vec![],
+                    rhs_chirho: con_chirho("Int"),
+                    span_chirho,
+                }]
+            } else {
+                vec![]
+            },
+            span_chirho,
+        });
+    }
+    for component_chirho in 0..3 {
+        fixtures_chirho.push(DeclChirho::ClassDeclChirho {
+            context_chirho: vec![],
+            name_chirho: name_chirho("CChirho"),
+            type_vars_chirho: vec![],
+            methods_chirho: vec![],
+            associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+                name_chirho: name_chirho("FChirho"),
+                type_vars_chirho: if component_chirho == 0 {
+                    vec![TyVarChirho::annotated_chirho(
+                        name_chirho("aChirho"),
+                        heavy_kind_chirho(),
+                    )]
+                } else {
+                    vec![]
+                },
+                result_kind_chirho: (component_chirho == 1).then(heavy_kind_chirho),
+                data_family_chirho: false,
+                default_rhs_chirho: Some(con_chirho("Int")),
+                default_params_chirho: vec![],
+                default_binders_chirho: (component_chirho == 2).then(|| {
+                    vec![TyVarChirho::annotated_chirho(
+                        name_chirho("aChirho"),
+                        heavy_kind_chirho(),
+                    )]
+                }),
+                span_chirho,
+            }],
+            fundeps_chirho: vec![],
+            span_chirho,
+        });
+    }
+    for fixture_chirho in fixtures_chirho {
+        assert_eq!(
+            check_declaration_projection_chirho(&fixture_chirho, &mut budget_chirho(128), 1)
+                .unwrap_err()
+                .limit_chirho,
+            GadtProjectionLimitChirho::OutputChirho
+        );
+        assert!(
+            check_declaration_projection_chirho(&fixture_chirho, &mut budget_chirho(1 << 16), 3)
+                .is_ok()
+        );
+    }
+}
+
+#[test]
+fn metadata_bytes_and_wide_equation_streams_obey_work_and_terminal_bounds_chirho() {
+    let mut fixture_chirho = signature_chirho();
+    let mut name_chirho = name_chirho("XChirho");
+    name_chirho.set_type_variable_chirho(Some(ScopedTypeVariableIdChirho::QuantifiedChirho {
+        declaration_chirho: std::sync::Arc::from("d".repeat(1024)),
+        index_chirho: 0,
+    }));
+    fixture_chirho.result_ty_chirho = TypeChirho::ConChirho(name_chirho);
+    let mut allowance_chirho =
+        GadtProjectionBudgetChirho::with_limits_chirho(GadtProjectionLimitsChirho {
+            work_chirho: 64,
+            output_chirho: 1 << 20,
+            depth_chirho: 512,
+        });
+    let first_chirho =
+        check_projection_chirho(&fixture_chirho, &mut allowance_chirho, 1).unwrap_err();
+    assert_eq!(
+        first_chirho.limit_chirho,
+        GadtProjectionLimitChirho::WorkChirho
+    );
+    assert_eq!(
+        check_projection_chirho(&signature_chirho(), &mut allowance_chirho, 1),
+        Err(first_chirho)
+    );
+    let wide_chirho = family_chirho((0..1000).map(|_| family_equation_chirho()).collect());
+    let mut allowance_chirho =
+        GadtProjectionBudgetChirho::with_limits_chirho(GadtProjectionLimitsChirho {
+            work_chirho: 64,
+            output_chirho: 1 << 20,
+            depth_chirho: 512,
+        });
+    assert_eq!(
+        check_declaration_projection_chirho(&wide_chirho, &mut allowance_chirho, 1)
+            .unwrap_err()
+            .limit_chirho,
+        GadtProjectionLimitChirho::WorkChirho
+    );
+}
+
+#[test]
+fn retained_kind_depth_is_checked_before_projection_chirho() {
+    let span_chirho = SpanChirho::DUMMY_CHIRHO;
+    for application_chirho in [false, true] {
+        let mut kind_chirho = con_chirho("KChirho");
+        for _ in 0..32 {
+            kind_chirho = if application_chirho {
+                TypeChirho::KindApplicationChirho {
+                    fun_chirho: Box::new(kind_chirho),
+                    arg_chirho: Box::new(con_chirho("Type")),
+                    written_chirho: true,
+                    span_chirho,
+                }
+            } else {
+                TypeChirho::KindAnnotationChirho {
+                    ty_chirho: Box::new(kind_chirho),
+                    kind_chirho: Box::new(con_chirho("Type")),
+                    span_chirho,
+                }
+            };
+        }
+        let mut fixture_chirho = signature_chirho();
+        fixture_chirho.result_ty_chirho = kind_chirho;
+        let mut allowance_chirho =
+            GadtProjectionBudgetChirho::with_limits_chirho(GadtProjectionLimitsChirho {
+                work_chirho: 1 << 20,
+                output_chirho: 1 << 20,
+                depth_chirho: 16,
+            });
+        assert_eq!(
+            check_projection_chirho(&fixture_chirho, &mut allowance_chirho, 1)
+                .unwrap_err()
+                .limit_chirho,
+            GadtProjectionLimitChirho::DepthChirho
+        );
+        assert!(check_projection_chirho(&fixture_chirho, &mut budget_chirho(1 << 20), 1).is_ok());
+    }
 }

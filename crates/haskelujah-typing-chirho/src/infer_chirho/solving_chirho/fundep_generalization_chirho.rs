@@ -259,6 +259,7 @@ impl InferCtxChirho {
         if quantify_chirho {
             let (pred_chirho, _span_chirho) = wanted_chirho;
             scheme_preds_chirho.push(SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: pred_chirho.class_name_chirho,
                 ty_chirho: pred_chirho.ty_chirho,
                 extra_tys_chirho: pred_chirho.extra_tys_chirho,
@@ -280,6 +281,7 @@ impl InferCtxChirho {
         span_chirho: SpanChirho,
     ) -> bool {
         let resolved_chirho = PredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: defaulted_pred_chirho.class_name_chirho.clone(),
             ty_chirho: final_subst_chirho.apply_ty_chirho(&defaulted_pred_chirho.ty_chirho),
             extra_tys_chirho: defaulted_pred_chirho
@@ -290,6 +292,7 @@ impl InferCtxChirho {
         };
         let args_chirho = self.normalized_pred_args_chirho(&resolved_chirho);
         let pred_chirho = PredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: resolved_chirho.class_name_chirho,
             ty_chirho: args_chirho[0].clone(),
             extra_tys_chirho: args_chirho[1..].to_vec(),

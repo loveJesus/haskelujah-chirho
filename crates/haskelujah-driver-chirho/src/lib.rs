@@ -308,6 +308,47 @@ fn collect_type_constructor_names_chirho(
     ty_chirho: &TypeChirho,
     names_chirho: &mut std::collections::HashSet<String>,
 ) {
+    fn constraint_names_chirho(
+        constraint_chirho: &haskelujah_ast_chirho::ty_chirho::ConstraintChirho,
+        names_chirho: &mut std::collections::HashSet<String>,
+    ) {
+        use haskelujah_ast_chirho::ty_chirho::ConstraintChirho;
+        match constraint_chirho {
+            ConstraintChirho::ClassChirho {
+                args_chirho,
+                kind_args_chirho,
+                ..
+            } => {
+                for arg_chirho in kind_args_chirho.iter().chain(args_chirho) {
+                    collect_type_constructor_names_chirho(arg_chirho, names_chirho);
+                }
+            }
+            ConstraintChirho::KindAnnotationChirho {
+                constraint_chirho,
+                kind_chirho,
+                ..
+            } => {
+                constraint_names_chirho(constraint_chirho, names_chirho);
+                collect_type_constructor_names_chirho(kind_chirho, names_chirho);
+            }
+            ConstraintChirho::QuantifiedChirho {
+                vars_chirho,
+                context_chirho,
+                body_chirho,
+                ..
+            } => {
+                for binder_chirho in vars_chirho {
+                    if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                        collect_type_constructor_names_chirho(kind_chirho, names_chirho);
+                    }
+                }
+                for constraint_chirho in context_chirho {
+                    constraint_names_chirho(constraint_chirho, names_chirho);
+                }
+                constraint_names_chirho(body_chirho, names_chirho);
+            }
+        }
+    }
     match ty_chirho {
         TypeChirho::ConChirho(name_chirho) => {
             if name_chirho.family_key_chirho().is_none() && name_chirho.promotion_chirho().is_none()
@@ -318,6 +359,16 @@ fn collect_type_constructor_names_chirho(
         TypeChirho::AppChirho {
             fun_chirho,
             arg_chirho,
+            ..
+        }
+        | TypeChirho::KindApplicationChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        }
+        | TypeChirho::KindAnnotationChirho {
+            ty_chirho: fun_chirho,
+            kind_chirho: arg_chirho,
             ..
         } => {
             collect_type_constructor_names_chirho(fun_chirho, names_chirho);
@@ -350,47 +401,25 @@ fn collect_type_constructor_names_chirho(
             ..
         } => {
             for constraint_chirho in context_chirho {
-                match constraint_chirho {
-                    haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
-                        args_chirho,
-                        ..
-                    } => {
-                        for arg_chirho in args_chirho {
-                            collect_type_constructor_names_chirho(arg_chirho, names_chirho);
-                        }
-                    }
-                    haskelujah_ast_chirho::ty_chirho::ConstraintChirho::QuantifiedChirho {
-                        context_chirho,
-                        body_chirho,
-                        ..
-                    } => {
-                        for inner_constraint_chirho in context_chirho {
-                            if let haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
-                                args_chirho,
-                                ..
-                            } = inner_constraint_chirho
-                            {
-                                for arg_chirho in args_chirho {
-                                    collect_type_constructor_names_chirho(arg_chirho, names_chirho);
-                                }
-                            }
-                        }
-                        if let haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
-                            args_chirho,
-                            ..
-                        } = body_chirho.as_ref()
-                        {
-                            for arg_chirho in args_chirho {
-                                collect_type_constructor_names_chirho(arg_chirho, names_chirho);
-                            }
-                        }
-                    }
-                }
+                constraint_names_chirho(constraint_chirho, names_chirho);
             }
             collect_type_constructor_names_chirho(body_chirho, names_chirho);
         }
-        TypeChirho::ForallChirho { body_chirho, .. }
-        | TypeChirho::RequiredForallChirho { body_chirho, .. } => {
+        TypeChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        }
+        | TypeChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+            ..
+        } => {
+            for binder_chirho in vars_chirho {
+                if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                    collect_type_constructor_names_chirho(kind_chirho, names_chirho);
+                }
+            }
             collect_type_constructor_names_chirho(body_chirho, names_chirho);
         }
         TypeChirho::PromotedListChirho {
@@ -1735,6 +1764,7 @@ fn qualify_imported_scheme_for_iface_chirho(
             .iter()
             .map(
                 |pred_chirho| haskelujah_typing_chirho::ty_chirho::SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: pred_chirho.class_name_chirho.clone(),
                     ty_chirho: qualify_imported_ty_chirho(
                         &pred_chirho.ty_chirho,
@@ -2380,7 +2410,11 @@ fn check_module_linearity_chirho(
                     AstTypeChirho::QualChirho { body_chirho, .. } => {
                         ty_cursor_chirho = body_chirho;
                     }
-                    AstTypeChirho::ParenChirho { inner_chirho, .. } => {
+                    AstTypeChirho::KindAnnotationChirho {
+                        ty_chirho: inner_chirho,
+                        ..
+                    }
+                    | AstTypeChirho::ParenChirho { inner_chirho, .. } => {
                         ty_cursor_chirho = inner_chirho;
                     }
                     _ => break,

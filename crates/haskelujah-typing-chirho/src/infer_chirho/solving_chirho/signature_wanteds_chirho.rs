@@ -121,6 +121,7 @@ impl InferCtxChirho {
 
     fn normalized_pred_chirho(&self, pred_chirho: &PredChirho) -> PredChirho {
         PredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: pred_chirho.class_name_chirho.clone(),
             ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
             extra_tys_chirho: pred_chirho

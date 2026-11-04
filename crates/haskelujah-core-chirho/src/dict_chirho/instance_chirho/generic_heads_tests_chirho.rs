@@ -113,6 +113,7 @@ fn class_env_chirho(
     env_chirho.classes_chirho.insert(
         "TagChirho".to_string(),
         ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "TagChirho".to_string(),
             supers_chirho: supers_chirho
                 .iter()
@@ -130,6 +131,7 @@ fn class_env_chirho(
         heads_chirho
             .into_iter()
             .map(|(head_chirho, extra_chirho)| InstDeclChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "TagChirho".to_string(),
                 head_ty_chirho: head_chirho,
                 extra_head_tys_chirho: extra_chirho,

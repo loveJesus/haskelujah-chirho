@@ -10,14 +10,16 @@
 //! normal compilation pipeline.
 
 use haskelujah_ast_chirho::decl_chirho::{
-    ConDeclChirho, DeclChirho, FieldDeclChirho, StrictnessChirho, TyVarChirho,
+    ConDeclChirho, DataKindSigChirho, DeclChirho, FieldDeclChirho, StrictnessChirho, TyVarChirho,
 };
 use haskelujah_ast_chirho::expr_chirho::{
     AltChirho, ExprChirho, FieldAssignChirho, LocalBindChirho, MatchArmChirho, RhsChirho,
     StmtChirho,
 };
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
-use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+use haskelujah_ast_chirho::name_chirho::{
+    CompilerTypeConstructorChirho, NameChirho, RawNameChirho, TypeConstructorDeclarationChirho,
+};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 use haskelujah_span_chirho::SpanChirho;
@@ -33,6 +35,16 @@ fn mk_ast_name_chirho(text_chirho: &str) -> NameChirho {
         text_chirho,
         TH_SPAN_CHIRHO,
     ))
+}
+
+/// `StarT` and `ConstraintT` are typed TH constructors, so their universe
+/// identity comes from this producer rather than a source name's spelling.
+fn th_universe_to_ast_chirho(constructor_chirho: CompilerTypeConstructorChirho) -> TypeChirho {
+    let mut name_chirho = mk_ast_name_chirho(constructor_chirho.name_chirho());
+    name_chirho.set_type_constructor_chirho(Some(
+        TypeConstructorDeclarationChirho::compiler_data_chirho(constructor_chirho),
+    ));
+    TypeChirho::ConChirho(name_chirho)
 }
 
 // ---------------------------------------------------------------------------
@@ -62,7 +74,14 @@ pub fn th_type_to_ast_chirho(ty_chirho: &ThTypeChirho) -> TypeChirho {
             arg_chirho: Box::new(th_type_to_ast_chirho(arg_chirho)),
             span_chirho: TH_SPAN_CHIRHO,
         },
+        ThTypeChirho::AppKindTChirho(fun_chirho, arg_chirho) => TypeChirho::KindApplicationChirho {
+            fun_chirho: Box::new(th_type_to_ast_chirho(fun_chirho)),
+            arg_chirho: Box::new(th_type_to_ast_chirho(arg_chirho)),
+            written_chirho: true,
+            span_chirho: TH_SPAN_CHIRHO,
+        },
         ThTypeChirho::ArrowTChirho => TypeChirho::ConChirho(mk_ast_name_chirho("->")),
+        ThTypeChirho::EqualityTChirho => TypeChirho::ConChirho(mk_ast_name_chirho("~")),
         ThTypeChirho::ListTChirho => TypeChirho::ConChirho(mk_ast_name_chirho("[]")),
         ThTypeChirho::TupleTChirho(n_chirho) => {
             let name_chirho = match n_chirho {
@@ -92,17 +111,7 @@ pub fn th_type_to_ast_chirho(ty_chirho: &ThTypeChirho) -> TypeChirho {
             if bndrs_chirho.is_empty() {
                 with_context_chirho
             } else {
-                let vars_chirho: Vec<TyVarChirho> = bndrs_chirho
-                    .iter()
-                    .map(|b_chirho| match b_chirho {
-                        ThTyVarBndrChirho::PlainTVChirho(n_chirho) => {
-                            TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho))
-                        }
-                        ThTyVarBndrChirho::KindedTVChirho(n_chirho, _) => {
-                            TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho))
-                        }
-                    })
-                    .collect();
+                let vars_chirho = bndrs_chirho.iter().map(th_tyvar_to_ast_chirho).collect();
                 TypeChirho::ForallChirho {
                     vars_chirho,
                     body_chirho: Box::new(with_context_chirho),
@@ -110,20 +119,74 @@ pub fn th_type_to_ast_chirho(ty_chirho: &ThTypeChirho) -> TypeChirho {
                 }
             }
         }
-        ThTypeChirho::SigTChirho(ty_chirho, _kind_chirho) => {
-            // No KindSig variant in AST, just return the type
-            th_type_to_ast_chirho(ty_chirho)
+        ThTypeChirho::ForallVisTChirho(binders_chirho, body_chirho) => {
+            TypeChirho::RequiredForallChirho {
+                vars_chirho: binders_chirho.iter().map(th_tyvar_to_ast_chirho).collect(),
+                body_chirho: Box::new(th_type_to_ast_chirho(body_chirho)),
+                span_chirho: TH_SPAN_CHIRHO,
+            }
         }
-        ThTypeChirho::WildCardTChirho => {
-            // No Wildcard variant in TypeChirho, use a placeholder
-            TypeChirho::VarChirho(mk_ast_name_chirho("_"))
+        ThTypeChirho::SigTChirho(ty_chirho, kind_chirho) => TypeChirho::KindAnnotationChirho {
+            ty_chirho: Box::new(th_type_to_ast_chirho(ty_chirho)),
+            kind_chirho: Box::new(th_type_to_ast_chirho(kind_chirho)),
+            span_chirho: TH_SPAN_CHIRHO,
+        },
+        ThTypeChirho::WildCardTChirho => TypeChirho::WildcardChirho {
+            span_chirho: TH_SPAN_CHIRHO,
+        },
+        ThTypeChirho::StarTChirho => {
+            th_universe_to_ast_chirho(CompilerTypeConstructorChirho::TypeUniverseChirho)
         }
-        ThTypeChirho::StarTChirho => TypeChirho::ConChirho(mk_ast_name_chirho("Type")),
-        ThTypeChirho::ConstraintTChirho => TypeChirho::ConChirho(mk_ast_name_chirho("Constraint")),
+        ThTypeChirho::ConstraintTChirho => {
+            th_universe_to_ast_chirho(CompilerTypeConstructorChirho::ConstraintUniverseChirho)
+        }
         ThTypeChirho::PromotedTChirho(name_chirho) => TypeChirho::PromotedConChirho {
             name_chirho: th_name_to_ast_chirho(name_chirho),
             span_chirho: TH_SPAN_CHIRHO,
         },
+        ThTypeChirho::PromotedListTChirho(elements_chirho) => TypeChirho::PromotedListChirho {
+            elements_chirho: elements_chirho.iter().map(th_type_to_ast_chirho).collect(),
+            span_chirho: TH_SPAN_CHIRHO,
+        },
+        ThTypeChirho::PromotedNilTChirho => TypeChirho::PromotedListChirho {
+            elements_chirho: vec![],
+            span_chirho: TH_SPAN_CHIRHO,
+        },
+        ThTypeChirho::PromotedConsTChirho => TypeChirho::PromotedConChirho {
+            name_chirho: mk_ast_name_chirho(":"),
+            span_chirho: TH_SPAN_CHIRHO,
+        },
+        ThTypeChirho::PromotedTupleTChirho(elements_chirho) => {
+            let head_chirho = TypeChirho::PromotedConChirho {
+                name_chirho: mk_ast_name_chirho(&format!(
+                    "({})",
+                    ",".repeat(elements_chirho.len().saturating_sub(1))
+                )),
+                span_chirho: TH_SPAN_CHIRHO,
+            };
+            elements_chirho
+                .iter()
+                .fold(head_chirho, |fun_chirho, element_chirho| {
+                    TypeChirho::AppChirho {
+                        fun_chirho: Box::new(fun_chirho),
+                        arg_chirho: Box::new(th_type_to_ast_chirho(element_chirho)),
+                        span_chirho: TH_SPAN_CHIRHO,
+                    }
+                })
+        }
+        ThTypeChirho::InfixTChirho(left_chirho, operator_chirho, right_chirho) => {
+            TypeChirho::AppChirho {
+                fun_chirho: Box::new(TypeChirho::AppChirho {
+                    fun_chirho: Box::new(TypeChirho::ConChirho(th_name_to_ast_chirho(
+                        operator_chirho,
+                    ))),
+                    arg_chirho: Box::new(th_type_to_ast_chirho(left_chirho)),
+                    span_chirho: TH_SPAN_CHIRHO,
+                }),
+                arg_chirho: Box::new(th_type_to_ast_chirho(right_chirho)),
+                span_chirho: TH_SPAN_CHIRHO,
+            }
+        }
         // For unsupported TH type forms, produce a placeholder
         _ => TypeChirho::ConChirho(mk_ast_name_chirho("__TH_UNSUPPORTED__")),
     }
@@ -131,8 +194,29 @@ pub fn th_type_to_ast_chirho(ty_chirho: &ThTypeChirho) -> TypeChirho {
 
 /// Try to interpret a TH type as a typeclass constraint.
 fn th_type_to_constraint_chirho(ty_chirho: &ThTypeChirho) -> Option<ConstraintChirho> {
-    // Peel off AppT applications to find the class name and arguments
+    match ty_chirho {
+        ThTypeChirho::SigTChirho(constraint_chirho, kind_chirho) => {
+            return Some(ConstraintChirho::KindAnnotationChirho {
+                constraint_chirho: Box::new(th_type_to_constraint_chirho(constraint_chirho)?),
+                kind_chirho: Box::new(th_type_to_ast_chirho(kind_chirho)),
+                span_chirho: TH_SPAN_CHIRHO,
+            });
+        }
+        ThTypeChirho::ForallTChirho(binders_chirho, context_chirho, body_chirho) => {
+            return Some(ConstraintChirho::QuantifiedChirho {
+                vars_chirho: binders_chirho.iter().map(th_tyvar_to_ast_chirho).collect(),
+                context_chirho: context_chirho
+                    .iter()
+                    .filter_map(th_type_to_constraint_chirho)
+                    .collect(),
+                body_chirho: Box::new(th_type_to_constraint_chirho(body_chirho)?),
+                span_chirho: TH_SPAN_CHIRHO,
+            });
+        }
+        _ => {}
+    }
     let mut args_chirho = Vec::new();
+    let mut kind_args_chirho = Vec::new();
     let mut current_chirho = ty_chirho;
     loop {
         match current_chirho {
@@ -140,10 +224,26 @@ fn th_type_to_constraint_chirho(ty_chirho: &ThTypeChirho) -> Option<ConstraintCh
                 args_chirho.push(th_type_to_ast_chirho(arg_chirho));
                 current_chirho = fun_chirho;
             }
-            ThTypeChirho::ConTChirho(name_chirho) => {
+            ThTypeChirho::AppKindTChirho(fun_chirho, arg_chirho) => {
+                kind_args_chirho.push(th_type_to_ast_chirho(arg_chirho));
+                current_chirho = fun_chirho;
+            }
+            ThTypeChirho::ConTChirho(name_chirho) | ThTypeChirho::VarTChirho(name_chirho) => {
                 args_chirho.reverse();
+                kind_args_chirho.reverse();
                 return Some(ConstraintChirho::ClassChirho {
                     class_chirho: th_name_to_ast_chirho(name_chirho),
+                    kind_args_chirho,
+                    args_chirho,
+                    span_chirho: TH_SPAN_CHIRHO,
+                });
+            }
+            ThTypeChirho::EqualityTChirho => {
+                args_chirho.reverse();
+                kind_args_chirho.reverse();
+                return Some(ConstraintChirho::ClassChirho {
+                    class_chirho: mk_ast_name_chirho("~"),
+                    kind_args_chirho,
                     args_chirho,
                     span_chirho: TH_SPAN_CHIRHO,
                 });
@@ -547,21 +647,11 @@ pub fn th_dec_to_ast_chirho(dec_chirho: &ThDecChirho) -> Option<DeclChirho> {
             _cxt_chirho,
             name_chirho,
             tyvars_chirho,
-            _kind,
+            kind_chirho,
             cons_chirho,
             derivs_chirho,
         ) => {
-            let ast_tyvars_chirho: Vec<TyVarChirho> = tyvars_chirho
-                .iter()
-                .map(|tv_chirho| match tv_chirho {
-                    ThTyVarBndrChirho::PlainTVChirho(n_chirho) => {
-                        TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho))
-                    }
-                    ThTyVarBndrChirho::KindedTVChirho(n_chirho, _) => {
-                        TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho))
-                    }
-                })
-                .collect();
+            let ast_tyvars_chirho = tyvars_chirho.iter().map(th_tyvar_to_ast_chirho).collect();
             let ast_cons_chirho: Vec<ConDeclChirho> = cons_chirho
                 .iter()
                 .filter_map(|c_chirho| th_con_to_ast_chirho(c_chirho))
@@ -583,22 +673,14 @@ pub fn th_dec_to_ast_chirho(dec_chirho: &ThDecChirho) -> Option<DeclChirho> {
                 type_vars_chirho: ast_tyvars_chirho,
                 constructors_chirho: ast_cons_chirho,
                 deriving_chirho: deriving_names_chirho,
-                kind_sig_chirho: None,
+                kind_sig_chirho: kind_chirho.as_ref().map(|kind_chirho| {
+                    DataKindSigChirho::ResultChirho(th_type_to_ast_chirho(kind_chirho))
+                }),
                 span_chirho: TH_SPAN_CHIRHO,
             })
         }
         ThDecChirho::TySynDChirho(name_chirho, tyvars_chirho, rhs_chirho) => {
-            let ast_tyvars_chirho: Vec<TyVarChirho> = tyvars_chirho
-                .iter()
-                .map(|tv_chirho| match tv_chirho {
-                    ThTyVarBndrChirho::PlainTVChirho(n_chirho) => {
-                        TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho))
-                    }
-                    ThTyVarBndrChirho::KindedTVChirho(n_chirho, _) => {
-                        TyVarChirho::plain_chirho(th_name_to_ast_chirho(n_chirho))
-                    }
-                })
-                .collect();
+            let ast_tyvars_chirho = tyvars_chirho.iter().map(th_tyvar_to_ast_chirho).collect();
             Some(DeclChirho::TypeAliasDeclChirho {
                 name_chirho: th_name_to_ast_chirho(name_chirho),
                 type_vars_chirho: ast_tyvars_chirho,
@@ -608,7 +690,8 @@ pub fn th_dec_to_ast_chirho(dec_chirho: &ThDecChirho) -> Option<DeclChirho> {
         }
         ThDecChirho::InstanceDChirho(_overlap, cxt_chirho, ty_chirho, methods_chirho) => {
             // Extract class name and type arguments from the instance type
-            let (class_name_chirho, type_args_chirho) = decompose_instance_type_chirho(ty_chirho);
+            let (class_name_chirho, kind_args_chirho, type_args_chirho) =
+                decompose_instance_type_chirho(ty_chirho);
             let constraints_chirho: Vec<ConstraintChirho> = cxt_chirho
                 .iter()
                 .filter_map(|c_chirho| th_type_to_constraint_chirho(c_chirho))
@@ -618,6 +701,7 @@ pub fn th_dec_to_ast_chirho(dec_chirho: &ThDecChirho) -> Option<DeclChirho> {
                 .filter_map(|d_chirho| th_dec_to_local_bind_chirho(d_chirho))
                 .collect();
             Some(DeclChirho::InstanceDeclChirho {
+                kind_args_chirho,
                 context_chirho: constraints_chirho,
                 class_chirho: class_name_chirho,
                 types_chirho: type_args_chirho,
@@ -638,8 +722,11 @@ pub fn th_dec_to_ast_chirho(dec_chirho: &ThDecChirho) -> Option<DeclChirho> {
 }
 
 /// Decompose an instance type like `AppT (ConT "Show") (ConT "Int")` into class name + args.
-fn decompose_instance_type_chirho(ty_chirho: &ThTypeChirho) -> (NameChirho, Vec<TypeChirho>) {
+fn decompose_instance_type_chirho(
+    ty_chirho: &ThTypeChirho,
+) -> (NameChirho, Vec<TypeChirho>, Vec<TypeChirho>) {
     let mut args_chirho = Vec::new();
+    let mut kind_args_chirho = Vec::new();
     let mut current_chirho = ty_chirho;
     loop {
         match current_chirho {
@@ -647,13 +734,27 @@ fn decompose_instance_type_chirho(ty_chirho: &ThTypeChirho) -> (NameChirho, Vec<
                 args_chirho.push(th_type_to_ast_chirho(arg_chirho));
                 current_chirho = fun_chirho;
             }
+            ThTypeChirho::AppKindTChirho(fun_chirho, arg_chirho) => {
+                kind_args_chirho.push(th_type_to_ast_chirho(arg_chirho));
+                current_chirho = fun_chirho;
+            }
             ThTypeChirho::ConTChirho(name_chirho) => {
                 args_chirho.reverse();
-                return (th_name_to_ast_chirho(name_chirho), args_chirho);
+                kind_args_chirho.reverse();
+                return (
+                    th_name_to_ast_chirho(name_chirho),
+                    kind_args_chirho,
+                    args_chirho,
+                );
             }
             _ => {
                 args_chirho.reverse();
-                return (mk_ast_name_chirho("__UNKNOWN_CLASS__"), args_chirho);
+                kind_args_chirho.reverse();
+                return (
+                    mk_ast_name_chirho("__UNKNOWN_CLASS__"),
+                    kind_args_chirho,
+                    args_chirho,
+                );
             }
         }
     }
@@ -789,9 +890,14 @@ fn th_con_to_ast_chirho(con_chirho: &ThConChirho) -> Option<ConDeclChirho> {
 
 fn th_tyvar_to_ast_chirho(var_chirho: &ThTyVarBndrChirho) -> TyVarChirho {
     match var_chirho {
-        ThTyVarBndrChirho::PlainTVChirho(name_chirho)
-        | ThTyVarBndrChirho::KindedTVChirho(name_chirho, _) => {
+        ThTyVarBndrChirho::PlainTVChirho(name_chirho) => {
             TyVarChirho::plain_chirho(th_name_to_ast_chirho(name_chirho))
+        }
+        ThTyVarBndrChirho::KindedTVChirho(name_chirho, kind_chirho) => {
+            TyVarChirho::annotated_chirho(
+                th_name_to_ast_chirho(name_chirho),
+                th_type_to_ast_chirho(kind_chirho),
+            )
         }
     }
 }
@@ -906,3 +1012,7 @@ mod tests_chirho {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "convert_chirho/kind_carrier_tests_chirho.rs"]
+mod kind_carrier_tests_chirho;

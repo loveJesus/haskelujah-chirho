@@ -232,6 +232,7 @@ fn source_instance_transport_keeps_colliding_spans_and_actual_declarations_chirh
     let instances_chirho = [TyChirho::int_chirho(), TyChirho::char_chirho()]
         .into_iter()
         .map(|head_ty_chirho| InstDeclChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "DescribeChirho".to_owned(),
             head_ty_chirho,
             extra_head_tys_chirho: Vec::new(),

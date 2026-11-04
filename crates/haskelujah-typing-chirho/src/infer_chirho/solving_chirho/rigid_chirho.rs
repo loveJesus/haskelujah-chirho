@@ -320,6 +320,7 @@ impl InferCtxChirho {
             return false;
         }
         let normalized_pred_chirho = PredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: pred_chirho.class_name_chirho.clone(),
             ty_chirho: args_chirho[0].clone(),
             extra_tys_chirho: args_chirho[1..].to_vec(),

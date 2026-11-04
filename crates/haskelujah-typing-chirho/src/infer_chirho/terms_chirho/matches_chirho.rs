@@ -36,6 +36,7 @@ impl InferCtxChirho {
             preds_chirho: preds_chirho
                 .iter()
                 .map(|pred_chirho| SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: pred_chirho.class_name_chirho.clone(),
                     ty_chirho: pred_chirho.ty_chirho.clone(),
                     extra_tys_chirho: pred_chirho.extra_tys_chirho.clone(),

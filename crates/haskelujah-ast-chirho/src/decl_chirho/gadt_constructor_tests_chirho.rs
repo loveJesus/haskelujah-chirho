@@ -20,6 +20,7 @@ fn a_signature_round_trip_keeps_prefix_scope_and_arrow_multiplicity_chirho() {
         vars_chirho: vec![name_chirho("aChirho").into()],
         body_chirho: Box::new(TypeChirho::QualChirho {
             context_chirho: vec![ConstraintChirho::ClassChirho {
+                kind_args_chirho: Vec::new(),
                 class_chirho: name_chirho("Eq"),
                 args_chirho: vec![TypeChirho::VarChirho(name_chirho("aChirho"))],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -209,8 +210,9 @@ fn malformed_recovery_is_never_a_successful_signature_projection_chirho() {
 #[test]
 fn selector_fields_keep_free_kinds_and_respect_inner_quantifiers_chirho() {
     let mut variable_chirho = TyVarChirho::plain_chirho(name_chirho("xChirho"));
-    variable_chirho.kind_annotation_chirho =
-        Some(super::super::AstKindChirho::VarChirho("kChirho".to_owned()));
+    variable_chirho.kind_annotation_chirho = Some(Box::new(
+        (super::super::AstKindChirho::VarChirho("kChirho".to_owned())).into(),
+    ));
     let mut field_ty_chirho = TypeChirho::ForallChirho {
         vars_chirho: vec![variable_chirho],
         body_chirho: Box::new(TypeChirho::AppChirho {
@@ -245,14 +247,17 @@ fn selector_fields_keep_free_kinds_and_respect_inner_quantifiers_chirho() {
 #[test]
 fn used_result_binders_determine_direct_kinds_transitively_but_not_kind_families_chirho() {
     let mut a_chirho = TyVarChirho::plain_chirho(name_chirho("aChirho"));
-    a_chirho.kind_annotation_chirho =
-        Some(super::super::AstKindChirho::VarChirho("kChirho".to_owned()));
+    a_chirho.kind_annotation_chirho = Some(Box::new(
+        (super::super::AstKindChirho::VarChirho("kChirho".to_owned())).into(),
+    ));
     let mut k_chirho = TyVarChirho::plain_chirho(name_chirho("kChirho"));
-    k_chirho.kind_annotation_chirho =
-        Some(super::super::AstKindChirho::VarChirho("jChirho".to_owned()));
+    k_chirho.kind_annotation_chirho = Some(Box::new(
+        (super::super::AstKindChirho::VarChirho("jChirho".to_owned())).into(),
+    ));
     let mut x_chirho = TyVarChirho::plain_chirho(name_chirho("xChirho"));
-    x_chirho.kind_annotation_chirho =
-        Some(super::super::AstKindChirho::VarChirho("jChirho".to_owned()));
+    x_chirho.kind_annotation_chirho = Some(Box::new(
+        (super::super::AstKindChirho::VarChirho("jChirho".to_owned())).into(),
+    ));
     let mut signature_chirho = GadtConSignatureChirho {
         prefix_chirho: vec![GadtConPrefixChirho::ForallChirho {
             vars_chirho: vec![
@@ -295,11 +300,14 @@ fn used_result_binders_determine_direct_kinds_transitively_but_not_kind_families
     if let GadtConPrefixChirho::ForallChirho { vars_chirho, .. } =
         &mut signature_chirho.prefix_chirho[0]
     {
-        vars_chirho[2].kind_annotation_chirho = Some(super::super::AstKindChirho::AppChirho(
-            Box::new(super::super::AstKindChirho::VarChirho(
-                "FamilyChirho".to_owned(),
-            )),
-            Box::new(super::super::AstKindChirho::VarChirho("kChirho".to_owned())),
+        vars_chirho[2].kind_annotation_chirho = Some(Box::new(
+            (super::super::AstKindChirho::AppChirho(
+                Box::new(super::super::AstKindChirho::VarChirho(
+                    "FamilyChirho".to_owned(),
+                )),
+                Box::new(super::super::AstKindChirho::VarChirho("kChirho".to_owned())),
+            ))
+            .into(),
         ));
     }
     assert_eq!(

@@ -13,8 +13,11 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
     // Data.Kind — Type, Constraint
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &["Type", "Constraint"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
+        for constructor_chirho in &[
+            CompilerTypeConstructorChirho::TypeUniverseChirho,
+            CompilerTypeConstructorChirho::ConstraintUniverseChirho,
+        ] {
+            let (k_chirho, v_chirho) = mk_data_type_chirho(*constructor_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {

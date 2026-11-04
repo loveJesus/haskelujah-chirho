@@ -9,11 +9,15 @@
 use std::fmt;
 
 use super::{
-    AstKindChirho, ConDeclChirho, DataKindSigChirho, DeclChirho, FieldDeclChirho,
-    GadtConArgsChirho, GadtConPrefixChirho, GadtConSignatureChirho, TyVarChirho,
+    AssocTfInstanceChirho, AssocTypeFamilyChirho, ClassMethodChirho, ConDeclChirho,
+    DataKindSigChirho, DeclChirho, FieldDeclChirho, GadtConArgsChirho, GadtConPrefixChirho,
+    GadtConSignatureChirho, TyVarChirho, TypeFamilyEquationChirho,
 };
 use crate::module_chirho::ModuleChirho;
-use crate::name_chirho::{NameChirho, RawNameChirho};
+use crate::name_chirho::{
+    NameChirho, RawNameChirho, TypeConstructorDeclarationChirho, TypeConstructorIdentityChirho,
+};
+use crate::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
 use crate::ty_chirho::{ConstraintChirho, MultiplicityChirho, TypeChirho};
 use haskelujah_span_chirho::SpanChirho;
 
@@ -275,8 +279,9 @@ fn checked_chirho(
 }
 
 /// Data/newtype headers supply the return type absent from ordinary and record
-/// constructors. Account for that copied header for every such constructor;
-/// all other declaration kinds are outside this constructor projection policy.
+/// constructors. Account for that copied header for every such constructor.
+/// Other type-bearing declaration headers use the same borrowed preflight;
+/// value-binding expression bodies remain outside this type projection policy.
 pub fn check_declaration_projection_chirho(
     declaration_chirho: &DeclChirho,
     budget_chirho: &mut GadtProjectionBudgetChirho,
@@ -320,7 +325,24 @@ pub fn check_declaration_projection_chirho(
                         if factor_chirho == 0 {
                             return Err(GadtProjectionLimitChirho::ArithmeticChirho);
                         }
-                        budget_chirho.work_chirho(1)
+                        match declaration_chirho {
+                            DeclChirho::TypeSigChirho { .. }
+                            | DeclChirho::ForeignDeclChirho { .. }
+                            | DeclChirho::DefaultDeclChirho { .. }
+                            | DeclChirho::TypeAliasDeclChirho { .. }
+                            | DeclChirho::TypeFamilyDeclChirho { .. }
+                            | DeclChirho::TypeFamilyInstanceDeclChirho { .. }
+                            | DeclChirho::ClassDeclChirho { .. }
+                            | DeclChirho::InstanceDeclChirho { .. }
+                            | DeclChirho::StandaloneDerivingDeclChirho { .. } => walk_chirho(
+                                ProjectionNodeChirho::DeclarationChirho(declaration_chirho),
+                                1,
+                                1,
+                                factor_chirho,
+                                budget_chirho,
+                            ),
+                            _ => budget_chirho.work_chirho(1),
+                        }
                     },
                 );
             }
@@ -461,6 +483,31 @@ pub fn check_module_projection_chirho(
     })?;
     for declaration_chirho in &module_chirho.decls_chirho {
         check_declaration_projection_chirho(declaration_chirho, budget_chirho, factor_chirho)?;
+    }
+    for (type_name_chirho, class_name_chirho, via_chirho) in &module_chirho.deriving_via_chirho {
+        checked_chirho(via_chirho.span_chirho(), budget_chirho, |budget_chirho| {
+            walk_chirho(
+                ProjectionNodeChirho::NameChirho(type_name_chirho),
+                1,
+                1,
+                factor_chirho,
+                budget_chirho,
+            )?;
+            walk_chirho(
+                ProjectionNodeChirho::NameChirho(class_name_chirho),
+                1,
+                1,
+                factor_chirho,
+                budget_chirho,
+            )?;
+            walk_chirho(
+                ProjectionNodeChirho::TypeChirho(via_chirho),
+                1,
+                1,
+                factor_chirho,
+                budget_chirho,
+            )
+        })?;
     }
     Ok(())
 }
@@ -690,7 +737,18 @@ enum ProjectionNodeChirho<'syntax_chirho> {
     ConstraintsChirho(&'syntax_chirho [ConstraintChirho]),
     BinderChirho(&'syntax_chirho TyVarChirho),
     BindersChirho(&'syntax_chirho [TyVarChirho]),
-    KindChirho(&'syntax_chirho AstKindChirho),
+    DeclarationChirho(&'syntax_chirho DeclChirho),
+    FamilyEquationChirho(&'syntax_chirho TypeFamilyEquationChirho),
+    FamilyEquationsChirho(&'syntax_chirho [TypeFamilyEquationChirho]),
+    AssociatedFamilyChirho(&'syntax_chirho AssocTypeFamilyChirho),
+    AssociatedFamiliesChirho(&'syntax_chirho [AssocTypeFamilyChirho]),
+    AssociatedInstanceChirho(&'syntax_chirho AssocTfInstanceChirho),
+    AssociatedInstancesChirho(&'syntax_chirho [AssocTfInstanceChirho]),
+    MethodChirho(&'syntax_chirho ClassMethodChirho),
+    MethodsChirho(&'syntax_chirho [ClassMethodChirho]),
+    StringsChirho(&'syntax_chirho [String]),
+    StringChirho(&'syntax_chirho str),
+    FundepsChirho(&'syntax_chirho [(Vec<String>, Vec<String>)]),
     NameChirho(&'syntax_chirho NameChirho),
     NamesChirho(&'syntax_chirho [NameChirho]),
     MultiplicityChirho(&'syntax_chirho MultiplicityChirho),
@@ -708,6 +766,8 @@ fn name_weight_chirho(name_chirho: &NameChirho) -> Result<usize, GadtProjectionL
         qualifier_chirho,
         promotion_chirho,
         family_key_chirho,
+        type_variable_chirho,
+        type_constructor_chirho,
         span_chirho: _,
         origin_chirho: _,
         explicit_type_member_chirho: _,
@@ -720,6 +780,33 @@ fn name_weight_chirho(name_chirho: &NameChirho) -> Result<usize, GadtProjectionL
         promotion_chirho.as_ref().map_or(0, |promotion_chirho| {
             promotion_chirho.key_chirho().as_str_chirho().len()
         }),
+        match type_variable_chirho {
+            Some(ScopedTypeVariableIdChirho::QuantifiedChirho {
+                declaration_chirho,
+                index_chirho: _,
+            }) => declaration_chirho.len(),
+            Some(ScopedTypeVariableIdChirho::InferenceChirho {
+                owner_chirho: _,
+                variable_chirho: _,
+            })
+            | None => 0,
+        },
+        match type_constructor_chirho {
+            Some(TypeConstructorDeclarationChirho {
+                identity_chirho,
+                role_chirho: _,
+            }) => match identity_chirho {
+                TypeConstructorIdentityChirho::SourceChirho {
+                    defining_module_chirho,
+                    name_chirho,
+                } => defining_module_chirho
+                    .len()
+                    .checked_add(name_chirho.len())
+                    .ok_or(GadtProjectionLimitChirho::ArithmeticChirho)?,
+                TypeConstructorIdentityChirho::CompilerChirho(_) => 0,
+            },
+            None => 0,
+        },
     ]
     .into_iter()
     .try_fold(1_usize, |weight_chirho, bytes_chirho| {
@@ -799,6 +886,97 @@ fn walk_chirho(
                 }
                 continue;
             }
+            ProjectionNodeChirho::FamilyEquationsChirho(items_chirho) => {
+                if let Some((first_chirho, rest_chirho)) = items_chirho.split_first() {
+                    if !rest_chirho.is_empty() {
+                        push_chirho(
+                            ProjectionNodeChirho::FamilyEquationsChirho(rest_chirho),
+                            depth_chirho,
+                        )?;
+                    }
+                    push_chirho(
+                        ProjectionNodeChirho::FamilyEquationChirho(first_chirho),
+                        depth_chirho,
+                    )?;
+                }
+                continue;
+            }
+            ProjectionNodeChirho::AssociatedFamiliesChirho(items_chirho) => {
+                if let Some((first_chirho, rest_chirho)) = items_chirho.split_first() {
+                    if !rest_chirho.is_empty() {
+                        push_chirho(
+                            ProjectionNodeChirho::AssociatedFamiliesChirho(rest_chirho),
+                            depth_chirho,
+                        )?;
+                    }
+                    push_chirho(
+                        ProjectionNodeChirho::AssociatedFamilyChirho(first_chirho),
+                        depth_chirho,
+                    )?;
+                }
+                continue;
+            }
+            ProjectionNodeChirho::AssociatedInstancesChirho(items_chirho) => {
+                if let Some((first_chirho, rest_chirho)) = items_chirho.split_first() {
+                    if !rest_chirho.is_empty() {
+                        push_chirho(
+                            ProjectionNodeChirho::AssociatedInstancesChirho(rest_chirho),
+                            depth_chirho,
+                        )?;
+                    }
+                    push_chirho(
+                        ProjectionNodeChirho::AssociatedInstanceChirho(first_chirho),
+                        depth_chirho,
+                    )?;
+                }
+                continue;
+            }
+            ProjectionNodeChirho::MethodsChirho(items_chirho) => {
+                if let Some((first_chirho, rest_chirho)) = items_chirho.split_first() {
+                    if !rest_chirho.is_empty() {
+                        push_chirho(
+                            ProjectionNodeChirho::MethodsChirho(rest_chirho),
+                            depth_chirho,
+                        )?;
+                    }
+                    push_chirho(
+                        ProjectionNodeChirho::MethodChirho(first_chirho),
+                        depth_chirho,
+                    )?;
+                }
+                continue;
+            }
+            ProjectionNodeChirho::StringsChirho(items_chirho) => {
+                if let Some((first_chirho, rest_chirho)) = items_chirho.split_first() {
+                    if !rest_chirho.is_empty() {
+                        push_chirho(
+                            ProjectionNodeChirho::StringsChirho(rest_chirho),
+                            depth_chirho,
+                        )?;
+                    }
+                    push_chirho(
+                        ProjectionNodeChirho::StringChirho(first_chirho),
+                        depth_chirho,
+                    )?;
+                }
+                continue;
+            }
+            ProjectionNodeChirho::FundepsChirho(items_chirho) => {
+                if let Some(((from_chirho, to_chirho), rest_chirho)) = items_chirho.split_first() {
+                    if !rest_chirho.is_empty() {
+                        push_chirho(
+                            ProjectionNodeChirho::FundepsChirho(rest_chirho),
+                            depth_chirho,
+                        )?;
+                    }
+                    push_chirho(ProjectionNodeChirho::StringsChirho(to_chirho), depth_chirho)?;
+                    push_chirho(
+                        ProjectionNodeChirho::StringsChirho(from_chirho),
+                        depth_chirho,
+                    )?;
+                }
+                continue;
+            }
             _ => {}
         }
         // The cursor closure's borrow ends before charging this syntax node.
@@ -820,9 +998,22 @@ fn walk_chirho(
                     fun_chirho,
                     arg_chirho,
                     ..
+                }
+                | TypeChirho::KindApplicationChirho {
+                    fun_chirho,
+                    arg_chirho,
+                    ..
                 } => {
                     push_chirho(ProjectionNodeChirho::TypeChirho(arg_chirho))?;
                     push_chirho(ProjectionNodeChirho::TypeChirho(fun_chirho))?;
+                }
+                TypeChirho::KindAnnotationChirho {
+                    ty_chirho,
+                    kind_chirho,
+                    ..
+                } => {
+                    push_chirho(ProjectionNodeChirho::TypeChirho(kind_chirho))?;
+                    push_chirho(ProjectionNodeChirho::TypeChirho(ty_chirho))?;
                 }
                 TypeChirho::FunChirho {
                     arg_chirho,
@@ -877,11 +1068,21 @@ fn walk_chirho(
             ProjectionNodeChirho::ConstraintChirho(constraint_chirho) => match constraint_chirho {
                 ConstraintChirho::ClassChirho {
                     class_chirho,
+                    kind_args_chirho,
                     args_chirho,
                     ..
                 } => {
                     push_chirho(ProjectionNodeChirho::NameChirho(class_chirho))?;
+                    push_chirho(ProjectionNodeChirho::TypesChirho(kind_args_chirho))?;
                     push_chirho(ProjectionNodeChirho::TypesChirho(args_chirho))?;
+                }
+                ConstraintChirho::KindAnnotationChirho {
+                    constraint_chirho,
+                    kind_chirho,
+                    ..
+                } => {
+                    push_chirho(ProjectionNodeChirho::TypeChirho(kind_chirho))?;
+                    push_chirho(ProjectionNodeChirho::ConstraintChirho(constraint_chirho))?;
                 }
                 ConstraintChirho::QuantifiedChirho {
                     vars_chirho,
@@ -897,20 +1098,177 @@ fn walk_chirho(
             ProjectionNodeChirho::BinderChirho(binder_chirho) => {
                 push_chirho(ProjectionNodeChirho::NameChirho(&binder_chirho.name_chirho))?;
                 if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
-                    push_chirho(ProjectionNodeChirho::KindChirho(kind_chirho))?;
+                    push_chirho(ProjectionNodeChirho::TypeChirho(kind_chirho))?;
                 }
             }
-            ProjectionNodeChirho::KindChirho(kind_chirho) => match kind_chirho {
-                AstKindChirho::ArrowChirho(left_chirho, right_chirho)
-                | AstKindChirho::AppChirho(left_chirho, right_chirho) => {
-                    push_chirho(ProjectionNodeChirho::KindChirho(right_chirho))?;
-                    push_chirho(ProjectionNodeChirho::KindChirho(left_chirho))?;
+            ProjectionNodeChirho::DeclarationChirho(declaration_chirho) => match declaration_chirho
+            {
+                DeclChirho::TypeSigChirho {
+                    name_chirho,
+                    ty_chirho,
+                    ..
                 }
-                AstKindChirho::VarChirho(name_chirho) => {
-                    budget_chirho.charge_chirho(name_chirho.len(), copies_chirho, factor_chirho)?
+                | DeclChirho::ForeignDeclChirho {
+                    name_chirho,
+                    ty_chirho,
+                    ..
+                } => {
+                    push_chirho(ProjectionNodeChirho::NameChirho(name_chirho))?;
+                    push_chirho(ProjectionNodeChirho::TypeChirho(ty_chirho))?;
                 }
-                AstKindChirho::StarChirho | AstKindChirho::ConstraintChirho => {}
+                DeclChirho::DefaultDeclChirho { types_chirho, .. } => {
+                    push_chirho(ProjectionNodeChirho::TypesChirho(types_chirho))?;
+                }
+                DeclChirho::TypeAliasDeclChirho {
+                    name_chirho,
+                    type_vars_chirho,
+                    rhs_chirho,
+                    ..
+                } => {
+                    push_chirho(ProjectionNodeChirho::NameChirho(name_chirho))?;
+                    push_chirho(ProjectionNodeChirho::BindersChirho(type_vars_chirho))?;
+                    push_chirho(ProjectionNodeChirho::TypeChirho(rhs_chirho))?;
+                }
+                DeclChirho::TypeFamilyDeclChirho {
+                    name_chirho,
+                    type_vars_chirho,
+                    result_kind_chirho,
+                    standalone_kind_chirho,
+                    equations_chirho,
+                    ..
+                } => {
+                    push_chirho(ProjectionNodeChirho::NameChirho(name_chirho))?;
+                    push_chirho(ProjectionNodeChirho::BindersChirho(type_vars_chirho))?;
+                    push_chirho(ProjectionNodeChirho::FamilyEquationsChirho(
+                        equations_chirho,
+                    ))?;
+                    for kind_chirho in [result_kind_chirho, standalone_kind_chirho]
+                        .into_iter()
+                        .flatten()
+                    {
+                        push_chirho(ProjectionNodeChirho::TypeChirho(kind_chirho))?;
+                    }
+                }
+                DeclChirho::TypeFamilyInstanceDeclChirho {
+                    family_name_chirho,
+                    kind_args_chirho,
+                    lhs_types_chirho,
+                    rhs_chirho,
+                    ..
+                } => {
+                    push_chirho(ProjectionNodeChirho::NameChirho(family_name_chirho))?;
+                    push_chirho(ProjectionNodeChirho::TypesChirho(kind_args_chirho))?;
+                    push_chirho(ProjectionNodeChirho::TypesChirho(lhs_types_chirho))?;
+                    push_chirho(ProjectionNodeChirho::TypeChirho(rhs_chirho))?;
+                }
+                DeclChirho::ClassDeclChirho {
+                    context_chirho,
+                    name_chirho,
+                    type_vars_chirho,
+                    methods_chirho,
+                    associated_tfs_chirho,
+                    fundeps_chirho,
+                    ..
+                } => {
+                    push_chirho(ProjectionNodeChirho::ConstraintsChirho(context_chirho))?;
+                    push_chirho(ProjectionNodeChirho::NameChirho(name_chirho))?;
+                    push_chirho(ProjectionNodeChirho::BindersChirho(type_vars_chirho))?;
+                    push_chirho(ProjectionNodeChirho::MethodsChirho(methods_chirho))?;
+                    push_chirho(ProjectionNodeChirho::AssociatedFamiliesChirho(
+                        associated_tfs_chirho,
+                    ))?;
+                    push_chirho(ProjectionNodeChirho::FundepsChirho(fundeps_chirho))?;
+                }
+                DeclChirho::InstanceDeclChirho {
+                    kind_args_chirho,
+                    context_chirho,
+                    class_chirho,
+                    types_chirho,
+                    assoc_tf_instances_chirho,
+                    ..
+                } => {
+                    push_chirho(ProjectionNodeChirho::TypesChirho(kind_args_chirho))?;
+                    push_chirho(ProjectionNodeChirho::ConstraintsChirho(context_chirho))?;
+                    push_chirho(ProjectionNodeChirho::NameChirho(class_chirho))?;
+                    push_chirho(ProjectionNodeChirho::TypesChirho(types_chirho))?;
+                    push_chirho(ProjectionNodeChirho::AssociatedInstancesChirho(
+                        assoc_tf_instances_chirho,
+                    ))?;
+                }
+                DeclChirho::StandaloneDerivingDeclChirho {
+                    context_chirho,
+                    class_chirho,
+                    types_chirho,
+                    ..
+                } => {
+                    push_chirho(ProjectionNodeChirho::ConstraintsChirho(context_chirho))?;
+                    push_chirho(ProjectionNodeChirho::NameChirho(class_chirho))?;
+                    push_chirho(ProjectionNodeChirho::TypesChirho(types_chirho))?;
+                }
+                _ => {}
             },
+            ProjectionNodeChirho::FamilyEquationChirho(equation_chirho) => {
+                if let Some(head_chirho) = &equation_chirho.head_chirho {
+                    push_chirho(ProjectionNodeChirho::NameChirho(head_chirho))?;
+                }
+                if let Some(binders_chirho) = &equation_chirho.explicit_binders_chirho {
+                    push_chirho(ProjectionNodeChirho::BindersChirho(binders_chirho))?;
+                }
+                push_chirho(ProjectionNodeChirho::NamesChirho(
+                    &equation_chirho.unwritten_binders_chirho,
+                ))?;
+                push_chirho(ProjectionNodeChirho::TypesChirho(
+                    &equation_chirho.kind_args_chirho,
+                ))?;
+                push_chirho(ProjectionNodeChirho::TypesChirho(
+                    &equation_chirho.lhs_types_chirho,
+                ))?;
+                push_chirho(ProjectionNodeChirho::TypeChirho(
+                    &equation_chirho.rhs_chirho,
+                ))?;
+            }
+            ProjectionNodeChirho::AssociatedInstanceChirho(instance_chirho) => {
+                push_chirho(ProjectionNodeChirho::NameChirho(
+                    &instance_chirho.family_name_chirho,
+                ))?;
+                push_chirho(ProjectionNodeChirho::TypesChirho(
+                    &instance_chirho.kind_args_chirho,
+                ))?;
+                push_chirho(ProjectionNodeChirho::TypesChirho(
+                    &instance_chirho.lhs_types_chirho,
+                ))?;
+                push_chirho(ProjectionNodeChirho::TypeChirho(
+                    &instance_chirho.rhs_chirho,
+                ))?;
+            }
+            ProjectionNodeChirho::AssociatedFamilyChirho(family_chirho) => {
+                push_chirho(ProjectionNodeChirho::NameChirho(&family_chirho.name_chirho))?;
+                push_chirho(ProjectionNodeChirho::BindersChirho(
+                    &family_chirho.type_vars_chirho,
+                ))?;
+                if let Some(kind_chirho) = &family_chirho.result_kind_chirho {
+                    push_chirho(ProjectionNodeChirho::TypeChirho(kind_chirho))?;
+                }
+                push_chirho(ProjectionNodeChirho::NamesChirho(
+                    &family_chirho.default_params_chirho,
+                ))?;
+                if let Some(binders_chirho) = &family_chirho.default_binders_chirho {
+                    push_chirho(ProjectionNodeChirho::BindersChirho(binders_chirho))?;
+                }
+                if let Some(rhs_chirho) = &family_chirho.default_rhs_chirho {
+                    push_chirho(ProjectionNodeChirho::TypeChirho(rhs_chirho))?;
+                }
+            }
+            ProjectionNodeChirho::MethodChirho(method_chirho) => {
+                push_chirho(ProjectionNodeChirho::NameChirho(&method_chirho.name_chirho))?;
+                push_chirho(ProjectionNodeChirho::TypeChirho(&method_chirho.ty_chirho))?;
+                if let Some(signature_chirho) = &method_chirho.default_sig_chirho {
+                    push_chirho(ProjectionNodeChirho::StringChirho(signature_chirho))?;
+                }
+            }
+            ProjectionNodeChirho::StringChirho(text_chirho) => {
+                budget_chirho.charge_chirho(text_chirho.len(), copies_chirho, factor_chirho)?
+            }
             ProjectionNodeChirho::NameChirho(name_chirho) => budget_chirho.charge_chirho(
                 name_weight_chirho(name_chirho)?,
                 copies_chirho,
@@ -925,7 +1283,13 @@ fn walk_chirho(
             ProjectionNodeChirho::TypesChirho(_)
             | ProjectionNodeChirho::ConstraintsChirho(_)
             | ProjectionNodeChirho::BindersChirho(_)
-            | ProjectionNodeChirho::NamesChirho(_) => {}
+            | ProjectionNodeChirho::NamesChirho(_)
+            | ProjectionNodeChirho::FamilyEquationsChirho(_)
+            | ProjectionNodeChirho::AssociatedFamiliesChirho(_)
+            | ProjectionNodeChirho::AssociatedInstancesChirho(_)
+            | ProjectionNodeChirho::MethodsChirho(_)
+            | ProjectionNodeChirho::StringsChirho(_)
+            | ProjectionNodeChirho::FundepsChirho(_) => {}
         }
     }
     Ok(())

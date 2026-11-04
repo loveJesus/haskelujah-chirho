@@ -193,6 +193,7 @@ impl InferCtxChirho {
             return false;
         }
         let normalized_pred_chirho = PredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: pred_chirho.class_name_chirho.clone(),
             ty_chirho: normalized_args_chirho[0].clone(),
             extra_tys_chirho: normalized_args_chirho[1..].to_vec(),
@@ -244,6 +245,7 @@ impl InferCtxChirho {
             .given_preds_chirho
             .iter()
             .map(|given_chirho| PredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: given_chirho.class_name_chirho.clone(),
                 ty_chirho: self.normalize_ty_chirho(&given_chirho.ty_chirho),
                 extra_tys_chirho: given_chirho
@@ -276,6 +278,7 @@ impl InferCtxChirho {
             return pred_chirho.clone();
         }
         let normalized_pred_chirho = PredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: pred_chirho.class_name_chirho.clone(),
             ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
             extra_tys_chirho: pred_chirho

@@ -58,6 +58,27 @@ pub struct ModuleChirho {
     pub origin_supply_chirho: OriginSupplyChirho,
 }
 
+/// Apply ordered LANGUAGE on/off flags. Naming and kind elaboration share
+/// this policy; a later pragma wins, including NoStarIsType.
+pub fn extension_enabled_with_default_chirho(
+    module_chirho: &ModuleChirho,
+    name_chirho: &str,
+    default_chirho: bool,
+) -> bool {
+    module_chirho.extensions_chirho.iter().fold(
+        default_chirho,
+        |enabled_chirho, extension_chirho| {
+            if extension_chirho == name_chirho {
+                true
+            } else if extension_chirho.strip_prefix("No") == Some(name_chirho) {
+                false
+            } else {
+                enabled_chirho
+            }
+        },
+    )
+}
+
 /// An export specification.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExportSpecChirho {

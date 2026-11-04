@@ -169,6 +169,7 @@ fn quantified_constraint_binders_do_not_capture_the_qualified_body_chirho() {
         vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("fChirho"))],
         context_chirho: vec![],
         body_chirho: Box::new(ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: name_chirho("Eq"),
             args_chirho: vec![app_chirho(
                 var_chirho("fChirho"),
@@ -212,7 +213,7 @@ fn genuine_bad_application_inside_a_shadow_is_still_a_kind_error_chirho() {
 #[test]
 fn annotations_use_the_nearest_kind_binder_and_reuse_it_within_the_group_chirho() {
     let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::new_chirho());
-    let annotation_chirho = AstKindChirho::VarChirho("kChirho".to_string());
+    let annotation_chirho = var_chirho("kChirho");
     let outer_chirho = ctx_chirho.ast_kind_to_kind_ctx_chirho(&annotation_chirho);
     let binders_chirho = vec![
         TyVarChirho::plain_chirho(name_chirho("kChirho")),
@@ -247,4 +248,209 @@ fn annotations_use_the_nearest_kind_binder_and_reuse_it_within_the_group_chirho(
     );
     assert!(ctx_chirho.env_chirho.lookup_chirho("aChirho").is_none());
     assert!(ctx_chirho.env_chirho.lookup_chirho("bChirho").is_none());
+}
+
+#[test]
+fn synonym_substitution_retains_kind_annotations_applications_and_predicate_prefixes_chirho() {
+    let span_chirho = SpanChirho::DUMMY_CHIRHO;
+    let predicate_chirho = ConstraintChirho::KindAnnotationChirho {
+        constraint_chirho: Box::new(ConstraintChirho::ClassChirho {
+            class_chirho: name_chirho("CChirho"),
+            kind_args_chirho: vec![var_chirho("kChirho")],
+            args_chirho: vec![var_chirho("aChirho")],
+            span_chirho,
+        }),
+        kind_chirho: Box::new(var_chirho("kChirho")),
+        span_chirho,
+    };
+    let source_chirho = TypeChirho::KindAnnotationChirho {
+        ty_chirho: Box::new(TypeChirho::QualChirho {
+            context_chirho: vec![predicate_chirho],
+            body_chirho: Box::new(TypeChirho::KindApplicationChirho {
+                fun_chirho: Box::new(var_chirho("fChirho")),
+                arg_chirho: Box::new(var_chirho("kChirho")),
+                written_chirho: false,
+                span_chirho,
+            }),
+            span_chirho,
+        }),
+        kind_chirho: Box::new(var_chirho("kChirho")),
+        span_chirho,
+    };
+    let replacement_chirho = TypeChirho::ConChirho(name_chirho("Int"));
+    let result_chirho = KindInferCtxChirho::substitute_type_kind_synonym_param_chirho(
+        &source_chirho,
+        "kChirho",
+        &replacement_chirho,
+    );
+    let TypeChirho::KindAnnotationChirho {
+        ty_chirho,
+        kind_chirho,
+        ..
+    } = result_chirho
+    else {
+        panic!("outer annotation");
+    };
+    assert_eq!(*kind_chirho, replacement_chirho);
+    let TypeChirho::QualChirho {
+        context_chirho,
+        body_chirho,
+        ..
+    } = *ty_chirho
+    else {
+        panic!("context");
+    };
+    let TypeChirho::KindApplicationChirho {
+        arg_chirho,
+        written_chirho,
+        ..
+    } = *body_chirho
+    else {
+        panic!("kind application");
+    };
+    assert!(!written_chirho);
+    assert_eq!(*arg_chirho, replacement_chirho);
+    let ConstraintChirho::KindAnnotationChirho {
+        constraint_chirho,
+        kind_chirho,
+        ..
+    } = &context_chirho[0]
+    else {
+        panic!("constraint annotation");
+    };
+    assert_eq!(kind_chirho.as_ref(), &replacement_chirho);
+    let ConstraintChirho::ClassChirho {
+        kind_args_chirho,
+        args_chirho,
+        ..
+    } = constraint_chirho.as_ref()
+    else {
+        panic!("class");
+    };
+    assert_eq!(kind_args_chirho, &[replacement_chirho]);
+    assert_eq!(args_chirho, &[var_chirho("aChirho")]);
+}
+
+#[test]
+fn a_rebound_synonym_parameter_stops_after_its_binder_kind_chirho() {
+    let span_chirho = SpanChirho::DUMMY_CHIRHO;
+    for required_chirho in [false, true] {
+        let vars_chirho = vec![
+            TyVarChirho::annotated_chirho(name_chirho("aChirho"), var_chirho("kChirho")),
+            TyVarChirho::plain_chirho(name_chirho("kChirho")),
+            TyVarChirho::annotated_chirho(name_chirho("bChirho"), var_chirho("kChirho")),
+        ];
+        let source_chirho = if required_chirho {
+            TypeChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho: Box::new(var_chirho("kChirho")),
+                span_chirho,
+            }
+        } else {
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho: Box::new(var_chirho("kChirho")),
+                span_chirho,
+            }
+        };
+        let replacement_chirho = TypeChirho::ConChirho(name_chirho("Int"));
+        let result_chirho = KindInferCtxChirho::substitute_type_kind_synonym_param_chirho(
+            &source_chirho,
+            "kChirho",
+            &replacement_chirho,
+        );
+        let (vars_chirho, body_chirho) = match result_chirho {
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            }
+            | TypeChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            } => (vars_chirho, body_chirho),
+            _ => panic!("forall retained"),
+        };
+        assert_eq!(
+            vars_chirho[0].kind_annotation_chirho.as_deref(),
+            Some(&replacement_chirho)
+        );
+        assert_eq!(
+            vars_chirho[2].kind_annotation_chirho.as_deref(),
+            Some(&var_chirho("kChirho"))
+        );
+        assert_eq!(*body_chirho, var_chirho("kChirho"));
+    }
+}
+
+#[test]
+fn outer_annotations_survive_legacy_synonym_expansion_chirho() {
+    let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::new_chirho());
+    ctx_chirho.type_kind_synonyms_chirho.insert(
+        "AliasChirho".to_string(),
+        KindTypeSynonymChirho {
+            params_chirho: vec!["aChirho".to_string()],
+            rhs_chirho: var_chirho("aChirho"),
+        },
+    );
+    let source_chirho = TypeChirho::KindAnnotationChirho {
+        ty_chirho: Box::new(app_chirho(
+            TypeChirho::ConChirho(name_chirho("AliasChirho")),
+            TypeChirho::ConChirho(name_chirho("Int")),
+        )),
+        kind_chirho: Box::new(TypeChirho::ConChirho(name_chirho("Type"))),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let (_, result_chirho) = ctx_chirho
+        .expand_type_kind_synonym_once_chirho(&source_chirho)
+        .expect("ordinary synonym expands");
+    let TypeChirho::KindAnnotationChirho {
+        ty_chirho,
+        kind_chirho,
+        ..
+    } = result_chirho
+    else {
+        panic!("annotation retained");
+    };
+    assert_eq!(*ty_chirho, TypeChirho::ConChirho(name_chirho("Int")));
+    assert_eq!(*kind_chirho, TypeChirho::ConChirho(name_chirho("Type")));
+}
+
+#[test]
+fn hidden_declaration_binders_do_not_add_visible_kind_arrows_chirho() {
+    let mut hidden_chirho = TyVarChirho::plain_chirho(name_chirho("kChirho"));
+    hidden_chirho.visibility_chirho =
+        haskelujah_ast_chirho::decl_chirho::TyVarVisibilityChirho::InvisibleChirho;
+    let binders_chirho = vec![
+        hidden_chirho,
+        TyVarChirho::annotated_chirho(
+            name_chirho("aChirho"),
+            TypeChirho::ConChirho(name_chirho("*")),
+        ),
+    ];
+    let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::new_chirho());
+    ctx_chirho.infer_class_kind_chirho("CChirho", &binders_chirho, SpanChirho::DUMMY_CHIRHO);
+    assert_eq!(
+        ctx_chirho.env_chirho.lookup_chirho("CChirho"),
+        Some(&KindChirho::arrow_chirho(
+            KindChirho::StarChirho,
+            KindChirho::ConstraintChirho
+        ))
+    );
+    ctx_chirho.infer_type_family_decl_kind_chirho(
+        "FChirho",
+        &binders_chirho,
+        None,
+        None,
+        SpanChirho::DUMMY_CHIRHO,
+        false,
+    );
+    assert_eq!(
+        ctx_chirho.env_chirho.lookup_chirho("FChirho"),
+        Some(&KindChirho::arrow_chirho(
+            KindChirho::StarChirho,
+            KindChirho::StarChirho
+        ))
+    );
 }

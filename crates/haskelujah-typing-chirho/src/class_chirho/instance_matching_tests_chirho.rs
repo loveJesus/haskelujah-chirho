@@ -26,6 +26,7 @@ fn instance_chirho(
     context_chirho: Vec<PredChirho>,
 ) -> InstDeclChirho {
     InstDeclChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: "ChoiceChirho".to_owned(),
         head_ty_chirho: head_chirho,
         extra_head_tys_chirho: extras_chirho,
@@ -35,6 +36,7 @@ fn instance_chirho(
 
 fn goal_chirho(head_chirho: TyChirho, extras_chirho: Vec<TyChirho>) -> PredChirho {
     PredChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: "ChoiceChirho".to_owned(),
         ty_chirho: head_chirho,
         extra_tys_chirho: extras_chirho,
@@ -69,6 +71,7 @@ fn a_nonlinear_match_instantiates_every_context_argument_chirho() {
         vec![
             PredChirho::new_chirho("Eq", variable_chirho(1)),
             PredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "RelatedChirho".to_owned(),
                 ty_chirho: application_chirho("Maybe", vec![variable_chirho(1)]),
                 extra_tys_chirho: vec![
@@ -87,6 +90,7 @@ fn a_nonlinear_match_instantiates_every_context_argument_chirho() {
         Some(vec![
             PredChirho::new_chirho("Eq", TyChirho::int_chirho()),
             PredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "RelatedChirho".to_owned(),
                 ty_chirho: application_chirho("Maybe", vec![TyChirho::int_chirho()]),
                 extra_tys_chirho: vec![

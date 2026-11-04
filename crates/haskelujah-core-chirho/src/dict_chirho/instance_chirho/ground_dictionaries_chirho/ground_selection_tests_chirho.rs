@@ -32,6 +32,7 @@ fn chain_chirho(count_chirho: usize) -> TyChirho {
 fn known_nat_env_chirho() -> ClassEnvChirho {
     let mut env_chirho = ClassEnvChirho::new_chirho();
     env_chirho.add_instance_chirho(InstDeclChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: "KnownNatChirho".to_string(),
         head_ty_chirho: con_chirho("ZeroChirho"),
         extra_head_tys_chirho: Vec::new(),
@@ -39,6 +40,7 @@ fn known_nat_env_chirho() -> ClassEnvChirho {
     });
     let n_chirho = TyChirho::VarChirho(TyVarChirho(9001));
     env_chirho.add_instance_chirho(InstDeclChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: "KnownNatChirho".to_string(),
         head_ty_chirho: succ_chirho(n_chirho.clone()),
         extra_head_tys_chirho: Vec::new(),
@@ -84,6 +86,7 @@ fn a_goal_no_head_matches_is_refused_by_name_chirho() {
 fn several_matching_heads_are_refused_never_chosen_chirho() {
     let mut env_chirho = known_nat_env_chirho();
     env_chirho.add_instance_chirho(InstDeclChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: "KnownNatChirho".to_string(),
         head_ty_chirho: TyChirho::VarChirho(TyVarChirho(9002)),
         extra_head_tys_chirho: Vec::new(),
@@ -148,6 +151,7 @@ fn a_candidate_that_could_copy_past_its_limit_is_refused_before_matching_chirho(
     let a_chirho = TyChirho::VarChirho(TyVarChirho(9003));
     let mut env_chirho = ClassEnvChirho::new_chirho();
     env_chirho.add_instance_chirho(InstDeclChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: "GrowChirho".to_string(),
         head_ty_chirho: a_chirho.clone(),
         extra_head_tys_chirho: Vec::new(),
@@ -207,6 +211,7 @@ fn repeated_head_variables_choose_only_a_consistent_goal_chirho() {
     };
     let mut env_chirho = ClassEnvChirho::new_chirho();
     env_chirho.add_instance_chirho(InstDeclChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: "SameChirho".to_string(),
         head_ty_chirho: pair_chirho(a_chirho.clone(), a_chirho.clone()),
         extra_head_tys_chirho: Vec::new(),
@@ -235,6 +240,7 @@ fn repeated_head_variables_choose_only_a_consistent_goal_chirho() {
 #[test]
 fn a_large_context_class_name_is_bounded_before_substitution_chirho() {
     let instance_chirho = InstDeclChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: "CChirho".to_owned(),
         head_ty_chirho: TyChirho::VarChirho(TyVarChirho(9020)),
         extra_head_tys_chirho: Vec::new(),

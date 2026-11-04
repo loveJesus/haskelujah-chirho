@@ -99,6 +99,7 @@ impl LowerCtxChirho {
         let mut name_chirho = None;
         let mut type_vars_chirho = Vec::new();
         let mut rhs_chirho = None;
+        let mut result_kind_chirho = None;
         let mut saw_type_chirho = false;
         let mut saw_result_kind_chirho = false;
         let mut saw_equals_chirho = false;
@@ -120,6 +121,27 @@ impl LowerCtxChirho {
                     } else if saw_type_chirho && !saw_equals_chirho && !saw_result_kind_chirho {
                         if kind_chirho == TokenKindChirho::DoubleColonChirho {
                             saw_result_kind_chirho = true;
+                            let kind_start_chirho = idx_chirho + 1;
+                            let mut kind_end_chirho = kind_start_chirho;
+                            while kind_end_chirho < children_chirho.len() {
+                                if matches!(children_chirho[kind_end_chirho].element_chirho,
+                                    GreenElementChirho::TokenChirho(token_chirho)
+                                        if token_chirho.kind_chirho() == TokenKindChirho::EqualsChirho)
+                                {
+                                    break;
+                                }
+                                kind_end_chirho += 1;
+                            }
+                            let kind_children_chirho = children_chirho
+                                [kind_start_chirho..kind_end_chirho]
+                                .iter()
+                                .collect::<Vec<_>>();
+                            result_kind_chirho = Some(self.declaration_kind_from_children_chirho(
+                                &kind_children_chirho,
+                                span_chirho,
+                            ));
+                            idx_chirho = kind_end_chirho;
+                            continue;
                         } else if name_chirho.is_none()
                             && matches!(
                                 kind_chirho,
@@ -166,15 +188,53 @@ impl LowerCtxChirho {
                 type_vars_chirho.push(binder_chirho);
             }
         }
-        // `= r | r -> a` names the family's result; it is never a default.
+        // `= r | r -> a` names the result, never a default or parameter.
+        // Its explicit kind is retained from the already-lowered RHS syntax.
         if saw_injectivity_chirho {
-            rhs_chirho = None;
+            if let Some(mut named_result_chirho) = rhs_chirho.take() {
+                loop {
+                    match named_result_chirho {
+                        TypeChirho::ParenChirho { inner_chirho, .. } => {
+                            named_result_chirho = *inner_chirho
+                        }
+                        TypeChirho::KindAnnotationChirho { kind_chirho, .. } => {
+                            if result_kind_chirho.is_none() {
+                                result_kind_chirho = Some(*kind_chirho);
+                            }
+                            break;
+                        }
+                        _ => break,
+                    }
+                }
+            }
         }
-
-        DeclChirho::TypeAliasDeclChirho {
-            name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
+        let name_chirho = name_chirho.unwrap_or_else(|| self.dummy_name_chirho());
+        let equations_chirho = if saw_equals_chirho && !saw_injectivity_chirho {
+            vec![TypeFamilyEquationChirho {
+                head_chirho: Some(name_chirho.clone()),
+                kind_args_chirho: vec![],
+                explicit_binders_chirho: None,
+                unwritten_binders_chirho: vec![],
+                lhs_types_chirho: type_vars_chirho
+                    .iter()
+                    .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+                    .map(|binder_chirho| TypeChirho::VarChirho(binder_chirho.name_chirho.clone()))
+                    .collect(),
+                malformed_chirho: rhs_chirho.is_none(),
+                rhs_chirho: rhs_chirho.unwrap_or_else(|| self.placeholder_type_chirho()),
+                span_chirho,
+            }]
+        } else {
+            vec![]
+        };
+        DeclChirho::TypeFamilyDeclChirho {
+            name_chirho,
             type_vars_chirho,
-            rhs_chirho: rhs_chirho.unwrap_or_else(|| self.placeholder_type_chirho()),
+            result_kind_chirho,
+            standalone_kind_chirho: None,
+            data_family_chirho: false,
+            closed_chirho: false,
+            equations_chirho,
             span_chirho,
         }
     }
@@ -552,6 +612,7 @@ impl LowerCtxChirho {
         }
 
         DeclChirho::TypeFamilyInstanceDeclChirho {
+            kind_args_chirho: Vec::new(),
             family_name_chirho: family_name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
             lhs_types_chirho,
             rhs_chirho: rhs_chirho.unwrap_or_else(|| self.placeholder_type_chirho()),

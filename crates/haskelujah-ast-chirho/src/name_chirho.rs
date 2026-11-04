@@ -55,6 +55,13 @@ pub struct RawNameChirho {
     /// skipped data instances can retain a data-shaped recovery declaration.
     /// Like the other transport metadata, equality and hashing ignore it.
     pub written_type_declaration_role_chirho: Option<TypeConstructorRoleChirho>,
+    /// A variable identity produced by the shared elaborator. Metadata is
+    /// cloned through exports and ignored by source Eq/Hash.
+    pub type_variable_chirho:
+        Option<crate::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho>,
+    /// Positive defining identity stamped while this name's source scope is
+    /// available; importers never reinterpret an exported synonym's spelling.
+    pub type_constructor_chirho: Option<TypeConstructorDeclarationChirho>,
 }
 
 impl PartialEq for RawNameChirho {
@@ -99,6 +106,12 @@ impl fmt::Debug for RawNameChirho {
         if let Some(role_chirho) = &self.written_type_declaration_role_chirho {
             debug_chirho.field("written_type_declaration_role_chirho", role_chirho);
         }
+        if let Some(variable_chirho) = &self.type_variable_chirho {
+            debug_chirho.field("type_variable_chirho", variable_chirho);
+        }
+        if let Some(constructor_chirho) = &self.type_constructor_chirho {
+            debug_chirho.field("type_constructor_chirho", constructor_chirho);
+        }
         debug_chirho.finish()
     }
 }
@@ -115,6 +128,8 @@ impl RawNameChirho {
             family_key_chirho: None,
             explicit_type_member_chirho: false,
             written_type_declaration_role_chirho: None,
+            type_variable_chirho: None,
+            type_constructor_chirho: None,
         }
     }
 
@@ -133,6 +148,8 @@ impl RawNameChirho {
             family_key_chirho: None,
             explicit_type_member_chirho: false,
             written_type_declaration_role_chirho: None,
+            type_variable_chirho: None,
+            type_constructor_chirho: None,
         }
     }
 
@@ -179,6 +196,52 @@ pub enum NameChirho {
 }
 
 impl NameChirho {
+    pub fn type_variable_chirho(
+        &self,
+    ) -> Option<&crate::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho> {
+        match self {
+            Self::RawChirho(raw_chirho) => raw_chirho.type_variable_chirho.as_ref(),
+            Self::ResolvedChirho(name_chirho) => {
+                name_chirho.raw_chirho.type_variable_chirho.as_ref()
+            }
+        }
+    }
+
+    pub fn set_type_variable_chirho(
+        &mut self,
+        variable_chirho: Option<
+            crate::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho,
+        >,
+    ) {
+        match self {
+            Self::RawChirho(raw_chirho) => raw_chirho.type_variable_chirho = variable_chirho,
+            Self::ResolvedChirho(name_chirho) => {
+                name_chirho.raw_chirho.type_variable_chirho = variable_chirho
+            }
+        }
+    }
+
+    pub fn type_constructor_chirho(&self) -> Option<&TypeConstructorDeclarationChirho> {
+        match self {
+            Self::RawChirho(raw_chirho) => raw_chirho.type_constructor_chirho.as_ref(),
+            Self::ResolvedChirho(name_chirho) => {
+                name_chirho.raw_chirho.type_constructor_chirho.as_ref()
+            }
+        }
+    }
+
+    pub fn set_type_constructor_chirho(
+        &mut self,
+        constructor_chirho: Option<TypeConstructorDeclarationChirho>,
+    ) {
+        match self {
+            Self::RawChirho(raw_chirho) => raw_chirho.type_constructor_chirho = constructor_chirho,
+            Self::ResolvedChirho(name_chirho) => {
+                name_chirho.raw_chirho.type_constructor_chirho = constructor_chirho
+            }
+        }
+    }
+
     /// Return the source span covering this name occurrence.
     pub fn span_chirho(&self) -> SpanChirho {
         match self {
@@ -331,6 +394,7 @@ pub enum TypeConstructorRoleChirho {
     TypeSynonymChirho,
     TypeFamilyChirho,
     DataFamilyChirho,
+    UniverseChirho,
     UnknownChirho,
 }
 
@@ -344,6 +408,17 @@ pub enum CompilerTypeConstructorChirho {
     EitherChirho,
     UnitChirho,
     ProxyChirho,
+    TypeUniverseChirho,
+    ConstraintUniverseChirho,
+    IntChirho,
+    IntegerChirho,
+    CharChirho,
+    FloatChirho,
+    DoubleChirho,
+    IoChirho,
+    ListChirho,
+    FunctionChirho,
+    TupleChirho(u8),
 }
 
 impl CompilerTypeConstructorChirho {
@@ -355,6 +430,80 @@ impl CompilerTypeConstructorChirho {
             Self::EitherChirho => "Either",
             Self::UnitChirho => "()",
             Self::ProxyChirho => "Proxy",
+            Self::TypeUniverseChirho => "Type",
+            Self::ConstraintUniverseChirho => "Constraint",
+            Self::IntChirho => "Int",
+            Self::IntegerChirho => "Integer",
+            Self::CharChirho => "Char",
+            Self::FloatChirho => "Float",
+            Self::DoubleChirho => "Double",
+            Self::IoChirho => "IO",
+            Self::ListChirho => "[]",
+            Self::FunctionChirho => "->",
+            Self::TupleChirho(arity_chirho) => match arity_chirho {
+                2 => "(,)",
+                3 => "(,,)",
+                4 => "(,,,)",
+                5 => "(,,,,)",
+                6 => "(,,,,,)",
+                7 => "(,,,,,,)",
+                8 => "(,,,,,,,)",
+                9 => "(,,,,,,,,)",
+                10 => "(,,,,,,,,,)",
+                11 => "(,,,,,,,,,,)",
+                12 => "(,,,,,,,,,,,)",
+                13 => "(,,,,,,,,,,,,)",
+                14 => "(,,,,,,,,,,,,,)",
+                15 => "(,,,,,,,,,,,,,,)",
+                16 => "(,,,,,,,,,,,,,,,)",
+                17 => "(,,,,,,,,,,,,,,,,)",
+                18 => "(,,,,,,,,,,,,,,,,,)",
+                19 => "(,,,,,,,,,,,,,,,,,,)",
+                20 => "(,,,,,,,,,,,,,,,,,,,)",
+                21 => "(,,,,,,,,,,,,,,,,,,,,)",
+                22 => "(,,,,,,,,,,,,,,,,,,,,,)",
+                23 => "(,,,,,,,,,,,,,,,,,,,,,,)",
+                24 => "(,,,,,,,,,,,,,,,,,,,,,,,)",
+                25 => "(,,,,,,,,,,,,,,,,,,,,,,,,)",
+                26 => "(,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                27 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                28 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                29 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                30 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                31 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                32 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                33 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                34 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                35 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                36 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                37 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                38 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                39 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                40 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                41 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                42 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                43 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                44 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                45 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                46 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                47 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                48 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                49 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                50 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                51 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                52 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                53 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                54 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                55 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                56 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                57 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                58 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                59 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                60 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                61 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                62 => "(,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)",
+                _ => "__invalid_tuple_chirho",
+            },
         }
     }
 }
@@ -421,7 +570,15 @@ impl TypeConstructorDeclarationChirho {
     pub fn compiler_data_chirho(constructor_chirho: CompilerTypeConstructorChirho) -> Self {
         Self {
             identity_chirho: TypeConstructorIdentityChirho::CompilerChirho(constructor_chirho),
-            role_chirho: TypeConstructorRoleChirho::DataChirho,
+            role_chirho: if matches!(
+                constructor_chirho,
+                CompilerTypeConstructorChirho::TypeUniverseChirho
+                    | CompilerTypeConstructorChirho::ConstraintUniverseChirho
+            ) {
+                TypeConstructorRoleChirho::UniverseChirho
+            } else {
+                TypeConstructorRoleChirho::DataChirho
+            },
         }
     }
 

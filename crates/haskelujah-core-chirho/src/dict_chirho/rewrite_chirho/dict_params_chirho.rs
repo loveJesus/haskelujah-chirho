@@ -566,11 +566,13 @@ mod tests_chirho {
             vars_chirho: vec![TyVarChirho(0), TyVarChirho(1)],
             preds_chirho: vec![
                 SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Integral".to_string(),
                     ty_chirho: source_var_chirho.clone(),
                     extra_tys_chirho: Vec::new(),
                 },
                 SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: result_class_chirho.to_string(),
                     ty_chirho: result_var_chirho.clone(),
                     extra_tys_chirho: Vec::new(),

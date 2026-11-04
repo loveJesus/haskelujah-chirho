@@ -553,6 +553,7 @@ pub(super) fn seed_part_12_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![a_chirho, b_chirho],
                 preds_chirho: vec![SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Ord".to_string(),
                     ty_chirho: TyChirho::VarChirho(b_chirho),
                     extra_tys_chirho: vec![],
@@ -652,6 +653,7 @@ pub(super) fn seed_part_12_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![f_chirho, a_chirho],
                 preds_chirho: vec![SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Functor".to_string(),
                     ty_chirho: TyChirho::VarChirho(f_chirho),
                     extra_tys_chirho: vec![],
@@ -732,6 +734,7 @@ pub(super) fn seed_part_12_chirho(env_chirho: &mut TyEnvChirho) {
         let join_chirho = SchemeChirho {
             vars_chirho: vec![m_chirho, a_chirho],
             preds_chirho: vec![SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "Monad".to_string(),
                 ty_chirho: TyChirho::VarChirho(m_chirho),
                 extra_tys_chirho: vec![],

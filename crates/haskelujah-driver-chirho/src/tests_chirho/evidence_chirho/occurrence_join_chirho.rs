@@ -58,6 +58,7 @@ pub(super) fn infer_result_chirho(
     class_env_chirho.classes_chirho.insert(
         "Show".to_string(),
         ClassDeclChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Show".to_string(),
             supers_chirho: vec![],
             var_chirho: haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),

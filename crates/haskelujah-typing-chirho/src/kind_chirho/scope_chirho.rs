@@ -3,9 +3,38 @@
 //! Lexical lifetime of explicit kind/type binders.
 //! Workflow: language-features-chirho/rank-n-visible-type-application-chirho.
 
-use super::{KindInferCtxChirho, TyVarChirho};
+use super::{KindInferCtxChirho, TyVarChirho, TypeChirho};
 
 impl KindInferCtxChirho {
+    /// Retain full binder kind syntax while substituting an outer synonym
+    /// parameter. A binder's own kind precedes its lexical binding; once that
+    /// name is rebound, later annotations and the body keep the local variable.
+    pub(super) fn substitute_kind_synonym_binders_chirho(
+        vars_chirho: &[TyVarChirho],
+        param_chirho: &str,
+        arg_chirho: &TypeChirho,
+    ) -> (Vec<TyVarChirho>, bool) {
+        let mut shadowed_chirho = false;
+        let vars_chirho = vars_chirho
+            .iter()
+            .map(|binder_chirho| {
+                let mut output_chirho = binder_chirho.clone();
+                if !shadowed_chirho && let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho
+                {
+                    output_chirho.kind_annotation_chirho =
+                        Some(Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                            kind_chirho,
+                            param_chirho,
+                            arg_chirho,
+                        )));
+                }
+                shadowed_chirho |= binder_chirho.name_chirho.text_chirho() == param_chirho;
+                output_chirho
+            })
+            .collect();
+        (vars_chirho, shadowed_chirho)
+    }
+
     /// Open a binder group, preserving two different meanings of each source name:
     /// `env` holds its inferred kind as a type variable; the cache holds its
     /// identity when used AS a kind (including subsequent binder annotations).

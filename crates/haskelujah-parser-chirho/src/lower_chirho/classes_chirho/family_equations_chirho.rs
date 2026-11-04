@@ -72,6 +72,7 @@ impl LowerCtxChirho {
         };
         let Some((lhs_node_chirho, lhs_start_chirho)) = lhs_chirho else {
             return TypeFamilyEquationChirho {
+                kind_args_chirho: Vec::new(),
                 head_chirho: None,
                 explicit_binders_chirho: None,
                 unwritten_binders_chirho: Vec::new(),

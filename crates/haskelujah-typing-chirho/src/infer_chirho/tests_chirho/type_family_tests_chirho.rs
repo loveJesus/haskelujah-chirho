@@ -157,7 +157,8 @@ fn class_assoc_type_family_default_applies_per_instance_chirho() {
         methods_chirho: vec![],
         associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
             name_chirho: dummy_name_chirho("Rep"),
-            type_vars_chirho: vec![dummy_name_chirho("f")],
+            result_kind_chirho: None,
+            type_vars_chirho: vec![dummy_name_chirho("f").into()],
             data_family_chirho: false,
             default_rhs_chirho: Some(TypeChirho::AppChirho {
                 fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("GRep"))),
@@ -175,6 +176,7 @@ fn class_assoc_type_family_default_applies_per_instance_chirho() {
     // `instance Representable Proxy` leaves `Rep` undefined, so the
     // class default applies to it — and only to it.
     let instance_decl_ast_chirho = DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: dummy_name_chirho("Representable"),
         types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Proxy"))],
@@ -217,7 +219,8 @@ fn instance_assoc_type_family_override_beats_class_default_chirho() {
         methods_chirho: vec![],
         associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
             name_chirho: dummy_name_chirho("Rep"),
-            type_vars_chirho: vec![dummy_name_chirho("f")],
+            result_kind_chirho: None,
+            type_vars_chirho: vec![dummy_name_chirho("f").into()],
             data_family_chirho: false,
             default_rhs_chirho: Some(TypeChirho::AppChirho {
                 fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("GRep"))),
@@ -232,6 +235,7 @@ fn instance_assoc_type_family_override_beats_class_default_chirho() {
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
     let instance_decl_ast_chirho = DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: dummy_name_chirho("Representable"),
         types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Proxy"))],
@@ -733,7 +737,8 @@ fn written_associated_rows_and_defaults_keep_nested_family_identity_chirho() {
             associated_tfs_chirho: vec![
                 haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
                     name_chirho: dummy_name_chirho("RepChirho"),
-                    type_vars_chirho: vec![dummy_name_chirho("aChirho")],
+                    result_kind_chirho: None,
+                    type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],
                     data_family_chirho: false,
                     default_rhs_chirho: (!written_chirho)
                         .then(|| rhs_chirho(TypeChirho::VarChirho(dummy_name_chirho("aChirho")))),
@@ -746,6 +751,7 @@ fn written_associated_rows_and_defaults_keep_nested_family_identity_chirho() {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let instance_chirho = DeclChirho::InstanceDeclChirho {
+            kind_args_chirho: Vec::new(),
             context_chirho: vec![],
             class_chirho: dummy_name_chirho("HasRepChirho"),
             types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Int"))],
@@ -788,6 +794,7 @@ fn written_associated_rows_and_defaults_keep_nested_family_identity_chirho() {
 fn rhs_shape_module_chirho(rhs_chirho: TypeChirho) -> ModuleChirho {
     let equation_chirho =
         |lhs_chirho, rhs_chirho| haskelujah_ast_chirho::decl_chirho::TypeFamilyEquationChirho {
+            kind_args_chirho: Vec::new(),
             head_chirho: Some(dummy_name_chirho("HeldRhsChirho")),
             explicit_binders_chirho: None,
             unwritten_binders_chirho: vec![],

@@ -89,6 +89,8 @@ impl KindInferCtxChirho {
                     arguments_chirho += 1;
                     head_chirho = fun_chirho;
                 }
+                TypeChirho::KindApplicationChirho { fun_chirho, .. } => head_chirho = fun_chirho,
+                TypeChirho::KindAnnotationChirho { ty_chirho, .. } => head_chirho = ty_chirho,
                 TypeChirho::ParenChirho { inner_chirho, .. } => head_chirho = inner_chirho,
                 _ => break,
             }

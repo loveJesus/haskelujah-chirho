@@ -82,6 +82,9 @@ enum TyPositionChirho {
     /// An argument of a type constructor, list, or tuple — impredicative.
     /// Needs `ImpredicativeTypes`.
     ImpredicativeChirho,
+    /// Kind syntax has its own semantic elaboration/visibility rules. Do not
+    /// apply the ordinary value-type rank/impredicativity licence to it.
+    KindChirho,
 }
 
 /// The synthetic class name the parser writes when a constraint shape did not
@@ -297,6 +300,19 @@ fn walk_constraint_chirho(
 ) {
     tuple_arity_chirho::check_constraint_tuple_arity_chirho(constraint_chirho, errors_chirho);
     match constraint_chirho {
+        ConstraintChirho::KindAnnotationChirho {
+            constraint_chirho,
+            kind_chirho,
+            ..
+        } => {
+            walk_constraint_chirho(constraint_chirho, license_chirho, errors_chirho);
+            walk_type_chirho(
+                kind_chirho,
+                TyPositionChirho::KindChirho,
+                license_chirho,
+                errors_chirho,
+            );
+        }
         ConstraintChirho::QuantifiedChirho { span_chirho, .. } => {
             if !license_chirho.quantified_constraints_chirho {
                 errors_chirho.push(ValidityErrorChirho {
@@ -312,6 +328,7 @@ fn walk_constraint_chirho(
         ConstraintChirho::ClassChirho {
             class_chirho,
             args_chirho,
+            kind_args_chirho,
             ..
         } => {
             if class_chirho.text_chirho() == UNRESOLVED_CONSTRAINT_MARKER_CHIRHO {
@@ -319,6 +336,14 @@ fn walk_constraint_chirho(
                 // "argument" is the whole unlowered constraint rather than a
                 // class argument. Judging it would reject valid programs.
                 return;
+            }
+            for arg_chirho in kind_args_chirho {
+                walk_type_chirho(
+                    arg_chirho,
+                    TyPositionChirho::KindChirho,
+                    license_chirho,
+                    errors_chirho,
+                );
             }
             for arg_chirho in args_chirho {
                 walk_type_chirho(
@@ -538,6 +563,32 @@ fn walk_type_chirho(
 ) {
     tuple_arity_chirho::check_type_tuple_arity_chirho(ty_chirho, errors_chirho);
     match ty_chirho {
+        TypeChirho::KindAnnotationChirho {
+            ty_chirho,
+            kind_chirho,
+            ..
+        } => {
+            walk_type_chirho(ty_chirho, position_chirho, license_chirho, errors_chirho);
+            walk_type_chirho(
+                kind_chirho,
+                TyPositionChirho::KindChirho,
+                license_chirho,
+                errors_chirho,
+            );
+        }
+        TypeChirho::KindApplicationChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => {
+            walk_type_chirho(fun_chirho, position_chirho, license_chirho, errors_chirho);
+            walk_type_chirho(
+                arg_chirho,
+                TyPositionChirho::KindChirho,
+                license_chirho,
+                errors_chirho,
+            );
+        }
         TypeChirho::ForallChirho {
             body_chirho,
             span_chirho,
@@ -591,7 +642,11 @@ fn walk_type_chirho(
             for side_chirho in [arg_chirho, result_chirho] {
                 walk_type_chirho(
                     side_chirho,
-                    TyPositionChirho::RankNChirho,
+                    if position_chirho == TyPositionChirho::KindChirho {
+                        TyPositionChirho::KindChirho
+                    } else {
+                        TyPositionChirho::RankNChirho
+                    },
                     license_chirho,
                     errors_chirho,
                 );
@@ -607,7 +662,11 @@ fn walk_type_chirho(
             walk_type_chirho(fun_chirho, position_chirho, license_chirho, errors_chirho);
             walk_type_chirho(
                 arg_chirho,
-                TyPositionChirho::ImpredicativeChirho,
+                if position_chirho == TyPositionChirho::KindChirho {
+                    TyPositionChirho::KindChirho
+                } else {
+                    TyPositionChirho::ImpredicativeChirho
+                },
                 license_chirho,
                 errors_chirho,
             );
@@ -615,7 +674,11 @@ fn walk_type_chirho(
         TypeChirho::ListChirho { element_chirho, .. } => {
             walk_type_chirho(
                 element_chirho,
-                TyPositionChirho::ImpredicativeChirho,
+                if position_chirho == TyPositionChirho::KindChirho {
+                    TyPositionChirho::KindChirho
+                } else {
+                    TyPositionChirho::ImpredicativeChirho
+                },
                 license_chirho,
                 errors_chirho,
             );
@@ -629,7 +692,11 @@ fn walk_type_chirho(
             for element_chirho in elements_chirho {
                 walk_type_chirho(
                     element_chirho,
-                    TyPositionChirho::ImpredicativeChirho,
+                    if position_chirho == TyPositionChirho::KindChirho {
+                        TyPositionChirho::KindChirho
+                    } else {
+                        TyPositionChirho::ImpredicativeChirho
+                    },
                     license_chirho,
                     errors_chirho,
                 );
@@ -678,6 +745,31 @@ fn report_if_unlicensed_chirho(
 /// Compact rendering used only inside diagnostics (validity and kind sorts).
 pub(crate) fn render_type_chirho(ty_chirho: &TypeChirho) -> String {
     match ty_chirho {
+        TypeChirho::KindAnnotationChirho {
+            ty_chirho,
+            kind_chirho,
+            ..
+        } => format!(
+            "({} :: {})",
+            render_type_chirho(ty_chirho),
+            render_type_chirho(kind_chirho)
+        ),
+        TypeChirho::KindApplicationChirho {
+            fun_chirho,
+            arg_chirho,
+            written_chirho,
+            ..
+        } => {
+            if *written_chirho {
+                format!(
+                    "{} @{}",
+                    render_type_chirho(fun_chirho),
+                    render_type_chirho(arg_chirho)
+                )
+            } else {
+                render_type_chirho(fun_chirho)
+            }
+        }
         TypeChirho::VarChirho(name_chirho) | TypeChirho::ConChirho(name_chirho) => {
             name_chirho.text_chirho().to_string()
         }
@@ -781,6 +873,15 @@ pub(crate) fn render_type_chirho(ty_chirho: &TypeChirho) -> String {
 
 fn render_constraint_chirho(constraint_chirho: &ConstraintChirho) -> String {
     match constraint_chirho {
+        ConstraintChirho::KindAnnotationChirho {
+            constraint_chirho,
+            kind_chirho,
+            ..
+        } => format!(
+            "({} :: {})",
+            render_constraint_chirho(constraint_chirho),
+            render_type_chirho(kind_chirho)
+        ),
         ConstraintChirho::ClassChirho {
             class_chirho,
             args_chirho,
@@ -961,6 +1062,7 @@ mod tests_chirho {
         // `type Constrd a = Num a => a`
         let rhs_chirho = TypeChirho::QualChirho {
             context_chirho: vec![ConstraintChirho::ClassChirho {
+                kind_args_chirho: Vec::new(),
                 class_chirho: mk_name_chirho("Num"),
                 args_chirho: vec![mk_var_chirho("a")],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1116,6 +1218,7 @@ mod tests_chirho {
             vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],
             context_chirho: vec![],
             body_chirho: Box::new(ConstraintChirho::ClassChirho {
+                kind_args_chirho: Vec::new(),
                 class_chirho: mk_name_chirho("Eq"),
                 args_chirho: vec![mk_var_chirho("a")],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1148,6 +1251,7 @@ mod tests_chirho {
         // shape; its "argument" is the whole unlowered constraint.
         let ty_chirho = TypeChirho::QualChirho {
             context_chirho: vec![ConstraintChirho::ClassChirho {
+                kind_args_chirho: Vec::new(),
                 class_chirho: mk_name_chirho(UNRESOLVED_CONSTRAINT_MARKER_CHIRHO),
                 args_chirho: vec![mk_poly_id_chirho()],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,

@@ -389,6 +389,7 @@ impl InferCtxChirho {
         let mut improvement_chirho = SubstChirho::empty_chirho();
         for (pred_chirho, _span_chirho) in &self.deferred_preds_chirho {
             let pred_sub_chirho = PredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
                 ty_chirho: improvement_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
                 extra_tys_chirho: pred_chirho
@@ -474,6 +475,7 @@ impl InferCtxChirho {
             return None;
         }
         let normalized_chirho = PredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: pred_chirho.class_name_chirho.clone(),
             ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
             extra_tys_chirho: pred_chirho

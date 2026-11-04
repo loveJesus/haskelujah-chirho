@@ -19,9 +19,9 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use haskelujah_ast_chirho::decl_chirho::{
-    AstKindChirho, DataKindSigChirho, DeclChirho, TyVarChirho,
-};
+#[cfg(test)]
+use haskelujah_ast_chirho::decl_chirho::AstKindChirho;
+use haskelujah_ast_chirho::decl_chirho::{DataKindSigChirho, DeclChirho, TyVarChirho};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{BuiltinClassChirho, BuiltinClassScopeChirho};
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
@@ -729,6 +729,12 @@ impl KindInferCtxChirho {
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 Self::collect_type_app_spine_chirho(inner_chirho, args_chirho)
             }
+            TypeChirho::KindApplicationChirho { .. } | TypeChirho::KindAnnotationChirho { .. } => {
+                // This compatibility catalogue has visible spelling params only.
+                // Keep hidden applications/annotated heads intact for row688's
+                // common telescope elaborator instead of guessing a substitution.
+                ty_chirho.clone()
+            }
             _ => ty_chirho.clone(),
         }
     }
@@ -737,6 +743,25 @@ impl KindInferCtxChirho {
         &self,
         ty_chirho: &TypeChirho,
     ) -> Option<(String, TypeChirho)> {
+        if let TypeChirho::KindAnnotationChirho {
+            ty_chirho: inner_chirho,
+            kind_chirho,
+            span_chirho,
+        } = ty_chirho
+        {
+            return self.expand_type_kind_synonym_once_chirho(inner_chirho).map(
+                |(name_chirho, expanded_chirho)| {
+                    (
+                        name_chirho,
+                        TypeChirho::KindAnnotationChirho {
+                            ty_chirho: Box::new(expanded_chirho),
+                            kind_chirho: kind_chirho.clone(),
+                            span_chirho: *span_chirho,
+                        },
+                    )
+                },
+            );
+        }
         let mut args_chirho = Vec::new();
         let head_chirho = Self::collect_type_app_spine_chirho(ty_chirho, &mut args_chirho);
         args_chirho.reverse();
@@ -800,6 +825,42 @@ impl KindInferCtxChirho {
                 )),
                 arg_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
                     inner_arg_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                span_chirho: *span_chirho,
+            },
+            TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho: inner_arg_chirho,
+                written_chirho,
+                span_chirho,
+            } => TypeChirho::KindApplicationChirho {
+                fun_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    fun_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                arg_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    inner_arg_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                written_chirho: *written_chirho,
+                span_chirho: *span_chirho,
+            },
+            TypeChirho::KindAnnotationChirho {
+                ty_chirho: inner_chirho,
+                kind_chirho,
+                span_chirho,
+            } => TypeChirho::KindAnnotationChirho {
+                ty_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    inner_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                kind_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    kind_chirho,
                     param_chirho,
                     arg_chirho,
                 )),
@@ -889,21 +950,23 @@ impl KindInferCtxChirho {
                 body_chirho,
                 span_chirho,
             } => {
-                if vars_chirho
-                    .iter()
-                    .any(|var_chirho| var_chirho.text_chirho() == param_chirho)
-                {
-                    ty_chirho.clone()
-                } else {
-                    TypeChirho::ForallChirho {
-                        vars_chirho: vars_chirho.clone(),
-                        body_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                let (vars_chirho, shadowed_chirho) = Self::substitute_kind_synonym_binders_chirho(
+                    vars_chirho,
+                    param_chirho,
+                    arg_chirho,
+                );
+                TypeChirho::ForallChirho {
+                    vars_chirho,
+                    body_chirho: if shadowed_chirho {
+                        body_chirho.clone()
+                    } else {
+                        Box::new(Self::substitute_type_kind_synonym_param_chirho(
                             body_chirho,
                             param_chirho,
                             arg_chirho,
-                        )),
-                        span_chirho: *span_chirho,
-                    }
+                        ))
+                    },
+                    span_chirho: *span_chirho,
                 }
             }
             TypeChirho::RequiredForallChirho {
@@ -911,21 +974,23 @@ impl KindInferCtxChirho {
                 body_chirho,
                 span_chirho,
             } => {
-                if vars_chirho
-                    .iter()
-                    .any(|var_chirho| var_chirho.text_chirho() == param_chirho)
-                {
-                    ty_chirho.clone()
-                } else {
-                    TypeChirho::RequiredForallChirho {
-                        vars_chirho: vars_chirho.clone(),
-                        body_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                let (vars_chirho, shadowed_chirho) = Self::substitute_kind_synonym_binders_chirho(
+                    vars_chirho,
+                    param_chirho,
+                    arg_chirho,
+                );
+                TypeChirho::RequiredForallChirho {
+                    vars_chirho,
+                    body_chirho: if shadowed_chirho {
+                        body_chirho.clone()
+                    } else {
+                        Box::new(Self::substitute_type_kind_synonym_param_chirho(
                             body_chirho,
                             param_chirho,
                             arg_chirho,
-                        )),
-                        span_chirho: *span_chirho,
-                    }
+                        ))
+                    },
+                    span_chirho: *span_chirho,
                 }
             }
             TypeChirho::PromotedConChirho { .. } => ty_chirho.clone(),
@@ -956,9 +1021,20 @@ impl KindInferCtxChirho {
         match constraint_chirho {
             ConstraintChirho::ClassChirho {
                 class_chirho,
+                kind_args_chirho,
                 args_chirho,
                 span_chirho,
             } => ConstraintChirho::ClassChirho {
+                kind_args_chirho: kind_args_chirho
+                    .iter()
+                    .map(|kind_chirho| {
+                        Self::substitute_type_kind_synonym_param_chirho(
+                            kind_chirho,
+                            param_chirho,
+                            arg_chirho,
+                        )
+                    })
+                    .collect(),
                 class_chirho: class_chirho.clone(),
                 args_chirho: args_chirho
                     .iter()
@@ -972,21 +1048,40 @@ impl KindInferCtxChirho {
                     .collect(),
                 span_chirho: *span_chirho,
             },
+            ConstraintChirho::KindAnnotationChirho {
+                constraint_chirho,
+                kind_chirho,
+                span_chirho,
+            } => ConstraintChirho::KindAnnotationChirho {
+                constraint_chirho: Box::new(Self::substitute_constraint_kind_synonym_param_chirho(
+                    constraint_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                kind_chirho: Box::new(Self::substitute_type_kind_synonym_param_chirho(
+                    kind_chirho,
+                    param_chirho,
+                    arg_chirho,
+                )),
+                span_chirho: *span_chirho,
+            },
             ConstraintChirho::QuantifiedChirho {
                 vars_chirho,
                 context_chirho,
                 body_chirho,
                 span_chirho,
             } => {
-                if vars_chirho
-                    .iter()
-                    .any(|var_chirho| var_chirho.text_chirho() == param_chirho)
-                {
-                    constraint_chirho.clone()
-                } else {
-                    ConstraintChirho::QuantifiedChirho {
-                        vars_chirho: vars_chirho.clone(),
-                        context_chirho: context_chirho
+                let (vars_chirho, shadowed_chirho) = Self::substitute_kind_synonym_binders_chirho(
+                    vars_chirho,
+                    param_chirho,
+                    arg_chirho,
+                );
+                ConstraintChirho::QuantifiedChirho {
+                    vars_chirho,
+                    context_chirho: if shadowed_chirho {
+                        context_chirho.clone()
+                    } else {
+                        context_chirho
                             .iter()
                             .map(|inner_chirho| {
                                 Self::substitute_constraint_kind_synonym_param_chirho(
@@ -995,16 +1090,18 @@ impl KindInferCtxChirho {
                                     arg_chirho,
                                 )
                             })
-                            .collect(),
-                        body_chirho: Box::new(
-                            Self::substitute_constraint_kind_synonym_param_chirho(
-                                body_chirho,
-                                param_chirho,
-                                arg_chirho,
-                            ),
-                        ),
-                        span_chirho: *span_chirho,
-                    }
+                            .collect()
+                    },
+                    body_chirho: if shadowed_chirho {
+                        body_chirho.clone()
+                    } else {
+                        Box::new(Self::substitute_constraint_kind_synonym_param_chirho(
+                            body_chirho,
+                            param_chirho,
+                            arg_chirho,
+                        ))
+                    },
+                    span_chirho: *span_chirho,
                 }
             }
         }
@@ -1080,7 +1177,9 @@ impl KindInferCtxChirho {
             };
             self.env_chirho
                 .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
-            param_kinds_chirho.push(k_chirho);
+            if tv_chirho.is_visible_chirho() {
+                param_kinds_chirho.push(k_chirho);
+            }
         }
 
         // Class kind: k1 -> k2 -> ... -> Constraint
@@ -1285,7 +1384,9 @@ impl KindInferCtxChirho {
             };
             self.env_chirho
                 .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
-            param_kinds_chirho.push(k_chirho);
+            if tv_chirho.is_visible_chirho() {
+                param_kinds_chirho.push(k_chirho);
+            }
         }
 
         // Infer the kind of the RHS.
@@ -1303,6 +1404,7 @@ impl KindInferCtxChirho {
             KindTypeSynonymChirho {
                 params_chirho: type_vars_chirho
                     .iter()
+                    .filter(|type_var_chirho| type_var_chirho.is_visible_chirho())
                     .map(|type_var_chirho| type_var_chirho.text_chirho().to_string())
                     .collect(),
                 rhs_chirho: rhs_ty_chirho.clone(),

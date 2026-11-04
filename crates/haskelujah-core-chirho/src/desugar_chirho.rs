@@ -1070,6 +1070,18 @@ impl DesugarCtxChirho {
         scope_chirho: Option<&PromotionScopeChirho>,
     ) -> String {
         match ty_chirho {
+            TypeChirho::KindAnnotationChirho { ty_chirho, .. } => {
+                Self::type_key_from_ast_chirho(ty_chirho, scope_chirho)
+            }
+            TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => format!(
+                "({} {})",
+                Self::type_key_from_ast_chirho(fun_chirho, scope_chirho),
+                Self::type_key_from_ast_chirho(arg_chirho, scope_chirho)
+            ),
             TypeChirho::ConChirho(name_chirho) => {
                 unquoted_promoted_spelling_chirho(name_chirho, scope_chirho)
                     .unwrap_or_else(|| name_chirho.text_chirho().to_string())

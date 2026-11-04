@@ -411,17 +411,26 @@ fn recoverable_result_vars_chirho(
         TypeChirho::VarChirho(name_chirho) => {
             variables_chirho.insert(name_chirho.text_chirho().to_string());
         }
-        TypeChirho::AppChirho { .. } => {
+        TypeChirho::AppChirho { .. } | TypeChirho::KindApplicationChirho { .. } => {
             let mut head_chirho = ty_chirho;
             let mut args_chirho = Vec::new();
-            while let TypeChirho::AppChirho {
-                fun_chirho,
-                arg_chirho,
-                ..
-            } = head_chirho
-            {
-                args_chirho.push(arg_chirho.as_ref());
-                head_chirho = fun_chirho;
+            loop {
+                match head_chirho {
+                    TypeChirho::AppChirho {
+                        fun_chirho,
+                        arg_chirho,
+                        ..
+                    }
+                    | TypeChirho::KindApplicationChirho {
+                        fun_chirho,
+                        arg_chirho,
+                        ..
+                    } => {
+                        args_chirho.push(arg_chirho.as_ref());
+                        head_chirho = fun_chirho;
+                    }
+                    _ => break,
+                }
             }
             if let TypeChirho::ConChirho(name_chirho) = head_chirho
                 && generative_head_chirho(name_chirho)
@@ -446,7 +455,11 @@ fn recoverable_result_vars_chirho(
                 );
             }
         }
-        TypeChirho::ListChirho { element_chirho, .. }
+        TypeChirho::KindAnnotationChirho {
+            ty_chirho: element_chirho,
+            ..
+        }
+        | TypeChirho::ListChirho { element_chirho, .. }
         | TypeChirho::ParenChirho {
             inner_chirho: element_chirho,
             ..
@@ -527,22 +540,32 @@ fn recoverable_binder_kinds_chirho(
 }
 
 fn direct_kind_dependencies_chirho(
-    kind_chirho: &super::AstKindChirho,
+    kind_chirho: &TypeChirho,
     binders_chirho: &HashSet<String>,
     dependencies_chirho: &mut Vec<String>,
 ) {
     match kind_chirho {
-        super::AstKindChirho::VarChirho(name_chirho) if binders_chirho.contains(name_chirho) => {
-            dependencies_chirho.push(name_chirho.clone())
+        TypeChirho::VarChirho(name_chirho)
+            if binders_chirho.contains(name_chirho.text_chirho()) =>
+        {
+            dependencies_chirho.push(name_chirho.text_chirho().to_owned());
         }
-        super::AstKindChirho::ArrowChirho(left_chirho, right_chirho) => {
+        TypeChirho::FunChirho {
+            arg_chirho: left_chirho,
+            result_chirho: right_chirho,
+            ..
+        } => {
             direct_kind_dependencies_chirho(left_chirho, binders_chirho, dependencies_chirho);
             direct_kind_dependencies_chirho(right_chirho, binders_chirho, dependencies_chirho);
         }
-        super::AstKindChirho::VarChirho(_)
-        | super::AstKindChirho::AppChirho(_, _)
-        | super::AstKindChirho::StarChirho
-        | super::AstKindChirho::ConstraintChirho => {}
+        TypeChirho::ParenChirho { inner_chirho, .. }
+        | TypeChirho::KindAnnotationChirho {
+            ty_chirho: inner_chirho,
+            ..
+        } => direct_kind_dependencies_chirho(inner_chirho, binders_chirho, dependencies_chirho),
+        // A kind application can be a synonym family. Source shape alone
+        // provides no injective decomposition proof; semantic facts follow688.
+        _ => {}
     }
 }
 
@@ -560,6 +583,16 @@ fn field_free_vars_chirho(
         TypeChirho::AppChirho {
             fun_chirho,
             arg_chirho,
+            ..
+        }
+        | TypeChirho::KindApplicationChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        }
+        | TypeChirho::KindAnnotationChirho {
+            ty_chirho: fun_chirho,
+            kind_chirho: arg_chirho,
             ..
         }
         | TypeChirho::FunChirho {
@@ -614,12 +647,14 @@ fn field_free_vars_chirho(
                         .then_some(name_chirho)
                 })
                 .collect::<Vec<_>>();
+            let mut faithful_chirho = true;
             for variable_chirho in vars_chirho {
                 if let Some(kind_chirho) = &variable_chirho.kind_annotation_chirho {
-                    kind_free_vars_chirho(kind_chirho, bound_chirho, free_chirho);
+                    faithful_chirho &=
+                        field_free_vars_chirho(kind_chirho, bound_chirho, free_chirho);
                 }
             }
-            let faithful_chirho = field_free_vars_chirho(body_chirho, bound_chirho, free_chirho);
+            faithful_chirho &= field_free_vars_chirho(body_chirho, bound_chirho, free_chirho);
             for name_chirho in added_chirho {
                 bound_chirho.remove(&name_chirho);
             }
@@ -649,9 +684,22 @@ fn constraint_free_vars_chirho(
     free_chirho: &mut HashSet<String>,
 ) -> bool {
     match pred_chirho {
-        ConstraintChirho::ClassChirho { args_chirho, .. } => args_chirho
+        ConstraintChirho::ClassChirho {
+            args_chirho,
+            kind_args_chirho,
+            ..
+        } => kind_args_chirho
             .iter()
+            .chain(args_chirho)
             .all(|arg_chirho| field_free_vars_chirho(arg_chirho, bound_chirho, free_chirho)),
+        ConstraintChirho::KindAnnotationChirho {
+            constraint_chirho,
+            kind_chirho,
+            ..
+        } => {
+            constraint_free_vars_chirho(constraint_chirho, bound_chirho, free_chirho)
+                && field_free_vars_chirho(kind_chirho, bound_chirho, free_chirho)
+        }
         ConstraintChirho::QuantifiedChirho {
             vars_chirho,
             context_chirho,
@@ -661,18 +709,20 @@ fn constraint_free_vars_chirho(
             let added_chirho = vars_chirho
                 .iter()
                 .filter_map(|var_chirho| {
-                    let name_chirho = var_chirho.name_chirho.text_chirho().to_string();
+                    let name_chirho = var_chirho.name_chirho.text_chirho().to_owned();
                     bound_chirho
                         .insert(name_chirho.clone())
                         .then_some(name_chirho)
                 })
                 .collect::<Vec<_>>();
+            let mut faithful_chirho = true;
             for variable_chirho in vars_chirho {
                 if let Some(kind_chirho) = &variable_chirho.kind_annotation_chirho {
-                    kind_free_vars_chirho(kind_chirho, bound_chirho, free_chirho);
+                    faithful_chirho &=
+                        field_free_vars_chirho(kind_chirho, bound_chirho, free_chirho);
                 }
             }
-            let faithful_chirho =
+            faithful_chirho &=
                 context_chirho.iter().all(|pred_chirho| {
                     constraint_free_vars_chirho(pred_chirho, bound_chirho, free_chirho)
                 }) && constraint_free_vars_chirho(body_chirho, bound_chirho, free_chirho);
@@ -681,26 +731,6 @@ fn constraint_free_vars_chirho(
             }
             faithful_chirho
         }
-    }
-}
-
-fn kind_free_vars_chirho(
-    kind_chirho: &super::AstKindChirho,
-    bound_chirho: &HashSet<String>,
-    free_chirho: &mut HashSet<String>,
-) {
-    match kind_chirho {
-        super::AstKindChirho::VarChirho(name_chirho) => {
-            if !bound_chirho.contains(name_chirho) {
-                free_chirho.insert(name_chirho.clone());
-            }
-        }
-        super::AstKindChirho::ArrowChirho(left_chirho, right_chirho)
-        | super::AstKindChirho::AppChirho(left_chirho, right_chirho) => {
-            kind_free_vars_chirho(left_chirho, bound_chirho, free_chirho);
-            kind_free_vars_chirho(right_chirho, bound_chirho, free_chirho);
-        }
-        super::AstKindChirho::StarChirho | super::AstKindChirho::ConstraintChirho => {}
     }
 }
 

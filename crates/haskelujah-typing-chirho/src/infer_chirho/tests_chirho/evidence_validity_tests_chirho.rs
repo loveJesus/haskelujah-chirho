@@ -547,6 +547,7 @@ fn certainly_unsolvable_suppressed_by_matching_instance_chirho() {
     ctx_chirho
         .class_env_chirho
         .add_instance_chirho(InstDeclChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "Eq".to_string(),
             head_ty_chirho: TyChirho::ConChirho("ZzNoSuchType".to_string()),
             extra_head_tys_chirho: vec![],
@@ -565,6 +566,7 @@ fn certainly_unsolvable_suppressed_by_var_headed_instance_chirho() {
     ctx_chirho
         .class_env_chirho
         .add_instance_chirho(InstDeclChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "Eq".to_string(),
             head_ty_chirho: TyChirho::VarChirho(TyVarChirho(0)),
             extra_head_tys_chirho: vec![],

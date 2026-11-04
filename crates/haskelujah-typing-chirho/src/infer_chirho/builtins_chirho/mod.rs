@@ -34,6 +34,7 @@ pub(super) fn enumeration_scheme_chirho(name_chirho: &str) -> Option<SchemeChirh
     Some(SchemeChirho {
         vars_chirho: vec![var_chirho],
         preds_chirho: vec![SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "Enum".to_string(),
             ty_chirho: elem_chirho.clone(),
             extra_tys_chirho: Vec::new(),

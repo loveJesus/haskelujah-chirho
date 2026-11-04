@@ -83,6 +83,7 @@ impl InferCtxChirho {
                 let resolved_chirho: Vec<PredChirho> = preds_chirho
                     .iter()
                     .map(|pred_chirho| PredChirho {
+                        kind_tys_chirho: Vec::new(),
                         class_name_chirho: pred_chirho.class_name_chirho.clone(),
                         ty_chirho: unifier_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
                         extra_tys_chirho: pred_chirho

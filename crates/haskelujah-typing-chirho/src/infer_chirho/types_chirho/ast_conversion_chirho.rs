@@ -50,6 +50,21 @@ impl InferCtxChirho {
         var_map_chirho: &mut HashMap<String, TyVarChirho>,
     ) -> TyChirho {
         match ast_ty_chirho {
+            TypeChirho::KindAnnotationChirho { ty_chirho, .. } => {
+                self.ast_type_to_ty_chirho(ty_chirho, var_map_chirho)
+            }
+            TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                let fun_chirho = self.ast_type_to_ty_chirho(fun_chirho, var_map_chirho);
+                let arg_chirho = self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho);
+                let applied_chirho =
+                    TyChirho::AppChirho(Box::new(fun_chirho), Box::new(arg_chirho));
+                let expanded_chirho = self.expand_type_synonyms_chirho(&applied_chirho);
+                self.reduce_type_families_in_ty_chirho(&expanded_chirho)
+            }
             TypeChirho::VarChirho(name_chirho) => {
                 let text_chirho = name_chirho.text_chirho().to_string();
                 let tv_chirho = *var_map_chirho

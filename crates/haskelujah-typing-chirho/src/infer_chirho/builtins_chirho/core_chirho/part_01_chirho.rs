@@ -435,6 +435,7 @@ pub(super) fn seed_part_01_chirho(env_chirho: &mut TyEnvChirho) {
     let num_binop_chirho = SchemeChirho {
         vars_chirho: vec![num_v_chirho],
         preds_chirho: vec![SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "Num".to_string(),
             ty_chirho: TyChirho::VarChirho(num_v_chirho),
             extra_tys_chirho: vec![],
@@ -456,6 +457,7 @@ pub(super) fn seed_part_01_chirho(env_chirho: &mut TyEnvChirho) {
     let eq_cmp_chirho = SchemeChirho {
         vars_chirho: vec![eq_v_chirho],
         preds_chirho: vec![SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "Eq".to_string(),
             ty_chirho: TyChirho::VarChirho(eq_v_chirho),
             extra_tys_chirho: vec![],
@@ -476,6 +478,7 @@ pub(super) fn seed_part_01_chirho(env_chirho: &mut TyEnvChirho) {
     let ord_cmp_chirho = SchemeChirho {
         vars_chirho: vec![ord_v_chirho],
         preds_chirho: vec![SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "Ord".to_string(),
             ty_chirho: TyChirho::VarChirho(ord_v_chirho),
             extra_tys_chirho: vec![],
@@ -523,6 +526,7 @@ pub(super) fn seed_part_01_chirho(env_chirho: &mut TyEnvChirho) {
         SchemeChirho {
             vars_chirho: vec![format_time_t_chirho],
             preds_chirho: vec![SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "FormatTime".to_string(),
                 ty_chirho: TyChirho::VarChirho(format_time_t_chirho),
                 extra_tys_chirho: vec![],
@@ -546,11 +550,13 @@ pub(super) fn seed_part_01_chirho(env_chirho: &mut TyEnvChirho) {
             vars_chirho: vec![parse_time_m_chirho, parse_time_t_chirho],
             preds_chirho: vec![
                 SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "MonadFail".to_string(),
                     ty_chirho: TyChirho::VarChirho(parse_time_m_chirho),
                     extra_tys_chirho: vec![],
                 },
                 SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "ParseTime".to_string(),
                     ty_chirho: TyChirho::VarChirho(parse_time_t_chirho),
                     extra_tys_chirho: vec![],
@@ -577,6 +583,7 @@ pub(super) fn seed_part_01_chirho(env_chirho: &mut TyEnvChirho) {
         SchemeChirho {
             vars_chirho: vec![parse_time_or_error_t_chirho],
             preds_chirho: vec![SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "ParseTime".to_string(),
                 ty_chirho: TyChirho::VarChirho(parse_time_or_error_t_chirho),
                 extra_tys_chirho: vec![],
@@ -599,6 +606,7 @@ pub(super) fn seed_part_01_chirho(env_chirho: &mut TyEnvChirho) {
         SchemeChirho {
             vars_chirho: vec![read_s_time_t_chirho],
             preds_chirho: vec![SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "ParseTime".to_string(),
                 ty_chirho: TyChirho::VarChirho(read_s_time_t_chirho),
                 extra_tys_chirho: vec![],
@@ -623,6 +631,7 @@ pub(super) fn seed_part_01_chirho(env_chirho: &mut TyEnvChirho) {
         SchemeChirho {
             vars_chirho: vec![read_p_time_t_chirho],
             preds_chirho: vec![SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "ParseTime".to_string(),
                 ty_chirho: TyChirho::VarChirho(read_p_time_t_chirho),
                 extra_tys_chirho: vec![],

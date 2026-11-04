@@ -267,6 +267,7 @@ fn instance_chirho(
     context_chirho: Vec<PredChirho>,
 ) -> InstDeclChirho {
     InstDeclChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: class_chirho.to_string(),
         head_ty_chirho: head_chirho,
         extra_head_tys_chirho: Vec::new(),

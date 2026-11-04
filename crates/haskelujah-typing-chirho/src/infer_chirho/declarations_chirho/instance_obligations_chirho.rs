@@ -54,6 +54,16 @@ pub(super) fn written_head_names_chirho(
                 fun_chirho,
                 arg_chirho,
                 ..
+            }
+            | TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            }
+            | TypeChirho::KindAnnotationChirho {
+                ty_chirho: fun_chirho,
+                kind_chirho: arg_chirho,
+                ..
             } => {
                 collect_chirho(fun_chirho, names_chirho);
                 collect_chirho(arg_chirho, names_chirho);
@@ -423,6 +433,7 @@ impl InferCtxChirho {
             equalities_chirho
                 .into_iter()
                 .map(|(lhs_chirho, rhs_chirho)| SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "~".to_string(),
                     ty_chirho: lhs_chirho,
                     extra_tys_chirho: vec![rhs_chirho],
@@ -683,6 +694,7 @@ impl InferCtxChirho {
     fn judge_ground_leftovers_chirho(&mut self, method_subst_chirho: &SubstChirho) {
         for (pred_chirho, span_chirho) in std::mem::take(&mut self.deferred_preds_chirho) {
             let resolved_chirho = PredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
                 ty_chirho: self.normalize_ty_chirho(
                     &method_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
@@ -818,6 +830,7 @@ impl InferCtxChirho {
             .preds_chirho
             .iter()
             .map(|pred_chirho| SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
                 ty_chirho: self.normalize_ty_chirho(
                     &head_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),

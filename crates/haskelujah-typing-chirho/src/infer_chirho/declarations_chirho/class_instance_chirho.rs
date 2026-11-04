@@ -79,6 +79,7 @@ impl InferCtxChirho {
                     );
 
                 let class_pred_chirho = SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: class_name_chirho.clone(),
                     ty_chirho: TyChirho::VarChirho(class_tv_chirho),
                     extra_tys_chirho: extra_vars_chirho
@@ -148,6 +149,7 @@ impl InferCtxChirho {
             // A source declaration replaces the seed's class of that name (row 686, C08).
             self.seeded_class_names_chirho.remove(&class_name_chirho);
             self.class_env_chirho.add_class_chirho(ClassDeclChirho {
+                kind_vars_chirho: Vec::new(),
                 name_chirho: class_name_chirho.clone(),
                 supers_chirho,
                 var_chirho: class_tv_chirho,
@@ -170,9 +172,14 @@ impl InferCtxChirho {
                     continue;
                 }
                 let tf_name_chirho = atf_chirho.name_chirho.text_chirho().to_string();
+                let visible_arity_chirho = atf_chirho
+                    .type_vars_chirho
+                    .iter()
+                    .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+                    .count();
                 self.register_open_family_chirho(
                     tf_name_chirho.clone(),
-                    atf_chirho.type_vars_chirho.len(),
+                    visible_arity_chirho,
                     atf_chirho.span_chirho,
                 );
                 self.assoc_type_declared_params_chirho.insert(
@@ -180,21 +187,28 @@ impl InferCtxChirho {
                     atf_chirho
                         .type_vars_chirho
                         .iter()
-                        .map(|param_chirho| param_chirho.text_chirho().to_string())
+                        .filter(|param_chirho| param_chirho.is_visible_chirho())
+                        .map(|param_chirho| param_chirho.name_chirho.text_chirho().to_string())
                         .collect(),
                 );
                 if let Some(default_rhs_chirho) = &atf_chirho.default_rhs_chirho {
-                    let binders_chirho = if atf_chirho.default_params_chirho.len()
-                        == atf_chirho.type_vars_chirho.len()
-                    {
-                        &atf_chirho.default_params_chirho
-                    } else {
-                        &atf_chirho.type_vars_chirho
-                    };
-                    let param_names_chirho: Vec<String> = binders_chirho
-                        .iter()
-                        .map(|param_chirho| param_chirho.text_chirho().to_string())
-                        .collect();
+                    let param_names_chirho: Vec<String> =
+                        if atf_chirho.default_params_chirho.len() == visible_arity_chirho {
+                            atf_chirho
+                                .default_params_chirho
+                                .iter()
+                                .map(|parameter_chirho| parameter_chirho.text_chirho().to_string())
+                                .collect()
+                        } else {
+                            atf_chirho
+                                .type_vars_chirho
+                                .iter()
+                                .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+                                .map(|binder_chirho| {
+                                    binder_chirho.name_chirho.text_chirho().to_string()
+                                })
+                                .collect()
+                        };
                     self.assoc_type_defaults_chirho
                         .entry(class_name_chirho.clone())
                         .or_default()
@@ -243,6 +257,7 @@ impl InferCtxChirho {
             let mut inst_context_chirho: Vec<PredChirho> = context_preds_chirho
                 .into_iter()
                 .map(|pred_chirho| PredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: pred_chirho.class_name_chirho,
                     ty_chirho: pred_chirho.ty_chirho,
                     extra_tys_chirho: pred_chirho.extra_tys_chirho,

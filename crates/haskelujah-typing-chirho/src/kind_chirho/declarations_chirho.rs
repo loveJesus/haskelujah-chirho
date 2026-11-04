@@ -125,7 +125,9 @@ impl KindInferCtxChirho {
             };
             self.env_chirho
                 .bind_chirho(tv_chirho.text_chirho().to_string(), k_chirho.clone());
-            param_kinds_chirho.push(k_chirho);
+            if tv_chirho.is_visible_chirho() {
+                param_kinds_chirho.push(k_chirho);
+            }
         }
 
         let open_result_chirho = poly_kinds_enabled_chirho || complete_kind_chirho.is_some();
@@ -176,6 +178,8 @@ impl KindInferCtxChirho {
             match tail_chirho {
                 TypeChirho::FunChirho { result_chirho, .. } => tail_chirho = result_chirho,
                 TypeChirho::ParenChirho { inner_chirho, .. } => tail_chirho = inner_chirho,
+                TypeChirho::KindAnnotationChirho { ty_chirho, .. } => tail_chirho = ty_chirho,
+                TypeChirho::KindApplicationChirho { fun_chirho, .. } => tail_chirho = fun_chirho,
                 TypeChirho::ForallChirho { body_chirho, .. }
                 | TypeChirho::RequiredForallChirho { body_chirho, .. } => tail_chirho = body_chirho,
                 _ => break,

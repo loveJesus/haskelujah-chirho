@@ -10,6 +10,8 @@
 use haskelujah_ast_chirho::promotion_chirho::PromotedKeyChirho;
 use std::fmt;
 
+pub mod declarations_chirho;
+
 /// Multiplicity for LinearTypes: tracks whether a function arrow is linear or unrestricted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MultChirho {
@@ -34,16 +36,7 @@ impl fmt::Display for MultChirho {
     }
 }
 
-/// A unique identifier for a type variable introduced during inference.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct TyVarChirho(pub u32);
-
-impl fmt::Display for TyVarChirho {
-    fn fmt(&self, f_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Display as t0, t1, t2, ...
-        write!(f_chirho, "t{}", self.0)
-    }
-}
+pub use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::TyVarChirho;
 
 /// The internal type representation used by the type inference engine.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -344,6 +337,8 @@ impl fmt::Display for TyChirho {
 /// lives in `class_chirho`; this avoids a circular dependency.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SchemePredChirho {
+    /// Invisible kind prefix, quantified with the scheme ordinary arguments.
+    pub kind_tys_chirho: Vec<TyChirho>,
     pub class_name_chirho: String,
     pub ty_chirho: TyChirho,
     /// Extra type arguments for multi-parameter type classes.

@@ -81,7 +81,8 @@ pub(super) fn check_constraint_tuple_arity_chirho(
                 report_arity_chirho(arity_chirho, class_chirho.span_chirho(), errors_chirho);
             }
         }
-        ConstraintChirho::QuantifiedChirho { .. } => {
+        ConstraintChirho::KindAnnotationChirho { .. }
+        | ConstraintChirho::QuantifiedChirho { .. } => {
             let mut pending_chirho = vec![TupleSiteChirho::ConstraintChirho(constraint_chirho)];
             while let Some(site_chirho) = pending_chirho.pop() {
                 match site_chirho {
@@ -104,6 +105,14 @@ pub(super) fn check_constraint_tuple_arity_chirho(
                         }
                         pending_chirho.extend(args_chirho.iter().map(TupleSiteChirho::TypeChirho));
                     }
+                    TupleSiteChirho::ConstraintChirho(ConstraintChirho::KindAnnotationChirho {
+                        constraint_chirho,
+                        kind_chirho,
+                        ..
+                    }) => {
+                        pending_chirho.push(TupleSiteChirho::ConstraintChirho(constraint_chirho));
+                        pending_chirho.push(TupleSiteChirho::TypeChirho(kind_chirho));
+                    }
                     TupleSiteChirho::ConstraintChirho(ConstraintChirho::QuantifiedChirho {
                         context_chirho,
                         body_chirho,
@@ -119,6 +128,16 @@ pub(super) fn check_constraint_tuple_arity_chirho(
                             TypeChirho::AppChirho {
                                 fun_chirho,
                                 arg_chirho,
+                                ..
+                            }
+                            | TypeChirho::KindApplicationChirho {
+                                fun_chirho,
+                                arg_chirho,
+                                ..
+                            }
+                            | TypeChirho::KindAnnotationChirho {
+                                ty_chirho: fun_chirho,
+                                kind_chirho: arg_chirho,
                                 ..
                             }
                             | TypeChirho::FunChirho {

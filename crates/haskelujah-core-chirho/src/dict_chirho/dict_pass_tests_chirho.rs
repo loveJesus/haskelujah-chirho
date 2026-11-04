@@ -21,6 +21,7 @@ fn num_var_scheme_chirho() -> SchemeChirho {
     SchemeChirho {
         vars_chirho: vec![TyVarChirho(0)],
         preds_chirho: vec![SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "Num".to_string(),
             ty_chirho: var_chirho.clone(),
             extra_tys_chirho: vec![],
@@ -60,6 +61,7 @@ fn single_predicate_adds_dict_lambda_chirho() {
     let scheme_chirho = SchemeChirho {
         vars_chirho: vec![haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)],
         preds_chirho: vec![SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "Num".to_string(),
             ty_chirho: TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)),
             extra_tys_chirho: vec![],
@@ -114,11 +116,13 @@ fn multiple_predicates_add_nested_dict_lambdas_chirho() {
         vars_chirho: vec![haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)],
         preds_chirho: vec![
             SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "Eq".to_string(),
                 ty_chirho: TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)),
                 extra_tys_chirho: vec![],
             },
             SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "Ord".to_string(),
                 ty_chirho: TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)),
                 extra_tys_chirho: vec![],
@@ -339,6 +343,7 @@ fn missing_method_ignores_dangling_name_map_entry_chirho() {
 
     let mut class_env_chirho = ClassEnvChirho::new_chirho();
     class_env_chirho.add_class_chirho(ClassDeclChirho {
+        kind_vars_chirho: Vec::new(),
         name_chirho: "Needs".to_string(),
         supers_chirho: vec![],
         var_chirho: haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),
@@ -348,6 +353,7 @@ fn missing_method_ignores_dangling_name_map_entry_chirho() {
         defaults_chirho: HashMap::new(),
     });
     class_env_chirho.add_instance_chirho(InstDeclChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: "Needs".to_string(),
         head_ty_chirho: TyChirho::int_chirho(),
         extra_head_tys_chirho: vec![],
@@ -466,6 +472,7 @@ fn method_ref_uses_transitive_superclass_dict_chirho() {
     let scheme_chirho = SchemeChirho {
         vars_chirho: vec![TyVarChirho(0)],
         preds_chirho: vec![SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "Integral".to_string(),
             ty_chirho: integral_var_chirho.clone(),
             extra_tys_chirho: vec![],
@@ -571,6 +578,7 @@ fn transform_module_adds_selectors_and_wraps_chirho() {
         SchemeChirho {
             vars_chirho: vec![haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)],
             preds_chirho: vec![SchemePredChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "Num".to_string(),
                 ty_chirho: TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)),
                 extra_tys_chirho: vec![],

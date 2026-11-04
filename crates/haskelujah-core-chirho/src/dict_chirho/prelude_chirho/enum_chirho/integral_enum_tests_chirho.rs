@@ -188,6 +188,7 @@ fn dict_pass_chirho() -> DictPassResultChirho {
                 });
         if !declared_chirho {
             class_env_chirho.add_instance_chirho(InstDeclChirho {
+                kind_tys_chirho: Vec::new(),
                 class_name_chirho: "Enum".to_string(),
                 head_ty_chirho: head_chirho,
                 extra_head_tys_chirho: vec![],

@@ -45,6 +45,7 @@ fn arrow_chirho(arg_chirho: TypeChirho, result_chirho: TypeChirho) -> TypeChirho
 fn show_context_chirho(body_chirho: TypeChirho) -> TypeChirho {
     TypeChirho::QualChirho {
         context_chirho: vec![ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: name_chirho("Show"),
             args_chirho: vec![var_ty_chirho("a")],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -137,6 +138,7 @@ fn fun_bind_chirho(name_text_chirho: &str, start_chirho: u32) -> LocalBindChirho
 
 fn instance_chirho(methods_chirho: Vec<LocalBindChirho>) -> DeclChirho {
     DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: name_chirho("Eq"),
         types_chirho: vec![con_ty_chirho("T")],

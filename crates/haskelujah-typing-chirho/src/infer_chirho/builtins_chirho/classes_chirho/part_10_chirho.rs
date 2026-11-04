@@ -109,11 +109,13 @@ pub(super) fn seed_part_10_chirho(env_chirho: &mut TyEnvChirho) {
             ],
             preds_chirho: vec![
                 SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Traversable1".to_string(),
                     ty_chirho: TyChirho::VarChirho(trav1_t_chirho),
                     extra_tys_chirho: vec![],
                 },
                 SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Apply".to_string(),
                     ty_chirho: TyChirho::VarChirho(trav1_f_chirho),
                     extra_tys_chirho: vec![],
@@ -152,11 +154,13 @@ pub(super) fn seed_part_10_chirho(env_chirho: &mut TyEnvChirho) {
                 vars_chirho: vec![trav1_t_chirho, trav1_a_chirho, trav1_f_chirho],
                 preds_chirho: vec![
                     SchemePredChirho {
+                        kind_tys_chirho: Vec::new(),
                         class_name_chirho: "Traversable1".to_string(),
                         ty_chirho: TyChirho::VarChirho(trav1_t_chirho),
                         extra_tys_chirho: vec![],
                     },
                     SchemePredChirho {
+                        kind_tys_chirho: Vec::new(),
                         class_name_chirho: "Apply".to_string(),
                         ty_chirho: TyChirho::VarChirho(trav1_f_chirho),
                         extra_tys_chirho: vec![],
@@ -194,26 +198,31 @@ pub(super) fn seed_part_10_chirho(env_chirho: &mut TyEnvChirho) {
         let indexed_m_chirho = TyVarChirho(9097);
 
         let foldable_with_index_pred_chirho = SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "FoldableWithIndex".to_string(),
             ty_chirho: TyChirho::VarChirho(index_i_chirho),
             extra_tys_chirho: vec![TyChirho::VarChirho(indexed_f_chirho)],
         };
         let functor_with_index_pred_chirho = SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "FunctorWithIndex".to_string(),
             ty_chirho: TyChirho::VarChirho(index_i_chirho),
             extra_tys_chirho: vec![TyChirho::VarChirho(indexed_f_chirho)],
         };
         let traversable_with_index_pred_chirho = SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "TraversableWithIndex".to_string(),
             ty_chirho: TyChirho::VarChirho(index_i_chirho),
             extra_tys_chirho: vec![TyChirho::VarChirho(indexed_t_chirho)],
         };
         let monoid_pred_chirho = SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "Monoid".to_string(),
             ty_chirho: TyChirho::VarChirho(indexed_m_chirho),
             extra_tys_chirho: vec![],
         };
         let applicative_pred_chirho = SchemePredChirho {
+            kind_tys_chirho: Vec::new(),
             class_name_chirho: "Applicative".to_string(),
             ty_chirho: TyChirho::VarChirho(indexed_g_chirho),
             extra_tys_chirho: vec![],
@@ -839,6 +848,7 @@ pub(super) fn seed_part_10_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![ar_r_chirho, ar_m_chirho],
                 preds_chirho: vec![SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Monad".to_string(),
                     ty_chirho: TyChirho::VarChirho(ar_m_chirho),
                     extra_tys_chirho: vec![],
@@ -895,6 +905,7 @@ pub(super) fn seed_part_10_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![br_r_chirho, br_m_chirho, ba_chirho, bb_chirho],
                 preds_chirho: vec![SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Monad".to_string(),
                     ty_chirho: TyChirho::VarChirho(br_m_chirho),
                     extra_tys_chirho: vec![],
@@ -928,6 +939,7 @@ pub(super) fn seed_part_10_chirho(env_chirho: &mut TyEnvChirho) {
             SchemeChirho {
                 vars_chirho: vec![rr_r_chirho, rr_m_chirho, ra_chirho],
                 preds_chirho: vec![SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: "Applicative".to_string(),
                     ty_chirho: TyChirho::VarChirho(rr_m_chirho),
                     extra_tys_chirho: vec![],

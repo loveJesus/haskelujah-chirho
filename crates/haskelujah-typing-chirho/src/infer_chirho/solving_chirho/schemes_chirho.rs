@@ -55,6 +55,11 @@ impl InferCtxChirho {
                 let mut pred_inst_chirho =
                     PredChirho::new_chirho(&pred_chirho.class_name_chirho, instantiated_ty_chirho);
                 pred_inst_chirho.extra_tys_chirho = instantiated_extra_chirho;
+                pred_inst_chirho.kind_tys_chirho = pred_chirho
+                    .kind_tys_chirho
+                    .iter()
+                    .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
+                    .collect();
                 pred_inst_chirho
             })
             .collect();
@@ -114,6 +119,11 @@ impl InferCtxChirho {
                 let mut pred_inst_chirho =
                     PredChirho::new_chirho(&pred_chirho.class_name_chirho, instantiated_ty_chirho);
                 pred_inst_chirho.extra_tys_chirho = instantiated_extra_chirho;
+                pred_inst_chirho.kind_tys_chirho = pred_chirho
+                    .kind_tys_chirho
+                    .iter()
+                    .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
+                    .collect();
                 pred_inst_chirho
             })
             .collect();
@@ -319,6 +329,7 @@ impl InferCtxChirho {
                     continue;
                 }
                 scheme_preds_chirho.push(SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho: pred_chirho.class_name_chirho,
                     ty_chirho: pred_chirho.ty_chirho,
                     extra_tys_chirho: pred_chirho.extra_tys_chirho,

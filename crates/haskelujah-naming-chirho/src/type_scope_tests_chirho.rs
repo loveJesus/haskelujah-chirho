@@ -3,7 +3,8 @@
 
 use super::*;
 use haskelujah_ast_chirho::decl_chirho::{
-    AssocTfInstanceChirho, AssocTypeFamilyChirho, FieldDeclChirho, StrictnessChirho, TyVarChirho,
+    AssocTfInstanceChirho, AssocTypeFamilyChirho, AstKindChirho, FieldDeclChirho, StrictnessChirho,
+    TyVarChirho,
 };
 use haskelujah_ast_chirho::module_chirho::{
     ExportMembersChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho,
@@ -132,7 +133,8 @@ fn resolver_binds_local_associated_family_in_type_namespace_chirho() {
             methods_chirho: vec![],
             associated_tfs_chirho: vec![AssocTypeFamilyChirho {
                 name_chirho: name_chirho("FamilyChirho"),
-                type_vars_chirho: vec![name_chirho("aChirho")],
+                result_kind_chirho: None,
+                type_vars_chirho: vec![name_chirho("aChirho").into()],
                 data_family_chirho: false,
                 default_rhs_chirho: None,
                 default_params_chirho: vec![],
@@ -165,6 +167,7 @@ fn qualified_is_list_instance_chirho(import_spec_chirho: Option<ImportSpecChirho
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         },
         DeclChirho::InstanceDeclChirho {
+            kind_args_chirho: Vec::new(),
             context_chirho: vec![],
             class_chirho: qualified_name_chirho("GHC.Exts", "IsList"),
             types_chirho: vec![TypeChirho::ConChirho(name_chirho("LocalListChirho"))],
@@ -233,7 +236,8 @@ fn associated_family_default_requires_a_declared_variable_chirho() {
         methods_chirho: vec![],
         associated_tfs_chirho: vec![AssocTypeFamilyChirho {
             name_chirho: name_chirho("FamilyChirho"),
-            type_vars_chirho: vec![name_chirho("aChirho")],
+            result_kind_chirho: None,
+            type_vars_chirho: vec![name_chirho("aChirho").into()],
             data_family_chirho: false,
             default_rhs_chirho: Some(TypeChirho::VarChirho(name_chirho("bChirho"))),
             default_params_chirho: vec![],
@@ -257,7 +261,8 @@ fn associated_family_default_uses_its_equation_binders_chirho() {
         methods_chirho: vec![],
         associated_tfs_chirho: vec![AssocTypeFamilyChirho {
             name_chirho: name_chirho("FamilyChirho"),
-            type_vars_chirho: vec![name_chirho("aChirho"), name_chirho("bChirho")],
+            result_kind_chirho: None,
+            type_vars_chirho: vec![name_chirho("aChirho").into(), name_chirho("bChirho").into()],
             data_family_chirho: false,
             default_rhs_chirho: Some(TypeChirho::VarChirho(name_chirho("xChirho"))),
             default_params_chirho: vec![name_chirho("aChirho"), name_chirho("xChirho")],
@@ -330,6 +335,7 @@ fn datakinds_does_not_treat_a_constructor_as_a_class_chirho() {
     );
     let mut module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
         context_chirho: vec![ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: name_chirho("True"),
             args_chirho: vec![TypeChirho::VarChirho(name_chirho("aChirho"))],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1143,6 +1149,7 @@ fn gadt_without_outer_forall_quantifies_independently_chirho() {
 fn unknown_superclass_is_resolved_in_the_type_namespace_chirho() {
     let decl_chirho = DeclChirho::ClassDeclChirho {
         context_chirho: vec![ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: name_chirho("MissingClassChirho"),
             args_chirho: vec![TypeChirho::VarChirho(name_chirho("aChirho"))],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1169,6 +1176,7 @@ fn qualified_equality_signature_chirho(
 ) -> ModuleChirho {
     let mut module_chirho = module_chirho(vec![signature_chirho(TypeChirho::QualChirho {
         context_chirho: vec![ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: qualified_name_chirho("Q", operator_chirho),
             args_chirho: vec![
                 TypeChirho::VarChirho(name_chirho("a")),
