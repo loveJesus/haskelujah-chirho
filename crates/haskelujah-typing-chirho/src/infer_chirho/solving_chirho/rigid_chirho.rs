@@ -57,16 +57,23 @@ impl InferCtxChirho {
             .preds_chirho
             .iter()
             .map(|pred_chirho| {
-                let mut given_chirho = PredChirho::new_chirho(
-                    &pred_chirho.class_name_chirho,
-                    instantiation_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                );
-                given_chirho.extra_tys_chirho = pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|t_chirho| instantiation_chirho.apply_ty_chirho(t_chirho))
-                    .collect();
-                given_chirho
+                PredChirho::from_proof_chirho(
+                    pred_chirho.class_identity_chirho().clone(),
+                    crate::class_chirho::PredPartsChirho {
+                        kind_tys_chirho: pred_chirho
+                            .kind_tys_chirho
+                            .iter()
+                            .map(|kind_chirho| instantiation_chirho.apply_ty_chirho(kind_chirho))
+                            .collect(),
+                        class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                        ty_chirho: instantiation_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                        extra_tys_chirho: pred_chirho
+                            .extra_tys_chirho
+                            .iter()
+                            .map(|ty_chirho| instantiation_chirho.apply_ty_chirho(ty_chirho))
+                            .collect(),
+                    },
+                )
             })
             .collect();
         (
@@ -262,11 +269,12 @@ impl InferCtxChirho {
 
     /// Whether a predicate mentions a rigid (skolem) type variable.
     pub(super) fn pred_mentions_rigid_chirho(pred_chirho: &PredChirho) -> bool {
-        contains_skolem_chirho(&pred_chirho.ty_chirho)
-            || pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .any(contains_skolem_chirho)
+        pred_chirho
+            .kind_tys_chirho
+            .iter()
+            .chain(std::iter::once(&pred_chirho.ty_chirho))
+            .chain(&pred_chirho.extra_tys_chirho)
+            .any(contains_skolem_chirho)
     }
 
     /// A predicate over rigid variables that no instance and no given can
@@ -309,6 +317,7 @@ impl InferCtxChirho {
             .collect();
         if !args_chirho
             .iter()
+            .chain(&pred_chirho.kind_tys_chirho)
             .all(|arg_chirho| self.ty_is_simple_rigid_arg_chirho(arg_chirho))
         {
             return false;
@@ -322,7 +331,11 @@ impl InferCtxChirho {
         let normalized_pred_chirho = PredChirho::from_proof_chirho(
             pred_chirho.class_identity_chirho().clone(),
             crate::class_chirho::PredPartsChirho {
-                kind_tys_chirho: Vec::new(),
+                kind_tys_chirho: pred_chirho
+                    .kind_tys_chirho
+                    .iter()
+                    .map(|kind_chirho| self.normalize_ty_chirho(kind_chirho))
+                    .collect(),
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
                 ty_chirho: args_chirho[0].clone(),
                 extra_tys_chirho: args_chirho[1..].to_vec(),

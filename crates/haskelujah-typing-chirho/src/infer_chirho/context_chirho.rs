@@ -19,6 +19,7 @@ use std::collections::{HashMap, HashSet};
 impl InferCtxChirho {
     pub(super) fn has_non_deferrable_failure_chirho(&self) -> bool {
         self.non_deferrable_diagnostics_chirho.has_errors_chirho()
+            || self.type_normalization_exhausted_chirho.get()
             || self.class_env_chirho.registry_error_chirho().is_some()
     }
 
@@ -378,6 +379,7 @@ impl InferCtxChirho {
         );
         Self {
             non_deferrable_diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
+            type_normalization_exhausted_chirho: std::cell::Cell::new(false),
             next_var_chirho: 0,
             definition_type_conversion_chirho: false,
             elaboration_owner_chirho: None,
@@ -638,6 +640,13 @@ impl InferCtxChirho {
 
     /// Consume the context and return the final result.
     pub fn finish_chirho(mut self) -> InferResultChirho {
+        if self.type_normalization_exhausted_chirho.get() {
+            self.non_deferrable_diagnostics_chirho.push_chirho(
+                DiagnosticChirho::error_no_span_chirho(
+                    "type synonym normalization resource bound exhausted",
+                ),
+            );
+        }
         if let Some(error_chirho) = self.class_env_chirho.registry_error_chirho() {
             self.note_registry_failure_chirho(error_chirho, None);
         }

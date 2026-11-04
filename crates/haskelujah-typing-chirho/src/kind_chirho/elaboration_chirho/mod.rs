@@ -60,6 +60,7 @@ struct TypeElaboratorChirho<'scope_chirho> {
     promotion_scope_chirho: &'scope_chirho PromotionScopeChirho,
     builtin_classes_chirho: &'scope_chirho BuiltinClassScopeChirho,
     star_is_type_chirho: bool,
+    poly_kinds_chirho: bool,
     scoped_type_variables_chirho: bool,
     signature_variables_chirho: HashMap<String, SourceVariablesChirho>,
     signature_undo_chirho: Vec<(String, Option<SourceVariablesChirho>)>,
@@ -276,6 +277,12 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
                     module_chirho,
                     "StarIsType",
                     true,
+                ),
+            poly_kinds_chirho:
+                haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(
+                    module_chirho,
+                    "PolyKinds",
+                    false,
                 ),
             scoped_type_variables_chirho:
                 haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(

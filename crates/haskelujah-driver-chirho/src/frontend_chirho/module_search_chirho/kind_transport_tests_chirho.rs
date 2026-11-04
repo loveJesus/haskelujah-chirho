@@ -109,3 +109,18 @@ fn cold_declaration_dependencies_follow_the_exact_producer_chirho() {
     );
     checks_chirho(source_chirho, &registry_chirho, &ifaces_chirho);
 }
+
+#[test]
+fn checked_synonym_reexports_keep_the_defining_supplier_across_homonyms_chirho() {
+    let source_chirho = "{-# LANGUAGE PolyKinds #-}\nmodule CheckedChirho where\nimport qualified SecondChirho as SChirho\nimport qualified HomonymChirho as HChirho\nfirstChirho :: SChirho.IdentityChirho Int\nfirstChirho = 1\nsecondChirho :: HChirho.IdentityChirho Int\nsecondChirho = True\n";
+    let (registry_chirho, ifaces_chirho) = discovery_chirho(
+        source_chirho,
+        &[
+            "{-# LANGUAGE PolyKinds, KindSignatures #-}\nmodule OriginChirho (IdentityChirho) where\ntype IdentityChirho (a :: k) = a\n",
+            "module FirstChirho (module OriginChirho) where\nimport OriginChirho\n",
+            "module SecondChirho (module FirstChirho) where\nimport FirstChirho\n",
+            "module HomonymChirho (IdentityChirho) where\ntype IdentityChirho a = Bool\n",
+        ],
+    );
+    checks_chirho(source_chirho, &registry_chirho, &ifaces_chirho);
+}

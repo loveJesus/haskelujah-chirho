@@ -289,7 +289,7 @@ impl TypeElaboratorChirho<'_> {
                 self.state_chirho
                     .copy_chirho(&scheme_chirho.result_kind_chirho, span_chirho)?
             };
-            let result_kind_chirho = self
+            let mut result_kind_chirho = self
                 .state_chirho
                 .resolve_chirho(&result_kind_chirho, span_chirho)?;
             quantified_chirho.extend(result_kind_chirho.free_vars_chirho());
@@ -306,6 +306,26 @@ impl TypeElaboratorChirho<'_> {
             }
             for binder_chirho in &binders_chirho {
                 quantified_chirho.remove(&binder_chirho.variable_chirho);
+            }
+            if !self.poly_kinds_chirho {
+                // NoPolyKinds defaults unsolved inferred kind variables at the
+                // declaration boundary. Explicit telescope binders remain bound.
+                for variable_chirho in &quantified_chirho {
+                    self.state_chirho.unify_chirho(
+                        &TyChirho::VarChirho(*variable_chirho),
+                        &ElaborationStateChirho::type_universe_chirho(),
+                        span_chirho,
+                    )?;
+                }
+                quantified_chirho.clear();
+                result_kind_chirho = self
+                    .state_chirho
+                    .resolve_chirho(&result_kind_chirho, span_chirho)?;
+                for binder_chirho in &mut binders_chirho {
+                    binder_chirho.kind_chirho = self
+                        .state_chirho
+                        .resolve_chirho(&binder_chirho.kind_chirho, span_chirho)?;
+                }
             }
             let mut pending_chirho = quantified_chirho.iter().copied().collect::<Vec<_>>();
             while let Some(variable_chirho) = pending_chirho.pop() {

@@ -38,8 +38,8 @@ pub(super) fn ordered_scheme_vars_chirho(
     // Expansion-generated variables have no source occurrence. Preserve the
     // deterministic ID fallback for those only; never iterate a HashMap into a
     // scheme's externally observable type-argument order.
-    let mut generated_vars_chirho: Vec<_> = var_map_chirho
-        .values()
+    let mut generated_vars_chirho: Vec<_> = free_vars_chirho
+        .iter()
         .copied()
         .filter(|var_chirho| {
             free_vars_chirho.contains(var_chirho) && !seen_chirho.contains(var_chirho)

@@ -203,10 +203,7 @@ pub(crate) fn run_frontend_under_deferral_chirho(
         )
         .map_err(|error_chirho| {
             let mut diagnostics_chirho = DiagnosticBundleChirho::default();
-            diagnostics_chirho.push_chirho(DiagnosticChirho::error_chirho(
-                error_chirho.message_chirho,
-                error_chirho.span_chirho,
-            ));
+            diagnostics_chirho.push_chirho(error_chirho.into_diagnostic_chirho());
             diagnostics_chirho
         })?;
     merged_imported_type_families_chirho = elaboration_chirho.registry_chirho;

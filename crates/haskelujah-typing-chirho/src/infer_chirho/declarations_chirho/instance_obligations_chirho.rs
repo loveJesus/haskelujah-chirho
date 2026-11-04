@@ -704,7 +704,15 @@ impl InferCtxChirho {
             let resolved_chirho = PredChirho::from_proof_chirho(
                 pred_chirho.class_identity_chirho().clone(),
                 crate::class_chirho::PredPartsChirho {
-                    kind_tys_chirho: Vec::new(),
+                    kind_tys_chirho: pred_chirho
+                        .kind_tys_chirho
+                        .iter()
+                        .map(|kind_chirho| {
+                            self.normalize_ty_chirho(
+                                &method_subst_chirho.apply_ty_chirho(kind_chirho),
+                            )
+                        })
+                        .collect(),
                     class_name_chirho: pred_chirho.class_name_chirho.clone(),
                     ty_chirho: self.normalize_ty_chirho(
                         &method_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
@@ -750,10 +758,15 @@ impl InferCtxChirho {
         let givens_chirho: Vec<PredChirho> = method_preds_chirho
             .into_iter()
             .map(|pred_chirho| {
-                let mut given_chirho =
-                    PredChirho::new_chirho(&pred_chirho.class_name_chirho, pred_chirho.ty_chirho);
-                given_chirho.extra_tys_chirho = pred_chirho.extra_tys_chirho;
-                given_chirho
+                PredChirho::from_proof_chirho(
+                    pred_chirho.class_identity_chirho().clone(),
+                    crate::class_chirho::PredPartsChirho {
+                        kind_tys_chirho: pred_chirho.kind_tys_chirho,
+                        class_name_chirho: pred_chirho.class_name_chirho,
+                        ty_chirho: pred_chirho.ty_chirho,
+                        extra_tys_chirho: pred_chirho.extra_tys_chirho,
+                    },
+                )
             })
             .collect();
         let expected_ty_chirho = self.normalize_ty_chirho(&method_ty_chirho);
@@ -846,7 +859,15 @@ impl InferCtxChirho {
                 SchemePredChirho::from_proof_chirho(
                     pred_chirho.class_identity_chirho().clone(),
                     crate::ty_chirho::SchemePredPartsChirho {
-                        kind_tys_chirho: Vec::new(),
+                        kind_tys_chirho: pred_chirho
+                            .kind_tys_chirho
+                            .iter()
+                            .map(|kind_chirho| {
+                                self.normalize_ty_chirho(
+                                    &head_subst_chirho.apply_ty_chirho(kind_chirho),
+                                )
+                            })
+                            .collect(),
                         class_name_chirho: pred_chirho.class_name_chirho.clone(),
                         ty_chirho: self.normalize_ty_chirho(
                             &head_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),

@@ -108,8 +108,11 @@ impl InferCtxChirho {
         scope_skolems_chirho: &HashSet<String>,
     ) -> bool {
         let mut names_scope_chirho = false;
-        for argument_chirho in
-            std::iter::once(&pred_chirho.ty_chirho).chain(&pred_chirho.extra_tys_chirho)
+        for argument_chirho in pred_chirho
+            .kind_tys_chirho
+            .iter()
+            .chain(std::iter::once(&pred_chirho.ty_chirho))
+            .chain(&pred_chirho.extra_tys_chirho)
         {
             rewrite_skolems_chirho(argument_chirho, &mut |name_chirho| {
                 names_scope_chirho |= scope_skolems_chirho.contains(name_chirho);
@@ -123,7 +126,11 @@ impl InferCtxChirho {
         PredChirho::from_proof_chirho(
             pred_chirho.class_identity_chirho().clone(),
             crate::class_chirho::PredPartsChirho {
-                kind_tys_chirho: Vec::new(),
+                kind_tys_chirho: pred_chirho
+                    .kind_tys_chirho
+                    .iter()
+                    .map(|kind_chirho| self.normalize_ty_chirho(kind_chirho))
+                    .collect(),
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
                 ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
                 extra_tys_chirho: pred_chirho

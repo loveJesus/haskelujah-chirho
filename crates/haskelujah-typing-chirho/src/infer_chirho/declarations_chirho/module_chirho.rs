@@ -72,6 +72,9 @@ impl InferCtxChirho {
             } = decl_chirho
             {
                 let syn_name_chirho = name_chirho.text_chirho().to_string();
+                if self.uses_checked_declaration_chirho(&syn_name_chirho) {
+                    continue;
+                }
                 let params_chirho: Vec<String> = type_vars_chirho
                     .iter()
                     .map(|v_chirho| v_chirho.text_chirho().to_string())

@@ -138,3 +138,99 @@ fn actual_generalization_conserves_ordinary_predicates_past_metadata_limits_chir
         assert!(!ctx_chirho.has_non_deferrable_failure_chirho());
     }
 }
+
+fn polykinded_predicate_scheme_chirho() -> SchemeChirho {
+    SchemeChirho {
+        vars_chirho: vec![TyVarChirho(800), TyVarChirho(801)],
+        preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
+            CompilerClassChirho::TypeableChirho,
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: vec![TyChirho::VarChirho(TyVarChirho(800))],
+                class_name_chirho: "Typeable".to_owned(),
+                ty_chirho: TyChirho::VarChirho(TyVarChirho(801)),
+                extra_tys_chirho: Vec::new(),
+            },
+        )],
+        ty_chirho: TyChirho::VarChirho(TyVarChirho(801)),
+    }
+}
+
+#[test]
+fn predicate_telescope_survives_fresh_explicit_and_rigid_instantiation_chirho() {
+    let scheme_chirho = polykinded_predicate_scheme_chirho();
+    let proof_chirho = scheme_chirho.preds_chirho[0]
+        .class_identity_chirho()
+        .clone();
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let (body_chirho, predicates_chirho) =
+        ctx_chirho.instantiate_scheme_parts_chirho(&scheme_chirho);
+    assert_eq!(predicates_chirho[0].ty_chirho, body_chirho);
+    assert_eq!(predicates_chirho[0].kind_tys_chirho.len(), 1);
+    assert_ne!(predicates_chirho[0].kind_tys_chirho[0], body_chirho);
+    assert_eq!(predicates_chirho[0].class_identity_chirho(), &proof_chirho);
+    let (_, predicates_chirho) = ctx_chirho
+        .instantiate_scheme_parts_with_type_args_chirho(
+            &scheme_chirho,
+            &[
+                TyChirho::ConChirho("Nat".to_owned()),
+                TyChirho::ConChirho("3".to_owned()),
+            ],
+        )
+        .expect("full explicit telescope");
+    assert_eq!(
+        predicates_chirho[0].kind_tys_chirho,
+        vec![TyChirho::ConChirho("Nat".to_owned())]
+    );
+    assert_eq!(
+        predicates_chirho[0].ty_chirho,
+        TyChirho::ConChirho("3".to_owned())
+    );
+    assert_eq!(predicates_chirho[0].class_identity_chirho(), &proof_chirho);
+    ctx_chirho
+        .tyvar_source_names_chirho
+        .insert(TyVarChirho(800), "kChirho".to_owned());
+    ctx_chirho
+        .tyvar_source_names_chirho
+        .insert(TyVarChirho(801), "aChirho".to_owned());
+    let (body_chirho, predicates_chirho) = ctx_chirho.skolemize_scheme_parts_chirho(&scheme_chirho);
+    assert_eq!(predicates_chirho[0].ty_chirho, body_chirho);
+    assert_eq!(predicates_chirho[0].class_identity_chirho(), &proof_chirho);
+    assert!(InferCtxChirho::pred_mentions_rigid_chirho(
+        &predicates_chirho[0]
+    ));
+    assert!(!InferCtxChirho::pred_fully_ground_chirho(
+        &predicates_chirho[0]
+    ));
+}
+
+#[test]
+fn generalization_closes_over_hidden_kinds_without_losing_metadata_chirho() {
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let argument_chirho = ctx_chirho.fresh_var_chirho();
+    let kind_chirho = ctx_chirho.fresh_var_chirho();
+    let mut predicate_chirho =
+        PredChirho::compiler_chirho(CompilerClassChirho::TypeableChirho, argument_chirho.clone());
+    predicate_chirho.kind_tys_chirho.push(kind_chirho.clone());
+    let proof_chirho = predicate_chirho.class_identity_chirho().clone();
+    assert!(!InferCtxChirho::pred_fully_ground_chirho(&predicate_chirho));
+    ctx_chirho
+        .deferred_preds_chirho
+        .push((predicate_chirho, SpanChirho::DUMMY_CHIRHO));
+    let scheme_chirho = ctx_chirho.generalize_chirho(&argument_chirho);
+    assert_eq!(scheme_chirho.preds_chirho.len(), 1);
+    assert_eq!(
+        scheme_chirho.preds_chirho[0].kind_tys_chirho,
+        vec![kind_chirho.clone()]
+    );
+    assert_eq!(
+        scheme_chirho.preds_chirho[0].class_identity_chirho(),
+        &proof_chirho
+    );
+    for variable_chirho in kind_chirho
+        .free_vars_chirho()
+        .into_iter()
+        .chain(argument_chirho.free_vars_chirho())
+    {
+        assert!(scheme_chirho.vars_chirho.contains(&variable_chirho));
+    }
+}

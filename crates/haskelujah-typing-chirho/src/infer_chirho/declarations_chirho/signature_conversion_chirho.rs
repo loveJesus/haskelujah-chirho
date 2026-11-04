@@ -169,7 +169,19 @@ impl InferCtxChirho {
 
         // Only quantify over vars that are free in the resulting type.
         // Vars bound by inner ForallChirho are NOT free and should not be in scheme vars.
-        let free_in_ty_chirho = inner_ty_chirho.free_vars_chirho();
+        let mut free_in_ty_chirho = inner_ty_chirho.free_vars_chirho();
+        for predicate_chirho in &scheme_preds_chirho {
+            for term_chirho in predicate_chirho
+                .kind_tys_chirho
+                .iter()
+                .chain(std::iter::once(&predicate_chirho.ty_chirho))
+                .chain(&predicate_chirho.extra_tys_chirho)
+            {
+                free_in_ty_chirho.extend(term_chirho.free_vars_chirho());
+            }
+        }
+        free_in_ty_chirho.sort_unstable();
+        free_in_ty_chirho.dedup();
         // Source order is not allocation order: infix lowering moves the
         // operator before its left operand, and predicates convert after the body.
         // Workflow: language-features-chirho/rank-n-visible-type-application-chirho
@@ -189,13 +201,18 @@ impl InferCtxChirho {
         } else {
             Vec::new()
         };
-        let skolem_bindings_chirho = self.skolem_bindings_chirho.clone();
+        // Canonical signature IDs survive repeated conversion. Only an
+        // enclosing lexical seed is already rigid here; this signature's own
+        // prior checking skolems must never replace its published quantifiers.
+        let mut skolem_bindings_chirho = SubstChirho::empty_chirho();
+        for variable_chirho in &scoped_ids_chirho {
+            if let Some(image_chirho) = self.skolem_bindings_chirho.lookup_chirho(variable_chirho) {
+                skolem_bindings_chirho.insert_chirho(*variable_chirho, image_chirho.clone());
+            }
+        }
         let vars_chirho: Vec<TyVarChirho> = vars_chirho
             .into_iter()
-            .filter(|var_chirho| {
-                !scoped_ids_chirho.contains(var_chirho)
-                    && skolem_bindings_chirho.lookup_chirho(var_chirho).is_none()
-            })
+            .filter(|var_chirho| !scoped_ids_chirho.contains(var_chirho))
             .collect();
         var_map_chirho.extend(body_bindings_chirho);
         if skolem_bindings_chirho.is_empty_chirho() {
@@ -293,71 +310,109 @@ impl InferCtxChirho {
             return;
         };
         let class_name_chirho = class_chirho.text_chirho().to_string();
-        if class_name_chirho == "~" && args_chirho.len() >= 2 && kind_args_chirho.is_empty() {
-            // Type equality constraint: a ~ b
+        if matches!(class_name_chirho.as_str(), "~" | "~~" | "∼") && args_chirho.len() == 2 {
             let lhs_chirho = self.ast_type_to_ty_chirho(&args_chirho[0], var_map_chirho);
             let rhs_chirho = self.ast_type_to_ty_chirho(&args_chirho[1], var_map_chirho);
             equality_pairs_chirho.push((lhs_chirho, rhs_chirho));
-        } else if kind_args_chirho.is_empty()
-            && let Some(expanded_preds_chirho) = self.expand_constraint_alias_pred_chirho(
-                &class_name_chirho,
-                args_chirho,
-                var_map_chirho,
-            )
-        {
-            scheme_preds_chirho.extend(expanded_preds_chirho);
-        } else {
-            // The legacy synonym carrier has no hidden-prefix boundary. Keep
-            // an explicitly kind-applied predicate intact until the common
-            // declaration converter can expand its complete telescope.
-            let kind_tys_chirho = kind_args_chirho
-                .iter()
-                .map(|kind_chirho| self.ast_type_to_ty_chirho(kind_chirho, var_map_chirho))
-                .collect();
-            let pred_ty_chirho = if let Some(first_arg_chirho) = args_chirho.first() {
-                self.ast_type_to_ty_chirho(first_arg_chirho, var_map_chirho)
-            } else {
-                self.fresh_var_chirho()
-            };
-            let extra_tys_chirho: Vec<TyChirho> = args_chirho
-                .iter()
-                .skip(1)
-                .map(|arg_chirho| self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho))
-                .collect();
-            scheme_preds_chirho.push(SchemePredChirho::legacy_chirho(
-                crate::ty_chirho::SchemePredPartsChirho {
-                    kind_tys_chirho,
-                    class_name_chirho,
-                    ty_chirho: pred_ty_chirho,
-                    extra_tys_chirho,
-                },
-            ));
+            return;
         }
+        let key_chirho = class_chirho
+            .type_constructor_chirho()
+            .or_else(|| {
+                self.type_constructor_scope_chirho
+                    .as_ref()
+                    .and_then(|scope_chirho| {
+                        scope_chirho.declaration_chirho(&class_chirho.full_name_chirho())
+                    })
+            })
+            .map(|declaration_chirho| declaration_chirho.type_key_chirho())
+            .unwrap_or_else(|| class_name_chirho.clone());
+        let kind_tys_chirho = kind_args_chirho
+            .iter()
+            .map(|kind_chirho| self.ast_type_to_ty_chirho(kind_chirho, var_map_chirho))
+            .collect::<Vec<_>>();
+        let visible_tys_chirho = args_chirho
+            .iter()
+            .map(|ty_chirho| self.ast_type_to_ty_chirho(ty_chirho, var_map_chirho))
+            .collect::<Vec<_>>();
+        let is_alias_chirho = self
+            .type_families_chirho
+            .declaration_schemes_chirho()
+            .get_chirho(&key_chirho)
+            .is_some_and(|scheme_chirho| {
+                scheme_chirho.owner_chirho.is_none()
+                    && !scheme_chirho.held_chirho
+                    && scheme_chirho.synonym_rhs_chirho.is_some()
+            })
+            || self.lookup_type_synonym_chirho(&key_chirho).is_some();
+        if is_alias_chirho {
+            let mut application_chirho = TyChirho::ConChirho(key_chirho);
+            for argument_chirho in kind_tys_chirho.into_iter().chain(visible_tys_chirho) {
+                application_chirho =
+                    TyChirho::AppChirho(Box::new(application_chirho), Box::new(argument_chirho));
+            }
+            let expanded_chirho = self.expand_type_synonyms_chirho(&application_chirho);
+            self.scheme_preds_from_constraint_ty_chirho(
+                &expanded_chirho,
+                scheme_preds_chirho,
+                equality_pairs_chirho,
+            );
+            return;
+        }
+        let proof_chirho = self.constraint_head_proof_chirho(&key_chirho);
+        let mut visible_chirho = visible_tys_chirho.into_iter();
+        scheme_preds_chirho.push(SchemePredChirho::from_proof_chirho(
+            proof_chirho,
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho,
+                class_name_chirho,
+                ty_chirho: visible_chirho
+                    .next()
+                    .unwrap_or_else(|| self.fresh_var_chirho()),
+                extra_tys_chirho: visible_chirho.collect(),
+            },
+        ));
     }
 
-    fn expand_constraint_alias_pred_chirho(
-        &mut self,
-        class_name_chirho: &str,
-        args_chirho: &[TypeChirho],
-        var_map_chirho: &mut HashMap<String, TyVarChirho>,
-    ) -> Option<Vec<SchemePredChirho>> {
-        self.lookup_type_synonym_chirho(class_name_chirho)?;
-
-        let mut alias_ty_chirho = TyChirho::ConChirho(class_name_chirho.to_string());
-        for arg_chirho in args_chirho {
-            alias_ty_chirho = TyChirho::AppChirho(
-                Box::new(alias_ty_chirho),
-                Box::new(self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho)),
+    fn constraint_head_proof_chirho(
+        &self,
+        key_chirho: &str,
+    ) -> haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho {
+        use haskelujah_ast_chirho::name_chirho::{
+            ClassIdentityUnknownChirho, CompilerTypeConstructorChirho,
+            PredicateClassIdentityChirho, PredicateClassProofChirho, TypeConstructorIdentityChirho,
+            TypeConstructorRoleChirho,
+        };
+        let Some(scheme_chirho) = self
+            .type_families_chirho
+            .declaration_schemes_chirho()
+            .get_chirho(key_chirho)
+            .filter(|scheme_chirho| {
+                scheme_chirho.owner_chirho.is_none()
+                    && !scheme_chirho.held_chirho
+                    && scheme_chirho.role_chirho == TypeConstructorRoleChirho::ClassChirho
+            })
+        else {
+            return PredicateClassProofChirho::UnknownChirho(
+                ClassIdentityUnknownChirho::LegacyChirho,
             );
-        }
-
-        let expanded_chirho = self.expand_type_synonyms_chirho(&alias_ty_chirho);
-        let mut preds_chirho = Vec::new();
-        self.scheme_preds_from_constraint_ty_chirho(&expanded_chirho, &mut preds_chirho);
-        if preds_chirho.is_empty() {
-            None
-        } else {
-            Some(preds_chirho)
+        };
+        match scheme_chirho
+            .declaration_chirho
+            .as_ref()
+            .map(|declaration_chirho| &declaration_chirho.identity_chirho)
+        {
+            Some(TypeConstructorIdentityChirho::CompilerChirho(
+                CompilerTypeConstructorChirho::ClassChirho(identity_chirho),
+            )) => PredicateClassProofChirho::ProvenChirho(
+                PredicateClassIdentityChirho::CompilerChirho(*identity_chirho),
+            ),
+            Some(TypeConstructorIdentityChirho::SourceChirho { .. }) => {
+                PredicateClassProofChirho::UnknownChirho(
+                    ClassIdentityUnknownChirho::MissingUnitChirho,
+                )
+            }
+            _ => PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::LegacyChirho),
         }
     }
 
@@ -365,46 +420,84 @@ impl InferCtxChirho {
         &mut self,
         ty_chirho: &TyChirho,
         out_chirho: &mut Vec<SchemePredChirho>,
+        equalities_chirho: &mut Vec<(TyChirho, TyChirho)>,
     ) {
-        match ty_chirho {
-            TyChirho::TupleChirho(elems_chirho) => {
-                for elem_chirho in elems_chirho {
-                    self.scheme_preds_from_constraint_ty_chirho(elem_chirho, out_chirho);
-                }
+        if let TyChirho::TupleChirho(elements_chirho) = ty_chirho {
+            for element_chirho in elements_chirho {
+                self.scheme_preds_from_constraint_ty_chirho(
+                    element_chirho,
+                    out_chirho,
+                    equalities_chirho,
+                );
             }
-            TyChirho::AppChirho(_, _) => {
-                let (head_chirho, args_chirho) = collect_app_spine_chirho(ty_chirho);
-                let TyChirho::ConChirho(class_name_chirho) = head_chirho else {
-                    return;
-                };
-                if class_name_chirho == "~" {
-                    return;
-                }
-                let pred_ty_chirho = args_chirho
-                    .first()
-                    .cloned()
-                    .unwrap_or_else(|| self.fresh_var_chirho());
-                out_chirho.push(SchemePredChirho::legacy_chirho(
-                    crate::ty_chirho::SchemePredPartsChirho {
-                        kind_tys_chirho: Vec::new(),
-                        class_name_chirho,
-                        ty_chirho: pred_ty_chirho,
-                        extra_tys_chirho: args_chirho.into_iter().skip(1).collect(),
-                    },
-                ));
-            }
-            TyChirho::ConChirho(class_name_chirho) if class_name_chirho != "~" => {
-                out_chirho.push(SchemePredChirho::legacy_chirho(
-                    crate::ty_chirho::SchemePredPartsChirho {
-                        kind_tys_chirho: Vec::new(),
-                        class_name_chirho: class_name_chirho.clone(),
-                        ty_chirho: self.fresh_var_chirho(),
-                        extra_tys_chirho: Vec::new(),
-                    },
-                ));
-            }
-            _ => {}
+            return;
         }
+        let (head_chirho, arguments_chirho) = collect_app_spine_chirho(ty_chirho);
+        let TyChirho::ConChirho(key_chirho) = head_chirho else {
+            return;
+        };
+        let schema_chirho = self
+            .type_families_chirho
+            .declaration_schemes_chirho()
+            .get_chirho(&key_chirho)
+            .filter(|scheme_chirho| {
+                scheme_chirho.owner_chirho.is_none()
+                    && !scheme_chirho.held_chirho
+                    && scheme_chirho.reduction_arity_chirho == arguments_chirho.len()
+            })
+            .cloned();
+        let (kind_tys_chirho, visible_tys_chirho) = if let Some(schema_chirho) = &schema_chirho {
+            let (hidden_chirho, visible_chirho): (Vec<_>, Vec<_>) = schema_chirho.binders_chirho.iter().zip(arguments_chirho).partition(|(binder_chirho, _)| binder_chirho.visibility_chirho != crate::ty_chirho::declarations_chirho::TelescopeVisibilityChirho::RequiredChirho);
+            (
+                hidden_chirho
+                    .into_iter()
+                    .map(|(_, ty_chirho)| ty_chirho)
+                    .collect::<Vec<_>>(),
+                visible_chirho
+                    .into_iter()
+                    .map(|(_, ty_chirho)| ty_chirho)
+                    .collect::<Vec<_>>(),
+            )
+        } else {
+            (Vec::new(), arguments_chirho)
+        };
+        if matches!(key_chirho.as_str(), "~" | "~~" | "∼") && visible_tys_chirho.len() == 2 {
+            let mut visible_chirho = visible_tys_chirho.into_iter();
+            equalities_chirho.push((
+                visible_chirho.next().unwrap(),
+                visible_chirho.next().unwrap(),
+            ));
+            return;
+        }
+        use haskelujah_ast_chirho::name_chirho::{
+            CompilerTypeConstructorChirho, TypeConstructorIdentityChirho,
+        };
+        let class_name_chirho = match schema_chirho
+            .as_ref()
+            .and_then(|schema_chirho| schema_chirho.declaration_chirho.as_ref())
+            .map(|declaration_chirho| &declaration_chirho.identity_chirho)
+        {
+            Some(TypeConstructorIdentityChirho::CompilerChirho(
+                CompilerTypeConstructorChirho::ClassChirho(identity_chirho),
+            )) => identity_chirho.legacy_name_chirho().to_owned(),
+            Some(TypeConstructorIdentityChirho::SourceChirho { name_chirho, .. }) => {
+                name_chirho.clone()
+            }
+            _ => key_chirho.clone(),
+        };
+        let proof_chirho = self.constraint_head_proof_chirho(&key_chirho);
+        let mut visible_chirho = visible_tys_chirho.into_iter();
+        out_chirho.push(SchemePredChirho::from_proof_chirho(
+            proof_chirho,
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho,
+                class_name_chirho,
+                ty_chirho: visible_chirho
+                    .next()
+                    .unwrap_or_else(|| self.fresh_var_chirho()),
+                extra_tys_chirho: visible_chirho.collect(),
+            },
+        ));
     }
 
     /// Peel off the outermost ForallChirho from a TyChirho, collecting bound vars.

@@ -184,6 +184,11 @@ mod family_seeds_chirho;
 mod family_transport_chirho;
 #[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/source_family_registration_chirho.rs"]
 mod source_family_registration_chirho;
+#[path = "infer_chirho/types_chirho/synonym_expansion_chirho.rs"]
+mod synonym_expansion_chirho;
+#[cfg(test)]
+#[path = "infer_chirho/types_chirho/synonym_expansion_tests_chirho.rs"]
+mod synonym_expansion_tests_chirho;
 #[path = "infer_chirho/types_chirho/type_families_chirho.rs"]
 mod type_families_chirho;
 #[path = "infer_chirho/types_chirho/type_synonyms_chirho.rs"]
@@ -417,6 +422,7 @@ pub struct MethodOccurrenceRecordChirho {
 /// The inference context — carries mutable state during inference.
 pub struct InferCtxChirho {
     non_deferrable_diagnostics_chirho: DiagnosticBundleChirho,
+    type_normalization_exhausted_chirho: std::cell::Cell<bool>,
     definition_type_conversion_chirho: bool,
     elaboration_owner_chirho: Option<
         haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ElaborationOwnerChirho,
@@ -849,6 +855,9 @@ fn infer_module_with_elaboration_state_chirho(
     let mut sorted_type_synonyms_chirho: Vec<_> = imported_type_synonyms_chirho.iter().collect();
     sorted_type_synonyms_chirho.sort_by(|a_chirho, b_chirho| a_chirho.0.cmp(b_chirho.0));
     for (name_chirho, (params_chirho, rhs_ast_chirho)) in sorted_type_synonyms_chirho {
+        if ctx_chirho.uses_checked_declaration_chirho(name_chirho) {
+            continue;
+        }
         let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(
             rhs_ast_chirho,
             params_chirho,

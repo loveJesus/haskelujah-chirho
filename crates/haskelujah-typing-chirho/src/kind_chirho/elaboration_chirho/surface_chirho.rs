@@ -120,18 +120,36 @@ impl TypeElaboratorChirho<'_> {
                     span_chirho,
                 )?;
                 let mut terms_chirho = Vec::with_capacity(elements_chirho.len());
+                let mut tuple_kind_chirho = None;
                 for element_chirho in elements_chirho {
                     let element_chirho = self.infer_type_chirho(element_chirho)?;
+                    if let Some(expected_chirho) = &tuple_kind_chirho {
+                        self.state_chirho.unify_chirho(
+                            &element_chirho.kind_chirho,
+                            expected_chirho,
+                            span_chirho,
+                        )?;
+                    } else {
+                        tuple_kind_chirho = Some(element_chirho.kind_chirho);
+                    }
+                    terms_chirho.push(element_chirho.term_chirho);
+                }
+                let kind_chirho = if let Some(kind_chirho) = tuple_kind_chirho {
+                    self.state_chirho
+                        .resolve_chirho(&kind_chirho, span_chirho)?
+                } else {
+                    ElaborationStateChirho::type_universe_chirho()
+                };
+                if kind_chirho != ElaborationStateChirho::constraint_universe_chirho() {
                     self.state_chirho.unify_chirho(
-                        &element_chirho.kind_chirho,
+                        &kind_chirho,
                         &ElaborationStateChirho::type_universe_chirho(),
                         span_chirho,
                     )?;
-                    terms_chirho.push(element_chirho.term_chirho);
                 }
                 Ok(ElaboratedTypeChirho {
                     term_chirho: TyChirho::TupleChirho(terms_chirho),
-                    kind_chirho: ElaborationStateChirho::type_universe_chirho(),
+                    kind_chirho,
                 })
             }
             TypeChirho::ListChirho { element_chirho, .. } => {
@@ -169,8 +187,13 @@ impl TypeElaboratorChirho<'_> {
             } => {
                 let mark_chirho = self.scope_undo_chirho.len();
                 let variables_chirho = self.bind_forall_chirho(vars_chirho)?;
-                let body_chirho = self.infer_type_chirho(body_chirho)?;
+                let rigid_chirho = self
+                    .state_chirho
+                    .open_rigid_scope_chirho(&variables_chirho, span_chirho)?;
+                let body_chirho = self.infer_type_chirho(body_chirho);
+                self.state_chirho.close_rigid_scope_chirho(rigid_chirho);
                 self.close_scope_chirho(mark_chirho);
+                let body_chirho = body_chirho?;
                 Ok(ElaboratedTypeChirho {
                     term_chirho: TyChirho::ForallChirho {
                         vars_chirho: variables_chirho,

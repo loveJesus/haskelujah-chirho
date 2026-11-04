@@ -24,7 +24,7 @@ impl EqualityBudgetChirho {
         self.work_chirho = self.work_chirho.checked_sub(amount_chirho)?;
         Some(())
     }
-    fn node_chirho(&mut self, amount_chirho: usize) -> Option<()> {
+    pub(super) fn node_chirho(&mut self, amount_chirho: usize) -> Option<()> {
         self.work_chirho(amount_chirho)?;
         self.output_chirho = self.output_chirho.checked_sub(amount_chirho)?;
         Some(())
@@ -185,6 +185,30 @@ fn transform_chirho<'source_chirho>(
             None,
             bound_chirho,
             expand_chirho,
+            budget_chirho,
+            depth_chirho + 1,
+        );
+    }
+    if expand_chirho
+        && named_chirho.is_none()
+        && (ctx_chirho.elaboration_owner_chirho.is_some()
+            || !ctx_chirho
+                .type_families_chirho
+                .declaration_schemes_chirho()
+                .is_empty_chirho())
+    {
+        let expanded_chirho = super::synonym_expansion_chirho::expand_synonyms_with_budget_chirho(
+            ctx_chirho,
+            ty_chirho,
+            budget_chirho,
+        )?;
+        return transform_chirho(
+            ctx_chirho,
+            &expanded_chirho,
+            rewrites_chirho,
+            None,
+            bound_chirho,
+            false,
             budget_chirho,
             depth_chirho + 1,
         );

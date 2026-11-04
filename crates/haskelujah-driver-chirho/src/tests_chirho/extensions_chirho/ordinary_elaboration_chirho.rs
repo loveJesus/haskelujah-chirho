@@ -74,6 +74,7 @@ fn ordinary_headers_bodies_and_the_inference_handoff_run_chirho() {
 fn ordinary_kind_mismatch_is_fatal_under_deferral_chirho() {
     let error_chirho = frontend_chirho("{-# LANGUAGE KindSignatures #-}\n{-# OPTIONS_GHC -fdefer-type-errors #-}\nmodule Main where\nimport Data.Kind (Type)\ndata WrapChirho (f :: Type -> Type) = WrapChirho (f Int)\nbadChirho :: WrapChirho Int\nbadChirho = undefined\nmain = pure ()\n").err().expect("a wrong constructor kind cannot defer");
     assert!(error_chirho.contains("kind mismatch"), "{error_chirho}");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
 }
 
 #[test]
@@ -199,4 +200,106 @@ fn transparent_synonym_cycles_are_refused_without_rejecting_nominal_recursion_ch
         "{error_chirho}"
     );
     frontend_chirho("module Main where\ndata FirstChirho = FirstChirho SecondChirho\ntype SecondChirho = FirstChirho\nmain = pure ()\n").expect("a nominal data boundary breaks synonym expansion");
+}
+
+#[test]
+fn constraint_aliases_keep_the_checked_hidden_prefix_and_producer_chirho() {
+    use haskelujah_ast_chirho::name_chirho::{CompilerClassChirho, PredicateClassIdentityChirho};
+    let result_chirho = frontend_chirho("{-# LANGUAGE ConstraintKinds, PolyKinds, FlexibleContexts #-}\nmodule Main where\nimport Data.Typeable (Typeable)\ntype ReflectionChirho a = Typeable a\nprobeChirho :: ReflectionChirho Maybe => ()\nprobeChirho = ()\nmain = pure ()\n").expect("checked constraint synonym converts");
+    let scheme_chirho = result_chirho
+        .infer_result_chirho
+        .env_chirho
+        .lookup_chirho("probeChirho")
+        .expect("signature retained");
+    let predicate_chirho = scheme_chirho
+        .preds_chirho
+        .iter()
+        .find(|predicate_chirho| predicate_chirho.class_name_chirho == "Typeable")
+        .expect("the alias expands its class predicate");
+    assert_eq!(predicate_chirho.kind_tys_chirho.len(), 1);
+    assert!(matches!(
+        predicate_chirho.class_identity_chirho().identity_chirho(),
+        Some(PredicateClassIdentityChirho::CompilerChirho(
+            CompilerClassChirho::TypeableChirho
+        ))
+    ));
+    assert_eq!(predicate_chirho.ty_chirho.to_string(), "Maybe");
+}
+
+#[test]
+fn context_only_variables_and_hidden_kinds_are_quantified_chirho() {
+    let result_chirho = frontend_chirho("{-# LANGUAGE PolyKinds, ExplicitForAll, KindSignatures, FlexibleContexts #-}\nmodule Main where\nimport Data.Typeable (Typeable)\nprobeChirho :: forall k (a :: k). Typeable a => ()\nprobeChirho = ()\nmain = pure ()\n").expect("context-only signature checks");
+    let scheme_chirho = result_chirho
+        .infer_result_chirho
+        .env_chirho
+        .lookup_chirho("probeChirho")
+        .expect("signature retained");
+    for predicate_chirho in &scheme_chirho.preds_chirho {
+        for term_chirho in predicate_chirho
+            .kind_tys_chirho
+            .iter()
+            .chain(std::iter::once(&predicate_chirho.ty_chirho))
+            .chain(&predicate_chirho.extra_tys_chirho)
+        {
+            for variable_chirho in term_chirho.free_vars_chirho() {
+                assert!(
+                    scheme_chirho.vars_chirho.contains(&variable_chirho),
+                    "context variable escaped its signature"
+                );
+            }
+        }
+    }
+    assert_eq!(scheme_chirho.vars_chirho.len(), 2, "{scheme_chirho:#?}");
+}
+
+#[test]
+fn equality_inside_a_constraint_alias_retains_its_obligation_chirho() {
+    frontend_chirho("{-# LANGUAGE ConstraintKinds, GADTs, TypeOperators #-}\nmodule Main where\ntype SameChirho a b = (a ~ b)\nidentityChirho :: SameChirho a Int => a -> Int\nidentityChirho x = x\nmain = pure ()\n").expect("equality alias supplies the same signature equality");
+}
+
+#[test]
+fn a_source_namesake_never_acquires_a_compiler_class_identity_chirho() {
+    use haskelujah_ast_chirho::name_chirho::{
+        ClassIdentityUnknownChirho, PredicateClassProofChirho,
+    };
+    let result_chirho = frontend_chirho("{-# LANGUAGE FlexibleContexts #-}\nmodule Main where\nclass Typeable a\nprobeChirho :: Typeable Int => ()\nprobeChirho = ()\nmain = pure ()\n").expect("source class context remains representable");
+    let scheme_chirho = result_chirho
+        .infer_result_chirho
+        .env_chirho
+        .lookup_chirho("probeChirho")
+        .expect("source context retained");
+    let predicate_chirho = scheme_chirho
+        .preds_chirho
+        .iter()
+        .find(|predicate_chirho| predicate_chirho.class_name_chirho == "Typeable")
+        .expect("source predicate retained");
+    assert_eq!(
+        predicate_chirho.class_identity_chirho(),
+        &PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::MissingUnitChirho)
+    );
+    assert!(predicate_chirho.kind_tys_chirho.is_empty());
+}
+
+#[test]
+fn a_constraint_tuple_alias_preserves_every_predicate_telescope_chirho() {
+    let result_chirho = frontend_chirho("{-# LANGUAGE ConstraintKinds, PolyKinds, FlexibleContexts #-}\nmodule Main where\nimport Data.Typeable (Typeable)\ntype ContextChirho a = (Typeable a, Eq Int)\nprobeChirho :: ContextChirho Maybe => ()\nprobeChirho = ()\nmain = pure ()\n").expect("constraint tuple alias checks");
+    let scheme_chirho = result_chirho
+        .infer_result_chirho
+        .env_chirho
+        .lookup_chirho("probeChirho")
+        .expect("signature retained");
+    assert_eq!(scheme_chirho.preds_chirho.len(), 2);
+    assert_eq!(
+        scheme_chirho
+            .preds_chirho
+            .iter()
+            .find(|predicate_chirho| predicate_chirho.class_name_chirho == "Typeable")
+            .expect("Typeable retained")
+            .kind_tys_chirho
+            .len(),
+        1
+    );
+    assert!(scheme_chirho.preds_chirho.iter().any(|predicate_chirho| {
+        predicate_chirho.class_name_chirho == "Eq" && predicate_chirho.kind_tys_chirho.is_empty()
+    }));
 }

@@ -53,12 +53,7 @@ fn context_chirho(
             },
         )
         .map_err(|error_chirho| {
-            DiagnosticBundleChirho::new_chirho(vec![
-                haskelujah_diagnostics_chirho::DiagnosticChirho::error_chirho(
-                    error_chirho.message_chirho,
-                    error_chirho.span_chirho,
-                ),
-            ])
+            DiagnosticBundleChirho::new_chirho(vec![error_chirho.into_diagnostic_chirho()])
         })?;
     let module_chirho = &owned_chirho;
     let mut context_chirho = InferCtxChirho::new_chirho();
@@ -87,6 +82,9 @@ fn context_chirho(
         .collect::<Vec<_>>();
     synonyms_chirho.sort_by(|left_chirho, right_chirho| left_chirho.0.cmp(right_chirho.0));
     for (name_chirho, (parameters_chirho, rhs_chirho)) in synonyms_chirho {
+        if context_chirho.uses_checked_declaration_chirho(name_chirho) {
+            continue;
+        }
         let rhs_chirho = ast_type_to_syn_rhs_chirho(
             rhs_chirho,
             parameters_chirho,
@@ -106,6 +104,9 @@ fn context_chirho(
             ..
         } = declaration_chirho
         {
+            if context_chirho.uses_checked_declaration_chirho(&name_chirho.full_name_chirho()) {
+                continue;
+            }
             let parameters_chirho = type_vars_chirho
                 .iter()
                 .map(|variable_chirho| variable_chirho.text_chirho().to_owned())

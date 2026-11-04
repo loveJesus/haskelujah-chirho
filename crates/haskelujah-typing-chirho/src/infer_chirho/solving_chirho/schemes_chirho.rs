@@ -6,7 +6,6 @@
 use super::InferCtxChirho;
 use super::{FundepGeneralizationChirho, GeneralizationScopeChirho};
 use crate::class_chirho::PredChirho;
-use crate::skolem_chirho::contains_skolem_chirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
 use haskelujah_span_chirho::SpanChirho;
@@ -67,15 +66,19 @@ impl InferCtxChirho {
                     .iter()
                     .map(|t_chirho| subst_chirho.apply_ty_chirho(t_chirho))
                     .collect();
-                let mut pred_inst_chirho =
-                    PredChirho::new_chirho(&pred_chirho.class_name_chirho, instantiated_ty_chirho);
-                pred_inst_chirho.extra_tys_chirho = instantiated_extra_chirho;
-                pred_inst_chirho.kind_tys_chirho = pred_chirho
-                    .kind_tys_chirho
-                    .iter()
-                    .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
-                    .collect();
-                pred_inst_chirho
+                PredChirho::from_proof_chirho(
+                    pred_chirho.class_identity_chirho().clone(),
+                    crate::class_chirho::PredPartsChirho {
+                        kind_tys_chirho: pred_chirho
+                            .kind_tys_chirho
+                            .iter()
+                            .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
+                            .collect(),
+                        class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                        ty_chirho: instantiated_ty_chirho,
+                        extra_tys_chirho: instantiated_extra_chirho,
+                    },
+                )
             })
             .collect();
 
@@ -131,15 +134,19 @@ impl InferCtxChirho {
                     .iter()
                     .map(|t_chirho| subst_chirho.apply_ty_chirho(t_chirho))
                     .collect();
-                let mut pred_inst_chirho =
-                    PredChirho::new_chirho(&pred_chirho.class_name_chirho, instantiated_ty_chirho);
-                pred_inst_chirho.extra_tys_chirho = instantiated_extra_chirho;
-                pred_inst_chirho.kind_tys_chirho = pred_chirho
-                    .kind_tys_chirho
-                    .iter()
-                    .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
-                    .collect();
-                pred_inst_chirho
+                PredChirho::from_proof_chirho(
+                    pred_chirho.class_identity_chirho().clone(),
+                    crate::class_chirho::PredPartsChirho {
+                        kind_tys_chirho: pred_chirho
+                            .kind_tys_chirho
+                            .iter()
+                            .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
+                            .collect(),
+                        class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                        ty_chirho: instantiated_ty_chirho,
+                        extra_tys_chirho: instantiated_extra_chirho,
+                    },
+                )
             })
             .collect();
 
@@ -284,6 +291,9 @@ impl InferCtxChirho {
     ) -> SchemeChirho {
         let mut env_fvs_chirho = self.env_chirho.free_vars_chirho();
         for pred_chirho in &self.given_preds_chirho {
+            for kind_chirho in &pred_chirho.kind_tys_chirho {
+                env_fvs_chirho.extend(kind_chirho.free_vars_chirho());
+            }
             env_fvs_chirho.extend(pred_chirho.ty_chirho.free_vars_chirho());
             for extra_ty_chirho in &pred_chirho.extra_tys_chirho {
                 env_fvs_chirho.extend(extra_ty_chirho.free_vars_chirho());
@@ -291,7 +301,42 @@ impl InferCtxChirho {
         }
         // workflow: language-features-chirho/fundep-generalization-chirho
         let newly_mono_chirho = self.fundep_newly_mono_vars_chirho(&env_fvs_chirho);
-        let ty_fvs_chirho = ty_chirho.free_vars_chirho();
+        let mut ty_fvs_chirho = ty_chirho.free_vars_chirho();
+        // Visit each connected predicate once: kinds may add variables absent
+        // from the result term, while unrelated ambiguous wanteds stay outside.
+        let mut owners_chirho: HashMap<TyVarChirho, Vec<usize>> = HashMap::new();
+        let mut predicate_variables_chirho = Vec::new();
+        for (index_chirho, (predicate_chirho, _)) in self.deferred_preds_chirho.iter().enumerate() {
+            let variables_chirho = predicate_chirho
+                .kind_tys_chirho
+                .iter()
+                .chain(std::iter::once(&predicate_chirho.ty_chirho))
+                .chain(&predicate_chirho.extra_tys_chirho)
+                .flat_map(TyChirho::free_vars_chirho)
+                .collect::<Vec<_>>();
+            for variable_chirho in &variables_chirho {
+                owners_chirho
+                    .entry(*variable_chirho)
+                    .or_default()
+                    .push(index_chirho);
+            }
+            predicate_variables_chirho.push(variables_chirho);
+        }
+        let mut seen_variables_chirho = ty_fvs_chirho.iter().copied().collect::<HashSet<_>>();
+        let mut seen_predicates_chirho = HashSet::new();
+        let mut index_chirho = 0;
+        while let Some(variable_chirho) = ty_fvs_chirho.get(index_chirho).copied() {
+            index_chirho += 1;
+            for owner_chirho in owners_chirho.get(&variable_chirho).into_iter().flatten() {
+                if seen_predicates_chirho.insert(*owner_chirho) {
+                    for variable_chirho in &predicate_variables_chirho[*owner_chirho] {
+                        if seen_variables_chirho.insert(*variable_chirho) {
+                            ty_fvs_chirho.push(*variable_chirho);
+                        }
+                    }
+                }
+            }
+        }
         let vars_chirho: Vec<TyVarChirho> = ty_fvs_chirho
             .into_iter()
             .filter(|v_chirho| {
@@ -319,15 +364,17 @@ impl InferCtxChirho {
             ) else {
                 continue;
             };
-            let pred_fvs_chirho = pred_chirho.ty_chirho.free_vars_chirho();
+            let pred_fvs_chirho = pred_chirho
+                .kind_tys_chirho
+                .iter()
+                .chain(std::iter::once(&pred_chirho.ty_chirho))
+                .chain(&pred_chirho.extra_tys_chirho)
+                .flat_map(TyChirho::free_vars_chirho)
+                .collect::<Vec<_>>();
             // A predicate over a rigid signature variable belongs to the
             // enclosing signature's context: it is discharged by those givens
             // when their scope ends, or reported. It is never quantified away.
-            let mentions_rigid_chirho = contains_skolem_chirho(&pred_chirho.ty_chirho)
-                || pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .any(contains_skolem_chirho);
+            let mentions_rigid_chirho = Self::pred_mentions_rigid_chirho(&pred_chirho);
             if !mentions_rigid_chirho
                 && pred_fvs_chirho
                     .iter()
@@ -346,7 +393,7 @@ impl InferCtxChirho {
                 scheme_preds_chirho.push(SchemePredChirho::from_proof_chirho(
                     pred_chirho.class_identity_chirho().clone(),
                     crate::ty_chirho::SchemePredPartsChirho {
-                        kind_tys_chirho: Vec::new(),
+                        kind_tys_chirho: pred_chirho.kind_tys_chirho,
                         class_name_chirho: pred_chirho.class_name_chirho,
                         ty_chirho: pred_chirho.ty_chirho,
                         extra_tys_chirho: pred_chirho.extra_tys_chirho,
@@ -372,6 +419,8 @@ impl InferCtxChirho {
                 !scheme_preds_chirho.iter().any(|other_chirho| {
                     other_chirho.class_name_chirho != pred_chirho.class_name_chirho
                         && other_chirho.ty_chirho == pred_chirho.ty_chirho
+                        && other_chirho.kind_tys_chirho == pred_chirho.kind_tys_chirho
+                        && other_chirho.extra_tys_chirho == pred_chirho.extra_tys_chirho
                         && self.is_transitive_superclass_chirho(
                             &pred_chirho.class_name_chirho,
                             &other_chirho.class_name_chirho,
@@ -556,6 +605,11 @@ impl InferCtxChirho {
             }
         }
         for pred_chirho in &mut self.given_preds_chirho {
+            pred_chirho.kind_tys_chirho = pred_chirho
+                .kind_tys_chirho
+                .iter()
+                .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
+                .collect();
             pred_chirho.ty_chirho = subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
             for extra_ty_chirho in &mut pred_chirho.extra_tys_chirho {
                 *extra_ty_chirho = subst_chirho.apply_ty_chirho(extra_ty_chirho);
@@ -604,6 +658,11 @@ impl InferCtxChirho {
             self.occurrence_generalized_vars_chirho = updated_vars_chirho;
         }
         for pred_chirho in &mut self.given_preds_chirho {
+            pred_chirho.kind_tys_chirho = pred_chirho
+                .kind_tys_chirho
+                .iter()
+                .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
+                .collect();
             pred_chirho.ty_chirho = subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
             pred_chirho.extra_tys_chirho = pred_chirho
                 .extra_tys_chirho

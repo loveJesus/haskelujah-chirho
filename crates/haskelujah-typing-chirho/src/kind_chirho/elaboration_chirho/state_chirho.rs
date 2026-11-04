@@ -26,6 +26,17 @@ impl std::fmt::Display for ElaborationErrorChirho {
 }
 impl std::error::Error for ElaborationErrorChirho {}
 
+impl ElaborationErrorChirho {
+    /// Preserve the kind phase's public diagnostic protocol at every frontend.
+    pub fn into_diagnostic_chirho(self) -> haskelujah_diagnostics_chirho::DiagnosticChirho {
+        haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+            haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
+            self.message_chirho,
+            self.span_chirho,
+        )
+    }
+}
+
 /// Bounds apply before each new copy/expansion. Exhaustion is terminal for
 /// this state: callers publish neither a telescope nor an elaborated module.
 #[derive(Debug)]
@@ -187,6 +198,25 @@ impl ElaborationStateChirho {
             self.rigid_variables_chirho.remove(&variable_chirho);
         }
         result_chirho
+    }
+
+    pub(super) fn open_rigid_scope_chirho(
+        &mut self,
+        variables_chirho: &[TyVarChirho],
+        span_chirho: SpanChirho,
+    ) -> Result<Vec<TyVarChirho>, ElaborationErrorChirho> {
+        self.charge_chirho(variables_chirho.len(), variables_chirho.len(), span_chirho)?;
+        Ok(variables_chirho
+            .iter()
+            .copied()
+            .filter(|variable_chirho| self.rigid_variables_chirho.insert(*variable_chirho))
+            .collect())
+    }
+
+    pub(super) fn close_rigid_scope_chirho(&mut self, added_chirho: Vec<TyVarChirho>) {
+        for variable_chirho in added_chirho {
+            self.rigid_variables_chirho.remove(&variable_chirho);
+        }
     }
 
     /// Normalize under the one current substitution. Unlike the compatibility

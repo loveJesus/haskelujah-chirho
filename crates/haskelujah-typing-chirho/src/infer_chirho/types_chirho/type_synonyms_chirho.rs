@@ -99,6 +99,18 @@ impl InferCtxChirho {
         }
     }
 
+    pub(super) fn uses_checked_declaration_chirho(&self, name_chirho: &str) -> bool {
+        self.type_constructor_scope_chirho
+            .as_ref()
+            .and_then(|scope_chirho| scope_chirho.declaration_chirho(name_chirho))
+            .is_some()
+            || self
+                .type_families_chirho
+                .declaration_schemes_chirho()
+                .get_chirho(name_chirho)
+                .is_some()
+    }
+
     /// Register a type synonym from a `TypeAliasDeclChirho`.
     pub fn register_type_synonym_chirho(
         &mut self,
@@ -115,6 +127,22 @@ impl InferCtxChirho {
     /// (e.g. `String` → `[Char]`) and parameterised synonyms (e.g.
     /// `Pair Int` → `(Int, Int)` for `type Pair a = (a, a)`).
     pub fn expand_type_synonyms_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
+        if self.elaboration_owner_chirho.is_some()
+            || !self
+                .type_families_chirho
+                .declaration_schemes_chirho()
+                .is_empty_chirho()
+        {
+            return super::synonym_expansion_chirho::expand_synonyms_with_budget_chirho(
+                self,
+                ty_chirho,
+                &mut super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho(),
+            )
+            .unwrap_or_else(|| {
+                self.type_normalization_exhausted_chirho.set(true);
+                TyChirho::ConChirho("%normalization:resource-exhausted".to_owned())
+            });
+        }
         self.expand_syn_chirho(ty_chirho, 0)
     }
 
@@ -149,44 +177,6 @@ impl InferCtxChirho {
     fn expand_syn_chirho(&self, ty_chirho: &TyChirho, depth_chirho: usize) -> TyChirho {
         if depth_chirho > 100 {
             return ty_chirho.clone(); // guard against cycles
-        }
-        let mut head_chirho = ty_chirho;
-        let mut arguments_chirho = Vec::new();
-        while let TyChirho::AppChirho(fun_chirho, argument_chirho) = head_chirho {
-            arguments_chirho.push(argument_chirho.as_ref());
-            head_chirho = fun_chirho;
-        }
-        arguments_chirho.reverse();
-        if let TyChirho::ConChirho(name_chirho) = head_chirho {
-            let key_chirho = self.normalize_imported_type_name_chirho(name_chirho);
-            if let Some(scheme_chirho) = self
-                .type_families_chirho
-                .declaration_schemes_chirho()
-                .get_chirho(&key_chirho)
-                && scheme_chirho.owner_chirho.is_none()
-                && !scheme_chirho.held_chirho
-                && arguments_chirho.len() >= scheme_chirho.reduction_arity_chirho
-                && let Some(rhs_chirho) = &scheme_chirho.synonym_rhs_chirho
-            {
-                let mut substitution_chirho = crate::subst_chirho::SubstChirho::empty_chirho();
-                for (binder_chirho, argument_chirho) in
-                    scheme_chirho.binders_chirho.iter().zip(&arguments_chirho)
-                {
-                    substitution_chirho.insert_chirho(
-                        binder_chirho.variable_chirho,
-                        self.expand_syn_chirho(argument_chirho, depth_chirho + 1),
-                    );
-                }
-                let body_chirho = substitution_chirho.apply_ty_chirho(rhs_chirho);
-                let mut expanded_chirho = self.expand_syn_chirho(&body_chirho, depth_chirho + 1);
-                for argument_chirho in &arguments_chirho[scheme_chirho.reduction_arity_chirho..] {
-                    expanded_chirho = TyChirho::AppChirho(
-                        Box::new(expanded_chirho),
-                        Box::new(self.expand_syn_chirho(argument_chirho, depth_chirho + 1)),
-                    );
-                }
-                return expanded_chirho;
-            }
         }
         match ty_chirho {
             TyChirho::ConChirho(name_chirho) => {

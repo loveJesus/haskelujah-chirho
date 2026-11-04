@@ -61,11 +61,12 @@ impl InferCtxChirho {
     /// variables. A fully-ground predicate is invariant under all later
     /// substitution, so its solvability verdict cannot change.
     pub(super) fn pred_fully_ground_chirho(pred_chirho: &PredChirho) -> bool {
-        pred_chirho.ty_chirho.free_vars_chirho().is_empty()
-            && pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .all(|t_chirho| t_chirho.free_vars_chirho().is_empty())
+        pred_chirho
+            .kind_tys_chirho
+            .iter()
+            .chain(std::iter::once(&pred_chirho.ty_chirho))
+            .chain(&pred_chirho.extra_tys_chirho)
+            .all(|ty_chirho| ty_chirho.free_vars_chirho().is_empty())
             && !Self::pred_mentions_rigid_chirho(pred_chirho)
     }
 
@@ -195,7 +196,11 @@ impl InferCtxChirho {
         let normalized_pred_chirho = PredChirho::from_proof_chirho(
             pred_chirho.class_identity_chirho().clone(),
             crate::class_chirho::PredPartsChirho {
-                kind_tys_chirho: Vec::new(),
+                kind_tys_chirho: pred_chirho
+                    .kind_tys_chirho
+                    .iter()
+                    .map(|kind_chirho| self.normalize_ty_chirho(kind_chirho))
+                    .collect(),
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
                 ty_chirho: normalized_args_chirho[0].clone(),
                 extra_tys_chirho: normalized_args_chirho[1..].to_vec(),
@@ -252,7 +257,11 @@ impl InferCtxChirho {
                 PredChirho::from_proof_chirho(
                     given_chirho.class_identity_chirho().clone(),
                     crate::class_chirho::PredPartsChirho {
-                        kind_tys_chirho: Vec::new(),
+                        kind_tys_chirho: given_chirho
+                            .kind_tys_chirho
+                            .iter()
+                            .map(|kind_chirho| self.normalize_ty_chirho(kind_chirho))
+                            .collect(),
                         class_name_chirho: given_chirho.class_name_chirho.clone(),
                         ty_chirho: self.normalize_ty_chirho(&given_chirho.ty_chirho),
                         extra_tys_chirho: given_chirho
@@ -289,7 +298,11 @@ impl InferCtxChirho {
         let normalized_pred_chirho = PredChirho::from_proof_chirho(
             pred_chirho.class_identity_chirho().clone(),
             crate::class_chirho::PredPartsChirho {
-                kind_tys_chirho: Vec::new(),
+                kind_tys_chirho: pred_chirho
+                    .kind_tys_chirho
+                    .iter()
+                    .map(|kind_chirho| self.normalize_ty_chirho(kind_chirho))
+                    .collect(),
                 class_name_chirho: pred_chirho.class_name_chirho.clone(),
                 ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
                 extra_tys_chirho: pred_chirho
