@@ -63,7 +63,7 @@ impl InferCtxChirho {
             self.instantiate_scheme_parts_chirho(&scheme_chirho);
         let expected_chirho =
             self.expected_operation_shape_chirho(selected_chirho.role_chirho, monad_chirho);
-        match self.unify_normalized_chirho(
+        if let Ok(unifier_chirho) = self.unify_normalized_chirho(
             &subst_chirho.apply_ty_chirho(&operation_ty_chirho),
             &subst_chirho.apply_ty_chirho(&expected_chirho),
             span_chirho,
@@ -79,33 +79,28 @@ impl InferCtxChirho {
             // infinite type. The operator had no predicates to record at all, so
             // the write bought nothing and broke a program GHC accepts. A capture
             // that can only read cannot do that to any program.
-            Ok(unifier_chirho) => {
-                let resolved_chirho: Vec<PredChirho> = preds_chirho
-                    .iter()
-                    .map(|pred_chirho| {
-                        PredChirho::from_proof_chirho(
-                            pred_chirho.class_identity_chirho().clone(),
-                            crate::class_chirho::PredPartsChirho {
-                                kind_tys_chirho: Vec::new(),
-                                class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                                ty_chirho: unifier_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                                extra_tys_chirho: pred_chirho
-                                    .extra_tys_chirho
-                                    .iter()
-                                    .map(|extra_chirho| {
-                                        unifier_chirho.apply_ty_chirho(extra_chirho)
-                                    })
-                                    .collect(),
-                            },
-                        )
-                    })
-                    .collect();
-                self.capture_occurrence_predicates_chirho(name_chirho, &resolved_chirho);
-            }
-            // Does not fit the block's shape: no evidence rather than wrong
-            // evidence, and no error from here.
-            Err(_) => {}
+            let resolved_chirho: Vec<PredChirho> = preds_chirho
+                .iter()
+                .map(|pred_chirho| {
+                    PredChirho::from_proof_chirho(
+                        pred_chirho.class_identity_chirho().clone(),
+                        crate::class_chirho::PredPartsChirho {
+                            kind_tys_chirho: Vec::new(),
+                            class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                            ty_chirho: unifier_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                            extra_tys_chirho: pred_chirho
+                                .extra_tys_chirho
+                                .iter()
+                                .map(|extra_chirho| unifier_chirho.apply_ty_chirho(extra_chirho))
+                                .collect(),
+                        },
+                    )
+                })
+                .collect();
+            self.capture_occurrence_predicates_chirho(name_chirho, &resolved_chirho);
         }
+        // Does not fit the block's shape: no evidence rather than wrong
+        // evidence, and no error from here.
     }
 
     /// The type each role's operation has in a block over `monad_chirho`, with

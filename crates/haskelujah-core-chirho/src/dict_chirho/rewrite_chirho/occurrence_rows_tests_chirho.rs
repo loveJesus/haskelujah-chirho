@@ -290,14 +290,14 @@ fn layout_chirho(class_chirho: &str, method_chirho: &str) -> DictLayoutChirho {
 fn context_leading_rows_are_read_from_the_class_environment_chirho() {
     let mut env_chirho = ClassEnvChirho::new_chirho();
     let element_chirho = TyChirho::VarChirho(TyVarChirho(0));
-    for instance_chirho in vec![instance_chirho(
+    for instance_chirho in [instance_chirho(
         "MarkChirho",
         con_chirho("FooChirho"),
         vec![PredChirho::new_chirho("Show", con_chirho("Int"))],
     )] {
         env_chirho.add_instance_chirho(instance_chirho);
     }
-    for instance_chirho in vec![
+    for instance_chirho in [
         instance_chirho("NeedsChirho", con_chirho("Int"), Vec::new()),
         instance_chirho(
             "NeedsChirho",

@@ -582,6 +582,33 @@ impl fmt::Display for SchemeChirho {
     }
 }
 
+impl crate::ty_chirho::PredicateRecordChirho for SchemePredChirho {
+    fn refuse_metadata_chirho(
+        &mut self,
+        refusal_chirho: haskelujah_ast_chirho::name_chirho::PredicateMetadataRefusalChirho,
+    ) {
+        self.refuse_metadata_chirho(refusal_chirho);
+    }
+
+    fn terms_chirho(&self) -> crate::ty_chirho::PredicateTermsChirho<'_> {
+        self.terms_chirho()
+    }
+    fn class_name_chirho(&self) -> &str {
+        &self.class_name_chirho
+    }
+    fn class_identity_chirho(
+        &self,
+    ) -> &haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho {
+        self.class_identity_chirho()
+    }
+    fn meet_class_identity_chirho(
+        &mut self,
+        other_chirho: &haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
+    ) {
+        self.meet_class_identity_chirho(other_chirho);
+    }
+}
+
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
@@ -709,32 +736,5 @@ mod tests_chirho {
             )),
         };
         assert!(ty_chirho.free_vars_chirho().is_empty());
-    }
-}
-
-impl crate::ty_chirho::PredicateRecordChirho for SchemePredChirho {
-    fn refuse_metadata_chirho(
-        &mut self,
-        refusal_chirho: haskelujah_ast_chirho::name_chirho::PredicateMetadataRefusalChirho,
-    ) {
-        self.refuse_metadata_chirho(refusal_chirho);
-    }
-
-    fn terms_chirho(&self) -> crate::ty_chirho::PredicateTermsChirho<'_> {
-        self.terms_chirho()
-    }
-    fn class_name_chirho(&self) -> &str {
-        &self.class_name_chirho
-    }
-    fn class_identity_chirho(
-        &self,
-    ) -> &haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho {
-        self.class_identity_chirho()
-    }
-    fn meet_class_identity_chirho(
-        &mut self,
-        other_chirho: &haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
-    ) {
-        self.meet_class_identity_chirho(other_chirho);
     }
 }
