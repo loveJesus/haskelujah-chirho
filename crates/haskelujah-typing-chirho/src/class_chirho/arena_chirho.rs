@@ -480,9 +480,17 @@ impl ClassEnvChirho {
         let proof_chirho = self
             .compiler_class_record_chirho(identity_chirho)
             .map(|class_chirho| class_chirho.class_identity_chirho().clone())
-            .unwrap_or(PredicateClassProofChirho::UnknownChirho(
-                ClassIdentityUnknownChirho::AmbiguousChirho,
-            ));
+            .unwrap_or_else(|| {
+                PredicateClassProofChirho::UnknownChirho(
+                    if self.class_identities_chirho.contains_key(
+                        &PredicateClassIdentityChirho::CompilerChirho(identity_chirho),
+                    ) {
+                        ClassIdentityUnknownChirho::AmbiguousChirho
+                    } else {
+                        ClassIdentityUnknownChirho::UnsupportedChirho
+                    },
+                )
+            });
         self.add_instance_chirho(InstDeclChirho::from_producer_chirho(
             parts_chirho,
             proof_chirho,

@@ -305,3 +305,28 @@ fn a_seed_instance_without_a_class_producer_has_an_explicit_unsupported_reason_c
         )
     );
 }
+
+#[test]
+fn seeds_before_their_class_declaration_stay_unsupported_without_retroactive_upgrade_chirho() {
+    let mut env_chirho = ClassEnvChirho::new_chirho();
+    env_chirho.seed_standard_chirho();
+    assert!(
+        env_chirho
+            .compiler_class_record_chirho(CompilerClassChirho::MonadTransChirho)
+            .is_some(),
+        "the declaration eventually exists"
+    );
+    let early_chirho = env_chirho
+        .instances_chirho()
+        .get_chirho("MonadTrans")
+        .expect("legacy seed list");
+    assert_eq!(early_chirho.len_chirho(), 2);
+    for instance_chirho in early_chirho {
+        assert_eq!(
+            instance_chirho.class_identity_chirho(),
+            &PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::UnsupportedChirho
+            )
+        );
+    }
+}

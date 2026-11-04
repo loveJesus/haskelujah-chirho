@@ -89,9 +89,15 @@ impl InferCtxChirho {
                             .map(TyChirho::VarChirho)
                             .collect(),
                     });
-                scheme_chirho.preds_chirho.push(class_pred_chirho);
-                scheme_chirho.preds_chirho =
-                    self.coalesce_scheme_predicates_chirho(scheme_chirho.preds_chirho);
+                let _metadata_refusal_chirho = crate::ty_chirho::append_enclosing_predicate_chirho(
+                    &mut scheme_chirho.preds_chirho,
+                    class_pred_chirho,
+                    self.class_env_chirho.registration_limit_chirho(),
+                    |weight_chirho| {
+                        self.class_env_chirho
+                            .charge_predicate_metadata_chirho(weight_chirho)
+                    },
+                );
                 // A method's type is `forall <class vars>. C <class vars> =>
                 // forall <own vars>. ty`: the class variables are quantified
                 // first (visible type application `take @n` reaches `n` even

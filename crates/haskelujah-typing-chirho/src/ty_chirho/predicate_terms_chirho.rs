@@ -176,6 +176,63 @@ impl<PredicateChirho: PredicateRecordChirho> OrderedPredicateSetChirho<Predicate
     }
 }
 
+/// Preserve the method scheme's written constraints exactly. Only the first
+/// legacy-equal enclosing predicate receives metadata from the incoming one.
+/// The contains search is legacy work; new proof work is independently bounded.
+pub fn append_enclosing_predicate_chirho<PredicateChirho: PredicateRecordChirho>(
+    predicates_chirho: &mut Vec<PredicateChirho>,
+    mut incoming_chirho: PredicateChirho,
+    work_limit_chirho: usize,
+    mut charge_chirho: impl FnMut(usize) -> bool,
+) -> Option<PredicateSetErrorChirho> {
+    let first_chirho = predicates_chirho.iter().position(|predicate_chirho| {
+        super::legacy_predicate_key_chirho::equal_chirho(predicate_chirho, &incoming_chirho)
+    });
+    let mut refusal_chirho = if !charge_chirho(0) {
+        Some(PredicateSetErrorChirho::WorkChirho {
+            limit_chirho: work_limit_chirho,
+        })
+    } else {
+        None
+    };
+    if refusal_chirho.is_none() {
+        refusal_chirho = match predicate_weight_chirho(&incoming_chirho) {
+            Err(error_chirho) => Some(error_chirho),
+            Ok(weight_chirho) if !charge_chirho(weight_chirho) => {
+                Some(PredicateSetErrorChirho::WorkChirho {
+                    limit_chirho: work_limit_chirho,
+                })
+            }
+            Ok(_) => None,
+        };
+    }
+    if let Some(index_chirho) = first_chirho {
+        if refusal_chirho.is_none() {
+            refusal_chirho = match predicate_weight_chirho(&predicates_chirho[index_chirho]) {
+                Err(error_chirho) => Some(error_chirho),
+                Ok(weight_chirho) if !charge_chirho(weight_chirho) => {
+                    Some(PredicateSetErrorChirho::WorkChirho {
+                        limit_chirho: work_limit_chirho,
+                    })
+                }
+                Ok(_) => None,
+            };
+        }
+        if let Some(refusal_chirho) = refusal_chirho {
+            predicates_chirho[index_chirho].refuse_metadata_chirho(refusal_chirho);
+        } else {
+            predicates_chirho[index_chirho]
+                .meet_class_identity_chirho(incoming_chirho.class_identity_chirho());
+        }
+    } else {
+        if let Some(refusal_chirho) = refusal_chirho {
+            incoming_chirho.refuse_metadata_chirho(refusal_chirho);
+        }
+        predicates_chirho.push(incoming_chirho);
+    }
+    refusal_chirho
+}
+
 fn predicate_weight_chirho(
     predicate_chirho: &impl PredicateRecordChirho,
 ) -> Result<usize, PredicateSetErrorChirho> {

@@ -283,3 +283,61 @@ fn iterative_legacy_relation_matches_public_eq_for_every_type_variant_and_group_
         legacy_dedup_chirho(duplicate_chirho)
     );
 }
+
+#[test]
+fn enclosing_predicate_meet_touches_only_the_first_contained_record_chirho() {
+    let first_chirho = predicate_chirho(proof_chirho(CompilerClassChirho::EqChirho), "Bool");
+    let second_chirho = predicate_chirho(proof_chirho(CompilerClassChirho::ShowChirho), "Bool");
+    let mut values_chirho = vec![first_chirho, second_chirho.clone()];
+    let incoming_chirho = predicate_chirho(
+        PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::MissingUnitChirho),
+        "Bool",
+    );
+    assert!(
+        append_enclosing_predicate_chirho(&mut values_chirho, incoming_chirho, 1 << 25, |_| true)
+            .is_none()
+    );
+    assert_eq!(values_chirho.len(), 2);
+    assert_eq!(
+        values_chirho[0].class_identity_chirho(),
+        &PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::MissingUnitChirho)
+    );
+    assert_eq!(
+        values_chirho[1].class_identity_chirho(),
+        second_chirho.class_identity_chirho()
+    );
+}
+
+#[test]
+fn enclosing_predicate_refusal_preserves_contained_duplicates_and_absent_append_order_chirho() {
+    let first_chirho = predicate_chirho(proof_chirho(CompilerClassChirho::EqChirho), "Bool");
+    let second_chirho = first_chirho.clone();
+    let incoming_chirho = first_chirho.clone();
+    let mut values_chirho = vec![first_chirho, second_chirho.clone()];
+    let refusal_chirho =
+        append_enclosing_predicate_chirho(&mut values_chirho, incoming_chirho, 0, |_| false)
+            .expect("metadata refusal");
+    assert_eq!(values_chirho.len(), 2);
+    assert_eq!(
+        values_chirho[0].class_identity_chirho(),
+        &PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::ResourceChirho(
+            refusal_chirho
+        ))
+    );
+    assert_eq!(
+        values_chirho[1].class_identity_chirho(),
+        second_chirho.class_identity_chirho()
+    );
+    let incoming_chirho = predicate_chirho(proof_chirho(CompilerClassChirho::EqChirho), "Char");
+    let old_values_chirho = values_chirho.clone();
+    let _metadata_refusal_chirho =
+        append_enclosing_predicate_chirho(&mut values_chirho, incoming_chirho.clone(), 0, |_| {
+            false
+        });
+    assert_eq!(&values_chirho[..2], &old_values_chirho);
+    assert_eq!(values_chirho[2], incoming_chirho);
+    assert!(matches!(
+        values_chirho[2].class_identity_chirho(),
+        PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::ResourceChirho(_))
+    ));
+}

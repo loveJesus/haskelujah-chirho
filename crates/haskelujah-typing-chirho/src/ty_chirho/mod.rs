@@ -336,7 +336,7 @@ mod legacy_predicate_key_chirho;
 mod predicate_terms_chirho;
 pub use predicate_terms_chirho::{
     MappedPredicateTermsChirho, OrderedPredicateSetChirho, PredicateRecordChirho,
-    PredicateSetErrorChirho, PredicateTermsChirho,
+    PredicateSetErrorChirho, PredicateTermsChirho, append_enclosing_predicate_chirho,
 };
 
 /// A predicate reference used in type schemes. Kept lightweight:

@@ -601,3 +601,136 @@ fn infer_user_instance_decl_chirho() {
         "Eq MyType should be entailed after instance registration"
     );
 }
+
+/// The AST of MethodShapeChirho.hs, written before the R1 repair. This invokes
+/// the production class-method converter without introducing a parser dependency.
+fn duplicate_written_method_class_chirho() -> DeclChirho {
+    use haskelujah_ast_chirho::decl_chirho::ClassMethodChirho;
+    use haskelujah_ast_chirho::ty_chirho::ConstraintChirho;
+    let method_chirho = |name_chirho: &str, classes_chirho: &[&str]| {
+        let body_chirho = TypeChirho::FunChirho {
+            arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho("aChirho"))),
+            mult_chirho: None,
+            result_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Bool"))),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        };
+        ClassMethodChirho {
+            name_chirho: dummy_name_chirho(name_chirho),
+            ty_chirho: if classes_chirho.is_empty() {
+                body_chirho
+            } else {
+                TypeChirho::QualChirho {
+                    context_chirho: classes_chirho
+                        .iter()
+                        .map(|class_chirho| ConstraintChirho::ClassChirho {
+                            class_chirho: dummy_name_chirho(class_chirho),
+                            kind_args_chirho: vec![],
+                            args_chirho: vec![TypeChirho::VarChirho(dummy_name_chirho("aChirho"))],
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        })
+                        .collect(),
+                    body_chirho: Box::new(body_chirho),
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }
+            },
+            default_chirho: None,
+            default_sig_chirho: None,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }
+    };
+    DeclChirho::ClassDeclChirho {
+        context_chirho: vec![],
+        name_chirho: dummy_name_chirho("OwnChirho"),
+        type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],
+        methods_chirho: vec![
+            method_chirho("duplicateWrittenChirho", &["Eq", "Eq"]),
+            method_chirho("presentOwnChirho", &["OwnChirho", "OwnChirho", "Eq"]),
+            method_chirho("absentOwnChirho", &["Eq", "Show", "Eq"]),
+            method_chirho("simpleOwnChirho", &[]),
+        ],
+        associated_tfs_chirho: vec![],
+        fundeps_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+#[test]
+fn class_method_conversion_retains_written_duplicates_and_only_appends_missing_own_class_chirho() {
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    ctx_chirho.process_class_decl_chirho(&duplicate_written_method_class_chirho());
+    let class_chirho = ctx_chirho
+        .class_env_chirho
+        .classes_chirho()
+        .get_chirho("OwnChirho")
+        .expect("class converted");
+    for (method_chirho, expected_chirho) in [
+        ("duplicateWrittenChirho", vec!["Eq", "Eq", "OwnChirho"]),
+        ("presentOwnChirho", vec!["OwnChirho", "OwnChirho", "Eq"]),
+        ("absentOwnChirho", vec!["Eq", "Show", "Eq", "OwnChirho"]),
+        ("simpleOwnChirho", vec!["OwnChirho"]),
+    ] {
+        let actual_chirho: Vec<_> = class_chirho.methods_chirho[method_chirho]
+            .preds_chirho
+            .iter()
+            .map(|predicate_chirho| predicate_chirho.class_name_chirho.as_str())
+            .collect();
+        assert_eq!(actual_chirho, expected_chirho, "{method_chirho}");
+    }
+    assert!(!ctx_chirho.diagnostics_chirho.has_errors_chirho());
+    assert!(!ctx_chirho.has_non_deferrable_failure_chirho());
+}
+
+#[test]
+fn method_conversion_on_soft_exhaustion_keeps_written_shape_and_only_refuses_own_survivor_chirho() {
+    use haskelujah_ast_chirho::name_chirho::{
+        ClassIdentityUnknownChirho, PredicateClassProofChirho,
+    };
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    assert!(
+        ctx_chirho
+            .class_env_chirho
+            .charge_predicate_metadata_chirho(
+                ctx_chirho.class_env_chirho.registration_limit_chirho()
+            )
+    );
+    ctx_chirho.process_class_decl_chirho(&duplicate_written_method_class_chirho());
+    let class_chirho = ctx_chirho
+        .class_env_chirho
+        .classes_chirho()
+        .get_chirho("OwnChirho")
+        .expect("class converted");
+    let written_chirho = &class_chirho.methods_chirho["presentOwnChirho"].preds_chirho;
+    assert_eq!(
+        written_chirho
+            .iter()
+            .map(|predicate_chirho| predicate_chirho.class_name_chirho.as_str())
+            .collect::<Vec<_>>(),
+        ["OwnChirho", "OwnChirho", "Eq"]
+    );
+    assert!(matches!(
+        written_chirho[0].class_identity_chirho(),
+        PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::ResourceChirho(_))
+    ));
+    assert_eq!(
+        written_chirho[1].class_identity_chirho(),
+        &PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::LegacyChirho)
+    );
+    assert_eq!(
+        written_chirho[2].class_identity_chirho(),
+        &PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::LegacyChirho)
+    );
+    let absent_chirho = &class_chirho.methods_chirho["absentOwnChirho"].preds_chirho;
+    assert_eq!(
+        absent_chirho
+            .iter()
+            .map(|predicate_chirho| predicate_chirho.class_name_chirho.as_str())
+            .collect::<Vec<_>>(),
+        ["Eq", "Show", "Eq", "OwnChirho"]
+    );
+    assert!(matches!(
+        absent_chirho[3].class_identity_chirho(),
+        PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::ResourceChirho(_))
+    ));
+    assert!(!ctx_chirho.diagnostics_chirho.has_errors_chirho());
+    assert!(!ctx_chirho.has_non_deferrable_failure_chirho());
+}

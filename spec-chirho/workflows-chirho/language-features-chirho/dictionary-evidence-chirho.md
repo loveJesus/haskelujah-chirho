@@ -1250,6 +1250,12 @@ One shared module-budget object follows same-module method restore points. Its h
 - N1/N2: existing proof-erasing paths and producers with no positive class/unit/telescope authority remain unproven. The source-unit/common declaration-to-class bridge and complete stages B–D are unfinished; no projection or dispatch proof may be inferred from these gaps.
 - N3: public producer factories and mutable legacy class-name fields are not yet a sealed authority boundary. Direct synthetic Rust fixtures can forge or mutate inconsistent metadata; activation must close that boundary rather than trust a name comparison.
 - N4: Core/driver name-keyed conflations, incomplete prefix/evidence transport and S3 equality still require the coherent consumer migration. The Stage A ordinary gate does not prove them correct.
-- N5: seed instances with no typed class producer, including `Storable`, now explicitly carry Unsupported rather than Legacy provenance. Ordinary lookup/behavior is unchanged.
+- N5: seed instances with no typed class producer, including `Storable`, carry Unsupported rather than Legacy provenance. An explicit compiler seed whose class has not yet been declared also stays Unknown(Unsupported), rather than being mislabeled ambiguous. The two early `MonadTrans` seeds retain that status after the later declaration; no seed reorder or retroactive identity upgrade is performed. Ordinary lookup/behavior is unchanged.
+- The public resource-policy and fresh-module snapshot APIs remain an admission/sealing boundary before activation. They do not prove that a caller has admitted a new module; production ownership must enforce that boundary. R1 adds no reset/admission caller.
 
 The kind engine, constructor-slot consumers and new identity-based projection/dispatch remain off.
+
+
+### Enclosing class predicate in method signatures (R1)
+
+Class method conversion preserves every written predicate, its order and its duplicate count. It appends the enclosing class predicate only when no legacy-equal predicate is already contained. If one is present, the incoming proof meets only the first contained survivor before the incoming predicate is discarded. The whole method scheme is never coalesced. This uses the same bounded metadata/iterative legacy-equality helpers; soft refusal marks only the first own-class survivor or the appended incoming predicate Unknown(Resource), and leaves other written predicates untouched. Generalization retains its separate legacy whole-context dedup behavior.
