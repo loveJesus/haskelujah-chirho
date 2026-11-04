@@ -13,32 +13,32 @@ use haskelujah_span_chirho::SourceMapChirho;
 
 const UNUSED_HOLE_CHIRHO: &str = "\
 module Main where
-unused :: Int -> Int
-unused = _
+unusedChirho :: Int -> Int
+unusedChirho = _
 main :: IO ()
 main = putStrLn \"ran\"
 ";
 
 const UNUSED_NAMED_HOLE_CHIRHO: &str = "\
 module Main where
-unused :: Int -> Int
-unused x = _missing x
+unusedChirho :: Int -> Int
+unusedChirho xChirho = _missingChirho xChirho
 main :: IO ()
 main = putStrLn \"ran\"
 ";
 
 const BOUND_UNDERSCORE_NAME_CHIRHO: &str = "\
 module Main where
-twice :: Int -> Int
-twice _x = _x + _x
+twiceChirho :: Int -> Int
+twiceChirho _xChirho = _xChirho + _xChirho
 main :: IO ()
-main = print (twice 21)
+main = print (twiceChirho 21)
 ";
 
 const UNUSED_UNBOUND_VARIABLE_CHIRHO: &str = "\
 module Main where
-unused :: Int -> Int
-unused x = missingName x
+unusedChirho :: Int -> Int
+unusedChirho xChirho = missingNameChirho xChirho
 main :: IO ()
 main = putStrLn \"ran\"
 ";
@@ -47,20 +47,20 @@ main = putStrLn \"ran\"
 /// both deferred only by `-fdefer-type-errors`.
 const UNUSED_TYPE_MISMATCH_CHIRHO: &str = "\
 module Main where
-wrong :: Int
-wrong = True
+wrongChirho :: Int
+wrongChirho = True
 main :: IO ()
 main = putStrLn \"ran\"
 ";
 
 const ALL_THREE_CATEGORIES_CHIRHO: &str = "\
 module Main where
-hole :: Int -> Int
-hole = _
-unbound :: Int -> Int
-unbound x = missingName x
-wrong :: Int
-wrong = True
+holeChirho :: Int -> Int
+holeChirho = _
+unboundChirho :: Int -> Int
+unboundChirho xChirho = missingNameChirho xChirho
+wrongChirho :: Int
+wrongChirho = True
 main :: IO ()
 main = putStrLn \"ran\"
 ";
@@ -69,32 +69,32 @@ main = putStrLn \"ran\"
 const KIND_ERROR_CHIRHO: &str = "\
 {-# LANGUAGE RankNTypes #-}
 module Main where
-bad :: (forall f. f -> f Int) -> Bool
-bad _ = True
+badChirho :: (forall fChirho. fChirho -> fChirho Int) -> Bool
+badChirho _ = True
 main :: IO ()
 main = putStrLn \"ran\"
 ";
 
 const DUPLICATE_INSTANCE_CHIRHO: &str = "\
 module Main where
-class C a where
-  op :: a -> Bool
-data B = MkB
-instance C B where
-  op MkB = True
-instance C B where
-  op MkB = False
+class CChirho aChirho where
+  opChirho :: aChirho -> Bool
+data BChirho = MkBChirho
+instance CChirho BChirho where
+  opChirho MkBChirho = True
+instance CChirho BChirho where
+  opChirho MkBChirho = False
 main :: IO ()
-main = print (op MkB)
+main = print (opChirho MkBChirho)
 ";
 
 /// T23739c: `Int` names a type, not a data constructor.
 const UNBOUND_RECORD_CONSTRUCTOR_CHIRHO: &str = "\
 module Main where
-g :: Int
-g = Int{}
+gChirho :: Int
+gChirho = Int{}
 main :: IO ()
-main = print g
+main = print gChirho
 ";
 
 /// A CPP module whose header defers typed holes. The source path reads that header before
@@ -103,8 +103,8 @@ const CPP_DEFERRED_HOLE_CHIRHO: &str = "\
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fdefer-typed-holes #-}
 module Main where
-unused :: Int -> Int
-unused = _
+unusedChirho :: Int -> Int
+unusedChirho = _
 main :: IO ()
 #if 1
 main = putStrLn \"ran\"
@@ -162,14 +162,18 @@ fn assert_deferred_chirho(source_chirho: &str, caller_chirho: &[&str], expected_
 #[test]
 fn a_hole_is_an_error_by_default_chirho() {
     assert_rejected_chirho(UNUSED_HOLE_CHIRHO, &[], "found hole: `_`");
-    assert_rejected_chirho(UNUSED_NAMED_HOLE_CHIRHO, &[], "found hole: `_missing`");
+    assert_rejected_chirho(
+        UNUSED_NAMED_HOLE_CHIRHO,
+        &[],
+        "found hole: `_missingChirho`",
+    );
     assert_rejected_chirho(UNUSED_HOLE_CHIRHO, &[], "E0210");
 }
 
 #[test]
 fn a_bound_underscore_name_is_an_ordinary_variable_chirho() {
     let warnings_chirho = check_chirho(BOUND_UNDERSCORE_NAME_CHIRHO, &[])
-        .expect("a bound `_x` is a variable, never a hole");
+        .expect("a bound `_xChirho` is a variable, never a hole");
     assert!(
         !warnings_chirho
             .iter()
@@ -183,7 +187,7 @@ fn a_bound_underscore_name_is_an_ordinary_variable_chirho() {
         None,
         &FrontendOptionsChirho::default(),
     )
-    .expect("a bound `_x` runs as the variable it is");
+    .expect("a bound `_xChirho` runs as the variable it is");
     assert_eq!(machine_chirho.io_output_chirho, "42\n");
 }
 
@@ -271,7 +275,7 @@ fn flags_in_comments_strings_or_after_the_header_defer_nothing_chirho() {
             1,
         ),
         format!(
-            "{UNUSED_HOLE_CHIRHO}banner :: String\nbanner = \"{{-# OPTIONS_GHC -fdefer-type-errors #-}}\"\n"
+            "{UNUSED_HOLE_CHIRHO}bannerChirho :: String\nbannerChirho = \"{{-# OPTIONS_GHC -fdefer-type-errors #-}}\"\n"
         ),
     ] {
         assert_rejected_chirho(&source_chirho, &[], "found hole");
@@ -283,7 +287,7 @@ fn deferring_holes_leaves_unbound_variables_and_type_errors_fatal_chirho() {
     assert_rejected_chirho(
         UNUSED_UNBOUND_VARIABLE_CHIRHO,
         &["-fdefer-typed-holes"],
-        "unbound variable: `missingName`",
+        "unbound variable: `missingNameChirho`",
     );
     assert_rejected_chirho(
         UNUSED_TYPE_MISMATCH_CHIRHO,
@@ -297,7 +301,7 @@ fn deferring_out_of_scope_variables_leaves_holes_and_type_errors_fatal_chirho() 
     assert_deferred_chirho(
         UNUSED_UNBOUND_VARIABLE_CHIRHO,
         &["-fdefer-out-of-scope-variables"],
-        "unbound variable: `missingName`",
+        "unbound variable: `missingNameChirho`",
     );
     assert_rejected_chirho(
         UNUSED_HOLE_CHIRHO,
@@ -313,7 +317,11 @@ fn deferring_out_of_scope_variables_leaves_holes_and_type_errors_fatal_chirho() 
 
 #[test]
 fn general_deferral_reaches_all_three_categories_chirho() {
-    for expected_chirho in ["found hole", "unbound variable: `missingName`", "mismatch"] {
+    for expected_chirho in [
+        "found hole",
+        "unbound variable: `missingNameChirho`",
+        "mismatch",
+    ] {
         assert_deferred_chirho(
             ALL_THREE_CATEGORIES_CHIRHO,
             &["-fdefer-type-errors"],
@@ -329,13 +337,13 @@ fn turning_general_deferral_off_keeps_the_switches_it_implied_chirho() {
     assert_deferred_chirho(
         UNUSED_UNBOUND_VARIABLE_CHIRHO,
         &caller_chirho,
-        "unbound variable: `missingName`",
+        "unbound variable: `missingNameChirho`",
     );
     assert_rejected_chirho(UNUSED_TYPE_MISMATCH_CHIRHO, &caller_chirho, "mismatch");
     assert_rejected_chirho(
         UNUSED_UNBOUND_VARIABLE_CHIRHO,
         &["-fdefer-type-errors", "-fno-defer-out-of-scope-variables"],
-        "unbound variable: `missingName`",
+        "unbound variable: `missingNameChirho`",
     );
 }
 

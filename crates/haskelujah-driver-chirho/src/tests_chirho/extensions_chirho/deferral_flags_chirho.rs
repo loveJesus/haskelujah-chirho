@@ -137,7 +137,7 @@ fn flags_outside_header_option_pragmas_are_not_options_chirho() {
         "-- {-# OPTIONS_GHC -fdefer-type-errors #-}\nmodule Main where\n",
         "{- {-# OPTIONS_GHC -fdefer-type-errors #-} -}\nmodule Main where\n",
         "module Main where\n{-# OPTIONS_GHC -fdefer-type-errors #-}\nmain :: IO ()\nmain = pure ()\n",
-        "module Main where\nbanner :: String\nbanner = \"{-# OPTIONS_GHC -fdefer-type-errors #-}\"\n",
+        "module Main where\nbannerChirho :: String\nbannerChirho = \"{-# OPTIONS_GHC -fdefer-type-errors #-}\"\n",
         "{-# OPTIONS_HADDOCK hide #-}\nmodule Main where\n",
     ] {
         assert_eq!(
@@ -162,9 +162,9 @@ fn quoted_option_words_read_as_ghc_reads_them_chirho() {
     // A quoted part inside a word keeps its quotes and its spaces: one word, no switch.
     assert_eq!(
         header_chirho(
-            "{-# OPTIONS_GHC -DX=\"a -fdefer-typed-holes b\" -Wall #-}\nmodule Main where\n"
+            "{-# OPTIONS_GHC -DX_CHIRHO=\"a -fdefer-typed-holes b\" -Wall #-}\nmodule Main where\n"
         ),
-        words_chirho(&["-DX=\"a -fdefer-typed-holes b\"", "-Wall"])
+        words_chirho(&["-DX_CHIRHO=\"a -fdefer-typed-holes b\"", "-Wall"])
     );
     // A body GHC cannot read gives no option words.
     for unreadable_chirho in [
