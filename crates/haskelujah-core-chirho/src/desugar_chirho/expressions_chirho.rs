@@ -28,36 +28,34 @@ impl DesugarCtxChirho {
             ExprChirho::ConChirho(name_chirho) => {
                 let con_text_chirho = name_chirho.text_chirho();
                 // Bidirectional pattern synonyms can be used as expressions.
-                if let Some(def_chirho) = self.pat_syns_chirho.get(con_text_chirho).cloned() {
-                    if matches!(def_chirho.dir_chirho, PatSynDirChirho::ImplBidirChirho) {
-                        // Build: \arg0 arg1 ... -> <expansion_as_expr>
-                        let mut param_binders_chirho = Vec::new();
-                        let mut subst_chirho: HashMap<String, CoreIdChirho> = HashMap::new();
-                        for formal_chirho in &def_chirho.args_chirho {
-                            let binder_chirho = self.fresh_binder_chirho(
-                                formal_chirho,
-                                TyChirho::VarChirho(
-                                    haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                        self.next_id_chirho,
-                                    ),
-                                ),
-                                SpanChirho::DUMMY_CHIRHO,
-                            );
-                            subst_chirho.insert(formal_chirho.clone(), binder_chirho.id_chirho);
-                            param_binders_chirho.push(binder_chirho);
-                        }
-                        let body_chirho =
-                            self.pat_to_builder_expr_chirho(&def_chirho.pat_chirho, &subst_chirho);
-                        // Wrap body in lambdas (right to left).
-                        let mut result_chirho = body_chirho;
-                        for binder_chirho in param_binders_chirho.into_iter().rev() {
-                            result_chirho = CoreExprChirho::LamChirho {
-                                binder_chirho,
-                                body_chirho: Box::new(result_chirho),
-                            };
-                        }
-                        return result_chirho;
+                if let Some(def_chirho) = self.pat_syns_chirho.get(con_text_chirho).cloned()
+                    && matches!(def_chirho.dir_chirho, PatSynDirChirho::ImplBidirChirho)
+                {
+                    // Build: \arg0 arg1 ... -> <expansion_as_expr>
+                    let mut param_binders_chirho = Vec::new();
+                    let mut subst_chirho: HashMap<String, CoreIdChirho> = HashMap::new();
+                    for formal_chirho in &def_chirho.args_chirho {
+                        let binder_chirho = self.fresh_binder_chirho(
+                            formal_chirho,
+                            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
+                                self.next_id_chirho,
+                            )),
+                            SpanChirho::DUMMY_CHIRHO,
+                        );
+                        subst_chirho.insert(formal_chirho.clone(), binder_chirho.id_chirho);
+                        param_binders_chirho.push(binder_chirho);
                     }
+                    let body_chirho =
+                        self.pat_to_builder_expr_chirho(&def_chirho.pat_chirho, &subst_chirho);
+                    // Wrap body in lambdas (right to left).
+                    let mut result_chirho = body_chirho;
+                    for binder_chirho in param_binders_chirho.into_iter().rev() {
+                        result_chirho = CoreExprChirho::LamChirho {
+                            binder_chirho,
+                            body_chirho: Box::new(result_chirho),
+                        };
+                    }
+                    return result_chirho;
                 }
                 CoreExprChirho::ConAppChirho {
                     con_name_chirho: con_text_chirho.to_string(),
