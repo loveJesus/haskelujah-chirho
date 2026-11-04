@@ -235,10 +235,10 @@ flowchart TD
   while `x :| xs` builds a real `:|`. The list alternatives come first, so every list keeps its
   answer, and the default keeps every other value exactly as the identity returned it.
 - **Code:**
-  - `crates/haskelujah-core-chirho/src/desugar_chirho/builtin_routes_chirho.rs` (exposure and seeds);
+  - `crates/haskelujah-core-chirho/src/desugar_chirho/references_chirho/builtin_routes_chirho.rs` (exposure and seeds);
   - `crates/haskelujah-core-chirho/src/dict_chirho/prelude_chirho/non_empty_chirho.rs` (the binding).
 - **Tests:**
-  - every import form, in pairs, in `desugar_chirho/builtin_routes_tests_chirho.rs`;
+  - every import form, in pairs, in `desugar_chirho/references_chirho/builtin_routes_tests_chirho.rs`;
   - end to end, one mechanism per test, in `tests/dictionary_evidence_chirho/non_empty_routes_chirho.rs`.
     Its programs are GHC 9.14.1-measured files embedded by generation.
 - **Boundaries, not claimed:**

@@ -1,0 +1,393 @@
+{
+  "work_item_chirho": 695,
+  "candidate_source_chirho": "3265421bcb7bec371015799942d9e0afe999c136",
+  "production_measured_source_chirho": "5a2015427c2ef0e72d362a33032b912d91ae907f",
+  "test_only_followup_chirho": "Only two new test leaves changed; focused26 rerun gives24pass/same2inheritedRED; release artifact remains byte-identical.",
+  "candidate_cli_sha256_chirho": "b5f937afaf8406041d6bad539f558930ae4eac597030edd23376c80663fd3954",
+  "baseline_cli_sha256_chirho": "0c4d49e5d74c0e2fa27144fb7946d7d4412a615bfc201184e500358bd96a0d3f",
+  "ghc_version_chirho": "9.14.1",
+  "protocol_chirho": "Both unchanged directory-label axes, one complete fresh pass per side. Baseline binary reused; baseline results rerun fresh. All29 movers are GHC-confirmed default rejections; no official fixture/denominator/all.T flag change.",
+  "inner_retry_count_chirho": "UNKNOWN; final-attempt receipts only",
+  "compile_axis_chirho": {
+    "baseline_accept_chirho": 887,
+    "candidate_accept_chirho": 867,
+    "total_chirho": 938
+  },
+  "fail_axis_chirho": {
+    "baseline_reject_chirho": 267,
+    "candidate_reject_chirho": 276,
+    "total_chirho": 767
+  },
+  "movers_chirho": [
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "T13050.hs",
+      "source_sha256_chirho": "f3bd38dccdedd4dea9134558ebbec7f1e4b481ef70d9b9d88153d4715dec9b98",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "T14273.hs",
+      "source_sha256_chirho": "2541368424c51d501a06128f4a9a5f8d002115f736bb8a56fff4dffbba26a33d",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "T15368.hs",
+      "source_sha256_chirho": "b78dbc7f6c728d87d8cc48a1a4d6d3f6d097870c9abaf83acc37673a16996eea",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "T9497a.hs",
+      "source_sha256_chirho": "ac0879c4c2d22e91349e99dd8aafa8bdfb3b8a53d9011b8318fb8f62f3035423",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-typed-holes"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "T9497b.hs",
+      "source_sha256_chirho": "ac0879c4c2d22e91349e99dd8aafa8bdfb3b8a53d9011b8318fb8f62f3035423",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-typed-holes",
+        "-fno-warn-typed-holes"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "T9497c.hs",
+      "source_sha256_chirho": "ac0879c4c2d22e91349e99dd8aafa8bdfb3b8a53d9011b8318fb8f62f3035423",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-warn-typed-holes"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "abstract_refinement_hole_fits.hs",
+      "source_sha256_chirho": "75212de1519a8be5055fb28d5f02a0381e2a5f16b08ed0086c0073a1ed39844e",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits",
+        "-fno-max-refinement-hole-fits",
+        "-frefinement-level-hole-fits=2",
+        "-fabstract-refinement-hole-fits",
+        "-funclutter-valid-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "constraint_hole_fits.hs",
+      "source_sha256_chirho": "9077e1ad13ef1bc3bdf0761e36b0b5197f1c8cf0728932fa31db5d71e12f98d8",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits",
+        "-fno-max-refinement-hole-fits",
+        "-frefinement-level-hole-fits=2",
+        "-funclutter-valid-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "free_monad_hole_fits.hs",
+      "source_sha256_chirho": "eef15c379c55da30fa137465d9bbe07f3da3ccb34abeb84302c7b03938c73f8c",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits",
+        "-fno-max-refinement-hole-fits",
+        "-frefinement-level-hole-fits=2",
+        "-funclutter-valid-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "hole_constraints.hs",
+      "source_sha256_chirho": "e5cf52fd4d3af058529d99584b19bf7ae2711baf26945a94c9b901715080b192",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits",
+        "-funclutter-valid-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "hole_constraints_nested.hs",
+      "source_sha256_chirho": "3c3572963542a950e2c2a2b3af1f690192e85288bbe14aafae1a7ccef6c09c20",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits",
+        "-funclutter-valid-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "holes.hs",
+      "source_sha256_chirho": "0ac2b7a2ff1f5b779287a53685d79383a0aca2644de1395413637eabb58c347d",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits",
+        "-funclutter-valid-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "holes2.hs",
+      "source_sha256_chirho": "963c72b3baeb27c315fbfbef068ad0befe923ef088df387dd2c930552a833d7e",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits",
+        "-funclutter-valid-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "holes3.hs",
+      "source_sha256_chirho": "4fc57c2aa4b622736b16b2142545df3514a54029a98b28aee9aa8367bd94857a",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fno-max-valid-hole-fits",
+        "-funclutter-valid-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 1,
+      "configured_product_header_twin_rc_chirho": 1
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "local_hole_fits.hs",
+      "source_sha256_chirho": "3fc2e2455902a9213ab95992f05bc8d9bd3fa5ec267548febbfd8cb0908086ce",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "refinement_hole_fits.hs",
+      "source_sha256_chirho": "3286f45b1e6fc4c9d817bd30674776894366ca24e2272b5ed7c70b107238faef",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits",
+        "-fno-max-refinement-hole-fits",
+        "-frefinement-level-hole-fits=2"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "subsumption_sort_hole_fits.hs",
+      "source_sha256_chirho": "a89618d40b07ee3c9f4069f1f43d878825a8fff5c1c4f1d39274c8fa48b45d64",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits",
+        "-fsort-by-subsumption-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "type_in_type_hole_fits.hs",
+      "source_sha256_chirho": "db454215c52bd5a58c6bc2a9c457c13c35a7082530011f86f0db10156243f34c",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "valid_hole_fits.hs",
+      "source_sha256_chirho": "1e721ae90b57b1209aa6dada4dcf96a4fe42777980107dc19a2a897a980cd627",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_compile",
+      "file_chirho": "valid_hole_fits_interactions.hs",
+      "source_sha256_chirho": "a1957e8ad4b6f018a8fcfe7431f7457f8ea313e8edfac1541eda510df384027f",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464",
+      "upstream_options_chirho": [
+        "-fdefer-type-errors",
+        "-fno-max-valid-hole-fits"
+      ],
+      "configured_ghc_rc_chirho": 0,
+      "configured_product_header_twin_rc_chirho": 0
+    },
+    {
+      "axis_chirho": "should_fail",
+      "file_chirho": "T12177.hs",
+      "source_sha256_chirho": "39fe5893375764919aa8c12603d8024415d5854515a48d1e91997a6966578f81",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464"
+    },
+    {
+      "axis_chirho": "should_fail",
+      "file_chirho": "T14884.hs",
+      "source_sha256_chirho": "240821f1b590a2c100ba244ccf844124d86faa2924cb77e6ffcaa84553bf9997",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464"
+    },
+    {
+      "axis_chirho": "should_fail",
+      "file_chirho": "T16456.hs",
+      "source_sha256_chirho": "778fa51fa482aeb22d8bbd6e2c1bfb7298516d4b739f9538851b3b95bae5aa1e",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464"
+    },
+    {
+      "axis_chirho": "should_fail",
+      "file_chirho": "T17773.hs",
+      "source_sha256_chirho": "27ccdd2a73aa29fb456ad6ba42f9aa0ba9f6a7a43be1cb9c8fd9a9d7b29b25fa",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464"
+    },
+    {
+      "axis_chirho": "should_fail",
+      "file_chirho": "T17940.hs",
+      "source_sha256_chirho": "a374a1daa2b215eeb4c55af9137f7edfcc39fdbffef80dcdd73febf142f79611",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464"
+    },
+    {
+      "axis_chirho": "should_fail",
+      "file_chirho": "T20189.hs",
+      "source_sha256_chirho": "c6756bce693f4732c3d73041b5fff676d6a51de455bf8297940627137a47fb35",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464"
+    },
+    {
+      "axis_chirho": "should_fail",
+      "file_chirho": "T21130.hs",
+      "source_sha256_chirho": "c2707eaa98e0fecfb7405e5a99bfecdac8e84cba9b292d333cef542cac00efff",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464"
+    },
+    {
+      "axis_chirho": "should_fail",
+      "file_chirho": "T22684.hs",
+      "source_sha256_chirho": "c8f297f984a71fae4ecd1e847df0298d2cc9d3aaf116cb3b056dfaf56f1db1ff",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464"
+    },
+    {
+      "axis_chirho": "should_fail",
+      "file_chirho": "T9497d.hs",
+      "source_sha256_chirho": "ac0879c4c2d22e91349e99dd8aafa8bdfb3b8a53d9011b8318fb8f62f3035423",
+      "baseline_chirho": "ACCEPT 0",
+      "candidate_chirho": "REJECT 1 / E0210",
+      "plain_ghc_chirho": "REJECT 1 / GHC-88464"
+    }
+  ],
+  "configured_control_scope_chirho": "Nineteen valid compile-case movers ACCEPT with their all.T options in GHC and in product OPTIONS_GHC source twins. holes3 remains configured REJECT in both. Header twins are separate controls, not changed official sources or a claim of CLI -f flag transport.",
+  "protocol_correction_chirho": "Initial valid_hole_fits configured argv wrongly treated the multimod target name as an option. Preserved and excluded; corrected r2 separates target and flags, both GHC/product ACCEPT.",
+  "evidence_root_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/tmp-chirho/typed-hole-product-gate-chirho"
+}

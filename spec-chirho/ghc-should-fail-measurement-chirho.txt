@@ -1,63 +1,46 @@
 # For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 # GHC should_fail — current paired typecheck measurement
-# measured: 2026-10-30T12:36:55.341478+00:00 by HASKELUJAH/gpt_chirho.
-# source: b489fb01fd11422c39c45b7bffe7d6a8bd04defb
-# crates tree: 7cc25c58752497ac26bea5af9fc8a476e0c3482f
-# Local development evidence only. No remote push or release is implied.
-# Frozen candidate CLI SHA-256: ce9995561e0f6ac946fe086a44e0e66443e45bb02cabdbc4c468fac50f467f79
-# Retained previous-publication CLI SHA-256: e60d256fc0e66b7621910e186756cc67829d6c0c174a456ebd2150e47925b077
-# Baseline: complete retained e60d256f pass from the previous publication, not a
-# fresh execution in this unit. It matched the starting 75b4e3a9 crate source.
-# Source manifest (full relative paths plus content SHA-256):
-#   14adefd337f227e4dec10eed829fb59fe28ae855f34b34b39c543f5c7f69fedf
-# Candidate verdict-pass SHA-256 (both complete passes):
-#   f8f6e85b9d1cae044bafabd9f1613a478c5cd195bebccdbb698a1ad37f9c6e91
-# Nonmatching-list SHA-256 (C-collated identities, newline-terminated):
-#   00b1cfb1515f03efa1e8cf120b1dce10fbd5fe35bfb372070cb38b65e3787cf3
-# receipts: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/tmp-chirho/frontier-closure-chirho/final-paired-measurement-chirho
-# TWO fresh complete candidate passes per axis have byte-identical verdict TSVs.
-# Every raw stdout/stderr/exit/source hash is retained. Full fixture manifests,
-# executable hashes and exact file identities are unchanged before/after; no
-# timeout, panic, abnormal exit or unclassified verdict remains. Both axes took
-# 400.89 seconds together. Root also verifies a clean source tree.
-# Method: committed axis_pass_chirho.sh and unchanged classifier; four workers,
-# 15 seconds/file, each timeout retried alone at 60 seconds. ACCEPT means rc0 without error[E,
-# REJECT means error[E with rc1; the wrapper refuses other classifications.
-# Scope: recursive ghc-tests-chirho/typecheck-chirho/should_fail, 767 .hs files.
-# These remain DIRECTORY-LABEL axes. The runner does not apply all.T flags or
-# reconstruct its driver. The separate full frontier audit records expected
-# rejection/obsolete files, deferred-error options, helpers and warning policy.
-# No denominator or source fixture is relabelled. Check results do not establish
-# successful execution or full GHC compatibility.
-# Fresh GHC 9.14.1 checks all eight exact mover files: both acceptance gains and
-# all six new rejections agree in verdict. Five rejections are for GHC's reason;
-# T17955 is COINCIDENTAL: lowering invents a two-field Coercible constructor,
-# whereas GHC rejects its constructor context. Never count it as a reasoned fix.
-# The inherited tc087 valid-source loss is still OPEN: GHC accepts it, but Enum
-# Double remains absent. Held670 must not enable native wrong inferred Fractional
-# arithmetic;677 needs retained typed superclass/builtin authority, not names alone.
-# Full GHC compatibility remains OPEN.
+# completed: 2026-11-04 13:36 EST; root independently verifies every row, source hash and final raw file.
+# source: 3265421bcb7bec371015799942d9e0afe999c136 (row 695 typed-hole diagnostic policy)
+# crates tree: 5c8089f1223e58a53269e343108c84f51c3492bb
+# Local main integration: d6b63e64ea2cbb4ee9f122a4e895f97d77e77b09; crates, Cargo.toml and Cargo.lock equal the validated candidate.
+# Local development evidence only. No remote push, installed CLI update or release is implied.
+# Frozen candidate CLI SHA-256: b5f937afaf8406041d6bad539f558930ae4eac597030edd23376c80663fd3954
+# Production measured at 5a201542; test-only naming follow-up 3265421b reruns all 26 focused tests and produces the BYTE-IDENTICAL release artifact.
+# Baseline frozen CLI SHA-256: 0c4d49e5d74c0e2fa27144fb7946d7d4412a615bfc201184e500358bd96a0d3f (reused binary, source-equal to 28fe4fc0).
+# Baseline RESULTS were rerun fresh under the same current inputs; they reproduce 887/938 accepts and 267/767 rejects.
+# Source manifest SHA-256: 14adefd337f227e4dec10eed829fb59fe28ae855f34b34b39c543f5c7f69fedf
+# Candidate verdict-pass SHA-256: 5a72c051648fa1caf5d55e528fbc3307810b89af8e43325c58cb175f3a471d47
+# Nonmatching-list SHA-256: 6e91f4e07b86e9490f12d307470fc016bc9a01111c6436ca4bd2ed1591aa28b6
+# receipts: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/tmp-chirho/typed-hole-product-gate-chirho
+# One complete pass per axis per binary. Candidate passes took 79.035 and 37.260 seconds; baseline passes took 82.169 and 38.583 seconds.
+# Binary, corpus, standard-library and cache inputs are unchanged before/after. All 10,230 final raw files and source hashes are verified.
+# Method: unchanged committed axis_pass/worker/classifier/sort scripts, four workers, 15 seconds/file with solitary 60-second retry.
+# FINAL ATTEMPTS ONLY. Initial inner retry count UNKNOWN: the pinned worker overwrites earlier attempts. No determinism rerun is claimed.
+# Outer stages stayed within 600 seconds; exact-token process cleanup found no owned processes and signalled no group.
+# Final ACCEPT is rc0 without error[E; REJECT is rc1 with error[E. No illegal/incomplete final row remains.
+# Scope: recursive ghc-tests-chirho/typecheck-chirho/should_fail, 767 .hs files, unchanged fixtures/denominator.
+# DIRECTORY-LABEL axes omit all.T flags and are NOT full configured-GHC compatibility scores.
+# This unit changes 29 ACCEPTs to REJECTs with E0210: 20 compile-folder sources and 9 fail-folder sources. There are no other verdict movers.
+# Fresh GHC 9.14.1 rejects all 29 under the same plain-file protocol, including GHC-88464 for every source: 29 corrected default false accepts.
+# Nineteen compile-folder movers require upstream deferral flags. GHC and product OPTIONS_GHC twins ACCEPT all 19 with those options.
+# The remaining compile-folder mover, holes3.hs, is upstream compile_fail and stays REJECT in configured GHC/product controls.
+# Therefore the lower compile-folder acceptance count is expected default-hole rejection, not a loss of GHC-valid configured behavior in the measured controls.
+# Contract: spec-chirho/tasklists-chirho/parity-lanes-chirho/26-11-04-chirho/row695-mover-contracts-chirho.json.
+# Preserve the initial invalid configured valid_hole_fits argv; corrected r2 separates its multimod target from flags and both compilers ACCEPT.
+# All 23 new focused policy tests pass; the existing warning test passes. Two inherited numeric-entry HeapPtr-versus-Int42 tests stay RED at parent/candidate.
+# Parser pragma 8/8, typing 404/404, driver neighbors 170 passed plus 2 known ignored generator steps. Workspace all-target check at 5a201542 is warning-free.
+# Full-span changed-code Clippy: 0 hits (274 diagnostics/819 spans initially; final driver-only 271/811). Outside-span lint debt remains; no suppression.
+# Explicit boundaries: deferred runtime errors when forced, qualified out-of-scope variable deferral, warning suppression/Werror and CLI -f transport are not completed here.
+# Existing oversized test-root and other compiler structural/semantic debt remain open. No global zero-failure/zero-lint or full-GHC completion claim.
+# Previous publication: bf99797c:spec-chirho/ghc-should-fail-measurement-chirho.txt.
 #
-# RESULT: REJECT=259 WRONG_ACCEPT=508 TOTAL=767
-# STABILITY: DETERMINISTIC — two complete byte-identical candidate verdict passes.
-# QUOTE-AS: 259 of 767 = 33.8% — ~33% truncated, ~34% nearest; NO single label
-# OTHER AXIS (quote together): ~94% (886 of 938) — do not quote a third significant figure
+# RESULT: REJECT=276 RAW_ACCEPT=491 TOTAL=767
+# STABILITY: ONE COMPLETE CANDIDATE PASS; all verdict movers independently GHC-attributed.
+# QUOTE-AS: 276 of 767 = 36.0% — ~35% truncated, ~36% nearest; NO single label
+# OTHER AXIS (quote together): ~92% (867 of 938) — do not quote a third significant figure
 #
-# Previous publication -> candidate movers (6):
-#   MissingDefaultMethodBinding.hs: ACCEPT -> REJECT
-#   T15523.hs: ACCEPT -> REJECT
-#   T15796.hs: ACCEPT -> REJECT
-#   T17955.hs: ACCEPT -> REJECT [COINCIDENTAL wrong reason]
-#   T23308.hs: ACCEPT -> REJECT
-#   tcfail038.hs: ACCEPT -> REJECT
-# Accepted-source losses in this unit: none.
-# Prior publication and full historical record remain at
-# 75b4e3a9:spec-chirho/ghc-should-fail-measurement-chirho.txt.
-# Closure map, exact members and proof dependencies:
-# spec-chirho/tasklists-chirho/parity-lanes-chirho/26-10-30-chirho/
-# 26-10-30_06-53-tasklist-corpus_frontier_closure-chirho.md
-#
-# ---- 508 nonmatching files under the preserved directory-label protocol ----
+# ---- 491 nonmatching files under the preserved directory-label protocol ----
 AmbigFDs.hs
 AssocTyDef01.hs
 AssocTyDef02.hs
@@ -88,7 +71,6 @@ FD2.hs
 FD3.hs
 FDsFromGivens.hs
 FailDueToGivenOverlapping.hs
-LazyFieldsDisabled.hs
 LevPolyBounded.hs
 LongWayOverlapping.hs
 MissingExportList03.hs
@@ -116,7 +98,6 @@ T10971c.hs
 T10971d.hs
 T11355.hs
 T11356.hs
-T11464.hs
 T11514.hs
 T11563.hs
 T11623.hs
@@ -135,7 +116,6 @@ T12045c.hs
 T12063.hs
 T12151.hs
 T12170a.hs
-T12177.hs
 T12178a.hs
 T12373.hs
 T12430.hs
@@ -145,7 +125,6 @@ T12837.hs
 T12918a.hs
 T12918b.hs
 T12947.hs
-T12966.hs
 T13068.hs
 T13068a.hs
 T13068m.hs
@@ -157,7 +136,6 @@ T13311.hs
 T13487.hs
 T13506.hs
 T13530.hs
-T13677.hs
 T13871.hs
 T13909.hs
 T13981A.hs
@@ -172,7 +150,6 @@ T14605.hs
 T14607.hs
 T14761a.hs
 T14761b.hs
-T14884.hs
 T14904a.hs
 T14904b.hs
 T15067.hs
@@ -207,13 +184,11 @@ T16204c.hs
 T16255.hs
 T16275A.hs
 T16275B.hs
-T1633.hs
 T16414.hs
 T16453E1.hs
 T16453E2.hs
 T16453S.hs
 T16453T.hs
-T16456.hs
 T16502.hs
 T16512b.hs
 T16517.hs
@@ -241,8 +216,6 @@ T17567StupidTheta.hs
 T17594c.hs
 T17594d.hs
 T17594g.hs
-T17773.hs
-T17940.hs
 T18127a.hs
 T18357.hs
 T18357a.hs
@@ -275,7 +248,6 @@ T19977a.hs
 T19977b.hs
 T20043.hs
 T20122.hs
-T20189.hs
 T20241b.hs
 T20260.hs
 T20289.hs
@@ -289,7 +261,6 @@ T20666.hs
 T20666a.hs
 T20666b.hs
 T20873d.hs
-T21130.hs
 T21158.hs
 T2126.hs
 T21327.hs
@@ -311,7 +282,6 @@ T22560_fail_d.hs
 T22560_fail_ext.hs
 T22570.hs
 T22645.hs
-T22684.hs
 T22891.hs
 T22912.hs
 T22924a.hs
@@ -346,7 +316,6 @@ T3176.hs
 T3323.hs
 T3468.hs
 T3468a.hs
-T3540.hs
 T3592.hs
 T3966.hs
 T3966b.hs
@@ -404,7 +373,6 @@ T8912.hs
 T9109.hs
 T9201.hs
 T9415.hs
-T9497d.hs
 T9634.hs
 T9739.hs
 T9858a.hs
@@ -427,7 +395,6 @@ TyAppPat_ScopedTyVarConflict.hs
 TyAppPat_TooMany.hs
 TyfamsDisabled.hs
 UnliftedNewtypesConstraintFamily.hs
-UnliftedNewtypesFail.hs
 UnliftedNewtypesFamilyKindFail1.hs
 UnliftedNewtypesFamilyKindFail2.hs
 UnliftedNewtypesInfinite.hs
@@ -517,7 +484,6 @@ tcfail139.hs
 tcfail142.hs
 tcfail143.hs
 tcfail145.hs
-tcfail146.hs
 tcfail149.hs
 tcfail150.hs
 tcfail151.hs

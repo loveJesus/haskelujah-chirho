@@ -117,15 +117,15 @@ fn exact_t12042_rejects_the_explicit_data_synonym_contract_conflict_chirho() {
     let project_chirho = BootProjectChirho::new_chirho();
     let checked_path_chirho = project_chirho.write_chirho(
         "T12042.hs",
-        include_str!("../../../../ghc-tests-chirho/typecheck-chirho/should_fail/T12042.hs"),
+        include_str!("../../../../../ghc-tests-chirho/typecheck-chirho/should_fail/T12042.hs"),
     );
     project_chirho.write_chirho(
         "T12042a.hs",
-        include_str!("../../../../ghc-tests-chirho/typecheck-chirho/should_fail/T12042a.hs"),
+        include_str!("../../../../../ghc-tests-chirho/typecheck-chirho/should_fail/T12042a.hs"),
     );
     project_chirho.write_chirho(
         "T12042.hs-boot",
-        include_str!("../../../../ghc-tests-chirho/typecheck-chirho/should_fail/T12042.hs-boot"),
+        include_str!("../../../../../ghc-tests-chirho/typecheck-chirho/should_fail/T12042.hs-boot"),
     );
     project_chirho
         .prepare_chirho("T12042.hs")

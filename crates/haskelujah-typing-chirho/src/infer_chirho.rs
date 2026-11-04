@@ -224,6 +224,50 @@ const RECORD_FIELD_CODE_CHIRHO: u16 = 206;
 /// (GHC-95909: "does not have the required strict field").
 const RECORD_STRICT_FIELD_CODE_CHIRHO: u16 = 207;
 
+/// An unbound unqualified `_` or `_name` in an expression: a typed hole (GHC-88464).
+const TYPED_HOLE_CODE_CHIRHO: u16 = 210;
+
+/// A record construction naming no data constructor in scope. GHC never defers it, so it
+/// does not share the unbound variable's code (row 695).
+const UNBOUND_CONSTRUCTOR_CODE_CHIRHO: u16 = 211;
+
+/// Two instance declarations with one head (GHC-59692): a declaration error no deferral
+/// switch reaches, so it does not share the unsatisfied-constraint code (row 695).
+const DUPLICATE_INSTANCE_CODE_CHIRHO: u16 = 212;
+
+/// The signature converter's own invariant failed: an internal error, not a source type
+/// error, so it does not share the signature-mismatch code (row 695).
+const SIGNATURE_SCOPE_INVARIANT_CODE_CHIRHO: u16 = 213;
+
+/// A `RecordWildCards` construction field with no same-named variable in scope. It is not a
+/// solver type error, so it does not share the type-mismatch code (row 695).
+const RECORD_WILDCARD_FIELD_CODE_CHIRHO: u16 = 214;
+
+/// The inference errors GHC's three deferral switches can turn into warnings (row 695):
+/// `-fdefer-typed-holes` reaches typed holes, `-fdefer-out-of-scope-variables` unbound
+/// variables, and `-fdefer-type-errors` the solver's type errors listed in
+/// [`DEFERRABLE_TYPE_ERROR_CODES_CHIRHO`]. Every other inference error stays fatal under
+/// every switch. The driver's policy decides which switches are on.
+/// workflow: compiler-pipeline-chirho/error-deferral-chirho
+pub const TYPED_HOLE_ERROR_CODE_CHIRHO: ErrorCodeChirho =
+    ErrorCodeChirho::error_chirho(TYPED_HOLE_CODE_CHIRHO);
+
+/// An unbound variable, deferred only by `-fdefer-out-of-scope-variables`; see
+/// [`TYPED_HOLE_ERROR_CODE_CHIRHO`].
+pub const OUT_OF_SCOPE_VARIABLE_ERROR_CODE_CHIRHO: ErrorCodeChirho =
+    ErrorCodeChirho::error_chirho(UNBOUND_VAR_CODE_CHIRHO);
+
+/// The solver's type errors `-fdefer-type-errors` defers: mismatches, occurs checks, tuple
+/// arity, unsatisfied constraints and signature mismatches. Record-field, strict-field and
+/// pattern-signature errors are structural and are not listed.
+pub const DEFERRABLE_TYPE_ERROR_CODES_CHIRHO: [ErrorCodeChirho; 5] = [
+    ErrorCodeChirho::error_chirho(TYPE_MISMATCH_CODE_CHIRHO),
+    ErrorCodeChirho::error_chirho(OCCURS_CHECK_CODE_CHIRHO),
+    ErrorCodeChirho::error_chirho(TUPLE_ARITY_CODE_CHIRHO),
+    ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
+    ErrorCodeChirho::error_chirho(SIGNATURE_MISMATCH_CODE_CHIRHO),
+];
+
 pub use family_definitions_chirho::{
     IntrinsicTypeFamilyChirho, TypeFamilyAliasResolutionChirho, TypeFamilyBranchChirho,
     TypeFamilyBranchIdChirho, TypeFamilyDefinitionChirho, TypeFamilyDefinitionErrorChirho,

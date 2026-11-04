@@ -103,19 +103,6 @@ The kind/type layer uses the same faithful shape downstream: required foralls co
 
 Two deliberately narrow AST trust boundaries remain. The record-field branch covers `bug-record-field-forall-lowering-chirho.md`; ordinary and required-forall fields remain checked. The constructor-prefix branch covers `bug-existential-constructor-scope-dropped-chirho.md`; it requires a prefix constructor name whose source span begins after its enclosing constructor span, excludes infix constructors, and defers only that constructor's field-variable scope. Both branches should disappear when the AST can carry the source binders and contexts directly.
 
-## Associated default scope (row 686)
-
-A written associated default is its own equation. Its right side sees only the
-binders its left side writes and the kind variables those binders' kinds write,
-never the class's other parameters: GHC 9.14.1 rejects `type X a = b` in
-`class Foo a b` with GHC-76037, and this walk reports `b` as a type variable not
-in scope. Lowering records that scope in `AssocTypeFamilyChirho::default_binders_chirho`.
-Kind variables are read from each binder group's CST tokens, so a kind the binder
-grammar cannot read, such as `[k]`, still binds `k`; a `forall` in a binder's kind
-binds its names only within the parenthesized group it is written in. The walk
-runs after the class binders are popped. A default with no recorded scope, as in
-a directly built AST, keeps the class's binders in scope as before.
-
 ## Imported synonym expansion keys (row 656)
 
 Naming above decides which imported type names a source may write. Separately, the driver frontend (`run_frontend_with_type_synonyms_families_and_class_env_chirho`) hands inference one table of imported type synonyms per module, and that table decides only how a synonym expands. Every multi-module path shares it: the project directory, both dependency-package paths behind `haskelujah build-run`, and the interpreter.
@@ -142,36 +129,9 @@ flowchart TD
 ### Code and controls
 
 - **The rule:** `align_preferred_synonym_keys_chirho` in `crates/haskelujah-driver-chirho/src/lib.rs`, called once after the frontend's import loop.
-- **Unit pins:** `crates/haskelujah-driver-chirho/src/synonym_keys_tests_chirho.rs`. A unique exporter adds the bare key; two exporters add none; a missing qualified source adds none; an existing bare key is kept.
+- **Unit pins:** `crates/haskelujah-driver-chirho/src/frontend_chirho/synonym_keys_tests_chirho.rs`. A unique exporter adds the bare key; two exporters add none; a missing qualified source adds none; an existing bare key is kept.
 - **The interpreter's filter:** `compile_modules_chirho` in `crates/haskelujah-driver-chirho/src/project_chirho/multi_module_chirho.rs` (row 668).
 - **GHC-measured programs:** `crates/haskelujah-driver-chirho/tests/native_symbol_identity_chirho/synonym_closure_chirho.rs`, each on the interpreter, LLVM and true Cranelift. They live in that target for its multi-module harness, not for symbol identity.
   - Row 656: the chain and an import of only the forwarder are exact; the hidden parent and an unimported synonym are refused.
   - Row 668: a local and an imported type named like another module's synonym keep their own instances, a synonym used only upstream stays there, and qualified and aliased uses resolve, all exact; qualified-only, hidden and unexported synonyms are refused.
 - **Holds:** `frontend_imported_type_alias_expands_through_parent_alias_chirho` and `frontend_reexported_type_alias_expands_through_hidden_parent_alias_chirho` in `crates/haskelujah-driver-chirho/src/tests_chirho/compile_chirho.rs`.
-
-
-## Ordinary type definition proof Chirho
-
-Row 688 adds an inert definition-category transport before the kind-argument elaborator and GADT selector consumer. A declaration role is positive producer evidence, separate from exported constructor membership. A data family can export constructors and is nominally generative; it remains a distinct category from ordinary data/newtype, and a synonym family remains different from both.
-
-```mermaid
-flowchart TD
-  written_chirho[Written ordinary data/newtype header] --> lower_chirho[Lowerer marks its actual defining name]
-  instance_chirho[Skipped data/newtype instance or unrepresented head] --> unknown_chirho[No ordinary-data proof]
-  lower_chirho --> source_chirho[Source interface stores definition identity and category]
-  seed_chirho[Typed compiler data declaration seed] --> builtin_chirho[Builtin interface stores compiler identity and Data category]
-  source_chirho --> exports_chirho[Export filtering and re-exports preserve metadata]
-  builtin_chirho --> exports_chirho
-  exports_chirho --> merge_chirho[Identical snapshots retain proof; weak/conflicting snapshots lose it]
-  merge_chirho --> scope_chirho[Import-list, hiding, alias and qualification admission]
-  unknown_chirho --> scope_chirho
-  scope_chirho --> readers_chirho[One immutable role scope for GADT and kind elaboration consumers]
-```
-
-`RawNameChirho.written_type_declaration_role_chirho` is outside name equality and hashing and is cloned with the AST. The ordinary data/newtype lowerers mark only defining headers after excluding instance syntax. An unannotated directly constructed AST or stub stays unknown. The legacy newtype declaration-context lowering can collect the context-class name instead of the written type head, so that unrepresented case deliberately receives no role proof until its own producer is repaired.
-
-`IfaceTypeChirho.declaration_chirho` carries a source definition's module/name and explicit category, or a typed compiler seed identity. Filtering constructors does not erase the definition, and a re-export does not rename its definer. Merging a weak or conflicting copy clears the proof monotonically: a later known copy cannot restore it by iteration order.
-
-`build_type_constructor_scope_chirho` reads declaration headers and imported interfaces only. It never calls the full interface/export collector, so the GADT selector collector can consume the same scope without a dependency cycle. Local declarations own their bare spellings. Qualified aliases, explicit lists and hiding are admitted through the resolver's import calculation. An alias itself supplies no defining identity.
-
-Builtin proof is created by `mk_data_type_chirho` at a typed declaration seed, not by scanning names or constructor lists. The first converted producers are Bool, Ordering, Maybe, Either, unit and Proxy. Generic builtin entries, stub interfaces and unconverted seeds remain unknown. The role transport changes no ordinary inferred type names, dictionary keys or runtime argument counts; those are later consumers in the complete kind-argument vertical.
