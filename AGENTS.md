@@ -26,7 +26,7 @@ lex → layout → CST parse → AST lower → name resolve → kind infer → t
 
 ### Test Coverage
 
-**2500+ tests passing**, 0 failures (run `bash spec-chirho/stats-chirho.sh` for live stats). GHC compatibility: NEVER quote inline numbers here — read both committed measurement artifacts in `spec-chirho/ghc-should-*-measurement-chirho.txt` and quote their `# QUOTE-AS:` lines verbatim (both axes, always together)
+Use the named-commit receipts and parity tasklists for current test scope and status. Known numeric-entry failures remain open in row 692; a focused pass is not a full-suite zero-failure claim. `spec-chirho/stats-chirho.sh` is the statistics entry point. GHC compatibility: NEVER quote inline numbers here — read both committed measurement artifacts in `spec-chirho/ghc-should-*-measurement-chirho.txt` and quote their `# QUOTE-AS:` lines verbatim (both axes, always together)
 
 ### Completed
 

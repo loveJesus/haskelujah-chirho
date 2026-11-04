@@ -1,43 +1,39 @@
 # For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 # GHC should_fail — current paired typecheck measurement
-# completed: 2026-11-04T02:08:48.270520+00:00; measured by HASKELUJAH/claude2_chirho, independently reviewed by HASKELUJAH/gpt_chirho.
-# source: bc82c64fca49d9058a02bb15440ed3a21a33da12 (row 691 Core extraction and L0 directory regroup)
-# crates tree: 2a3b10aa53f59ad7c179d2ae4072c77ece52aea2
-# Main integration is checked byte-identical for crates, Cargo.toml and Cargo.lock.
+# completed: producer reports 2026-11-04 01:28 EST; independently received and hash-verified by HASKELUJAH/gpt_chirho.
+# source: 46b385ab14a2fa80f8800c75d3c4270c7e36366a (row 691 completed driver extraction)
+# crates tree: 8917d0509d8968a5f6160194f03d6cde528dbf78
+# Local main integration: 6dee78307a12ae4f1b07d44bcd9268f9d6e3c6db; crates, Cargo.toml and Cargo.lock are byte-identical to the tested source.
 # Local development evidence only. No remote push or release is implied.
-# Frozen candidate CLI SHA-256: 5e747e73b43adaff86180fdc4fc115cfcb328f9e2fb590b60058e35c6f864974
-# Retained previous-publication CLI SHA-256: 1d84e529ae03f3ee216f4ee93fed2ef16b8bea24dc7b1047c9148e9ca55bd83e
-# Baseline: complete retained landed R2b pass (source 661780a1; same crates as 45101043).
-# Both current verdict TSVs are byte-identical to that landed baseline: zero movers.
-# The runner itself reads retained candidate2; its stale ce999556 description is not
-# evidence of a fresh baseline execution. The nine differences from candidate2 are
-# the already-reviewed K01 changes, not new gains from the extraction.
+# Frozen candidate CLI SHA-256: 0c4d49e5d74c0e2fa27144fb7946d7d4412a615bfc201184e500358bd96a0d3f
+# Retained previous-publication CLI SHA-256: 5e747e73b43adaff86180fdc4fc115cfcb328f9e2fb590b60058e35c6f864974
+# Baseline: REUSED complete Core extraction bc82c64f packet, exact crates/Cargo equivalent to c3677f08.
+# Both current verdict TSVs and all 5,115 final-attempt raw stdout/stderr/verdict files are byte-identical to that baseline: zero movers.
+# The runner itself reads retained candidate2 and carries a stale ce999556 label; neither is a fresh baseline execution.
+# Its same nine K01 movers against candidate2 are not new gains from driver extraction.
 # Source manifest SHA-256: 14adefd337f227e4dec10eed829fb59fe28ae855f34b34b39c543f5c7f69fedf
 # Candidate verdict-pass SHA-256: 84170ddc61639a9aa6a319ff8907474311fb114bae277b44afe08b507f5dade7
 # Nonmatching-list SHA-256: c849d667a702b5a1cd01cb562e1b26fa8d9fefe669c929562d519ebc8d572d15
-# receipts: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/tmp-chirho/core-root-landing-chirho
-# One complete frozen candidate pass per axis; both axes took 126.22 seconds.
-# No second-pass determinism claim is made. Both source manifests match the retained
-# inputs, and the frozen binary is unchanged before and after. Root checks 5,121
-# matching retained files, including all 5,115 per-cell raw stdout/stderr/verdict files.
-# Only the comparison metadata and executable differ from the prior-source packet.
-# Method: committed axis_pass_chirho.sh and unchanged classifier; four workers,
-# 15 seconds/file, timeout retries alone at 60 seconds. Final ACCEPT is rc0 without
-# error[E; REJECT is rc1 with error[E. No other final verdict remains.
+# receipts: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/tmp-chirho/driver-series-root-gate-chirho
+# One complete frozen candidate pass per axis; both axes took 117.40 seconds. No second-pass determinism claim.
+# Binary and input manifests are unchanged before/after. Root verifies each of the 5,115 raw file hashes individually.
+# Method: unchanged committed axis_pass/worker/classifier/sort scripts, four workers, 15 seconds/file with solitary 60-second retry.
+# Raw files and TSVs retain FINAL ATTEMPTS ONLY. Initial retry count is UNKNOWN: the pinned runner overwrites earlier attempts.
+# The outer 600-second stage did not time out; exact-token cleanup found no owned processes and signalled no group.
+# Final ACCEPT is rc0 without error[E; REJECT is rc1 with error[E. No other final verdict remains.
 # Scope: recursive ghc-tests-chirho/typecheck-chirho/should_fail, 767 .hs files.
-# These are DIRECTORY-LABEL axes, without all.T flags or reconstruction of its driver.
-# No denominator or fixture changed. RAW_ACCEPT on should_fail is not a claim that
-# every accepted helper/source is GHC-invalid. Typechecks do not establish execution
-# or full GHC compatibility. Earlier measurements and K01 mover oracles remain in Git.
-# Core 196/196 and all-targets checking pass with zero compiler warnings. Changed-span
-# Clippy has zero hits; 91 pre-existing Core diagnostics remain. No suppression added.
-# Broad runtime: 211 tests, 208 passed, 2 ignored diagnostic tools, 1 numeric-entry
-# failure. That exact 23-test target has identical outcomes at clean 45101043; the
-# HeapPtr-versus-Int failure remains RED. Focused series REDs are likewise retained.
-# Core desugar root is 739 lines; all its new leaves are below 1,000. Driver lib is
-# still 3,243 lines and remains a structural failure. StrictData defaults, GADT lazy
-# fields, Foldable/Dict evidence and inherited native Proxy Show gaps remain open.
-# This is not a full zero-warning/size-bar or GHC compatibility completion claim.
+# DIRECTORY-LABEL axes, without all.T flags or reconstruction of its driver. No denominator or fixture changed.
+# RAW_ACCEPT on should_fail does not mean every accepted helper/source is GHC-invalid. Typechecks do not prove execution or full GHC compatibility.
+# Driver all-targets checking has zero compiler warnings; cumulative and step full-span changed-code Clippy have zero hits.
+# The 271 driver Clippy diagnostics outside the changed spans remain existing debt; no suppression was added.
+# Six actual runtime targets: 211 tests, 208 passed, 2 ignored table-generator steps and 1 inherited numeric-entry failure.
+# Each outcome map and normalized failure payload equals the retained bc82/c367 baseline; the HeapPtr-versus-Int failure stays RED.
+# Core root is 739 lines; driver root is 766. All added extraction leaves are below 1,000 lines.
+# Frontend directory has 9 entries, above the 5-7 aim and below the 15 cap; separate STG/test-directory debt remains open.
+# The eleven L7 compiler-output assertions inspect IR/bytes/Core and are not linked-execution proof.
+# StrictData defaults, GADT lazy fields, Foldable/Dict evidence, native Proxy Show and numeric-entry boundaries remain open.
+# No full-zero-warning/size-bar or GHC compatibility completion claim; family/GADT/class-identity/constructor semantic units remain unlanded.
+# Previous structural publication: c3677f08840e3e694e8ddecee8cf9c42cbab9729:spec-chirho/ghc-should-fail-measurement-chirho.txt.
 #
 # RESULT: REJECT=267 RAW_ACCEPT=500 TOTAL=767
 # STABILITY: ONE COMPLETE CANDIDATE PASS; byte-equal verdicts to retained prior-source publication.
@@ -46,7 +42,7 @@
 #
 # Previous publication -> candidate movers: 0.
 # Accepted-source losses in this unit: none.
-# Previous publication: 86f1049d:spec-chirho/ghc-should-fail-measurement-chirho.txt.
+# Earlier pre-Core publication: 86f1049d:spec-chirho/ghc-should-fail-measurement-chirho.txt.
 #
 # ---- 500 nonmatching files under the preserved directory-label protocol ----
 AmbigFDs.hs
