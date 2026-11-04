@@ -13,6 +13,53 @@ use haskelujah_ast_chirho::promotion_chirho::quoted_promoted_spelling_chirho;
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 
 impl TypeElaboratorChirho<'_> {
+    pub(super) fn infer_type_at_kind_chirho(
+        &mut self,
+        syntax_chirho: &mut TypeChirho,
+        expected_chirho: &TyChirho,
+    ) -> Result<ElaboratedTypeChirho, ElaborationErrorChirho> {
+        let span_chirho = syntax_chirho.span_chirho();
+        // The empty tuple has both a Type and a Constraint interpretation.
+        // Its checked surrounding kind selects the latter; unconstrained ()
+        // retains the ordinary Type default.
+        let expected_chirho = self
+            .state_chirho
+            .resolve_chirho(expected_chirho, span_chirho)?;
+        let mut syntax_chirho = syntax_chirho;
+        let mut parens_chirho = 0;
+        while let TypeChirho::ParenChirho { inner_chirho, .. } = syntax_chirho {
+            parens_chirho += 1;
+            self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+            if self.type_depth_chirho + parens_chirho >= 128 {
+                return Err(Self::error_chirho(
+                    "kind/type syntax depth bound exhausted",
+                    span_chirho,
+                ));
+            }
+            syntax_chirho = inner_chirho;
+        }
+        let result_chirho = match syntax_chirho {
+            TypeChirho::TupleChirho {
+                elements_chirho, ..
+            } if elements_chirho.is_empty()
+                && expected_chirho == ElaborationStateChirho::constraint_universe_chirho() =>
+            {
+                self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+                ElaboratedTypeChirho {
+                    term_chirho: TyChirho::TupleChirho(Vec::new()),
+                    kind_chirho: expected_chirho.clone(),
+                }
+            }
+            _ => self.infer_type_chirho(syntax_chirho)?,
+        };
+        self.state_chirho.unify_chirho(
+            &result_chirho.kind_chirho,
+            &expected_chirho,
+            span_chirho,
+        )?;
+        Ok(result_chirho)
+    }
+
     pub(super) fn infer_type_chirho(
         &mut self,
         syntax_chirho: &mut TypeChirho,
@@ -68,12 +115,8 @@ impl TypeElaboratorChirho<'_> {
                     &ElaborationStateChirho::type_universe_chirho(),
                     span_chirho,
                 )?;
-                let elaborated_chirho = self.infer_type_chirho(ty_chirho)?;
-                self.state_chirho.unify_chirho(
-                    &elaborated_chirho.kind_chirho,
-                    &annotation_chirho.term_chirho,
-                    span_chirho,
-                )?;
+                let elaborated_chirho =
+                    self.infer_type_at_kind_chirho(ty_chirho, &annotation_chirho.term_chirho)?;
                 Ok(elaborated_chirho)
             }
             TypeChirho::ParenChirho { inner_chirho, .. } => self.infer_type_chirho(inner_chirho),
@@ -192,12 +235,20 @@ impl TypeElaboratorChirho<'_> {
                     .open_rigid_scope_chirho(&variables_chirho, span_chirho)?;
                 let body_chirho = self.infer_type_chirho(body_chirho);
                 self.state_chirho.close_rigid_scope_chirho(rigid_chirho);
-                self.close_scope_chirho(mark_chirho);
+                self.close_forall_scope_chirho(mark_chirho, &variables_chirho, span_chirho)?;
                 let body_chirho = body_chirho?;
                 Ok(ElaboratedTypeChirho {
-                    term_chirho: TyChirho::ForallChirho {
-                        vars_chirho: variables_chirho,
-                        body_chirho: Box::new(body_chirho.term_chirho),
+                    term_chirho: if matches!(syntax_chirho, TypeChirho::RequiredForallChirho { .. })
+                    {
+                        TyChirho::RequiredForallChirho {
+                            vars_chirho: variables_chirho,
+                            body_chirho: Box::new(body_chirho.term_chirho),
+                        }
+                    } else {
+                        TyChirho::ForallChirho {
+                            vars_chirho: variables_chirho,
+                            body_chirho: Box::new(body_chirho.term_chirho),
+                        }
                     },
                     kind_chirho: body_chirho.kind_chirho,
                 })
@@ -449,11 +500,12 @@ impl TypeElaboratorChirho<'_> {
                 self.state_chirho
                     .copy_chirho(&binder_chirho.kind_chirho, span_chirho)?
             };
-            // Renaming changes only fixed-size IDs: charge one further copy.
-            let _permit_chirho = self
-                .state_chirho
-                .copy_chirho(&copied_kind_chirho, span_chirho)?;
-            let kind_chirho = rename_chirho.apply_ty_chirho(&copied_kind_chirho);
+            let kind_chirho = self.state_chirho.instantiate_term_chirho(
+                &copied_kind_chirho,
+                &rename_chirho,
+                scheme_chirho.owner_chirho.is_some(),
+                span_chirho,
+            )?;
             let TyChirho::VarChirho(variable_chirho) = rename_chirho
                 .lookup_chirho(&binder_chirho.variable_chirho)
                 .expect("freshened telescope variable")
@@ -481,19 +533,25 @@ impl TypeElaboratorChirho<'_> {
             self.state_chirho
                 .copy_chirho(&scheme_chirho.result_kind_chirho, span_chirho)?
         };
-        let _permit_chirho = self
-            .state_chirho
-            .copy_chirho(&result_kind_chirho, span_chirho)?;
+        let result_kind_chirho = self.state_chirho.instantiate_term_chirho(
+            &result_kind_chirho,
+            &rename_chirho,
+            scheme_chirho.owner_chirho.is_some(),
+            span_chirho,
+        )?;
         Ok((
             binders_chirho,
-            rename_chirho.apply_ty_chirho(&result_kind_chirho),
+            result_kind_chirho,
             scheme_chirho
                 .synonym_rhs_chirho
                 .as_ref()
                 .map(|rhs_chirho| {
-                    self.state_chirho
-                        .copy_chirho(rhs_chirho, span_chirho)
-                        .map(|rhs_chirho| rename_chirho.apply_ty_chirho(&rhs_chirho))
+                    self.state_chirho.instantiate_term_chirho(
+                        rhs_chirho,
+                        &rename_chirho,
+                        scheme_chirho.owner_chirho.is_some(),
+                        span_chirho,
+                    )
                 })
                 .transpose()?,
         ))
@@ -629,7 +687,13 @@ impl TypeElaboratorChirho<'_> {
                     TyChirho::AppChirho(Box::new(term_chirho), Box::new(argument_term_chirho));
                 cursor_chirho += 1;
             }
-            let elaborated_argument_chirho = self.infer_type_chirho(&mut argument_chirho)?;
+            let elaborated_argument_chirho = if let Some(binder_chirho) =
+                binders_chirho.get(cursor_chirho)
+            {
+                self.infer_type_at_kind_chirho(&mut argument_chirho, &binder_chirho.kind_chirho)?
+            } else {
+                self.infer_type_chirho(&mut argument_chirho)?
+            };
             if let Some(binder_chirho) = binders_chirho.get(cursor_chirho) {
                 let required_chirho =
                     binder_chirho.visibility_chirho == TelescopeVisibilityChirho::RequiredChirho;
@@ -871,16 +935,23 @@ impl TypeElaboratorChirho<'_> {
                 vars_chirho,
                 context_chirho,
                 body_chirho,
-                ..
+                span_chirho,
             } => {
+                let span_chirho = *span_chirho;
                 let mark_chirho = self.scope_undo_chirho.len();
-                self.bind_forall_chirho(vars_chirho)?;
-                for constraint_chirho in context_chirho {
-                    self.infer_constraint_chirho(constraint_chirho)?;
-                }
-                self.infer_constraint_chirho(body_chirho)?;
-                self.close_scope_chirho(mark_chirho);
-                Ok(())
+                let variables_chirho = self.bind_forall_chirho(vars_chirho)?;
+                let rigid_chirho = self
+                    .state_chirho
+                    .open_rigid_scope_chirho(&variables_chirho, span_chirho)?;
+                let result_chirho = (|| {
+                    for constraint_chirho in context_chirho {
+                        self.infer_constraint_chirho(constraint_chirho)?;
+                    }
+                    self.infer_constraint_chirho(body_chirho)
+                })();
+                self.state_chirho.close_rigid_scope_chirho(rigid_chirho);
+                self.close_forall_scope_chirho(mark_chirho, &variables_chirho, span_chirho)?;
+                result_chirho
             }
             ConstraintChirho::KindAnnotationChirho {
                 constraint_chirho,

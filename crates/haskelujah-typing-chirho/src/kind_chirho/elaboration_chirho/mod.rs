@@ -8,6 +8,7 @@ mod compiler_schemes_chirho;
 mod constructors_chirho;
 mod declarations_chirho;
 mod dependencies_chirho;
+mod instantiation_chirho;
 pub use dependencies_chirho::source_declaration_dependencies_chirho;
 mod module_chirho;
 mod state_chirho;
@@ -82,6 +83,45 @@ struct ElaboratedTypeChirho {
 }
 
 impl TypeElaboratorChirho<'_> {
+    /// A forall shadows its binders; free variables discovered in its body
+    /// still belong to the surrounding signature/declaration scope.
+    fn close_forall_scope_chirho(
+        &mut self,
+        mark_chirho: usize,
+        bound_chirho: &[TyVarChirho],
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        let mut retained_chirho = Vec::new();
+        let mut seen_chirho = std::collections::HashSet::new();
+        self.state_chirho
+            .charge_chirho(bound_chirho.len(), bound_chirho.len(), span_chirho)?;
+        let bound_chirho = bound_chirho
+            .iter()
+            .copied()
+            .collect::<std::collections::HashSet<_>>();
+        for (name_chirho, previous_chirho) in &self.scope_undo_chirho[mark_chirho..] {
+            if previous_chirho.is_some() || seen_chirho.contains(name_chirho) {
+                continue;
+            }
+            let Some((variable_chirho, kind_chirho)) = self.variables_chirho.get(name_chirho)
+            else {
+                continue;
+            };
+            if bound_chirho.contains(variable_chirho) {
+                continue;
+            }
+            let name_chirho = self.state_chirho.name_chirho(name_chirho, span_chirho)?;
+            let kind_chirho = self.state_chirho.copy_chirho(kind_chirho, span_chirho)?;
+            seen_chirho.insert(name_chirho.clone());
+            retained_chirho.push((name_chirho, *variable_chirho, kind_chirho));
+        }
+        self.close_scope_chirho(mark_chirho);
+        for (name_chirho, variable_chirho, kind_chirho) in retained_chirho {
+            self.bind_variable_chirho(name_chirho, variable_chirho, kind_chirho, span_chirho)?;
+        }
+        Ok(())
+    }
+
     fn error_chirho(
         message_chirho: impl Into<String>,
         span_chirho: SpanChirho,

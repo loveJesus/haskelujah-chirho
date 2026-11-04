@@ -511,12 +511,7 @@ impl TypeElaboratorChirho<'_> {
             };
         }
         let left_chirho = self.infer_type_chirho(&mut syntax_chirho)?;
-        let right_chirho = self.infer_type_chirho(rhs_chirho)?;
-        self.state_chirho.unify_chirho(
-            &left_chirho.kind_chirho,
-            &right_chirho.kind_chirho,
-            span_chirho,
-        )?;
+        self.infer_type_at_kind_chirho(rhs_chirho, &left_chirho.kind_chirho)?;
         loop {
             match syntax_chirho {
                 TypeChirho::AppChirho {
