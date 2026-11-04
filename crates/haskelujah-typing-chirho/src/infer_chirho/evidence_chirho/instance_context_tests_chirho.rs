@@ -258,7 +258,7 @@ fn source_instance_transport_keeps_colliding_spans_and_actual_declarations_chirh
     for instance_chirho in &instances_chirho {
         ctx_chirho.local_instances_chirho.push(
             crate::infer_chirho::instance_obligations_chirho::LocalInstanceChirho {
-                instance_chirho: instance_chirho.clone(),
+                instance_chirho: std::sync::Arc::new(instance_chirho.clone()),
                 nullary_chirho: false,
                 written_names_chirho: Vec::new(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
