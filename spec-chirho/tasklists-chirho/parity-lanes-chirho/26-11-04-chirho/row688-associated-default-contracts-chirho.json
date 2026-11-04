@@ -1,0 +1,387 @@
+{
+  "scope_chirho": "Row 688 associated-default and capture-safe-instantiation checkpoint; typechecks only, unlanded on main. No new corpus or runtime score.",
+  "source_commit_chirho": "327ca82da6d7667ef1d8c95ad4fbd4242ec600a8",
+  "capture_commit_chirho": "15e3ef861a5d916e7ac5b3176b7d9c96e7d1f4af",
+  "feature_branch_chirho": "gpt-kinded-types-688-full-chirho",
+  "candidate_cli_sha256_chirho": "f238c388ccf70f51883a19f40b8323f340dba28d9994c7aa97100b6203563023",
+  "baseline_cli_sha256_chirho": "b5f937afaf8406041d6bad539f558930ae4eac597030edd23376c80663fd3954",
+  "verification_chirho": {
+    "source_commit_chirho": "327ca82da6d7667ef1d8c95ad4fbd4242ec600a8",
+    "candidate_cli_sha256_chirho": "f238c388ccf70f51883a19f40b8323f340dba28d9994c7aa97100b6203563023",
+    "raw_checkpoint_runs_verified_chirho": 66,
+    "checkpoint_ghc_matches_chirho": 22,
+    "checkpoint_corrections_vs_main_chirho": [
+      "ClosedPrefixPositiveChirho",
+      "ClosedPrefixWrongResultChirho",
+      "NullaryResultArrowPositiveChirho",
+      "KnownNatWrongKindChirho",
+      "ImportedPrefixPositiveChirho",
+      "P02ZeroVisibleChirho",
+      "P03SharedSingChirho",
+      "P04SynonymKindChirho",
+      "N02SameKindOverlapChirho",
+      "N03ResultArrowNotBinderChirho",
+      "N04WrongNominalKindChirho"
+    ],
+    "predicate_replayed_matches_chirho": 4,
+    "predicate_ghc_reused_chirho": true,
+    "associated_matches_chirho": 8,
+    "associated_mismatches_chirho": [
+      "ReorderedDefaultChirho",
+      "OverrideDefaultChirho"
+    ],
+    "associated_corrections_vs_main_chirho": [
+      "CheckedChirho",
+      "PolyKindSpecializingDefaultChirho"
+    ],
+    "release_compiler_warnings_chirho": 0,
+    "release_seconds_chirho": 58.898,
+    "no_compiler_run_by_root_chirho": true
+  },
+  "focused_chirho": {
+    "capture_tests_chirho": 53,
+    "capture_pinned_source_files_chirho": 4,
+    "associated_tests_chirho": 112,
+    "associated_pinned_source_files_chirho": 44,
+    "changed_span_clippy_chirho": 0,
+    "outside_clippy_chirho": 293,
+    "stages_chirho": [
+      {
+        "receipt_chirho": "capture-final-tests-r53-chirho.json",
+        "commit_chirho": "15e3ef861a5d916e7ac5b3176b7d9c96e7d1f4af",
+        "tests_chirho": 2,
+        "source_files_chirho": 4,
+        "raw_log_sha256_chirho": "01815f9345658c568e3c292217c9378c2ba53892f1a444dbeb10deb58093f124"
+      },
+      {
+        "receipt_chirho": "capture-final-required-r54-chirho.json",
+        "commit_chirho": "15e3ef861a5d916e7ac5b3176b7d9c96e7d1f4af",
+        "tests_chirho": 3,
+        "source_files_chirho": 4,
+        "raw_log_sha256_chirho": "dd7f34efdf331de6eff3f860854f814c86dcd047bf7398a847e18172449f5b90"
+      },
+      {
+        "receipt_chirho": "capture-final-ordinary-r55-chirho.json",
+        "commit_chirho": "15e3ef861a5d916e7ac5b3176b7d9c96e7d1f4af",
+        "tests_chirho": 18,
+        "source_files_chirho": 4,
+        "raw_log_sha256_chirho": "a0bb28554211bf82bf1bc47d071f561d5dea18be9020fb13e0e391023ee87612"
+      },
+      {
+        "receipt_chirho": "capture-final-cold-r56-chirho.json",
+        "commit_chirho": "15e3ef861a5d916e7ac5b3176b7d9c96e7d1f4af",
+        "tests_chirho": 14,
+        "source_files_chirho": 4,
+        "raw_log_sha256_chirho": "2b4246294aeb62167bcc06580c5cda037311033d59dcfbdc373fc3e875f99dd0"
+      },
+      {
+        "receipt_chirho": "capture-final-repair-r57-chirho.json",
+        "commit_chirho": "15e3ef861a5d916e7ac5b3176b7d9c96e7d1f4af",
+        "tests_chirho": 16,
+        "source_files_chirho": 4,
+        "raw_log_sha256_chirho": "c3517908720df633941578169f64ff7488683f6d375a49968f29d3ee9fc81454"
+      },
+      {
+        "receipt_chirho": "capture-final-clippy-r58-chirho.json",
+        "commit_chirho": "15e3ef861a5d916e7ac5b3176b7d9c96e7d1f4af",
+        "tests_chirho": null,
+        "source_files_chirho": 4,
+        "raw_log_sha256_chirho": "11f8442f08239e1e16017ec5879a637163d1031d1084f880dbe8e7477827483a"
+      },
+      {
+        "receipt_chirho": "associated-final-frontend-r88-chirho.json",
+        "commit_chirho": "327ca82da6d7667ef1d8c95ad4fbd4242ec600a8",
+        "tests_chirho": 22,
+        "source_files_chirho": 44,
+        "raw_log_sha256_chirho": "e9f3f45ace02af0fa045e14e7f317db2b2994e59405b16cf7666f508c3bde522"
+      },
+      {
+        "receipt_chirho": "associated-final-cold-r90-chirho.json",
+        "commit_chirho": "327ca82da6d7667ef1d8c95ad4fbd4242ec600a8",
+        "tests_chirho": 16,
+        "source_files_chirho": 44,
+        "raw_log_sha256_chirho": "28260287f045c5a7a6a81d29716d47a4b1ef8611262f3b6f75e47e70f59eabc1"
+      },
+      {
+        "receipt_chirho": "associated-final-ordinary-r91-chirho.json",
+        "commit_chirho": "327ca82da6d7667ef1d8c95ad4fbd4242ec600a8",
+        "tests_chirho": 18,
+        "source_files_chirho": 44,
+        "raw_log_sha256_chirho": "1d63eeae9f9d96d2d1052e30c3614696f58339199a100024c6d290a97459e885"
+      },
+      {
+        "receipt_chirho": "associated-final-required-r92-chirho.json",
+        "commit_chirho": "327ca82da6d7667ef1d8c95ad4fbd4242ec600a8",
+        "tests_chirho": 3,
+        "source_files_chirho": 44,
+        "raw_log_sha256_chirho": "33caf3cab533225f213b445f35ae989311defe0cb9b71bc3f697616fa8d7555c"
+      },
+      {
+        "receipt_chirho": "associated-final-catalogue-r93-chirho.json",
+        "commit_chirho": "327ca82da6d7667ef1d8c95ad4fbd4242ec600a8",
+        "tests_chirho": 18,
+        "source_files_chirho": 44,
+        "raw_log_sha256_chirho": "13e3f1e9204d315bc4802580dfdac44ed09f9cf436600d2d4021e009af4e9bc7"
+      },
+      {
+        "receipt_chirho": "associated-final-bounds-r94-chirho.json",
+        "commit_chirho": "327ca82da6d7667ef1d8c95ad4fbd4242ec600a8",
+        "tests_chirho": 4,
+        "source_files_chirho": 44,
+        "raw_log_sha256_chirho": "fb34004f166f32a921f6ee86db48e23faa0a0abf98b1145c433be122875c97e2"
+      },
+      {
+        "receipt_chirho": "associated-final-naming-r95-chirho.json",
+        "commit_chirho": "327ca82da6d7667ef1d8c95ad4fbd4242ec600a8",
+        "tests_chirho": 9,
+        "source_files_chirho": 44,
+        "raw_log_sha256_chirho": "ea92b293808cf10688a95b9544c64a9fc574ff1a42a476dc39873e55898c45b7"
+      },
+      {
+        "receipt_chirho": "associated-final-parser-r96-chirho.json",
+        "commit_chirho": "327ca82da6d7667ef1d8c95ad4fbd4242ec600a8",
+        "tests_chirho": 21,
+        "source_files_chirho": 44,
+        "raw_log_sha256_chirho": "01f6bb88012f618b8e83ce48777986e241e33152c9fdf04f6eb8e31badf47a3d"
+      },
+      {
+        "receipt_chirho": "associated-final-projection-r97-chirho.json",
+        "commit_chirho": "327ca82da6d7667ef1d8c95ad4fbd4242ec600a8",
+        "tests_chirho": 1,
+        "source_files_chirho": 44,
+        "raw_log_sha256_chirho": "ca831fd104c96cfe31be4877bdf2a9b4e6234104a114230051c6d2238398c2ed"
+      },
+      {
+        "receipt_chirho": "associated-final-clippy-r89-chirho.json",
+        "commit_chirho": "327ca82da6d7667ef1d8c95ad4fbd4242ec600a8",
+        "tests_chirho": null,
+        "source_files_chirho": 44,
+        "raw_log_sha256_chirho": "5387956baac529be562913008bba92a9adf3cd047c36cb7bcb065366d122760b"
+      }
+    ]
+  },
+  "prediction_correction_chirho": "Original ReorderedDefaultChirho and OverrideDefaultChirho were predicted ACCEPT before GHC. Actual fresh default-mode GHC rejects both with GHC-41522. Original inputs and predictions remain preserved. Separate NoPolyKinds/Type-annotated twins are measured separately. WrongDefaultResultChirho also hits the invalid default shape, so it does not isolate its intended RHS-error cause. Explicit PolyKinds specializing-default negative initially exposed a dirty candidate false accept and now rejects.",
+  "inherited_disagreement_boundary_chirho": "The two original unannotated inputs remain ACCEPT in main baseline and candidate while default-mode GHC rejects. Mode/extension causality has not been independently isolated here; no all-ten agreement claim.",
+  "associated_contracts_chirho": [
+    {
+      "case_chirho": "HiddenDefaultChirho",
+      "source_sha256_chirho": "5f9ebd85fc1801ea4a26f2274f94e54710bb0014d7db97665f9d0f9437e8f8e8",
+      "original_prediction_chirho": "ACCEPT",
+      "ghc_chirho": "ACCEPT",
+      "baseline_chirho": "ACCEPT",
+      "candidate_chirho": "ACCEPT",
+      "ghc_argv_chirho": [
+        "rtk",
+        "proxy",
+        "/opt/homebrew/bin/ghc",
+        "-v0",
+        "-fforce-recomp",
+        "-fno-code",
+        "-outputdir",
+        "tmp-chirho/kinded-types-688-chirho/associated-default-oracles-chirho/HiddenDefaultChirho-ghc-r1-chirho/artifacts-chirho",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/crates/haskelujah-driver-chirho/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/HiddenDefaultChirho.hs"
+      ],
+      "source_text_chirho": "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE PolyKinds, KindSignatures, TypeFamilies, FlexibleInstances #-}\nmodule Main where\nimport Data.Kind (Type)\ndata TagChirho (a :: k) = TagChirho\nclass CChirho (a :: k) where\n  type FChirho a :: k\n  type FChirho a = a\ninstance CChirho Maybe\nvalueChirho :: TagChirho (FChirho Maybe)\nvalueChirho = (TagChirho :: TagChirho Maybe)\nmain :: IO ()\nmain = pure ()\n"
+    },
+    {
+      "case_chirho": "ReorderedDefaultChirho",
+      "source_sha256_chirho": "4e05c04e684bd43e0b8ec0342d42ed63c7d20152fc9cc2f4160fc42d64b45218",
+      "original_prediction_chirho": "ACCEPT",
+      "ghc_chirho": "REJECT",
+      "baseline_chirho": "ACCEPT",
+      "candidate_chirho": "ACCEPT",
+      "ghc_argv_chirho": [
+        "rtk",
+        "proxy",
+        "/opt/homebrew/bin/ghc",
+        "-v0",
+        "-fforce-recomp",
+        "-fno-code",
+        "-outputdir",
+        "tmp-chirho/kinded-types-688-chirho/associated-default-oracles-chirho/ReorderedDefaultChirho-ghc-r1-chirho/artifacts-chirho",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/crates/haskelujah-driver-chirho/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/ReorderedDefaultChirho.hs"
+      ],
+      "source_text_chirho": "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE TypeFamilies, MultiParamTypeClasses, FlexibleInstances #-}\nmodule Main where\nimport Data.Kind (Type)\nclass CChirho a b where\n  type FChirho b x :: Type\n  type FChirho z y = (z, y)\ninstance CChirho Bool Int\nvalueChirho :: FChirho Int Char\nvalueChirho = (1, 'x')\nmain :: IO ()\nmain = pure ()\n"
+    },
+    {
+      "case_chirho": "OverrideDefaultChirho",
+      "source_sha256_chirho": "9a01c40ce4ae7754b941471783581f3dfaf3fa80be6c6f86480d669461a623b2",
+      "original_prediction_chirho": "ACCEPT",
+      "ghc_chirho": "REJECT",
+      "baseline_chirho": "ACCEPT",
+      "candidate_chirho": "ACCEPT",
+      "ghc_argv_chirho": [
+        "rtk",
+        "proxy",
+        "/opt/homebrew/bin/ghc",
+        "-v0",
+        "-fforce-recomp",
+        "-fno-code",
+        "-outputdir",
+        "tmp-chirho/kinded-types-688-chirho/associated-default-oracles-chirho/OverrideDefaultChirho-ghc-r1-chirho/artifacts-chirho",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/crates/haskelujah-driver-chirho/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/OverrideDefaultChirho.hs"
+      ],
+      "source_text_chirho": "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE TypeFamilies, FlexibleInstances #-}\nmodule Main where\nclass CChirho a where\n  type FChirho a\n  type FChirho x = Maybe x\ninstance CChirho Int where\n  type FChirho Int = Bool\nvalueChirho :: FChirho Int\nvalueChirho = True\nmain :: IO ()\nmain = pure ()\n"
+    },
+    {
+      "case_chirho": "WrongDefaultResultChirho",
+      "source_sha256_chirho": "2bb6567e497165dbe40715663824e8dc0114f066508068d7d298e2b70a2b18df",
+      "original_prediction_chirho": "REJECT",
+      "ghc_chirho": "REJECT",
+      "baseline_chirho": "REJECT",
+      "candidate_chirho": "REJECT",
+      "ghc_argv_chirho": [
+        "rtk",
+        "proxy",
+        "/opt/homebrew/bin/ghc",
+        "-v0",
+        "-fforce-recomp",
+        "-fno-code",
+        "-outputdir",
+        "tmp-chirho/kinded-types-688-chirho/associated-default-oracles-chirho/WrongDefaultResultChirho-ghc-r1-chirho/artifacts-chirho",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/crates/haskelujah-driver-chirho/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/WrongDefaultResultChirho.hs"
+      ],
+      "source_text_chirho": "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE TypeFamilies, FlexibleInstances #-}\nmodule Main where\nclass CChirho a where\n  type FChirho a\n  type FChirho x = Maybe x\ninstance CChirho Int\nvalueChirho :: FChirho Int\nvalueChirho = True\nmain :: IO ()\nmain = pure ()\n"
+    },
+    {
+      "case_chirho": "MonokindedReorderedDefaultChirho",
+      "source_sha256_chirho": "ae581c95c5da741b435bd9bb0a8ce33938cb3a42300fb2c4cdf09115ea8fb2be",
+      "original_prediction_chirho": "ACCEPT",
+      "ghc_chirho": "ACCEPT",
+      "baseline_chirho": "ACCEPT",
+      "candidate_chirho": "ACCEPT",
+      "ghc_argv_chirho": [
+        "rtk",
+        "proxy",
+        "/opt/homebrew/bin/ghc",
+        "-v0",
+        "-fforce-recomp",
+        "-fno-code",
+        "-outputdir",
+        "tmp-chirho/kinded-types-688-chirho/associated-default-oracles-chirho/MonokindedReorderedDefaultChirho-ghc-r1-chirho/artifacts-chirho",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/crates/haskelujah-driver-chirho/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/MonokindedReorderedDefaultChirho.hs"
+      ],
+      "source_text_chirho": "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE NoPolyKinds, KindSignatures, TypeFamilies, MultiParamTypeClasses, FlexibleInstances #-}\nmodule Main where\nimport Data.Kind (Type)\nclass CChirho (a :: Type) (b :: Type) where\n  type FChirho b x :: Type\n  type FChirho z y = (z, y)\ninstance CChirho Bool Int\nvalueChirho :: FChirho Int Char\nvalueChirho = (1, 'x')\nmain :: IO ()\nmain = pure ()\n"
+    },
+    {
+      "case_chirho": "MonokindedOverrideDefaultChirho",
+      "source_sha256_chirho": "c27a470c6e47982c67a76b2d3e69c18e95c6d6c22f6b581f2a1b2eeef123029c",
+      "original_prediction_chirho": "ACCEPT",
+      "ghc_chirho": "ACCEPT",
+      "baseline_chirho": "ACCEPT",
+      "candidate_chirho": "ACCEPT",
+      "ghc_argv_chirho": [
+        "rtk",
+        "proxy",
+        "/opt/homebrew/bin/ghc",
+        "-v0",
+        "-fforce-recomp",
+        "-fno-code",
+        "-outputdir",
+        "tmp-chirho/kinded-types-688-chirho/associated-default-oracles-chirho/MonokindedOverrideDefaultChirho-ghc-r1-chirho/artifacts-chirho",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/crates/haskelujah-driver-chirho/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/MonokindedOverrideDefaultChirho.hs"
+      ],
+      "source_text_chirho": "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE NoPolyKinds, KindSignatures, TypeFamilies, FlexibleInstances #-}\nmodule Main where\nimport Data.Kind (Type)\nclass CChirho (a :: Type) where\n  type FChirho a\n  type FChirho x = Maybe x\ninstance CChirho Int where\n  type FChirho Int = Bool\nvalueChirho :: FChirho Int\nvalueChirho = True\nmain :: IO ()\nmain = pure ()\n"
+    },
+    {
+      "case_chirho": "MonokindedWrongDefaultResultChirho",
+      "source_sha256_chirho": "7e97efb9424ce94953c2a282c819c34f093ce8432db327735f5821e332d696ad",
+      "original_prediction_chirho": "REJECT",
+      "ghc_chirho": "REJECT",
+      "baseline_chirho": "REJECT",
+      "candidate_chirho": "REJECT",
+      "ghc_argv_chirho": [
+        "rtk",
+        "proxy",
+        "/opt/homebrew/bin/ghc",
+        "-v0",
+        "-fforce-recomp",
+        "-fno-code",
+        "-outputdir",
+        "tmp-chirho/kinded-types-688-chirho/associated-default-oracles-chirho/MonokindedWrongDefaultResultChirho-ghc-r1-chirho/artifacts-chirho",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/crates/haskelujah-driver-chirho/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/MonokindedWrongDefaultResultChirho.hs"
+      ],
+      "source_text_chirho": "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE NoPolyKinds, KindSignatures, TypeFamilies, FlexibleInstances #-}\nmodule Main where\nimport Data.Kind (Type)\nclass CChirho (a :: Type) where\n  type FChirho a\n  type FChirho x = Maybe x\ninstance CChirho Int\nvalueChirho :: FChirho Int\nvalueChirho = True\nmain :: IO ()\nmain = pure ()\n"
+    },
+    {
+      "case_chirho": "CheckedChirho",
+      "source_sha256_chirho": "81c58996c439e89545ba68cd4217008811f0697dfe99b161d1c898168b79fcf3",
+      "original_prediction_chirho": "ACCEPT",
+      "ghc_chirho": "ACCEPT",
+      "baseline_chirho": "REJECT",
+      "candidate_chirho": "ACCEPT",
+      "ghc_argv_chirho": [
+        "rtk",
+        "proxy",
+        "/opt/homebrew/bin/ghc",
+        "-v0",
+        "-fforce-recomp",
+        "-fno-code",
+        "-i/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/crates/haskelujah-driver-chirho/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/cold-chirho",
+        "-outputdir",
+        "tmp-chirho/kinded-types-688-chirho/associated-default-oracles-chirho/CheckedChirho-ghc-r1-chirho/artifacts-chirho",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/crates/haskelujah-driver-chirho/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/cold-chirho/CheckedChirho.hs"
+      ],
+      "source_text_chirho": "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE PolyKinds, TypeFamilies, FlexibleInstances #-}\nmodule CheckedChirho where\nimport OriginChirho (CChirho, AliasChirho, TagChirho)\ninstance CChirho Maybe\nwitnessChirho :: AliasChirho -> TagChirho Maybe\nwitnessChirho x = x\n"
+    },
+    {
+      "case_chirho": "WrongChirho",
+      "source_sha256_chirho": "98c52ccdba8ef61f28ca2119421233f1f189e01dfef972dfce712d827df3fbf8",
+      "original_prediction_chirho": "REJECT",
+      "ghc_chirho": "REJECT",
+      "baseline_chirho": "REJECT",
+      "candidate_chirho": "REJECT",
+      "ghc_argv_chirho": [
+        "rtk",
+        "proxy",
+        "/opt/homebrew/bin/ghc",
+        "-v0",
+        "-fforce-recomp",
+        "-fno-code",
+        "-i/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/crates/haskelujah-driver-chirho/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/cold-chirho",
+        "-outputdir",
+        "tmp-chirho/kinded-types-688-chirho/associated-default-oracles-chirho/WrongChirho-ghc-r1-chirho/artifacts-chirho",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/crates/haskelujah-driver-chirho/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/cold-chirho/WrongChirho.hs"
+      ],
+      "source_text_chirho": "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE PolyKinds, TypeFamilies, FlexibleInstances #-}\nmodule WrongChirho where\nimport OriginChirho (CChirho, AliasChirho, TagChirho)\ninstance CChirho Maybe\nwitnessChirho :: AliasChirho -> TagChirho Bool\nwitnessChirho x = x\n"
+    },
+    {
+      "case_chirho": "PolyKindSpecializingDefaultChirho",
+      "source_sha256_chirho": "be82cc21e35c7db60dfe7b1b5402d2127ef7a4d3cf427a22e7625e452a394de5",
+      "original_prediction_chirho": "REJECT",
+      "ghc_chirho": "REJECT",
+      "baseline_chirho": "ACCEPT",
+      "candidate_chirho": "REJECT",
+      "ghc_argv_chirho": [
+        "rtk",
+        "proxy",
+        "/opt/homebrew/bin/ghc",
+        "-v0",
+        "-fforce-recomp",
+        "-fno-code",
+        "-outputdir",
+        "tmp-chirho/kinded-types-688-chirho/associated-default-oracles-chirho/PolyKindSpecializingDefaultChirho-ghc-r1-chirho/artifacts-chirho",
+        "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/crates/haskelujah-driver-chirho/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/associated-chirho/PolyKindSpecializingDefaultChirho.hs"
+      ],
+      "source_text_chirho": "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)\n{-# LANGUAGE PolyKinds, KindSignatures, TypeFamilies #-}\nmodule Main where\nclass CChirho (aChirho :: kChirho) where\n  type FChirho aChirho\n  type FChirho xChirho = Maybe xChirho\nmain :: IO ()\nmain = pure ()\n"
+    }
+  ],
+  "evidence_chirho": {
+    "checkpoint_packet_chirho": "tmp-chirho/kind-engine-product-gate-chirho/checkpoint-327ca82d-r1-chirho",
+    "root_review_sha256_chirho": "abcf0aa7e7ecc263e6f37546f6281aa0391a21ec2cba17c9709d86f7bad32b4c",
+    "focused_packet_chirho": "tmp-chirho/kind-engine-product-gate-chirho/focused-327ca82d-root-chirho",
+    "focused_review_sha256_chirho": "8f742fb4ef9b4d0525bdfb794c600d26e78882146172f39713cbb7b9cf81a135"
+  },
+  "open_chirho": [
+    "Stable exported AST ownership and complete qualification",
+    "Qualified synonym contexts and producer-checked dependency transport",
+    "Full HasField representation-polymorphic telescope supported boundary",
+    "Final complete-engine runtime and both corpus axes before main landing"
+  ],
+  "held_chirho": [
+    "Runtime identity-based dictionary resolver",
+    "Constructor dictionary packing/evidence activation",
+    "Numeric-entry specialization",
+    "Token-only deriving prototype"
+  ]
+}
