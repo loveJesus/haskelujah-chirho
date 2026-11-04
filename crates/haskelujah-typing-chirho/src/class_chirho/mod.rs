@@ -23,6 +23,7 @@ use crate::unify_chirho::unify_chirho;
 mod arena_chirho;
 mod definitions_chirho;
 mod instance_matching_chirho;
+mod registration_budget_chirho;
 mod standard_chirho;
 mod tuple_instances_chirho;
 mod views_chirho;

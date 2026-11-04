@@ -70,6 +70,8 @@ pub(super) fn infer_result_chirho(
     let mut totals_chirho = HashMap::new();
     totals_chirho.insert("show".to_string(), records_chirho.len() as u32);
     InferResultChirho {
+        non_deferrable_diagnostics_chirho:
+            haskelujah_diagnostics_chirho::DiagnosticBundleChirho::empty_chirho(),
         source_instances_chirho: Vec::new(),
         subst_chirho: haskelujah_typing_chirho::subst_chirho::SubstChirho::empty_chirho(),
         env_chirho: haskelujah_typing_chirho::env_chirho::TyEnvChirho::new_chirho(),

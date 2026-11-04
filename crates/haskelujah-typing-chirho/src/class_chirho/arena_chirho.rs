@@ -16,7 +16,10 @@ use haskelujah_ast_chirho::name_chirho::{
 use super::views_chirho::{ClassNamesViewChirho, InstanceNamesViewChirho};
 use super::{ClassDeclChirho, ClassDeclPartsChirho, InstDeclChirho, InstDeclPartsChirho};
 
-const REGISTRY_WORK_CHIRHO: usize = 1 << 25;
+use super::registration_budget_chirho::{
+    MAX_REGISTRATION_WORK_CHIRHO, ModuleRegistrationBudgetChirho,
+};
+const SNAPSHOT_ALLOCATION_WORK_CHIRHO: usize = 1 << 25;
 
 #[derive(Debug)]
 struct ArenaOwnerChirho;
@@ -60,6 +63,7 @@ local_record_id_chirho!(InstanceRecordIdChirho);
 pub enum ClassRegistryErrorChirho {
     WorkBoundChirho,
     SeedIdentityBoundChirho,
+    SnapshotAllocationBoundChirho,
 }
 
 /// A definition conflict is explicit; an identity lookup never picks by order.
@@ -82,41 +86,35 @@ pub struct ClassEnvChirho {
     class_identities_chirho: HashMap<PredicateClassIdentityChirho, ClassIdentityEntryChirho>,
     instance_identities_chirho: HashMap<PredicateClassIdentityChirho, Vec<InstanceRecordIdChirho>>,
     next_seed_instance_chirho: usize,
-    remaining_work_chirho: usize,
-    error_chirho: Option<ClassRegistryErrorChirho>,
+    registration_work_chirho: Arc<ModuleRegistrationBudgetChirho>,
 }
 
 impl Default for ClassEnvChirho {
     fn default() -> Self {
-        Self {
-            owner_chirho: Arc::new(ArenaOwnerChirho),
-            class_records_chirho: Vec::new(),
-            instance_records_chirho: Vec::new(),
-            class_pointer_index_chirho: HashMap::new(),
-            instance_pointer_index_chirho: HashMap::new(),
-            class_names_chirho: HashMap::new(),
-            instance_names_chirho: HashMap::new(),
-            class_identities_chirho: HashMap::new(),
-            instance_identities_chirho: HashMap::new(),
-            next_seed_instance_chirho: 0,
-            remaining_work_chirho: REGISTRY_WORK_CHIRHO,
-            error_chirho: None,
-        }
+        Self::with_registration_limit_chirho(MAX_REGISTRATION_WORK_CHIRHO)
     }
 }
 
 impl ClassEnvChirho {
+    pub const DEFAULT_REGISTRATION_LIMIT_CHIRHO: usize = MAX_REGISTRATION_WORK_CHIRHO;
+
     pub fn try_snapshot_chirho(&self) -> Result<Self, ClassRegistryErrorChirho> {
-        if let Some(error_chirho) = self.error_chirho {
+        self.try_snapshot_with_allocation_limit_chirho(SNAPSHOT_ALLOCATION_WORK_CHIRHO)
+    }
+
+    fn try_snapshot_with_allocation_limit_chirho(
+        &self,
+        limit_chirho: usize,
+    ) -> Result<Self, ClassRegistryErrorChirho> {
+        if let Some(error_chirho) = self.registry_error_chirho() {
             return Err(error_chirho);
         }
         let copy_weight_chirho = self
             .copy_weight_chirho()
-            .ok_or(ClassRegistryErrorChirho::WorkBoundChirho)?;
-        let remaining_work_chirho = self
-            .remaining_work_chirho
-            .checked_sub(copy_weight_chirho)
-            .ok_or(ClassRegistryErrorChirho::WorkBoundChirho)?;
+            .ok_or(ClassRegistryErrorChirho::SnapshotAllocationBoundChirho)?;
+        if copy_weight_chirho > limit_chirho {
+            return Err(ClassRegistryErrorChirho::SnapshotAllocationBoundChirho);
+        }
         let owner_chirho = Arc::new(ArenaOwnerChirho);
         // Clone each legacy table *as a table*, retaining its hasher and bucket
         // order. Rebuilding with collect() would introduce an ordering change.
@@ -159,8 +157,7 @@ impl ClassEnvChirho {
             class_identities_chirho,
             instance_identities_chirho,
             next_seed_instance_chirho: self.next_seed_instance_chirho,
-            remaining_work_chirho,
-            error_chirho: None,
+            registration_work_chirho: Arc::clone(&self.registration_work_chirho),
         })
     }
 }
@@ -175,7 +172,7 @@ impl ClassEnvChirho {
             .checked_add(self.instance_records_chirho.len())?;
         let mut add_chirho = |amount_chirho: usize| -> Option<()> {
             weight_chirho = weight_chirho.checked_add(amount_chirho)?;
-            (weight_chirho <= REGISTRY_WORK_CHIRHO).then_some(())
+            (weight_chirho <= SNAPSHOT_ALLOCATION_WORK_CHIRHO).then_some(())
         };
         for name_chirho in self.class_names_chirho.keys() {
             add_chirho(name_chirho.len().checked_add(1)?)?;
@@ -206,6 +203,46 @@ impl ClassEnvChirho {
         Self::default()
     }
 
+    /// A resource policy for actual module admission, never a global fault switch.
+    pub fn with_registration_limit_chirho(limit_chirho: usize) -> Self {
+        Self {
+            owner_chirho: Arc::new(ArenaOwnerChirho),
+            class_records_chirho: Vec::new(),
+            instance_records_chirho: Vec::new(),
+            class_pointer_index_chirho: HashMap::new(),
+            instance_pointer_index_chirho: HashMap::new(),
+            class_names_chirho: HashMap::new(),
+            instance_names_chirho: HashMap::new(),
+            class_identities_chirho: HashMap::new(),
+            instance_identities_chirho: HashMap::new(),
+            next_seed_instance_chirho: 0,
+            registration_work_chirho: Arc::new(ModuleRegistrationBudgetChirho::new_chirho(
+                limit_chirho,
+            )),
+        }
+    }
+
+    pub fn registration_limit_chirho(&self) -> usize {
+        self.registration_work_chirho.limit_chirho()
+    }
+    pub fn remaining_registration_work_chirho(&self) -> usize {
+        self.registration_work_chirho.remaining_chirho()
+    }
+
+    /// Import first validates/copies a complete immutable snapshot. Only then is
+    /// a new module allowance admitted. Failed lineages are never reset.
+    pub fn try_import_snapshot_chirho(&self) -> Result<Self, ClassRegistryErrorChirho> {
+        let mut snapshot_chirho = self.try_snapshot_chirho()?;
+        snapshot_chirho.registration_work_chirho = Arc::new(
+            ModuleRegistrationBudgetChirho::new_chirho(self.registration_limit_chirho()),
+        );
+        Ok(snapshot_chirho)
+    }
+
+    pub(crate) fn fail_module_chirho(&self, error_chirho: ClassRegistryErrorChirho) {
+        self.registration_work_chirho.fail_chirho(error_chirho);
+    }
+
     pub fn classes_chirho(&self) -> ClassNamesViewChirho<'_> {
         ClassNamesViewChirho::new_chirho(self)
     }
@@ -215,26 +252,19 @@ impl ClassEnvChirho {
     }
 
     pub fn registry_error_chirho(&self) -> Option<ClassRegistryErrorChirho> {
-        self.error_chirho
+        self.registration_work_chirho.failure_chirho()
     }
 
     fn checked_weight_chirho(&mut self, weight_chirho: Option<usize>) -> Option<usize> {
         if weight_chirho.is_none() {
-            self.error_chirho = Some(ClassRegistryErrorChirho::WorkBoundChirho);
+            self.registration_work_chirho
+                .fail_chirho(ClassRegistryErrorChirho::WorkBoundChirho);
         }
         weight_chirho
     }
 
     fn charge_chirho(&mut self, weight_chirho: usize) -> bool {
-        if self.error_chirho.is_some() {
-            return false;
-        }
-        let Some(remaining_chirho) = self.remaining_work_chirho.checked_sub(weight_chirho) else {
-            self.error_chirho = Some(ClassRegistryErrorChirho::WorkBoundChirho);
-            return false;
-        };
-        self.remaining_work_chirho = remaining_chirho;
-        true
+        self.registration_work_chirho.charge_chirho(weight_chirho)
     }
 
     pub fn class_record_chirho(
@@ -319,7 +349,7 @@ impl ClassEnvChirho {
     }
 
     pub fn add_class_chirho(&mut self, declaration_chirho: ClassDeclChirho) {
-        if self.error_chirho.is_some() {
+        if self.registry_error_chirho().is_some() {
             return;
         }
         if self
@@ -327,7 +357,7 @@ impl ClassEnvChirho {
             .is_none()
         {
             debug_assert!(
-                self.error_chirho.is_some(),
+                self.registry_error_chirho().is_some(),
                 "registration failure retains its resource error"
             );
         }
@@ -356,7 +386,7 @@ impl ClassEnvChirho {
     }
 
     pub fn add_instance_chirho(&mut self, declaration_chirho: InstDeclChirho) {
-        if self.error_chirho.is_some() {
+        if self.registry_error_chirho().is_some() {
             return;
         }
         self.add_shared_instance_chirho(Arc::new(declaration_chirho));
@@ -368,7 +398,7 @@ impl ClassEnvChirho {
             .is_none()
         {
             debug_assert!(
-                self.error_chirho.is_some(),
+                self.registry_error_chirho().is_some(),
                 "registration failure retains its resource error"
             );
         }
@@ -424,8 +454,12 @@ impl ClassEnvChirho {
         identity_chirho: CompilerClassChirho,
         parts_chirho: InstDeclPartsChirho,
     ) {
+        if self.registry_error_chirho().is_some() {
+            return;
+        }
         let Some(next_chirho) = self.next_seed_instance_chirho.checked_add(1) else {
-            self.error_chirho = Some(ClassRegistryErrorChirho::SeedIdentityBoundChirho);
+            self.registration_work_chirho
+                .fail_chirho(ClassRegistryErrorChirho::SeedIdentityBoundChirho);
             return;
         };
         let origin_chirho = InstanceIdentityChirho::SeedChirho(self.next_seed_instance_chirho);
@@ -449,7 +483,7 @@ impl ClassEnvChirho {
         &self,
         identity_chirho: CompilerClassChirho,
     ) -> Option<&Arc<ClassDeclChirho>> {
-        if self.error_chirho.is_some() {
+        if self.registry_error_chirho().is_some() {
             return None;
         }
         match self

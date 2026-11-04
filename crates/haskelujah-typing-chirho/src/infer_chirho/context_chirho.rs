@@ -16,15 +16,51 @@ use haskelujah_diagnostics_chirho::DiagnosticBundleChirho;
 use std::collections::{HashMap, HashSet};
 
 impl InferCtxChirho {
+    pub(super) fn has_non_deferrable_failure_chirho(&self) -> bool {
+        self.non_deferrable_diagnostics_chirho.has_errors_chirho()
+            || self.class_env_chirho.registry_error_chirho().is_some()
+    }
+
+    pub(super) fn note_registry_failure_chirho(
+        &mut self,
+        error_chirho: crate::class_chirho::ClassRegistryErrorChirho,
+        span_chirho: Option<SpanChirho>,
+    ) {
+        // Sticky across same-module restore points and failed next imports.
+        self.class_env_chirho.fail_module_chirho(error_chirho);
+        if self.non_deferrable_diagnostics_chirho.has_errors_chirho() {
+            return;
+        }
+        let message_chirho = format!("class registry resource limit reached: {error_chirho:?}");
+        let diagnostic_chirho = match span_chirho {
+            Some(span_chirho) => DiagnosticChirho::error_chirho(message_chirho, span_chirho),
+            None => DiagnosticChirho::error_no_span_chirho(message_chirho),
+        };
+        self.non_deferrable_diagnostics_chirho
+            .push_chirho(diagnostic_chirho);
+    }
+
     pub fn new_chirho() -> Self {
-        let mut env_chirho = TyEnvChirho::new_chirho();
-        let mut class_env_chirho = ClassEnvChirho::new_chirho();
+        Self::new_with_registration_limit_chirho(ClassEnvChirho::DEFAULT_REGISTRATION_LIMIT_CHIRHO)
+    }
+
+    fn new_with_registration_limit_chirho(limit_chirho: usize) -> Self {
+        let mut class_env_chirho = ClassEnvChirho::with_registration_limit_chirho(limit_chirho);
         class_env_chirho.seed_standard_chirho();
-        let fully_known_class_names_chirho: HashSet<String> = class_env_chirho
-            .classes_chirho()
-            .keys_chirho()
-            .cloned()
-            .collect();
+        Self::new_with_class_env_chirho(class_env_chirho, true)
+    }
+
+    fn new_with_class_env_chirho(class_env_chirho: ClassEnvChirho, own_seed_chirho: bool) -> Self {
+        let mut env_chirho = TyEnvChirho::new_chirho();
+        let fully_known_class_names_chirho: HashSet<String> = if own_seed_chirho {
+            class_env_chirho
+                .classes_chirho()
+                .keys_chirho()
+                .cloned()
+                .collect()
+        } else {
+            HashSet::new()
+        };
         // The seed producer's own output (row 686, C08).
         let seeded_class_names_chirho = fully_known_class_names_chirho.clone();
         seed_builtins_chirho(&mut env_chirho);
@@ -340,6 +376,7 @@ impl InferCtxChirho {
             ),
         );
         Self {
+            non_deferrable_diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             next_var_chirho: 0,
             env_chirho,
             class_env_chirho,
@@ -405,31 +442,28 @@ impl InferCtxChirho {
     }
 
     pub fn new_with_imported_class_env_chirho(imported_class_env_chirho: &ClassEnvChirho) -> Self {
-        let mut ctx_chirho = Self::new_chirho();
-        if !imported_class_env_chirho.classes_chirho().is_empty_chirho()
-            || !imported_class_env_chirho
+        if imported_class_env_chirho.registry_error_chirho().is_none()
+            && imported_class_env_chirho.classes_chirho().is_empty_chirho()
+            && imported_class_env_chirho
                 .instances_chirho()
                 .is_empty_chirho()
         {
-            match imported_class_env_chirho.try_snapshot_chirho() {
-                Ok(environment_chirho) => ctx_chirho.class_env_chirho = environment_chirho,
-                Err(error_chirho) => {
-                    ctx_chirho.diagnostics_chirho.push_chirho(
-                        DiagnosticChirho::error_no_span_chirho(format!(
-                            "imported class registry resource limit reached: {error_chirho:?}"
-                        )),
-                    );
-                    return ctx_chirho;
-                }
-            }
-            // The seeded env was replaced wholesale; the seeded classes'
-            // instance inventories are no longer trustworthy, and imported
-            // classes may have instances in modules we cannot see. Only
-            // classes declared in THIS module stay fully known.
-            ctx_chirho.fully_known_class_names_chirho.clear();
-            ctx_chirho.seeded_class_names_chirho.clear();
+            return Self::new_with_registration_limit_chirho(
+                imported_class_env_chirho.registration_limit_chirho(),
+            );
         }
-        ctx_chirho
+        match imported_class_env_chirho.try_import_snapshot_chirho() {
+            Ok(environment_chirho) => Self::new_with_class_env_chirho(environment_chirho, false),
+            Err(error_chirho) => {
+                // This terminal context is never a successful seed replacement:
+                // its fatal status survives both finish and subsequent admission.
+                let mut ctx_chirho = Self::new_with_registration_limit_chirho(
+                    imported_class_env_chirho.registration_limit_chirho(),
+                );
+                ctx_chirho.note_registry_failure_chirho(error_chirho, None);
+                ctx_chirho
+            }
+        }
     }
 
     /// Evidence-threading P2: finalize raw occurrence captures against the
@@ -590,12 +624,10 @@ impl InferCtxChirho {
     /// Consume the context and return the final result.
     pub fn finish_chirho(mut self) -> InferResultChirho {
         if let Some(error_chirho) = self.class_env_chirho.registry_error_chirho() {
-            self.diagnostics_chirho
-                .push_chirho(DiagnosticChirho::error_no_span_chirho(format!(
-                    "class registry resource limit reached: {error_chirho:?}"
-                )));
+            self.note_registry_failure_chirho(error_chirho, None);
         }
         InferResultChirho {
+            non_deferrable_diagnostics_chirho: self.non_deferrable_diagnostics_chirho,
             subst_chirho: SubstChirho::empty_chirho(),
             env_chirho: self.env_chirho,
             class_env_chirho: self.class_env_chirho,

@@ -296,6 +296,9 @@ fn record_field_key_chirho(name_chirho: &NameChirho) -> String {
 /// Result of type inference on a module.
 #[derive(Debug)]
 pub struct InferResultChirho {
+    /// Resource failures cannot be accepted by -fdefer-type-errors. Consumers
+    /// must reject this channel before publishing environments or evidence.
+    pub non_deferrable_diagnostics_chirho: DiagnosticBundleChirho,
     /// The final substitution after inference.
     pub subst_chirho: SubstChirho,
     /// The type environment after inference (with all top-level bindings).
@@ -366,6 +369,7 @@ pub struct MethodOccurrenceRecordChirho {
 
 /// The inference context — carries mutable state during inference.
 pub struct InferCtxChirho {
+    non_deferrable_diagnostics_chirho: DiagnosticBundleChirho,
     /// Fresh type variable counter.
     next_var_chirho: u32,
     /// Type environment (scoped).
@@ -733,6 +737,9 @@ pub fn infer_module_with_import_context_chirho(
     } = context_chirho;
     let mut ctx_chirho =
         InferCtxChirho::new_with_imported_class_env_chirho(imported_class_env_chirho);
+    if ctx_chirho.has_non_deferrable_failure_chirho() {
+        return ctx_chirho.finish_chirho();
+    }
     ctx_chirho.set_imported_type_name_preferences_chirho(
         safe_unqualified_imported_type_names_chirho,
         preferred_qualified_type_names_chirho,
@@ -810,6 +817,9 @@ pub fn infer_module_with_import_context_chirho(
         ctx_chirho.env_chirho.mask_chirho(name_chirho.clone());
     }
     let subst_chirho = ctx_chirho.infer_module_chirho(module_chirho);
+    if ctx_chirho.has_non_deferrable_failure_chirho() {
+        return ctx_chirho.finish_chirho();
+    }
     let default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
     if !default_subst_chirho.is_empty_chirho() {
         ctx_chirho.apply_subst_all_chirho(&default_subst_chirho);

@@ -468,11 +468,7 @@ impl InferCtxChirho {
         let class_env_snapshot_chirho = match self.class_env_chirho.try_snapshot_chirho() {
             Ok(snapshot_chirho) => snapshot_chirho,
             Err(error_chirho) => {
-                self.diagnostics_chirho
-                    .push_chirho(DiagnosticChirho::error_chirho(
-                        format!("class registry snapshot resource limit reached: {error_chirho:?}"),
-                        span_chirho,
-                    ));
+                self.note_registry_failure_chirho(error_chirho, Some(span_chirho));
                 return;
             }
         };

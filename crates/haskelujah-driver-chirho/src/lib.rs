@@ -2224,6 +2224,12 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
             type_constructor_scope_chirho: Some(type_constructor_scope_chirho),
         },
     );
+    if infer_result_chirho
+        .non_deferrable_diagnostics_chirho
+        .has_errors_chirho()
+    {
+        return Err(infer_result_chirho.non_deferrable_diagnostics_chirho);
+    }
     if !defer_errors_chirho && infer_result_chirho.diagnostics_chirho.has_errors_chirho() {
         return Err(infer_result_chirho.diagnostics_chirho);
     }
@@ -3066,6 +3072,12 @@ fn compile_backend_chirho(
     ifaces_chirho: &[ModuleIfaceChirho],
     program_modules_chirho: &std::collections::HashSet<String>,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
+    if infer_result_chirho
+        .non_deferrable_diagnostics_chirho
+        .has_errors_chirho()
+    {
+        return Err(infer_result_chirho.non_deferrable_diagnostics_chirho);
+    }
     // Phase 5: Desugar AST → Core IR (evidence-threading P2b: with
     // per-occurrence ids for the method-occurrence names).
     // Dictionary evidence: every name whose scheme carries class predicates

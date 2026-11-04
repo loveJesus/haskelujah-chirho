@@ -536,6 +536,16 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
                 warnings_chirho: _warnings_chirho,
             } = frontend_result_chirho;
 
+            if infer_result_chirho
+                .non_deferrable_diagnostics_chirho
+                .has_errors_chirho()
+            {
+                return Err(format!(
+                    "Error compiling {file_name_chirho}: {}",
+                    infer_result_chirho.non_deferrable_diagnostics_chirho
+                ));
+            }
+
             let iface_chirho = super::build_family_aware_iface_chirho(
                 &module_chirho,
                 &ifaces_chirho,
@@ -680,6 +690,16 @@ pub(crate) fn compile_module_sources_with_extra_ifaces_chirho(
                 resolved_imported_type_synonyms_chirho,
                 warnings_chirho,
             } = frontend_result_chirho;
+
+            if infer_result_chirho
+                .non_deferrable_diagnostics_chirho
+                .has_errors_chirho()
+            {
+                return Err(format!(
+                    "Error compiling {file_name_chirho}: {}",
+                    infer_result_chirho.non_deferrable_diagnostics_chirho
+                ));
+            }
 
             all_warnings_chirho.extend(warnings_chirho);
 

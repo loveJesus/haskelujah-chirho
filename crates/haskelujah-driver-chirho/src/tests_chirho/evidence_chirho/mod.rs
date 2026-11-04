@@ -12,3 +12,4 @@ mod occurrence_producers_chirho;
 mod occurrence_provenance_join_chirho;
 mod occurrence_records_chirho;
 mod range_join_chirho;
+mod registry_resources_chirho;

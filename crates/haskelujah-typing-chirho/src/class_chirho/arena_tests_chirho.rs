@@ -183,21 +183,77 @@ fn distinct_records_with_one_claimed_identity_do_not_choose_by_order_chirho() {
 }
 
 #[test]
-fn bounded_registration_and_clone_retain_named_failure_without_partial_views_chirho() {
-    let mut env_chirho = ClassEnvChirho::new_chirho();
-    env_chirho.remaining_work_chirho = 0;
+fn failed_registration_stays_failed_across_a_next_module_admission_chirho() {
+    let mut env_chirho = ClassEnvChirho::with_registration_limit_chirho(0);
     env_chirho.add_class_chirho(class_chirho("CChirho"));
     assert_eq!(
         env_chirho.registry_error_chirho(),
         Some(ClassRegistryErrorChirho::WorkBoundChirho)
     );
-    assert!(env_chirho.classes_chirho().is_empty_chirho());
-    let mut env_chirho = ClassEnvChirho::new_chirho();
-    env_chirho.add_class_chirho(class_chirho("CChirho"));
-    env_chirho.remaining_work_chirho = 0;
     assert!(matches!(
-        env_chirho.try_snapshot_chirho(),
+        env_chirho.try_import_snapshot_chirho(),
         Err(ClassRegistryErrorChirho::WorkBoundChirho)
     ));
-    assert!(env_chirho.classes_chirho().contains_key_chirho("CChirho"));
+    assert!(env_chirho.classes_chirho().is_empty_chirho());
+}
+
+#[test]
+fn snapshot_allocation_failure_preserves_the_complete_old_state_chirho() {
+    let mut env_chirho = ClassEnvChirho::new_chirho();
+    env_chirho.add_class_chirho(class_chirho("CChirho"));
+    let old_chirho = env_chirho.class_names_chirho["CChirho"].clone();
+    assert!(matches!(
+        env_chirho.try_snapshot_with_allocation_limit_chirho(0),
+        Err(ClassRegistryErrorChirho::SnapshotAllocationBoundChirho)
+    ));
+    assert!(env_chirho.class_record_chirho(&old_chirho).is_some());
+    assert!(env_chirho.registry_error_chirho().is_none());
+}
+
+#[test]
+fn same_module_restore_points_share_work_and_sticky_failure_chirho() {
+    let mut env_chirho = ClassEnvChirho::with_registration_limit_chirho(256);
+    env_chirho.add_class_chirho(class_chirho("CChirho"));
+    let snapshot_chirho = env_chirho
+        .try_snapshot_chirho()
+        .expect("complete small snapshot");
+    let remaining_chirho = env_chirho.remaining_registration_work_chirho();
+    assert_eq!(
+        snapshot_chirho.remaining_registration_work_chirho(),
+        remaining_chirho
+    );
+    assert!(
+        env_chirho
+            .registration_work_chirho
+            .charge_chirho(remaining_chirho)
+    );
+    let later_chirho = env_chirho
+        .try_snapshot_chirho()
+        .expect("snapshots do not consume reasoning allowance");
+    assert_eq!(later_chirho.remaining_registration_work_chirho(), 0);
+    env_chirho.add_class_chirho(class_chirho("TooMuchChirho"));
+    assert_eq!(
+        snapshot_chirho.registry_error_chirho(),
+        Some(ClassRegistryErrorChirho::WorkBoundChirho)
+    );
+    assert!(matches!(
+        snapshot_chirho.try_import_snapshot_chirho(),
+        Err(ClassRegistryErrorChirho::WorkBoundChirho)
+    ));
+}
+
+#[test]
+fn successful_next_module_admission_carries_policy_but_not_spent_work_chirho() {
+    let mut env_chirho = ClassEnvChirho::with_registration_limit_chirho(256);
+    env_chirho.add_class_chirho(class_chirho("CChirho"));
+    let remaining_chirho = env_chirho.remaining_registration_work_chirho();
+    let next_chirho = env_chirho
+        .try_import_snapshot_chirho()
+        .expect("successful admission");
+    assert_eq!(
+        env_chirho.remaining_registration_work_chirho(),
+        remaining_chirho
+    );
+    assert_eq!(next_chirho.remaining_registration_work_chirho(), 256);
+    assert_eq!(next_chirho.registration_limit_chirho(), 256);
 }
