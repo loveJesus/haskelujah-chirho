@@ -34,6 +34,11 @@ flowchart TD
   - first as written, before preprocessing, so CPP cannot drop one of its options;
   - then after preprocessing, as GHC re-reads the pragmas once CPP has run, so an `OPTIONS_GHC` that CPP selects applies too.
 - Direct frontend callers read the header of the text they pass in.
+- Option words follow GHC's `toArgs`:
+  - A word that starts with `"` is a Haskell string literal, read without its quotes. Only `\"` and `\\` are decoded.
+  - A quoted part inside a word keeps its quotes and may hold spaces.
+  - Single quotes are ordinary characters: GHC accepts `"-fdefer-typed-holes"` and rejects `'-fdefer-typed-holes'`.
+  - A body GHC cannot read, such as an unterminated or misplaced quote, gives no options.
 - An unbound unqualified `_` or `_name` in an expression is a hole (E0210).
   - A bound `_name` is an ordinary variable.
   - A qualified spelling is an unbound variable.
@@ -67,6 +72,11 @@ E0211 to E0214 were separated from the deferrable E0202, E0204, E0205 and E0200,
 
 - **Qualified out-of-scope names:** a qualified out-of-scope name (`Q.x`, name resolution's E0100) never defers. GHC defers such a variable under `-fdefer-out-of-scope-variables`, but E0100 also covers data constructors, which GHC never defers.
 - **CPP-selected options:** an `OPTIONS_GHC` that only a header `#if` selects is read from the preprocessed text alone. Whether CPP runs at all is still decided by the existing line heuristic.
+- **Option word forms not modeled:**
+  - the `["..."]` list form that GHC also reads;
+  - Haskell escapes other than `\"` and `\\`.
+- **`-X` extensions:** the `-X` words of an `OPTIONS_GHC` pragma still split on whitespace, so a quoted `-X` word names no extension.
+- **Unreadable pragmas:** a malformed or unknown option does not reject the module as GHC does; it is simply not a switch.
 - **No runtime claim:** a deferred module compiles. Evaluating a deferred hole, unbound variable or type error does not raise GHC's deferred runtime error; it does whatever the existing lowering does.
 - **Callers without options:**
   - The CLI, multi-module and dependency-package builds pass no caller options; only the module header's pragmas apply there.
@@ -75,7 +85,7 @@ E0211 to E0214 were separated from the deferrable E0202, E0204, E0205 and E0200,
 
 ## Controls
 
-- `tests_chirho/extensions_chirho/deferral_flags_chirho.rs`: flag implications, both orders, caller-then-module precedence, unrelated options, header option words, and fake flags in comments, strings and misplaced pragmas.
+- `tests_chirho/extensions_chirho/deferral_flags_chirho.rs`: flag implications, both orders, caller-then-module precedence, unrelated options, header option words, quoted option words, and fake flags in comments, strings and misplaced pragmas.
 - `tests_chirho/extensions_chirho/typed_hole_policy_chirho.rs`: end-to-end checks on typed `main :: IO ()` programs:
   - default `_` and `_missing` rejection;
   - bound `_x`;
@@ -85,5 +95,6 @@ E0211 to E0214 were separated from the deferrable E0202, E0204, E0205 and E0200,
   - fake flags;
   - category separation;
   - kind, duplicate-instance and record-constructor errors that stay fatal;
-  - a CPP module's header options on the source path.
+  - a CPP module's header options on the source path;
+  - double- versus single-quoted switches.
 - The three earlier `typed_hole_*` tests in `extensions_chirho.rs` keep their sources and expectations and now ask for `-fdefer-typed-holes` explicitly. Their unsigned `main = 42` keeps any inherited row 692 numeric-entry failure as it was.

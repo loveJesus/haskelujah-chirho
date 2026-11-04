@@ -117,6 +117,11 @@ fn options_chirho(options_chirho: &[&str]) -> FrontendOptionsChirho {
     FrontendOptionsChirho::from_ghc_options_chirho(options_chirho.iter().copied())
 }
 
+/// The unused-hole module under one header `OPTIONS_GHC` pragma with this body.
+fn with_options_pragma_chirho(body_chirho: &str) -> String {
+    format!("{{-# OPTIONS_GHC {body_chirho} #-}}\n{UNUSED_HOLE_CHIRHO}")
+}
+
 /// The frontend's verdict under the caller's options: its warnings, or its rendered errors.
 fn check_chirho(source_chirho: &str, caller_chirho: &[&str]) -> Result<Vec<String>, String> {
     frontend_warnings_with_options_chirho(
@@ -223,21 +228,33 @@ fn the_later_option_wins_in_either_order_chirho() {
 
 #[test]
 fn module_header_options_follow_the_callers_chirho() {
-    let header_chirho = |pragma_chirho: &str| {
-        format!("{{-# OPTIONS_GHC {pragma_chirho} #-}}\n{UNUSED_HOLE_CHIRHO}")
-    };
     assert_rejected_chirho(
-        &header_chirho("-fno-defer-typed-holes"),
+        &with_options_pragma_chirho("-fno-defer-typed-holes"),
         &["-fdefer-typed-holes"],
         "found hole",
     );
     assert_deferred_chirho(
-        &header_chirho("-fdefer-typed-holes"),
+        &with_options_pragma_chirho("-fdefer-typed-holes"),
         &["-fno-defer-typed-holes"],
         "found hole",
     );
     assert_rejected_chirho(
-        &header_chirho("-fdefer-type-errors -fno-defer-typed-holes"),
+        &with_options_pragma_chirho("-fdefer-type-errors -fno-defer-typed-holes"),
+        &[],
+        "found hole",
+    );
+}
+
+#[test]
+fn a_double_quoted_option_defers_and_a_single_quoted_one_does_not_chirho() {
+    // GHC 9.14.1: the double-quoted switch is accepted; the single-quoted one is rejected.
+    assert_deferred_chirho(
+        &with_options_pragma_chirho("\"-fdefer-typed-holes\""),
+        &[],
+        "found hole",
+    );
+    assert_rejected_chirho(
+        &with_options_pragma_chirho("'-fdefer-typed-holes'"),
         &[],
         "found hole",
     );

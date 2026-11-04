@@ -114,10 +114,74 @@ fn is_options_keyword_chirho(keyword_chirho: &str) -> bool {
 pub fn pragma_ghc_options_from_inner_chirho(inner_chirho: &str) -> Vec<String> {
     match inner_chirho.trim().split_once(char::is_whitespace) {
         Some((keyword_chirho, rest_chirho)) if is_options_keyword_chirho(keyword_chirho) => {
-            rest_chirho.split_whitespace().map(str::to_string).collect()
+            ghc_option_words_chirho(rest_chirho).unwrap_or_default()
         }
         _ => Vec::new(),
     }
+}
+
+/// An `OPTIONS_GHC` body read as GHC's `toArgs` reads it (row 695).
+/// - Whitespace separates words.
+/// - A word that starts with `"` is a Haskell string literal, taken without its quotes.
+/// - A `"` inside a word opens a quoted part, which keeps its quotes and may hold spaces.
+/// - Either quoted form must end the word.
+/// - Single quotes are ordinary characters, so `'-fdefer-typed-holes'` names no switch.
+///
+/// A body GHC cannot read (an unterminated or misplaced quote) gives `None`, because GHC
+/// rejects such a pragma. The `["..."]` list form GHC also reads is not modeled.
+fn ghc_option_words_chirho(body_chirho: &str) -> Option<Vec<String>> {
+    let mut words_chirho = Vec::new();
+    let mut rest_chirho = body_chirho.trim_start();
+    while !rest_chirho.is_empty() {
+        let word_chirho = if let Some(after_open_chirho) = rest_chirho.strip_prefix('"') {
+            let (text_chirho, after_close_chirho) = split_quoted_chirho(after_open_chirho)?;
+            rest_chirho = after_close_chirho;
+            text_chirho
+        } else {
+            let end_chirho = rest_chirho
+                .find(|char_chirho: char| char_chirho.is_whitespace() || char_chirho == '"')
+                .unwrap_or(rest_chirho.len());
+            let (plain_chirho, after_plain_chirho) = rest_chirho.split_at(end_chirho);
+            if let Some(after_open_chirho) = after_plain_chirho.strip_prefix('"') {
+                let (_, after_close_chirho) = split_quoted_chirho(after_open_chirho)?;
+                let quoted_len_chirho = after_plain_chirho.len() - after_close_chirho.len();
+                rest_chirho = after_close_chirho;
+                format!("{plain_chirho}{}", &after_plain_chirho[..quoted_len_chirho])
+            } else {
+                rest_chirho = after_plain_chirho;
+                plain_chirho.to_string()
+            }
+        };
+        if rest_chirho.starts_with(|char_chirho: char| !char_chirho.is_whitespace()) {
+            return None;
+        }
+        words_chirho.push(word_chirho);
+        rest_chirho = rest_chirho.trim_start();
+    }
+    Some(words_chirho)
+}
+
+/// A Haskell string literal after its opening `"`: the text, and what follows the closing
+/// `"`. Only `\"` and `\\` are decoded. Any other escape is kept as written, so it never
+/// spells a deferral switch. `None` when the literal never closes.
+fn split_quoted_chirho(after_open_chirho: &str) -> Option<(String, &str)> {
+    let mut text_chirho = String::new();
+    let mut chars_chirho = after_open_chirho.char_indices();
+    while let Some((index_chirho, char_chirho)) = chars_chirho.next() {
+        match char_chirho {
+            '"' => return Some((text_chirho, &after_open_chirho[index_chirho + 1..])),
+            '\\' => match chars_chirho.next() {
+                Some((_, escaped_chirho @ ('"' | '\\'))) => text_chirho.push(escaped_chirho),
+                Some((_, other_chirho)) => {
+                    text_chirho.push('\\');
+                    text_chirho.push(other_chirho);
+                }
+                None => return None,
+            },
+            other_chirho => text_chirho.push(other_chirho),
+        }
+    }
+    None
 }
 
 /// The option words of the module header's `OPTIONS_GHC` pragmas, in source order.

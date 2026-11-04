@@ -147,3 +147,34 @@ fn flags_outside_header_option_pragmas_are_not_options_chirho() {
         );
     }
 }
+
+#[test]
+fn quoted_option_words_read_as_ghc_reads_them_chirho() {
+    // GHC 9.14.1 accepts a double-quoted switch and rejects a single-quoted one.
+    assert_eq!(
+        header_chirho("{-# OPTIONS_GHC \"-fdefer-typed-holes\" -Wall #-}\nmodule Main where\n"),
+        words_chirho(&["-fdefer-typed-holes", "-Wall"])
+    );
+    assert_eq!(
+        header_chirho("{-# OPTIONS_GHC '-fdefer-typed-holes' #-}\nmodule Main where\n"),
+        words_chirho(&["'-fdefer-typed-holes'"])
+    );
+    // A quoted part inside a word keeps its quotes and its spaces: one word, no switch.
+    assert_eq!(
+        header_chirho(
+            "{-# OPTIONS_GHC -DX=\"a -fdefer-typed-holes b\" -Wall #-}\nmodule Main where\n"
+        ),
+        words_chirho(&["-DX=\"a -fdefer-typed-holes b\"", "-Wall"])
+    );
+    // A body GHC cannot read gives no option words.
+    for unreadable_chirho in [
+        "{-# OPTIONS_GHC \"-fdefer-typed-holes #-}\nmodule Main where\n",
+        "{-# OPTIONS_GHC \"-fdefer\"-typed-holes #-}\nmodule Main where\n",
+    ] {
+        assert_eq!(
+            header_chirho(unreadable_chirho),
+            Vec::<String>::new(),
+            "{unreadable_chirho}"
+        );
+    }
+}
