@@ -22,7 +22,7 @@ impl DesugarCtxChirho {
             } => {
                 let inner_chirho: Vec<String> = elements_chirho
                     .iter()
-                    .map(|e_chirho| Self::type_key_from_ast_chirho(e_chirho))
+                    .map(Self::type_key_from_ast_chirho)
                     .collect();
                 format!("({})", inner_chirho.join(", "))
             }
@@ -56,7 +56,7 @@ impl DesugarCtxChirho {
         } else {
             let keys_chirho: Vec<String> = types_chirho
                 .iter()
-                .map(|t_chirho| Self::type_key_from_ast_chirho(t_chirho))
+                .map(Self::type_key_from_ast_chirho)
                 .collect();
             keys_chirho.join("_")
         }
@@ -169,10 +169,8 @@ impl DesugarCtxChirho {
                         }
                     }
                     // Pre-bind default methods not provided by the instance
-                    if let Some(defaults_chirho) =
-                        class_defaults_chirho.get(&class_name_chirho.to_string())
-                    {
-                        for (default_name_chirho, _) in defaults_chirho {
+                    if let Some(defaults_chirho) = class_defaults_chirho.get(class_name_chirho) {
+                        for default_name_chirho in defaults_chirho.keys() {
                             if !provided_chirho.contains(default_name_chirho) {
                                 let prim_name_chirho = format!(
                                     "$prim_{}_{}_{}",
@@ -417,9 +415,7 @@ impl DesugarCtxChirho {
                         }
                     }
                     // Generate bindings for default methods not provided
-                    if let Some(defaults_chirho) =
-                        class_defaults_chirho.get(&class_name_chirho.to_string())
-                    {
+                    if let Some(defaults_chirho) = class_defaults_chirho.get(class_name_chirho) {
                         for (default_name_chirho, default_arms_chirho) in defaults_chirho {
                             if !provided_chirho.contains(default_name_chirho) {
                                 let core_rhs_chirho =
