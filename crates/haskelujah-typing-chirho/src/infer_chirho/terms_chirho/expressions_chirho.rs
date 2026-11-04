@@ -5,8 +5,8 @@
 
 use super::InferCtxChirho;
 use super::{
-    TYPED_HOLE_CODE_CHIRHO, UNBOUND_CONSTRUCTOR_CODE_CHIRHO, UNBOUND_VAR_CODE_CHIRHO,
-    infer_lit_chirho, strip_name_qualifier_chirho,
+    RECORD_WILDCARD_FIELD_CODE_CHIRHO, TYPED_HOLE_CODE_CHIRHO, UNBOUND_CONSTRUCTOR_CODE_CHIRHO,
+    UNBOUND_VAR_CODE_CHIRHO, infer_lit_chirho, strip_name_qualifier_chirho,
 };
 use crate::class_chirho::PredChirho;
 use crate::subst_chirho::SubstChirho;
@@ -887,7 +887,9 @@ impl InferCtxChirho {
                                     } else {
                                         self.diagnostics_chirho.push_chirho(
                                             DiagnosticChirho::error_with_code_chirho(
-                                                ErrorCodeChirho::error_chirho(200),
+                                                ErrorCodeChirho::error_chirho(
+                                                    RECORD_WILDCARD_FIELD_CODE_CHIRHO,
+                                                ),
                                                 format!(
                                                     "RecordWildCards: variable `{}` not in scope",
                                                     field_name_chirho

@@ -43,6 +43,7 @@ mod native_provenance_chirho;
 mod package_install_chirho;
 #[path = "frontend_chirho/pipeline_chirho.rs"]
 mod pipeline_chirho;
+pub(crate) use pipeline_chirho::run_frontend_under_deferral_chirho;
 pub use pipeline_chirho::{
     FrontendImportsChirho, run_frontend_with_options_chirho,
     run_frontend_with_type_synonyms_families_and_class_env_chirho,

@@ -185,6 +185,14 @@ const UNBOUND_CONSTRUCTOR_CODE_CHIRHO: u16 = 211;
 /// switch reaches, so it does not share the unsatisfied-constraint code (row 695).
 const DUPLICATE_INSTANCE_CODE_CHIRHO: u16 = 212;
 
+/// The signature converter's own invariant failed: an internal error, not a source type
+/// error, so it does not share the signature-mismatch code (row 695).
+const SIGNATURE_SCOPE_INVARIANT_CODE_CHIRHO: u16 = 213;
+
+/// A `RecordWildCards` construction field with no same-named variable in scope. It is not a
+/// solver type error, so it does not share the type-mismatch code (row 695).
+const RECORD_WILDCARD_FIELD_CODE_CHIRHO: u16 = 214;
+
 /// The inference errors GHC's three deferral switches can turn into warnings (row 695):
 /// `-fdefer-typed-holes` reaches typed holes, `-fdefer-out-of-scope-variables` unbound
 /// variables, and `-fdefer-type-errors` the solver's type errors listed in

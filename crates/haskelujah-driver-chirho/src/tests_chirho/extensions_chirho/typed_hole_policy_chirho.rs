@@ -97,6 +97,22 @@ main :: IO ()
 main = print g
 ";
 
+/// A CPP module whose header defers typed holes. The source path reads that header before
+/// preprocessing; `#if 1` keeps the branch that prints, with or without a system `cpp`.
+const CPP_DEFERRED_HOLE_CHIRHO: &str = "\
+{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -fdefer-typed-holes #-}
+module Main where
+unused :: Int -> Int
+unused = _
+main :: IO ()
+#if 1
+main = putStrLn \"ran\"
+#else
+main = putStrLn \"wrong branch\"
+#endif
+";
+
 fn options_chirho(options_chirho: &[&str]) -> FrontendOptionsChirho {
     FrontendOptionsChirho::from_ghc_options_chirho(options_chirho.iter().copied())
 }
@@ -319,4 +335,34 @@ fn kind_and_structural_errors_stay_fatal_under_general_deferral_chirho() {
         &["-fdefer-type-errors"],
         "unbound constructor",
     );
+}
+
+#[test]
+fn the_source_path_keeps_a_cpp_modules_header_options_chirho() {
+    let run_chirho = |source_chirho: &str, caller_chirho: &[&str]| {
+        eval_source_with_options_chirho(
+            source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            "CppHeaderOptionsChirho.hs",
+            None,
+            &options_chirho(caller_chirho),
+        )
+        .map(|(_value_chirho, machine_chirho)| machine_chirho.io_output_chirho)
+    };
+    assert_eq!(
+        run_chirho(CPP_DEFERRED_HOLE_CHIRHO, &[]).as_deref(),
+        Ok("ran\n"),
+        "the header's -fdefer-typed-holes survives preprocessing"
+    );
+    assert_eq!(
+        run_chirho(CPP_DEFERRED_HOLE_CHIRHO, &["-fno-defer-typed-holes"]).as_deref(),
+        Ok("ran\n"),
+        "the module's option follows the caller's"
+    );
+    let refused_chirho = run_chirho(
+        &CPP_DEFERRED_HOLE_CHIRHO.replace("-fdefer-typed-holes", "-fno-defer-typed-holes"),
+        &["-fdefer-typed-holes"],
+    )
+    .expect_err("the module's -fno-defer-typed-holes follows the caller's deferral");
+    assert!(refused_chirho.contains("found hole"), "{refused_chirho}");
 }

@@ -47,14 +47,38 @@ pub fn run_frontend_with_type_synonyms_families_and_class_env_chirho(
 }
 
 /// The frontend phases under the caller's options (row 695). The caller's options apply
-/// first and the module header's `OPTIONS_GHC` pragmas after them. Together they decide which
-/// inference errors defer; every other phase's errors stop the module.
+/// first and the `OPTIONS_GHC` pragmas in the header of `source_chirho` after them. Together
+/// they decide which inference errors defer; every other phase's errors stop the module.
 /// workflow: compiler-pipeline-chirho/error-deferral-chirho
 pub fn run_frontend_with_options_chirho(
     source_chirho: &str,
     file_id_chirho: haskelujah_span_chirho::FileIdChirho,
     imports_chirho: FrontendImportsChirho<'_>,
     options_chirho: &FrontendOptionsChirho,
+) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
+    let deferral_chirho = DeferralPolicyChirho::resolve_chirho(
+        &options_chirho.ghc_options_chirho,
+        &haskelujah_parser_chirho::pragma_chirho::header_ghc_options_chirho(
+            source_chirho,
+            file_id_chirho,
+        ),
+    );
+    run_frontend_under_deferral_chirho(
+        source_chirho,
+        file_id_chirho,
+        imports_chirho,
+        deferral_chirho,
+    )
+}
+
+/// The frontend phases under a deferral policy the caller already resolved: the source path
+/// reads the module's header before CPP rewrites the text (row 695).
+/// workflow: compiler-pipeline-chirho/error-deferral-chirho
+pub(crate) fn run_frontend_under_deferral_chirho(
+    source_chirho: &str,
+    file_id_chirho: haskelujah_span_chirho::FileIdChirho,
+    imports_chirho: FrontendImportsChirho<'_>,
+    deferral_chirho: DeferralPolicyChirho,
 ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
     let FrontendImportsChirho {
         ifaces_chirho,
@@ -63,13 +87,6 @@ pub fn run_frontend_with_options_chirho(
         type_families_chirho: imported_type_families_chirho,
         class_env_chirho: imported_class_env_chirho,
     } = imports_chirho;
-    let deferral_chirho = DeferralPolicyChirho::resolve_chirho(
-        &options_chirho.ghc_options_chirho,
-        &haskelujah_parser_chirho::pragma_chirho::header_ghc_options_chirho(
-            source_chirho,
-            file_id_chirho,
-        ),
-    );
 
     // Phase 1: CST parse (lex + layout + recursive-descent)
     let parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
