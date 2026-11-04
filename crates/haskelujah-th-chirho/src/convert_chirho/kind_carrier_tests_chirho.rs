@@ -201,13 +201,15 @@ fn data_result_kinds_are_retained_by_conversion_and_reification_chirho() {
         vec![],
         ThNameChirho::mk_name_chirho("DataChirho"),
         vec![],
-        Some(ThTypeChirho::StarTChirho),
+        Some(Box::new(ThTypeChirho::StarTChirho)),
         vec![],
         vec![],
     );
     let ast_chirho = th_dec_to_ast_chirho(&source_chirho).expect("data declaration");
+    let mut budget_chirho =
+        haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho();
     assert_eq!(
-        reify_decl_chirho(&ast_chirho).expect("within projection budget"),
+        reify_decl_chirho(&ast_chirho, &mut budget_chirho).expect("within projection budget"),
         Some(ThInfoChirho::TyConIChirho(source_chirho))
     );
 }
@@ -226,12 +228,14 @@ fn gadt_forall_kinded_binders_use_the_same_full_carrier_chirho() {
         Box::new(ThConChirho::GadtCChirho(
             vec![ThNameChirho::mk_name_chirho("MkDataChirho")],
             vec![],
-            constructor_chirho("DataChirho"),
+            Box::new(constructor_chirho("DataChirho")),
         )),
     );
     let ast_chirho = th_con_to_ast_chirho(&source_chirho).expect("constructor");
+    let mut budget_chirho =
+        haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho();
     assert_eq!(
-        ast_con_to_th_chirho(&ast_chirho).expect("within projection budget"),
+        ast_con_to_th_chirho(&ast_chirho, &mut budget_chirho).expect("within projection budget"),
         source_chirho
     );
 }
@@ -241,13 +245,13 @@ fn instance_declarations_keep_hidden_kinds_separate_from_visible_head_types_chir
     let source_chirho = ThDecChirho::InstanceDChirho(
         None,
         vec![],
-        ThTypeChirho::AppTChirho(
+        Box::new(ThTypeChirho::AppTChirho(
             Box::new(ThTypeChirho::AppKindTChirho(
                 Box::new(constructor_chirho("CChirho")),
                 Box::new(ThTypeChirho::StarTChirho),
             )),
             Box::new(constructor_chirho("Int")),
-        ),
+        )),
         vec![],
     );
     let DeclChirho::InstanceDeclChirho {

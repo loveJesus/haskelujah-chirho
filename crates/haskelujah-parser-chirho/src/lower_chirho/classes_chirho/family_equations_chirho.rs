@@ -96,8 +96,10 @@ impl LowerCtxChirho {
         // A context is not part of an equation's grammar: GHC stops at `=>`.
         let malformed_chirho =
             malformed_chirho || matches!(body_chirho, TypeChirho::QualChirho { .. });
-        let (head_chirho, lhs_types_chirho) = split_equation_head_chirho(body_chirho);
+        let (head_chirho, kind_args_chirho, lhs_types_chirho) =
+            split_equation_head_chirho(body_chirho);
         TypeFamilyEquationChirho {
+            kind_args_chirho,
             head_chirho,
             explicit_binders_chirho,
             unwritten_binders_chirho,
@@ -243,7 +245,10 @@ impl LowerCtxChirho {
 
 /// Split a left side into the type constructor heading it and its arguments in
 /// order, looking through parentheses around the head application (`(F a) b`).
-fn split_equation_head_chirho(lhs_chirho: TypeChirho) -> (Option<NameChirho>, Vec<TypeChirho>) {
+fn split_equation_head_chirho(
+    lhs_chirho: TypeChirho,
+) -> (Option<NameChirho>, Vec<TypeChirho>, Vec<TypeChirho>) {
+    let mut kind_arguments_chirho = Vec::new();
     let mut arguments_chirho = Vec::new();
     let mut current_chirho = lhs_chirho;
     let head_chirho = loop {
@@ -256,13 +261,22 @@ fn split_equation_head_chirho(lhs_chirho: TypeChirho) -> (Option<NameChirho>, Ve
                 arguments_chirho.push(*arg_chirho);
                 current_chirho = *fun_chirho;
             }
+            TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                kind_arguments_chirho.push(*arg_chirho);
+                current_chirho = *fun_chirho;
+            }
             TypeChirho::ParenChirho { inner_chirho, .. } => current_chirho = *inner_chirho,
             TypeChirho::ConChirho(name_chirho) => break Some(name_chirho),
             _ => break None,
         }
     };
     arguments_chirho.reverse();
-    (head_chirho, arguments_chirho)
+    kind_arguments_chirho.reverse();
+    (head_chirho, kind_arguments_chirho, arguments_chirho)
 }
 
 /// The variable a `VarTypeChirho` node spells.

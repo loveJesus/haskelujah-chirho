@@ -779,6 +779,7 @@ fn assoc_type_family_instance_uses_lhs_free_vars_as_pattern_vars_chirho() {
         types_chirho: vec![product_lhs_chirho.clone()],
         methods_chirho: vec![],
         assoc_tf_instances_chirho: vec![AssocTfInstanceChirho {
+            kind_args_chirho: Vec::new(),
             family_name_chirho: dummy_name_chirho("Rep"),
             lhs_types_chirho: vec![product_lhs_chirho],
             rhs_chirho: TypeChirho::TupleChirho {

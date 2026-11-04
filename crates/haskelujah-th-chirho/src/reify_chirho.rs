@@ -537,7 +537,7 @@ pub fn reify_decl_chirho(
                 kind_sig_chirho
                     .as_ref()
                     .and_then(|kind_chirho| kind_chirho.result_chirho())
-                    .map(ast_type_to_th_chirho),
+                    .map(|kind_chirho| Box::new(ast_type_to_th_chirho(kind_chirho))),
                 th_cons_chirho,
                 th_deriving_chirho,
             )))
@@ -579,7 +579,7 @@ pub fn reify_decl_chirho(
                 kind_sig_chirho
                     .as_ref()
                     .and_then(|kind_chirho| kind_chirho.result_chirho())
-                    .map(ast_type_to_th_chirho),
+                    .map(|kind_chirho| Box::new(ast_type_to_th_chirho(kind_chirho))),
                 th_con_chirho,
                 th_deriving_chirho,
             )))

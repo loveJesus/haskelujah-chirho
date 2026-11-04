@@ -228,6 +228,7 @@ impl InferCtxChirho {
         if let DeclChirho::InstanceDeclChirho {
             context_chirho,
             class_chirho,
+            kind_args_chirho,
             types_chirho,
             assoc_tf_instances_chirho,
             span_chirho,
@@ -237,6 +238,10 @@ impl InferCtxChirho {
             let class_name_chirho = class_chirho.text_chirho().to_string();
 
             let mut var_map_chirho = HashMap::new();
+            let kind_tys_chirho: Vec<TyChirho> = kind_args_chirho
+                .iter()
+                .map(|kind_chirho| self.ast_type_to_ty_chirho(kind_chirho, &mut var_map_chirho))
+                .collect();
 
             // Instance head type (e.g., `Int` in `instance Eq Int`, or
             // `[a]` in `instance Eq a => Eq [a]`)
@@ -257,7 +262,7 @@ impl InferCtxChirho {
             let mut inst_context_chirho: Vec<PredChirho> = context_preds_chirho
                 .into_iter()
                 .map(|pred_chirho| PredChirho {
-                    kind_tys_chirho: Vec::new(),
+                    kind_tys_chirho: pred_chirho.kind_tys_chirho,
                     class_name_chirho: pred_chirho.class_name_chirho,
                     ty_chirho: pred_chirho.ty_chirho,
                     extra_tys_chirho: pred_chirho.extra_tys_chirho,
@@ -284,6 +289,10 @@ impl InferCtxChirho {
                 .collect();
 
             let instance_chirho = InstDeclChirho {
+                kind_tys_chirho: kind_tys_chirho
+                    .iter()
+                    .map(|kind_chirho| self.expand_type_synonyms_chirho(kind_chirho))
+                    .collect(),
                 class_name_chirho,
                 head_ty_chirho,
                 extra_head_tys_chirho,

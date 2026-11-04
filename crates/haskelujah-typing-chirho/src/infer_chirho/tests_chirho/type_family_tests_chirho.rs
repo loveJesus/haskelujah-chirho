@@ -241,6 +241,7 @@ fn instance_assoc_type_family_override_beats_class_default_chirho() {
         types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Proxy"))],
         methods_chirho: vec![],
         assoc_tf_instances_chirho: vec![AssocTfInstanceChirho {
+            kind_args_chirho: Vec::new(),
             family_name_chirho: dummy_name_chirho("Rep"),
             lhs_types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Proxy"))],
             rhs_chirho: TypeChirho::TupleChirho {
@@ -758,6 +759,7 @@ fn written_associated_rows_and_defaults_keep_nested_family_identity_chirho() {
             methods_chirho: vec![],
             assoc_tf_instances_chirho: if written_chirho {
                 vec![AssocTfInstanceChirho {
+                    kind_args_chirho: Vec::new(),
                     family_name_chirho: dummy_name_chirho("RepChirho"),
                     lhs_types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Int"))],
                     rhs_chirho: rhs_chirho(TypeChirho::ConChirho(dummy_name_chirho("Int"))),

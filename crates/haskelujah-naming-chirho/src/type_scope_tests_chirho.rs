@@ -173,6 +173,7 @@ fn qualified_is_list_instance_chirho(import_spec_chirho: Option<ImportSpecChirho
             types_chirho: vec![TypeChirho::ConChirho(name_chirho("LocalListChirho"))],
             methods_chirho: vec![],
             assoc_tf_instances_chirho: vec![AssocTfInstanceChirho {
+                kind_args_chirho: Vec::new(),
                 family_name_chirho: name_chirho("Item"),
                 lhs_types_chirho: vec![TypeChirho::ConChirho(name_chirho("LocalListChirho"))],
                 rhs_chirho: TypeChirho::ConChirho(name_chirho("LocalListChirho")),

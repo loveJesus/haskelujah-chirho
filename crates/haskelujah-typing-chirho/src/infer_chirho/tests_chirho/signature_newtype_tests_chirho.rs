@@ -642,6 +642,7 @@ fn infer_gadt_equations_refine_rigid_signature_vars_per_equation_chirho() {
                 // this checker) reports "could not deduce Applicative f".
                 ty_chirho: TypeChirho::QualChirho {
                     context_chirho: vec![AstConstraintChirho::ClassChirho {
+                        kind_args_chirho: Vec::new(),
                         class_chirho: dummy_name_chirho("Applicative"),
                         args_chirho: vec![TypeChirho::VarChirho(dummy_name_chirho("fChirho"))],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,

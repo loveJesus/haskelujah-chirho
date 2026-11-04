@@ -4,7 +4,7 @@
 //! Moved from `lower_chirho.rs`'s tests in row 641.
 
 use haskelujah_ast_chirho::decl_chirho::{
-    AstKindChirho, ConDeclChirho, DataKindSigChirho, DeclChirho, StrictnessChirho,
+    ConDeclChirho, DataKindSigChirho, DeclChirho, StrictnessChirho,
 };
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 
@@ -228,8 +228,11 @@ fn lower_kind_sig_data_star_chirho() {
             assert_eq!(type_vars_chirho.len(), 1);
             assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "a");
             assert_eq!(
-                type_vars_chirho[0].kind_annotation_chirho,
-                Some(AstKindChirho::StarChirho)
+                type_vars_chirho[0]
+                    .kind_annotation_chirho
+                    .as_deref()
+                    .map(type_shape_chirho),
+                Some("*".to_string())
             );
             assert_eq!(constructors_chirho.len(), 1);
         }
@@ -248,8 +251,11 @@ fn lower_kind_sig_newtype_chirho() {
             assert_eq!(type_vars_chirho.len(), 1);
             assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "a");
             assert_eq!(
-                type_vars_chirho[0].kind_annotation_chirho,
-                Some(AstKindChirho::StarChirho)
+                type_vars_chirho[0]
+                    .kind_annotation_chirho
+                    .as_deref()
+                    .map(type_shape_chirho),
+                Some("*".to_string())
             );
         }
         other_chirho => panic!("expected NewtypeDecl, got {:?}", other_chirho),
@@ -268,11 +274,11 @@ fn lower_kind_sig_newtype_preserves_type_application_chirho() {
             assert_eq!(type_vars_chirho.len(), 2);
             assert_eq!(type_vars_chirho[1].name_chirho.text_chirho(), "aChirho");
             assert_eq!(
-                type_vars_chirho[1].kind_annotation_chirho,
-                Some(AstKindChirho::AppChirho(
-                    Box::new(AstKindChirho::VarChirho("TYPE".to_string())),
-                    Box::new(AstKindChirho::VarChirho("rChirho".to_string())),
-                ))
+                type_vars_chirho[1]
+                    .kind_annotation_chirho
+                    .as_deref()
+                    .map(type_shape_chirho),
+                Some("(TYPE rChirho)".to_string())
             );
         }
         other_chirho => panic!("expected NewtypeDecl, got {:?}", other_chirho),

@@ -36,6 +36,7 @@ fn equation_chirho(
     argument_count_chirho: usize,
 ) -> TypeFamilyEquationChirho {
     TypeFamilyEquationChirho {
+        kind_args_chirho: Vec::new(),
         head_chirho,
         explicit_binders_chirho: None,
         unwritten_binders_chirho: Vec::new(),

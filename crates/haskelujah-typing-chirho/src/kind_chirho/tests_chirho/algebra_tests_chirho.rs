@@ -81,8 +81,7 @@ fn subst_applies_chirho() {
 fn subst_compose_chirho() {
     let v0_chirho = KindVarChirho(0);
     let v1_chirho = KindVarChirho(1);
-    let s1_chirho =
-        KindSubstChirho::singleton_chirho(v0_chirho, KindChirho::VarChirho(v1_chirho));
+    let s1_chirho = KindSubstChirho::singleton_chirho(v0_chirho, KindChirho::VarChirho(v1_chirho));
     let s2_chirho = KindSubstChirho::singleton_chirho(v1_chirho, KindChirho::StarChirho);
     let composed_chirho = s2_chirho.compose_chirho(&s1_chirho);
     // v0 should map to * (through v1)
@@ -316,12 +315,12 @@ fn kind_var_cache_reuses_same_var_chirho() {
     let env_chirho = KindEnvChirho::new_chirho();
     let mut ctx_chirho = KindInferCtxChirho::new_chirho(env_chirho);
     let k1_chirho =
-        ctx_chirho.ast_kind_to_kind_ctx_chirho(&AstKindChirho::VarChirho("k".to_string()));
+        ctx_chirho.ast_kind_to_kind_ctx_chirho(&TypeChirho::VarChirho(mk_name_chirho("k")));
     let k2_chirho =
-        ctx_chirho.ast_kind_to_kind_ctx_chirho(&AstKindChirho::VarChirho("k".to_string()));
+        ctx_chirho.ast_kind_to_kind_ctx_chirho(&TypeChirho::VarChirho(mk_name_chirho("k")));
     assert_eq!(k1_chirho, k2_chirho);
     // Different name gets different var
     let j_chirho =
-        ctx_chirho.ast_kind_to_kind_ctx_chirho(&AstKindChirho::VarChirho("j".to_string()));
+        ctx_chirho.ast_kind_to_kind_ctx_chirho(&TypeChirho::VarChirho(mk_name_chirho("j")));
     assert_ne!(k1_chirho, j_chirho);
 }

@@ -88,6 +88,7 @@ fn infer_user_class_with_superclass_chirho() {
         imports_chirho: vec![],
         decls_chirho: vec![DeclChirho::ClassDeclChirho {
             context_chirho: vec![AstConstraintChirho::ClassChirho {
+                kind_args_chirho: Vec::new(),
                 class_chirho: dummy_name_chirho("Eq"),
                 args_chirho: vec![TypeChirho::VarChirho(dummy_name_chirho("a"))],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -370,6 +371,7 @@ fn ast_scheme_expands_constraint_type_alias_predicates_chirho() {
     let a_ty_chirho = TypeChirho::VarChirho(dummy_name_chirho("a"));
     let sig_chirho = TypeChirho::QualChirho {
         context_chirho: vec![AstConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: dummy_name_chirho("ShowEq"),
             args_chirho: vec![a_ty_chirho.clone()],
             span_chirho: SpanChirho::DUMMY_CHIRHO,

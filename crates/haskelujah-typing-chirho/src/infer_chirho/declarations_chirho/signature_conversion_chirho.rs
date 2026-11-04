@@ -143,7 +143,11 @@ impl InferCtxChirho {
         let scheme_preds_chirho: Vec<SchemePredChirho> = scheme_preds_chirho
             .into_iter()
             .map(|pred_chirho| SchemePredChirho {
-                kind_tys_chirho: Vec::new(),
+                kind_tys_chirho: pred_chirho
+                    .kind_tys_chirho
+                    .iter()
+                    .map(|kind_chirho| equality_subst_chirho.apply_ty_chirho(kind_chirho))
+                    .collect(),
                 class_name_chirho: pred_chirho.class_name_chirho,
                 ty_chirho: equality_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
                 extra_tys_chirho: pred_chirho
@@ -201,7 +205,11 @@ impl InferCtxChirho {
                 preds_chirho: scheme_preds_chirho
                     .into_iter()
                     .map(|pred_chirho| SchemePredChirho {
-                        kind_tys_chirho: Vec::new(),
+                        kind_tys_chirho: pred_chirho
+                            .kind_tys_chirho
+                            .iter()
+                            .map(|kind_chirho| skolem_bindings_chirho.apply_ty_chirho(kind_chirho))
+                            .collect(),
                         class_name_chirho: pred_chirho.class_name_chirho,
                         ty_chirho: skolem_bindings_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
                         extra_tys_chirho: pred_chirho
@@ -266,18 +274,27 @@ impl InferCtxChirho {
             return;
         };
         let class_name_chirho = class_chirho.text_chirho().to_string();
-        if class_name_chirho == "~" && args_chirho.len() >= 2 {
+        if class_name_chirho == "~" && args_chirho.len() >= 2 && kind_args_chirho.is_empty() {
             // Type equality constraint: a ~ b
             let lhs_chirho = self.ast_type_to_ty_chirho(&args_chirho[0], var_map_chirho);
             let rhs_chirho = self.ast_type_to_ty_chirho(&args_chirho[1], var_map_chirho);
             equality_pairs_chirho.push((lhs_chirho, rhs_chirho));
-        } else if let Some(expanded_preds_chirho) = self.expand_constraint_alias_pred_chirho(
-            &class_name_chirho,
-            args_chirho,
-            var_map_chirho,
-        ) {
+        } else if kind_args_chirho.is_empty()
+            && let Some(expanded_preds_chirho) = self.expand_constraint_alias_pred_chirho(
+                &class_name_chirho,
+                args_chirho,
+                var_map_chirho,
+            )
+        {
             scheme_preds_chirho.extend(expanded_preds_chirho);
         } else {
+            // The legacy synonym carrier has no hidden-prefix boundary. Keep
+            // an explicitly kind-applied predicate intact until the common
+            // declaration converter can expand its complete telescope.
+            let kind_tys_chirho = kind_args_chirho
+                .iter()
+                .map(|kind_chirho| self.ast_type_to_ty_chirho(kind_chirho, var_map_chirho))
+                .collect();
             let pred_ty_chirho = if let Some(first_arg_chirho) = args_chirho.first() {
                 self.ast_type_to_ty_chirho(first_arg_chirho, var_map_chirho)
             } else {
@@ -289,6 +306,7 @@ impl InferCtxChirho {
                 .map(|arg_chirho| self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho))
                 .collect();
             scheme_preds_chirho.push(SchemePredChirho {
+                kind_tys_chirho,
                 class_name_chirho,
                 ty_chirho: pred_ty_chirho,
                 extra_tys_chirho,
@@ -346,6 +364,7 @@ impl InferCtxChirho {
                     .cloned()
                     .unwrap_or_else(|| self.fresh_var_chirho());
                 out_chirho.push(SchemePredChirho {
+                    kind_tys_chirho: Vec::new(),
                     class_name_chirho,
                     ty_chirho: pred_ty_chirho,
                     extra_tys_chirho: args_chirho.into_iter().skip(1).collect(),

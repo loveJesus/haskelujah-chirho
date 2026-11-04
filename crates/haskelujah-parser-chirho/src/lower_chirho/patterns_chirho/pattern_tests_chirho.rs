@@ -3,14 +3,14 @@
 //! Lowering tests: Patterns, unboxed tuples and MagicHash.
 //! Moved from `lower_chirho.rs`'s tests in row 641.
 
-use haskelujah_ast_chirho::decl_chirho::{AstKindChirho, DeclChirho};
+use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, RhsChirho, StmtChirho};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 use haskelujah_span_chirho::FileIdChirho;
 
 use super::lower_module_chirho;
-use super::test_support_chirho::parse_and_lower_chirho;
+use super::test_support_chirho::{parse_and_lower_chirho, type_shape_chirho};
 
 #[test]
 fn lower_equality_constraint_type_sig_chirho() {
@@ -283,8 +283,11 @@ fn lower_kind_sig_constraint_chirho() {
             assert_eq!(type_vars_chirho.len(), 1);
             assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "c");
             assert_eq!(
-                type_vars_chirho[0].kind_annotation_chirho,
-                Some(AstKindChirho::ConstraintChirho)
+                type_vars_chirho[0]
+                    .kind_annotation_chirho
+                    .as_deref()
+                    .map(type_shape_chirho),
+                Some("Constraint".to_string())
             );
         }
         other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),
@@ -302,13 +305,12 @@ fn lower_kind_sig_star_to_constraint_chirho() {
         } => {
             assert_eq!(type_vars_chirho.len(), 1);
             assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "c");
-            let expected_chirho = AstKindChirho::ArrowChirho(
-                Box::new(AstKindChirho::StarChirho),
-                Box::new(AstKindChirho::ConstraintChirho),
-            );
             assert_eq!(
-                type_vars_chirho[0].kind_annotation_chirho,
-                Some(expected_chirho)
+                type_vars_chirho[0]
+                    .kind_annotation_chirho
+                    .as_deref()
+                    .map(type_shape_chirho),
+                Some("(* -> Constraint)".to_string())
             );
         }
         other_chirho => panic!("expected DataDecl, got {:?}", other_chirho),

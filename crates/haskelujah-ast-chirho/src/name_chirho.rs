@@ -570,14 +570,13 @@ impl TypeConstructorDeclarationChirho {
     pub fn compiler_data_chirho(constructor_chirho: CompilerTypeConstructorChirho) -> Self {
         Self {
             identity_chirho: TypeConstructorIdentityChirho::CompilerChirho(constructor_chirho),
-            role_chirho: if matches!(
-                constructor_chirho,
+            role_chirho: match constructor_chirho {
                 CompilerTypeConstructorChirho::TypeUniverseChirho
-                    | CompilerTypeConstructorChirho::ConstraintUniverseChirho
-            ) {
-                TypeConstructorRoleChirho::UniverseChirho
-            } else {
-                TypeConstructorRoleChirho::DataChirho
+                | CompilerTypeConstructorChirho::ConstraintUniverseChirho => {
+                    TypeConstructorRoleChirho::UniverseChirho
+                }
+                CompilerTypeConstructorChirho::IoChirho => TypeConstructorRoleChirho::NewtypeChirho,
+                _ => TypeConstructorRoleChirho::DataChirho,
             },
         }
     }
