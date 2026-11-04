@@ -2582,8 +2582,8 @@ fn frontend_parsed_biapplicative_class_method_keeps_applied_result_chirho() {
     let class_decl_chirho = frontend_result_chirho
         .infer_result_chirho
         .class_env_chirho
-        .classes_chirho
-        .get("BiapplicativeChirho")
+        .classes_chirho()
+        .get_chirho("BiapplicativeChirho")
         .expect("class should be registered");
     let scheme_chirho = class_decl_chirho
         .methods_chirho

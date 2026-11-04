@@ -95,12 +95,14 @@ impl InferCtxChirho {
                 || self.ty_is_family_app_chirho(&lhs_sub_chirho)
                 || self.ty_is_family_app_chirho(&rhs_sub_chirho)
             {
-                scheme_preds_chirho.push(SchemePredChirho {
-                    kind_tys_chirho: Vec::new(),
-                    class_name_chirho: "~".to_string(),
-                    ty_chirho: lhs_sub_chirho,
-                    extra_tys_chirho: vec![rhs_sub_chirho],
-                });
+                scheme_preds_chirho.push(SchemePredChirho::legacy_chirho(
+                    crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: "~".to_string(),
+                        ty_chirho: lhs_sub_chirho,
+                        extra_tys_chirho: vec![rhs_sub_chirho],
+                    },
+                ));
                 continue;
             }
             match self.unify_normalized_chirho(
@@ -115,12 +117,14 @@ impl InferCtxChirho {
                 // `(Int ~ Bool) =>`: an insoluble given. GHC accepts the
                 // binding (its body is unreachable); keep the equality so
                 // the body is checked under the rewrite it states.
-                Err(_err_chirho) => scheme_preds_chirho.push(SchemePredChirho {
-                    kind_tys_chirho: Vec::new(),
-                    class_name_chirho: "~".to_string(),
-                    ty_chirho: lhs_sub_chirho,
-                    extra_tys_chirho: vec![rhs_sub_chirho],
-                }),
+                Err(_err_chirho) => scheme_preds_chirho.push(SchemePredChirho::legacy_chirho(
+                    crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: "~".to_string(),
+                        ty_chirho: lhs_sub_chirho,
+                        extra_tys_chirho: vec![rhs_sub_chirho],
+                    },
+                )),
             }
         }
 
@@ -142,19 +146,24 @@ impl InferCtxChirho {
         let inner_ty_chirho = equality_subst_chirho.apply_ty_chirho(&inner_ty_chirho);
         let scheme_preds_chirho: Vec<SchemePredChirho> = scheme_preds_chirho
             .into_iter()
-            .map(|pred_chirho| SchemePredChirho {
-                kind_tys_chirho: pred_chirho
-                    .kind_tys_chirho
-                    .iter()
-                    .map(|kind_chirho| equality_subst_chirho.apply_ty_chirho(kind_chirho))
-                    .collect(),
-                class_name_chirho: pred_chirho.class_name_chirho,
-                ty_chirho: equality_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                extra_tys_chirho: pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|ty_chirho| equality_subst_chirho.apply_ty_chirho(ty_chirho))
-                    .collect(),
+            .map(|pred_chirho| {
+                SchemePredChirho::from_proof_chirho(
+                    pred_chirho.class_identity_chirho().clone(),
+                    crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: pred_chirho
+                            .kind_tys_chirho
+                            .iter()
+                            .map(|kind_chirho| equality_subst_chirho.apply_ty_chirho(kind_chirho))
+                            .collect(),
+                        class_name_chirho: pred_chirho.class_name_chirho,
+                        ty_chirho: equality_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                        extra_tys_chirho: pred_chirho
+                            .extra_tys_chirho
+                            .iter()
+                            .map(|ty_chirho| equality_subst_chirho.apply_ty_chirho(ty_chirho))
+                            .collect(),
+                    },
+                )
             })
             .collect();
 
@@ -204,19 +213,29 @@ impl InferCtxChirho {
                 vars_chirho,
                 preds_chirho: scheme_preds_chirho
                     .into_iter()
-                    .map(|pred_chirho| SchemePredChirho {
-                        kind_tys_chirho: pred_chirho
-                            .kind_tys_chirho
-                            .iter()
-                            .map(|kind_chirho| skolem_bindings_chirho.apply_ty_chirho(kind_chirho))
-                            .collect(),
-                        class_name_chirho: pred_chirho.class_name_chirho,
-                        ty_chirho: skolem_bindings_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                        extra_tys_chirho: pred_chirho
-                            .extra_tys_chirho
-                            .iter()
-                            .map(|ty_chirho| skolem_bindings_chirho.apply_ty_chirho(ty_chirho))
-                            .collect(),
+                    .map(|pred_chirho| {
+                        SchemePredChirho::from_proof_chirho(
+                            pred_chirho.class_identity_chirho().clone(),
+                            crate::ty_chirho::SchemePredPartsChirho {
+                                kind_tys_chirho: pred_chirho
+                                    .kind_tys_chirho
+                                    .iter()
+                                    .map(|kind_chirho| {
+                                        skolem_bindings_chirho.apply_ty_chirho(kind_chirho)
+                                    })
+                                    .collect(),
+                                class_name_chirho: pred_chirho.class_name_chirho,
+                                ty_chirho: skolem_bindings_chirho
+                                    .apply_ty_chirho(&pred_chirho.ty_chirho),
+                                extra_tys_chirho: pred_chirho
+                                    .extra_tys_chirho
+                                    .iter()
+                                    .map(|ty_chirho| {
+                                        skolem_bindings_chirho.apply_ty_chirho(ty_chirho)
+                                    })
+                                    .collect(),
+                            },
+                        )
                     })
                     .collect(),
                 ty_chirho: skolem_bindings_chirho.apply_ty_chirho(&inner_ty_chirho),
@@ -305,12 +324,14 @@ impl InferCtxChirho {
                 .skip(1)
                 .map(|arg_chirho| self.ast_type_to_ty_chirho(arg_chirho, var_map_chirho))
                 .collect();
-            scheme_preds_chirho.push(SchemePredChirho {
-                kind_tys_chirho,
-                class_name_chirho,
-                ty_chirho: pred_ty_chirho,
-                extra_tys_chirho,
-            });
+            scheme_preds_chirho.push(SchemePredChirho::legacy_chirho(
+                crate::ty_chirho::SchemePredPartsChirho {
+                    kind_tys_chirho,
+                    class_name_chirho,
+                    ty_chirho: pred_ty_chirho,
+                    extra_tys_chirho,
+                },
+            ));
         }
     }
 
@@ -363,20 +384,24 @@ impl InferCtxChirho {
                     .first()
                     .cloned()
                     .unwrap_or_else(|| self.fresh_var_chirho());
-                out_chirho.push(SchemePredChirho {
-                    kind_tys_chirho: Vec::new(),
-                    class_name_chirho,
-                    ty_chirho: pred_ty_chirho,
-                    extra_tys_chirho: args_chirho.into_iter().skip(1).collect(),
-                });
+                out_chirho.push(SchemePredChirho::legacy_chirho(
+                    crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho,
+                        ty_chirho: pred_ty_chirho,
+                        extra_tys_chirho: args_chirho.into_iter().skip(1).collect(),
+                    },
+                ));
             }
             TyChirho::ConChirho(class_name_chirho) if class_name_chirho != "~" => {
-                out_chirho.push(SchemePredChirho {
-                    kind_tys_chirho: Vec::new(),
-                    class_name_chirho: class_name_chirho.clone(),
-                    ty_chirho: self.fresh_var_chirho(),
-                    extra_tys_chirho: Vec::new(),
-                });
+                out_chirho.push(SchemePredChirho::legacy_chirho(
+                    crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: class_name_chirho.clone(),
+                        ty_chirho: self.fresh_var_chirho(),
+                        extra_tys_chirho: Vec::new(),
+                    },
+                ));
             }
             _ => {}
         }

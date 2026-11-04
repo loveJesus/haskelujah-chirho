@@ -120,16 +120,19 @@ impl InferCtxChirho {
     }
 
     fn normalized_pred_chirho(&self, pred_chirho: &PredChirho) -> PredChirho {
-        PredChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: pred_chirho.class_name_chirho.clone(),
-            ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
-            extra_tys_chirho: pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .map(|ty_chirho| self.normalize_ty_chirho(ty_chirho))
-                .collect(),
-        }
+        PredChirho::from_proof_chirho(
+            pred_chirho.class_identity_chirho().clone(),
+            crate::class_chirho::PredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
+                extra_tys_chirho: pred_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|ty_chirho| self.normalize_ty_chirho(ty_chirho))
+                    .collect(),
+            },
+        )
     }
 
     fn signature_wanted_unservable_chirho(
@@ -169,7 +172,10 @@ impl InferCtxChirho {
         {
             return false;
         }
-        let class_instances_chirho = self.class_env_chirho.instances_chirho.get(class_chirho);
+        let class_instances_chirho = self
+            .class_env_chirho
+            .instances_chirho()
+            .get_chirho(class_chirho);
         arguments_chirho
             .iter()
             .enumerate()
@@ -179,7 +185,7 @@ impl InferCtxChirho {
                     && self.family_application_certified_chirho(argument_chirho, &mut budget_chirho)
                     && class_instances_chirho.is_none_or(|instances_chirho| {
                         // Only a bare-variable head can match an application that never reduces.
-                        instances_chirho.iter().all(|instance_chirho| {
+                        instances_chirho.iter_chirho().all(|instance_chirho| {
                             let head_chirho = match position_chirho {
                                 0 => Some(&instance_chirho.head_ty_chirho),
                                 _ => instance_chirho

@@ -225,12 +225,14 @@ impl InferCtxChirho {
                 && !contains_skolem_chirho(&lhs_chirho)
                 && !contains_skolem_chirho(&rhs_chirho)
             {
-                predicates_chirho.push(SchemePredChirho {
-                    kind_tys_chirho: Vec::new(),
-                    class_name_chirho: "~".to_owned(),
-                    ty_chirho: lhs_chirho,
-                    extra_tys_chirho: vec![rhs_chirho],
-                });
+                predicates_chirho.push(SchemePredChirho::legacy_chirho(
+                    crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: "~".to_owned(),
+                        ty_chirho: lhs_chirho,
+                        extra_tys_chirho: vec![rhs_chirho],
+                    },
+                ));
                 wanted_chirho.generalized_chirho = true;
                 wanted_chirho
                     .generalized_by_chirho

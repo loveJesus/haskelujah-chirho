@@ -13,6 +13,7 @@
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::InstDeclChirho;
@@ -21,7 +22,7 @@ use haskelujah_typing_chirho::class_chirho::InstDeclChirho;
 #[derive(Debug, Clone)]
 pub struct InstanceDeclarationChirho {
     pub span_chirho: SpanChirho,
-    pub instance_chirho: InstDeclChirho,
+    pub instance_chirho: Arc<InstDeclChirho>,
 }
 
 /// The key one source instance declaration's rows were named with (S3, desugar producer).
@@ -44,8 +45,8 @@ pub(in crate::dict_chirho) enum RowKeyAbsenceChirho {
 /// The checked join of the two producers.
 #[derive(Debug, Default)]
 pub(in crate::dict_chirho) struct InstanceRowsChirho {
-    joined_chirho: Vec<(InstDeclChirho, String)>,
-    ambiguous_chirho: Vec<InstDeclChirho>,
+    joined_chirho: Vec<(Arc<InstDeclChirho>, String)>,
+    ambiguous_chirho: Vec<Arc<InstDeclChirho>>,
 }
 
 /// Whether two typed instances are the same object: class, head, extra heads and context
@@ -67,7 +68,7 @@ impl InstanceRowsChirho {
         declarations_chirho: &[InstanceDeclarationChirho],
         row_keys_chirho: &[InstanceRowKeyChirho],
     ) -> Self {
-        let mut instances_by_place_chirho: HashMap<(&str, SpanChirho), Vec<&InstDeclChirho>> =
+        let mut instances_by_place_chirho: HashMap<(&str, SpanChirho), Vec<&Arc<InstDeclChirho>>> =
             HashMap::new();
         for declaration_chirho in declarations_chirho {
             let instance_chirho = &declaration_chirho.instance_chirho;

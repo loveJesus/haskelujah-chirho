@@ -304,7 +304,7 @@ pub struct InferResultChirho {
     pub class_env_chirho: ClassEnvChirho,
     /// Actual local instance declarations and their source spans, in registration
     /// order. Equal spans retain every record; consumers must check the join.
-    pub source_instances_chirho: Vec<(SpanChirho, InstDeclChirho)>,
+    pub source_instances_chirho: Vec<(SpanChirho, std::sync::Arc<InstDeclChirho>)>,
     /// Type family equations available after inferring this module.
     pub type_families_chirho: TypeFamilyEnvChirho,
     /// Diagnostics collected during inference.

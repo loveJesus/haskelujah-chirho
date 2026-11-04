@@ -35,11 +35,16 @@ impl InferCtxChirho {
             vars_chirho: seed_vars_chirho,
             preds_chirho: preds_chirho
                 .iter()
-                .map(|pred_chirho| SchemePredChirho {
-                    kind_tys_chirho: Vec::new(),
-                    class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                    ty_chirho: pred_chirho.ty_chirho.clone(),
-                    extra_tys_chirho: pred_chirho.extra_tys_chirho.clone(),
+                .map(|pred_chirho| {
+                    SchemePredChirho::from_proof_chirho(
+                        pred_chirho.class_identity_chirho().clone(),
+                        crate::ty_chirho::SchemePredPartsChirho {
+                            kind_tys_chirho: Vec::new(),
+                            class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                            ty_chirho: pred_chirho.ty_chirho.clone(),
+                            extra_tys_chirho: pred_chirho.extra_tys_chirho.clone(),
+                        },
+                    )
                 })
                 .collect(),
             ty_chirho: seed_fun_ty_chirho,

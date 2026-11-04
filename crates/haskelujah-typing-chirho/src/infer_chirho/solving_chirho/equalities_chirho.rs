@@ -388,16 +388,19 @@ impl InferCtxChirho {
         let givens_chirho = self.given_preds_chirho.clone();
         let mut improvement_chirho = SubstChirho::empty_chirho();
         for (pred_chirho, _span_chirho) in &self.deferred_preds_chirho {
-            let pred_sub_chirho = PredChirho {
-                kind_tys_chirho: Vec::new(),
-                class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                ty_chirho: improvement_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                extra_tys_chirho: pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|t_chirho| improvement_chirho.apply_ty_chirho(t_chirho))
-                    .collect(),
-            };
+            let pred_sub_chirho = PredChirho::from_proof_chirho(
+                pred_chirho.class_identity_chirho().clone(),
+                crate::class_chirho::PredPartsChirho {
+                    kind_tys_chirho: Vec::new(),
+                    class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                    ty_chirho: improvement_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                    extra_tys_chirho: pred_chirho
+                        .extra_tys_chirho
+                        .iter()
+                        .map(|t_chirho| improvement_chirho.apply_ty_chirho(t_chirho))
+                        .collect(),
+                },
+            );
             let step_chirho =
                 self.fundep_improve_from_givens_chirho(&pred_sub_chirho, &givens_chirho);
             if !step_chirho.is_empty_chirho() {
@@ -474,16 +477,19 @@ impl InferCtxChirho {
         {
             return None;
         }
-        let normalized_chirho = PredChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: pred_chirho.class_name_chirho.clone(),
-            ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
-            extra_tys_chirho: pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .map(|t_chirho| self.normalize_ty_chirho(t_chirho))
-                .collect(),
-        };
+        let normalized_chirho = PredChirho::from_proof_chirho(
+            pred_chirho.class_identity_chirho().clone(),
+            crate::class_chirho::PredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
+                extra_tys_chirho: pred_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|t_chirho| self.normalize_ty_chirho(t_chirho))
+                    .collect(),
+            },
+        );
         let sub_goals_chirho = self.class_env_chirho.resolve_chirho(&normalized_chirho)?;
         let mut used_given_chirho = false;
         for sub_goal_chirho in &sub_goals_chirho {
@@ -508,8 +514,8 @@ impl InferCtxChirho {
         let mut improvement_chirho = SubstChirho::empty_chirho();
         let Some(class_chirho) = self
             .class_env_chirho
-            .classes_chirho
-            .get(&pred_chirho.class_name_chirho)
+            .classes_chirho()
+            .get_chirho(&pred_chirho.class_name_chirho)
         else {
             return improvement_chirho;
         };

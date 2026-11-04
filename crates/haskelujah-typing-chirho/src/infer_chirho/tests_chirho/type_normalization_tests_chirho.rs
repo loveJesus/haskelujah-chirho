@@ -240,8 +240,8 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
 
     let class_decl_chirho = ctx_chirho
         .class_env_chirho
-        .classes_chirho
-        .get("Representable")
+        .classes_chirho()
+        .get_chirho("Representable")
         .cloned()
         .expect("class should register");
     let method_scheme_chirho = class_decl_chirho

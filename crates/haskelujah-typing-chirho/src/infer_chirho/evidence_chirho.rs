@@ -916,12 +916,14 @@ mod tests_chirho {
                 .insert(var_chirho);
             ctx_chirho.record_inferred_dictionary_owners_chirho(&SchemeChirho {
                 vars_chirho: vec![var_chirho],
-                preds_chirho: vec![SchemePredChirho {
-                    kind_tys_chirho: Vec::new(),
-                    class_name_chirho: "Eq".to_string(),
-                    ty_chirho: generalized_chirho.clone(),
-                    extra_tys_chirho: vec![],
-                }],
+                preds_chirho: vec![SchemePredChirho::legacy_chirho(
+                    crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: "Eq".to_string(),
+                        ty_chirho: generalized_chirho.clone(),
+                        extra_tys_chirho: vec![],
+                    },
+                )],
                 ty_chirho: generalized_chirho.clone(),
             });
         }

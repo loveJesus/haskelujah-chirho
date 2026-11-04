@@ -420,8 +420,8 @@ pub(crate) fn join_occurrence_proofs_chirho(
             let name_chirho = &record_chirho.name_chirho;
             let class_declares_reference_chirho = infer_result_chirho
                 .class_env_chirho
-                .classes_chirho
-                .get(&record_chirho.class_name_chirho)
+                .classes_chirho()
+                .get_chirho(&record_chirho.class_name_chirho)
                 .is_some_and(|class_chirho| class_chirho.methods_chirho.contains_key(name_chirho));
             let function_requires_class_chirho = infer_result_chirho
                 .env_chirho

@@ -20,8 +20,11 @@ impl InferCtxChirho {
         let mut env_chirho = TyEnvChirho::new_chirho();
         let mut class_env_chirho = ClassEnvChirho::new_chirho();
         class_env_chirho.seed_standard_chirho();
-        let fully_known_class_names_chirho: HashSet<String> =
-            class_env_chirho.classes_chirho.keys().cloned().collect();
+        let fully_known_class_names_chirho: HashSet<String> = class_env_chirho
+            .classes_chirho()
+            .keys_chirho()
+            .cloned()
+            .collect();
         // The seed producer's own output (row 686, C08).
         let seeded_class_names_chirho = fully_known_class_names_chirho.clone();
         seed_builtins_chirho(&mut env_chirho);
@@ -403,10 +406,22 @@ impl InferCtxChirho {
 
     pub fn new_with_imported_class_env_chirho(imported_class_env_chirho: &ClassEnvChirho) -> Self {
         let mut ctx_chirho = Self::new_chirho();
-        if !imported_class_env_chirho.classes_chirho.is_empty()
-            || !imported_class_env_chirho.instances_chirho.is_empty()
+        if !imported_class_env_chirho.classes_chirho().is_empty_chirho()
+            || !imported_class_env_chirho
+                .instances_chirho()
+                .is_empty_chirho()
         {
-            ctx_chirho.class_env_chirho = imported_class_env_chirho.clone();
+            match imported_class_env_chirho.try_snapshot_chirho() {
+                Ok(environment_chirho) => ctx_chirho.class_env_chirho = environment_chirho,
+                Err(error_chirho) => {
+                    ctx_chirho.diagnostics_chirho.push_chirho(
+                        DiagnosticChirho::error_no_span_chirho(format!(
+                            "imported class registry resource limit reached: {error_chirho:?}"
+                        )),
+                    );
+                    return ctx_chirho;
+                }
+            }
             // The seeded env was replaced wholesale; the seeded classes'
             // instance inventories are no longer trustworthy, and imported
             // classes may have instances in modules we cannot see. Only
@@ -573,7 +588,13 @@ impl InferCtxChirho {
     }
 
     /// Consume the context and return the final result.
-    pub fn finish_chirho(self) -> InferResultChirho {
+    pub fn finish_chirho(mut self) -> InferResultChirho {
+        if let Some(error_chirho) = self.class_env_chirho.registry_error_chirho() {
+            self.diagnostics_chirho
+                .push_chirho(DiagnosticChirho::error_no_span_chirho(format!(
+                    "class registry resource limit reached: {error_chirho:?}"
+                )));
+        }
         InferResultChirho {
             subst_chirho: SubstChirho::empty_chirho(),
             env_chirho: self.env_chirho,

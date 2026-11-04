@@ -55,9 +55,8 @@ pub(super) fn infer_result_chirho(
             haskelujah_typing_chirho::ty_chirho::TyChirho::string_chirho(),
         ),
     );
-    class_env_chirho.classes_chirho.insert(
-        "Show".to_string(),
-        ClassDeclChirho {
+    class_env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
+        haskelujah_typing_chirho::class_chirho::ClassDeclPartsChirho {
             kind_vars_chirho: Vec::new(),
             name_chirho: "Show".to_string(),
             supers_chirho: vec![],
@@ -67,7 +66,7 @@ pub(super) fn infer_result_chirho(
             fundeps_chirho: vec![],
             defaults_chirho: HashMap::new(),
         },
-    );
+    ));
     let mut totals_chirho = HashMap::new();
     totals_chirho.insert("show".to_string(), records_chirho.len() as u32);
     InferResultChirho {

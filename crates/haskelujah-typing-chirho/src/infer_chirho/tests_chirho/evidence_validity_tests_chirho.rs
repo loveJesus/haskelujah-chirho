@@ -546,13 +546,15 @@ fn certainly_unsolvable_suppressed_by_matching_instance_chirho() {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
     ctx_chirho
         .class_env_chirho
-        .add_instance_chirho(InstDeclChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: "Eq".to_string(),
-            head_ty_chirho: TyChirho::ConChirho("ZzNoSuchType".to_string()),
-            extra_head_tys_chirho: vec![],
-            context_chirho: vec![],
-        });
+        .add_instance_chirho(InstDeclChirho::legacy_chirho(
+            crate::class_chirho::InstDeclPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Eq".to_string(),
+                head_ty_chirho: TyChirho::ConChirho("ZzNoSuchType".to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            },
+        ));
     let pred_chirho = PredChirho::new_chirho("Eq", TyChirho::ConChirho("ZzNoSuchType".to_string()));
     assert!(
         !ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho),
@@ -565,13 +567,15 @@ fn certainly_unsolvable_suppressed_by_var_headed_instance_chirho() {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
     ctx_chirho
         .class_env_chirho
-        .add_instance_chirho(InstDeclChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: "Eq".to_string(),
-            head_ty_chirho: TyChirho::VarChirho(TyVarChirho(0)),
-            extra_head_tys_chirho: vec![],
-            context_chirho: vec![],
-        });
+        .add_instance_chirho(InstDeclChirho::legacy_chirho(
+            crate::class_chirho::InstDeclPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Eq".to_string(),
+                head_ty_chirho: TyChirho::VarChirho(TyVarChirho(0)),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            },
+        ));
     let pred_chirho = PredChirho::new_chirho("Eq", TyChirho::ConChirho("ZzNoSuchType".to_string()));
     assert!(
         !ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho),

@@ -319,16 +319,19 @@ impl InferCtxChirho {
         {
             return false;
         }
-        let normalized_pred_chirho = PredChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: pred_chirho.class_name_chirho.clone(),
-            ty_chirho: args_chirho[0].clone(),
-            extra_tys_chirho: args_chirho[1..].to_vec(),
-        };
+        let normalized_pred_chirho = PredChirho::from_proof_chirho(
+            pred_chirho.class_identity_chirho().clone(),
+            crate::class_chirho::PredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                ty_chirho: args_chirho[0].clone(),
+                extra_tys_chirho: args_chirho[1..].to_vec(),
+            },
+        );
         let Some(instances_chirho) = self
             .class_env_chirho
-            .instances_chirho
-            .get(class_name_chirho)
+            .instances_chirho()
+            .get_chirho(class_name_chirho)
         else {
             return true;
         };
@@ -403,8 +406,8 @@ impl InferCtxChirho {
                     && !self.type_synonyms_chirho.contains_key(name_chirho)
                     && !self
                         .class_env_chirho
-                        .classes_chirho
-                        .contains_key(name_chirho)
+                        .classes_chirho()
+                        .contains_key_chirho(name_chirho)
             }
             TyChirho::AppChirho(fun_chirho, arg_chirho) => {
                 self.ty_is_simple_rigid_arg_chirho(fun_chirho)

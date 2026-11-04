@@ -220,8 +220,8 @@ fn infer_user_class_method_scheme_keeps_outer_forall_and_free_vars_chirho() {
 
     let class_decl_chirho = result_chirho
         .class_env_chirho
-        .classes_chirho
-        .get("BifunctorMonadChirho")
+        .classes_chirho()
+        .get_chirho("BifunctorMonadChirho")
         .expect("class should be registered");
     let scheme_chirho = class_decl_chirho
         .methods_chirho
@@ -333,8 +333,8 @@ fn infer_user_class_method_scheme_through_type_alias_keeps_free_vars_chirho() {
 
     let class_decl_chirho = result_chirho
         .class_env_chirho
-        .classes_chirho
-        .get("BifunctorMonadChirho")
+        .classes_chirho()
+        .get_chirho("BifunctorMonadChirho")
         .expect("class should be registered");
     let scheme_chirho = class_decl_chirho
         .methods_chirho
@@ -458,8 +458,8 @@ fn infer_user_class_method_scheme_keeps_applied_class_parameter_chirho() {
 
     let class_decl_chirho = result_chirho
         .class_env_chirho
-        .classes_chirho
-        .get("BiapplicativeChirho")
+        .classes_chirho()
+        .get_chirho("BiapplicativeChirho")
         .expect("class should be registered");
     let scheme_chirho = class_decl_chirho
         .methods_chirho
@@ -534,8 +534,8 @@ fn instantiate_instance_method_expected_ty_keeps_tuple_application_chirho() {
     let _ = ctx_chirho.infer_module_chirho(&module_chirho);
     let class_decl_chirho = ctx_chirho
         .class_env_chirho
-        .classes_chirho
-        .get("BiapplicativeChirho")
+        .classes_chirho()
+        .get_chirho("BiapplicativeChirho")
         .cloned()
         .expect("class should be registered");
     let method_scheme_chirho = class_decl_chirho

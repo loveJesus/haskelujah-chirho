@@ -1762,32 +1762,35 @@ fn qualify_imported_scheme_for_iface_chirho(
         preds_chirho: scheme_chirho
             .preds_chirho
             .iter()
-            .map(
-                |pred_chirho| haskelujah_typing_chirho::ty_chirho::SchemePredChirho {
-                    kind_tys_chirho: Vec::new(),
-                    class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                    ty_chirho: qualify_imported_ty_chirho(
-                        &pred_chirho.ty_chirho,
-                        qualifiable_type_names_chirho,
-                        qualifier_chirho,
-                        unqualified_type_names_chirho,
-                        preferred_qualified_type_names_chirho,
-                    ),
-                    extra_tys_chirho: pred_chirho
-                        .extra_tys_chirho
-                        .iter()
-                        .map(|ty_chirho| {
-                            qualify_imported_ty_chirho(
-                                ty_chirho,
-                                qualifiable_type_names_chirho,
-                                qualifier_chirho,
-                                unqualified_type_names_chirho,
-                                preferred_qualified_type_names_chirho,
-                            )
-                        })
-                        .collect(),
-                },
-            )
+            .map(|pred_chirho| {
+                haskelujah_typing_chirho::ty_chirho::SchemePredChirho::from_proof_chirho(
+                    pred_chirho.class_identity_chirho().clone(),
+                    haskelujah_typing_chirho::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                        ty_chirho: qualify_imported_ty_chirho(
+                            &pred_chirho.ty_chirho,
+                            qualifiable_type_names_chirho,
+                            qualifier_chirho,
+                            unqualified_type_names_chirho,
+                            preferred_qualified_type_names_chirho,
+                        ),
+                        extra_tys_chirho: pred_chirho
+                            .extra_tys_chirho
+                            .iter()
+                            .map(|ty_chirho| {
+                                qualify_imported_ty_chirho(
+                                    ty_chirho,
+                                    qualifiable_type_names_chirho,
+                                    qualifier_chirho,
+                                    unqualified_type_names_chirho,
+                                    preferred_qualified_type_names_chirho,
+                                )
+                            })
+                            .collect(),
+                    },
+                )
+            })
             .collect(),
         ty_chirho: qualify_imported_ty_chirho(
             &scheme_chirho.ty_chirho,
@@ -3077,8 +3080,8 @@ fn compile_backend_chirho(
     // workflow: language-features-chirho/own-class-method-occurrences-chirho
     let class_method_names_chirho: std::collections::HashSet<&String> = infer_result_chirho
         .class_env_chirho
-        .classes_chirho
-        .values()
+        .classes_chirho()
+        .values_chirho()
         .flat_map(|class_chirho| class_chirho.methods_chirho.keys())
         .collect();
     let import_suppliers_chirho = native_provenance_chirho::import_suppliers_chirho(

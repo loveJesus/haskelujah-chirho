@@ -195,15 +195,20 @@ impl InferCtxChirho {
         let predicates_chirho = scheme_chirho
             .preds_chirho
             .iter()
-            .map(|pred_chirho| PredChirho {
-                kind_tys_chirho: Vec::new(),
-                class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                ty_chirho: instantiation_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                extra_tys_chirho: pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|ty_chirho| instantiation_chirho.apply_ty_chirho(ty_chirho))
-                    .collect(),
+            .map(|pred_chirho| {
+                PredChirho::from_proof_chirho(
+                    pred_chirho.class_identity_chirho().clone(),
+                    crate::class_chirho::PredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                        ty_chirho: instantiation_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                        extra_tys_chirho: pred_chirho
+                            .extra_tys_chirho
+                            .iter()
+                            .map(|ty_chirho| instantiation_chirho.apply_ty_chirho(ty_chirho))
+                            .collect(),
+                    },
+                )
             })
             .collect();
         (
@@ -278,12 +283,14 @@ impl InferCtxChirho {
                 self.apply_subst_all_chirho(&subst_chirho);
                 combined_chirho = subst_chirho.compose_chirho(&combined_chirho);
             } else {
-                self.install_pattern_givens_chirho(vec![PredChirho {
-                    kind_tys_chirho: Vec::new(),
-                    class_name_chirho: "~".to_owned(),
-                    ty_chirho: left_chirho,
-                    extra_tys_chirho: vec![right_chirho],
-                }]);
+                self.install_pattern_givens_chirho(vec![PredChirho::legacy_chirho(
+                    crate::class_chirho::PredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: "~".to_owned(),
+                        ty_chirho: left_chirho,
+                        extra_tys_chirho: vec![right_chirho],
+                    },
+                )]);
             }
         }
         Some(combined_chirho)

@@ -31,21 +31,25 @@ fn chain_chirho(count_chirho: usize) -> TyChirho {
 
 fn known_nat_env_chirho() -> ClassEnvChirho {
     let mut env_chirho = ClassEnvChirho::new_chirho();
-    env_chirho.add_instance_chirho(InstDeclChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: "KnownNatChirho".to_string(),
-        head_ty_chirho: con_chirho("ZeroChirho"),
-        extra_head_tys_chirho: Vec::new(),
-        context_chirho: Vec::new(),
-    });
+    env_chirho.add_instance_chirho(InstDeclChirho::legacy_chirho(
+        haskelujah_typing_chirho::class_chirho::InstDeclPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "KnownNatChirho".to_string(),
+            head_ty_chirho: con_chirho("ZeroChirho"),
+            extra_head_tys_chirho: Vec::new(),
+            context_chirho: Vec::new(),
+        },
+    ));
     let n_chirho = TyChirho::VarChirho(TyVarChirho(9001));
-    env_chirho.add_instance_chirho(InstDeclChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: "KnownNatChirho".to_string(),
-        head_ty_chirho: succ_chirho(n_chirho.clone()),
-        extra_head_tys_chirho: Vec::new(),
-        context_chirho: vec![PredChirho::new_chirho("KnownNatChirho", n_chirho)],
-    });
+    env_chirho.add_instance_chirho(InstDeclChirho::legacy_chirho(
+        haskelujah_typing_chirho::class_chirho::InstDeclPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "KnownNatChirho".to_string(),
+            head_ty_chirho: succ_chirho(n_chirho.clone()),
+            extra_head_tys_chirho: Vec::new(),
+            context_chirho: vec![PredChirho::new_chirho("KnownNatChirho", n_chirho)],
+        },
+    ));
     env_chirho
 }
 
@@ -85,13 +89,15 @@ fn a_goal_no_head_matches_is_refused_by_name_chirho() {
 #[test]
 fn several_matching_heads_are_refused_never_chosen_chirho() {
     let mut env_chirho = known_nat_env_chirho();
-    env_chirho.add_instance_chirho(InstDeclChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: "KnownNatChirho".to_string(),
-        head_ty_chirho: TyChirho::VarChirho(TyVarChirho(9002)),
-        extra_head_tys_chirho: Vec::new(),
-        context_chirho: Vec::new(),
-    });
+    env_chirho.add_instance_chirho(InstDeclChirho::legacy_chirho(
+        haskelujah_typing_chirho::class_chirho::InstDeclPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "KnownNatChirho".to_string(),
+            head_ty_chirho: TyChirho::VarChirho(TyVarChirho(9002)),
+            extra_head_tys_chirho: Vec::new(),
+            context_chirho: Vec::new(),
+        },
+    ));
     let goal_chirho = PredChirho::new_chirho("KnownNatChirho", con_chirho("ZeroChirho"));
     assert!(matches!(
         select_chirho(&env_chirho, &goal_chirho),
@@ -150,16 +156,18 @@ fn a_candidate_that_could_copy_past_its_limit_is_refused_before_matching_chirho(
     // `instance C (a, .., a) => C a`, 32 occurrences: each may copy the whole goal.
     let a_chirho = TyChirho::VarChirho(TyVarChirho(9003));
     let mut env_chirho = ClassEnvChirho::new_chirho();
-    env_chirho.add_instance_chirho(InstDeclChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: "GrowChirho".to_string(),
-        head_ty_chirho: a_chirho.clone(),
-        extra_head_tys_chirho: Vec::new(),
-        context_chirho: vec![PredChirho::new_chirho(
-            "GrowChirho",
-            TyChirho::TupleChirho(vec![a_chirho; 32]),
-        )],
-    });
+    env_chirho.add_instance_chirho(InstDeclChirho::legacy_chirho(
+        haskelujah_typing_chirho::class_chirho::InstDeclPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "GrowChirho".to_string(),
+            head_ty_chirho: a_chirho.clone(),
+            extra_head_tys_chirho: Vec::new(),
+            context_chirho: vec![PredChirho::new_chirho(
+                "GrowChirho",
+                TyChirho::TupleChirho(vec![a_chirho; 32]),
+            )],
+        },
+    ));
     // The heaviest chain one goal may weigh; 32 copies of it cannot fit one candidate.
     let goal_chirho = (1..)
         .map(|count_chirho| PredChirho::new_chirho("GrowChirho", chain_chirho(count_chirho)))
@@ -210,13 +218,15 @@ fn repeated_head_variables_choose_only_a_consistent_goal_chirho() {
         )
     };
     let mut env_chirho = ClassEnvChirho::new_chirho();
-    env_chirho.add_instance_chirho(InstDeclChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: "SameChirho".to_string(),
-        head_ty_chirho: pair_chirho(a_chirho.clone(), a_chirho.clone()),
-        extra_head_tys_chirho: Vec::new(),
-        context_chirho: vec![PredChirho::new_chirho("Show", a_chirho)],
-    });
+    env_chirho.add_instance_chirho(InstDeclChirho::legacy_chirho(
+        haskelujah_typing_chirho::class_chirho::InstDeclPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "SameChirho".to_string(),
+            head_ty_chirho: pair_chirho(a_chirho.clone(), a_chirho.clone()),
+            extra_head_tys_chirho: Vec::new(),
+            context_chirho: vec![PredChirho::new_chirho("Show", a_chirho)],
+        },
+    ));
     let goal_chirho = PredChirho::new_chirho(
         "SameChirho",
         pair_chirho(con_chirho("Int"), con_chirho("Bool")),
@@ -239,16 +249,18 @@ fn repeated_head_variables_choose_only_a_consistent_goal_chirho() {
 
 #[test]
 fn a_large_context_class_name_is_bounded_before_substitution_chirho() {
-    let instance_chirho = InstDeclChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: "CChirho".to_owned(),
-        head_ty_chirho: TyChirho::VarChirho(TyVarChirho(9020)),
-        extra_head_tys_chirho: Vec::new(),
-        context_chirho: vec![PredChirho::new_chirho(
-            &"LongClassChirho".repeat(GROUND_CANDIDATE_WEIGHT_LIMIT_CHIRHO),
-            con_chirho("Int"),
-        )],
-    };
+    let instance_chirho = InstDeclChirho::legacy_chirho(
+        haskelujah_typing_chirho::class_chirho::InstDeclPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "CChirho".to_owned(),
+            head_ty_chirho: TyChirho::VarChirho(TyVarChirho(9020)),
+            extra_head_tys_chirho: Vec::new(),
+            context_chirho: vec![PredChirho::new_chirho(
+                &"LongClassChirho".repeat(GROUND_CANDIDATE_WEIGHT_LIMIT_CHIRHO),
+                con_chirho("Int"),
+            )],
+        },
+    );
     let mut budget_chirho = GroundBudgetChirho::default();
     assert!(matches!(
         budget_chirho.candidate_chirho(&instance_chirho, 4),

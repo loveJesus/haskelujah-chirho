@@ -548,7 +548,9 @@ impl DictPassCtxChirho {
             generic_heads_chirho::GenericHeadChirho,
         > = HashMap::new();
 
-        for (class_name_chirho, instances_chirho) in &class_env_chirho.instances_chirho {
+        for (class_name_chirho, instances_chirho) in
+            class_env_chirho.instances_chirho().iter_chirho()
+        {
             let layout_chirho = match self.layouts_chirho.get(class_name_chirho) {
                 Some(l_chirho) => l_chirho.clone(),
                 None => continue,
@@ -813,8 +815,8 @@ impl DictPassCtxChirho {
         prim_name_chirho: &str,
     ) -> CoreIdChirho {
         let method_scheme_chirho = class_env_chirho
-            .classes_chirho
-            .get(class_name_chirho)
+            .classes_chirho()
+            .get_chirho(class_name_chirho)
             .and_then(|decl_chirho| decl_chirho.methods_chirho.get(method_name_chirho));
 
         let arity_chirho = method_scheme_chirho
@@ -911,7 +913,9 @@ impl DictPassCtxChirho {
         // head type is a known newtype.
         let mut gnd_instances_chirho: Vec<(String, String, String, DictLayoutChirho)> = Vec::new();
 
-        for (class_name_chirho, instances_chirho) in &class_env_chirho.instances_chirho {
+        for (class_name_chirho, instances_chirho) in
+            class_env_chirho.instances_chirho().iter_chirho()
+        {
             let layout_chirho = match self.layouts_chirho.get(class_name_chirho) {
                 Some(l_chirho) => l_chirho.clone(),
                 None => continue,

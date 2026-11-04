@@ -168,19 +168,24 @@ impl SubstChirho {
             preds_chirho: scheme_chirho
                 .preds_chirho
                 .iter()
-                .map(|p_chirho| crate::ty_chirho::SchemePredChirho {
-                    kind_tys_chirho: p_chirho
-                        .kind_tys_chirho
-                        .iter()
-                        .map(|kind_chirho| restricted_chirho.apply_ty_chirho(kind_chirho))
-                        .collect(),
-                    class_name_chirho: p_chirho.class_name_chirho.clone(),
-                    ty_chirho: restricted_chirho.apply_ty_chirho(&p_chirho.ty_chirho),
-                    extra_tys_chirho: p_chirho
-                        .extra_tys_chirho
-                        .iter()
-                        .map(|t_chirho| restricted_chirho.apply_ty_chirho(t_chirho))
-                        .collect(),
+                .map(|p_chirho| {
+                    crate::ty_chirho::SchemePredChirho::from_proof_chirho(
+                        p_chirho.class_identity_chirho().clone(),
+                        crate::ty_chirho::SchemePredPartsChirho {
+                            kind_tys_chirho: p_chirho
+                                .kind_tys_chirho
+                                .iter()
+                                .map(|kind_chirho| restricted_chirho.apply_ty_chirho(kind_chirho))
+                                .collect(),
+                            class_name_chirho: p_chirho.class_name_chirho.clone(),
+                            ty_chirho: restricted_chirho.apply_ty_chirho(&p_chirho.ty_chirho),
+                            extra_tys_chirho: p_chirho
+                                .extra_tys_chirho
+                                .iter()
+                                .map(|t_chirho| restricted_chirho.apply_ty_chirho(t_chirho))
+                                .collect(),
+                        },
+                    )
                 })
                 .collect(),
             ty_chirho: restricted_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho),

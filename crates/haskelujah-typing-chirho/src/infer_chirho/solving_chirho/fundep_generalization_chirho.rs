@@ -176,8 +176,8 @@ impl InferCtxChirho {
             .filter_map(|(pred_chirho, _span_chirho)| {
                 let class_chirho = self
                     .class_env_chirho
-                    .classes_chirho
-                    .get(&pred_chirho.class_name_chirho)?;
+                    .classes_chirho()
+                    .get_chirho(&pred_chirho.class_name_chirho)?;
                 (!class_chirho.fundeps_chirho.is_empty()).then(|| FundepWantedChirho {
                     fundeps_chirho: &class_chirho.fundeps_chirho,
                     args_chirho: self.normalized_pred_args_chirho(pred_chirho),
@@ -258,12 +258,15 @@ impl InferCtxChirho {
                 .any(|var_chirho| fundeps_chirho.quantified_chirho.contains(var_chirho));
         if quantify_chirho {
             let (pred_chirho, _span_chirho) = wanted_chirho;
-            scheme_preds_chirho.push(SchemePredChirho {
-                kind_tys_chirho: Vec::new(),
-                class_name_chirho: pred_chirho.class_name_chirho,
-                ty_chirho: pred_chirho.ty_chirho,
-                extra_tys_chirho: pred_chirho.extra_tys_chirho,
-            });
+            scheme_preds_chirho.push(SchemePredChirho::from_proof_chirho(
+                pred_chirho.class_identity_chirho().clone(),
+                crate::ty_chirho::SchemePredPartsChirho {
+                    kind_tys_chirho: Vec::new(),
+                    class_name_chirho: pred_chirho.class_name_chirho,
+                    ty_chirho: pred_chirho.ty_chirho,
+                    extra_tys_chirho: pred_chirho.extra_tys_chirho,
+                },
+            ));
         } else {
             remaining_chirho.push(wanted_chirho);
         }
@@ -280,23 +283,29 @@ impl InferCtxChirho {
         givens_chirho: &[PredChirho],
         span_chirho: SpanChirho,
     ) -> bool {
-        let resolved_chirho = PredChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: defaulted_pred_chirho.class_name_chirho.clone(),
-            ty_chirho: final_subst_chirho.apply_ty_chirho(&defaulted_pred_chirho.ty_chirho),
-            extra_tys_chirho: defaulted_pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .map(|arg_chirho| final_subst_chirho.apply_ty_chirho(arg_chirho))
-                .collect(),
-        };
+        let resolved_chirho = PredChirho::from_proof_chirho(
+            defaulted_pred_chirho.class_identity_chirho().clone(),
+            crate::class_chirho::PredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: defaulted_pred_chirho.class_name_chirho.clone(),
+                ty_chirho: final_subst_chirho.apply_ty_chirho(&defaulted_pred_chirho.ty_chirho),
+                extra_tys_chirho: defaulted_pred_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|arg_chirho| final_subst_chirho.apply_ty_chirho(arg_chirho))
+                    .collect(),
+            },
+        );
         let args_chirho = self.normalized_pred_args_chirho(&resolved_chirho);
-        let pred_chirho = PredChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: resolved_chirho.class_name_chirho,
-            ty_chirho: args_chirho[0].clone(),
-            extra_tys_chirho: args_chirho[1..].to_vec(),
-        };
+        let pred_chirho = PredChirho::from_proof_chirho(
+            resolved_chirho.class_identity_chirho().clone(),
+            crate::class_chirho::PredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: resolved_chirho.class_name_chirho,
+                ty_chirho: args_chirho[0].clone(),
+                extra_tys_chirho: args_chirho[1..].to_vec(),
+            },
+        );
         if !self.fundep_wanted_unsatisfiable_chirho(&pred_chirho, &args_chirho, givens_chirho) {
             return false;
         }
@@ -330,7 +339,11 @@ impl InferCtxChirho {
         {
             return false;
         }
-        let Some(class_chirho) = self.class_env_chirho.classes_chirho.get(class_name_chirho) else {
+        let Some(class_chirho) = self
+            .class_env_chirho
+            .classes_chirho()
+            .get_chirho(class_name_chirho)
+        else {
             return false;
         };
         class_chirho
@@ -368,8 +381,8 @@ impl InferCtxChirho {
     /// Whether some other known class has this one among its superclasses.
     fn is_extended_by_another_class_chirho(&self, class_name_chirho: &str) -> bool {
         self.class_env_chirho
-            .classes_chirho
-            .keys()
+            .classes_chirho()
+            .keys_chirho()
             .any(|other_chirho| {
                 other_chirho != class_name_chirho
                     && self.is_transitive_superclass_chirho(class_name_chirho, other_chirho)
@@ -421,12 +434,12 @@ impl InferCtxChirho {
         }
         let Some(instances_chirho) = self
             .class_env_chirho
-            .instances_chirho
-            .get(class_name_chirho)
+            .instances_chirho()
+            .get_chirho(class_name_chirho)
         else {
             return false;
         };
-        instances_chirho.iter().any(|instance_chirho| {
+        instances_chirho.iter_chirho().any(|instance_chirho| {
             let instance_args_chirho: Vec<TyChirho> =
                 std::iter::once(&instance_chirho.head_ty_chirho)
                     .chain(&instance_chirho.extra_head_tys_chirho)

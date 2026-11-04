@@ -82,15 +82,22 @@ impl InferCtxChirho {
             Ok(unifier_chirho) => {
                 let resolved_chirho: Vec<PredChirho> = preds_chirho
                     .iter()
-                    .map(|pred_chirho| PredChirho {
-                        kind_tys_chirho: Vec::new(),
-                        class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                        ty_chirho: unifier_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                        extra_tys_chirho: pred_chirho
-                            .extra_tys_chirho
-                            .iter()
-                            .map(|extra_chirho| unifier_chirho.apply_ty_chirho(extra_chirho))
-                            .collect(),
+                    .map(|pred_chirho| {
+                        PredChirho::from_proof_chirho(
+                            pred_chirho.class_identity_chirho().clone(),
+                            crate::class_chirho::PredPartsChirho {
+                                kind_tys_chirho: Vec::new(),
+                                class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                                ty_chirho: unifier_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                                extra_tys_chirho: pred_chirho
+                                    .extra_tys_chirho
+                                    .iter()
+                                    .map(|extra_chirho| {
+                                        unifier_chirho.apply_ty_chirho(extra_chirho)
+                                    })
+                                    .collect(),
+                            },
+                        )
                     })
                     .collect();
                 self.capture_occurrence_predicates_chirho(name_chirho, &resolved_chirho);

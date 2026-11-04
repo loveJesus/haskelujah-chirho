@@ -15,6 +15,13 @@ use haskelujah_span_chirho::SpanChirho;
 use crate::promotion_chirho::PromotionResolutionChirho;
 use crate::provenance_chirho::OriginIdChirho;
 
+mod predicate_identity_chirho;
+pub use predicate_identity_chirho::{
+    ClassIdentityUnknownChirho, CompilerClassChirho, CompilerClassEvidenceChirho,
+    InstanceDeclarationOriginChirho, InstanceIdentityChirho, PredicateClassIdentityChirho,
+    PredicateClassProofChirho, SourceUnitIdentityChirho,
+};
+
 /// A name as written in source code, before resolution.
 ///
 /// Equality and hashing cover the text, the qualifier and the span, exactly as

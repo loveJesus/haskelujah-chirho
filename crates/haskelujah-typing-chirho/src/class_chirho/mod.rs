@@ -20,47 +20,35 @@ use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{TyChirho, TyVarChirho};
 use crate::unify_chirho::unify_chirho;
 
+mod arena_chirho;
 mod definitions_chirho;
 mod instance_matching_chirho;
 mod standard_chirho;
 mod tuple_instances_chirho;
+mod views_chirho;
+pub use arena_chirho::{
+    ClassEnvChirho, ClassRecordIdChirho, ClassRegistryErrorChirho, InstanceRecordIdChirho,
+};
 pub use definitions_chirho::{
-    ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredChirho, QualTyChirho,
+    ClassDeclChirho, ClassDeclPartsChirho, InstDeclChirho, InstDeclPartsChirho, PredChirho,
+    PredPartsChirho, QualTyChirho,
 };
 use instance_matching_chirho::match_consistently_chirho;
 pub use tuple_instances_chirho::MAX_TUPLE_INSTANCE_ARITY_CHIRHO;
+pub use views_chirho::{
+    ClassNamesViewChirho, InstanceListViewChirho, InstanceNamesViewChirho, InstanceRecordsChirho,
+};
 
 impl ClassEnvChirho {
-    pub fn new_chirho() -> Self {
-        Self::default()
-    }
-
-    /// Register a class declaration.
-    pub fn add_class_chirho(&mut self, decl_chirho: ClassDeclChirho) {
-        let name_chirho = decl_chirho.name_chirho.clone();
-        self.classes_chirho.insert(name_chirho.clone(), decl_chirho);
-        self.instances_chirho
-            .entry(name_chirho)
-            .or_insert_with(Vec::new);
-    }
-
-    /// Register an instance declaration.
-    pub fn add_instance_chirho(&mut self, inst_chirho: InstDeclChirho) {
-        self.instances_chirho
-            .entry(inst_chirho.class_name_chirho.clone())
-            .or_insert_with(Vec::new)
-            .push(inst_chirho);
-    }
-
     /// Check if a class exists.
     pub fn has_class_chirho(&self, name_chirho: &str) -> bool {
-        self.classes_chirho.contains_key(name_chirho)
+        self.classes_chirho().contains_key_chirho(name_chirho)
     }
 
     /// Get the superclasses of a class.
     pub fn superclasses_chirho(&self, class_name_chirho: &str) -> Vec<String> {
-        self.classes_chirho
-            .get(class_name_chirho)
+        self.classes_chirho()
+            .get_chirho(class_name_chirho)
             .map(|c_chirho| c_chirho.supers_chirho.clone())
             .unwrap_or_default()
     }
@@ -75,9 +63,11 @@ impl ClassEnvChirho {
     /// resolving `Convert Int Double` against `instance Convert Int Double`
     /// matches both the primary and extra type parameters.
     pub fn resolve_chirho(&self, pred_chirho: &PredChirho) -> Option<Vec<PredChirho>> {
-        let instances_chirho = self.instances_chirho.get(&pred_chirho.class_name_chirho)?;
+        let instances_chirho = self
+            .instances_chirho()
+            .get_chirho(&pred_chirho.class_name_chirho)?;
         instances_chirho
-            .iter()
+            .iter_chirho()
             .find_map(|inst_chirho| Self::instance_sub_goals_chirho(inst_chirho, pred_chirho))
     }
 
@@ -88,7 +78,10 @@ impl ClassEnvChirho {
     /// `a -> b` lets us determine that `b = Double`. Returns a substitution
     /// that improves the unknown type variables.
     pub fn fundep_improve_chirho(&self, pred_chirho: &PredChirho) -> SubstChirho {
-        let class_chirho = match self.classes_chirho.get(&pred_chirho.class_name_chirho) {
+        let class_chirho = match self
+            .classes_chirho()
+            .get_chirho(&pred_chirho.class_name_chirho)
+        {
             Some(c_chirho) => c_chirho,
             None => return SubstChirho::empty_chirho(),
         };
@@ -97,7 +90,10 @@ impl ClassEnvChirho {
             return SubstChirho::empty_chirho();
         }
 
-        let instances_chirho = match self.instances_chirho.get(&pred_chirho.class_name_chirho) {
+        let instances_chirho = match self
+            .instances_chirho()
+            .get_chirho(&pred_chirho.class_name_chirho)
+        {
             Some(i_chirho) => i_chirho,
             None => return SubstChirho::empty_chirho(),
         };

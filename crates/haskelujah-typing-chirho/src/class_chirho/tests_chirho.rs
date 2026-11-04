@@ -218,7 +218,7 @@ fn mptc_class_decl_chirho() {
     // class Convert a b where convert :: a -> b
     let a_chirho = TyVarChirho(100);
     let b_chirho = TyVarChirho(101);
-    let decl_chirho = ClassDeclChirho {
+    let decl_chirho = ClassDeclChirho::legacy_chirho(crate::class_chirho::ClassDeclPartsChirho {
         kind_vars_chirho: Vec::new(),
         name_chirho: "Convert".to_string(),
         supers_chirho: vec![],
@@ -237,7 +237,7 @@ fn mptc_class_decl_chirho() {
         extra_vars_chirho: vec![b_chirho],
         fundeps_chirho: vec![],
         defaults_chirho: HashMap::new(),
-    };
+    });
 
     assert!(decl_chirho.is_mptc_chirho());
     assert_eq!(decl_chirho.all_vars_chirho(), vec![a_chirho, b_chirho]);
@@ -269,24 +269,28 @@ fn mptc_instance_resolution_chirho() {
 
     let a_chirho = TyVarChirho(100);
     let b_chirho = TyVarChirho(101);
-    env_chirho.add_class_chirho(ClassDeclChirho {
-        kind_vars_chirho: Vec::new(),
-        name_chirho: "Convert".to_string(),
-        supers_chirho: vec![],
-        var_chirho: a_chirho,
-        methods_chirho: HashMap::new(),
-        extra_vars_chirho: vec![b_chirho],
-        fundeps_chirho: vec![],
-        defaults_chirho: HashMap::new(),
-    });
+    env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
+        crate::class_chirho::ClassDeclPartsChirho {
+            kind_vars_chirho: Vec::new(),
+            name_chirho: "Convert".to_string(),
+            supers_chirho: vec![],
+            var_chirho: a_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![b_chirho],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        },
+    ));
 
-    env_chirho.add_instance_chirho(InstDeclChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: "Convert".to_string(),
-        head_ty_chirho: TyChirho::int_chirho(),
-        extra_head_tys_chirho: vec![TyChirho::ConChirho("Double".to_string())],
-        context_chirho: vec![],
-    });
+    env_chirho.add_instance_chirho(InstDeclChirho::legacy_chirho(
+        crate::class_chirho::InstDeclPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "Convert".to_string(),
+            head_ty_chirho: TyChirho::int_chirho(),
+            extra_head_tys_chirho: vec![TyChirho::ConChirho("Double".to_string())],
+            context_chirho: vec![],
+        },
+    ));
 
     // Should resolve Convert Int Double
     let pred_chirho = PredChirho::new_multi_chirho(
@@ -327,27 +331,31 @@ fn mptc_polymorphic_instance_resolution_chirho() {
 
     let a_chirho = TyVarChirho(100);
     let b_chirho = TyVarChirho(101);
-    env_chirho.add_class_chirho(ClassDeclChirho {
-        kind_vars_chirho: Vec::new(),
-        name_chirho: "Convert".to_string(),
-        supers_chirho: vec![],
-        var_chirho: a_chirho,
-        methods_chirho: HashMap::new(),
-        extra_vars_chirho: vec![b_chirho],
-        fundeps_chirho: vec![],
-        defaults_chirho: HashMap::new(),
-    });
+    env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
+        crate::class_chirho::ClassDeclPartsChirho {
+            kind_vars_chirho: Vec::new(),
+            name_chirho: "Convert".to_string(),
+            supers_chirho: vec![],
+            var_chirho: a_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![b_chirho],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        },
+    ));
 
     let inst_var_chirho = TyVarChirho(200);
-    env_chirho.add_instance_chirho(InstDeclChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: "Convert".to_string(),
-        head_ty_chirho: TyChirho::VarChirho(inst_var_chirho),
-        extra_head_tys_chirho: vec![TyChirho::ListChirho(Box::new(TyChirho::VarChirho(
-            inst_var_chirho,
-        )))],
-        context_chirho: vec![],
-    });
+    env_chirho.add_instance_chirho(InstDeclChirho::legacy_chirho(
+        crate::class_chirho::InstDeclPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "Convert".to_string(),
+            head_ty_chirho: TyChirho::VarChirho(inst_var_chirho),
+            extra_head_tys_chirho: vec![TyChirho::ListChirho(Box::new(TyChirho::VarChirho(
+                inst_var_chirho,
+            )))],
+            context_chirho: vec![],
+        },
+    ));
 
     // Convert Int [Int] should match with inst_var = Int
     let pred_chirho = PredChirho::new_multi_chirho(
@@ -378,24 +386,28 @@ fn mptc_entails_chirho() {
 
     let a_chirho = TyVarChirho(100);
     let b_chirho = TyVarChirho(101);
-    env_chirho.add_class_chirho(ClassDeclChirho {
-        kind_vars_chirho: Vec::new(),
-        name_chirho: "Convert".to_string(),
-        supers_chirho: vec![],
-        var_chirho: a_chirho,
-        methods_chirho: HashMap::new(),
-        extra_vars_chirho: vec![b_chirho],
-        fundeps_chirho: vec![],
-        defaults_chirho: HashMap::new(),
-    });
+    env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
+        crate::class_chirho::ClassDeclPartsChirho {
+            kind_vars_chirho: Vec::new(),
+            name_chirho: "Convert".to_string(),
+            supers_chirho: vec![],
+            var_chirho: a_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![b_chirho],
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        },
+    ));
 
-    env_chirho.add_instance_chirho(InstDeclChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: "Convert".to_string(),
-        head_ty_chirho: TyChirho::int_chirho(),
-        extra_head_tys_chirho: vec![TyChirho::ConChirho("Double".to_string())],
-        context_chirho: vec![],
-    });
+    env_chirho.add_instance_chirho(InstDeclChirho::legacy_chirho(
+        crate::class_chirho::InstDeclPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "Convert".to_string(),
+            head_ty_chirho: TyChirho::int_chirho(),
+            extra_head_tys_chirho: vec![TyChirho::ConChirho("Double".to_string())],
+            context_chirho: vec![],
+        },
+    ));
 
     assert!(env_chirho.entails_chirho(&PredChirho::new_multi_chirho(
         "Convert",
@@ -415,7 +427,7 @@ fn mptc_fundeps_stored_chirho() {
     // class Convert a b | a -> b
     let a_chirho = TyVarChirho(100);
     let b_chirho = TyVarChirho(101);
-    let decl_chirho = ClassDeclChirho {
+    let decl_chirho = ClassDeclChirho::legacy_chirho(crate::class_chirho::ClassDeclPartsChirho {
         kind_vars_chirho: Vec::new(),
         name_chirho: "Convert".to_string(),
         supers_chirho: vec![],
@@ -424,7 +436,7 @@ fn mptc_fundeps_stored_chirho() {
         extra_vars_chirho: vec![b_chirho],
         fundeps_chirho: vec![(vec![0], vec![1])], // a -> b
         defaults_chirho: HashMap::new(),
-    };
+    });
 
     assert_eq!(decl_chirho.fundeps_chirho.len(), 1);
     assert_eq!(decl_chirho.fundeps_chirho[0], (vec![0], vec![1]));
@@ -439,24 +451,28 @@ fn mptc_fundep_improvement_chirho() {
 
     let a_chirho = TyVarChirho(100);
     let b_chirho = TyVarChirho(101);
-    env_chirho.add_class_chirho(ClassDeclChirho {
-        kind_vars_chirho: Vec::new(),
-        name_chirho: "Convert".to_string(),
-        supers_chirho: vec![],
-        var_chirho: a_chirho,
-        methods_chirho: HashMap::new(),
-        extra_vars_chirho: vec![b_chirho],
-        fundeps_chirho: vec![(vec![0], vec![1])], // a -> b
-        defaults_chirho: HashMap::new(),
-    });
+    env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
+        crate::class_chirho::ClassDeclPartsChirho {
+            kind_vars_chirho: Vec::new(),
+            name_chirho: "Convert".to_string(),
+            supers_chirho: vec![],
+            var_chirho: a_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![b_chirho],
+            fundeps_chirho: vec![(vec![0], vec![1])], // a -> b
+            defaults_chirho: HashMap::new(),
+        },
+    ));
 
-    env_chirho.add_instance_chirho(InstDeclChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: "Convert".to_string(),
-        head_ty_chirho: TyChirho::int_chirho(),
-        extra_head_tys_chirho: vec![TyChirho::ConChirho("Double".to_string())],
-        context_chirho: vec![],
-    });
+    env_chirho.add_instance_chirho(InstDeclChirho::legacy_chirho(
+        crate::class_chirho::InstDeclPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "Convert".to_string(),
+            head_ty_chirho: TyChirho::int_chirho(),
+            extra_head_tys_chirho: vec![TyChirho::ConChirho("Double".to_string())],
+            context_chirho: vec![],
+        },
+    ));
 
     // Convert Int ?t42 — fundep should determine ?t42 = Double
     let unknown_chirho = TyVarChirho(42);
@@ -481,24 +497,28 @@ fn mptc_fundep_no_improvement_on_mismatch_chirho() {
 
     let a_chirho = TyVarChirho(100);
     let b_chirho = TyVarChirho(101);
-    env_chirho.add_class_chirho(ClassDeclChirho {
-        kind_vars_chirho: Vec::new(),
-        name_chirho: "Convert".to_string(),
-        supers_chirho: vec![],
-        var_chirho: a_chirho,
-        methods_chirho: HashMap::new(),
-        extra_vars_chirho: vec![b_chirho],
-        fundeps_chirho: vec![(vec![0], vec![1])],
-        defaults_chirho: HashMap::new(),
-    });
+    env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
+        crate::class_chirho::ClassDeclPartsChirho {
+            kind_vars_chirho: Vec::new(),
+            name_chirho: "Convert".to_string(),
+            supers_chirho: vec![],
+            var_chirho: a_chirho,
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: vec![b_chirho],
+            fundeps_chirho: vec![(vec![0], vec![1])],
+            defaults_chirho: HashMap::new(),
+        },
+    ));
 
-    env_chirho.add_instance_chirho(InstDeclChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: "Convert".to_string(),
-        head_ty_chirho: TyChirho::int_chirho(),
-        extra_head_tys_chirho: vec![TyChirho::ConChirho("Double".to_string())],
-        context_chirho: vec![],
-    });
+    env_chirho.add_instance_chirho(InstDeclChirho::legacy_chirho(
+        crate::class_chirho::InstDeclPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "Convert".to_string(),
+            head_ty_chirho: TyChirho::int_chirho(),
+            extra_head_tys_chirho: vec![TyChirho::ConChirho("Double".to_string())],
+            context_chirho: vec![],
+        },
+    ));
 
     let unknown_chirho = TyVarChirho(42);
     let pred_chirho = PredChirho::new_multi_chirho(

@@ -48,19 +48,24 @@ impl ClassEnvChirho {
             inst_chirho
                 .context_chirho
                 .iter()
-                .map(|context_chirho| PredChirho {
-                    kind_tys_chirho: context_chirho
-                        .kind_tys_chirho
-                        .iter()
-                        .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
-                        .collect(),
-                    class_name_chirho: context_chirho.class_name_chirho.clone(),
-                    ty_chirho: subst_chirho.apply_ty_chirho(&context_chirho.ty_chirho),
-                    extra_tys_chirho: context_chirho
-                        .extra_tys_chirho
-                        .iter()
-                        .map(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho))
-                        .collect(),
+                .map(|context_chirho| {
+                    PredChirho::from_proof_chirho(
+                        context_chirho.class_identity_chirho().clone(),
+                        crate::class_chirho::PredPartsChirho {
+                            kind_tys_chirho: context_chirho
+                                .kind_tys_chirho
+                                .iter()
+                                .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
+                                .collect(),
+                            class_name_chirho: context_chirho.class_name_chirho.clone(),
+                            ty_chirho: subst_chirho.apply_ty_chirho(&context_chirho.ty_chirho),
+                            extra_tys_chirho: context_chirho
+                                .extra_tys_chirho
+                                .iter()
+                                .map(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho))
+                                .collect(),
+                        },
+                    )
                 })
                 .collect(),
         )

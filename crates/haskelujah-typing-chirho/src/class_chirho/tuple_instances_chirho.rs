@@ -26,18 +26,20 @@ impl ClassEnvChirho {
                 })
                 .collect::<Vec<_>>();
             for class_chirho in ["Eq", "Show", "Ord"] {
-                self.add_instance_chirho(InstDeclChirho {
-                    kind_tys_chirho: Vec::new(),
-                    class_name_chirho: class_chirho.to_string(),
-                    head_ty_chirho: TyChirho::TupleChirho(components_chirho.clone()),
-                    extra_head_tys_chirho: vec![],
-                    context_chirho: components_chirho
-                        .iter()
-                        .map(|component_chirho| {
-                            PredChirho::new_chirho(class_chirho, component_chirho.clone())
-                        })
-                        .collect(),
-                });
+                self.add_instance_chirho(InstDeclChirho::legacy_chirho(
+                    crate::class_chirho::InstDeclPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: class_chirho.to_string(),
+                        head_ty_chirho: TyChirho::TupleChirho(components_chirho.clone()),
+                        extra_head_tys_chirho: vec![],
+                        context_chirho: components_chirho
+                            .iter()
+                            .map(|component_chirho| {
+                                PredChirho::new_chirho(class_chirho, component_chirho.clone())
+                            })
+                            .collect(),
+                    },
+                ));
             }
         }
     }

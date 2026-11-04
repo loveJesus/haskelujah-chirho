@@ -25,22 +25,22 @@ fn instance_chirho(
     extras_chirho: Vec<TyChirho>,
     context_chirho: Vec<PredChirho>,
 ) -> InstDeclChirho {
-    InstDeclChirho {
+    InstDeclChirho::legacy_chirho(crate::class_chirho::InstDeclPartsChirho {
         kind_tys_chirho: Vec::new(),
         class_name_chirho: "ChoiceChirho".to_owned(),
         head_ty_chirho: head_chirho,
         extra_head_tys_chirho: extras_chirho,
         context_chirho,
-    }
+    })
 }
 
 fn goal_chirho(head_chirho: TyChirho, extras_chirho: Vec<TyChirho>) -> PredChirho {
-    PredChirho {
+    PredChirho::legacy_chirho(crate::class_chirho::PredPartsChirho {
         kind_tys_chirho: Vec::new(),
         class_name_chirho: "ChoiceChirho".to_owned(),
         ty_chirho: head_chirho,
         extra_tys_chirho: extras_chirho,
-    }
+    })
 }
 
 #[test]
@@ -70,7 +70,7 @@ fn a_nonlinear_match_instantiates_every_context_argument_chirho() {
         vec![application_chirho("Maybe", vec![variable_chirho(1)])],
         vec![
             PredChirho::new_chirho("Eq", variable_chirho(1)),
-            PredChirho {
+            PredChirho::legacy_chirho(crate::class_chirho::PredPartsChirho {
                 kind_tys_chirho: Vec::new(),
                 class_name_chirho: "RelatedChirho".to_owned(),
                 ty_chirho: application_chirho("Maybe", vec![variable_chirho(1)]),
@@ -78,7 +78,7 @@ fn a_nonlinear_match_instantiates_every_context_argument_chirho() {
                     variable_chirho(1),
                     TyChirho::ListChirho(Box::new(variable_chirho(1))),
                 ],
-            },
+            }),
         ],
     );
     let goal_chirho = goal_chirho(
@@ -89,7 +89,7 @@ fn a_nonlinear_match_instantiates_every_context_argument_chirho() {
         ClassEnvChirho::instance_sub_goals_chirho(&instance_chirho, &goal_chirho),
         Some(vec![
             PredChirho::new_chirho("Eq", TyChirho::int_chirho()),
-            PredChirho {
+            PredChirho::legacy_chirho(crate::class_chirho::PredPartsChirho {
                 kind_tys_chirho: Vec::new(),
                 class_name_chirho: "RelatedChirho".to_owned(),
                 ty_chirho: application_chirho("Maybe", vec![TyChirho::int_chirho()]),
@@ -97,7 +97,7 @@ fn a_nonlinear_match_instantiates_every_context_argument_chirho() {
                     TyChirho::int_chirho(),
                     TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
                 ],
-            },
+            }),
         ])
     );
 }

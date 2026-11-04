@@ -103,7 +103,14 @@ fn family_results_normalize_but_stuck_applications_do_not_escape_chirho() {
 #[test]
 fn mptc_goals_require_every_argument_and_capture_cannot_invent_extras_chirho() {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
-    let mut declaration_chirho = ctx_chirho.class_env_chirho.classes_chirho["Eq"].clone();
+    let mut declaration_chirho = ctx_chirho
+        .class_env_chirho
+        .classes_chirho()
+        .get_chirho("Eq")
+        .expect("seeded Eq")
+        .as_ref()
+        .clone()
+        .without_identity_chirho();
     declaration_chirho.name_chirho = "PairChirho".to_owned();
     declaration_chirho.extra_vars_chirho = vec![TyVarChirho(10_000)];
     ctx_chirho

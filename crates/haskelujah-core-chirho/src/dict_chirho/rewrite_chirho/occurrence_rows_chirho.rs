@@ -161,9 +161,9 @@ impl DictPassCtxChirho {
         parsed_type_key_chirho: &str,
     ) -> Option<Vec<PredChirho>> {
         class_env_chirho
-            .instances_chirho
-            .get(class_name_chirho)?
-            .iter()
+            .instances_chirho()
+            .get_chirho(class_name_chirho)?
+            .iter_chirho()
             .find(|inst_chirho| {
                 !inst_chirho.context_chirho.is_empty()
                     && (format!("{}", inst_chirho.head_ty_chirho) == parsed_type_key_chirho

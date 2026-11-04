@@ -16,7 +16,7 @@ use super::*;
 /// An instance declared by the module under inference.
 #[derive(Debug, Clone)]
 pub(super) struct LocalInstanceChirho {
-    pub(super) instance_chirho: InstDeclChirho,
+    pub(super) instance_chirho: std::sync::Arc<InstDeclChirho>,
     /// `instance A` of a nullary class: the head type is a placeholder.
     pub(super) nullary_chirho: bool,
     /// The class and every type constructor of the head AS WRITTEN, qualifier
@@ -249,11 +249,11 @@ impl InferCtxChirho {
                     .count();
                 let registered_copies_chirho = self
                     .class_env_chirho
-                    .instances_chirho
-                    .get(&later_chirho.instance_chirho.class_name_chirho)
+                    .instances_chirho()
+                    .get_chirho(&later_chirho.instance_chirho.class_name_chirho)
                     .map_or(0, |registered_chirho| {
                         registered_chirho
-                            .iter()
+                            .iter_chirho()
                             .filter(|registered_chirho| equal_to_later_chirho(registered_chirho))
                             .count()
                     });
@@ -291,7 +291,7 @@ enum MethodRouteChirho {
 /// as written, its type variables, and its written context as givens over
 /// those variables.
 struct InstanceUnderCheckChirho {
-    class_decl_chirho: ClassDeclChirho,
+    class_decl_chirho: std::sync::Arc<ClassDeclChirho>,
     head_tys_chirho: Vec<TyChirho>,
     var_map_chirho: HashMap<String, TyVarChirho>,
     context_chirho: Vec<SchemePredChirho>,
@@ -355,8 +355,8 @@ impl InferCtxChirho {
             };
             let Some(class_decl_chirho) = self
                 .class_env_chirho
-                .classes_chirho
-                .get(class_chirho.text_chirho())
+                .classes_chirho()
+                .get_chirho(class_chirho.text_chirho())
                 .cloned()
             else {
                 continue;
@@ -432,11 +432,13 @@ impl InferCtxChirho {
         preds_chirho.extend(
             equalities_chirho
                 .into_iter()
-                .map(|(lhs_chirho, rhs_chirho)| SchemePredChirho {
-                    kind_tys_chirho: Vec::new(),
-                    class_name_chirho: "~".to_string(),
-                    ty_chirho: lhs_chirho,
-                    extra_tys_chirho: vec![rhs_chirho],
+                .map(|(lhs_chirho, rhs_chirho)| {
+                    SchemePredChirho::legacy_chirho(crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: "~".to_string(),
+                        ty_chirho: lhs_chirho,
+                        extra_tys_chirho: vec![rhs_chirho],
+                    })
                 }),
         );
         (preds_chirho, !unmodelled_chirho && !variable_headed_chirho)
@@ -463,7 +465,17 @@ impl InferCtxChirho {
         span_chirho: SpanChirho,
     ) {
         let env_snapshot_chirho = self.env_chirho.clone();
-        let class_env_snapshot_chirho = self.class_env_chirho.clone();
+        let class_env_snapshot_chirho = match self.class_env_chirho.try_snapshot_chirho() {
+            Ok(snapshot_chirho) => snapshot_chirho,
+            Err(error_chirho) => {
+                self.diagnostics_chirho
+                    .push_chirho(DiagnosticChirho::error_chirho(
+                        format!("class registry snapshot resource limit reached: {error_chirho:?}"),
+                        span_chirho,
+                    ));
+                return;
+            }
+        };
         let scoped_tyvars_snapshot_chirho = self.scoped_tyvars_chirho.clone();
         let skolem_bindings_snapshot_chirho = self.skolem_bindings_chirho.clone();
         let module_preds_chirho = std::mem::take(&mut self.deferred_preds_chirho);
@@ -693,20 +705,25 @@ impl InferCtxChirho {
     /// method and accepted at the top (T13142).
     fn judge_ground_leftovers_chirho(&mut self, method_subst_chirho: &SubstChirho) {
         for (pred_chirho, span_chirho) in std::mem::take(&mut self.deferred_preds_chirho) {
-            let resolved_chirho = PredChirho {
-                kind_tys_chirho: Vec::new(),
-                class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                ty_chirho: self.normalize_ty_chirho(
-                    &method_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                ),
-                extra_tys_chirho: pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|ty_chirho| {
-                        self.normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(ty_chirho))
-                    })
-                    .collect(),
-            };
+            let resolved_chirho = PredChirho::from_proof_chirho(
+                pred_chirho.class_identity_chirho().clone(),
+                crate::class_chirho::PredPartsChirho {
+                    kind_tys_chirho: Vec::new(),
+                    class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                    ty_chirho: self.normalize_ty_chirho(
+                        &method_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                    ),
+                    extra_tys_chirho: pred_chirho
+                        .extra_tys_chirho
+                        .iter()
+                        .map(|ty_chirho| {
+                            self.normalize_ty_chirho(
+                                &method_subst_chirho.apply_ty_chirho(ty_chirho),
+                            )
+                        })
+                        .collect(),
+                },
+            );
             if Self::pred_fully_ground_chirho(&resolved_chirho) {
                 self.report_certainly_unsolvable_ground_chirho(&resolved_chirho, span_chirho);
             } else {
@@ -829,19 +846,26 @@ impl InferCtxChirho {
         let preds_chirho: Vec<SchemePredChirho> = method_scheme_chirho
             .preds_chirho
             .iter()
-            .map(|pred_chirho| SchemePredChirho {
-                kind_tys_chirho: Vec::new(),
-                class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                ty_chirho: self.normalize_ty_chirho(
-                    &head_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                ),
-                extra_tys_chirho: pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|ty_chirho| {
-                        self.normalize_ty_chirho(&head_subst_chirho.apply_ty_chirho(ty_chirho))
-                    })
-                    .collect(),
+            .map(|pred_chirho| {
+                SchemePredChirho::from_proof_chirho(
+                    pred_chirho.class_identity_chirho().clone(),
+                    crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                        ty_chirho: self.normalize_ty_chirho(
+                            &head_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                        ),
+                        extra_tys_chirho: pred_chirho
+                            .extra_tys_chirho
+                            .iter()
+                            .map(|ty_chirho| {
+                                self.normalize_ty_chirho(
+                                    &head_subst_chirho.apply_ty_chirho(ty_chirho),
+                                )
+                            })
+                            .collect(),
+                    },
+                )
             })
             .collect();
         let ty_chirho = self.normalize_ty_chirho(

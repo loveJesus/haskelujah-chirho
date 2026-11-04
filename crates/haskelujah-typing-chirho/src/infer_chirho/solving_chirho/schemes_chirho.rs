@@ -13,6 +13,27 @@ use haskelujah_span_chirho::SpanChirho;
 use std::collections::{HashMap, HashSet};
 
 impl InferCtxChirho {
+    pub(super) fn coalesce_scheme_predicates_chirho(
+        &mut self,
+        predicates_chirho: Vec<SchemePredChirho>,
+        span_chirho: SpanChirho,
+    ) -> Vec<SchemePredChirho> {
+        match crate::ty_chirho::OrderedPredicateSetChirho::try_new_chirho(predicates_chirho) {
+            Ok(predicates_chirho) => predicates_chirho.into_vec_chirho(),
+            Err(failure_chirho) => {
+                self.diagnostics_chirho
+                    .push_chirho(DiagnosticChirho::error_chirho(
+                        format!(
+                            "predicate collection resource limit reached: {:?}",
+                            failure_chirho.error_chirho
+                        ),
+                        span_chirho,
+                    ));
+                failure_chirho.predicates_chirho
+            }
+        }
+    }
+
     /// Generate a fresh unification variable.
     pub fn fresh_var_chirho(&mut self) -> TyChirho {
         let var_chirho = TyVarChirho(self.next_var_chirho);
@@ -328,12 +349,15 @@ impl InferCtxChirho {
                 {
                     continue;
                 }
-                scheme_preds_chirho.push(SchemePredChirho {
-                    kind_tys_chirho: Vec::new(),
-                    class_name_chirho: pred_chirho.class_name_chirho,
-                    ty_chirho: pred_chirho.ty_chirho,
-                    extra_tys_chirho: pred_chirho.extra_tys_chirho,
-                });
+                scheme_preds_chirho.push(SchemePredChirho::from_proof_chirho(
+                    pred_chirho.class_identity_chirho().clone(),
+                    crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: pred_chirho.class_name_chirho,
+                        ty_chirho: pred_chirho.ty_chirho,
+                        extra_tys_chirho: pred_chirho.extra_tys_chirho,
+                    },
+                ));
             } else {
                 remaining_chirho.push((pred_chirho, span_chirho));
             }
@@ -342,8 +366,8 @@ impl InferCtxChirho {
 
         // Keep the first occurrence of each whole predicate, including extra MPTC types.
         // Adjacent-only dedup left Num b, Integral a, Num b with two dictionary indices.
-        let mut seen_preds_chirho = HashSet::new();
-        scheme_preds_chirho.retain(|pred_chirho| seen_preds_chirho.insert(pred_chirho.clone()));
+        scheme_preds_chirho =
+            self.coalesce_scheme_predicates_chirho(scheme_preds_chirho, span_chirho);
 
         // Context reduction: remove predicates that are entailed by
         // other predicates via the superclass hierarchy.
@@ -362,6 +386,11 @@ impl InferCtxChirho {
                 })
             })
             .collect();
+        if keep_chirho.iter().any(|keep_chirho| !keep_chirho) {
+            for predicate_chirho in &mut scheme_preds_chirho {
+                predicate_chirho.meet_class_identity_chirho(&haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::UnsupportedChirho));
+            }
+        }
         scheme_preds_chirho = scheme_preds_chirho
             .into_iter()
             .zip(keep_chirho)

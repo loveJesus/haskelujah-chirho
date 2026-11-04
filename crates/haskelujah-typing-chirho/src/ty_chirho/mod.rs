@@ -332,17 +332,154 @@ impl fmt::Display for TyChirho {
     }
 }
 
+mod predicate_terms_chirho;
+pub use predicate_terms_chirho::{
+    MappedPredicateTermsChirho, OrderedPredicateSetChirho, PredicateRecordChirho,
+    PredicateSetErrorChirho, PredicateSetFailureChirho, PredicateTermsChirho,
+};
+
 /// A predicate reference used in type schemes. Kept lightweight:
-/// just a class name and the type it constrains. Full `PredChirho`
-/// lives in `class_chirho`; this avoids a circular dependency.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// complete hidden/ordinary arguments plus producer proof. Full `PredChirho`
+/// lives in `class_chirho`; this avoids a dependency on the class registry.
+#[derive(Debug, Clone)]
 pub struct SchemePredChirho {
+    class_identity_chirho: haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
     /// Invisible kind prefix, quantified with the scheme ordinary arguments.
     pub kind_tys_chirho: Vec<TyChirho>,
     pub class_name_chirho: String,
     pub ty_chirho: TyChirho,
     /// Extra type arguments for multi-parameter type classes.
     pub extra_tys_chirho: Vec<TyChirho>,
+}
+
+/// Predicate arguments before a producer attaches its provenance.
+#[derive(Debug, Clone)]
+pub struct SchemePredPartsChirho {
+    pub kind_tys_chirho: Vec<TyChirho>,
+    pub class_name_chirho: String,
+    pub ty_chirho: TyChirho,
+    pub extra_tys_chirho: Vec<TyChirho>,
+}
+
+impl SchemePredChirho {
+    /// Called only by an explicit compiler producer, never by a spelling resolver.
+    pub fn from_compiler_chirho(
+        identity_chirho: haskelujah_ast_chirho::name_chirho::CompilerClassChirho,
+        parts_chirho: SchemePredPartsChirho,
+    ) -> Self {
+        Self::from_producer_chirho(
+            parts_chirho,
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::ProvenChirho(
+                haskelujah_ast_chirho::name_chirho::PredicateClassIdentityChirho::CompilerChirho(
+                    identity_chirho,
+                ),
+            ),
+        )
+    }
+
+    pub fn from_proof_chirho(
+        class_identity_chirho: haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
+        parts_chirho: SchemePredPartsChirho,
+    ) -> Self {
+        Self::from_producer_chirho(parts_chirho, class_identity_chirho)
+    }
+
+    pub fn legacy_chirho(parts_chirho: SchemePredPartsChirho) -> Self {
+        Self::from_producer_chirho(
+            parts_chirho,
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+            ),
+        )
+    }
+
+    pub fn from_producer_chirho(
+        parts_chirho: SchemePredPartsChirho,
+        class_identity_chirho: haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
+    ) -> Self {
+        Self {
+            class_identity_chirho,
+            kind_tys_chirho: parts_chirho.kind_tys_chirho,
+            class_name_chirho: parts_chirho.class_name_chirho,
+            ty_chirho: parts_chirho.ty_chirho,
+            extra_tys_chirho: parts_chirho.extra_tys_chirho,
+        }
+    }
+
+    pub fn class_identity_chirho(
+        &self,
+    ) -> &haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho {
+        &self.class_identity_chirho
+    }
+
+    pub fn meet_class_identity_chirho(
+        &mut self,
+        other_chirho: &haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
+    ) {
+        self.class_identity_chirho = self
+            .class_identity_chirho
+            .clone()
+            .meet_chirho(other_chirho.clone());
+    }
+
+    pub fn rebuilt_chirho(&self, ty_chirho: TyChirho, extra_tys_chirho: Vec<TyChirho>) -> Self {
+        Self::from_producer_chirho(
+            SchemePredPartsChirho {
+                kind_tys_chirho: self.kind_tys_chirho.clone(),
+                class_name_chirho: self.class_name_chirho.clone(),
+                ty_chirho,
+                extra_tys_chirho,
+            },
+            self.class_identity_chirho.clone(),
+        )
+    }
+
+    pub fn rebuilt_parts_chirho(&self, parts_chirho: SchemePredPartsChirho) -> Self {
+        Self::from_producer_chirho(parts_chirho, self.class_identity_chirho.clone())
+    }
+
+    pub fn terms_chirho(&self) -> crate::ty_chirho::PredicateTermsChirho<'_> {
+        crate::ty_chirho::PredicateTermsChirho::new_chirho(
+            &self.kind_tys_chirho,
+            &self.ty_chirho,
+            &self.extra_tys_chirho,
+        )
+    }
+
+    pub fn mapped_chirho(&self, map_chirho: impl FnMut(&TyChirho) -> TyChirho) -> Self {
+        let terms_chirho = self.terms_chirho().mapped_chirho(map_chirho);
+        Self::from_producer_chirho(
+            SchemePredPartsChirho {
+                kind_tys_chirho: terms_chirho.kind_tys_chirho,
+                class_name_chirho: self.class_name_chirho.clone(),
+                ty_chirho: terms_chirho.ty_chirho,
+                extra_tys_chirho: terms_chirho.extra_tys_chirho,
+            },
+            self.class_identity_chirho.clone(),
+        )
+    }
+
+    pub fn semantic_tys_chirho(&self) -> impl Iterator<Item = &TyChirho> {
+        self.terms_chirho().iter_chirho()
+    }
+}
+
+impl PartialEq for SchemePredChirho {
+    fn eq(&self, other_chirho: &Self) -> bool {
+        self.kind_tys_chirho == other_chirho.kind_tys_chirho
+            && self.class_name_chirho == other_chirho.class_name_chirho
+            && self.ty_chirho == other_chirho.ty_chirho
+            && self.extra_tys_chirho == other_chirho.extra_tys_chirho
+    }
+}
+impl Eq for SchemePredChirho {}
+impl std::hash::Hash for SchemePredChirho {
+    fn hash<HasherChirho: std::hash::Hasher>(&self, state_chirho: &mut HasherChirho) {
+        std::hash::Hash::hash(&self.kind_tys_chirho, state_chirho);
+        std::hash::Hash::hash(&self.class_name_chirho, state_chirho);
+        std::hash::Hash::hash(&self.ty_chirho, state_chirho);
+        std::hash::Hash::hash(&self.extra_tys_chirho, state_chirho);
+    }
 }
 
 /// A type scheme: `forall a1 a2 ... . (preds =>) ty`. Represents polymorphism.
@@ -559,5 +696,25 @@ mod tests_chirho {
             )),
         };
         assert!(ty_chirho.free_vars_chirho().is_empty());
+    }
+}
+
+impl crate::ty_chirho::PredicateRecordChirho for SchemePredChirho {
+    fn terms_chirho(&self) -> crate::ty_chirho::PredicateTermsChirho<'_> {
+        self.terms_chirho()
+    }
+    fn class_name_chirho(&self) -> &str {
+        &self.class_name_chirho
+    }
+    fn class_identity_chirho(
+        &self,
+    ) -> &haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho {
+        self.class_identity_chirho()
+    }
+    fn meet_class_identity_chirho(
+        &mut self,
+        other_chirho: &haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
+    ) {
+        self.meet_class_identity_chirho(other_chirho);
     }
 }

@@ -78,19 +78,22 @@ impl InferCtxChirho {
                         false,
                     );
 
-                let class_pred_chirho = SchemePredChirho {
-                    kind_tys_chirho: Vec::new(),
-                    class_name_chirho: class_name_chirho.clone(),
-                    ty_chirho: TyChirho::VarChirho(class_tv_chirho),
-                    extra_tys_chirho: extra_vars_chirho
-                        .iter()
-                        .copied()
-                        .map(TyChirho::VarChirho)
-                        .collect(),
-                };
-                if !scheme_chirho.preds_chirho.contains(&class_pred_chirho) {
-                    scheme_chirho.preds_chirho.push(class_pred_chirho);
-                }
+                let class_pred_chirho =
+                    SchemePredChirho::legacy_chirho(crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: class_name_chirho.clone(),
+                        ty_chirho: TyChirho::VarChirho(class_tv_chirho),
+                        extra_tys_chirho: extra_vars_chirho
+                            .iter()
+                            .copied()
+                            .map(TyChirho::VarChirho)
+                            .collect(),
+                    });
+                scheme_chirho.preds_chirho.push(class_pred_chirho);
+                scheme_chirho.preds_chirho = self.coalesce_scheme_predicates_chirho(
+                    scheme_chirho.preds_chirho,
+                    method_chirho.ty_chirho.span_chirho(),
+                );
                 // A method's type is `forall <class vars>. C <class vars> =>
                 // forall <own vars>. ty`: the class variables are quantified
                 // first (visible type application `take @n` reaches `n` even
@@ -148,16 +151,19 @@ impl InferCtxChirho {
                 .insert(class_name_chirho.clone());
             // A source declaration replaces the seed's class of that name (row 686, C08).
             self.seeded_class_names_chirho.remove(&class_name_chirho);
-            self.class_env_chirho.add_class_chirho(ClassDeclChirho {
-                kind_vars_chirho: Vec::new(),
-                name_chirho: class_name_chirho.clone(),
-                supers_chirho,
-                var_chirho: class_tv_chirho,
-                methods_chirho: method_map_chirho,
-                extra_vars_chirho,
-                fundeps_chirho: resolved_fundeps_chirho,
-                defaults_chirho: defaults_map_chirho,
-            });
+            self.class_env_chirho
+                .add_class_chirho(ClassDeclChirho::legacy_chirho(
+                    crate::class_chirho::ClassDeclPartsChirho {
+                        kind_vars_chirho: Vec::new(),
+                        name_chirho: class_name_chirho.clone(),
+                        supers_chirho,
+                        var_chirho: class_tv_chirho,
+                        methods_chirho: method_map_chirho,
+                        extra_vars_chirho,
+                        fundeps_chirho: resolved_fundeps_chirho,
+                        defaults_chirho: defaults_map_chirho,
+                    },
+                ));
 
             // Register associated type families as open type families. A
             // default equation is NOT a general equation of the family (that
@@ -261,11 +267,16 @@ impl InferCtxChirho {
                 self.convert_written_context_chirho(context_chirho, &mut var_map_chirho);
             let mut inst_context_chirho: Vec<PredChirho> = context_preds_chirho
                 .into_iter()
-                .map(|pred_chirho| PredChirho {
-                    kind_tys_chirho: pred_chirho.kind_tys_chirho,
-                    class_name_chirho: pred_chirho.class_name_chirho,
-                    ty_chirho: pred_chirho.ty_chirho,
-                    extra_tys_chirho: pred_chirho.extra_tys_chirho,
+                .map(|pred_chirho| {
+                    PredChirho::from_proof_chirho(
+                        pred_chirho.class_identity_chirho().clone(),
+                        crate::class_chirho::PredPartsChirho {
+                            kind_tys_chirho: pred_chirho.kind_tys_chirho,
+                            class_name_chirho: pred_chirho.class_name_chirho,
+                            ty_chirho: pred_chirho.ty_chirho,
+                            extra_tys_chirho: pred_chirho.extra_tys_chirho,
+                        },
+                    )
                 })
                 .collect();
             inst_context_chirho.extend(context_equalities_chirho.into_iter().map(
@@ -288,16 +299,18 @@ impl InferCtxChirho {
                 .map(|t_chirho| self.expand_type_synonyms_chirho(&t_chirho))
                 .collect();
 
-            let instance_chirho = InstDeclChirho {
-                kind_tys_chirho: kind_tys_chirho
-                    .iter()
-                    .map(|kind_chirho| self.expand_type_synonyms_chirho(kind_chirho))
-                    .collect(),
-                class_name_chirho,
-                head_ty_chirho,
-                extra_head_tys_chirho,
-                context_chirho: inst_context_chirho,
-            };
+            let instance_chirho =
+                InstDeclChirho::legacy_chirho(crate::class_chirho::InstDeclPartsChirho {
+                    kind_tys_chirho: kind_tys_chirho
+                        .iter()
+                        .map(|kind_chirho| self.expand_type_synonyms_chirho(kind_chirho))
+                        .collect(),
+                    class_name_chirho,
+                    head_ty_chirho,
+                    extra_head_tys_chirho,
+                    context_chirho: inst_context_chirho,
+                });
+            let instance_chirho = std::sync::Arc::new(instance_chirho);
             // workflow: language-features-chirho/instance-obligations-chirho
             self.local_instances_chirho
                 .push(instance_obligations_chirho::LocalInstanceChirho {
@@ -309,7 +322,8 @@ impl InferCtxChirho {
                     ),
                     span_chirho: *span_chirho,
                 });
-            self.class_env_chirho.add_instance_chirho(instance_chirho);
+            self.class_env_chirho
+                .add_shared_instance_chirho(instance_chirho);
 
             // Register associated type family instances from this instance decl
             for atfi_chirho in assoc_tf_instances_chirho {

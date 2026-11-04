@@ -66,12 +66,14 @@ fn a_local_signature_can_use_its_parent_pattern_equality_chirho() {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
     let pattern_chirho = ctx_chirho.begin_pattern_implication_chirho();
     let family_chirho = opaque_chirho(TyChirho::ForallVarChirho("aChirho%1".to_owned()));
-    ctx_chirho.install_pattern_givens_chirho(vec![PredChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: "~".to_owned(),
-        ty_chirho: family_chirho.clone(),
-        extra_tys_chirho: vec![TyChirho::int_chirho()],
-    }]);
+    ctx_chirho.install_pattern_givens_chirho(vec![PredChirho::legacy_chirho(
+        crate::class_chirho::PredPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "~".to_owned(),
+            ty_chirho: family_chirho.clone(),
+            extra_tys_chirho: vec![TyChirho::int_chirho()],
+        },
+    )]);
     let child_chirho =
         ctx_chirho.begin_equality_scope_chirho(EqualityScopeKindChirho::CheckedChirho);
     ctx_chirho.defer_equality_chirho(
@@ -154,12 +156,14 @@ fn pattern_universals_stay_flexible_but_field_only_existentials_are_rigid_chirho
     );
     let scheme_chirho = SchemeChirho {
         vars_chirho: vec![universal_chirho, existential_chirho],
-        preds_chirho: vec![SchemePredChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: "Eq".to_owned(),
-            ty_chirho: TyChirho::VarChirho(existential_chirho),
-            extra_tys_chirho: vec![],
-        }],
+        preds_chirho: vec![SchemePredChirho::legacy_chirho(
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Eq".to_owned(),
+                ty_chirho: TyChirho::VarChirho(existential_chirho),
+                extra_tys_chirho: vec![],
+            },
+        )],
         ty_chirho: TyChirho::fun_chirho(TyChirho::VarChirho(existential_chirho), result_chirho),
     };
     let (fields_chirho, result_chirho, givens_chirho) =
@@ -182,12 +186,14 @@ fn constructor_expression_instantiation_stays_flexible_and_emits_wanteds_chirho(
     let var_chirho = TyVarChirho(900);
     let scheme_chirho = SchemeChirho {
         vars_chirho: vec![var_chirho],
-        preds_chirho: vec![SchemePredChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: "Eq".to_owned(),
-            ty_chirho: TyChirho::VarChirho(var_chirho),
-            extra_tys_chirho: vec![],
-        }],
+        preds_chirho: vec![SchemePredChirho::legacy_chirho(
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Eq".to_owned(),
+                ty_chirho: TyChirho::VarChirho(var_chirho),
+                extra_tys_chirho: vec![],
+            },
+        )],
         ty_chirho: TyChirho::fun_chirho(
             TyChirho::VarChirho(var_chirho),
             TyChirho::ConChirho("SomeChirho".to_owned()),
@@ -428,12 +434,14 @@ fn an_existential_eliminated_by_local_evidence_is_materialized_before_pop_chirho
         TyChirho::ListChirho(Box::new(fields_chirho[0].clone())),
     );
     ctx_chirho.apply_subst_all_chirho(&substitution_chirho);
-    ctx_chirho.install_pattern_givens_chirho(vec![PredChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: "~".to_owned(),
-        ty_chirho: fields_chirho[0].clone(),
-        extra_tys_chirho: vec![TyChirho::int_chirho()],
-    }]);
+    ctx_chirho.install_pattern_givens_chirho(vec![PredChirho::legacy_chirho(
+        crate::class_chirho::PredPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "~".to_owned(),
+            ty_chirho: fields_chirho[0].clone(),
+            extra_tys_chirho: vec![TyChirho::int_chirho()],
+        },
+    )]);
     let public_chirho = ctx_chirho.end_pattern_implication_chirho(
         frame_chirho,
         &TyChirho::int_chirho(),
@@ -525,12 +533,14 @@ fn a_case_alternative_cannot_hide_its_mismatch_behind_an_earlier_given_chirho() 
         for (name_chirho, preds_chirho) in [
             (
                 "HasChirho",
-                vec![SchemePredChirho {
-                    kind_tys_chirho: Vec::new(),
-                    class_name_chirho: "~".to_owned(),
-                    ty_chirho: opaque_chirho(TyChirho::VarChirho(var_chirho)),
-                    extra_tys_chirho: vec![TyChirho::int_chirho()],
-                }],
+                vec![SchemePredChirho::legacy_chirho(
+                    crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: "~".to_owned(),
+                        ty_chirho: opaque_chirho(TyChirho::VarChirho(var_chirho)),
+                        extra_tys_chirho: vec![TyChirho::int_chirho()],
+                    },
+                )],
             ),
             ("NoChirho", vec![]),
         ] {

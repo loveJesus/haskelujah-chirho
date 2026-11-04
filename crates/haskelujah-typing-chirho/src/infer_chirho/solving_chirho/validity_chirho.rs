@@ -192,19 +192,23 @@ impl InferCtxChirho {
         {
             return false;
         }
-        let normalized_pred_chirho = PredChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: pred_chirho.class_name_chirho.clone(),
-            ty_chirho: normalized_args_chirho[0].clone(),
-            extra_tys_chirho: normalized_args_chirho[1..].to_vec(),
-        };
+        let normalized_pred_chirho = PredChirho::from_proof_chirho(
+            pred_chirho.class_identity_chirho().clone(),
+            crate::class_chirho::PredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                ty_chirho: normalized_args_chirho[0].clone(),
+                extra_tys_chirho: normalized_args_chirho[1..].to_vec(),
+            },
+        );
         if let Some(instances_chirho) = self
             .class_env_chirho
-            .instances_chirho
-            .get(class_name_chirho)
+            .instances_chirho()
+            .get_chirho(class_name_chirho)
         {
             let candidates_chirho: Vec<&InstDeclChirho> = instances_chirho
-                .iter()
+                .iter_chirho()
+                .map(|instance_chirho| instance_chirho.as_ref())
                 .filter(|inst_chirho| {
                     Self::instance_could_match_pred_chirho(inst_chirho, &normalized_pred_chirho)
                 })
@@ -244,15 +248,20 @@ impl InferCtxChirho {
         let normalized_givens_chirho: Vec<PredChirho> = self
             .given_preds_chirho
             .iter()
-            .map(|given_chirho| PredChirho {
-                kind_tys_chirho: Vec::new(),
-                class_name_chirho: given_chirho.class_name_chirho.clone(),
-                ty_chirho: self.normalize_ty_chirho(&given_chirho.ty_chirho),
-                extra_tys_chirho: given_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|t_chirho| self.normalize_ty_chirho(t_chirho))
-                    .collect(),
+            .map(|given_chirho| {
+                PredChirho::from_proof_chirho(
+                    given_chirho.class_identity_chirho().clone(),
+                    crate::class_chirho::PredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: given_chirho.class_name_chirho.clone(),
+                        ty_chirho: self.normalize_ty_chirho(&given_chirho.ty_chirho),
+                        extra_tys_chirho: given_chirho
+                            .extra_tys_chirho
+                            .iter()
+                            .map(|t_chirho| self.normalize_ty_chirho(t_chirho))
+                            .collect(),
+                    },
+                )
             })
             .collect();
         if self.pred_entailed_by_givens_chirho(pred_chirho, &self.given_preds_chirho)
@@ -277,24 +286,27 @@ impl InferCtxChirho {
         if depth_chirho >= Self::UNSOLVABLE_SUB_GOAL_DEPTH_CHIRHO {
             return pred_chirho.clone();
         }
-        let normalized_pred_chirho = PredChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: pred_chirho.class_name_chirho.clone(),
-            ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
-            extra_tys_chirho: pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .map(|ty_chirho| self.normalize_ty_chirho(ty_chirho))
-                .collect(),
-        };
+        let normalized_pred_chirho = PredChirho::from_proof_chirho(
+            pred_chirho.class_identity_chirho().clone(),
+            crate::class_chirho::PredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
+                extra_tys_chirho: pred_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|ty_chirho| self.normalize_ty_chirho(ty_chirho))
+                    .collect(),
+            },
+        );
         let Some(instances_chirho) = self
             .class_env_chirho
-            .instances_chirho
-            .get(pred_chirho.class_name_chirho.as_str())
+            .instances_chirho()
+            .get_chirho(pred_chirho.class_name_chirho.as_str())
         else {
             return pred_chirho.clone();
         };
-        for inst_chirho in instances_chirho.iter().filter(|inst_chirho| {
+        for inst_chirho in instances_chirho.iter_chirho().filter(|inst_chirho| {
             Self::instance_could_match_pred_chirho(inst_chirho, &normalized_pred_chirho)
         }) {
             let Some(sub_goals_chirho) =

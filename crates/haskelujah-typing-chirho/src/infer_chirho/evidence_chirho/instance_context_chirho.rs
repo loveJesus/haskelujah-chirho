@@ -13,19 +13,22 @@ fn predicate_chirho(
     pred_chirho: &PredChirho,
     subst_chirho: &SubstChirho,
 ) -> PredChirho {
-    PredChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: pred_chirho.class_name_chirho.clone(),
-        ty_chirho: ctx_chirho
-            .normalize_ty_chirho(&subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho)),
-        extra_tys_chirho: pred_chirho
-            .extra_tys_chirho
-            .iter()
-            .map(|ty_chirho| {
-                ctx_chirho.normalize_ty_chirho(&subst_chirho.apply_ty_chirho(ty_chirho))
-            })
-            .collect(),
-    }
+    PredChirho::from_proof_chirho(
+        pred_chirho.class_identity_chirho().clone(),
+        crate::class_chirho::PredPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: pred_chirho.class_name_chirho.clone(),
+            ty_chirho: ctx_chirho
+                .normalize_ty_chirho(&subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho)),
+            extra_tys_chirho: pred_chirho
+                .extra_tys_chirho
+                .iter()
+                .map(|ty_chirho| {
+                    ctx_chirho.normalize_ty_chirho(&subst_chirho.apply_ty_chirho(ty_chirho))
+                })
+                .collect(),
+        },
+    )
 }
 
 fn authoritative_rigid_type_chirho(ctx_chirho: &InferCtxChirho, ty_chirho: &TyChirho) -> bool {
@@ -107,18 +110,21 @@ impl InferCtxChirho {
         final_subst_chirho: &SubstChirho,
     ) -> Option<String> {
         let context_chirho = context_chirho?;
-        let declaration_chirho = self.class_env_chirho.classes_chirho.get(class_chirho)?;
+        let declaration_chirho = self
+            .class_env_chirho
+            .classes_chirho()
+            .get_chirho(class_chirho)?;
         if declaration_chirho.extra_vars_chirho.len() != extras_chirho.len() {
             return None;
         }
         let wanted_chirho = predicate_chirho(
             self,
-            &PredChirho {
+            &PredChirho::legacy_chirho(crate::class_chirho::PredPartsChirho {
                 kind_tys_chirho: Vec::new(),
                 class_name_chirho: class_chirho.to_owned(),
                 ty_chirho: ty_chirho.clone(),
                 extra_tys_chirho: extras_chirho.to_vec(),
-            },
+            }),
             final_subst_chirho,
         );
         if !std::iter::once(&wanted_chirho.ty_chirho)

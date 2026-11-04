@@ -124,7 +124,9 @@ fn generic_spine_chirho<'a>(
     class_name_chirho: &str,
     inst_chirho: &'a InstDeclChirho,
 ) -> Option<(&'a str, usize)> {
-    let class_chirho = class_env_chirho.classes_chirho.get(class_name_chirho)?;
+    let class_chirho = class_env_chirho
+        .classes_chirho()
+        .get_chirho(class_name_chirho)?;
     if class_chirho.is_mptc_chirho()
         || !class_chirho.supers_chirho.is_empty()
         || !inst_chirho.extra_head_tys_chirho.is_empty()
@@ -135,9 +137,9 @@ fn generic_spine_chirho<'a>(
     let (constructor_chirho, arity_chirho) =
         distinct_variable_spine_chirho(&inst_chirho.head_ty_chirho)?;
     let competing_heads_chirho = class_env_chirho
-        .instances_chirho
-        .get(class_name_chirho)?
-        .iter()
+        .instances_chirho()
+        .get_chirho(class_name_chirho)?
+        .iter_chirho()
         .filter(|other_chirho| {
             head_constructor_chirho(&other_chirho.head_ty_chirho)
                 .is_none_or(|other_head_chirho| other_head_chirho == constructor_chirho)

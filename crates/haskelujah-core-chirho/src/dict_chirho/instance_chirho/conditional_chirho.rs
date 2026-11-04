@@ -38,7 +38,9 @@ impl DictPassCtxChirho {
         // Collect conditional list instances: (class, context_classes)
         let mut cond_list_instances_chirho: Vec<(String, Vec<String>)> = Vec::new();
 
-        for (class_name_chirho, instances_chirho) in &class_env_chirho.instances_chirho {
+        for (class_name_chirho, instances_chirho) in
+            class_env_chirho.instances_chirho().iter_chirho()
+        {
             for inst_chirho in instances_chirho {
                 if inst_chirho.context_chirho.is_empty() {
                     continue;

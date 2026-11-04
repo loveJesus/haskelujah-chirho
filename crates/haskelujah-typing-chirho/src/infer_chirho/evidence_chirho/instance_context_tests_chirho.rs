@@ -16,7 +16,14 @@ fn skolem_chirho(name_chirho: &str) -> TyChirho {
 
 fn context_chirho() -> InferCtxChirho {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
-    let mut declaration_chirho = ctx_chirho.class_env_chirho.classes_chirho["Eq"].clone();
+    let mut declaration_chirho = ctx_chirho
+        .class_env_chirho
+        .classes_chirho()
+        .get_chirho("Eq")
+        .expect("seeded Eq")
+        .as_ref()
+        .clone()
+        .without_identity_chirho();
     declaration_chirho.name_chirho = "DescribeChirho".to_owned();
     ctx_chirho
         .class_env_chirho
@@ -95,7 +102,14 @@ fn class_agreement_is_exact_and_duplicate_exact_contexts_are_ambiguous_chirho() 
 #[test]
 fn incomplete_mptc_goals_and_unresolved_metas_prove_no_index_chirho() {
     let mut ctx_chirho = context_chirho();
-    let mut declaration_chirho = ctx_chirho.class_env_chirho.classes_chirho["Eq"].clone();
+    let mut declaration_chirho = ctx_chirho
+        .class_env_chirho
+        .classes_chirho()
+        .get_chirho("Eq")
+        .expect("seeded Eq")
+        .as_ref()
+        .clone()
+        .without_identity_chirho();
     declaration_chirho.name_chirho = "PairChirho".to_owned();
     declaration_chirho.extra_vars_chirho = vec![TyVarChirho(10_000)];
     ctx_chirho
@@ -231,12 +245,14 @@ fn source_instance_transport_keeps_colliding_spans_and_actual_declarations_chirh
     let mut ctx_chirho = context_chirho();
     let instances_chirho = [TyChirho::int_chirho(), TyChirho::char_chirho()]
         .into_iter()
-        .map(|head_ty_chirho| InstDeclChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: "DescribeChirho".to_owned(),
-            head_ty_chirho,
-            extra_head_tys_chirho: Vec::new(),
-            context_chirho: Vec::new(),
+        .map(|head_ty_chirho| {
+            InstDeclChirho::legacy_chirho(crate::class_chirho::InstDeclPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "DescribeChirho".to_owned(),
+                head_ty_chirho,
+                extra_head_tys_chirho: Vec::new(),
+                context_chirho: Vec::new(),
+            })
         })
         .collect::<Vec<_>>();
     for instance_chirho in &instances_chirho {

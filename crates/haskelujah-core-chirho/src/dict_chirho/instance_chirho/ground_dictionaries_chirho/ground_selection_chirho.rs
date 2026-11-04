@@ -110,10 +110,10 @@ pub(in crate::dict_chirho) fn select_ground_instance_chirho<'env_chirho>(
     budget_chirho: &mut GroundBudgetChirho,
 ) -> Result<(&'env_chirho InstDeclChirho, Vec<PredChirho>), GroundRefusalChirho> {
     let instances_chirho = class_env_chirho
-        .instances_chirho
-        .get(&goal_chirho.class_name_chirho)
-        .map(Vec::as_slice)
-        .unwrap_or(&[]);
+        .instances_chirho()
+        .get_chirho(&goal_chirho.class_name_chirho)
+        .into_iter()
+        .flatten();
     let mut selected_chirho: Option<(&InstDeclChirho, Vec<PredChirho>)> = None;
     let mut others_chirho: Vec<String> = Vec::new();
     for instance_chirho in instances_chirho {
@@ -241,16 +241,19 @@ pub(in crate::dict_chirho) fn readable_instance_chirho(instance_chirho: &InstDec
     let mut letters_chirho = Vec::new();
     format!(
         "{}",
-        PredChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: instance_chirho.class_name_chirho.clone(),
-            ty_chirho: lettered_chirho(&instance_chirho.head_ty_chirho, &mut letters_chirho),
-            extra_tys_chirho: instance_chirho
-                .extra_head_tys_chirho
-                .iter()
-                .map(|ty_chirho| lettered_chirho(ty_chirho, &mut letters_chirho))
-                .collect(),
-        }
+        PredChirho::from_proof_chirho(
+            instance_chirho.class_identity_chirho().clone(),
+            haskelujah_typing_chirho::class_chirho::PredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: instance_chirho.class_name_chirho.clone(),
+                ty_chirho: lettered_chirho(&instance_chirho.head_ty_chirho, &mut letters_chirho),
+                extra_tys_chirho: instance_chirho
+                    .extra_head_tys_chirho
+                    .iter()
+                    .map(|ty_chirho| lettered_chirho(ty_chirho, &mut letters_chirho))
+                    .collect(),
+            }
+        )
     )
 }
 
@@ -259,16 +262,19 @@ fn readable_pred_chirho(pred_chirho: &PredChirho) -> String {
     let mut letters_chirho = Vec::new();
     format!(
         "{}",
-        PredChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: pred_chirho.class_name_chirho.clone(),
-            ty_chirho: lettered_chirho(&pred_chirho.ty_chirho, &mut letters_chirho),
-            extra_tys_chirho: pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .map(|ty_chirho| lettered_chirho(ty_chirho, &mut letters_chirho))
-                .collect(),
-        }
+        PredChirho::from_proof_chirho(
+            pred_chirho.class_identity_chirho().clone(),
+            haskelujah_typing_chirho::class_chirho::PredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                ty_chirho: lettered_chirho(&pred_chirho.ty_chirho, &mut letters_chirho),
+                extra_tys_chirho: pred_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|ty_chirho| lettered_chirho(ty_chirho, &mut letters_chirho))
+                    .collect(),
+            }
+        )
     )
 }
 

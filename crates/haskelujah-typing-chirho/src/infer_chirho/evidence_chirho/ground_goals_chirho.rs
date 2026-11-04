@@ -78,8 +78,8 @@ pub(crate) fn ground_pred_chirho(
 ) -> Option<PredChirho> {
     let declaration_chirho = ctx_chirho
         .class_env_chirho
-        .classes_chirho
-        .get(class_chirho)?;
+        .classes_chirho()
+        .get_chirho(class_chirho)?;
     if declaration_chirho.extra_vars_chirho.len() != extras_chirho.len() {
         return None;
     }
@@ -94,12 +94,14 @@ pub(crate) fn ground_pred_chirho(
             });
     let ty_chirho = arguments_chirho.next()??;
     let extra_tys_chirho = arguments_chirho.collect::<Option<Vec<_>>>()?;
-    Some(PredChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: class_chirho.to_owned(),
-        ty_chirho,
-        extra_tys_chirho,
-    })
+    Some(PredChirho::legacy_chirho(
+        crate::class_chirho::PredPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: class_chirho.to_owned(),
+            ty_chirho,
+            extra_tys_chirho,
+        },
+    ))
 }
 
 /// Structural disagreement suppresses only the new structural goal. Legacy

@@ -22,16 +22,18 @@ fn span_chirho(start_chirho: u32) -> SpanChirho {
 /// `instance SizeChirho a => SizeChirho (<head> a)` over the freshened variable `var`.
 fn context_instance_chirho(head_chirho: &str, var_chirho: u32) -> InstDeclChirho {
     let a_chirho = TyChirho::VarChirho(TyVarChirho(var_chirho));
-    InstDeclChirho {
-        kind_tys_chirho: Vec::new(),
-        class_name_chirho: "SizeChirho".to_string(),
-        head_ty_chirho: TyChirho::AppChirho(
-            Box::new(TyChirho::ConChirho(head_chirho.to_string())),
-            Box::new(a_chirho.clone()),
-        ),
-        extra_head_tys_chirho: Vec::new(),
-        context_chirho: vec![PredChirho::new_chirho("SizeChirho", a_chirho)],
-    }
+    InstDeclChirho::legacy_chirho(
+        haskelujah_typing_chirho::class_chirho::InstDeclPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "SizeChirho".to_string(),
+            head_ty_chirho: TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho(head_chirho.to_string())),
+                Box::new(a_chirho.clone()),
+            ),
+            extra_head_tys_chirho: Vec::new(),
+            context_chirho: vec![PredChirho::new_chirho("SizeChirho", a_chirho)],
+        },
+    )
 }
 
 fn declared_chirho(
@@ -40,7 +42,7 @@ fn declared_chirho(
 ) -> InstanceDeclarationChirho {
     InstanceDeclarationChirho {
         span_chirho: span_chirho(start_chirho),
-        instance_chirho: instance_chirho.clone(),
+        instance_chirho: std::sync::Arc::new(instance_chirho.clone()),
     }
 }
 

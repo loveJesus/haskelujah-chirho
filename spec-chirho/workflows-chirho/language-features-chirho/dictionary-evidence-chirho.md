@@ -1216,3 +1216,29 @@ The controls distinguish two independent Num and Show dictionaries, source-owned
 numeric arguments, result-only Num literals and qualified Prelude methods. Imported
 result-only dictionaries still lack exported parameter inventory and remain separately
 measured; this change adds no ABI metadata channel.
+
+
+## Row 688 canonical predicate substrate (Stage A)
+
+Source checkpoint only; compiler and paired behavior gates are still required. Class and instance payloads live once behind immutable `Arc` records in `ClassEnvChirho`. Spelling and identity tables contain local record IDs. Legacy spelling views retain class replacement, present empty instance keys, instance order and duplicates; they do not become nominal proof. Checked snapshots preflight metadata copies, clone each table with its existing hasher/bucket order, share the payloads, and remap every local ID to a new owner. Arena owners are not defining-unit identities.
+
+```mermaid
+flowchart TD
+    Seed[Explicit compiler seed producer] --> Record[Canonical class and instance records]
+    Direct[Direct API or missing source unit] --> Unknown[Explicit Unknown provenance]
+    Unknown --> Record
+    Record --> Views[Borrowed legacy spelling views]
+    Record --> Snapshot[Bounded checked snapshot]
+    Snapshot --> Remap[Shared payloads and remapped local IDs]
+    Predicate[Complete predicate arguments and producer proof] --> Set[First occurrence ordered predicate set]
+    Set --> Meet[Unknown absorbing meet before duplicate discard]
+    Remap --> Gate[Ordinary focused and paired behavior gate]
+    Meet --> Gate
+    Gate --> Future[Later complete prefix and identity consumers]
+```
+
+`PredChirho` and `SchemePredChirho` keep their legacy equality, hash and display key, with private class-proof metadata. Copies preserve that metadata; one borrowed argument view visits the hidden kind prefix, primary type and ordinary extras. Ordinary argument and runtime indices remain separate. The ordered set plans all hashing/comparisons within term/depth/work bounds before discarding anything, then meets metadata into the first survivor without copying predicates. A failed plan returns every original predicate and a named resource error. Legacy name-only superclass pruning invalidates positive metadata until the full instantiated-template proof stage replaces it.
+
+Compiler class identities are assigned at actual class seed sites. Builtin scheme/predicate producers refer to explicit typed compiler identities; there is no class-name-to-identity reverse lookup. The seed's `Storable` instance entries have no corresponding typed class producer and stay Unknown. Source defining-unit transport and the common declaration-to-class bridge are unfinished boundaries: current compatibility source wrappers do not acquire a unit from their module name, path or inference owner. No new dispatch/projection consumer or full kind engine is enabled by this substrate checkpoint.
+
+Snapshot failures use `Result` at the import-context, instance-method and dependency-loop call sites. The old environment remains intact on failure, and the existing diagnostic/Result path rejects the operation; no empty registry or partial interface is substituted.
