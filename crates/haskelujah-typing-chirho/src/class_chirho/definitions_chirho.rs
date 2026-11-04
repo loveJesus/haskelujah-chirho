@@ -57,6 +57,18 @@ impl Hash for PredChirho {
 }
 
 impl PredChirho {
+    pub fn refuse_metadata_chirho(
+        &mut self,
+        refusal_chirho: haskelujah_ast_chirho::name_chirho::PredicateMetadataRefusalChirho,
+    ) {
+        self.class_identity_chirho =
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::ResourceChirho(
+                    refusal_chirho,
+                ),
+            );
+    }
+
     /// Called only by an explicit compiler producer, never by a spelling resolver.
     pub fn from_compiler_chirho(
         identity_chirho: haskelujah_ast_chirho::name_chirho::CompilerClassChirho,
@@ -420,6 +432,13 @@ impl InstDeclChirho {
 }
 
 impl crate::ty_chirho::PredicateRecordChirho for PredChirho {
+    fn refuse_metadata_chirho(
+        &mut self,
+        refusal_chirho: haskelujah_ast_chirho::name_chirho::PredicateMetadataRefusalChirho,
+    ) {
+        self.refuse_metadata_chirho(refusal_chirho);
+    }
+
     fn terms_chirho(&self) -> crate::ty_chirho::PredicateTermsChirho<'_> {
         self.terms_chirho()
     }

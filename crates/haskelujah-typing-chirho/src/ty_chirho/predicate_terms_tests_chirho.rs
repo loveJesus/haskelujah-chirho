@@ -67,12 +67,11 @@ fn duplicate_meet_keeps_first_order_and_unknown_is_absorbing_chirho() {
         "Bool",
     );
     duplicate_chirho.meet_class_identity_chirho(unknown_chirho.class_identity_chirho());
-    let values_chirho = OrderedPredicateSetChirho::try_new_chirho(vec![
+    let values_chirho = OrderedPredicateSetChirho::new_chirho(vec![
         predicate_chirho(proof_chirho(CompilerClassChirho::EqChirho), "Bool"),
         different_kind_chirho.clone(),
         unknown_chirho,
     ])
-    .unwrap_or_else(|_| panic!("small set fits bounds"))
     .into_vec_chirho();
     assert_eq!(values_chirho.len(), 2);
     assert_eq!(
@@ -84,11 +83,10 @@ fn duplicate_meet_keeps_first_order_and_unknown_is_absorbing_chirho() {
 
 #[test]
 fn conflicting_positive_proofs_do_not_survive_a_legacy_equal_key_chirho() {
-    let values_chirho = OrderedPredicateSetChirho::try_new_chirho(vec![
+    let values_chirho = OrderedPredicateSetChirho::new_chirho(vec![
         predicate_chirho(proof_chirho(CompilerClassChirho::EqChirho), "Bool"),
         predicate_chirho(proof_chirho(CompilerClassChirho::ShowChirho), "Bool"),
     ])
-    .unwrap_or_else(|_| panic!("small set fits bounds"))
     .into_vec_chirho();
     assert_eq!(values_chirho.len(), 1);
     assert_eq!(
@@ -97,27 +95,191 @@ fn conflicting_positive_proofs_do_not_survive_a_legacy_equal_key_chirho() {
     );
 }
 
+fn legacy_dedup_chirho(mut values_chirho: Vec<SchemePredChirho>) -> Vec<SchemePredChirho> {
+    let mut seen_chirho = std::collections::HashSet::new();
+    values_chirho.retain(|value_chirho| seen_chirho.insert(value_chirho.clone()));
+    values_chirho
+}
+
+fn assert_resource_shape_chirho(
+    values_chirho: Vec<SchemePredChirho>,
+    expected_chirho: PredicateSetErrorChirho,
+    work_chirho: usize,
+) {
+    let legacy_chirho = legacy_dedup_chirho(values_chirho.clone());
+    let first_pointer_chirho = values_chirho[0].class_name_chirho.as_ptr();
+    let mut remaining_chirho = work_chirho;
+    let actual_chirho = OrderedPredicateSetChirho::with_metadata_work_chirho(
+        values_chirho,
+        work_chirho,
+        |weight_chirho| match remaining_chirho.checked_sub(weight_chirho) {
+            Some(next_chirho) => {
+                remaining_chirho = next_chirho;
+                true
+            }
+            None => false,
+        },
+    );
+    assert_eq!(
+        actual_chirho.metadata_refusal_chirho(),
+        Some(expected_chirho)
+    );
+    let actual_chirho = actual_chirho.into_vec_chirho();
+    assert_eq!(
+        actual_chirho, legacy_chirho,
+        "ordinary predicate shape, order and dedup are exactly the legacy result"
+    );
+    assert_eq!(
+        actual_chirho[0].class_name_chirho.as_ptr(),
+        first_pointer_chirho,
+        "the first owned record survives without reconstruction"
+    );
+    for predicate_chirho in actual_chirho {
+        assert_eq!(
+            predicate_chirho.class_identity_chirho(),
+            &PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::ResourceChirho(
+                expected_chirho
+            ))
+        );
+    }
+}
+
 #[test]
-fn refusing_a_large_term_returns_every_original_predicate_chirho() {
-    let mut large_chirho = predicate_chirho(proof_chirho(CompilerClassChirho::EqChirho), "Bool");
+fn large_predicate_refusal_keeps_legacy_shape_order_and_dedup_chirho() {
+    let first_chirho = predicate_chirho(proof_chirho(CompilerClassChirho::EqChirho), "Bool");
+    let mut large_chirho = predicate_chirho(proof_chirho(CompilerClassChirho::EqChirho), "Char");
     large_chirho
         .extra_tys_chirho
         .push(TyChirho::ConChirho("x".repeat(5000)));
-    let original_chirho = vec![
-        predicate_chirho(proof_chirho(CompilerClassChirho::EqChirho), "Bool"),
-        large_chirho,
-    ];
-    let failure_chirho = match OrderedPredicateSetChirho::try_new_chirho(original_chirho.clone()) {
-        Ok(_) => panic!("oversized predicate must be refused"),
-        Err(failure_chirho) => failure_chirho,
-    };
-    assert_eq!(
-        failure_chirho.error_chirho,
-        PredicateSetErrorChirho::TermBoundChirho
+    assert_resource_shape_chirho(
+        vec![
+            first_chirho.clone(),
+            large_chirho.clone(),
+            first_chirho,
+            large_chirho,
+        ],
+        PredicateSetErrorChirho::WeightChirho { limit_chirho: 4096 },
+        1 << 25,
     );
-    assert_eq!(failure_chirho.predicates_chirho, original_chirho);
+}
+
+#[test]
+fn deep_predicate_refusal_keeps_legacy_shape_order_and_dedup_chirho() {
+    let mut deep_chirho = predicate_chirho(proof_chirho(CompilerClassChirho::EqChirho), "Bool");
+    for _index_chirho in 0..256 {
+        deep_chirho.ty_chirho = TyChirho::ListChirho(Box::new(deep_chirho.ty_chirho));
+    }
+    let other_chirho = predicate_chirho(
+        PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::LegacyChirho),
+        "Char",
+    );
+    assert_resource_shape_chirho(
+        vec![
+            deep_chirho.clone(),
+            other_chirho.clone(),
+            deep_chirho,
+            other_chirho,
+        ],
+        PredicateSetErrorChirho::DepthChirho { limit_chirho: 128 },
+        1 << 25,
+    );
+}
+
+#[test]
+fn work_exhaustion_keeps_legacy_shape_and_terminal_resource_metadata_chirho() {
+    let first_chirho = predicate_chirho(
+        PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::LegacyChirho),
+        "Bool",
+    );
+    let other_chirho = predicate_chirho(proof_chirho(CompilerClassChirho::ShowChirho), "Char");
+    assert_resource_shape_chirho(
+        vec![
+            first_chirho.clone(),
+            other_chirho.clone(),
+            first_chirho,
+            other_chirho,
+        ],
+        PredicateSetErrorChirho::WorkChirho { limit_chirho: 0 },
+        0,
+    );
+}
+
+#[test]
+fn iterative_legacy_relation_matches_public_eq_for_every_type_variant_and_group_chirho() {
+    use crate::ty_chirho::MultChirho;
+    let variable_chirho = TyVarChirho(0);
+    let terms_chirho = vec![
+        TyChirho::VarChirho(variable_chirho),
+        TyChirho::ConChirho("TChirho".to_owned()),
+        TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("FChirho".to_owned())),
+            Box::new(TyChirho::int_chirho()),
+        ),
+        TyChirho::FunChirho(
+            Box::new(TyChirho::int_chirho()),
+            Box::new(TyChirho::bool_chirho()),
+            MultChirho::ManyChirho,
+        ),
+        TyChirho::FunChirho(
+            Box::new(TyChirho::int_chirho()),
+            Box::new(TyChirho::bool_chirho()),
+            MultChirho::OneChirho,
+        ),
+        TyChirho::TupleChirho(vec![TyChirho::int_chirho(), TyChirho::bool_chirho()]),
+        TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+        TyChirho::ForallVarChirho("aChirho".to_owned()),
+        TyChirho::ForallChirho {
+            vars_chirho: vec![variable_chirho],
+            body_chirho: Box::new(TyChirho::VarChirho(variable_chirho)),
+        },
+        TyChirho::RequiredForallChirho {
+            vars_chirho: vec![variable_chirho],
+            body_chirho: Box::new(TyChirho::VarChirho(variable_chirho)),
+        },
+        TyChirho::ForallChirho {
+            vars_chirho: vec![TyVarChirho(1)],
+            body_chirho: Box::new(TyChirho::VarChirho(TyVarChirho(1))),
+        },
+    ];
+    let mut values_chirho = Vec::new();
+    for term_chirho in &terms_chirho {
+        for group_chirho in 0..3 {
+            let mut value_chirho =
+                predicate_chirho(proof_chirho(CompilerClassChirho::EqChirho), "Bool");
+            match group_chirho {
+                0 => value_chirho.kind_tys_chirho = vec![term_chirho.clone()],
+                1 => value_chirho.ty_chirho = term_chirho.clone(),
+                _ => value_chirho.extra_tys_chirho = vec![term_chirho.clone()],
+            }
+            values_chirho.push(value_chirho);
+        }
+    }
+    let mut other_class_chirho = values_chirho[0].clone();
+    other_class_chirho.class_name_chirho = "OtherChirho".to_owned();
+    values_chirho.push(other_class_chirho);
+    let mut no_kind_chirho = values_chirho[0].clone();
+    no_kind_chirho.kind_tys_chirho.clear();
+    values_chirho.push(no_kind_chirho);
+    let mut no_extra_chirho = values_chirho[0].clone();
+    no_extra_chirho.extra_tys_chirho.clear();
+    values_chirho.push(no_extra_chirho);
+    let mut two_extras_chirho = values_chirho[0].clone();
+    two_extras_chirho
+        .extra_tys_chirho
+        .push(TyChirho::bool_chirho());
+    values_chirho.push(two_extras_chirho);
+    for left_chirho in &values_chirho {
+        for right_chirho in &values_chirho {
+            assert_eq!(
+                super::super::legacy_predicate_key_chirho::equal_chirho(left_chirho, right_chirho),
+                left_chirho == right_chirho
+            );
+        }
+    }
+    let mut duplicate_chirho = values_chirho.clone();
+    duplicate_chirho.extend(values_chirho.iter().rev().cloned());
     assert_eq!(
-        failure_chirho.predicates_chirho[0].class_identity_chirho(),
-        original_chirho[0].class_identity_chirho()
+        OrderedPredicateSetChirho::new_chirho(duplicate_chirho.clone()).into_vec_chirho(),
+        legacy_dedup_chirho(duplicate_chirho)
     );
 }

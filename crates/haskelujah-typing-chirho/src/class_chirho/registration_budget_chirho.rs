@@ -12,6 +12,7 @@ pub(super) const MAX_REGISTRATION_WORK_CHIRHO: usize = 1 << 25;
 pub(super) struct ModuleRegistrationBudgetChirho {
     limit_chirho: usize,
     remaining_chirho: AtomicUsize,
+    metadata_remaining_chirho: AtomicUsize,
     failure_chirho: AtomicU8,
 }
 
@@ -21,6 +22,7 @@ impl ModuleRegistrationBudgetChirho {
         Self {
             limit_chirho,
             remaining_chirho: AtomicUsize::new(limit_chirho),
+            metadata_remaining_chirho: AtomicUsize::new(limit_chirho),
             failure_chirho: AtomicU8::new(0),
         }
     }
@@ -51,6 +53,27 @@ impl ModuleRegistrationBudgetChirho {
             Ordering::Relaxed,
         );
     }
+    /// Soft proof work is separately bounded under the same module policy. It
+    /// cannot turn an ordinary declaration into an error after proof refusal.
+    pub(super) fn charge_metadata_chirho(&self, amount_chirho: usize) -> bool {
+        if self.failure_chirho().is_some()
+            || self.metadata_remaining_chirho.load(Ordering::Relaxed) == 0
+        {
+            return false;
+        }
+        if self
+            .metadata_remaining_chirho
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |remaining_chirho| {
+                remaining_chirho.checked_sub(amount_chirho)
+            })
+            .is_err()
+        {
+            self.metadata_remaining_chirho.store(0, Ordering::Relaxed);
+            return false;
+        }
+        true
+    }
+
     pub(super) fn charge_chirho(&self, amount_chirho: usize) -> bool {
         if self.failure_chirho().is_some() {
             return false;

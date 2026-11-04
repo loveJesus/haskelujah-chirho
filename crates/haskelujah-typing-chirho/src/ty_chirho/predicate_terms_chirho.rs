@@ -7,9 +7,9 @@ use super::TyChirho;
 
 #[derive(Clone, Copy)]
 pub struct PredicateTermsChirho<'predicate_chirho> {
-    kind_tys_chirho: &'predicate_chirho [TyChirho],
-    ty_chirho: &'predicate_chirho TyChirho,
-    extra_tys_chirho: &'predicate_chirho [TyChirho],
+    pub(super) kind_tys_chirho: &'predicate_chirho [TyChirho],
+    pub(super) ty_chirho: &'predicate_chirho TyChirho,
+    pub(super) extra_tys_chirho: &'predicate_chirho [TyChirho],
 }
 
 pub struct MappedPredicateTermsChirho {
@@ -57,46 +57,104 @@ pub trait PredicateRecordChirho {
     fn class_identity_chirho(
         &self,
     ) -> &haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho;
+    fn refuse_metadata_chirho(
+        &mut self,
+        refusal_chirho: haskelujah_ast_chirho::name_chirho::PredicateMetadataRefusalChirho,
+    );
     fn meet_class_identity_chirho(
         &mut self,
         other_chirho: &haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
     );
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PredicateSetErrorChirho {
-    TermBoundChirho,
-    WorkBoundChirho,
-}
+pub use haskelujah_ast_chirho::name_chirho::PredicateMetadataRefusalChirho as PredicateSetErrorChirho;
 
-pub struct PredicateSetFailureChirho<PredicateChirho> {
-    pub predicates_chirho: Vec<PredicateChirho>,
-    pub error_chirho: PredicateSetErrorChirho,
-}
-
-/// First-occurrence order and the legacy key are conserved. Every duplicate's
-/// proof meets the survivor *before* it is discarded. No predicate is copied.
+/// First-owned-record order and the legacy key are conserved even after new
+/// metadata reasoning stops. There is no ordinary-error or duplicate fallback.
 pub struct OrderedPredicateSetChirho<PredicateChirho> {
     predicates_chirho: Vec<PredicateChirho>,
+    metadata_refusal_chirho: Option<PredicateSetErrorChirho>,
 }
 
-impl<PredicateChirho: PredicateRecordChirho + Eq + std::hash::Hash>
-    OrderedPredicateSetChirho<PredicateChirho>
-{
-    pub fn try_new_chirho(
+impl<PredicateChirho: PredicateRecordChirho> OrderedPredicateSetChirho<PredicateChirho> {
+    pub fn new_chirho(predicates_chirho: Vec<PredicateChirho>) -> Self {
+        let mut remaining_chirho = 1usize << 25;
+        Self::with_metadata_work_chirho(predicates_chirho, 1 << 25, |weight_chirho| {
+            if remaining_chirho == 0 {
+                return false;
+            }
+            match remaining_chirho.checked_sub(weight_chirho) {
+                Some(next_chirho) => {
+                    remaining_chirho = next_chirho;
+                    true
+                }
+                None => false,
+            }
+        })
+    }
+
+    /// `charge_chirho(0)` queries whether the module proof allowance is still
+    /// live; it must return false after terminal soft exhaustion.
+    pub fn with_metadata_work_chirho(
         predicates_chirho: Vec<PredicateChirho>,
-    ) -> Result<Self, PredicateSetFailureChirho<PredicateChirho>> {
-        let plan_chirho = match coalescence_plan_chirho(&predicates_chirho) {
-            Ok(plan_chirho) => plan_chirho,
-            Err(error_chirho) => {
-                return Err(PredicateSetFailureChirho {
-                    predicates_chirho,
-                    error_chirho,
+        work_limit_chirho: usize,
+        mut charge_chirho: impl FnMut(usize) -> bool,
+    ) -> Self {
+        let mut buckets_chirho: std::collections::HashMap<u64, Vec<(usize, usize)>> =
+            std::collections::HashMap::new();
+        let mut plan_chirho = Vec::new();
+        let mut refusal_chirho = None;
+        let mut unique_count_chirho = 0usize;
+        for (index_chirho, predicate_chirho) in predicates_chirho.iter().enumerate() {
+            if refusal_chirho.is_none() && !charge_chirho(0) {
+                refusal_chirho = Some(PredicateSetErrorChirho::WorkChirho {
+                    limit_chirho: work_limit_chirho,
                 });
             }
-        };
+            if refusal_chirho.is_none() {
+                refusal_chirho = match predicate_weight_chirho(predicate_chirho) {
+                    Err(error_chirho) => Some(error_chirho),
+                    Ok(weight_chirho) if !charge_chirho(weight_chirho) => {
+                        Some(PredicateSetErrorChirho::WorkChirho {
+                            limit_chirho: work_limit_chirho,
+                        })
+                    }
+                    Ok(_) => None,
+                };
+            }
+            // This is the pre-existing legacy dedup operation, using borrowed
+            // iterative keys rather than cloning deep terms into a HashSet.
+            let key_chirho =
+                super::legacy_predicate_key_chirho::fingerprint_chirho(predicate_chirho);
+            let bucket_chirho = buckets_chirho.entry(key_chirho).or_default();
+            let mut existing_chirho = None;
+            for &(previous_chirho, target_chirho) in bucket_chirho.iter() {
+                if refusal_chirho.is_none() && !charge_chirho(1) {
+                    refusal_chirho = Some(PredicateSetErrorChirho::WorkChirho {
+                        limit_chirho: work_limit_chirho,
+                    });
+                }
+                if super::legacy_predicate_key_chirho::equal_chirho(
+                    &predicates_chirho[previous_chirho],
+                    predicate_chirho,
+                ) {
+                    existing_chirho = Some(target_chirho);
+                    break;
+                }
+            }
+            let target_chirho = existing_chirho.unwrap_or(unique_count_chirho);
+            if existing_chirho.is_none() {
+                bucket_chirho.push((index_chirho, target_chirho));
+                unique_count_chirho += 1;
+            }
+            plan_chirho.push(target_chirho);
+        }
         let mut unique_chirho: Vec<PredicateChirho> = Vec::new();
-        for (predicate_chirho, target_chirho) in predicates_chirho.into_iter().zip(plan_chirho) {
+        for (mut predicate_chirho, target_chirho) in predicates_chirho.into_iter().zip(plan_chirho)
+        {
+            if let Some(refusal_chirho) = refusal_chirho {
+                predicate_chirho.refuse_metadata_chirho(refusal_chirho);
+            }
             if target_chirho == unique_chirho.len() {
                 unique_chirho.push(predicate_chirho);
             } else {
@@ -104,51 +162,18 @@ impl<PredicateChirho: PredicateRecordChirho + Eq + std::hash::Hash>
                     .meet_class_identity_chirho(predicate_chirho.class_identity_chirho());
             }
         }
-        Ok(Self {
+        Self {
             predicates_chirho: unique_chirho,
-        })
+            metadata_refusal_chirho: refusal_chirho,
+        }
     }
 
+    pub fn metadata_refusal_chirho(&self) -> Option<PredicateSetErrorChirho> {
+        self.metadata_refusal_chirho
+    }
     pub fn into_vec_chirho(self) -> Vec<PredicateChirho> {
         self.predicates_chirho
     }
-}
-
-fn coalescence_plan_chirho<PredicateChirho: PredicateRecordChirho + Eq + std::hash::Hash>(
-    predicates_chirho: &[PredicateChirho],
-) -> Result<Vec<usize>, PredicateSetErrorChirho> {
-    use std::hash::Hasher;
-    let mut work_chirho = 1usize << 25;
-    let mut buckets_chirho: std::collections::HashMap<u64, Vec<(usize, usize)>> =
-        std::collections::HashMap::new();
-    let mut plan_chirho = Vec::new();
-    let mut unique_count_chirho = 0usize;
-    for (index_chirho, predicate_chirho) in predicates_chirho.iter().enumerate() {
-        let weight_chirho = predicate_weight_chirho(predicate_chirho)?;
-        work_chirho = work_chirho
-            .checked_sub(weight_chirho)
-            .ok_or(PredicateSetErrorChirho::WorkBoundChirho)?;
-        let mut hasher_chirho = std::collections::hash_map::DefaultHasher::new();
-        std::hash::Hash::hash(predicate_chirho, &mut hasher_chirho);
-        let bucket_chirho = buckets_chirho.entry(hasher_chirho.finish()).or_default();
-        let mut existing_chirho = None;
-        for &(previous_chirho, target_chirho) in bucket_chirho.iter() {
-            work_chirho = work_chirho
-                .checked_sub(weight_chirho)
-                .ok_or(PredicateSetErrorChirho::WorkBoundChirho)?;
-            if predicates_chirho[previous_chirho] == *predicate_chirho {
-                existing_chirho = Some(target_chirho);
-                break;
-            }
-        }
-        let target_chirho = existing_chirho.unwrap_or(unique_count_chirho);
-        if existing_chirho.is_none() {
-            bucket_chirho.push((index_chirho, target_chirho));
-            unique_count_chirho += 1;
-        }
-        plan_chirho.push(target_chirho);
-    }
-    Ok(plan_chirho)
 }
 
 fn predicate_weight_chirho(
@@ -161,7 +186,7 @@ fn predicate_weight_chirho(
         .class_name_chirho()
         .len()
         .checked_add(1)
-        .ok_or(PredicateSetErrorChirho::TermBoundChirho)?;
+        .ok_or(PredicateSetErrorChirho::WeightChirho { limit_chirho: 4096 })?;
     if let PredicateClassProofChirho::ProvenChirho(PredicateClassIdentityChirho::SourceChirho {
         unit_chirho,
         module_chirho,
@@ -172,13 +197,13 @@ fn predicate_weight_chirho(
             .checked_add(unit_chirho.as_str_chirho().len())
             .and_then(|weight_chirho| weight_chirho.checked_add(module_chirho.len()))
             .and_then(|weight_chirho| weight_chirho.checked_add(name_chirho.len()))
-            .ok_or(PredicateSetErrorChirho::TermBoundChirho)?;
+            .ok_or(PredicateSetErrorChirho::WeightChirho { limit_chirho: 4096 })?;
     }
     for term_chirho in predicate_chirho.terms_chirho().iter_chirho() {
         term_weight_chirho(term_chirho, 0, &mut weight_chirho)?;
     }
     if weight_chirho > 4096 {
-        return Err(PredicateSetErrorChirho::TermBoundChirho);
+        return Err(PredicateSetErrorChirho::WeightChirho { limit_chirho: 4096 });
     }
     Ok(weight_chirho)
 }
@@ -188,18 +213,21 @@ fn term_weight_chirho(
     depth_chirho: usize,
     weight_chirho: &mut usize,
 ) -> Result<(), PredicateSetErrorChirho> {
-    if depth_chirho >= 128 || *weight_chirho >= 4096 {
-        return Err(PredicateSetErrorChirho::TermBoundChirho);
+    if depth_chirho >= 128 {
+        return Err(PredicateSetErrorChirho::DepthChirho { limit_chirho: 128 });
+    }
+    if *weight_chirho >= 4096 {
+        return Err(PredicateSetErrorChirho::WeightChirho { limit_chirho: 4096 });
     }
     *weight_chirho = weight_chirho
         .checked_add(1)
-        .ok_or(PredicateSetErrorChirho::TermBoundChirho)?;
+        .ok_or(PredicateSetErrorChirho::WeightChirho { limit_chirho: 4096 })?;
     match term_chirho {
         TyChirho::VarChirho(_) => {}
         TyChirho::ConChirho(name_chirho) | TyChirho::ForallVarChirho(name_chirho) => {
             *weight_chirho = weight_chirho
                 .checked_add(name_chirho.len())
-                .ok_or(PredicateSetErrorChirho::TermBoundChirho)?;
+                .ok_or(PredicateSetErrorChirho::WeightChirho { limit_chirho: 4096 })?;
         }
         TyChirho::AppChirho(left_chirho, right_chirho)
         | TyChirho::FunChirho(left_chirho, right_chirho, _) => {
@@ -224,12 +252,12 @@ fn term_weight_chirho(
         } => {
             *weight_chirho = weight_chirho
                 .checked_add(vars_chirho.len())
-                .ok_or(PredicateSetErrorChirho::TermBoundChirho)?;
+                .ok_or(PredicateSetErrorChirho::WeightChirho { limit_chirho: 4096 })?;
             term_weight_chirho(body_chirho, depth_chirho + 1, weight_chirho)?;
         }
     }
     if *weight_chirho > 4096 {
-        return Err(PredicateSetErrorChirho::TermBoundChirho);
+        return Err(PredicateSetErrorChirho::WeightChirho { limit_chirho: 4096 });
     }
     Ok(())
 }

@@ -178,6 +178,14 @@ impl CompilerClassChirho {
     }
 }
 
+/// A terminal refusal of *new metadata reasoning*, not a type error.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PredicateMetadataRefusalChirho {
+    WeightChirho { limit_chirho: usize },
+    DepthChirho { limit_chirho: usize },
+    WorkChirho { limit_chirho: usize },
+}
+
 /// Why this producer supplied no predicate/instance identity proof.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ClassIdentityUnknownChirho {
@@ -192,7 +200,7 @@ pub enum ClassIdentityUnknownChirho {
     RebindableChirho,
     ConflictChirho,
     AmbiguousChirho,
-    ResourceChirho,
+    ResourceChirho(PredicateMetadataRefusalChirho),
 }
 
 /// An opaque defining build-unit key from the actual source/package producer.

@@ -16,22 +16,16 @@ impl InferCtxChirho {
     pub(super) fn coalesce_scheme_predicates_chirho(
         &mut self,
         predicates_chirho: Vec<SchemePredChirho>,
-        span_chirho: SpanChirho,
     ) -> Vec<SchemePredChirho> {
-        match crate::ty_chirho::OrderedPredicateSetChirho::try_new_chirho(predicates_chirho) {
-            Ok(predicates_chirho) => predicates_chirho.into_vec_chirho(),
-            Err(failure_chirho) => {
-                self.diagnostics_chirho
-                    .push_chirho(DiagnosticChirho::error_chirho(
-                        format!(
-                            "predicate collection resource limit reached: {:?}",
-                            failure_chirho.error_chirho
-                        ),
-                        span_chirho,
-                    ));
-                failure_chirho.predicates_chirho
-            }
-        }
+        crate::ty_chirho::OrderedPredicateSetChirho::with_metadata_work_chirho(
+            predicates_chirho,
+            self.class_env_chirho.registration_limit_chirho(),
+            |weight_chirho| {
+                self.class_env_chirho
+                    .charge_predicate_metadata_chirho(weight_chirho)
+            },
+        )
+        .into_vec_chirho()
     }
 
     /// Generate a fresh unification variable.
@@ -366,8 +360,7 @@ impl InferCtxChirho {
 
         // Keep the first occurrence of each whole predicate, including extra MPTC types.
         // Adjacent-only dedup left Num b, Integral a, Num b with two dictionary indices.
-        scheme_preds_chirho =
-            self.coalesce_scheme_predicates_chirho(scheme_preds_chirho, span_chirho);
+        scheme_preds_chirho = self.coalesce_scheme_predicates_chirho(scheme_preds_chirho);
 
         // Context reduction: remove predicates that are entailed by
         // other predicates via the superclass hierarchy.
@@ -620,3 +613,7 @@ impl InferCtxChirho {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "schemes_resource_tests_chirho.rs"]
+mod resource_tests_chirho;

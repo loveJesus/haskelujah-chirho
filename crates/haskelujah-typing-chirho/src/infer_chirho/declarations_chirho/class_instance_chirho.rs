@@ -90,10 +90,8 @@ impl InferCtxChirho {
                             .collect(),
                     });
                 scheme_chirho.preds_chirho.push(class_pred_chirho);
-                scheme_chirho.preds_chirho = self.coalesce_scheme_predicates_chirho(
-                    scheme_chirho.preds_chirho,
-                    method_chirho.ty_chirho.span_chirho(),
-                );
+                scheme_chirho.preds_chirho =
+                    self.coalesce_scheme_predicates_chirho(scheme_chirho.preds_chirho);
                 // A method's type is `forall <class vars>. C <class vars> =>
                 // forall <own vars>. ty`: the class variables are quantified
                 // first (visible type application `take @n` reaches `n` even

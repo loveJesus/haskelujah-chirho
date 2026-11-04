@@ -239,6 +239,11 @@ impl ClassEnvChirho {
         Ok(snapshot_chirho)
     }
 
+    pub(crate) fn charge_predicate_metadata_chirho(&self, amount_chirho: usize) -> bool {
+        self.registration_work_chirho
+            .charge_metadata_chirho(amount_chirho)
+    }
+
     pub(crate) fn fail_module_chirho(&self, error_chirho: ClassRegistryErrorChirho) {
         self.registration_work_chirho.fail_chirho(error_chirho);
     }
@@ -445,7 +450,15 @@ impl ClassEnvChirho {
         } else {
             // The producer writes this instance but has no corresponding typed
             // compiler-class declaration. Its class authority stays unknown.
-            self.add_instance_chirho(InstDeclChirho::legacy_chirho(parts_chirho));
+            self.add_instance_chirho(InstDeclChirho::from_producer_chirho(
+                parts_chirho,
+                PredicateClassProofChirho::UnknownChirho(
+                    ClassIdentityUnknownChirho::UnsupportedChirho,
+                ),
+                InstanceIdentityChirho::UnknownChirho(
+                    ClassIdentityUnknownChirho::UnsupportedChirho,
+                ),
+            ));
         }
     }
 

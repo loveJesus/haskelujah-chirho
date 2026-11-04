@@ -257,3 +257,51 @@ fn successful_next_module_admission_carries_policy_but_not_spent_work_chirho() {
     assert_eq!(next_chirho.remaining_registration_work_chirho(), 256);
     assert_eq!(next_chirho.registration_limit_chirho(), 256);
 }
+
+#[test]
+fn metadata_exhaustion_is_soft_terminal_and_shared_across_restore_points_chirho() {
+    let mut env_chirho = ClassEnvChirho::with_registration_limit_chirho(256);
+    let snapshot_chirho = env_chirho
+        .try_snapshot_chirho()
+        .expect("complete empty snapshot");
+    assert!(env_chirho.charge_predicate_metadata_chirho(256));
+    assert!(!snapshot_chirho.charge_predicate_metadata_chirho(1));
+    assert!(!env_chirho.charge_predicate_metadata_chirho(1));
+    assert!(env_chirho.registry_error_chirho().is_none());
+    env_chirho.add_class_chirho(class_chirho("LaterChirho"));
+    assert!(env_chirho.registry_error_chirho().is_none());
+    assert!(
+        env_chirho
+            .classes_chirho()
+            .contains_key_chirho("LaterChirho")
+    );
+    let next_chirho = env_chirho
+        .try_import_snapshot_chirho()
+        .expect("next admitted module");
+    assert!(next_chirho.charge_predicate_metadata_chirho(1));
+    assert!(!env_chirho.charge_predicate_metadata_chirho(1));
+}
+
+#[test]
+fn a_seed_instance_without_a_class_producer_has_an_explicit_unsupported_reason_chirho() {
+    let mut env_chirho = ClassEnvChirho::new_chirho();
+    env_chirho.seed_standard_chirho();
+    let instance_chirho = env_chirho
+        .instances_chirho()
+        .get_chirho("Storable")
+        .expect("the legacy instance spelling exists")
+        .first_chirho()
+        .expect("legacy seed instance");
+    assert_eq!(
+        instance_chirho.class_identity_chirho(),
+        &PredicateClassProofChirho::UnknownChirho(
+            haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::UnsupportedChirho
+        )
+    );
+    assert_eq!(
+        instance_chirho.instance_identity_chirho(),
+        &haskelujah_ast_chirho::name_chirho::InstanceIdentityChirho::UnknownChirho(
+            haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::UnsupportedChirho
+        )
+    );
+}

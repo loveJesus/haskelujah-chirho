@@ -19,7 +19,7 @@ mod predicate_identity_chirho;
 pub use predicate_identity_chirho::{
     ClassIdentityUnknownChirho, CompilerClassChirho, CompilerClassEvidenceChirho,
     InstanceDeclarationOriginChirho, InstanceIdentityChirho, PredicateClassIdentityChirho,
-    PredicateClassProofChirho, SourceUnitIdentityChirho,
+    PredicateClassProofChirho, PredicateMetadataRefusalChirho, SourceUnitIdentityChirho,
 };
 
 /// A name as written in source code, before resolution.

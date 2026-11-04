@@ -332,10 +332,11 @@ impl fmt::Display for TyChirho {
     }
 }
 
+mod legacy_predicate_key_chirho;
 mod predicate_terms_chirho;
 pub use predicate_terms_chirho::{
     MappedPredicateTermsChirho, OrderedPredicateSetChirho, PredicateRecordChirho,
-    PredicateSetErrorChirho, PredicateSetFailureChirho, PredicateTermsChirho,
+    PredicateSetErrorChirho, PredicateTermsChirho,
 };
 
 /// A predicate reference used in type schemes. Kept lightweight:
@@ -362,6 +363,18 @@ pub struct SchemePredPartsChirho {
 }
 
 impl SchemePredChirho {
+    pub fn refuse_metadata_chirho(
+        &mut self,
+        refusal_chirho: haskelujah_ast_chirho::name_chirho::PredicateMetadataRefusalChirho,
+    ) {
+        self.class_identity_chirho =
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::ResourceChirho(
+                    refusal_chirho,
+                ),
+            );
+    }
+
     /// Called only by an explicit compiler producer, never by a spelling resolver.
     pub fn from_compiler_chirho(
         identity_chirho: haskelujah_ast_chirho::name_chirho::CompilerClassChirho,
@@ -700,6 +713,13 @@ mod tests_chirho {
 }
 
 impl crate::ty_chirho::PredicateRecordChirho for SchemePredChirho {
+    fn refuse_metadata_chirho(
+        &mut self,
+        refusal_chirho: haskelujah_ast_chirho::name_chirho::PredicateMetadataRefusalChirho,
+    ) {
+        self.refuse_metadata_chirho(refusal_chirho);
+    }
+
     fn terms_chirho(&self) -> crate::ty_chirho::PredicateTermsChirho<'_> {
         self.terms_chirho()
     }

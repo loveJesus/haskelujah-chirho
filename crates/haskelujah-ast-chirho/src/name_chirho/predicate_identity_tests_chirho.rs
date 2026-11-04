@@ -121,7 +121,9 @@ fn unknown_is_absorbing_and_keeps_the_first_unknown_chirho() {
     let first_chirho =
         PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::ForeignChirho);
     let later_chirho =
-        PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::ResourceChirho);
+        PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::ResourceChirho(
+            PredicateMetadataRefusalChirho::WorkChirho { limit_chirho: 1 },
+        ));
     let proven_chirho = PredicateClassProofChirho::ProvenChirho(
         PredicateClassIdentityChirho::CompilerChirho(CompilerClassChirho::ShowChirho),
     );
