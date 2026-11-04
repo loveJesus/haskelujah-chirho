@@ -9,7 +9,7 @@ use haskelujah_span_chirho::FileIdChirho;
 use haskelujah_typing_chirho::ty_chirho::declarations_chirho::TelescopeVisibilityChirho;
 use std::collections::HashMap;
 
-fn frontend_chirho(source_chirho: &str) -> Result<FrontendResultChirho, String> {
+pub(super) fn frontend_chirho(source_chirho: &str) -> Result<FrontendResultChirho, String> {
     run_frontend_chirho(
         source_chirho,
         FileIdChirho::SYNTHETIC_CHIRHO,

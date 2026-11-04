@@ -599,21 +599,12 @@ impl InferCtxChirho {
         // improvement or a solved variable in an extra position would
         // otherwise be lost (`MyReader r v` with `v := Int`).
         for (pred_chirho, _span_chirho) in &mut self.deferred_preds_chirho {
-            pred_chirho.ty_chirho = subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
-            for extra_ty_chirho in &mut pred_chirho.extra_tys_chirho {
-                *extra_ty_chirho = subst_chirho.apply_ty_chirho(extra_ty_chirho);
-            }
+            *pred_chirho =
+                pred_chirho.mapped_chirho(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho));
         }
         for pred_chirho in &mut self.given_preds_chirho {
-            pred_chirho.kind_tys_chirho = pred_chirho
-                .kind_tys_chirho
-                .iter()
-                .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
-                .collect();
-            pred_chirho.ty_chirho = subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
-            for extra_ty_chirho in &mut pred_chirho.extra_tys_chirho {
-                *extra_ty_chirho = subst_chirho.apply_ty_chirho(extra_ty_chirho);
-            }
+            *pred_chirho =
+                pred_chirho.mapped_chirho(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho));
         }
         for wanted_chirho in &mut self.deferred_equalities_chirho {
             wanted_chirho.lhs_chirho = subst_chirho.apply_ty_chirho(&wanted_chirho.lhs_chirho);

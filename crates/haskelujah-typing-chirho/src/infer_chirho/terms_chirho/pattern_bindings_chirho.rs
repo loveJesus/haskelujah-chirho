@@ -169,19 +169,8 @@ impl InferCtxChirho {
                     let predicates_chirho = predicates_chirho
                         .into_iter()
                         .map(|pred_chirho| {
-                            PredChirho::from_proof_chirho(
-                                pred_chirho.class_identity_chirho().clone(),
-                                crate::class_chirho::PredPartsChirho {
-                                    kind_tys_chirho: Vec::new(),
-                                    class_name_chirho: pred_chirho.class_name_chirho,
-                                    ty_chirho: subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                                    extra_tys_chirho: pred_chirho
-                                        .extra_tys_chirho
-                                        .iter()
-                                        .map(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho))
-                                        .collect(),
-                                },
-                            )
+                            pred_chirho
+                                .mapped_chirho(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho))
                         })
                         .collect();
                     self.install_pattern_givens_chirho(predicates_chirho);
@@ -407,19 +396,8 @@ impl InferCtxChirho {
                 let predicates_chirho = predicates_chirho
                     .into_iter()
                     .map(|pred_chirho| {
-                        PredChirho::from_proof_chirho(
-                            pred_chirho.class_identity_chirho().clone(),
-                            crate::class_chirho::PredPartsChirho {
-                                kind_tys_chirho: Vec::new(),
-                                class_name_chirho: pred_chirho.class_name_chirho,
-                                ty_chirho: subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                                extra_tys_chirho: pred_chirho
-                                    .extra_tys_chirho
-                                    .iter()
-                                    .map(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho))
-                                    .collect(),
-                            },
-                        )
+                        pred_chirho
+                            .mapped_chirho(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho))
                     })
                     .collect();
                 self.install_pattern_givens_chirho(predicates_chirho);

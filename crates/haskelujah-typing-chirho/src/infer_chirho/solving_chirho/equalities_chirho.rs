@@ -437,13 +437,7 @@ impl InferCtxChirho {
         match self.pred_entailment_under_givens_chirho(pred_chirho, givens_chirho, 0) {
             None => false,
             Some(true) => true,
-            Some(false) => {
-                contains_skolem_chirho(&pred_chirho.ty_chirho)
-                    || pred_chirho
-                        .extra_tys_chirho
-                        .iter()
-                        .any(contains_skolem_chirho)
-            }
+            Some(false) => Self::pred_mentions_rigid_chirho(pred_chirho),
         }
     }
 
@@ -469,27 +463,14 @@ impl InferCtxChirho {
         }
         // Only a wanted whose arguments are settled can be committed to an
         // instance here; one still carrying unification variables waits.
-        if pred_chirho.ty_chirho.contains_var_chirho()
-            || pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .any(|t_chirho| t_chirho.contains_var_chirho())
+        if pred_chirho
+            .semantic_tys_chirho()
+            .any(TyChirho::contains_var_chirho)
         {
             return None;
         }
-        let normalized_chirho = PredChirho::from_proof_chirho(
-            pred_chirho.class_identity_chirho().clone(),
-            crate::class_chirho::PredPartsChirho {
-                kind_tys_chirho: Vec::new(),
-                class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
-                extra_tys_chirho: pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|t_chirho| self.normalize_ty_chirho(t_chirho))
-                    .collect(),
-            },
-        );
+        let normalized_chirho =
+            pred_chirho.mapped_chirho(|ty_chirho| self.normalize_ty_chirho(ty_chirho));
         let sub_goals_chirho = self.class_env_chirho.resolve_chirho(&normalized_chirho)?;
         let mut used_given_chirho = false;
         for sub_goal_chirho in &sub_goals_chirho {

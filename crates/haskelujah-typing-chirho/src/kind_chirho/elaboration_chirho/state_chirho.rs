@@ -46,6 +46,8 @@ pub struct ElaborationStateChirho {
     pub substitution_chirho: SubstChirho,
     pub variable_kinds_chirho: HashMap<TyVarChirho, TyChirho>,
     rigid_variables_chirho: HashSet<TyVarChirho>,
+    source_specificities_chirho:
+        HashMap<TyVarChirho, haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho>,
     work_left_chirho: usize,
     output_left_chirho: usize,
     error_chirho: Option<ElaborationErrorChirho>,
@@ -67,10 +69,58 @@ impl ElaborationStateChirho {
             substitution_chirho: SubstChirho::empty_chirho(),
             variable_kinds_chirho: HashMap::new(),
             rigid_variables_chirho: HashSet::new(),
+            source_specificities_chirho: HashMap::new(),
             work_left_chirho: 1 << 25,
             output_left_chirho: 1 << 24,
             error_chirho: None,
         })
+    }
+
+    /// Witnessed source variables keep their specificity when unification
+    /// chooses another representative. Generated metas acquire none by spelling.
+    pub(super) fn note_source_variable_chirho(
+        &mut self,
+        variable_chirho: TyVarChirho,
+        specificity_chirho: haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho,
+        explicit_chirho: bool,
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        self.charge_chirho(1, 1, span_chirho)?;
+        if explicit_chirho {
+            self.source_specificities_chirho
+                .insert(variable_chirho, specificity_chirho);
+        } else {
+            self.source_specificities_chirho
+                .entry(variable_chirho)
+                .or_insert(specificity_chirho);
+        }
+        Ok(())
+    }
+
+    pub(super) fn source_specificity_chirho(
+        &self,
+        variable_chirho: TyVarChirho,
+    ) -> Option<haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho> {
+        self.source_specificities_chirho
+            .get(&variable_chirho)
+            .copied()
+    }
+
+    fn link_source_variable_chirho(
+        &mut self,
+        source_chirho: TyVarChirho,
+        target_chirho: TyVarChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        if let Some(specificity_chirho) = self.source_specificity_chirho(source_chirho) {
+            self.note_source_variable_chirho(
+                target_chirho,
+                specificity_chirho,
+                false,
+                span_chirho,
+            )?;
+        }
+        Ok(())
     }
 
     pub fn charge_chirho(
@@ -394,6 +444,7 @@ impl ElaborationStateChirho {
                     if self.rigid_variables_chirho.contains(&left_chirho)
                         && !self.rigid_variables_chirho.contains(&right_chirho) =>
                 {
+                    self.link_source_variable_chirho(right_chirho, left_chirho, span_chirho)?;
                     self.substitution_chirho
                         .insert_chirho(right_chirho, TyChirho::VarChirho(left_chirho));
                 }
@@ -407,6 +458,13 @@ impl ElaborationStateChirho {
                             message_chirho: "infinite kind in declaration telescope".to_owned(),
                             span_chirho,
                         });
+                    }
+                    if let TyChirho::VarChirho(target_chirho) = &ty_chirho {
+                        self.link_source_variable_chirho(
+                            variable_chirho,
+                            *target_chirho,
+                            span_chirho,
+                        )?;
                     }
                     self.substitution_chirho
                         .insert_chirho(variable_chirho, ty_chirho);

@@ -17,6 +17,9 @@ use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
+use haskelujah_ast_chirho::name_chirho::{
+    CompilerTypeConstructorChirho, TypeConstructorIdentityChirho,
+};
 use haskelujah_ast_chirho::promotion_chirho::{
     BUILTIN_CONSTRUCTOR_MODULE_CHIRHO, PromotedKeyChirho, PromotionResolutionChirho,
     PromotionScopeChirho,
@@ -40,6 +43,7 @@ struct BuiltinParentChirho {
     /// Bool and Ordering rule since 686b. Every later entry names its providers exactly,
     /// so a builtin homonym anywhere else stays unproven.
     providers_chirho: Option<&'static [&'static str]>,
+    declaration_chirho: Option<CompilerTypeConstructorChirho>,
 }
 
 /// The constructors the compiler itself defines: the only constructors a builtin
@@ -49,36 +53,49 @@ struct BuiltinParentChirho {
 const BUILTIN_PROMOTED_PARENTS_CHIRHO: &[BuiltinParentChirho] = &[
     BuiltinParentChirho {
         parent_chirho: "Bool",
+        declaration_chirho: Some(CompilerTypeConstructorChirho::BoolChirho),
         module_chirho: BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
         constructors_chirho: &["False", "True"],
         providers_chirho: None,
     },
     BuiltinParentChirho {
         parent_chirho: "Ordering",
+        declaration_chirho: Some(CompilerTypeConstructorChirho::OrderingChirho),
         module_chirho: BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
         constructors_chirho: &["LT", "EQ", "GT"],
         providers_chirho: None,
     },
     BuiltinParentChirho {
         parent_chirho: "Maybe",
+        declaration_chirho: Some(CompilerTypeConstructorChirho::MaybeChirho),
         module_chirho: "GHC.Maybe",
         constructors_chirho: &["Nothing", "Just"],
         providers_chirho: Some(&["Prelude", "Data.Maybe"]),
     },
     BuiltinParentChirho {
         parent_chirho: "Either",
+        declaration_chirho: Some(CompilerTypeConstructorChirho::EitherChirho),
         module_chirho: "Data.Either",
         constructors_chirho: &["Left", "Right"],
         providers_chirho: Some(&["Prelude", "Data.Either"]),
     },
     BuiltinParentChirho {
+        parent_chirho: "Proxy",
+        declaration_chirho: Some(CompilerTypeConstructorChirho::ProxyChirho),
+        module_chirho: "Data.Proxy",
+        constructors_chirho: &["Proxy"],
+        providers_chirho: Some(&["Data.Proxy", "Data.Data", "Data.Typeable"]),
+    },
+    BuiltinParentChirho {
         parent_chirho: "Levity",
+        declaration_chirho: None,
         module_chirho: BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
         constructors_chirho: LEVITY_CONSTRUCTORS_CHIRHO,
         providers_chirho: Some(&["GHC.Exts"]),
     },
     BuiltinParentChirho {
         parent_chirho: "RuntimeRep",
+        declaration_chirho: None,
         module_chirho: BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
         constructors_chirho: RUNTIME_REP_CONSTRUCTORS_CHIRHO,
         providers_chirho: Some(&["GHC.Exts"]),
@@ -211,6 +228,19 @@ fn trusted_builtin_parent_chirho(
     }
     BUILTIN_PROMOTED_PARENTS_CHIRHO.iter().find(|entry_chirho| {
         entry_chirho.parent_chirho == parent_chirho
+            && entry_chirho
+                .declaration_chirho
+                .is_none_or(|expected_chirho| {
+                    iface_chirho
+                        .exports_chirho
+                        .types_chirho
+                        .get(parent_chirho)
+                        .and_then(|parent_chirho| parent_chirho.declaration_chirho.as_ref())
+                        .is_some_and(|declaration_chirho| {
+                            declaration_chirho.identity_chirho
+                                == TypeConstructorIdentityChirho::CompilerChirho(expected_chirho)
+                        })
+                })
             && entry_chirho
                 .constructors_chirho
                 .contains(&constructor_chirho)

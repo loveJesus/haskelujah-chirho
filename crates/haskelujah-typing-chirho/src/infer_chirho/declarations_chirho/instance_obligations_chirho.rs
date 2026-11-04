@@ -292,6 +292,7 @@ enum MethodRouteChirho {
 /// those variables.
 struct InstanceUnderCheckChirho {
     class_decl_chirho: std::sync::Arc<ClassDeclChirho>,
+    kind_tys_chirho: Vec<TyChirho>,
     head_tys_chirho: Vec<TyChirho>,
     var_map_chirho: HashMap<String, TyVarChirho>,
     context_chirho: Vec<SchemePredChirho>,
@@ -346,6 +347,7 @@ impl InferCtxChirho {
             let DeclChirho::InstanceDeclChirho {
                 context_chirho,
                 class_chirho,
+                kind_args_chirho,
                 types_chirho,
                 methods_chirho,
                 ..
@@ -362,6 +364,10 @@ impl InferCtxChirho {
                 continue;
             };
             let mut var_map_chirho = HashMap::new();
+            let kind_tys_chirho: Vec<TyChirho> = kind_args_chirho
+                .iter()
+                .map(|kind_chirho| self.ast_type_to_ty_chirho(kind_chirho, &mut var_map_chirho))
+                .collect();
             let head_tys_chirho: Vec<TyChirho> = types_chirho
                 .iter()
                 .map(|ty_chirho| self.ast_type_to_ty_chirho(ty_chirho, &mut var_map_chirho))
@@ -370,6 +376,7 @@ impl InferCtxChirho {
                 self.instance_context_givens_chirho(context_chirho, &mut var_map_chirho);
             let instance_chirho = InstanceUnderCheckChirho {
                 class_decl_chirho,
+                kind_tys_chirho,
                 head_tys_chirho,
                 var_map_chirho,
                 context_chirho,
@@ -552,6 +559,7 @@ impl InferCtxChirho {
             .instantiate_instance_method_expected_parts_chirho(
                 &instance_chirho.class_decl_chirho,
                 method_scheme_chirho,
+                &instance_chirho.kind_tys_chirho,
                 &instance_chirho.head_tys_chirho,
                 instance_chirho.local_class_chirho,
             );
@@ -752,6 +760,7 @@ impl InferCtxChirho {
             .instantiate_instance_method_expected_parts_chirho(
                 &instance_chirho.class_decl_chirho,
                 method_scheme_chirho,
+                &instance_chirho.kind_tys_chirho,
                 &instance_chirho.head_tys_chirho,
                 false,
             );
@@ -826,10 +835,19 @@ impl InferCtxChirho {
         &mut self,
         class_decl_chirho: &ClassDeclChirho,
         method_scheme_chirho: &SchemeChirho,
+        instance_kind_tys_chirho: &[TyChirho],
         instance_head_tys_chirho: &[TyChirho],
         keep_quantifiers_chirho: bool,
     ) -> (Vec<SchemePredChirho>, TyChirho, Vec<TyVarChirho>) {
         let mut head_subst_chirho = SubstChirho::empty_chirho();
+        for (index_chirho, kind_var_chirho) in class_decl_chirho.kind_vars_chirho.iter().enumerate()
+        {
+            let kind_chirho = instance_kind_tys_chirho
+                .get(index_chirho)
+                .cloned()
+                .unwrap_or_else(|| self.fresh_var_chirho());
+            head_subst_chirho.insert_chirho(*kind_var_chirho, kind_chirho);
+        }
         let class_vars_chirho: Vec<TyVarChirho> = std::iter::once(class_decl_chirho.var_chirho)
             .chain(class_decl_chirho.extra_vars_chirho.iter().copied())
             .collect();
@@ -902,6 +920,7 @@ impl InferCtxChirho {
             .instantiate_instance_method_expected_parts_chirho(
                 class_decl_chirho,
                 method_scheme_chirho,
+                &[],
                 instance_head_tys_chirho,
                 false,
             );

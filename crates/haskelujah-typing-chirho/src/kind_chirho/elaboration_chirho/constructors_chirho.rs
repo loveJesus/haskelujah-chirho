@@ -97,7 +97,7 @@ impl TypeElaboratorChirho<'_> {
         }
         Ok(result_chirho)
     }
-    fn constructor_key_chirho(
+    pub(super) fn constructor_key_chirho(
         &mut self,
         name_chirho: &NameChirho,
     ) -> Result<Option<Arc<str>>, ElaborationErrorChirho> {
@@ -251,6 +251,7 @@ impl TypeElaboratorChirho<'_> {
             let mut fields_chirho = Vec::new();
             let mut gadt_result_chirho = None;
             let mut held_chirho = false;
+            let mut explicit_chirho = std::collections::HashSet::new();
             match constructor_chirho {
                 ConDeclChirho::OrdinaryChirho {
                     fields_chirho: source_fields_chirho,
@@ -299,7 +300,8 @@ impl TypeElaboratorChirho<'_> {
                                 vars_chirho: binders_chirho,
                                 ..
                             } => {
-                                this_chirho.bind_forall_chirho(binders_chirho)?;
+                                explicit_chirho
+                                    .extend(this_chirho.bind_forall_chirho(binders_chirho)?);
                             }
                             GadtConPrefixChirho::ContextChirho {
                                 constraints_chirho, ..
@@ -349,6 +351,37 @@ impl TypeElaboratorChirho<'_> {
                     })?
                     .as_ref()
                     .clone();
+                // Constructor kind variables inferred from parameter kinds are
+                // invisible even when the datatype header wrote their names.
+                // An actual constructor forall retains its own specificity.
+                let mut inferred_chirho = std::collections::HashSet::new();
+                for term_chirho in fields_chirho.iter().chain(std::iter::once(
+                    gadt_result_chirho
+                        .as_ref()
+                        .unwrap_or(&scheme_chirho.result_kind_chirho),
+                )) {
+                    let resolved_chirho = this_chirho
+                        .state_chirho
+                        .resolve_chirho(term_chirho, span_chirho)?;
+                    for variable_chirho in resolved_chirho.free_vars_chirho() {
+                        let kind_chirho = this_chirho
+                            .state_chirho
+                            .variable_kind_chirho(variable_chirho, span_chirho)?;
+                        let kind_chirho = this_chirho
+                            .state_chirho
+                            .resolve_chirho(&kind_chirho, span_chirho)?;
+                        for dependency_chirho in kind_chirho.free_vars_chirho() {
+                            if !explicit_chirho.contains(&dependency_chirho) {
+                                inferred_chirho.insert(dependency_chirho);
+                            }
+                        }
+                    }
+                }
+                this_chirho
+                    .declaration_variables_chirho
+                    .entry(key_chirho.clone())
+                    .or_default()
+                    .constructor_inferred_chirho = inferred_chirho;
                 let required_chirho =
                     scheme_chirho
                         .binders_chirho

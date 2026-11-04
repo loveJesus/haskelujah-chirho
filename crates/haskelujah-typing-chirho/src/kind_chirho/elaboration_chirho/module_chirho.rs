@@ -311,9 +311,21 @@ impl TypeElaboratorChirho<'_> {
                 result_kind_chirho,
                 standalone_kind_chirho,
                 equations_chirho,
+                closed_chirho,
                 ..
             } => {
                 self.check_binder_annotations_chirho(type_vars_chirho)?;
+                if !*closed_chirho
+                    && result_kind_chirho.is_none()
+                    && standalone_kind_chirho.is_none()
+                {
+                    let expected_chirho = self.result_kind_chirho(key_chirho, span_chirho)?;
+                    self.state_chirho.unify_chirho(
+                        &expected_chirho,
+                        &ElaborationStateChirho::type_universe_chirho(),
+                        span_chirho,
+                    )?;
+                }
                 self.check_kind_contract_chirho(
                     key_chirho,
                     result_kind_chirho.as_mut(),
@@ -349,6 +361,17 @@ impl TypeElaboratorChirho<'_> {
                         )?;
                         this_chirho
                             .check_binder_annotations_chirho(&mut family_chirho.type_vars_chirho)?;
+                        if family_chirho.result_kind_chirho.is_none() {
+                            let expected_chirho = this_chirho.result_kind_chirho(
+                                &family_key_chirho,
+                                family_chirho.span_chirho,
+                            )?;
+                            this_chirho.state_chirho.unify_chirho(
+                                &expected_chirho,
+                                &ElaborationStateChirho::type_universe_chirho(),
+                                family_chirho.span_chirho,
+                            )?;
+                        }
                         this_chirho.check_kind_contract_chirho(
                             &family_key_chirho,
                             family_chirho.result_kind_chirho.as_mut(),

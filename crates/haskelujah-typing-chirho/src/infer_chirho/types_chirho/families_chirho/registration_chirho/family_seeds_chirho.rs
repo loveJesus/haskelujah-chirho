@@ -291,6 +291,18 @@ pub(super) fn family_head_role_chirho(
         .declaration_schemes_chirho()
         .get_chirho(name_chirho)
     {
+        if scheme_chirho.owner_chirho.is_none()
+            && !scheme_chirho.held_chirho
+            && scheme_chirho.promoted_chirho
+            && is_promoted_key_chirho(name_chirho)
+            && !is_unknown_promoted_key_chirho(name_chirho)
+        {
+            return FamilyHeadRoleChirho::GenerativeChirho {
+                identity_chirho: GenerativeIdentityChirho::NominalChirho(
+                    scheme_chirho.identity_chirho.to_string(),
+                ),
+            };
+        }
         if scheme_chirho.owner_chirho.is_none() && !scheme_chirho.held_chirho && scheme_chirho.declaration_chirho.as_ref().is_some_and(|declaration_chirho| declaration_chirho.is_nominally_generative_chirho() || declaration_chirho.role_chirho == haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho::UniverseChirho) {
             return FamilyHeadRoleChirho::GenerativeChirho { identity_chirho: GenerativeIdentityChirho::NominalChirho(scheme_chirho.identity_chirho.to_string()) };
         }

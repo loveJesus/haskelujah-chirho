@@ -291,18 +291,9 @@ impl ParserChirho<'_> {
         self.bump_chirho(); // instance
         self.eat_trivia_chirho();
 
-        // LHS patterns until =
-        self.eat_until_any_chirho(&[
-            RawTokenKindChirho::EqualsChirho,
-            RawTokenKindChirho::VirtualSemicolonChirho,
-            RawTokenKindChirho::VirtualRightBraceChirho,
-        ]);
-
-        if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
-            self.bump_chirho(); // =
-            self.eat_trivia_chirho();
-            self.parse_type_chirho(); // RHS type
-        }
+        // Share the structured equation grammar with closed and associated
+        // equations, retaining promotion, kind applications and annotations.
+        self.parse_family_equation_chirho();
 
         self.builder_chirho.finish_node_chirho();
     }

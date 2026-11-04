@@ -240,10 +240,10 @@ impl InferCtxChirho {
         {
             return Some(wanted_chirho);
         }
-        let vars_chirho: Vec<TyVarChirho> = self
-            .normalized_pred_args_chirho(&wanted_chirho.0)
-            .iter()
-            .flat_map(TyChirho::free_vars_chirho)
+        let vars_chirho: Vec<TyVarChirho> = wanted_chirho
+            .0
+            .semantic_tys_chirho()
+            .flat_map(|ty_chirho| self.normalize_ty_chirho(ty_chirho).free_vars_chirho())
             .collect();
         if !vars_chirho
             .iter()
@@ -261,7 +261,7 @@ impl InferCtxChirho {
             scheme_preds_chirho.push(SchemePredChirho::from_proof_chirho(
                 pred_chirho.class_identity_chirho().clone(),
                 crate::ty_chirho::SchemePredPartsChirho {
-                    kind_tys_chirho: Vec::new(),
+                    kind_tys_chirho: pred_chirho.kind_tys_chirho,
                     class_name_chirho: pred_chirho.class_name_chirho,
                     ty_chirho: pred_chirho.ty_chirho,
                     extra_tys_chirho: pred_chirho.extra_tys_chirho,

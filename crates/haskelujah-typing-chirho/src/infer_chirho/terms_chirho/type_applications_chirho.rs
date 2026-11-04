@@ -102,6 +102,9 @@ impl InferCtxChirho {
         type_args_chirho: &mut Vec<&'a TypeChirho>,
     ) -> &'a ExprChirho {
         match expr_chirho {
+            ExprChirho::ParenChirho { inner_chirho, .. } => {
+                Self::peel_type_app_chain_chirho(inner_chirho, type_args_chirho)
+            }
             ExprChirho::TypeAppChirho {
                 expr_chirho,
                 ty_chirho,
@@ -125,6 +128,17 @@ impl InferCtxChirho {
             Self::peel_type_app_chain_chirho(expr_chirho, &mut type_args_ast_chirho);
         if type_args_ast_chirho.is_empty() {
             return None;
+        }
+
+        if let ExprChirho::ConChirho(name_chirho) = base_expr_chirho
+            && let Some(result_chirho) = self
+                .instantiate_checked_constructor_type_application_chirho(
+                    name_chirho,
+                    &type_args_ast_chirho,
+                    span_chirho,
+                )
+        {
+            return Some(result_chirho);
         }
 
         let scheme_chirho = match base_expr_chirho {
@@ -154,6 +168,96 @@ impl InferCtxChirho {
             self.defer_pred_chirho(pred_inst_chirho, span_chirho);
         }
         Some((SubstChirho::empty_chirho(), instantiated_ty_chirho))
+    }
+
+    fn instantiate_checked_constructor_type_application_chirho(
+        &mut self,
+        name_chirho: &NameChirho,
+        arguments_chirho: &[&TypeChirho],
+        span_chirho: SpanChirho,
+    ) -> Option<(SubstChirho, TyChirho)> {
+        use crate::ty_chirho::declarations_chirho::TelescopeVisibilityChirho;
+        let resolution_chirho = self
+            .promotion_scope_chirho
+            .as_ref()?
+            .quoted_chirho(name_chirho);
+        let header_chirho = self
+            .type_families_chirho
+            .declaration_schemes_chirho()
+            .get_chirho(resolution_chirho.key_chirho().as_str_chirho())
+            .filter(|header_chirho| {
+                header_chirho.owner_chirho.is_none()
+                    && header_chirho.promoted_chirho
+                    && !header_chirho.held_chirho
+            })?
+            .clone();
+        if !arguments_chirho.iter().all(|argument_chirho| {
+            matches!(argument_chirho, TypeChirho::KindAnnotationChirho { .. })
+        }) {
+            return None;
+        }
+        let mut parameters_chirho = SubstChirho::empty_chirho();
+        for binder_chirho in &header_chirho.binders_chirho {
+            parameters_chirho.insert_chirho(binder_chirho.variable_chirho, self.fresh_var_chirho());
+        }
+        let mut solver_chirho = SubstChirho::empty_chirho();
+        let mut cursor_chirho = 0;
+        for argument_chirho in arguments_chirho {
+            while header_chirho
+                .binders_chirho
+                .get(cursor_chirho)
+                .is_some_and(|binder_chirho| {
+                    binder_chirho.visibility_chirho == TelescopeVisibilityChirho::InferredChirho
+                })
+            {
+                cursor_chirho += 1;
+            }
+            let binder_chirho =
+                header_chirho
+                    .binders_chirho
+                    .get(cursor_chirho)
+                    .filter(|binder_chirho| {
+                        binder_chirho.visibility_chirho
+                            == TelescopeVisibilityChirho::SpecifiedChirho
+                    })?;
+            let TypeChirho::KindAnnotationChirho { kind_chirho, .. } = argument_chirho else {
+                return None;
+            };
+            let actual_kind_chirho = self.ast_type_to_ty_in_scope_chirho(kind_chirho);
+            let expected_kind_chirho = solver_chirho
+                .apply_ty_chirho(&parameters_chirho.apply_ty_chirho(&binder_chirho.kind_chirho));
+            let actual_chirho = self.ast_type_to_ty_in_scope_chirho(argument_chirho);
+            let expected_chirho = solver_chirho
+                .apply_ty_chirho(parameters_chirho.lookup_chirho(&binder_chirho.variable_chirho)?);
+            for (left_chirho, right_chirho) in [
+                (expected_kind_chirho, actual_kind_chirho),
+                (expected_chirho, actual_chirho),
+            ] {
+                match self.unify_normalized_chirho(&left_chirho, &right_chirho, span_chirho) {
+                    Ok(next_chirho) => {
+                        solver_chirho = next_chirho.compose_chirho(&solver_chirho);
+                        self.apply_subst_all_chirho(&next_chirho);
+                    }
+                    Err(error_chirho) => self.report_unify_error_chirho(&error_chirho),
+                }
+            }
+            cursor_chirho += 1;
+        }
+        let mut result_chirho = solver_chirho
+            .apply_ty_chirho(&parameters_chirho.apply_ty_chirho(&header_chirho.result_kind_chirho));
+        for binder_chirho in header_chirho
+            .binders_chirho
+            .iter()
+            .rev()
+            .filter(|binder_chirho| {
+                binder_chirho.visibility_chirho == TelescopeVisibilityChirho::RequiredChirho
+            })
+        {
+            let field_chirho = solver_chirho
+                .apply_ty_chirho(&parameters_chirho.apply_ty_chirho(&binder_chirho.kind_chirho));
+            result_chirho = TyChirho::fun_chirho(field_chirho, result_chirho);
+        }
+        Some((solver_chirho, result_chirho))
     }
 
     pub(super) fn expr_to_required_type_arg_chirho(

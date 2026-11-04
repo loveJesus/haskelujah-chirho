@@ -24,10 +24,11 @@ impl InferCtxChirho {
         let mut seed_vars_chirho: Vec<TyVarChirho> =
             seed_fun_ty_chirho.free_vars_chirho().into_iter().collect();
         for pred_chirho in preds_chirho {
-            seed_vars_chirho.extend(pred_chirho.ty_chirho.free_vars_chirho());
-            for extra_ty_chirho in &pred_chirho.extra_tys_chirho {
-                seed_vars_chirho.extend(extra_ty_chirho.free_vars_chirho());
-            }
+            seed_vars_chirho.extend(
+                pred_chirho
+                    .semantic_tys_chirho()
+                    .flat_map(TyChirho::free_vars_chirho),
+            );
         }
         seed_vars_chirho.sort_by_key(|tv_chirho| tv_chirho.0);
         seed_vars_chirho.dedup();
@@ -39,7 +40,7 @@ impl InferCtxChirho {
                     SchemePredChirho::from_proof_chirho(
                         pred_chirho.class_identity_chirho().clone(),
                         crate::ty_chirho::SchemePredPartsChirho {
-                            kind_tys_chirho: Vec::new(),
+                            kind_tys_chirho: pred_chirho.kind_tys_chirho.clone(),
                             class_name_chirho: pred_chirho.class_name_chirho.clone(),
                             ty_chirho: pred_chirho.ty_chirho.clone(),
                             extra_tys_chirho: pred_chirho.extra_tys_chirho.clone(),

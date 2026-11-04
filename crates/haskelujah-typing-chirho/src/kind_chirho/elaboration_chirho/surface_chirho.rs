@@ -269,6 +269,12 @@ impl TypeElaboratorChirho<'_> {
                     kind_chirho,
                 )
             };
+            self.state_chirho.note_source_variable_chirho(
+                variable_chirho,
+                binder_chirho.specificity_chirho,
+                true,
+                span_chirho,
+            )?;
             self.stamp_variable_chirho(&mut binder_chirho.name_chirho, variable_chirho);
             let name_chirho = self
                 .state_chirho
@@ -400,7 +406,7 @@ impl TypeElaboratorChirho<'_> {
         }
     }
 
-    fn instantiate_header_chirho(
+    pub(super) fn instantiate_header_chirho(
         &mut self,
         scheme_chirho: &DeclarationSchemeChirho,
         span_chirho: SpanChirho,

@@ -5,7 +5,7 @@
 //! once under each module that exports them instead of under their bare names.
 
 use crate::env_chirho::TyEnvChirho;
-use crate::infer_chirho::mk_type_rep_ty_chirho;
+use crate::infer_chirho::{mk_proxy_ty_chirho, mk_type_rep_ty_chirho};
 use crate::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
 
 pub(super) fn seed_part_12_chirho(env_chirho: &mut TyEnvChirho) {
@@ -310,13 +310,14 @@ pub(super) fn seed_part_12_chirho(env_chirho: &mut TyEnvChirho) {
             ty_chirho: mk_type_rep_ty_chirho(TyChirho::VarChirho(a_chirho)),
         };
         let proxy_rep_a_chirho = TyVarChirho(7151);
+        let proxy_rep_kind_chirho = TyVarChirho(71510);
         let data_typeable_rep_scheme_chirho = SchemeChirho {
-            vars_chirho: vec![proxy_rep_a_chirho],
+            vars_chirho: vec![proxy_rep_a_chirho, proxy_rep_kind_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
-                TyChirho::AppChirho(
-                    Box::new(TyChirho::ConChirho("Proxy".to_string())),
-                    Box::new(TyChirho::VarChirho(proxy_rep_a_chirho)),
+                mk_proxy_ty_chirho(
+                    TyChirho::VarChirho(proxy_rep_kind_chirho),
+                    TyChirho::VarChirho(proxy_rep_a_chirho),
                 ),
                 mk_type_rep_ty_chirho(TyChirho::VarChirho(proxy_rep_a_chirho)),
             ),
@@ -335,17 +336,18 @@ pub(super) fn seed_part_12_chirho(env_chirho: &mut TyEnvChirho) {
         );
     }
 
-    // Proxy :: Proxy a (constructor)
+    // Proxy :: forall {k} (a :: k). Proxy a (constructor)
     {
         let a_chirho = TyVarChirho(7160);
+        let proxy_kind_chirho = TyVarChirho(71600);
         env_chirho.bind_chirho(
             "Proxy".to_string(),
             SchemeChirho {
-                vars_chirho: vec![a_chirho],
+                vars_chirho: vec![a_chirho, proxy_kind_chirho],
                 preds_chirho: vec![],
-                ty_chirho: TyChirho::AppChirho(
-                    Box::new(TyChirho::ConChirho("Proxy".to_string())),
-                    Box::new(TyChirho::VarChirho(a_chirho)),
+                ty_chirho: mk_proxy_ty_chirho(
+                    TyChirho::VarChirho(proxy_kind_chirho),
+                    TyChirho::VarChirho(a_chirho),
                 ),
             },
         );

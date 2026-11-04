@@ -491,6 +491,7 @@ impl LowerCtxChirho {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let mut family_name_chirho = None;
         let mut lhs_types_chirho = Vec::new();
+        let mut kind_args_chirho = Vec::new();
         let mut rhs_chirho = None;
         let mut saw_instance_chirho = false;
         let mut saw_equals_chirho = false;
@@ -594,6 +595,7 @@ impl LowerCtxChirho {
                         self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
                     );
                     family_name_chirho = equation_chirho.head_chirho;
+                    kind_args_chirho = equation_chirho.kind_args_chirho;
                     lhs_types_chirho = equation_chirho.lhs_types_chirho;
                     rhs_chirho = Some(equation_chirho.rhs_chirho);
                 }
@@ -612,7 +614,7 @@ impl LowerCtxChirho {
         }
 
         DeclChirho::TypeFamilyInstanceDeclChirho {
-            kind_args_chirho: Vec::new(),
+            kind_args_chirho,
             family_name_chirho: family_name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
             lhs_types_chirho,
             rhs_chirho: rhs_chirho.unwrap_or_else(|| self.placeholder_type_chirho()),

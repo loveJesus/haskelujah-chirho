@@ -13,6 +13,7 @@ mod module_chirho;
 mod state_chirho;
 mod surface_chirho;
 mod transport_chirho;
+mod value_applications_chirho;
 mod values_chirho;
 pub use state_chirho::{ElaborationErrorChirho, ElaborationStateChirho};
 
@@ -50,6 +51,7 @@ type SourceVariablesChirho = Vec<(String, TyVarChirho, TyChirho)>;
 struct DeclarationVariablesChirho {
     written_chirho: SourceVariablesChirho,
     publication_chirho: crate::subst_chirho::SubstChirho,
+    constructor_inferred_chirho: std::collections::HashSet<TyVarChirho>,
 }
 
 struct TypeElaboratorChirho<'scope_chirho> {
@@ -148,6 +150,12 @@ impl TypeElaboratorChirho<'_> {
     ) -> Result<(TyVarChirho, TyChirho), ElaborationErrorChirho> {
         if let Some((variable_chirho, kind_chirho)) = self.variables_chirho.get(name_chirho) {
             let variable_chirho = *variable_chirho;
+            self.state_chirho.note_source_variable_chirho(
+                variable_chirho,
+                haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho,
+                false,
+                span_chirho,
+            )?;
             return Ok((
                 variable_chirho,
                 self.state_chirho.copy_chirho(kind_chirho, span_chirho)?,
@@ -158,6 +166,12 @@ impl TypeElaboratorChirho<'_> {
         let variable_chirho = self
             .state_chirho
             .fresh_chirho(Some(stored_kind_chirho), span_chirho)?;
+        self.state_chirho.note_source_variable_chirho(
+            variable_chirho,
+            haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho,
+            false,
+            span_chirho,
+        )?;
         let name_chirho = self.state_chirho.name_chirho(name_chirho, span_chirho)?;
         let stored_kind_chirho = self.state_chirho.copy_chirho(&kind_chirho, span_chirho)?;
         self.bind_variable_chirho(

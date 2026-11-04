@@ -4,7 +4,7 @@
 //! `seed_builtins_chirho`, in order (56 named binds).
 
 use crate::env_chirho::TyEnvChirho;
-use crate::infer_chirho::map_ty_chirho;
+use crate::infer_chirho::{map_ty_chirho, mk_proxy_ty_chirho};
 use crate::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
 
 pub(super) fn seed_part_07_chirho(env_chirho: &mut TyEnvChirho) {
@@ -936,10 +936,7 @@ pub(super) fn seed_part_07_chirho(env_chirho: &mut TyEnvChirho) {
                 vars_chirho: vec![option_a_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
-                    TyChirho::AppChirho(
-                        Box::new(TyChirho::ConChirho("Proxy".to_string())),
-                        Box::new(TyChirho::VarChirho(option_a_chirho)),
-                    ),
+                    mk_proxy_ty_chirho(crate::kind_chirho::elaboration_chirho::ElaborationStateChirho::type_universe_chirho(), TyChirho::VarChirho(option_a_chirho)),
                     option_description_ty_chirho,
                 ),
             },

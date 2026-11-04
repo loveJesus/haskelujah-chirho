@@ -402,10 +402,11 @@ impl ClassEnvChirho {
         // Typeable — GHC built-in class. Every type is automatically Typeable.
         // We add a universal instance so that any Typeable constraint is satisfied.
         let typeable_var_chirho = TyVarChirho(9070);
+        let typeable_kind_chirho = TyVarChirho(90700);
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TypeableChirho,
             crate::class_chirho::ClassDeclPartsChirho {
-                kind_vars_chirho: Vec::new(),
+                kind_vars_chirho: vec![typeable_kind_chirho],
                 name_chirho: "Typeable".to_string(),
                 supers_chirho: vec![],
                 var_chirho: typeable_var_chirho,
@@ -417,10 +418,11 @@ impl ClassEnvChirho {
         );
         // Universal Typeable instance: every type is Typeable
         let typeable_inst_var_chirho = TyVarChirho(9071);
+        let typeable_inst_kind_chirho = TyVarChirho(90710);
         self.add_seed_instance_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TypeableChirho,
             crate::class_chirho::InstDeclPartsChirho {
-                kind_tys_chirho: Vec::new(),
+                kind_tys_chirho: vec![TyChirho::VarChirho(typeable_inst_kind_chirho)],
                 class_name_chirho: "Typeable".to_string(),
                 head_ty_chirho: TyChirho::VarChirho(typeable_inst_var_chirho),
                 extra_head_tys_chirho: vec![],

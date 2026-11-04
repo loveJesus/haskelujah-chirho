@@ -270,6 +270,7 @@ impl TypeElaboratorChirho<'_> {
                 &[("Data.Either", "Left"), ("Data.Either", "Right")]
             }
             CompilerTypeConstructorChirho::UnitChirho => &[(BUILTIN_TUPLE_MODULE_CHIRHO, "()")],
+            CompilerTypeConstructorChirho::ProxyChirho => &[("Data.Proxy", "Proxy")],
             CompilerTypeConstructorChirho::ListChirho => &[
                 (BUILTIN_CONSTRUCTOR_MODULE_CHIRHO, "[]"),
                 (BUILTIN_CONSTRUCTOR_MODULE_CHIRHO, ":"),
@@ -324,7 +325,8 @@ impl TypeElaboratorChirho<'_> {
         let parameter_count_chirho = match parent_chirho {
             CompilerTypeConstructorChirho::MaybeChirho
             | CompilerTypeConstructorChirho::ListChirho => 1,
-            CompilerTypeConstructorChirho::EitherChirho => 2,
+            CompilerTypeConstructorChirho::EitherChirho
+            | CompilerTypeConstructorChirho::ProxyChirho => 2,
             CompilerTypeConstructorChirho::TupleChirho(arity_chirho) => arity_chirho as usize,
             _ => 0,
         };
@@ -337,8 +339,20 @@ impl TypeElaboratorChirho<'_> {
         for index_chirho in 0..parameter_count_chirho {
             binders_chirho.push(DeclarationBinderChirho {
                 variable_chirho: TyVarChirho(index_chirho as u32),
-                kind_chirho: ElaborationStateChirho::type_universe_chirho(),
-                visibility_chirho: TelescopeVisibilityChirho::InferredChirho,
+                kind_chirho: if parent_chirho == CompilerTypeConstructorChirho::ProxyChirho
+                    && index_chirho == 1
+                {
+                    TyChirho::VarChirho(TyVarChirho(0))
+                } else {
+                    ElaborationStateChirho::type_universe_chirho()
+                },
+                visibility_chirho: if parent_chirho == CompilerTypeConstructorChirho::ProxyChirho
+                    && index_chirho == 0
+                {
+                    TelescopeVisibilityChirho::InferredChirho
+                } else {
+                    TelescopeVisibilityChirho::SpecifiedChirho
+                },
             });
         }
         let parameter_chirho = |index_chirho| TyChirho::VarChirho(TyVarChirho(index_chirho));

@@ -195,7 +195,8 @@ mod type_families_chirho;
 mod type_synonyms_chirho;
 
 use ast_types_chirho::{
-    ast_type_to_syn_rhs_chirho, collect_free_type_vars_from_ast_chirho, mk_type_rep_ty_chirho,
+    ast_type_to_syn_rhs_chirho, collect_free_type_vars_from_ast_chirho, mk_proxy_ty_chirho,
+    mk_type_rep_ty_chirho,
 };
 use builtins_chirho::seed_builtins_chirho;
 pub use builtins_chirho::{

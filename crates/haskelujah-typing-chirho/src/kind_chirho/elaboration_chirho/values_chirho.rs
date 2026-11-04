@@ -485,6 +485,11 @@ impl TypeElaboratorChirho<'_> {
         self.state_chirho
             .charge_chirho(1, 0, expression_chirho.span_chirho())?;
         self.with_syntax_depth_chirho(expression_chirho.span_chirho(), |this_chirho| {
+            if matches!(expression_chirho, ExprChirho::TypeAppChirho { .. })
+                && this_chirho.elaborate_constructor_type_application_chirho(expression_chirho)?
+            {
+                return Ok(());
+            }
             match expression_chirho {
                 ExprChirho::AppChirho {
                     fun_chirho,

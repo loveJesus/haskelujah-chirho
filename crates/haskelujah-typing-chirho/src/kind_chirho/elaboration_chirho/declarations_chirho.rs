@@ -114,6 +114,10 @@ impl TypeElaboratorChirho<'_> {
                 kind_chirho,
                 visibility_chirho: if binder_chirho.is_visible_chirho() {
                     TelescopeVisibilityChirho::RequiredChirho
+                } else if binder_chirho.specificity_chirho
+                    == haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho
+                {
+                    TelescopeVisibilityChirho::InferredChirho
                 } else {
                     TelescopeVisibilityChirho::SpecifiedChirho
                 },
@@ -164,6 +168,7 @@ impl TypeElaboratorChirho<'_> {
             DeclarationVariablesChirho {
                 written_chirho: source_binders_chirho,
                 publication_chirho: SubstChirho::empty_chirho(),
+                constructor_inferred_chirho: std::collections::HashSet::new(),
             },
         );
         self.close_scope_chirho(mark_chirho);
@@ -374,7 +379,7 @@ impl TypeElaboratorChirho<'_> {
                 inferred_chirho.push(DeclarationBinderChirho {
                     variable_chirho,
                     kind_chirho,
-                    visibility_chirho: TelescopeVisibilityChirho::InferredChirho,
+                    visibility_chirho: if !self.declaration_variables_chirho.get(&key_chirho).is_some_and(|variables_chirho| variables_chirho.constructor_inferred_chirho.contains(&variable_chirho)) && self.state_chirho.source_specificity_chirho(variable_chirho) == Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho) { TelescopeVisibilityChirho::SpecifiedChirho } else { TelescopeVisibilityChirho::InferredChirho },
                 });
             }
             inferred_chirho.extend(binders_chirho);

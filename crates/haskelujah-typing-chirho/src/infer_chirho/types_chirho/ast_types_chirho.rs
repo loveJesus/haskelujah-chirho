@@ -10,6 +10,21 @@ use haskelujah_ast_chirho::promotion_chirho::{
 };
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 
+/// Actual compiler Proxy producers apply its complete checked telescope.
+pub(super) fn mk_proxy_ty_chirho(kind_chirho: TyChirho, argument_chirho: TyChirho) -> TyChirho {
+    let declaration_chirho =
+        haskelujah_ast_chirho::name_chirho::TypeConstructorDeclarationChirho::compiler_data_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho::ProxyChirho,
+        );
+    TyChirho::AppChirho(
+        Box::new(TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho(declaration_chirho.type_key_chirho())),
+            Box::new(kind_chirho),
+        )),
+        Box::new(argument_chirho),
+    )
+}
+
 pub(super) fn mk_type_rep_ty_chirho(arg_ty_chirho: TyChirho) -> TyChirho {
     TyChirho::AppChirho(
         Box::new(TyChirho::ConChirho("TypeRep".to_string())),
