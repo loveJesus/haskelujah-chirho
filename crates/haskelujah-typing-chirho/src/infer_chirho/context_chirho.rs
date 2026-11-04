@@ -12,7 +12,8 @@ use crate::class_chirho::ClassEnvChirho;
 use crate::env_chirho::TyEnvChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::TyChirho;
-use haskelujah_diagnostics_chirho::DiagnosticBundleChirho;
+use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
+use haskelujah_span_chirho::SpanChirho;
 use std::collections::{HashMap, HashSet};
 
 impl InferCtxChirho {

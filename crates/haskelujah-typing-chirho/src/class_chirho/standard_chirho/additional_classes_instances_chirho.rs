@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use crate::ty_chirho::{MultChirho, SchemeChirho, TyChirho, TyVarChirho};
 
-use super::super::{ClassEnvChirho, InstDeclChirho};
+use super::super::ClassEnvChirho;
 
 impl ClassEnvChirho {
     pub(super) fn seed_additional_classes_instances_chirho(&mut self) {
