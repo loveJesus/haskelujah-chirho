@@ -31,6 +31,8 @@ use haskelujah_span_chirho::SpanChirho;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+#[path = "infer_chirho/annotations_chirho/mod.rs"]
+mod annotations_chirho;
 mod builtins_chirho;
 #[path = "infer_chirho/context_chirho.rs"]
 mod context_chirho;

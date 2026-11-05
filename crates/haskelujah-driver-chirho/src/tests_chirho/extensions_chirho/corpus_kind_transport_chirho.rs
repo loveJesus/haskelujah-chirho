@@ -128,3 +128,15 @@ fn corpus_visflag3_keeps_associated_quantifier_visibility_chirho() {
         .expect("fresh GHC associated visibility negative rejects");
     assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
 }
+
+#[test]
+fn corpus_t8856_checks_annotation_with_its_owned_scope_chirho() {
+    check_chirho("should_compile", "T8856.hs")
+        .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn corpus_t10031_checks_context_beneath_annotation_forall_chirho() {
+    check_chirho("should_compile", "T10031.hs")
+        .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}

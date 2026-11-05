@@ -269,30 +269,8 @@ impl TypeElaboratorChirho<'_> {
         if !self.scoped_type_variables_chirho {
             return Ok(());
         }
-        let mut variables_chirho = Vec::new();
-        if let haskelujah_ast_chirho::ty_chirho::TypeChirho::ForallChirho { vars_chirho, .. } =
-            ty_chirho
-        {
-            for binder_chirho in vars_chirho {
-                let variable_chirho = self
-                    .check_variable_owner_chirho(&binder_chirho.name_chirho)?
-                    .ok_or_else(|| {
-                        Self::error_chirho(
-                            "signature binder has no canonical owner",
-                            name_chirho.span_chirho(),
-                        )
-                    })?;
-                let kind_chirho = self
-                    .state_chirho
-                    .variable_kind_chirho(variable_chirho, name_chirho.span_chirho())?;
-                variables_chirho.push((
-                    self.state_chirho
-                        .name_chirho(binder_chirho.text_chirho(), name_chirho.span_chirho())?,
-                    variable_chirho,
-                    kind_chirho,
-                ));
-            }
-        }
+        let variables_chirho =
+            self.checked_signature_scope_chirho(ty_chirho, name_chirho.span_chirho())?;
         let key_chirho = self
             .state_chirho
             .name_chirho(name_chirho.text_chirho(), name_chirho.span_chirho())?;
@@ -305,6 +283,40 @@ impl TypeElaboratorChirho<'_> {
         self.signature_undo_chirho
             .push((undo_key_chirho, previous_chirho));
         Ok(())
+    }
+
+    /// Reuse the identities stamped by the kind checker. Lexical source names
+    /// only admit these checked variables; they never mint replacement owners.
+    fn checked_signature_scope_chirho(
+        &mut self,
+        ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<SourceVariablesChirho, ElaborationErrorChirho> {
+        if !self.scoped_type_variables_chirho {
+            return Ok(Vec::new());
+        }
+        let mut variables_chirho = Vec::new();
+        if let haskelujah_ast_chirho::ty_chirho::TypeChirho::ForallChirho { vars_chirho, .. } =
+            ty_chirho
+        {
+            for binder_chirho in vars_chirho {
+                let variable_chirho = self
+                    .check_variable_owner_chirho(&binder_chirho.name_chirho)?
+                    .ok_or_else(|| {
+                        Self::error_chirho("signature binder has no canonical owner", span_chirho)
+                    })?;
+                let kind_chirho = self
+                    .state_chirho
+                    .variable_kind_chirho(variable_chirho, span_chirho)?;
+                variables_chirho.push((
+                    self.state_chirho
+                        .name_chirho(binder_chirho.text_chirho(), span_chirho)?,
+                    variable_chirho,
+                    kind_chirho,
+                ));
+            }
+        }
+        Ok(variables_chirho)
     }
 
     fn signature_scope_chirho(
@@ -524,9 +536,22 @@ impl TypeElaboratorChirho<'_> {
                     ty_chirho,
                     ..
                 } => {
-                    this_chirho
-                        .scoped_chirho(|this_chirho| this_chirho.check_type_chirho(ty_chirho))?;
-                    this_chirho.expression_chirho(expr_chirho)?;
+                    this_chirho.scoped_chirho(|this_chirho| {
+                        this_chirho.scoped_chirho(|this_chirho| {
+                            this_chirho.check_type_chirho(ty_chirho)
+                        })?;
+                        let variables_chirho = this_chirho
+                            .checked_signature_scope_chirho(ty_chirho, ty_chirho.span_chirho())?;
+                        for (name_chirho, variable_chirho, kind_chirho) in variables_chirho {
+                            this_chirho.bind_variable_chirho(
+                                name_chirho,
+                                variable_chirho,
+                                kind_chirho,
+                                ty_chirho.span_chirho(),
+                            )?;
+                        }
+                        this_chirho.expression_chirho(expr_chirho)
+                    })?;
                 }
                 ExprChirho::NegChirho { expr_chirho, .. }
                 | ExprChirho::SpliceChirho { expr_chirho, .. }

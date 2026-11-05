@@ -141,15 +141,20 @@ impl InferCtxChirho {
             return Some(result_chirho);
         }
 
-        let scheme_chirho = match base_expr_chirho {
-            ExprChirho::VarChirho(name_chirho) | ExprChirho::ConChirho(name_chirho) => self
-                .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
+        let (carried_chirho, scheme_chirho) = match base_expr_chirho {
+            ExprChirho::VarChirho(name_chirho) | ExprChirho::ConChirho(name_chirho) => (
+                SubstChirho::empty_chirho(),
+                self.lookup_value_scheme_with_qualified_suffix_fallback_chirho(
                     &name_chirho.full_name_chirho(),
                     name_chirho.text_chirho(),
                 )?,
-            _ => {
-                return None;
-            }
+            ),
+            ExprChirho::AnnChirho {
+                expr_chirho,
+                ty_chirho,
+                span_chirho,
+            } => self.check_expression_annotation_chirho(expr_chirho, ty_chirho, *span_chirho),
+            _ => return None,
         };
 
         // A name known only through a placeholder import scheme has no
@@ -167,7 +172,7 @@ impl InferCtxChirho {
         for pred_inst_chirho in instantiated_preds_chirho {
             self.defer_pred_chirho(pred_inst_chirho, span_chirho);
         }
-        Some((SubstChirho::empty_chirho(), instantiated_ty_chirho))
+        Some((carried_chirho, instantiated_ty_chirho))
     }
 
     fn instantiate_checked_constructor_type_application_chirho(

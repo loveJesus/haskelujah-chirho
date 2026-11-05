@@ -23,6 +23,7 @@ use haskelujah_syntax_chirho::SourceFileChirho;
 
 mod corpus_kind_transport_chirho;
 mod deferral_flags_chirho;
+mod expression_annotations_chirho;
 mod impredicative_application_chirho;
 mod kind_import_transport_chirho;
 mod kind_qualified_context_chirho;

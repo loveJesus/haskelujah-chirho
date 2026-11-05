@@ -590,3 +590,27 @@ fn type_mentions_owned_skolem_chirho(
     }
     Ok(false)
 }
+
+impl InferCtxChirho {
+    /// Preserve checked implication evidence while exporting a public image.
+    /// The same allowance covers evidence copies, rewrites and normalization.
+    pub(super) fn normalize_signature_public_image_chirho(
+        &self,
+        ty_chirho: &TyChirho,
+        budget_chirho: &mut super::equality_normalization_chirho::EqualityBudgetChirho,
+    ) -> Result<TyChirho, super::equality_normalization_chirho::EqualityNormalizationExhaustedChirho>
+    {
+        let evidence_chirho = std::iter::successors(
+            self.equality_scopes_chirho[self.active_equality_scope_chirho]
+                .evidence_chirho
+                .as_deref(),
+            |node_chirho| node_chirho.parent_chirho.as_deref(),
+        );
+        super::equality_normalization_chirho::normalize_owned_equality_with_budget_chirho(
+            self,
+            ty_chirho,
+            evidence_chirho.map(|node_chirho| node_chirho.rewrites_chirho.as_slice()),
+            budget_chirho,
+        )
+    }
+}

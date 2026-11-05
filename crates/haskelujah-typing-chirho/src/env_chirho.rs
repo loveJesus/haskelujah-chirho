@@ -179,6 +179,13 @@ impl TyEnvChirho {
         vars_chirho
     }
 
+    /// Borrow refinement targets for a scope-bounded captured-variable walk.
+    pub(crate) fn refinement_types_chirho(&self) -> impl Iterator<Item = &TyChirho> {
+        self.refinements_chirho
+            .iter()
+            .flat_map(|scope_chirho| scope_chirho.iter().map(|(_, ty_chirho)| ty_chirho))
+    }
+
     /// Borrow every entry in innermost-first order, including tombstones.
     /// A budgeted caller charges and records the first name before skipping a
     /// missing scheme; otherwise a same-named outer value could reappear.
@@ -190,6 +197,40 @@ impl TyEnvChirho {
                 .iter()
                 .map(|(name_chirho, entry_chirho)| (name_chirho, entry_chirho.scheme_chirho()))
         })
+    }
+
+    /// Stable locations within the existing lexical stack, used only while a
+    /// checked scope projects its solved public images before evidence leaves.
+    pub(crate) fn located_bindings_chirho(
+        &self,
+    ) -> impl Iterator<Item = (usize, &String, &SchemeChirho)> {
+        self.scopes_chirho
+            .iter()
+            .enumerate()
+            .flat_map(|(index_chirho, scope_chirho)| {
+                scope_chirho
+                    .iter()
+                    .filter_map(move |(name_chirho, entry_chirho)| {
+                        entry_chirho
+                            .scheme_chirho()
+                            .map(|scheme_chirho| (index_chirho, name_chirho, scheme_chirho))
+                    })
+            })
+    }
+
+    pub(crate) fn replace_located_binding_chirho(
+        &mut self,
+        index_chirho: usize,
+        name_chirho: &str,
+        scheme_chirho: SchemeChirho,
+    ) {
+        if let Some(EnvEntryChirho::ValueChirho(entry_chirho)) = self
+            .scopes_chirho
+            .get_mut(index_chirho)
+            .and_then(|scope_chirho| scope_chirho.get_mut(name_chirho))
+        {
+            *entry_chirho = scheme_chirho;
+        }
     }
 
     /// Iterate over usable visible bindings, innermost first. A masked entry

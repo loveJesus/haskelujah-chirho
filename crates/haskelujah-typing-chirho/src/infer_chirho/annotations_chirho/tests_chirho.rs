@@ -1,0 +1,182 @@
+// For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+
+//! Captured-meta escape, lexical masking and bounded failure controls.
+
+use super::*;
+use crate::ty_chirho::TyVarChirho;
+use std::collections::HashSet;
+
+#[test]
+fn annotation_escape_follows_committed_chains_and_qualified_contexts_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let skolem_chirho = "ownedRigidChirho".to_owned();
+    context_chirho
+        .equality_substitutions_chirho
+        .insert_chirho(TyVarChirho(0), TyChirho::VarChirho(TyVarChirho(2)));
+    context_chirho.equality_substitutions_chirho.insert_chirho(
+        TyVarChirho(2),
+        TyChirho::QualChirho {
+            context_chirho: vec![TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("CheckedClassChirho".to_owned())),
+                Box::new(TyChirho::ForallVarChirho(skolem_chirho.clone())),
+            )],
+            body_chirho: Box::new(TyChirho::bool_chirho()),
+        },
+    );
+    context_chirho.env_chirho.bind_chirho(
+        "capturedChirho".to_owned(),
+        SchemeChirho::mono_chirho(TyChirho::VarChirho(TyVarChirho(0))),
+    );
+    let captured_chirho = context_chirho
+        .capture_signature_metas_chirho(&SchemeChirho::mono_chirho(TyChirho::bool_chirho()));
+    context_chirho.check_annotation_escape_chirho(
+        captured_chirho,
+        &HashSet::from([skolem_chirho]),
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    assert!(context_chirho.diagnostics_chirho.has_errors_chirho());
+    assert!(!context_chirho.type_normalization_exhausted_chirho.get());
+}
+
+#[test]
+fn annotation_escape_respects_nested_binders_and_foreign_rigids_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    context_chirho.equality_substitutions_chirho.insert_chirho(
+        TyVarChirho(0),
+        TyChirho::ForallChirho {
+            vars_chirho: vec![TyVarChirho(2)],
+            body_chirho: Box::new(TyChirho::VarChirho(TyVarChirho(2))),
+        },
+    );
+    context_chirho.equality_substitutions_chirho.insert_chirho(
+        TyVarChirho(2),
+        TyChirho::ForallVarChirho("ownedRigidChirho".to_owned()),
+    );
+    context_chirho.equality_substitutions_chirho.insert_chirho(
+        TyVarChirho(3),
+        TyChirho::ForallVarChirho("enclosingRigidChirho".to_owned()),
+    );
+    context_chirho.env_chirho.bind_chirho(
+        "capturedChirho".to_owned(),
+        SchemeChirho::mono_chirho(TyChirho::VarChirho(TyVarChirho(0))),
+    );
+    context_chirho.env_chirho.bind_chirho(
+        "foreignChirho".to_owned(),
+        SchemeChirho::mono_chirho(TyChirho::VarChirho(TyVarChirho(3))),
+    );
+    let captured_chirho = context_chirho
+        .capture_signature_metas_chirho(&SchemeChirho::mono_chirho(TyChirho::bool_chirho()));
+    context_chirho.check_annotation_escape_chirho(
+        captured_chirho,
+        &HashSet::from(["ownedRigidChirho".to_owned()]),
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    assert!(!context_chirho.diagnostics_chirho.has_errors_chirho());
+    assert!(!context_chirho.type_normalization_exhausted_chirho.get());
+}
+
+#[test]
+fn annotation_escape_cycle_is_fatal_resource_failure_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    context_chirho
+        .equality_substitutions_chirho
+        .insert_chirho(TyVarChirho(0), TyChirho::VarChirho(TyVarChirho(2)));
+    context_chirho
+        .equality_substitutions_chirho
+        .insert_chirho(TyVarChirho(2), TyChirho::VarChirho(TyVarChirho(0)));
+    context_chirho.env_chirho.bind_chirho(
+        "capturedChirho".to_owned(),
+        SchemeChirho::mono_chirho(TyChirho::VarChirho(TyVarChirho(0))),
+    );
+    let captured_chirho = context_chirho
+        .capture_signature_metas_chirho(&SchemeChirho::mono_chirho(TyChirho::bool_chirho()));
+    context_chirho.check_annotation_escape_chirho(
+        captured_chirho,
+        &HashSet::from(["ownedRigidChirho".to_owned()]),
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    assert!(context_chirho.type_normalization_exhausted_chirho.get());
+}
+
+#[test]
+fn nested_signature_check_reports_capture_before_restoring_skolems_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let outer_chirho = context_chirho.fresh_var_chirho();
+    context_chirho.env_chirho.bind_chirho(
+        "capturedChirho".to_owned(),
+        SchemeChirho::mono_chirho(outer_chirho.clone()),
+    );
+    let TyChirho::VarChirho(quantified_chirho) = context_chirho.fresh_var_chirho() else {
+        unreachable!()
+    };
+    let scheme_chirho = SchemeChirho {
+        vars_chirho: vec![quantified_chirho],
+        preds_chirho: vec![],
+        ty_chirho: TyChirho::VarChirho(quantified_chirho),
+    };
+    context_chirho.with_rigid_signature_chirho(
+        &scheme_chirho,
+        SpanChirho::DUMMY_CHIRHO,
+        |context_chirho, expected_chirho| {
+            let substitution_chirho = context_chirho
+                .unify_normalized_chirho(&outer_chirho, expected_chirho, SpanChirho::DUMMY_CHIRHO)
+                .unwrap();
+            context_chirho.apply_subst_all_chirho(&substitution_chirho);
+        },
+    );
+    assert!(context_chirho.diagnostics_chirho.has_errors_chirho());
+    assert!(context_chirho.skolem_bindings_chirho.is_empty_chirho());
+}
+
+#[test]
+fn signature_equality_exports_safe_public_image_before_evidence_leaves_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let outer_chirho = context_chirho.fresh_var_chirho();
+    context_chirho.env_chirho.bind_chirho(
+        "capturedChirho".to_owned(),
+        SchemeChirho::mono_chirho(outer_chirho.clone()),
+    );
+    let TyChirho::VarChirho(quantified_chirho) = context_chirho.fresh_var_chirho() else {
+        unreachable!()
+    };
+    let scheme_chirho = SchemeChirho {
+        vars_chirho: vec![quantified_chirho],
+        preds_chirho: vec![crate::ty_chirho::SchemePredChirho::legacy_chirho(
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: vec![],
+                class_name_chirho: "~".to_owned(),
+                ty_chirho: TyChirho::VarChirho(quantified_chirho),
+                extra_tys_chirho: vec![TyChirho::int_chirho()],
+            },
+        )],
+        ty_chirho: TyChirho::VarChirho(quantified_chirho),
+    };
+    let (checked_chirho, public_chirho) = context_chirho.with_rigid_signature_chirho(
+        &scheme_chirho,
+        SpanChirho::DUMMY_CHIRHO,
+        |context_chirho, expected_chirho| {
+            let substitution_chirho = context_chirho
+                .unify_ordinary_chirho(&outer_chirho, expected_chirho, SpanChirho::DUMMY_CHIRHO)
+                .unwrap();
+            context_chirho.apply_subst_all_chirho(&substitution_chirho);
+            substitution_chirho
+        },
+    );
+    let final_chirho =
+        context_chirho.publish_signature_solution_chirho(checked_chirho, &public_chirho);
+    assert!(!context_chirho.diagnostics_chirho.has_errors_chirho());
+    assert!(!context_chirho.type_normalization_exhausted_chirho.get());
+    assert_eq!(
+        final_chirho.apply_ty_chirho(&outer_chirho),
+        TyChirho::int_chirho()
+    );
+    assert_eq!(
+        context_chirho
+            .env_chirho
+            .lookup_chirho("capturedChirho")
+            .unwrap()
+            .ty_chirho,
+        TyChirho::int_chirho()
+    );
+    assert!(context_chirho.skolem_bindings_chirho.is_empty_chirho());
+}

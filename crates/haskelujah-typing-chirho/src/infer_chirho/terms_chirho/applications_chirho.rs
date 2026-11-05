@@ -626,20 +626,17 @@ impl InferCtxChirho {
                     })
                 },
             ));
-            let saved_skolems_chirho = self.skolem_bindings_chirho.clone();
-            let (opened_chirho, givens_chirho) =
-                self.skolemize_scheme_parts_chirho(&SchemeChirho {
+            let (checked_chirho, public_chirho) = self.with_rigid_signature_chirho(
+                &SchemeChirho {
                     vars_chirho,
                     preds_chirho: predicates_chirho,
                     ty_chirho: body_chirho,
-                });
-            let checked_chirho = self.with_signature_givens_chirho(
-                givens_chirho,
-                &opened_chirho,
-                |context_chirho| {
+                },
+                span_chirho,
+                |context_chirho, opened_chirho| {
                     context_chirho.finish_application_chirho(
                         plan_chirho,
-                        Some(&opened_chirho),
+                        Some(opened_chirho),
                         look_chirho,
                         budget_chirho,
                         carried_chirho,
@@ -647,8 +644,9 @@ impl InferCtxChirho {
                     )
                 },
             );
-            self.skolem_bindings_chirho = saved_skolems_chirho;
             let (substitution_chirho, _) = checked_chirho?;
+            let substitution_chirho =
+                self.publish_signature_solution_chirho(substitution_chirho, &public_chirho);
             return Some((
                 substitution_chirho.clone(),
                 substitution_chirho.apply_ty_chirho(expected_chirho),

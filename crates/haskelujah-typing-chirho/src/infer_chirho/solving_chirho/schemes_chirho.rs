@@ -205,7 +205,7 @@ impl InferCtxChirho {
     where
         FChirho: FnOnce(&mut Self) -> TChirho,
     {
-        self.with_given_scope_chirho(preds_chirho, None, f_chirho)
+        self.with_given_scope_chirho(preds_chirho, None, f_chirho, |_| ())
     }
 
     /// A type signature's scope: the givens of `with_given_preds_chirho`, and before they leave
@@ -221,9 +221,26 @@ impl InferCtxChirho {
     where
         FChirho: FnOnce(&mut Self) -> TChirho,
     {
+        self.with_signature_givens_and_finish_chirho(
+            preds_chirho,
+            signature_ty_chirho,
+            f_chirho,
+            |_| (),
+        )
+    }
+
+    /// The finish operation sees the final committed solution while the same
+    /// checked signature's equality evidence and givens remain in scope.
+    pub(super) fn with_signature_givens_and_finish_chirho<TChirho>(
+        &mut self,
+        preds_chirho: Vec<PredChirho>,
+        signature_ty_chirho: &TyChirho,
+        f_chirho: impl FnOnce(&mut Self) -> TChirho,
+        finish_chirho: impl FnOnce(&mut Self),
+    ) -> TChirho {
         let skolems_chirho =
             Self::signature_scope_skolems_chirho(signature_ty_chirho, &preds_chirho);
-        self.with_given_scope_chirho(preds_chirho, Some(&skolems_chirho), f_chirho)
+        self.with_given_scope_chirho(preds_chirho, Some(&skolems_chirho), f_chirho, finish_chirho)
     }
 
     fn with_given_scope_chirho<TChirho, FChirho>(
@@ -231,6 +248,7 @@ impl InferCtxChirho {
         preds_chirho: Vec<PredChirho>,
         signature_skolems_chirho: Option<&HashSet<String>>,
         f_chirho: FChirho,
+        finish_chirho: impl FnOnce(&mut Self),
     ) -> TChirho
     where
         FChirho: FnOnce(&mut Self) -> TChirho,
@@ -254,6 +272,7 @@ impl InferCtxChirho {
         if let Some(skolems_chirho) = signature_skolems_chirho {
             self.report_stuck_signature_wanteds_chirho(skolems_chirho);
         }
+        finish_chirho(self);
         self.given_preds_chirho.truncate(given_start_chirho);
         self.given_rewrites_chirho.truncate(rewrites_start_chirho);
         self.end_equality_scope_chirho(equality_owner_chirho);

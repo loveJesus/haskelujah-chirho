@@ -806,38 +806,13 @@ impl InferCtxChirho {
                 ty_chirho: ann_ty_chirho,
                 span_chirho,
             } => {
-                // The annotation supplies givens before its expression is checked.
-                let ann_internal_chirho = self.ast_type_to_ty_in_scope_chirho(ann_ty_chirho);
-                let ann_normalized_chirho = self.normalize_ty_chirho(&ann_internal_chirho);
-                if matches!(ann_normalized_chirho, TyChirho::QualChirho { .. }) {
-                    let (substitution_chirho, _) = self.infer_expr_against_expected_chirho(
-                        expr_chirho,
-                        &ann_normalized_chirho,
-                        *span_chirho,
-                    );
-                    let result_chirho = substitution_chirho.apply_ty_chirho(&ann_internal_chirho);
-                    return (substitution_chirho, result_chirho);
-                }
-                let (s_chirho, inferred_ty_chirho) = self.infer_expr_chirho(expr_chirho);
-                self.apply_subst_all_chirho(&s_chirho);
-                let inferred_normalized_chirho = self.normalize_ty_chirho(&inferred_ty_chirho);
-
-                match self.subsume_normalized_chirho(
-                    &inferred_normalized_chirho,
-                    &ann_normalized_chirho,
+                let (substitution_chirho, scheme_chirho) = self.check_expression_annotation_chirho(
+                    expr_chirho,
+                    ann_ty_chirho,
                     *span_chirho,
-                ) {
-                    Ok(su_chirho) => {
-                        let combined_chirho = su_chirho.compose_chirho(&s_chirho);
-                        let final_ty_chirho = combined_chirho.apply_ty_chirho(&ann_internal_chirho);
-                        self.apply_subst_all_chirho(&su_chirho);
-                        (combined_chirho, final_ty_chirho)
-                    }
-                    Err(err_chirho) => {
-                        self.report_unify_error_chirho(&err_chirho);
-                        (s_chirho, ann_internal_chirho)
-                    }
-                }
+                );
+                let result_chirho = self.instantiate_chirho(&scheme_chirho, *span_chirho);
+                (substitution_chirho, result_chirho)
             }
 
             // Infix application: `a op b` is treated as `(op a) b`
