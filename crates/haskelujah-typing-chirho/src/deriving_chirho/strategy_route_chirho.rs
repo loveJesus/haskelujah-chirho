@@ -296,19 +296,29 @@ pub(super) fn derive_class_chirho(
     }
 }
 
-/// Every local newtype that takes a class through the newtype strategy, with those
-/// classes: its deriving clauses as routed with the builtin classes naming proved for the
-/// module, the same routing the deriving pass used, and its `deriving newtype instance`
-/// declarations. The dictionary pass gives only these classes the representation's
-/// dictionary, and Core erases only these newtypes' constructors.
+/// One instance the module's declarations derive through the newtype strategy: the newtype,
+/// and the class as written, whose span a refusal points at (row 694).
+#[derive(Debug, Clone, PartialEq)]
+pub struct GndRequestChirho {
+    /// The local newtype's name.
+    pub newtype_chirho: String,
+    /// The class, as the deriving clause or standalone declaration writes it.
+    pub class_chirho: NameChirho,
+}
+
+/// Every instance the module's declarations derive through the newtype strategy, in
+/// declaration order: its deriving clauses as routed with the builtin classes naming proved
+/// for the module, the same routing the deriving pass used, and its `deriving newtype
+/// instance` declarations. GND's coercion proof checks exactly these, and the dictionary pass
+/// gives only these the representation's dictionary.
 /// workflow: language-features-chirho/deriving-strategies-chirho
-pub fn newtype_strategy_classes_chirho(
+pub fn newtype_strategy_requests_chirho(
     module_chirho: &ModuleChirho,
     builtin_classes_chirho: &BuiltinClassScopeChirho,
-) -> HashMap<String, Vec<String>> {
+) -> Vec<GndRequestChirho> {
     let policy_chirho =
         DerivingPolicyChirho::of_module_chirho(module_chirho, builtin_classes_chirho);
-    let mut classes_chirho: HashMap<String, Vec<String>> = HashMap::new();
+    let mut requests_chirho = Vec::new();
     for decl_chirho in &module_chirho.decls_chirho {
         match decl_chirho {
             DeclChirho::NewtypeDeclChirho {
@@ -320,10 +330,10 @@ pub fn newtype_strategy_classes_chirho(
                     if policy_chirho.route_chirho(true, derived_chirho)
                         == Some(DerivationRouteChirho::RepresentationChirho)
                     {
-                        classes_chirho
-                            .entry(name_chirho.text_chirho().to_string())
-                            .or_default()
-                            .push(derived_chirho.class_text_chirho().to_string());
+                        requests_chirho.push(GndRequestChirho {
+                            newtype_chirho: name_chirho.text_chirho().to_string(),
+                            class_chirho: derived_chirho.class_chirho.clone(),
+                        });
                     }
                 }
             }
@@ -346,14 +356,30 @@ pub fn newtype_strategy_classes_chirho(
                     continue;
                 };
                 if declares_newtype_chirho(module_chirho, target_chirho) {
-                    classes_chirho
-                        .entry(target_chirho.to_string())
-                        .or_default()
-                        .push(class_chirho.text_chirho().to_string());
+                    requests_chirho.push(GndRequestChirho {
+                        newtype_chirho: target_chirho.to_string(),
+                        class_chirho: class_chirho.clone(),
+                    });
                 }
             }
             _ => {}
         }
+    }
+    requests_chirho
+}
+
+/// Each local newtype's classes from `newtype_strategy_requests_chirho`, by newtype name.
+/// workflow: language-features-chirho/deriving-strategies-chirho
+pub fn newtype_strategy_classes_chirho(
+    module_chirho: &ModuleChirho,
+    builtin_classes_chirho: &BuiltinClassScopeChirho,
+) -> HashMap<String, Vec<String>> {
+    let mut classes_chirho: HashMap<String, Vec<String>> = HashMap::new();
+    for request_chirho in newtype_strategy_requests_chirho(module_chirho, builtin_classes_chirho) {
+        classes_chirho
+            .entry(request_chirho.newtype_chirho)
+            .or_default()
+            .push(request_chirho.class_chirho.text_chirho().to_string());
     }
     classes_chirho
 }

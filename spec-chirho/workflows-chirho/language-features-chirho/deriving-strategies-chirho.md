@@ -31,6 +31,10 @@ flowchart TD
     route_chirho --> inventory_chirho["newtype_strategy_classes_chirho: each newtype's newtype-routed classes"]
     stock_chirho --> metadata_chirho["Show and Enum metadata: only entries the same judgment names as stock Show or Enum"]
     inventory_chirho --> info_chirho["Driver build_newtype_info_chirho, with the module's real K01 scope: NewtypeInfoChirho.newtype_derived_classes_chirho"]
+    roles_annotation_chirho["Lowering role_annotations_chirho.rs: type role T r.. onto T's parameters"] --> roles_chirho["parameter_roles_chirho.rs: each local parameter's role, a least fixed point with annotations as floors"]
+    inventory_chirho --> proof_chirho["Typing gnd_coercion_chirho (after inference): every method's class parameter in a representational position, or GHC-18872 / a named Unsupported gap"]
+    roles_chirho --> proof_chirho
+    proof_chirho --> info_chirho
     info_chirho --> eligible_chirho["Dict pass newtype_dicts_chirho.rs takes_representation_dictionary_chirho: the declaration is the only proof"]
     gnd_chirho --> eligible_chirho
     eligible_chirho --> ground_skip_chirho["generate_instance_dicts_chirho skips it"]
@@ -68,6 +72,15 @@ flowchart TD
   constructors of newtypes with a newtype-routed class are erased from Core; every other
   newtype keeps its native representation.
 
+- A newtype takes its representation's method rows only with a typed proof, per (newtype,
+  class), that every method's class parameter stands where a coercion may change it: directly,
+  under `->`, a list or a tuple, as an eta-reduced head, or under a local type's
+  representational parameter. A local nominal parameter is GHC-18872 (R1, R2 measured); a
+  position whose role the module cannot prove (another named constructor, a family, a type
+  variable's application, a constraint), an associated family (R5) or a multi-parameter class
+  is a named Unsupported gap. A method that never mentions the parameter proves (R4).
+- One builtin class K01 proves has at most one instance for a type's whole head, however each
+  spells it (`P.Show` and `Show`): GHC-59692, measured.
 - Root's fresh GHC 9.14.1 contracts (A1-A3, B1-B4, C1-C5, D1-D2, O1-O4) pin the policy: a
   written strategy needs DerivingStrategies or DerivingVia; anyclass needs DeriveAnyClass; an
   unwritten non-stock class needs DeriveAnyClass, or GND on a newtype; DeriveAnyClass wins over

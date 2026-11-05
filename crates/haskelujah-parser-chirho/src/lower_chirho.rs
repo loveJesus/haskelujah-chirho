@@ -120,6 +120,11 @@ mod qualified_sections_tests_chirho;
 #[path = "lower_chirho/patterns_chirho/record_patterns_chirho.rs"]
 mod record_patterns_chirho;
 #[cfg(test)]
+#[path = "lower_chirho/declarations_chirho/role_annotation_tests_chirho.rs"]
+mod role_annotation_tests_chirho;
+#[path = "lower_chirho/declarations_chirho/role_annotations_chirho.rs"]
+mod role_annotations_chirho;
+#[cfg(test)]
 mod test_support_chirho;
 #[path = "lower_chirho/classes_chirho/type_families_chirho.rs"]
 mod type_families_chirho;

@@ -93,11 +93,25 @@ pub fn check_module_declaration_validity_with_builtins_diagnostics_chirho(
     module_chirho: &ModuleChirho,
     builtin_classes_chirho: &BuiltinClassScopeChirho,
 ) -> ValidityResultChirho {
+    ValidityResultChirho {
+        diagnostics_chirho: declaration_error_diagnostics_chirho(
+            check_module_declaration_validity_with_builtins_chirho(
+                module_chirho,
+                builtin_classes_chirho,
+            ),
+        ),
+    }
+}
+
+/// Declaration errors as diagnostics: GHC's code in the note, or, for a shape Haskelujah
+/// cannot compile yet or a code still to be measured, a note that says so. Deriving's GND
+/// coercion proof reports its refusals through the same packaging (row 694).
+/// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+pub(crate) fn declaration_error_diagnostics_chirho(
+    errors_chirho: Vec<DeclarationErrorChirho>,
+) -> DiagnosticBundleChirho {
     let mut diagnostics_chirho = DiagnosticBundleChirho::empty_chirho();
-    for error_chirho in check_module_declaration_validity_with_builtins_chirho(
-        module_chirho,
-        builtin_classes_chirho,
-    ) {
+    for error_chirho in errors_chirho {
         let note_chirho = match error_chirho.ghc_code_chirho {
             UNSUPPORTED_SHAPE_CHIRHO => "Haskelujah does not support this yet".to_string(),
             UNMEASURED_GHC_CODE_CHIRHO => {
@@ -119,7 +133,7 @@ pub fn check_module_declaration_validity_with_builtins_diagnostics_chirho(
         }
         diagnostics_chirho.push_chirho(diagnostic_chirho);
     }
-    ValidityResultChirho { diagnostics_chirho }
+    diagnostics_chirho
 }
 
 /// Every declaration-shape error in a module, in declaration order, with no builtin class

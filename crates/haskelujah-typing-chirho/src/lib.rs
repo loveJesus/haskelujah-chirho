@@ -28,6 +28,7 @@ pub use deriving_chirho::{DerivingResultChirho, apply_deriving_chirho, derive_in
 pub use exhaust_chirho::{
     ExhaustResultChirho, TypeConEnvChirho, check_module_exhaustiveness_chirho,
 };
+pub use infer_chirho::gnd_coercion_chirho::{GndCoercionProofChirho, prove_gnd_coercions_chirho};
 pub use infer_chirho::infer_module_chirho;
 pub use infer_chirho::infer_module_with_imports_chirho;
 pub use kind_chirho::{

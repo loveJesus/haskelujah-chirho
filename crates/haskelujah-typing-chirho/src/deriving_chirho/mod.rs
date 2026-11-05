@@ -61,8 +61,10 @@ pub use show_chirho::{
     DerivedShowChirho, DerivedShowConChirho, ShowConFormChirho, ShowFieldTypeChirho,
     derived_show_metadata_chirho, derived_show_metadata_with_builtins_chirho,
 };
-pub use strategy_route_chirho::newtype_strategy_classes_chirho;
 use strategy_route_chirho::{DeclaredTypeChirho, DerivingPolicyChirho};
+pub use strategy_route_chirho::{
+    GndRequestChirho, newtype_strategy_classes_chirho, newtype_strategy_requests_chirho,
+};
 
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, TyVarChirho};
 use haskelujah_ast_chirho::expr_chirho::{

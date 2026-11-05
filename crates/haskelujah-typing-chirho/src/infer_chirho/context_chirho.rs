@@ -538,6 +538,7 @@ impl InferCtxChirho {
             literal_evidence_by_origin_chirho: HashMap::new(),
             reference_evidence_chirho: HashMap::new(),
             reference_evidence_by_origin_chirho: HashMap::new(),
+            gnd_coercion_proofs_chirho: Vec::new(),
         }
     }
 }

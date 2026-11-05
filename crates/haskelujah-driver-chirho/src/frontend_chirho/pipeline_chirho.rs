@@ -396,6 +396,18 @@ pub(crate) fn run_frontend_under_deferral_chirho(
         return Err(infer_result_chirho.diagnostics_chirho);
     }
 
+    // Phase 4.1: GND method coercibility (row 694). Every instance the module derives through
+    // the newtype strategy needs a typed proof that its class's methods have one
+    // representation at the newtype and at its representation, before the dictionary pass may
+    // alias a row. A refusal is a declaration error and never defers.
+    // workflow: language-features-chirho/deriving-strategies-chirho
+    infer_result_chirho.gnd_coercion_proofs_chirho =
+        haskelujah_typing_chirho::prove_gnd_coercions_chirho(
+            &module_chirho,
+            &builtin_class_scope_chirho,
+            &infer_result_chirho.class_env_chirho,
+        )?;
+
     // Phase 4.4: Source-type validity — reject type forms whose licensing
     // extension is not enabled (GHC's GHC-91510: illegal polymorphic /
     // qualified type).

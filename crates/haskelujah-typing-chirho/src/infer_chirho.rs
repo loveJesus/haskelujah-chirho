@@ -36,6 +36,9 @@ mod evidence_chirho;
 mod class_instance_chirho;
 #[path = "infer_chirho/declarations_chirho/dependency_chirho.rs"]
 mod dependency_chirho;
+// GND method coercibility, beside the instance obligations (row 694).
+#[path = "infer_chirho/declarations_chirho/gnd_coercion_chirho/mod.rs"]
+pub mod gnd_coercion_chirho;
 #[path = "infer_chirho/declarations_chirho/instance_obligations_chirho.rs"]
 mod instance_obligations_chirho;
 #[path = "infer_chirho/declarations_chirho/instance_signatures_chirho.rs"]
@@ -310,6 +313,11 @@ pub struct InferResultChirho {
     /// holds generated references, whose placeholder span the span map skips.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub reference_evidence_by_origin_chirho: HashMap<OriginIdChirho, Vec<ReferenceEvidenceChirho>>,
+    /// One typed proof per GND instance that its methods have one representation at the
+    /// newtype and at its representation (row 694). The frontend fills it after inference;
+    /// the dictionary pass aliases a newtype's rows only with its proof.
+    /// workflow: language-features-chirho/deriving-strategies-chirho
+    pub gnd_coercion_proofs_chirho: Vec<gnd_coercion_chirho::GndCoercionProofChirho>,
 }
 
 /// Evidence-threading P2: one concrete class-instantiation fact about one

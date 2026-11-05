@@ -1,6 +1,6 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Rules 7 to 15 (row 694): GHC's checks on deriving strategies, the extensions they need and
+//! Rules 7 to 16 (row 694): GHC's checks on deriving strategies, the extensions they need and
 //! the classes they derive. Root's GHC 9.14.1 contracts pin rules 7 to 12, and the boundary
 //! probes measured at the cf6f7976 gate pin rules 13 and 14 (W2, S1) and rule 15's gap (W3).
 //!
@@ -24,6 +24,10 @@
 //! 15. a class applied to arguments does not derive through GND yet, because the dictionary
 //!     pass keys a representation dictionary by one head type. This is a compatibility gap, not
 //!     a GHC rule: GHC accepts W3 and prints `MeterChirho 12`.
+//! 16. one builtin class, however each instance spells it (`Show`, `P.Show`), has at most one
+//!     instance for a type's whole head, whether derived or written (`GHC-59692`, measured on
+//!     `QualifiedDuplicateGndInstanceChirho`): K01's proof names the class, so distinct source
+//!     homonyms are never compared.
 //!
 //! Rule 7 points at the strategy keyword and every other rule at the class, as GHC's caret
 //! does. An entry is judged by the first rule that refuses it, in GHC's order: the renamer's
@@ -34,10 +38,13 @@
 //! written strategy for a local target.
 //! workflow: language-features-chirho/deriving-strategies-chirho
 
+use std::collections::{HashMap, HashSet};
+
 use haskelujah_ast_chirho::decl_chirho::{DeclChirho, DerivedClassChirho};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{BuiltinClassScopeChirho, NameChirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
+use haskelujah_span_chirho::SpanChirho;
 
 use super::{DeclarationErrorChirho, UNMEASURED_GHC_CODE_CHIRHO, UNSUPPORTED_SHAPE_CHIRHO};
 use crate::deriving_chirho::extension_policy_chirho::DerivingExtensionsChirho;
@@ -50,8 +57,8 @@ struct DerivingJudgeChirho<'a> {
     identity_chirho: StockIdentityChirho<'a>,
 }
 
-/// Rules 7 to 15 over every deriving clause and standalone deriving declaration, with the
-/// builtin classes naming proved for the module.
+/// Rules 7 to 16 over every deriving clause, standalone deriving declaration and written
+/// instance, with the builtin classes naming proved for the module.
 /// workflow: language-features-chirho/deriving-strategies-chirho
 pub(super) fn check_deriving_strategies_chirho(
     module_chirho: &ModuleChirho,
@@ -126,6 +133,114 @@ pub(super) fn check_deriving_strategies_chirho(
                 }
             }
             _ => {}
+        }
+    }
+    check_builtin_duplicates_chirho(module_chirho, &judge_chirho, errors_chirho);
+}
+
+/// Rule 16: each instance of a builtin class K01 proved, by the head type it covers whole,
+/// in declaration order: every derived class, and each written or standalone instance whose
+/// head is a local type applied to distinct variables. A second one for a pair is GHC's
+/// duplicate instance error, pointing at it with the first as related.
+/// workflow: language-features-chirho/deriving-strategies-chirho
+fn check_builtin_duplicates_chirho(
+    module_chirho: &ModuleChirho,
+    judge_chirho: &DerivingJudgeChirho<'_>,
+    errors_chirho: &mut Vec<DeclarationErrorChirho>,
+) {
+    let builtin_classes_chirho = judge_chirho.identity_chirho.builtin_classes_chirho();
+    let builtin_chirho = |class_chirho: &NameChirho| {
+        builtin_classes_chirho
+            .class_chirho(&class_chirho.full_name_chirho())
+            .map(|builtin_chirho| builtin_chirho.name_chirho)
+    };
+    let mut seen_chirho: HashMap<(String, &'static str), SpanChirho> = HashMap::new();
+    let mut record_chirho = |type_chirho: &str, class_chirho: &NameChirho| {
+        let Some(builtin_name_chirho) = builtin_chirho(class_chirho) else {
+            return;
+        };
+        let key_chirho = (type_chirho.to_string(), builtin_name_chirho);
+        match seen_chirho.get(&key_chirho) {
+            Some(first_chirho) => errors_chirho.push(DeclarationErrorChirho {
+                ghc_code_chirho: "GHC-59692",
+                message_chirho: format!(
+                    "Duplicate instance declarations: `{builtin_name_chirho} {type_chirho}` has a second instance, here spelled `{}`",
+                    class_chirho.full_name_chirho()
+                ),
+                span_chirho: class_chirho.span_chirho(),
+                related_span_chirho: Some(*first_chirho),
+            }),
+            None => {
+                seen_chirho.insert(key_chirho, class_chirho.span_chirho());
+            }
+        }
+    };
+    for decl_chirho in &module_chirho.decls_chirho {
+        match decl_chirho {
+            DeclChirho::DataDeclChirho {
+                name_chirho,
+                deriving_chirho,
+                ..
+            }
+            | DeclChirho::NewtypeDeclChirho {
+                name_chirho,
+                deriving_chirho,
+                ..
+            } => {
+                for derived_chirho in deriving_chirho {
+                    if !derived_chirho.has_class_arguments_chirho() {
+                        record_chirho(name_chirho.text_chirho(), &derived_chirho.class_chirho);
+                    }
+                }
+            }
+            DeclChirho::StandaloneDerivingDeclChirho {
+                class_chirho,
+                types_chirho,
+                ..
+            }
+            | DeclChirho::InstanceDeclChirho {
+                class_chirho,
+                types_chirho,
+                ..
+            } => {
+                if let [head_chirho] = types_chirho.as_slice()
+                    && let Some(target_chirho) = whole_head_target_chirho(head_chirho)
+                    && declared_newtype_chirho(module_chirho, target_chirho).is_some()
+                {
+                    record_chirho(target_chirho, class_chirho);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+/// The type constructor a head covers whole: `T` for `T` or `T a b`, with distinct
+/// variables. A head with any other argument is a specialized instance, never a duplicate of
+/// a derived one.
+fn whole_head_target_chirho(head_chirho: &TypeChirho) -> Option<&str> {
+    let mut arguments_chirho = HashSet::new();
+    let mut current_chirho = head_chirho;
+    loop {
+        match current_chirho {
+            TypeChirho::ParenChirho { inner_chirho, .. } => current_chirho = inner_chirho.as_ref(),
+            TypeChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                let TypeChirho::VarChirho(variable_chirho) = arg_chirho.as_ref() else {
+                    return None;
+                };
+                if !arguments_chirho.insert(variable_chirho.text_chirho()) {
+                    return None;
+                }
+                current_chirho = fun_chirho.as_ref();
+            }
+            TypeChirho::ConChirho(constructor_chirho) => {
+                return Some(constructor_chirho.text_chirho());
+            }
+            _ => return None,
         }
     }
 }
