@@ -56,6 +56,8 @@ const PARAMETRIC_NO_INLINE_SHOW_CHIRHO: &str =
     include_str!("gnd_methods_chirho/parametric_no_inline_show_chirho.hs");
 const PARAMETRIC_USER_DICTIONARY_CHIRHO: &str =
     include_str!("gnd_methods_chirho/parametric_user_dictionary_chirho.hs");
+const PARAMETRIC_WRITTEN_SUPERCLASS_CHIRHO: &str =
+    include_str!("gnd_methods_chirho/parametric_written_superclass_chirho.hs");
 
 #[test]
 fn deriving_newtype_show_prints_the_representation_everywhere_chirho() {
@@ -184,6 +186,16 @@ fn a_parametric_gnd_user_dictionary_takes_each_argument_everywhere_chirho() {
         "ParametricUserDictionaryChirho.hs",
         PARAMETRIC_USER_DICTIONARY_CHIRHO,
         "integer\nboolean\n",
+    );
+}
+
+#[test]
+fn a_parametric_gnd_dictionary_holds_the_newtypes_own_superclass_everywhere_chirho() {
+    // S1 (#31851): GHC 9.14.1 is predicted to print `written`; root's measurement is pending.
+    assert_prints_everywhere_chirho(
+        "ParametricWrittenSuperclassChirho.hs",
+        PARAMETRIC_WRITTEN_SUPERCLASS_CHIRHO,
+        "written\n",
     );
 }
 

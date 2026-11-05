@@ -275,6 +275,24 @@ fn gnd_p2_parametric_user_dictionary_chirho() {
     );
 }
 
+/// S1 (#31851): a written `ParentChirho (BoxChirho a)` is the GND `ChildChirho (BoxChirho a)`'s
+/// superclass, never `ParentChirho Int`. GHC 9.14.1 is predicted to print `written`; root's
+/// measurement is pending. sha256 a2db4c2a0fbcaaf17902d6b4aa0390dac821d71708c4986dbedf9f5ce6245b22.
+const PARAMETRIC_WRITTEN_SUPERCLASS_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/parametric_written_superclass_chirho.hs"
+);
+
+#[test]
+fn gnd_s1_parametric_written_superclass_chirho() {
+    assert_eq!(
+        interpreted_chirho(
+            "ParametricWrittenSuperclassChirho.hs",
+            PARAMETRIC_WRITTEN_SUPERCLASS_CHIRHO
+        ),
+        "written\n"
+    );
+}
+
 /// Q1: GHC 9.14.1 prints (True,False). sha256 151287147a71c3efc462a709bb33a9f929a23e9033982d455a4e3dbf6ff7911c.
 const QUALIFIED_STOCK_WITH_SHADOWED_INSTANCE_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 {-# LANGUAGE DerivingStrategies #-}

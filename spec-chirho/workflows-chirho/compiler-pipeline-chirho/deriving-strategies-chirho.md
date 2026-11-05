@@ -97,8 +97,14 @@ flowchart TD
   dictionaries first, as every caller passes them; its replacement keeps those leading
   parameters (G3, D2, C1, C2).
 - A GND instance over a parametric newtype (`Show a => Show (BoxChirho a)`, P1, P2) is a
-  factory: a lambda over its context dictionaries whose dictionary reads every field from the
-  context dictionary of its own class, the representation's. It is the conditional instance's
+  factory: a lambda over its context dictionaries whose dictionary reads every method from the
+  context dictionary of its own class, the representation's. Each superclass field is the
+  newtype's own `S (N a)` dictionary, found by its instance record (#31851, S1): a written
+  instance without a context is the dictionary registered under the newtype, and one the
+  newtype also takes through the newtype strategy is that class's factory at the
+  representation's `S` dictionary. A written instance with a context, several instances or
+  none refuse the factory by name, and a use that needs it is refused when the module
+  compiles. The representation's own superclass dictionary is never copied. It is the conditional instance's
   builder (`conditional_dicts_chirho`), with the head's formal binders. A reference whose
   evidence carries a ground applied type (`BoxChirho Int`, never parsed from a key) gets the
   factory applied to the context instantiated at those arguments: the registry's dictionary,

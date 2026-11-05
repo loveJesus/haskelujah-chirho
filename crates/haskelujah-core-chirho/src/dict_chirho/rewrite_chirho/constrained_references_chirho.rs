@@ -226,8 +226,17 @@ impl DictPassCtxChirho {
                 .gnd_parametric_chirho
                 .contains(&(class_name_chirho.to_string(), key_chirho.to_string()))
         {
+            let reason_chirho = self
+                .gnd_factory_gaps_chirho
+                .get(&(class_name_chirho.to_string(), key_chirho.to_string()))
+                .map_or_else(
+                    || "whose context dictionaries this pass cannot build".to_string(),
+                    |gap_chirho| {
+                        format!("whose dictionary factory this pass refuses: {gap_chirho}")
+                    },
+                );
             self.gnd_unbuilt_uses_chirho.borrow_mut().insert(format!(
-                "deriving {class_name_chirho} for {key_chirho} through the newtype strategy: `{callee_chirho}` needs its dictionary at an application of the newtype whose context dictionaries this pass cannot build"
+                "deriving {class_name_chirho} for {key_chirho} through the newtype strategy: `{callee_chirho}` needs its dictionary at an application of the newtype {reason_chirho}"
             ));
         }
         CoreExprChirho::PrimOpChirho {

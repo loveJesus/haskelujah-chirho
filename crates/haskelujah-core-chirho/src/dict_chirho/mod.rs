@@ -204,6 +204,9 @@ pub struct DictPassCtxChirho {
     /// Each use that needed a parametric GND dictionary, said why: refused at compile time,
     /// never left to fail when the program runs.
     gnd_unbuilt_uses_chirho: RefCell<BTreeSet<String>>,
+    /// Each parametric GND instance whose factory this pass refused, with the reason, which a
+    /// use that needs its dictionary reports (#31851).
+    gnd_factory_gaps_chirho: HashMap<(String, String), String>,
     /// Number of type parameters per class. 1 for single-parameter classes
     /// (Eq, Ord, ...), >1 for MPTCs (e.g., Addable a b has 2).
     class_param_count_chirho: HashMap<String, usize>,
@@ -283,6 +286,7 @@ impl DictPassCtxChirho {
             gnd_unsupported_chirho: Vec::new(),
             gnd_parametric_chirho: HashSet::new(),
             gnd_unbuilt_uses_chirho: RefCell::new(BTreeSet::new()),
+            gnd_factory_gaps_chirho: HashMap::new(),
             class_param_count_chirho: HashMap::new(),
             method_arities_chirho: HashMap::new(),
             local_shadow_ids_chirho: RefCell::new(HashSet::new()),
