@@ -332,7 +332,7 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
         ));
     }
 
-    let compiled_artifacts_chirho = collect_frontend_artifacts_from_module_sources_chirho(
+    let mut compiled_artifacts_chirho = collect_frontend_artifacts_from_module_sources_chirho(
         module_sources_chirho,
         source_map_chirho,
         FrontendInterfaceSeedsChirho {
@@ -350,6 +350,14 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
             package_name_chirho, error_chirho
         )
     })?;
+
+    for iface_chirho in &mut compiled_artifacts_chirho.ifaces_chirho {
+        if iface_chirho.exposure_chirho
+            == Some(haskelujah_naming_chirho::iface_chirho::IfaceExposureChirho::HomeChirho)
+        {
+            iface_chirho.exposure_chirho = (!package_chirho.name_chirho.is_empty()).then(|| haskelujah_naming_chirho::iface_chirho::IfaceExposureChirho::packages_from_producer_chirho(&[&package_chirho.name_chirho]));
+        }
+    }
 
     artifacts_chirho.interface_sources_chirho = compiled_artifacts_chirho.interface_sources_chirho;
     artifacts_chirho.ifaces_chirho =
@@ -460,7 +468,8 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
         let fp_chirho =
             haskelujah_incremental_chirho::FingerprintChirho::from_str_chirho(source_chirho);
         dep_graph_chirho.add_module_chirho(module_name_chirho, fp_chirho);
-        for imported_chirho in extract_imports_chirho(source_chirho) {
+        for imported_chirho in super::project_dir_chirho::extract_home_imports_chirho(source_chirho)
+        {
             if known_modules_chirho.contains(&imported_chirho) {
                 dep_graph_chirho.add_dep_chirho(module_name_chirho, &imported_chirho);
             }
@@ -570,7 +579,7 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
             );
             imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
             imported_class_env_chirho = infer_result_chirho.class_env_chirho.try_snapshot_chirho().map_err(|error_chirho| format!("{file_name_chirho}: class registry snapshot resource limit reached: {error_chirho:?}"))?;
-            ifaces_chirho.push(iface_chirho);
+            crate::module_search_chirho::admit_home_iface_chirho(&mut ifaces_chirho, iface_chirho);
         }
     }
 
@@ -612,7 +621,8 @@ pub(crate) fn compile_module_sources_with_extra_ifaces_chirho(
         let fp_chirho =
             haskelujah_incremental_chirho::FingerprintChirho::from_str_chirho(source_chirho);
         dep_graph_chirho.add_module_chirho(module_name_chirho, fp_chirho);
-        for imported_chirho in extract_imports_chirho(source_chirho) {
+        for imported_chirho in super::project_dir_chirho::extract_home_imports_chirho(source_chirho)
+        {
             if known_modules_chirho.contains(&imported_chirho) {
                 dep_graph_chirho.add_dep_chirho(module_name_chirho, &imported_chirho);
             }
@@ -732,7 +742,7 @@ pub(crate) fn compile_module_sources_with_extra_ifaces_chirho(
             );
             imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
             imported_class_env_chirho = infer_result_chirho.class_env_chirho.try_snapshot_chirho().map_err(|error_chirho| format!("{file_name_chirho}: class registry snapshot resource limit reached: {error_chirho:?}"))?;
-            ifaces_chirho.push(iface_chirho);
+            crate::module_search_chirho::admit_home_iface_chirho(&mut ifaces_chirho, iface_chirho);
 
             let compile_result_chirho = compile_backend_chirho(
                 module_chirho,

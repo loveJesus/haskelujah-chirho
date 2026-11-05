@@ -409,6 +409,7 @@ impl LowerCtxChirho {
                         .is_some_and(|body_chirho| body_chirho.trim() == "SOURCE"))
         });
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        let mut package_chirho = None;
         let mut qualified_chirho = false;
         let mut module_name_chirho = None;
         let mut alias_chirho = None;
@@ -417,6 +418,18 @@ impl LowerCtxChirho {
         for child_chirho in &children_chirho {
             if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
                 match tok_chirho.kind_chirho() {
+                    TokenKindChirho::StringLiteralChirho if module_name_chirho.is_none() => {
+                        let text_chirho = tok_chirho.text_chirho();
+                        let body_chirho = text_chirho
+                            .strip_prefix('"')
+                            .and_then(|body_chirho| body_chirho.strip_suffix('"'))
+                            .unwrap_or(text_chirho);
+                        package_chirho = Some(
+                            haskelujah_ast_chirho::lit_chirho::unescape_string_body_chirho(
+                                body_chirho,
+                            ),
+                        );
+                    }
                     TokenKindChirho::VarIdChirho if tok_chirho.text_chirho() == "qualified" => {
                         qualified_chirho = true;
                     }
@@ -471,6 +484,7 @@ impl LowerCtxChirho {
         let span_chirho =
             self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
         ImportDeclChirho {
+            package_chirho,
             source_chirho,
             module_chirho: module_name_chirho.unwrap_or_else(|| {
                 NameChirho::RawChirho(RawNameChirho::unqualified_chirho(

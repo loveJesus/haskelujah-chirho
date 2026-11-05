@@ -231,3 +231,36 @@ fn hiding_keeps_an_unrepresented_item_and_a_plain_list_stays_explicit_chirho() {
     ));
     assert_eq!(explicit_chirho.effective_qualifier_chirho(), "NE");
 }
+
+#[test]
+fn explicit_package_selector_survives_lowering_and_string_decoding_chirho() {
+    for (source_chirho, selector_chirho, home_chirho) in [
+        (
+            r#"module MChirho where
+import qualified "base" Data.Proxy as QChirho ()
+"#,
+            Some("base"),
+            false,
+        ),
+        (
+            r#"module MChirho where
+import "ba\115e" Data.Proxy ()
+"#,
+            Some("base"),
+            false,
+        ),
+        (
+            r#"module MChirho where
+import "this" Data.Proxy ()
+"#,
+            Some("this"),
+            true,
+        ),
+        ("module MChirho where\nimport Data.Proxy ()\n", None, true),
+    ] {
+        let import_chirho = only_import_chirho(source_chirho);
+        assert_eq!(import_chirho.package_chirho.as_deref(), selector_chirho);
+        assert_eq!(import_chirho.selects_home_source_chirho(), home_chirho);
+        assert_eq!(import_chirho.module_chirho.full_name_chirho(), "Data.Proxy");
+    }
+}

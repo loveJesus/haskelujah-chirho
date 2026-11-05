@@ -29,6 +29,16 @@ use crate::type_exports_chirho::{
     canonical_value_name_chirho, normalize_builtin_type_exports_chirho,
 };
 
+/// Attach package exposure at a positive builtin producer. This helper never
+/// accepts a module/type/class spelling or constructs an identity proof.
+pub(in crate::iface_chirho::builtin_chirho) fn package_exposure_chirho(
+    selectors_chirho: &[&str],
+) -> Option<super::IfaceExposureChirho> {
+    Some(super::IfaceExposureChirho::packages_from_producer_chirho(
+        selectors_chirho,
+    ))
+}
+
 fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'static str]> {
     match class_name_chirho {
         "Eq" => Some(&["==", "/="]),

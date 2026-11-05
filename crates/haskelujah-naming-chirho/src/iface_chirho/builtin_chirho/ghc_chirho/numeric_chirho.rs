@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
@@ -61,6 +62,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.List".to_string(),
             exports_chirho,
         });
@@ -89,6 +91,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Num".to_string(),
             exports_chirho,
         });
@@ -114,6 +117,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Show".to_string(),
             exports_chirho,
         });
@@ -131,6 +135,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Read".to_string(),
             exports_chirho,
         });
@@ -159,6 +164,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Enum".to_string(),
             exports_chirho,
         });
@@ -198,6 +204,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Real".to_string(),
             exports_chirho,
         });
@@ -240,6 +247,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Float".to_string(),
             exports_chirho,
         });
@@ -253,6 +261,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Int".to_string(),
             exports_chirho,
         });
@@ -270,6 +279,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Word".to_string(),
             exports_chirho,
         });
@@ -286,6 +296,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Char", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Char".to_string(),
             exports_chirho,
         });
@@ -301,6 +312,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Natural".to_string(),
             exports_chirho,
         });
@@ -331,6 +343,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Unicode".to_string(),
             exports_chirho,
         });
@@ -394,6 +407,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.List".to_string(),
             exports_chirho,
         });
@@ -416,6 +430,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Natural".to_string(),
             exports_chirho,
         });
@@ -440,6 +455,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Num".to_string(),
             exports_chirho,
         });
@@ -481,6 +497,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Real".to_string(),
             exports_chirho,
         });
@@ -548,6 +565,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Float".to_string(),
             exports_chirho,
         });
@@ -588,6 +606,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Show".to_string(),
             exports_chirho,
         });
@@ -633,6 +652,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Read".to_string(),
             exports_chirho,
         });
@@ -661,6 +681,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Enum".to_string(),
             exports_chirho,
         });
@@ -711,12 +732,13 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for mod_name_chirho in &[
-            "GHC.Integer",
-            "GHC.Integer.Logarithms",
-            "GHC.Integer.Logarithms.Compat",
+        for (mod_name_chirho, exposure_chirho) in &[
+            ("GHC.Integer", package_exposure_chirho(&["base"])),
+            ("GHC.Integer.Logarithms", package_exposure_chirho(&["base"])),
+            ("GHC.Integer.Logarithms.Compat", None),
         ] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: exposure_chirho.clone(),
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -733,6 +755,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("BigNat", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base", "ghc-bignum"]),
             name_chirho: "GHC.Num.BigNat".to_string(),
             exports_chirho,
         });
@@ -747,6 +770,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Integer", &["IS", "IN", "IP"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base", "ghc-bignum"]),
             name_chirho: "GHC.Num.Integer".to_string(),
             exports_chirho,
         });
@@ -761,6 +785,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Integer", &["IS", "IN", "IP"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["integer-gmp"]),
             name_chirho: "GHC.Integer.GMP.Internals".to_string(),
             exports_chirho,
         });
@@ -781,6 +806,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Math.NumberTheory.Logarithms".to_string(),
             exports_chirho,
         });

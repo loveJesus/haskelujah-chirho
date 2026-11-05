@@ -28,6 +28,7 @@ fn iface_chirho(
     associated_chirho: &[AssociatedSpecChirho<'_>],
 ) -> ModuleIfaceChirho {
     let mut iface_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: module_chirho.to_owned(),
         exports_chirho: Default::default(),
     };

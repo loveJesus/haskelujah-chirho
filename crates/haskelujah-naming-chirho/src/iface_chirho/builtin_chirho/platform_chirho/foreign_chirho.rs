@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 
@@ -21,6 +22,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("FunPtr", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.Ptr".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
@@ -36,10 +38,12 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.ForeignPtr".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign".to_string(),
             exports_chirho,
         });
@@ -60,6 +64,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Storable", &[]);
         stor_exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.Storable".to_string(),
             exports_chirho: stor_exports_chirho,
         });
@@ -135,6 +140,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             "Foreign.C.String",
         ] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: package_exposure_chirho(&["base"]),
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -165,10 +171,12 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.ForeignPtr".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.ForeignPtr".to_string(),
             exports_chirho,
         });
@@ -201,6 +209,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.Ptr".to_string(),
             exports_chirho,
         });
@@ -226,6 +235,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Storable", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.Storable".to_string(),
             exports_chirho,
         });
@@ -249,6 +259,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.Marshal.Alloc".to_string(),
             exports_chirho,
         });
@@ -267,10 +278,12 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k2_chirho, v2_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.C.Types".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.C".to_string(),
             exports_chirho,
         });
@@ -293,6 +306,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.C.String".to_string(),
             exports_chirho,
         });
@@ -330,6 +344,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign".to_string(),
             exports_chirho,
         });
@@ -354,6 +369,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.Storable".to_string(),
             exports_chirho,
         });
@@ -385,6 +401,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.Ptr".to_string(),
             exports_chirho,
         });
@@ -412,6 +429,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.Storable".to_string(),
             exports_chirho,
         });
@@ -427,6 +445,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.C.ConstPtr".to_string(),
             exports_chirho,
         });
@@ -467,6 +486,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.C.Types".to_string(),
             exports_chirho,
         });
@@ -495,6 +515,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.C.String".to_string(),
             exports_chirho,
         });
@@ -561,6 +582,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Errno", &["Errno"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.C.Error".to_string(),
             exports_chirho,
         });
@@ -620,6 +642,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
         });
@@ -653,6 +676,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.C".to_string(),
             exports_chirho,
         });
@@ -666,6 +690,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.Concurrent".to_string(),
             exports_chirho,
         });
@@ -680,6 +705,7 @@ pub(super) fn push_foreign_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Foreign.ForeignPtr.Unsafe".to_string(),
             exports_chirho,
         });

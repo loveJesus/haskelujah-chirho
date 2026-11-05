@@ -235,10 +235,8 @@ pub fn build_builtin_class_scope_chirho(
     for import_chirho in &module_chirho.imports_chirho {
         let imported_module_chirho = import_chirho.module_chirho.full_name_chirho();
         // Resolution reports a missing interface; its names stay unbound here.
-        let Some(iface_chirho) = ifaces_chirho
-            .iter()
-            .rev()
-            .find(|iface_chirho| iface_chirho.name_chirho == imported_module_chirho)
+        let Some(iface_chirho) =
+            crate::iface_chirho::select_import_iface_chirho(ifaces_chirho, import_chirho)
         else {
             continue;
         };

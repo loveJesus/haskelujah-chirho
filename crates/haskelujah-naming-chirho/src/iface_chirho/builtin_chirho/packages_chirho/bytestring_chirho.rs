@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 
@@ -47,10 +48,12 @@ pub(super) fn push_bytestring_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_type_chirho("ByteString", &["BS", "PS"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["bytestring"]),
             name_chirho: "Data.ByteString.Internal".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.ByteString.Internal.Type".to_string(),
             exports_chirho,
         });
@@ -86,6 +89,7 @@ pub(super) fn push_bytestring_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for mod_chirho in &["Data.ByteString.Short", "Data.ByteString.Short.Internal"] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: package_exposure_chirho(&["bytestring"]),
                 name_chirho: mod_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -172,10 +176,12 @@ pub(super) fn push_bytestring_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_type_chirho("ByteString", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["bytestring"]),
             name_chirho: "Data.ByteString".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["bytestring"]),
             name_chirho: "Data.ByteString.Lazy".to_string(),
             exports_chirho,
         });
@@ -227,10 +233,12 @@ pub(super) fn push_bytestring_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_type_chirho("ByteString", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["bytestring"]),
             name_chirho: "Data.ByteString".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["bytestring"]),
             name_chirho: "Data.ByteString.Char8".to_string(),
             exports_chirho,
         });
@@ -258,6 +266,7 @@ pub(super) fn push_bytestring_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["bytestring"]),
             name_chirho: "Data.ByteString.Unsafe".to_string(),
             exports_chirho,
         });
@@ -342,10 +351,12 @@ pub(super) fn push_bytestring_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["bytestring"]),
             name_chirho: "Data.ByteString.Builder".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["bytestring"]),
             name_chirho: "Data.ByteString.Builder.Internal".to_string(),
             exports_chirho,
         });
@@ -373,6 +384,7 @@ pub(super) fn push_bytestring_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["bytestring"]),
             name_chirho: "Data.ByteString.Builder.Extra".to_string(),
             exports_chirho,
         });
@@ -416,10 +428,12 @@ pub(super) fn push_bytestring_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_type_chirho("ByteString", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["bytestring"]),
             name_chirho: "Data.ByteString.Lazy".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["bytestring"]),
             name_chirho: "Data.ByteString.Lazy.Char8".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
@@ -454,6 +468,7 @@ pub(super) fn push_bytestring_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
                 .types_chirho
                 .insert(k_chirho, v_chirho);
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: package_exposure_chirho(&["bytestring"]),
                 name_chirho: "Data.ByteString.Lazy.Internal".to_string(),
                 exports_chirho: internal_exports_chirho,
             });
@@ -545,10 +560,12 @@ pub(super) fn push_bytestring_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["bytestring"]),
             name_chirho: "Data.ByteString.Builder.Prim".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["bytestring"]),
             name_chirho: "Data.ByteString.Builder.Prim.Internal".to_string(),
             exports_chirho,
         });
@@ -585,6 +602,7 @@ pub(super) fn push_bytestring_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Word8".to_string(),
             exports_chirho,
         });
@@ -598,6 +616,7 @@ pub(super) fn push_bytestring_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_val_chirho("Buffer");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Streaming.ByteString.Builder.Buffer".to_string(),
             exports_chirho,
         });
@@ -631,10 +650,12 @@ pub(super) fn push_bytestring_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_type_chirho("ByteString", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.ByteString.UTF8".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.ByteString.Lazy.UTF8".to_string(),
             exports_chirho,
         });

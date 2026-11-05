@@ -301,6 +301,7 @@ fn a_kind_signature_tail_gives_the_metadata_the_instance_heads_parameters_chirho
 /// `import qualified Data.List.NonEmpty as NE`.
 fn non_empty_import_chirho() -> ImportDeclChirho {
     ImportDeclChirho {
+        package_chirho: None,
         module_chirho: var_name_chirho("Data.List.NonEmpty"),
         source_chirho: false,
         qualified_chirho: true,

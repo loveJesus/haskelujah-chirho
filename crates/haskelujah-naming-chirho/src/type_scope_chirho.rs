@@ -1021,11 +1021,10 @@ fn collect_instance_associated_type_scope_chirho(
 
     for import_chirho in &module_chirho.imports_chirho {
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
-        let Some(iface_chirho) = available_modules_chirho
-            .iter()
-            .rev()
-            .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
-        else {
+        let Some(iface_chirho) = crate::iface_chirho::select_import_iface_chirho(
+            available_modules_chirho,
+            import_chirho,
+        ) else {
             continue;
         };
         let visible_types_chirho: HashSet<String> =

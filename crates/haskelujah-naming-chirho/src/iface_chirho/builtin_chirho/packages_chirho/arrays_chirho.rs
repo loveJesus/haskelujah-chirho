@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 
@@ -19,6 +20,7 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Ix", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Ix".to_string(),
             exports_chirho,
         });
@@ -51,16 +53,19 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Ix", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["array"]),
             name_chirho: "Data.Array".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         let (k_chirho, v_chirho) = mk_type_chirho("UArray", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["array"]),
             name_chirho: "Data.Array.Unboxed".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["array"]),
             name_chirho: "Data.Array.IArray".to_string(),
             exports_chirho,
         });
@@ -74,6 +79,7 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("MutableByteArray", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Array.Byte".to_string(),
             exports_chirho,
         });
@@ -105,10 +111,12 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("MutableArray", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Primitive.Array".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Primitive".to_string(),
             exports_chirho,
         });
@@ -124,6 +132,7 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Hashable", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Hashable".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
@@ -143,6 +152,7 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             .types_chirho
             .insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Hashable.Lifted".to_string(),
             exports_chirho: lifted_exports_chirho,
         });
@@ -178,10 +188,12 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("HashMap", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.HashMap.Strict".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.HashMap.Lazy".to_string(),
             exports_chirho,
         });
@@ -210,6 +222,7 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("HashSet", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.HashSet".to_string(),
             exports_chirho,
         });
@@ -251,6 +264,7 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Vector", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Vector".to_string(),
             exports_chirho,
         });
@@ -284,6 +298,7 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["array"]),
             name_chirho: "Data.Array".to_string(),
             exports_chirho,
         });
@@ -321,6 +336,7 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.HashMap.Strict".to_string(),
             exports_chirho,
         });
@@ -352,6 +368,7 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.HashSet".to_string(),
             exports_chirho,
         });
@@ -367,6 +384,7 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Hashable".to_string(),
             exports_chirho,
         });
@@ -397,6 +415,7 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["array"]),
             name_chirho: "Data.Array.MArray".to_string(),
             exports_chirho,
         });
@@ -416,6 +435,7 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["array"]),
             name_chirho: "Data.Array.ST".to_string(),
             exports_chirho,
         });
@@ -508,10 +528,12 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Vector.Generic".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Vector.Generic.Base".to_string(),
             exports_chirho,
         });
@@ -576,6 +598,7 @@ pub(super) fn push_arrays_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["array"]),
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
         });

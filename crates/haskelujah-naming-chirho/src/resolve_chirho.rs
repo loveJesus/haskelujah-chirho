@@ -315,10 +315,8 @@ fn resolve_imports_chirho(
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
 
         // Find the module interface.
-        let iface_chirho = available_chirho
-            .iter()
-            .rev()
-            .find(|m_chirho| m_chirho.name_chirho == module_name_chirho);
+        let iface_chirho =
+            crate::iface_chirho::select_import_iface_chirho(available_chirho, import_chirho);
 
         let iface_chirho = match iface_chirho {
             Some(i_chirho) => i_chirho,
@@ -942,6 +940,7 @@ mod tests_chirho {
         );
 
         ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Lib".to_string(),
             exports_chirho: crate::iface_chirho::IfaceExportsChirho {
                 unary_variable_instance_heads_covered_chirho: false,
@@ -956,6 +955,7 @@ mod tests_chirho {
 
     fn prelude_import_chirho() -> ImportDeclChirho {
         ImportDeclChirho {
+            package_chirho: None,
             module_chirho: dummy_name_chirho("Prelude"),
             source_chirho: false,
             qualified_chirho: false,
@@ -1079,6 +1079,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(
             vec![],
             vec![ImportDeclChirho {
+                package_chirho: None,
                 module_chirho: dummy_name_chirho("Lib"),
                 source_chirho: false,
                 qualified_chirho: false,
@@ -1125,6 +1126,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(
             vec![],
             vec![ImportDeclChirho {
+                package_chirho: None,
                 module_chirho: dummy_name_chirho("Lib"),
                 source_chirho: false,
                 qualified_chirho: true, // qualified only
@@ -1158,6 +1160,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(
             vec![],
             vec![ImportDeclChirho {
+                package_chirho: None,
                 module_chirho: dummy_name_chirho("Lib"),
                 source_chirho: false,
                 qualified_chirho: true,
@@ -1191,6 +1194,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(
             vec![],
             vec![ImportDeclChirho {
+                package_chirho: None,
                 module_chirho: dummy_name_chirho("Lib"),
                 source_chirho: false,
                 qualified_chirho: false,
@@ -1256,6 +1260,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(
             vec![],
             vec![ImportDeclChirho {
+                package_chirho: None,
                 module_chirho: dummy_name_chirho("Lib"),
                 source_chirho: false,
                 qualified_chirho: false,
@@ -1341,6 +1346,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(
             vec![],
             vec![ImportDeclChirho {
+                package_chirho: None,
                 module_chirho: dummy_name_chirho("Control.Monad"),
                 source_chirho: false,
                 qualified_chirho: false,
@@ -1375,6 +1381,7 @@ mod tests_chirho {
     #[test]
     fn import_prefers_latest_iface_for_same_module_name_chirho() {
         let older_iface_chirho = ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Lib".to_string(),
             exports_chirho: crate::iface_chirho::IfaceExportsChirho {
                 unary_variable_instance_heads_covered_chirho: false,
@@ -1397,6 +1404,7 @@ mod tests_chirho {
             },
         };
         let newer_iface_chirho = ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Lib".to_string(),
             exports_chirho: crate::iface_chirho::IfaceExportsChirho {
                 unary_variable_instance_heads_covered_chirho: false,
@@ -1421,6 +1429,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(
             vec![],
             vec![ImportDeclChirho {
+                package_chirho: None,
                 module_chirho: dummy_name_chirho("Lib"),
                 source_chirho: false,
                 qualified_chirho: true,
@@ -1455,6 +1464,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(
             vec![],
             vec![ImportDeclChirho {
+                package_chirho: None,
                 module_chirho: dummy_name_chirho("Lib"),
                 source_chirho: false,
                 qualified_chirho: false,
@@ -1490,6 +1500,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(
             vec![],
             vec![ImportDeclChirho {
+                package_chirho: None,
                 module_chirho: dummy_name_chirho("Nonexistent"),
                 source_chirho: false,
                 qualified_chirho: false,
@@ -1517,6 +1528,7 @@ mod tests_chirho {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             vec![ImportDeclChirho {
+                package_chirho: None,
                 module_chirho: dummy_name_chirho("Lib"),
                 source_chirho: false,
                 qualified_chirho: false,

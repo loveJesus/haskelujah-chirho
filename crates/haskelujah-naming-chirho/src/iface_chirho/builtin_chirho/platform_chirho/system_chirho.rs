@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 
@@ -88,6 +89,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.IO".to_string(),
             exports_chirho,
         });
@@ -170,6 +172,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("TextEncoding", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.IO".to_string(),
             exports_chirho,
         });
@@ -185,6 +188,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("ExitCode", &["ExitSuccess", "ExitFailure"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.Exit".to_string(),
             exports_chirho,
         });
@@ -200,6 +204,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("StableName", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.Mem.StableName".to_string(),
             exports_chirho,
         });
@@ -218,6 +223,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.IO.Unsafe".to_string(),
             exports_chirho,
         });
@@ -237,6 +243,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.Exit".to_string(),
             exports_chirho,
         });
@@ -273,6 +280,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("IOError", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.IO.Error".to_string(),
             exports_chirho,
         });
@@ -292,6 +300,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.IO.Unsafe".to_string(),
             exports_chirho,
         });
@@ -314,6 +323,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.Exit".to_string(),
             exports_chirho,
         });
@@ -338,6 +348,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.Environment".to_string(),
             exports_chirho,
         });
@@ -394,6 +405,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("TextEncoding", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.IO".to_string(),
             exports_chirho,
         });
@@ -407,6 +419,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.CPUTime".to_string(),
             exports_chirho,
         });
@@ -420,6 +433,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.Mem".to_string(),
             exports_chirho,
         });
@@ -447,6 +461,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["directory"]),
             name_chirho: "System.Directory".to_string(),
             exports_chirho,
         });
@@ -473,6 +488,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["process"]),
             name_chirho: "System.Process".to_string(),
             exports_chirho,
         });
@@ -487,6 +503,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.Timeout".to_string(),
             exports_chirho,
         });
@@ -510,6 +527,7 @@ pub(super) fn push_system_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "System.Environment".to_string(),
             exports_chirho,
         });

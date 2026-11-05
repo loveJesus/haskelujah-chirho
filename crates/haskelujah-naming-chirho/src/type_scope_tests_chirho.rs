@@ -185,6 +185,7 @@ fn qualified_is_list_instance_chirho(import_spec_chirho: Option<ImportSpecChirho
         },
     ]);
     module_chirho.imports_chirho = vec![ImportDeclChirho {
+        package_chirho: None,
         module_chirho: name_chirho("GHC.Exts"),
         source_chirho: false,
         qualified_chirho: true,
@@ -805,6 +806,7 @@ fn missing_promoted_constructor_defers_when_import_inventory_is_incomplete_chirh
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     })]);
     module_chirho.imports_chirho.push(ImportDeclChirho {
+        package_chirho: None,
         module_chirho: name_chirho("SourceModuleChirho"),
         source_chirho: false,
         qualified_chirho: false,
@@ -1196,6 +1198,7 @@ fn qualified_equality_signature_chirho(
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     })]);
     module_chirho.imports_chirho = vec![ImportDeclChirho {
+        package_chirho: None,
         module_chirho: name_chirho(imported_module_chirho),
         source_chirho: false,
         qualified_chirho: true,

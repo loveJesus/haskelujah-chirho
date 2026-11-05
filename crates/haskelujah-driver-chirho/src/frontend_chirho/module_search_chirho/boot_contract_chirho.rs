@@ -111,11 +111,9 @@ pub(super) fn validate_reached_boot_contracts_chirho(
         let Some(module_chirho) = modules_chirho.get(importer_chirho) else {
             continue;
         };
-        for import_chirho in module_chirho
-            .imports_chirho
-            .iter()
-            .filter(|import_chirho| import_chirho.source_chirho)
-        {
+        for import_chirho in module_chirho.imports_chirho.iter().filter(|import_chirho| {
+            import_chirho.source_chirho && import_chirho.selects_home_source_chirho()
+        }) {
             let target_chirho = import_chirho.module_chirho.full_name_chirho();
             if !validated_chirho.insert(target_chirho.clone()) {
                 continue;

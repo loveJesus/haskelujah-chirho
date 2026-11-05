@@ -51,7 +51,7 @@ impl BootProjectChirho {
         scan_sibling_modules_with_sources_chirho(
             &self.path_chirho,
             &mut SourceMapChirho::new_chirho(),
-            &mut ifaces_chirho,
+            &ifaces_chirho,
             checked_name_chirho,
             &mut sources_chirho,
         );

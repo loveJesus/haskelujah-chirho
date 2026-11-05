@@ -111,18 +111,17 @@ pub(crate) fn collect_safe_unqualified_imported_type_names_chirho(
             .iter()
             .filter(|import_chirho| !import_chirho.qualified_chirho)
             .flat_map(|import_chirho| {
-                let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
-                ifaces_chirho
-                    .iter()
-                    .rev()
-                    .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
-                    .into_iter()
-                    .flat_map(|iface_chirho| {
-                        haskelujah_naming_chirho::resolve_chirho::compute_imported_names_chirho(
-                            &iface_chirho.exports_chirho,
-                            &import_chirho.spec_chirho,
-                        )
-                    })
+                haskelujah_naming_chirho::iface_chirho::select_import_iface_chirho(
+                    ifaces_chirho,
+                    import_chirho,
+                )
+                .into_iter()
+                .flat_map(|iface_chirho| {
+                    haskelujah_naming_chirho::resolve_chirho::compute_imported_names_chirho(
+                        &iface_chirho.exports_chirho,
+                        &import_chirho.spec_chirho,
+                    )
+                })
             })
             .filter_map(|(name_chirho, namespace_chirho, _span_chirho)| {
                 (namespace_chirho
@@ -186,16 +185,18 @@ pub(crate) fn collect_preferred_qualified_type_names_chirho(
     let local_type_names_chirho = collect_local_type_names_chirho(module_chirho);
     let mut exporters_by_type_name_chirho: std::collections::HashMap<
         String,
-        std::collections::HashSet<String>,
+        std::collections::HashSet<(
+            String,
+            Option<haskelujah_naming_chirho::iface_chirho::IfaceExposureChirho>,
+        )>,
     > = std::collections::HashMap::new();
 
     for import_chirho in &module_chirho.imports_chirho {
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
-        let Some(iface_chirho) = ifaces_chirho
-            .iter()
-            .rev()
-            .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
-        else {
+        let Some(iface_chirho) = haskelujah_naming_chirho::iface_chirho::select_import_iface_chirho(
+            ifaces_chirho,
+            import_chirho,
+        ) else {
             continue;
         };
         for exported_type_name_chirho in iface_chirho.exports_chirho.types_chirho.keys() {
@@ -205,7 +206,10 @@ pub(crate) fn collect_preferred_qualified_type_names_chirho(
             exporters_by_type_name_chirho
                 .entry(exported_type_name_chirho.clone())
                 .or_default()
-                .insert(module_name_chirho.clone());
+                .insert((
+                    module_name_chirho.clone(),
+                    iface_chirho.exposure_chirho.clone(),
+                ));
         }
     }
 
@@ -218,7 +222,8 @@ pub(crate) fn collect_preferred_qualified_type_names_chirho(
                     exporters_chirho
                         .into_iter()
                         .next()
-                        .expect("single exporter should exist"),
+                        .expect("single exporter should exist")
+                        .0,
                 )
             })
         })

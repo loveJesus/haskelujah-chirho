@@ -48,6 +48,7 @@ fn iface_exporting_chirho(module_chirho: &str, types_chirho: &[&str]) -> ModuleI
         );
     }
     ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: module_chirho.to_string(),
         exports_chirho,
     }

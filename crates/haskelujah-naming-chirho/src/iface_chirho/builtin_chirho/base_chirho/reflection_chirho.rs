@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{
     mk_class_type_chirho, mk_data_type_chirho, mk_type_chirho, mk_val_chirho,
 };
@@ -26,6 +27,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Kind".to_string(),
             exports_chirho,
         });
@@ -47,6 +49,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_val_chirho("KProxy");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Proxy".to_string(),
             exports_chirho,
         });
@@ -60,6 +63,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_type_chirho("Coercible", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Coerce".to_string(),
             exports_chirho,
         });
@@ -87,6 +91,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_val_chirho("Refl");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Type.Equality".to_string(),
             exports_chirho,
         });
@@ -118,6 +123,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Typeable".to_string(),
             exports_chirho,
         });
@@ -147,6 +153,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Type.Reflection".to_string(),
             exports_chirho,
         });
@@ -162,6 +169,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_val_chirho("UnsafeRefl");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Unsafe.Coerce".to_string(),
             exports_chirho,
         });
@@ -225,6 +233,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Data".to_string(),
             exports_chirho,
         });
@@ -264,6 +273,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             mk_data_type_chirho(CompilerTypeConstructorChirho::ProxyChirho, &["Proxy"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Typeable".to_string(),
             exports_chirho,
         });
@@ -286,6 +296,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_type_chirho("CallStack", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.CallStack".to_string(),
             exports_chirho,
         });
@@ -299,6 +310,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Type.Bool".to_string(),
             exports_chirho,
         });
@@ -312,6 +324,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Type.Ord".to_string(),
             exports_chirho,
         });
@@ -374,6 +387,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Type.Reflection".to_string(),
             exports_chirho,
         });
@@ -389,6 +403,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_type_chirho("UnsafeEquality", &["UnsafeRefl"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Unsafe.Coerce".to_string(),
             exports_chirho,
         });
@@ -420,6 +435,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Type.Equality".to_string(),
             exports_chirho,
         });
@@ -433,6 +449,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_type_chirho("Not", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Type.Bool".to_string(),
             exports_chirho,
         });
@@ -446,6 +463,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_type_chirho("OrdCond", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Type.Ord".to_string(),
             exports_chirho,
         });
@@ -461,6 +479,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Type.Coercion".to_string(),
             exports_chirho,
         });
@@ -480,6 +499,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_val_chirho("asProxyTypeOf");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Proxy".to_string(),
             exports_chirho,
         });
@@ -510,6 +530,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Typeable".to_string(),
             exports_chirho,
         });
@@ -523,6 +544,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_val_chirho("coerce");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Coerce".to_string(),
             exports_chirho,
         });
@@ -556,6 +578,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Data".to_string(),
             exports_chirho,
         });
@@ -578,6 +601,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Dynamic".to_string(),
             exports_chirho,
         });
@@ -591,6 +615,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Type.Reflection.Unsafe".to_string(),
             exports_chirho,
         });
@@ -609,6 +634,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Coerce".to_string(),
             exports_chirho,
         });
@@ -641,6 +667,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Typeable".to_string(),
             exports_chirho,
         });
@@ -662,6 +689,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         let (k_chirho, v_chirho) = mk_type_chirho("FUN", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Kind".to_string(),
             exports_chirho,
         });
@@ -697,6 +725,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Generics.Aliases".to_string(),
             exports_chirho,
         });
@@ -767,6 +796,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Data".to_string(),
             exports_chirho,
         });

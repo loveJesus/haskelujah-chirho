@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 
@@ -18,10 +19,12 @@ pub(super) fn push_posix_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["unix"]),
             name_chirho: "System.Posix.ByteString".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["unix"]),
             name_chirho: "System.Posix.ByteString.FilePath".to_string(),
             exports_chirho,
         });
@@ -83,6 +86,7 @@ pub(super) fn push_posix_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
         });
@@ -144,6 +148,7 @@ pub(super) fn push_posix_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["unix"]),
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
         });
@@ -173,6 +178,7 @@ pub(super) fn push_posix_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("EncodingException", &["EncodingError"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["os-string"]),
             name_chirho: "System.OsString.Encoding.Internal".to_string(),
             exports_chirho,
         });
@@ -201,6 +207,7 @@ pub(super) fn push_posix_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("ShortByteString", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["os-string"]),
             name_chirho: "System.OsString.Data.ByteString.Short".to_string(),
             exports_chirho,
         });
@@ -233,6 +240,7 @@ pub(super) fn push_posix_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["os-string"]),
             name_chirho: "System.OsString.Internal.Types".to_string(),
             exports_chirho,
         });
@@ -331,6 +339,7 @@ pub(super) fn push_posix_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         }
         for mod_name_chirho in &["System.Console.ANSI.Types", "System.Console.ANSI.Codes"] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: None,
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -361,6 +370,7 @@ pub(super) fn push_posix_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "System.TimeManager".to_string(),
             exports_chirho,
         });
@@ -427,6 +437,7 @@ pub(super) fn push_posix_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["filepath"]),
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
         });

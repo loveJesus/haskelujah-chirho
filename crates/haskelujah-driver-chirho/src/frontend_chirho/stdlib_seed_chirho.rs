@@ -96,6 +96,9 @@ fn collect_stdlib_frontend_artifacts_uncached_chirho() -> Result<FrontendSeedArt
     artifacts_chirho
         .ifaces_chirho
         .retain(|iface_chirho| iface_chirho.name_chirho.starts_with("Haskelujah."));
+    for iface_chirho in &mut artifacts_chirho.ifaces_chirho {
+        iface_chirho.exposure_chirho = None;
+    }
     Ok(artifacts_chirho)
 }
 

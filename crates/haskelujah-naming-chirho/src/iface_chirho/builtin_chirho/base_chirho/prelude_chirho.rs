@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_data_type_chirho, mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 use haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho;
@@ -98,6 +99,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.List".to_string(),
             exports_chirho,
         });
@@ -209,6 +211,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Char".to_string(),
             exports_chirho,
         });
@@ -231,6 +234,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Maybe".to_string(),
             exports_chirho,
         });
@@ -638,6 +642,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Prelude".to_string(),
             exports_chirho,
         });
@@ -663,6 +668,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.List.NonEmpty".to_string(),
             exports_chirho,
         });
@@ -680,6 +686,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-experimental"]),
             name_chirho: "Data.Tuple.Experimental".to_string(),
             exports_chirho,
         });
@@ -695,6 +702,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_val_chirho("vacuous");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Void".to_string(),
             exports_chirho,
         });
@@ -717,6 +725,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Down", &["Down"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Ord".to_string(),
             exports_chirho,
         });
@@ -730,6 +739,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Function".to_string(),
             exports_chirho,
         });
@@ -745,6 +755,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("String", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.String".to_string(),
             exports_chirho,
         });
@@ -765,6 +776,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Tuple".to_string(),
             exports_chirho,
         });
@@ -796,6 +808,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Either".to_string(),
             exports_chirho,
         });
@@ -818,6 +831,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Bool".to_string(),
             exports_chirho,
         });
@@ -845,6 +859,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-experimental"]),
             name_chirho: "Prelude.Experimental".to_string(),
             exports_chirho,
         });
@@ -860,6 +875,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Void".to_string(),
             exports_chirho,
         });
@@ -875,6 +891,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Tuple.Solo".to_string(),
             exports_chirho,
         });
@@ -890,6 +907,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Eq".to_string(),
             exports_chirho,
         });

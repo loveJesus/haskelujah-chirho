@@ -114,7 +114,7 @@ pub fn compile_modules_chirho(
         )?);
         imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
 
-        ifaces_chirho.push(iface_chirho);
+        crate::module_search_chirho::admit_home_iface_chirho(&mut ifaces_chirho, iface_chirho);
 
         // Phases 5–7: back-end
         let compile_result_chirho = compile_backend_chirho(
@@ -600,7 +600,8 @@ pub fn compile_modules_incremental_chirho(
         let imports_chirho: Vec<String> = module_chirho
             .imports_chirho
             .iter()
-            .map(|i_chirho| i_chirho.module_chirho.text_chirho().to_string())
+            .filter(|import_chirho| import_chirho.selects_home_source_chirho())
+            .map(|import_chirho| import_chirho.module_chirho.full_name_chirho())
             .collect();
 
         let import_refs_chirho: Vec<&str> = imports_chirho
@@ -691,7 +692,7 @@ pub fn compile_modules_incremental_chirho(
         // Cache-hit branch skips fingerprint bookkeeping but still pushes the
         // interface so downstream modules resolve correctly.
 
-        ifaces_chirho.push(iface_chirho);
+        crate::module_search_chirho::admit_home_iface_chirho(&mut ifaces_chirho, iface_chirho);
 
         // Phases 5–7: back-end
         let compile_result_chirho = compile_backend_chirho(

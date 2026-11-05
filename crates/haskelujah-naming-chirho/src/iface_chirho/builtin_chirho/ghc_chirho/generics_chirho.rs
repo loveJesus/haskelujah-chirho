@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho;
 use haskelujah_span_chirho::SpanChirho;
 
@@ -57,6 +58,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.TypeLits".to_string(),
             exports_chirho,
         });
@@ -180,6 +182,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Generics".to_string(),
             exports_chirho,
         });
@@ -197,6 +200,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.StaticPtr".to_string(),
             exports_chirho,
         });
@@ -231,6 +235,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.TypeNats".to_string(),
             exports_chirho,
         });
@@ -259,6 +264,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         let (k_chirho, v_chirho) = mk_type_chirho("SrcLoc", &["SrcLoc"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Stack.Types".to_string(),
             exports_chirho,
         });
@@ -308,6 +314,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Stack".to_string(),
             exports_chirho,
         });
@@ -321,6 +328,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Err".to_string(),
             exports_chirho,
         });
@@ -339,6 +347,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Records".to_string(),
             exports_chirho,
         });
@@ -352,6 +361,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         let (k_chirho, v_chirho) = mk_type_chirho("IsLabel", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.OverloadedLabels".to_string(),
             exports_chirho,
         });
@@ -367,11 +377,13 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         let (k_chirho, v_chirho) = mk_type_chirho("Fingerprint", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Fingerprint".to_string(),
             exports_chirho,
         });
         // Also alias as GHC.Fingerprint.Type
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Fingerprint.Type".to_string(),
             exports_chirho: {
                 let mut e_chirho = IfaceExportsChirho::default();
@@ -403,10 +415,12 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Exception".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Exception.Type".to_string(),
             exports_chirho,
         });
@@ -433,6 +447,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Stack".to_string(),
             exports_chirho,
         });
@@ -483,6 +498,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.TypeLits".to_string(),
             exports_chirho,
         });
@@ -507,6 +523,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.TypeNats".to_string(),
             exports_chirho,
         });
@@ -560,6 +577,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Generics".to_string(),
             exports_chirho,
         });
@@ -573,6 +591,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         let (k_chirho, v_chirho) = mk_val_chirho("getField");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Records".to_string(),
             exports_chirho,
         });
@@ -633,6 +652,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.TypeLits".to_string(),
             exports_chirho,
         });
@@ -657,6 +677,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.TypeNats".to_string(),
             exports_chirho,
         });
@@ -716,6 +737,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Generics".to_string(),
             exports_chirho,
         });
@@ -753,6 +775,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "GHC.SrcLoc".to_string(),
             exports_chirho,
         });

@@ -134,7 +134,7 @@ fn discovery_with_boots_chirho(
             &ifaces_chirho,
         )
         .expect("valid source has a complete constructor interface");
-        admit_authoritative_iface_chirho(&mut ifaces_chirho, iface_chirho);
+        admit_home_iface_chirho(&mut ifaces_chirho, iface_chirho);
         let name_chirho = module_chirho.name_chirho.full_name_chirho();
         let path_chirho = scratch_chirho
             .as_ref()
@@ -344,7 +344,7 @@ fn a_discovered_constructor_error_is_reached_only_and_never_published_chirho() {
             super::super::scan_sibling_modules_with_sources_chirho(
                 &scratch_chirho.0,
                 &mut source_map_chirho,
-                &mut ifaces_chirho,
+                &ifaces_chirho,
                 "CheckedChirho.hs",
                 &mut sources_chirho,
             );
@@ -429,7 +429,7 @@ fn discovery_checks_path_authority_before_building_a_constructor_interface_chirh
     super::super::scan_sibling_modules_with_sources_chirho(
         &scratch_chirho.0,
         &mut source_map_chirho,
-        &mut ifaces_chirho,
+        &ifaces_chirho,
         "CheckedChirho.hs",
         &mut sources_chirho,
     );
@@ -476,7 +476,7 @@ fn discovered_syntax_errors_are_reached_only_and_never_published_chirho() {
             super::super::scan_sibling_modules_with_sources_chirho(
                 &scratch_chirho.0,
                 &mut source_map_chirho,
-                &mut ifaces_chirho,
+                &ifaces_chirho,
                 "CheckedChirho.hs",
                 &mut sources_chirho,
             );

@@ -220,6 +220,7 @@ fn module_reexport_respects_selected_associated_import_chirho() {
             "SourceChirho",
         ))]),
         vec![ImportDeclChirho {
+            package_chirho: None,
             module_chirho: name_chirho("SourceChirho"),
             source_chirho: false,
             qualified_chirho: false,
@@ -267,6 +268,7 @@ fn module_reexport_hiding_all_removes_associated_types_chirho() {
             "SourceChirho",
         ))]),
         vec![ImportDeclChirho {
+            package_chirho: None,
             module_chirho: name_chirho("SourceChirho"),
             source_chirho: false,
             qualified_chirho: false,
@@ -307,6 +309,7 @@ fn selected_associated_import_reaches_unqualified_type_scope_chirho() {
         "ConsumerChirho",
         None,
         vec![ImportDeclChirho {
+            package_chirho: None,
             module_chirho: name_chirho("SourceChirho"),
             source_chirho: false,
             qualified_chirho: false,
@@ -360,6 +363,7 @@ fn selected_associated_import_reaches_qualified_alias_scope_chirho() {
         "ConsumerChirho",
         None,
         vec![ImportDeclChirho {
+            package_chirho: None,
             module_chirho: name_chirho("SourceChirho"),
             source_chirho: false,
             qualified_chirho: true,
@@ -412,6 +416,7 @@ fn facade_reexporting_chirho(spec_chirho: ImportSpecChirho) -> ModuleChirho {
             "SourceChirho",
         ))]),
         vec![ImportDeclChirho {
+            package_chirho: None,
             module_chirho: name_chirho("SourceChirho"),
             source_chirho: false,
             qualified_chirho: false,
@@ -708,7 +713,11 @@ fn the_builtin_non_empty_entry_is_complete_and_a_disjoint_merge_keeps_it_chirho(
         )],
     ))
     .expect("small source interface fixture fits constructor projection budget");
-    let merged_chirho = merge_module_ifaces_chirho(vec![non_empty_chirho.clone(), source_chirho]);
+    // The original disjoint-copy control uses the metadata-free legacy lane;
+    // same-name home/package views are checked independently by selection tests.
+    let mut legacy_chirho = non_empty_chirho.clone();
+    legacy_chirho.exposure_chirho = None;
+    let merged_chirho = merge_module_ifaces_chirho(vec![legacy_chirho, source_chirho]);
     assert_eq!(merged_chirho.len(), 1);
     let marks_chirho = &merged_chirho[0].exports_chirho.complete_member_types_chirho;
     assert!(marks_chirho.contains("NonEmpty"));

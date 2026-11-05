@@ -125,11 +125,10 @@ fn imported_names_by_origin_chirho(
     let mut builtin_chirho = HashSet::new();
     for import_chirho in &module_chirho.imports_chirho {
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
-        let Some(iface_chirho) = ifaces_chirho
-            .iter()
-            .rev()
-            .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
-        else {
+        let Some(iface_chirho) = haskelujah_naming_chirho::iface_chirho::select_import_iface_chirho(
+            ifaces_chirho,
+            import_chirho,
+        ) else {
             continue;
         };
         let supplied_chirho =
@@ -188,11 +187,10 @@ pub(crate) fn import_suppliers_chirho(
         if !program_modules_chirho.contains(&supplier_chirho) {
             continue;
         }
-        let Some(iface_chirho) = ifaces_chirho
-            .iter()
-            .rev()
-            .find(|iface_chirho| iface_chirho.name_chirho == supplier_chirho)
-        else {
+        let Some(iface_chirho) = haskelujah_naming_chirho::iface_chirho::select_import_iface_chirho(
+            ifaces_chirho,
+            import_chirho,
+        ) else {
             continue;
         };
         if iface_chirho.exports_chirho.origin_chirho != IfaceOriginChirho::SourceChirho {
@@ -275,3 +273,7 @@ pub(crate) fn record_module_provenance_chirho(
         .builtin_references_chirho
         .extend(builtin_references_chirho);
 }
+
+#[cfg(test)]
+#[path = "native_provenance_tests_chirho.rs"]
+mod tests_chirho;

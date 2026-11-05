@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
@@ -21,6 +22,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         let (k_chirho, v_chirho) = mk_type_chirho("Bifunctor", &["bimap", "first", "second"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Bifunctor".to_string(),
             exports_chirho,
         });
@@ -132,6 +134,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         ];
         for mod_name_chirho in &lens_modules_chirho {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: None,
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -148,6 +151,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         let (k_chirho, v_chirho) = mk_type_chirho("Bifoldable1", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Bifoldable1".to_string(),
             exports_chirho,
         });
@@ -187,6 +191,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         let (k_chirho, v_chirho) = mk_type_chirho("Bifoldable", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Bifoldable".to_string(),
             exports_chirho,
         });
@@ -209,6 +214,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         let (k_chirho, v_chirho) = mk_type_chirho("Bitraversable", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Bitraversable".to_string(),
             exports_chirho,
         });
@@ -234,6 +240,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         let (k_chirho, v_chirho) = mk_type_chirho("Foldable1", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Foldable1".to_string(),
             exports_chirho,
         });
@@ -279,6 +286,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             },
         );
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: (*mod_name_chirho).to_string(),
             exports_chirho,
         });
@@ -293,6 +301,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for mod_name_chirho in &["Data.Default", "Data.Default.Class"] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: None,
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -380,6 +389,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
         });
@@ -465,6 +475,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
         });
@@ -491,6 +502,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         let (k_chirho, v_chirho) = mk_type_chirho("Tagged", &["Tagged"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Tagged".to_string(),
             exports_chirho,
         });
@@ -532,6 +544,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
         });
@@ -543,6 +556,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         "Data.Traversable.WithIndex.Instances",
     ] {
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho: IfaceExportsChirho::default(),
         });
@@ -558,6 +572,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         let (k_chirho, v_chirho) = mk_type_chirho("Swap", &["Swap"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Bifunctor.Swap".to_string(),
             exports_chirho,
         });
@@ -578,6 +593,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             "Data.Profunctor.Types",
         ] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: None,
                 name_chirho: sub_mod_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -596,6 +612,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
         });
@@ -609,6 +626,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Bifunctor.Functor".to_string(),
             exports_chirho,
         });
@@ -642,6 +660,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             "Data.Bifunctor.Sum",
         ] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: None,
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });

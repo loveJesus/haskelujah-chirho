@@ -71,6 +71,7 @@ fn import_chirho(
     qualified_chirho: bool,
 ) -> ImportDeclChirho {
     ImportDeclChirho {
+        package_chirho: None,
         module_chirho: name_chirho(module_chirho),
         source_chirho: false,
         qualified_chirho,
@@ -119,6 +120,7 @@ fn iface_chirho(
         );
     }
     ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: module_chirho.to_string(),
         exports_chirho,
     }

@@ -447,6 +447,7 @@ fn module_re_export_chirho() {
 
     // Simulate the Inner module interface.
     let inner_iface_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: "Inner".to_string(),
         exports_chirho: {
             let mut e_chirho = IfaceExportsChirho::default();
@@ -491,6 +492,7 @@ fn module_re_export_chirho() {
             ExportSpecChirho::ModuleChirho(mk_name_chirho("Inner")),
         ]),
         imports_chirho: vec![ImportDeclChirho {
+            package_chirho: None,
             module_chirho: mk_name_chirho("Inner"),
             source_chirho: false,
             qualified_chirho: false,
@@ -552,6 +554,7 @@ fn module_alias_re_export_chirho() {
     use haskelujah_ast_chirho::module_chirho::ImportDeclChirho;
 
     let inner_iface_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: "Inner".to_string(),
         exports_chirho: {
             let mut e_chirho = IfaceExportsChirho::default();
@@ -575,6 +578,7 @@ fn module_alias_re_export_chirho() {
             "Alias",
         ))]),
         imports_chirho: vec![ImportDeclChirho {
+            package_chirho: None,
             module_chirho: mk_name_chirho("Inner"),
             source_chirho: false,
             qualified_chirho: false,
@@ -607,6 +611,7 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
     use haskelujah_ast_chirho::module_chirho::{ImportDeclChirho, ImportSpecChirho};
 
     let left_iface_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: "LeftMod".to_string(),
         exports_chirho: {
             let mut e_chirho = IfaceExportsChirho::default();
@@ -634,6 +639,7 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
         },
     };
     let right_iface_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: "RightMod".to_string(),
         exports_chirho: {
             let mut e_chirho = IfaceExportsChirho::default();
@@ -658,6 +664,7 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
         ))]),
         imports_chirho: vec![
             ImportDeclChirho {
+                package_chirho: None,
                 module_chirho: mk_name_chirho("LeftMod"),
                 source_chirho: false,
                 qualified_chirho: false,
@@ -669,6 +676,7 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             ImportDeclChirho {
+                package_chirho: None,
                 module_chirho: mk_name_chirho("RightMod"),
                 source_chirho: false,
                 qualified_chirho: false,
@@ -715,6 +723,7 @@ fn explicit_export_list_reexports_imported_value_chirho() {
     use haskelujah_ast_chirho::module_chirho::ImportDeclChirho;
 
     let imported_iface_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: "InnerChoice".to_string(),
         exports_chirho: {
             let mut exports_chirho = IfaceExportsChirho::default();
@@ -736,6 +745,7 @@ fn explicit_export_list_reexports_imported_value_chirho() {
         name_chirho: mk_name_chirho("OuterChoice"),
         exports_chirho: Some(vec![ExportSpecChirho::VarChirho(mk_name_chirho("choice"))]),
         imports_chirho: vec![ImportDeclChirho {
+            package_chirho: None,
             module_chirho: mk_name_chirho("InnerChoice"),
             source_chirho: false,
             qualified_chirho: false,
@@ -768,6 +778,7 @@ fn explicit_export_list_reexports_imported_type_chirho() {
     use haskelujah_ast_chirho::module_chirho::ImportDeclChirho;
 
     let imported_iface_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: "InnerParsec".to_string(),
         exports_chirho: {
             let mut exports_chirho = IfaceExportsChirho::default();
@@ -789,6 +800,7 @@ fn explicit_export_list_reexports_imported_type_chirho() {
         name_chirho: mk_name_chirho("OuterParsec"),
         exports_chirho: Some(vec![ExportSpecChirho::VarChirho(mk_name_chirho("Parsec"))]),
         imports_chirho: vec![ImportDeclChirho {
+            package_chirho: None,
             module_chirho: mk_name_chirho("InnerParsec"),
             source_chirho: false,
             qualified_chirho: false,
@@ -905,6 +917,7 @@ fn family_parent_iface_chirho(module_name_chirho: &str, member_chirho: &str) -> 
         .associated_types_chirho
         .insert("CChirho".to_owned(), vec![member_chirho.to_owned()]);
     ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: module_name_chirho.to_owned(),
         exports_chirho,
     }
@@ -916,6 +929,7 @@ fn family_export_import_chirho(
     name_chirho: &str,
 ) -> haskelujah_ast_chirho::module_chirho::ImportDeclChirho {
     haskelujah_ast_chirho::module_chirho::ImportDeclChirho {
+        package_chirho: None,
         module_chirho: mk_name_chirho(module_chirho),
         source_chirho: false,
         qualified_chirho: true,

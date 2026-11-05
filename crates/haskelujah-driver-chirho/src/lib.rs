@@ -411,7 +411,7 @@ fn check_source_file_with_search_path_chirho(
     scan_sibling_modules_with_sources_chirho(
         search_dir_chirho,
         &mut sibling_source_map_chirho,
-        &mut all_ifaces_chirho,
+        &all_ifaces_chirho,
         &file_name_chirho,
         &mut discovered_sources_chirho,
     );
@@ -907,7 +907,7 @@ fn compile_source_with_search_context_chirho(
     scan_sibling_modules_with_sources_chirho(
         search_dir_chirho,
         source_map_chirho,
-        &mut all_ifaces_chirho,
+        &all_ifaces_chirho,
         file_name_chirho,
         &mut discovered_sources_chirho,
     );

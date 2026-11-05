@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
@@ -29,6 +30,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_val_chirho("runIdentity");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Identity".to_string(),
             exports_chirho,
         });
@@ -42,6 +44,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-experimental"]),
             name_chirho: "Data.Sum.Experimental".to_string(),
             exports_chirho,
         });
@@ -93,6 +96,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Monoid".to_string(),
             exports_chirho,
         });
@@ -140,6 +144,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Semigroup".to_string(),
             exports_chirho,
         });
@@ -155,6 +160,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Functor", &["fmap"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor".to_string(),
             exports_chirho,
         });
@@ -198,6 +204,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Foldable", &["foldMap"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Foldable".to_string(),
             exports_chirho,
         });
@@ -225,6 +232,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Traversable".to_string(),
             exports_chirho,
         });
@@ -253,6 +261,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Contravariant", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Contravariant".to_string(),
             exports_chirho,
         });
@@ -277,6 +286,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             },
         );
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Identity".to_string(),
             exports_chirho,
         });
@@ -294,6 +304,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         v_chirho.methods_chirho.push("getCompose".to_string());
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Compose".to_string(),
             exports_chirho,
         });
@@ -305,6 +316,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Product", &["Pair"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Product".to_string(),
             exports_chirho,
         });
@@ -316,6 +328,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Sum", &["InL", "InR"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Sum".to_string(),
             exports_chirho,
         });
@@ -332,6 +345,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Const", &["Const"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Const".to_string(),
             exports_chirho,
         });
@@ -347,6 +361,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_val_chirho("getConst");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Const".to_string(),
             exports_chirho,
         });
@@ -383,6 +398,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Classes".to_string(),
             exports_chirho,
         });
@@ -399,6 +415,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_val_chirho("getCompose");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Compose".to_string(),
             exports_chirho,
         });
@@ -412,6 +429,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_val_chirho("Pair");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Product".to_string(),
             exports_chirho,
         });
@@ -427,6 +445,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Sum".to_string(),
             exports_chirho,
         });
@@ -442,6 +461,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Identity".to_string(),
             exports_chirho,
         });
@@ -470,6 +490,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Semigroup".to_string(),
             exports_chirho,
         });
@@ -521,6 +542,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Monoid".to_string(),
             exports_chirho,
         });
@@ -536,6 +558,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor".to_string(),
             exports_chirho,
         });
@@ -551,6 +574,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Const".to_string(),
             exports_chirho,
         });
@@ -566,6 +590,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Compose".to_string(),
             exports_chirho,
         });
@@ -611,6 +636,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Foldable".to_string(),
             exports_chirho,
         });
@@ -640,6 +666,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Traversable".to_string(),
             exports_chirho,
         });
@@ -664,6 +691,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             },
         );
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Identity".to_string(),
             exports_chirho,
         });
@@ -717,6 +745,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Foldable".to_string(),
             exports_chirho,
         });
@@ -736,6 +765,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Compose".to_string(),
             exports_chirho,
         });
@@ -755,6 +785,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Functor.Const".to_string(),
             exports_chirho,
         });
@@ -800,6 +831,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Monoid".to_string(),
             exports_chirho,
         });
@@ -816,6 +848,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         v_chirho.methods_chirho.push("getReverse".to_string());
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["transformers"]),
             name_chirho: "Data.Functor.Reverse".to_string(),
             exports_chirho,
         });
@@ -832,6 +865,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         v_chirho.methods_chirho.push("getConstant".to_string());
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["transformers"]),
             name_chirho: "Data.Functor.Constant".to_string(),
             exports_chirho,
         });
@@ -860,6 +894,7 @@ pub(super) fn push_classes_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Adjunction", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Functor.Adjunction".to_string(),
             exports_chirho,
         });

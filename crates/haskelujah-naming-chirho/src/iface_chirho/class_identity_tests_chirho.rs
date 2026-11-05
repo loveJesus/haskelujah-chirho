@@ -69,6 +69,7 @@ fn import_chirho(
     qualified_chirho: bool,
 ) -> ImportDeclChirho {
     ImportDeclChirho {
+        package_chirho: None,
         source_chirho: false,
         module_chirho: name_chirho(module_text_chirho),
         qualified_chirho,
@@ -104,6 +105,7 @@ fn class_iface_chirho(
         },
     );
     ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: module_text_chirho.to_string(),
         exports_chirho,
     }
@@ -342,16 +344,20 @@ fn the_table_names_each_class_once_at_a_known_parameter_kind_chirho() {
 fn instance_head_coverage_is_a_producer_fact_not_a_builtin_origin_chirho() {
     let interfaces_chirho = builtin_module_ifaces_chirho();
     for name_chirho in ["Prelude", "Data.Kind", "Data.Proxy"] {
-        let producer_chirho = interfaces_chirho
+        let mut producer_chirho = interfaces_chirho
             .iter()
             .find(|interface_chirho| interface_chirho.name_chirho == name_chirho)
-            .unwrap();
+            .unwrap()
+            .clone();
+        // Retain this control's original metadata-free legacy merge lane.
+        producer_chirho.exposure_chirho = None;
         assert!(
             producer_chirho
                 .exports_chirho
                 .unary_variable_instance_heads_covered_chirho
         );
         let unknown_chirho = ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: name_chirho.into(),
             exports_chirho: IfaceExportsChirho {
                 origin_chirho: IfaceOriginChirho::BuiltinChirho,
@@ -374,11 +380,14 @@ fn instance_head_coverage_is_a_producer_fact_not_a_builtin_origin_chirho() {
 
 #[test]
 fn source_interface_copies_cannot_acquire_instance_coverage_by_merge_order_chirho() {
-    let producer_chirho = builtin_module_ifaces_chirho()
+    let mut producer_chirho = builtin_module_ifaces_chirho()
         .into_iter()
         .find(|interface_chirho| interface_chirho.name_chirho == "Data.Proxy")
         .unwrap();
+    // Selection evidence is absent in this original legacy-copy control.
+    producer_chirho.exposure_chirho = None;
     let source_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: producer_chirho.name_chirho.clone(),
         exports_chirho: IfaceExportsChirho::default(),
     };

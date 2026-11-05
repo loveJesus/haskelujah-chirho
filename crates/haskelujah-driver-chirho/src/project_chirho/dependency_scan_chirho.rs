@@ -486,6 +486,7 @@ fn scan_package_hs_files_chirho(
                         }
                     }
                     stub_iface_chirho = Some(ModuleIfaceChirho {
+                        exposure_chirho: None,
                         name_chirho: mod_name_chirho,
                         exports_chirho,
                     });

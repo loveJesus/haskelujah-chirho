@@ -7,9 +7,7 @@
 use super::boot_contract_chirho::{
     BootContractContextChirho, validate_reached_boot_contracts_chirho,
 };
-use super::{
-    DiscoveredSourceModuleChirho, DiscoveredSourceModulesChirho, admit_authoritative_iface_chirho,
-};
+use super::{DiscoveredSourceModuleChirho, DiscoveredSourceModulesChirho, admit_home_iface_chirho};
 use crate::ImportedTypeSynonymsChirho;
 use crate::family_exports_chirho::{
     FamilyExportsErrorChirho, build_family_aware_iface_chirho, build_type_family_scope_chirho,
@@ -177,6 +175,7 @@ fn reachable_chirho(
             module_chirho
                 .imports_chirho
                 .iter()
+                .filter(|import_chirho| import_chirho.selects_home_source_chirho())
                 .map(|import_chirho| import_chirho.module_chirho.full_name_chirho()),
         );
     }
@@ -191,11 +190,11 @@ fn alias_snapshot_chirho(
     let mut snapshot_chirho = Vec::new();
     for module_chirho in modules_chirho {
         let module_name_chirho = module_chirho.name_chirho.full_name_chirho();
-        if let Some(iface_chirho) = ifaces_chirho
-            .iter()
-            .rev()
-            .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
-        {
+        if let Some(iface_chirho) = ifaces_chirho.iter().rev().find(|iface_chirho| {
+            iface_chirho.name_chirho == module_name_chirho
+                && iface_chirho.exposure_chirho
+                    == Some(haskelujah_naming_chirho::iface_chirho::IfaceExposureChirho::HomeChirho)
+        }) {
             for name_chirho in iface_chirho.exports_chirho.types_chirho.keys() {
                 let alias_chirho = format!("{module_name_chirho}.{name_chirho}");
                 let identities_chirho = match registry_chirho.resolve_export_chirho(&alias_chirho) {
@@ -263,7 +262,7 @@ fn publish_headers_chirho(
     .map_err(|error_chirho| {
         family_frontend_diagnostics_chirho(error_chirho, module_chirho.span_chirho)
     })?;
-    admit_authoritative_iface_chirho(ifaces_chirho, iface_chirho);
+    admit_home_iface_chirho(ifaces_chirho, iface_chirho);
     Ok(())
 }
 
@@ -411,7 +410,8 @@ pub(crate) fn register_discovered_type_families_chirho(
                     &module_chirho.name_chirho.full_name_chirho(),
                 )])
             })?;
-            admit_authoritative_iface_chirho(&mut declaration_ifaces_chirho, iface_chirho);
+            admit_home_iface_chirho(&mut ifaces_chirho, iface_chirho.clone());
+            admit_home_iface_chirho(&mut declaration_ifaces_chirho, iface_chirho);
         }
     }
     let mut kind_dependencies_chirho = BTreeMap::new();
@@ -665,7 +665,7 @@ pub(crate) fn register_discovered_type_families_chirho(
         .map_err(|error_chirho| {
             family_frontend_diagnostics_chirho(error_chirho, module_chirho.span_chirho)
         })?;
-        admit_authoritative_iface_chirho(&mut ifaces_chirho, iface_chirho);
+        admit_home_iface_chirho(&mut ifaces_chirho, iface_chirho);
         if has_closed_families_chirho(module_chirho) {
             closed_registered_chirho.insert(module_chirho.name_chirho.full_name_chirho());
             propagate_headers_chirho(
@@ -703,7 +703,7 @@ pub(crate) fn register_discovered_type_families_chirho(
         .map_err(|error_chirho| {
             family_frontend_diagnostics_chirho(error_chirho, module_chirho.span_chirho)
         })?;
-        admit_authoritative_iface_chirho(&mut ifaces_chirho, iface_chirho);
+        admit_home_iface_chirho(&mut ifaces_chirho, iface_chirho);
     }
     if let Some(imported_types_chirho) = context_chirho.imported_types_chirho {
         for (key_chirho, scheme_chirho) in signature_exports_chirho {

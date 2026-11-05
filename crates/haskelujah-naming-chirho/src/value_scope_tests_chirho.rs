@@ -76,6 +76,7 @@ fn import_chirho(
     spec_chirho: Option<ImportSpecChirho>,
 ) -> ImportDeclChirho {
     ImportDeclChirho {
+        package_chirho: None,
         module_chirho: name_chirho(module_text_chirho),
         source_chirho: false,
         qualified_chirho: qualified_import_chirho,

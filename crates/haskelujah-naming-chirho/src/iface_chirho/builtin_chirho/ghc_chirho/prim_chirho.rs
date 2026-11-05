@@ -5,6 +5,7 @@
 //! order (row 648).
 
 use crate::iface_chirho::builtin_chirho::mk_data_type_chirho;
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 use haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho;
@@ -26,6 +27,7 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-prim"]),
             name_chirho: "GHC.CString".to_string(),
             exports_chirho,
         });
@@ -41,6 +43,7 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("ByteOrder", &["LittleEndian", "BigEndian"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.ByteOrder".to_string(),
             exports_chirho,
         });
@@ -61,6 +64,7 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(key_chirho, type_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-prim"]),
             name_chirho: "GHC.Types".to_string(),
             exports_chirho,
         });
@@ -79,6 +83,7 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_val_chirho("Solo");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-prim"]),
             name_chirho: "GHC.Tuple".to_string(),
             exports_chirho,
         });
@@ -99,6 +104,7 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-prim"]),
             name_chirho: "GHC.Classes".to_string(),
             exports_chirho,
         });
@@ -458,6 +464,7 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-prim"]),
             name_chirho: "GHC.Prim".to_string(),
             exports_chirho,
         });
@@ -471,6 +478,7 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-prim"]),
             name_chirho: "GHC.Magic".to_string(),
             exports_chirho,
         });

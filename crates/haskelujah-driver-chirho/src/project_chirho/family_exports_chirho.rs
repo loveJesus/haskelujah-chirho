@@ -419,11 +419,10 @@ fn admitted_family_imports_chirho<'iface_chirho>(
         .filter_map(|import_chirho| {
             // Match the frontend's last-interface selection. Missing modules are
             // diagnosed by naming; they cannot contribute guessed family names.
-            let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
-            let iface_chirho = ifaces_chirho
-                .iter()
-                .rev()
-                .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)?;
+            let iface_chirho = haskelujah_naming_chirho::iface_chirho::select_import_iface_chirho(
+                ifaces_chirho,
+                import_chirho,
+            )?;
             let types_chirho = compute_imported_names_chirho(
                 &iface_chirho.exports_chirho,
                 &import_chirho.spec_chirho,

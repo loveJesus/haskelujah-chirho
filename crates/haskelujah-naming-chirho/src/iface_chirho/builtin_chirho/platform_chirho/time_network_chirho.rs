@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 
@@ -76,6 +77,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             "Network.HTTP.Types.Version",
         ] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: None,
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -98,6 +100,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
         let (k_chirho, v_chirho) = mk_type_chirho("POSIXTime", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time.Clock.POSIX".to_string(),
             exports_chirho,
         });
@@ -122,6 +125,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time.Clock".to_string(),
             exports_chirho,
         });
@@ -147,10 +151,12 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
         let (k_chirho, v_chirho) = mk_type_chirho("Day", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time.Calendar".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time.Calendar.OrdinalDate".to_string(),
             exports_chirho,
         });
@@ -178,6 +184,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
         let (k_chirho, v_chirho) = mk_type_chirho("Month", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time.Calendar.Month".to_string(),
             exports_chirho,
         });
@@ -209,6 +216,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time.Calendar.Quarter".to_string(),
             exports_chirho,
         });
@@ -227,6 +235,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time.Calendar.MonthDay".to_string(),
             exports_chirho,
         });
@@ -246,6 +255,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time.Calendar.WeekDate".to_string(),
             exports_chirho,
         });
@@ -293,22 +303,27 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time.Format".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time.Format.ISO8601".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Time.Format.Internal".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time.LocalTime".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
@@ -330,6 +345,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time.Clock.TAI".to_string(),
             exports_chirho,
         });
@@ -353,6 +369,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time.Clock.System".to_string(),
             exports_chirho,
         });
@@ -366,6 +383,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["time"]),
             name_chirho: "Data.Time.Calendar.Easter".to_string(),
             exports_chirho,
         });
@@ -385,11 +403,15 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for mod_name_chirho in &[
-            "Data.Time.Calendar.Julian",
-            "Data.Time.Calendar.Julian.YearDay",
+        for (mod_name_chirho, exposure_chirho) in &[
+            (
+                "Data.Time.Calendar.Julian",
+                package_exposure_chirho(&["time"]),
+            ),
+            ("Data.Time.Calendar.Julian.YearDay", None),
         ] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: exposure_chirho.clone(),
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -413,6 +435,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
         let (k_chirho, v_chirho) = mk_type_chirho("UpdateSettings", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Control.AutoUpdate".to_string(),
             exports_chirho,
         });
@@ -437,6 +460,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Control.Reaper".to_string(),
             exports_chirho,
         });
@@ -457,6 +481,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
         let (k_chirho, v_chirho) = mk_type_chirho("HTTPDate", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Network.HTTP.Date".to_string(),
             exports_chirho,
         });
@@ -469,6 +494,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Network.Socket.ByteString".to_string(),
             exports_chirho,
         });
@@ -485,6 +511,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Network.Socket.BufferPool".to_string(),
             exports_chirho,
         });
@@ -532,10 +559,12 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Network.Socket".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Network.Socket.Internal".to_string(),
             exports_chirho,
         });
@@ -587,6 +616,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "System.Random".to_string(),
             exports_chirho,
         });
@@ -634,10 +664,12 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "System.Random.Stateful".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "System.Random.Internal".to_string(),
             exports_chirho,
         });
@@ -674,6 +706,7 @@ pub(super) fn push_time_network_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
             "System.Random.SplitMix32",
         ] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: None,
                 name_chirho: mod_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });

@@ -271,19 +271,21 @@ pub(crate) fn run_frontend_under_deferral_chirho(
     let mut unary_variable_instance_heads_covered_chirho = true;
     for import_chirho in &module_chirho.imports_chirho {
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
-        unary_variable_instance_heads_covered_chirho &= ifaces_chirho
-            .iter()
-            .rev()
-            .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
+        unary_variable_instance_heads_covered_chirho &=
+            haskelujah_naming_chirho::iface_chirho::select_import_iface_chirho(
+                ifaces_chirho,
+                import_chirho,
+            )
             .is_some_and(|iface_chirho| {
                 iface_chirho
                     .exports_chirho
                     .unary_variable_instance_heads_covered_chirho
             });
-        if let Some(iface_chirho) = ifaces_chirho
-            .iter()
-            .rev()
-            .find(|m_chirho| m_chirho.name_chirho == module_name_chirho)
+        if let Some(iface_chirho) =
+            haskelujah_naming_chirho::iface_chirho::select_import_iface_chirho(
+                ifaces_chirho,
+                import_chirho,
+            )
         {
             let qualifiable_type_names_chirho: std::collections::HashSet<String> = iface_chirho
                 .exports_chirho
@@ -608,6 +610,7 @@ pub(crate) fn inject_prelude_import_chirho(module_chirho: &mut ModuleChirho) {
     module_chirho
         .imports_chirho
         .push(haskelujah_ast_chirho::module_chirho::ImportDeclChirho {
+            package_chirho: None,
             module_chirho: haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
                 haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
                     "Prelude",
