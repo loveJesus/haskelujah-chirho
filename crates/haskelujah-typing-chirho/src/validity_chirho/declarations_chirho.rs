@@ -15,8 +15,9 @@
 //! 6. a lazy field annotation (`~T`) needs `StrictData` or `Strict` (`GHC-81601`);
 //! 7. to 16. deriving strategies, the extensions they need and the classes they derive
 //!    (`deriving_strategy_chirho.rs`, row 694);
-//! 17. to 19. role annotations: their words, their count and each written role against the
-//!    role inference proves (`role_annotations_chirho.rs`, row 694).
+//! 17. to 24. role annotations: their words, a repeat, their target, the extension, their
+//!     count, each written role against the one role inference proves, and a class
+//!     parameter's role (`role_annotations_chirho.rs`, row 694).
 //!
 //! Rule 6 judges the written override only. The module-wide `StrictData`
 //! default (unannotated fields strict) is not implemented: such fields stay

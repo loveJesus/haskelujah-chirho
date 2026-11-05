@@ -203,6 +203,10 @@ pub(crate) fn method_occurrence_names_chirho(module_chirho: &ModuleChirho) -> Ha
         .collect()
 }
 
+/// One record's proof for an occurrence, its class and type key, with the ground application
+/// its predicate resolved to, if any.
+type AppliedProofChirho = ((String, String), Option<TyChirho>);
+
 /// What the occurrence join proves: each occurrence's class and type key, and, where the
 /// checker recorded one, the ground application its predicate resolved to (row 694, M1).
 /// workflow: language-features-chirho/dictionary-evidence-chirho
@@ -393,10 +397,8 @@ pub(crate) fn join_occurrence_evidence_chirho(
     }
     let mut proofs_by_occurrence_chirho: HashMap<CoreIdChirho, Vec<(String, String)>> =
         HashMap::new();
-    let mut applied_by_occurrence_chirho: HashMap<
-        CoreIdChirho,
-        Vec<((String, String), Option<TyChirho>)>,
-    > = HashMap::new();
+    let mut applied_by_occurrence_chirho: HashMap<CoreIdChirho, Vec<AppliedProofChirho>> =
+        HashMap::new();
     for (record_index_chirho, record_chirho) in infer_result_chirho
         .method_occurrences_chirho
         .iter()
@@ -592,7 +594,7 @@ pub(crate) fn join_occurrence_evidence_chirho(
 /// The applied type every record proving `chosen_chirho` for one occurrence agrees on; `None`
 /// when one carries none or two differ.
 fn agreed_applied_ty_chirho(
-    candidates_chirho: &[((String, String), Option<TyChirho>)],
+    candidates_chirho: &[AppliedProofChirho],
     chosen_chirho: &(String, String),
 ) -> Option<TyChirho> {
     let mut agreed_chirho: Option<&TyChirho> = None;
