@@ -163,6 +163,10 @@ pub struct DictPassCtxChirho {
     /// Populated by later phases (typing bridge / defaulting); when present the
     /// occurrence dispatches directly to `$prim_{class}_{method}_{key}`.
     occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    /// The ground application each method occurrence's proof resolved to, where the checker
+    /// recorded one (`BoxChirho Int`): the arguments a conditional instance's factory takes
+    /// (`method_through_factory_chirho`, row 694, M1).
+    occurrence_applied_tys_chirho: HashMap<CoreIdChirho, TyChirho>,
     /// Reference evidence: occurrence id of a constrained reference → the checker's record
     /// per predicate in scheme order, its class, its key (a `None` key is "nothing proved
     /// for this position") and, for a ground application, its type. See
@@ -275,6 +279,7 @@ impl DictPassCtxChirho {
             extra_dict_param_names_chirho: HashSet::new(),
             method_occurrence_canon_chirho: HashMap::new(),
             occurrence_evidence_chirho: HashMap::new(),
+            occurrence_applied_tys_chirho: HashMap::new(),
             reference_evidence_chirho: HashMap::new(),
             operator_occurrences_chirho: HashSet::new(),
             context_leading_rows_chirho: HashMap::new(),
@@ -653,7 +658,8 @@ pub fn dict_pass_module_full_with_method_occurrences_chirho(
 }
 
 /// Dictionary-evidence entry: like the method-occurrence entry, also threading
-/// the checker's per-reference evidence for constrained references, the
+/// each method occurrence's applied type (row 694), the
+/// checker's per-reference evidence for constrained references, the
 /// constructor metadata of every type that derives Show (row 533) or Enum (row 669),
 /// and the occurrences of written infix and section Ord operators (row 610).
 /// workflow: language-features-chirho/dictionary-evidence-chirho
@@ -668,6 +674,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     extra_dict_param_names_chirho: HashSet<String>,
     method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
     occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    occurrence_applied_tys_chirho: HashMap<CoreIdChirho, TyChirho>,
     reference_evidence_chirho: HashMap<CoreIdChirho, Vec<ReferenceEvidenceChirho>>,
     derived_shows_chirho: HashMap<String, DerivedShowChirho>,
     derived_enums_chirho: HashMap<String, Vec<String>>,
@@ -680,6 +687,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     ctx_chirho.extra_dict_param_names_chirho = extra_dict_param_names_chirho;
     ctx_chirho.method_occurrence_canon_chirho = method_occurrence_canon_chirho;
     ctx_chirho.occurrence_evidence_chirho = occurrence_evidence_chirho;
+    ctx_chirho.occurrence_applied_tys_chirho = occurrence_applied_tys_chirho;
     ctx_chirho.reference_evidence_chirho = reference_evidence_chirho;
     ctx_chirho.derived_shows_chirho = derived_shows_chirho;
     ctx_chirho.derived_enums_chirho = derived_enums_chirho;

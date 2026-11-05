@@ -95,7 +95,10 @@ pub(crate) fn compile_backend_chirho(
         &desugar_output_chirho.reference_occurrence_spans_chirho,
         &desugar_output_chirho.occurrence_provenance_chirho,
     );
-    let mut occurrence_evidence_chirho = join_occurrence_evidence_chirho(
+    let evidence_join_chirho::OccurrenceJoinChirho {
+        evidence_chirho: mut occurrence_evidence_chirho,
+        applied_tys_chirho: mut occurrence_applied_tys_chirho,
+    } = join_occurrence_evidence_chirho(
         &infer_result_chirho,
         &desugar_output_chirho.method_occurrences_chirho,
         &desugar_output_chirho.literal_occurrence_spans_chirho,
@@ -109,6 +112,9 @@ pub(crate) fn compile_backend_chirho(
             .range_occurrence_spans_chirho
             .contains_key(id_chirho)
     });
+    // An applied type serves only an occurrence that kept its proof.
+    occurrence_applied_tys_chirho
+        .retain(|id_chirho, _| occurrence_evidence_chirho.contains_key(id_chirho));
     occurrence_evidence_chirho.extend(evidence_join_chirho::join_range_evidence_chirho(
         &infer_result_chirho,
         &desugar_output_chirho.method_occurrences_chirho,
@@ -211,6 +217,7 @@ pub(crate) fn compile_backend_chirho(
         extra_dict_param_names_chirho,
         desugar_output_chirho.method_occurrences_chirho,
         occurrence_evidence_chirho,
+        occurrence_applied_tys_chirho,
         reference_evidence_chirho,
         derived_shows_chirho,
         derived_enums_chirho,

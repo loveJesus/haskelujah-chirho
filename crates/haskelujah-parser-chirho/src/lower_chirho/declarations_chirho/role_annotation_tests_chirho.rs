@@ -77,6 +77,36 @@ fn a_malformed_role_annotation_is_kept_as_written_chirho() {
 }
 
 #[test]
+fn an_operator_or_qualified_target_is_kept_as_written_chirho() {
+    // T26805a's `(:-)`; declaration checking judges the qualified one.
+    assert_eq!(
+        annotations_chirho(
+            "{-# LANGUAGE RoleAnnotations, TypeOperators #-}\nmodule M where\nnewtype a :- b = SubChirho (a, b)\ntype role (:-) nominal nominal\ndata HoldChirho aChirho = HoldChirho aChirho\ntype role M.HoldChirho representational\n"
+        ),
+        [
+            (":-".to_string(), words_chirho(&["nominal", "nominal"])),
+            (
+                "HoldChirho".to_string(),
+                words_chirho(&["representational"])
+            ),
+        ]
+    );
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE RoleAnnotations #-}\nmodule M where\ndata HoldChirho aChirho = HoldChirho aChirho\ntype role M.HoldChirho representational\n",
+    );
+    assert!(
+        module_chirho
+            .decls_chirho
+            .iter()
+            .any(|decl_chirho| matches!(
+                decl_chirho,
+                DeclChirho::RoleAnnotationDeclChirho { type_name_chirho, .. }
+                    if type_name_chirho.qualifier_chirho() == Some("M")
+            ))
+    );
+}
+
+#[test]
 fn an_annotation_on_a_type_without_parameters_is_kept_chirho() {
     assert_eq!(
         annotations_chirho(

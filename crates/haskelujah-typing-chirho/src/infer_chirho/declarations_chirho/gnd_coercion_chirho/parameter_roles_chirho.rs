@@ -25,6 +25,9 @@
 //! does not read, and a constructor whose prefix the lowering could not read make every
 //! parameter at least Unknown.
 //!
+//! A class's parameters are nominal unless an annotation writes another role, and then its
+//! dictionary fields raise them as fields do (`local_class_roles_chirho`, GHC's `irClass`).
+//!
 //! A well-formed `type role` annotation (one known word per visible parameter) is a floor on
 //! the inferred role; a malformed one is ignored here, as GHC's inference ignores one of the
 //! wrong length, and declaration checking refuses it. Nothing here writes a role the program
@@ -136,6 +139,97 @@ pub fn local_parameter_roles_chirho(module_chirho: &ModuleChirho) -> ParameterRo
         }
     }
     roles_chirho
+}
+
+/// The roles of every local class's visible parameters, as GHC infers them (row 694, root's
+/// RX5 and RX6, GHC 9.14.1): each starts at its written role, nominal for `_` or with no
+/// well-formed annotation. When every one starts nominal, inference leaves them so; else the
+/// class's dictionary fields raise them as a constructor's fields would: its superclasses
+/// (constraints, so nominal), each method's declared type, and every parameter an associated
+/// family takes, which is nominal. `data_roles_chirho` are the local data and newtype roles
+/// (`local_parameter_roles_chirho`) the method types are read against.
+/// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+pub fn local_class_roles_chirho(
+    module_chirho: &ModuleChirho,
+    data_roles_chirho: &ParameterRolesChirho,
+) -> ParameterRolesChirho {
+    let annotations_chirho = written_role_annotations_chirho(module_chirho);
+    let authority_chirho = LocalAuthorityChirho {
+        module_name_chirho: module_chirho.name_chirho.full_name_chirho(),
+        families_chirho: local_type_families_chirho(module_chirho),
+    };
+    let unbound_chirho = HashSet::new();
+    module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| {
+            let DeclChirho::ClassDeclChirho {
+                context_chirho,
+                name_chirho,
+                type_vars_chirho,
+                methods_chirho,
+                associated_tfs_chirho,
+                ..
+            } = decl_chirho
+            else {
+                return None;
+            };
+            let parameters_chirho: Vec<String> =
+                TyVarChirho::visible_binders_chirho(type_vars_chirho)
+                    .iter()
+                    .map(|binder_chirho| binder_chirho.text_chirho().to_string())
+                    .collect();
+            let written_chirho = annotations_chirho
+                .get(name_chirho.text_chirho())
+                .filter(|words_chirho| words_chirho.len() == parameters_chirho.len());
+            let mut found_chirho: Vec<ParameterRoleChirho> = (0..parameters_chirho.len())
+                .map(|index_chirho| {
+                    written_chirho
+                        .and_then(|words_chirho| {
+                            ParameterRoleChirho::from_annotation_chirho(
+                                words_chirho[index_chirho].text_chirho(),
+                            )
+                        })
+                        .unwrap_or(ParameterRoleChirho::NOMINAL_CHIRHO)
+                })
+                .collect();
+            if !found_chirho
+                .iter()
+                .all(|role_chirho| role_chirho.is_nominal_chirho())
+            {
+                let mut walker_chirho = RoleWalkChirho {
+                    parameters_chirho: &parameters_chirho,
+                    roles_chirho: data_roles_chirho,
+                    authority_chirho: &authority_chirho,
+                    found_chirho: &mut found_chirho,
+                };
+                for superclass_chirho in context_chirho {
+                    walker_chirho.walk_constraint_chirho(
+                        superclass_chirho,
+                        ParameterRoleChirho::NOMINAL_CHIRHO,
+                        &unbound_chirho,
+                    );
+                }
+                for method_chirho in methods_chirho {
+                    walker_chirho.walk_chirho(
+                        &method_chirho.ty_chirho,
+                        ParameterRoleChirho::REPRESENTATIONAL_CHIRHO,
+                        &unbound_chirho,
+                    );
+                }
+                for family_chirho in associated_tfs_chirho {
+                    for argument_chirho in &family_chirho.type_vars_chirho {
+                        walker_chirho.raise_chirho(
+                            argument_chirho.text_chirho(),
+                            ParameterRoleChirho::NOMINAL_CHIRHO,
+                            &unbound_chirho,
+                        );
+                    }
+                }
+            }
+            Some((name_chirho.text_chirho().to_string(), found_chirho))
+        })
+        .collect()
 }
 
 /// Every local type family's name, top-level or associated: their arguments are nominal.

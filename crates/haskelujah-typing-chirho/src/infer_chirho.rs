@@ -333,6 +333,10 @@ pub struct InferResultChirho {
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 #[derive(Debug, Clone, PartialEq)]
 pub struct MethodOccurrenceRecordChirho {
+    /// The predicate's resolved type when it is a ground application (`BoxChirho Int`), so a
+    /// conditional instance's factory can serve the occurrence at its actual arguments
+    /// (row 694, M1); `None` otherwise.
+    pub applied_ty_chirho: Option<TyChirho>,
     pub name_chirho: String,
     pub ordinal_chirho: u32,
     pub class_name_chirho: String,

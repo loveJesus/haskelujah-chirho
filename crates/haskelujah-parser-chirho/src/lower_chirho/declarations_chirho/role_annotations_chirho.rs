@@ -3,8 +3,9 @@
 //! `type role T r1 .. rn` annotations (RoleAnnotations, row 694, #31844).
 //!
 //! The CST keeps a role annotation as a type signature node. Lowering reads it here into its
-//! own declaration, `DeclChirho::RoleAnnotationDeclChirho`: the annotated type's name and every
-//! role word exactly as written, each with its span. Lowering never judges the words or their
+//! own declaration, `DeclChirho::RoleAnnotationDeclChirho`: the annotated type's name (a
+//! constructor, qualified or not, or an operator in parentheses, `type role (:-) nominal
+//! nominal`) and every role word exactly as written, each with its span. Lowering never judges the words or their
 //! count and never rewrites one. Declaration checking judges them (an unknown word is
 //! GHC-09009, a wrong count GHC-54298, a written role below the final one GHC-29178), and role
 //! inference reads a well-formed annotation as its parameters' floors.
@@ -45,9 +46,24 @@ impl LowerCtxChirho {
         if role_chirho.text_chirho() != "role" {
             return None;
         }
-        let (target_child_chirho, target_chirho) = tokens_chirho.next()?;
-        if target_chirho.kind_chirho() != TokenKindChirho::ConIdChirho {
-            return None;
+        let (mut target_child_chirho, mut target_chirho) = tokens_chirho.next()?;
+        match target_chirho.kind_chirho() {
+            TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho => {}
+            // An operator type constructor is written in parentheses.
+            TokenKindChirho::LeftParenChirho => {
+                (target_child_chirho, target_chirho) = tokens_chirho.next()?;
+                if !matches!(
+                    target_chirho.kind_chirho(),
+                    TokenKindChirho::ConSymChirho
+                        | TokenKindChirho::VarSymChirho
+                        | TokenKindChirho::QualifiedConSymChirho
+                        | TokenKindChirho::QualifiedVarSymChirho
+                ) || tokens_chirho.next()?.1.kind_chirho() != TokenKindChirho::RightParenChirho
+                {
+                    return None;
+                }
+            }
+            _ => return None,
         }
         let type_name_chirho = self.name_from_token_chirho(
             target_chirho,

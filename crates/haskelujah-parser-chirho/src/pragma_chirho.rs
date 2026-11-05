@@ -16,10 +16,7 @@
 use crate::lexer_chirho::{LexerChirho, RawTokenChirho, RawTokenKindChirho};
 use haskelujah_span_chirho::FileIdChirho;
 
-/// Extensions enabled by GHC2021.
-///
-/// Haskelujah currently treats GHC2024 as this baseline too; a distinct GHC2024 expansion belongs
-/// in the broader extension-versioning work rather than the RecursiveDo slice.
+/// Extensions enabled by GHC2021, and by GHC2024 with `GHC2024_ADDITIONS_CHIRHO`.
 const GHC2021_EXTENSIONS_CHIRHO: &[&str] = &[
     "BangPatterns",
     "BinaryLiterals",
@@ -62,18 +59,23 @@ const GHC2021_EXTENSIONS_CHIRHO: &[&str] = &[
     "TypeSynonymInstances",
 ];
 
-/// What GHC2024 adds to GHC2021 that this compiler models so far: the deriving strategies
-/// (row 694; GHC 9.14.1 accepts `deriving stock` under GHC2024, root's A3). GHC2024's other
+/// What GHC2024 adds to GHC2021 that this compiler models so far (row 694): the deriving
+/// strategies (GHC 9.14.1 accepts `deriving stock` under GHC2024, root's A3) and role
+/// annotations (it accepts `type role` under GHC2024 alone, root's RX2). GHC2024's other
 /// additions (DataKinds, GADTs, MonoLocalBinds and the rest) belong to the D03 lane.
-const GHC2024_ADDITIONS_CHIRHO: &[&str] = &["DerivingStrategies"];
+const GHC2024_ADDITIONS_CHIRHO: &[&str] = &["DerivingStrategies", "RoleAnnotations"];
+
+/// The language editions consumers read by name: they imply none of the flags this compiler
+/// models as extensions.
+const NAMED_EDITIONS_CHIRHO: [&str; 2] = ["Haskell98", "Haskell2010"];
 
 /// One extension a pragma names: written by the programmer, or implied by a language edition.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PragmaExtensionChirho {
     /// The flag as consumers read it (`GADTs`, `NoGADTs`).
     pub name_chirho: String,
-    /// Whether a `GHC2021` or `GHC2024` edition implied it.
-    pub from_edition_chirho: bool,
+    /// The edition (`GHC2021`, `GHC2024`) that implied it; `None` for a written flag.
+    pub edition_chirho: Option<&'static str>,
 }
 
 /// Parse the inner text between `{-#` and `#-}` into extension flags.
@@ -93,7 +95,7 @@ pub fn pragma_extension_entries_from_inner_chirho(
 ) -> Vec<PragmaExtensionChirho> {
     let written_chirho = |name_chirho: &str| PragmaExtensionChirho {
         name_chirho: name_chirho.to_string(),
-        from_edition_chirho: false,
+        edition_chirho: None,
     };
     let inner_chirho = inner_chirho.trim();
     let Some((keyword_chirho, rest_chirho)) = inner_chirho.split_once(char::is_whitespace) else {
@@ -105,8 +107,11 @@ pub fn pragma_extension_entries_from_inner_chirho(
             .split(',')
             .flat_map(|extension_chirho| {
                 let extension_chirho = extension_chirho.trim();
-                if matches!(extension_chirho, "GHC2021" | "GHC2024") {
-                    let additions_chirho = if extension_chirho == "GHC2024" {
+                if let Some(edition_chirho) = ["GHC2021", "GHC2024"]
+                    .into_iter()
+                    .find(|edition_chirho| *edition_chirho == extension_chirho)
+                {
+                    let additions_chirho = if edition_chirho == "GHC2024" {
                         GHC2024_ADDITIONS_CHIRHO
                     } else {
                         &[]
@@ -116,7 +121,7 @@ pub fn pragma_extension_entries_from_inner_chirho(
                         .chain(additions_chirho)
                         .map(|implied_chirho| PragmaExtensionChirho {
                             name_chirho: (*implied_chirho).to_string(),
-                            from_edition_chirho: true,
+                            edition_chirho: Some(edition_chirho),
                         })
                         .collect::<Vec<_>>()
                 } else if extension_chirho.is_empty() {
@@ -140,43 +145,43 @@ pub fn pragma_extension_entries_from_inner_chirho(
     Vec::new()
 }
 
-/// A module's extension flags from its pragmas' entries, in source order, read last-wins.
+/// A module's extension flags from its pragmas' entries, read last-wins.
 ///
-/// GHC applies a language edition first and every written flag after it, whatever their order
-/// (root's O1-O4, GHC 9.14.1): `NoGeneralizedNewtypeDeriving, GHC2021` leaves it off, though
-/// the edition implies it. So the last written setting of each extension an edition covers is
-/// appended again at the end, where no edition can follow it.
+/// GHC keeps only the last language edition a module names (`lang_set`: `GHC2024` then
+/// `GHC2021` is GHC2021, root's RX3), applies it first and every written flag over it in
+/// source order, wherever the flag stands (root's O1-O4, GHC 9.14.1):
+/// `NoGeneralizedNewtypeDeriving, GHC2021` leaves it off, though the edition implies it. So
+/// the flags are the last edition's (a `Haskell98` or `Haskell2010` edition by its name, as
+/// its consumers read it), then every written flag in source order.
 /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub fn module_extensions_chirho(
     entries_chirho: impl IntoIterator<Item = PragmaExtensionChirho>,
 ) -> Vec<String> {
-    let mut names_chirho = Vec::new();
-    let mut written_last_chirho: Vec<String> = Vec::new();
+    let mut edition_flags_chirho: Vec<String> = Vec::new();
+    let mut written_chirho: Vec<String> = Vec::new();
+    // The edition whose implied flags are being read; a new one replaces the last.
+    let mut reading_edition_chirho: Option<&'static str> = None;
     for entry_chirho in entries_chirho {
-        if !entry_chirho.from_edition_chirho {
-            let base_chirho = entry_chirho
-                .name_chirho
-                .strip_prefix("No")
-                .unwrap_or(&entry_chirho.name_chirho);
-            if edition_covers_chirho(base_chirho) {
-                let base_chirho = base_chirho.to_string();
-                written_last_chirho.retain(|flag_chirho| {
-                    flag_chirho.strip_prefix("No").unwrap_or(flag_chirho) != base_chirho
-                });
-                written_last_chirho.push(entry_chirho.name_chirho.clone());
+        match entry_chirho.edition_chirho {
+            Some(edition_chirho) => {
+                if reading_edition_chirho != Some(edition_chirho) {
+                    edition_flags_chirho.clear();
+                    reading_edition_chirho = Some(edition_chirho);
+                }
+                edition_flags_chirho.push(entry_chirho.name_chirho);
+            }
+            None => {
+                reading_edition_chirho = None;
+                if NAMED_EDITIONS_CHIRHO.contains(&entry_chirho.name_chirho.as_str()) {
+                    edition_flags_chirho = vec![entry_chirho.name_chirho];
+                } else {
+                    written_chirho.push(entry_chirho.name_chirho);
+                }
             }
         }
-        names_chirho.push(entry_chirho.name_chirho);
     }
-    names_chirho.extend(written_last_chirho);
-    names_chirho
-}
-
-/// Whether a language edition sets `extension_chirho`, in either GND spelling.
-fn edition_covers_chirho(extension_chirho: &str) -> bool {
-    extension_chirho == "GeneralisedNewtypeDeriving"
-        || GHC2021_EXTENSIONS_CHIRHO.contains(&extension_chirho)
-        || GHC2024_ADDITIONS_CHIRHO.contains(&extension_chirho)
+    edition_flags_chirho.extend(written_chirho);
+    edition_flags_chirho
 }
 
 /// `OPTIONS_GHC`, or its legacy spelling `OPTIONS`; pragma keywords ignore case.
@@ -457,6 +462,47 @@ mod tests_chirho {
         assert!(!module_enables_chirho(
             &["LANGUAGE NoDerivingStrategies, GHC2024"],
             "DerivingStrategies"
+        ));
+    }
+
+    #[test]
+    fn the_last_language_edition_wins_chirho() {
+        // Root's RX3 (GHC 9.14.1): GHC2024 then GHC2021 is GHC2021, and a written flag still
+        // holds over it.
+        let last_chirho = ["LANGUAGE GHC2024", "LANGUAGE GHC2021, DerivingStrategies"];
+        assert!(!module_enables_chirho(&last_chirho, "RoleAnnotations"));
+        assert!(module_enables_chirho(&last_chirho, "DerivingStrategies"));
+        assert!(module_enables_chirho(
+            &["LANGUAGE GHC2021", "LANGUAGE GHC2024"],
+            "RoleAnnotations"
+        ));
+        // A Haskell2010 edition after GHC2021 leaves none of GHC2021's flags.
+        let legacy_chirho = ["LANGUAGE GHC2021", "LANGUAGE Haskell2010"];
+        assert!(!module_enables_chirho(
+            &legacy_chirho,
+            "ScopedTypeVariables"
+        ));
+        assert!(module_enables_chirho(&legacy_chirho, "Haskell2010"));
+    }
+
+    #[test]
+    fn ghc2024_implies_role_annotations_but_ghc2021_does_not_chirho() {
+        // Root's RX1 and RX2 (GHC 9.14.1).
+        assert!(module_enables_chirho(
+            &["LANGUAGE GHC2024"],
+            "RoleAnnotations"
+        ));
+        assert!(!module_enables_chirho(
+            &["LANGUAGE GHC2021"],
+            "RoleAnnotations"
+        ));
+        assert!(!module_enables_chirho(
+            &["LANGUAGE DerivingStrategies"],
+            "RoleAnnotations"
+        ));
+        assert!(!module_enables_chirho(
+            &["LANGUAGE NoRoleAnnotations, GHC2024"],
+            "RoleAnnotations"
         ));
     }
 

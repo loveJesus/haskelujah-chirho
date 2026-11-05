@@ -46,8 +46,8 @@ use crate::validity_chirho::declarations_chirho::{
 
 use method_roles_chirho::blocked_method_position_chirho;
 pub use parameter_roles_chirho::{
-    ParameterRoleChirho, ParameterRolesChirho, local_parameter_roles_chirho,
-    local_type_families_chirho,
+    ParameterRoleChirho, ParameterRolesChirho, local_class_roles_chirho,
+    local_parameter_roles_chirho, local_type_families_chirho,
 };
 
 /// A typing proof that every method of one class has one representation at one newtype and

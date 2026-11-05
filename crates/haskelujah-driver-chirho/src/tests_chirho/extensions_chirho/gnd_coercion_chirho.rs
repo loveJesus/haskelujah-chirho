@@ -276,8 +276,8 @@ fn gnd_p2_parametric_user_dictionary_chirho() {
 }
 
 /// S1 (#31851): a written `ParentChirho (BoxChirho a)` is the GND `ChildChirho (BoxChirho a)`'s
-/// superclass, never `ParentChirho Int`. GHC 9.14.1 is predicted to print `written`; root's
-/// measurement is pending. sha256 a2db4c2a0fbcaaf17902d6b4aa0390dac821d71708c4986dbedf9f5ce6245b22.
+/// superclass, never `ParentChirho Int`. GHC 9.14.1 prints `written` (root's
+/// gnd-superclass-r1-chirho, #31854). sha256 a2db4c2a0fbcaaf17902d6b4aa0390dac821d71708c4986dbedf9f5ce6245b22.
 const PARAMETRIC_WRITTEN_SUPERCLASS_CHIRHO: &str = include_str!(
     "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/parametric_written_superclass_chirho.hs"
 );
@@ -290,6 +290,24 @@ fn gnd_s1_parametric_written_superclass_chirho() {
             PARAMETRIC_WRITTEN_SUPERCLASS_CHIRHO
         ),
         "written\n"
+    );
+}
+
+/// M1 (#31864): direct `show` and `describeChirho` calls at `BoxChirho Int` and `BoxChirho Bool`,
+/// through the parametric GND instances, with no helper. GHC 9.14.1 prints 7, True, integer,
+/// boolean (root's role-surfaces-and-direct-gnd-r1-chirho, #31865). sha256 60e765e782f0c8d3ee13fede12f020f70c622e226bd87f786c61e5a6eb4066dd.
+const DIRECT_PARAMETRIC_GND_METHODS_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/direct_parametric_gnd_methods_chirho.hs"
+);
+
+#[test]
+fn gnd_m1_direct_parametric_gnd_methods_chirho() {
+    assert_eq!(
+        interpreted_chirho(
+            "DirectParametricGndMethodsChirho.hs",
+            DIRECT_PARAMETRIC_GND_METHODS_CHIRHO
+        ),
+        "7\nTrue\ninteger\nboolean\n"
     );
 }
 

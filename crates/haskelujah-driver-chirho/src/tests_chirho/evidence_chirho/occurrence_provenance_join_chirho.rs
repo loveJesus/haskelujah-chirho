@@ -27,6 +27,7 @@ fn identified_record_chirho(
     origin_chirho: Option<OriginIdChirho>,
 ) -> MethodOccurrenceRecordChirho {
     MethodOccurrenceRecordChirho {
+        applied_ty_chirho: None,
         origin_chirho,
         ..record_chirho("show", 0, ty_key_chirho, SpanChirho::DUMMY_CHIRHO)
     }
@@ -61,6 +62,7 @@ fn join_chirho(
         &HashMap::new(),
         &provenance_chirho,
     )
+    .evidence_chirho
 }
 
 fn proof_chirho(key_chirho: &str) -> (String, String) {
@@ -175,6 +177,7 @@ fn legacy_method_join_chirho(
         &HashMap::from([(CoreIdChirho(10), genuine_chirho)]),
         &HashMap::new(),
     )
+    .evidence_chirho
     .remove(&CoreIdChirho(10))
 }
 
@@ -185,6 +188,7 @@ fn an_origin_owned_record_never_reaches_a_legacy_occurrence_by_span_chirho() {
     let mut supply_chirho = OriginSupplyChirho::new_chirho();
     let owner_chirho = supply_chirho.fresh_chirho();
     let joined_chirho = legacy_method_join_chirho(vec![MethodOccurrenceRecordChirho {
+        applied_ty_chirho: None,
         origin_chirho: Some(owner_chirho),
         ..record_chirho("show", 0, "Int", span_chirho(200, 204))
     }]);
@@ -291,6 +295,7 @@ fn join_literal_chirho(
         &HashMap::new(),
         &provenance_map_chirho,
     )
+    .evidence_chirho
     .remove(&CoreIdChirho(10))
 }
 
@@ -388,7 +393,8 @@ fn two_generated_literals_at_one_span_each_take_their_own_evidence_chirho() {
         &literal_spans_chirho,
         &HashMap::new(),
         &provenance_chirho,
-    );
+    )
+    .evidence_chirho;
     assert_eq!(
         joined_chirho.get(&CoreIdChirho(10)),
         Some(&("Num".to_string(), "Double".to_string()))

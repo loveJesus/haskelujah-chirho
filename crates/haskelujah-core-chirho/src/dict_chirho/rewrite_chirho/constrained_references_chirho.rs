@@ -395,6 +395,16 @@ impl DictPassCtxChirho {
             ) {
                 return Some(self_dict_head_chirho);
             }
+            // A ground application of a parametric GND newtype takes the method from the
+            // dictionary its instance's factory builds there (row 694, M1).
+            // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+            if let Some(dispatched_chirho) = self.method_through_factory_chirho(
+                head_id_chirho,
+                class_name_chirho,
+                local_instance_dicts_chirho,
+            ) {
+                return Some(dispatched_chirho);
+            }
             // A literal's wrapper takes the selector form: the simplifier
             // reduces `$sel_Num_fromInteger dict lit` to the literal, which
             // every backend already handles; the prim row is an interpreter
@@ -706,6 +716,61 @@ impl DictPassCtxChirho {
         let (selector_class_chirho, selector_chirho) = self.method_selectors_chirho.get("show")?;
         (selector_class_chirho == "Show").then(|| CoreExprChirho::AppChirho {
             fun_chirho: Box::new(CoreExprChirho::VarChirho(*selector_chirho)),
+            arg_chirho: Box::new(dictionary_chirho),
+        })
+    }
+
+    /// A method occurrence the checker proved at a ground application of a parametric GND
+    /// newtype (`describeChirho (BoxChirho True)`, row 694, M1): the method's selector applied
+    /// to the dictionary that instance's factory builds at the proved arguments, the route
+    /// `print` takes too. The instance's own rows take its context first and never serve such
+    /// an occurrence, and a factory that cannot build the dictionary refuses the use when the
+    /// module compiles (`missing_dictionary_chirho`). `None` for every other occurrence; one
+    /// at a type with variables is the separate non-ground limit.
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+    pub(super) fn method_through_factory_chirho(
+        &self,
+        occurrence_id_chirho: CoreIdChirho,
+        class_name_chirho: &str,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        let applied_chirho = self
+            .occurrence_applied_tys_chirho
+            .get(&occurrence_id_chirho)?;
+        let (TyChirho::ConChirho(newtype_chirho), _arguments_chirho) =
+            type_application_spine_chirho(applied_chirho)
+        else {
+            return None;
+        };
+        if !self
+            .gnd_parametric_chirho
+            .contains(&(class_name_chirho.to_string(), newtype_chirho.clone()))
+        {
+            return None;
+        }
+        let (_method_name_chirho, canonical_id_chirho) = self
+            .method_occurrence_canon_chirho
+            .get(&occurrence_id_chirho)?;
+        let (selector_class_chirho, selector_chirho) = self
+            .class_method_selector_for_name_chirho(self.names_chirho.get(canonical_id_chirho)?)?;
+        if selector_class_chirho != class_name_chirho {
+            return None;
+        }
+        let dictionary_chirho = self
+            .conditional_dictionary_chirho(
+                class_name_chirho,
+                applied_chirho,
+                local_instance_dicts_chirho,
+            )
+            .unwrap_or_else(|| {
+                self.missing_dictionary_chirho(
+                    class_name_chirho,
+                    Some(newtype_chirho.as_str()),
+                    *canonical_id_chirho,
+                )
+            });
+        Some(CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(selector_chirho)),
             arg_chirho: Box::new(dictionary_chirho),
         })
     }

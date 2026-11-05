@@ -58,6 +58,8 @@ const PARAMETRIC_USER_DICTIONARY_CHIRHO: &str =
     include_str!("gnd_methods_chirho/parametric_user_dictionary_chirho.hs");
 const PARAMETRIC_WRITTEN_SUPERCLASS_CHIRHO: &str =
     include_str!("gnd_methods_chirho/parametric_written_superclass_chirho.hs");
+const DIRECT_PARAMETRIC_GND_METHODS_CHIRHO: &str =
+    include_str!("gnd_methods_chirho/direct_parametric_gnd_methods_chirho.hs");
 
 #[test]
 fn deriving_newtype_show_prints_the_representation_everywhere_chirho() {
@@ -191,11 +193,21 @@ fn a_parametric_gnd_user_dictionary_takes_each_argument_everywhere_chirho() {
 
 #[test]
 fn a_parametric_gnd_dictionary_holds_the_newtypes_own_superclass_everywhere_chirho() {
-    // S1 (#31851): GHC 9.14.1 is predicted to print `written`; root's measurement is pending.
+    // S1 (#31851): GHC 9.14.1 prints `written` (gnd-superclass-r1-chirho, #31854).
     assert_prints_everywhere_chirho(
         "ParametricWrittenSuperclassChirho.hs",
         PARAMETRIC_WRITTEN_SUPERCLASS_CHIRHO,
         "written\n",
+    );
+}
+
+#[test]
+fn direct_parametric_gnd_methods_take_each_argument_everywhere_chirho() {
+    // M1 (#31864): GHC 9.14.1 prints these (role-surfaces-and-direct-gnd-r1-chirho, #31865).
+    assert_prints_everywhere_chirho(
+        "DirectParametricGndMethodsChirho.hs",
+        DIRECT_PARAMETRIC_GND_METHODS_CHIRHO,
+        "7\nTrue\ninteger\nboolean\n",
     );
 }
 

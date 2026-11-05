@@ -14,7 +14,7 @@ flowchart TD
     cst_chirho["CST data_decls_chirho.rs: any number of deriving clauses; a strategy is stock or anyclass (identifiers) or the newtype keyword token"]
     cst_chirho --> lower_chirho["Lowering deriving_clauses_chirho.rs: each entry through the flat type lowering, one DerivedClassChirho per class with its written arguments and its clause's DerivingStrategyChirho; via clauses stay in deriving_via_chirho"]
     standalone_chirho["CST and lowering: deriving [strategy] instance; StandaloneDerivingDeclChirho.strategy_chirho; the head's last type is the derived one, the types before it the class's arguments"]
-    pragmas_chirho["Parser module_extensions_chirho: each written flag after every edition; GHC2024 adds DerivingStrategies"] --> policy_chirho["extension_policy_chirho.rs DerivingExtensionsChirho"]
+    pragmas_chirho["Parser module_extensions_chirho: the last edition's flags, then each written flag; GHC2024 adds DerivingStrategies and RoleAnnotations"] --> policy_chirho["extension_policy_chirho.rs DerivingExtensionsChirho"]
     policy_chirho --> validity_chirho
     policy_chirho --> route_chirho
     scope_chirho --> identity_chirho["stock_identity_chirho.rs StockIdentityChirho: an explicit stock takes a generator only on K01's proof; an unwritten strategy keeps the legacy route, which takes a written name K01 cannot judge; a spelling the module declares itself is never a builtin stock class"]
@@ -42,8 +42,8 @@ flowchart TD
     eligible_chirho --> alias_chirho["generate_gnd_dicts_chirho, a worklist: with typing's proof, each method is the representation's real row, or its dictionary's field, building a conditional [E] dictionary once E's context exists; a desugar default row is replaced in place behind its leading context dictionaries; the dictionary's fields are the methods; a stub, a written row or an unbuildable dictionary is Unsupported"]
     alias_chirho --> refuse_chirho["compile_backend: DictPassResultChirho.unsupported_chirho refuses the module"]
     eligible_chirho --> parametric_chirho["generate_parametric_gnd_factories_chirho: C (N a) gets a factory over its context dictionaries, registered in conditional_dicts_chirho with the head's formal binders"]
-    evidence_chirho["Typing applied_evidence_chirho.rs: a reference's evidence carries its ground applied type (BoxChirho Int)"] --> use_chirho
-    parametric_chirho --> use_chirho["conditional_dictionary_chirho at a reference or print: the factory applied to its context, instantiated at the proved arguments; else Unsupported"]
+    evidence_chirho["Typing applied_evidence_chirho.rs: a reference's evidence and a method occurrence's record carry its ground applied type (BoxChirho Int); the driver's occurrence join keeps it for the record that proves the occurrence"] --> use_chirho
+    parametric_chirho --> use_chirho["conditional_dictionary_chirho at a reference, print or a direct method occurrence (method_through_factory_chirho): the factory applied to its context, instantiated at the proved arguments; else refused by name"]
     use_chirho --> refuse_chirho
     info_chirho --> erase_chirho["compile_backend_chirho: erase_newtype_constructors_chirho on those newtypes' constructors before simplification"]
     erase_chirho --> merge_chirho["Native merge: the union of every module's erased set, refusing a spelling another module declares as a constructor"]
@@ -109,7 +109,10 @@ flowchart TD
   evidence carries a ground applied type (`BoxChirho Int`, never parsed from a key) gets the
   factory applied to the context instantiated at those arguments: the registry's dictionary,
   or another factory's. `print` takes `show` from that dictionary instead of the generic
-  `showInt#` fallback. A use the factory cannot serve is refused when the module compiles.
+  `showInt#` fallback, and a direct method occurrence the checker proved at a ground
+  application (`describeChirho (BoxChirho True)`, M1) takes its selector over that dictionary
+  before any row: the instance's own rows wait for a context. A use the factory cannot serve
+  is refused when the module compiles.
 - The alias loop requires typing's proof and never aliases a generated missing-method stub.
   A representation's method is its real row, or its dictionary's field; for a list
   representation whose class instance is conditional, the existing list machinery builds the
@@ -129,9 +132,10 @@ flowchart TD
 
 ## Residuals
 
-- A parametric GND dictionary at a non-ground application (a rigid variable's) and a direct
-  method occurrence at one (`show (BoxChirho 7)`, keyed only by its head) are not served yet;
-  the first is refused at compile time.
+- A parametric GND dictionary at a non-ground application (a rigid variable's) is not served
+  yet: a reference that needs one is refused at compile time, and a direct method occurrence
+  at one (`describeChirho` inside `f :: DescribeChirho a => BoxChirho a -> String`) keeps the
+  head-keyed route, the separately named non-ground limit.
 - An H98 context written without `forall` (`data T a = Eq a => MkT a`) is not parsed as a
   context; GADT signatures and roles of imported types are Unknown, not read.
 

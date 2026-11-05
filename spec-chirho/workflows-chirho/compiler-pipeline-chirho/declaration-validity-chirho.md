@@ -42,21 +42,37 @@ flowchart TD
 7. to 16. Deriving strategies, the extensions they need and the classes they derive
    (`deriving_strategy_chirho.rs`, row 694; see `deriving-strategies-chirho.md`).
 17. A role annotation writes only `nominal`, `representational`, `phantom` or `_`
-    (`GHC-09009`, a parse error in GHC). An annotation with an unknown word is judged no
-    further.
-18. A role annotation lists one role per visible parameter of its data or newtype
+    (`GHC-09009`, a parse error in GHC). One unknown word anywhere stops every later rule.
+18. A role annotation lists one role per visible parameter of its data type, newtype or class
     (`GHC-54298`). One that does not is judged no further, and role inference ignores it, as
     GHC's does.
 19. Each written role is at least the role inference proves for its parameter
     (`GHC-29178`). Inference starts from the written role and only raises it, so a written
     role below the final one is contradicted by the declarations. Against a role the module
     cannot prove (Unknown: an imported or qualified constructor, a synonym, a GADT) the
-    annotation is a named Unsupported gap, never GHC's mismatch.
+    annotation is a named Unsupported gap, never GHC's mismatch. A class's parameters start
+    nominal unless written otherwise, and then its superclasses, methods and associated
+    families raise them (`local_class_roles_chirho`, GHC's `irClass`).
+20. A type takes one role annotation (`GHC-97170`, reported at the repeat).
+21. The target is a type or class this module declares: a data type, newtype, class,
+    synonym or family (`GHC-44432` for an undeclared or an imported one). A qualified
+    target is a named Unsupported gap. Rules 20 and 21 are GHC's renamer: an error in
+    either stops rules 18, 19 and 22 to 24.
+22. The module has RoleAnnotations (`GHC-17779`), and the other rules still run. GHC2024
+    implies it, GHC2021 does not, and only the last edition counts (`GHC2024` then
+    `GHC2021` is GHC2021).
+23. A synonym or a type family takes no roles (`GHC-77192`). An associated family's
+    annotation is a named Unsupported gap: no measurement covers it.
+24. A class parameter's final role is nominal unless IncoherentInstances is on
+    (`GHC-18273`). Against an Unknown final role it is a named Unsupported gap.
 
-Rules 17 to 19 judge every annotation, whether or not a GND request reads its roles, on the
-`DeclChirho::RoleAnnotationDeclChirho` lowering keeps with every word as written. Lowering
-never rewrites an annotation. root measured all three refusals and the representational twin
-with GHC 9.14.1 (`role-annotation-r1-chirho`, #31844).
+Rules 17 to 24 judge every annotation, whether or not a GND request reads its roles, on the
+`DeclChirho::RoleAnnotationDeclChirho` lowering keeps with every word as written, an
+operator target in parentheses (`(:-)`) and a qualified one included. Lowering never
+rewrites an annotation. root measured RA1 to RA4 with GHC 9.14.1
+(`role-annotation-r1-chirho`, #31844) and RX1 to RX9, Claude's role surfaces
+(`role-surfaces-and-direct-gnd-r1-chirho`, #31865): every refusal above and the GHC2024 and
+nominal-class twins, which print 8.
 
 Rule 4 depends on lowering reading the whole class body. `collect_instance_methods_chirho`
 ends its walk at the first non-method member after a method, a defence against sibling
@@ -96,9 +112,8 @@ resolution keeps GHC's order: a renamer error is reported before a validity erro
   (`spec-chirho/bug-existential-constructor-scope-dropped-chirho.md`).
 - Special-class instances, deriving eligibility and the DatatypeContexts head name are
   outside this phase.
-- A role annotation naming no data or newtype of the module (a synonym, a class, a family, an
-  undeclared name), a repeated annotation and a module without RoleAnnotations are not judged
-  yet. GHC rejects them, with codes still to be measured.
+- An associated family's role annotation and a qualified target are refused as named gaps,
+  not judged: no GHC measurement covers them.
 
 ## Controls
 

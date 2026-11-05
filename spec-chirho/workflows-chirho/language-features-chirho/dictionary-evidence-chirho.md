@@ -20,10 +20,10 @@ flowchart TD
     desugar_chirho[Desugar: literal becomes App fromInteger-occurrence lit]
     desugar_chirho --> prov_chirho[record_occurrence_provenance_chirho: occurrence id → the literal's origin and role]
     desugar_chirho --> spans_chirho[record_literal_occurrence_chirho: occurrence id → literal span, for literals with no origin]
-    result_chirho --> join_chirho[join_occurrence_evidence_chirho: by origin first, then span, then the per-name ordinal join]
+    result_chirho --> join_chirho[join_occurrence_evidence_chirho: by origin first, then span, then the per-name ordinal join; each occurrence also keeps the ground applied type its proving record resolved to, BoxChirho Int, row 694]
     prov_chirho --> join_chirho
     spans_chirho --> join_chirho
-    join_chirho --> pass_chirho[Dictionary pass at every occurrence entry, occurrence_head_replacement_chirho and try_rewrite_method_var_chirho: prim row, an Eq/Ord proven list key's dispatch, or keyed selector from the record]
+    join_chirho --> pass_chirho[Dictionary pass at every occurrence entry, occurrence_head_replacement_chirho and try_rewrite_method_var_chirho: a parametric GND factory's dictionary at the applied type, then prim row, an Eq/Ord proven list key's dispatch, or keyed selector from the record]
     pass_chirho --> stg_chirho[STG: the literal's fromInteger has its dictionary]
 ```
 
