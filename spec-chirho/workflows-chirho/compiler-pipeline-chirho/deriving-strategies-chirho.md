@@ -33,7 +33,8 @@ flowchart TD
     inventory_chirho --> info_chirho["Driver build_newtype_info_chirho, with the module's real K01 scope: NewtypeInfoChirho.newtype_derived_classes_chirho"]
     roles_annotation_chirho["Lowering role_annotations_chirho.rs: type role T r.. onto T's parameters"] --> roles_chirho["parameter_roles_chirho.rs: each local parameter's role (phantom < representational < Unknown < nominal), a least fixed point with annotations as floors"]
     prefix_lower_chirho["Lowering con_prefixes_chirho.rs: an H98 constructor's forall binders and context onto ConPrefixChirho, or unread"] --> roles_chirho
-    inventory_chirho --> proof_chirho["Typing gnd_coercion_chirho (after inference): every method's class parameter in a representational position, or GHC-18872 / a named Unsupported gap"]
+    inventory_chirho --> authority_chirho["class_authority_chirho.rs: the spelling names the module's own class, or a K01 builtin the module does not shadow whose entry is the compiler's seed; else a named Unsupported gap"]
+    authority_chirho --> proof_chirho["Typing gnd_coercion_chirho (after inference): every method's class parameter in a representational position, or GHC-18872 / a named Unsupported gap"]
     roles_chirho --> proof_chirho
     proof_chirho --> info_chirho
     info_chirho --> eligible_chirho["Dict pass newtype_dicts_chirho.rs takes_representation_dictionary_chirho: the declaration is the only proof"]
@@ -113,6 +114,13 @@ flowchart TD
   application (`describeChirho (BoxChirho True)`, M1) takes its selector over that dictionary
   before any row: the instance's own rows wait for a context. A use the factory cannot serve
   is refused when the module compiles.
+- A GND proof judges the class-environment entry only when the written spelling names it
+  (#31891). Inference keys classes by bare text, so `F.WrapChirho` beside a local `WrapChirho`
+  would read the local class, and the module-sources path carries the previous module's whole
+  environment, builtins included. The spelling names the module's own class (unqualified or
+  own-qualified, declared here), or a builtin K01 proves that the module does not shadow and
+  whose entry's parameters and method schemes equal the compiler's seed. Anything else, an
+  imported user class included, is a named Unsupported gap, never GHC's verdict.
 - The alias loop requires typing's proof and never aliases a generated missing-method stub.
   A representation's method is its real row, or its dictionary's field; for a list
   representation whose class instance is conditional, the existing list machinery builds the

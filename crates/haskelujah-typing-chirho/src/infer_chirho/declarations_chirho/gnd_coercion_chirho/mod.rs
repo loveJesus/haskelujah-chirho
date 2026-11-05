@@ -25,6 +25,7 @@
 //! A method that never mentions the class parameter needs no proof of it (R4).
 //! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
+mod class_authority_chirho;
 mod method_roles_chirho;
 mod parameter_roles_chirho;
 
@@ -40,10 +41,12 @@ use haskelujah_diagnostics_chirho::DiagnosticBundleChirho;
 
 use crate::class_chirho::ClassEnvChirho;
 use crate::deriving_chirho::GndRequestChirho;
+use crate::deriving_chirho::stock_identity_chirho::StockIdentityChirho;
 use crate::validity_chirho::declarations_chirho::{
     DeclarationErrorChirho, UNSUPPORTED_SHAPE_CHIRHO, declaration_error_diagnostics_chirho,
 };
 
+use class_authority_chirho::class_authority_gap_chirho;
 use method_roles_chirho::blocked_method_position_chirho;
 pub use parameter_roles_chirho::{
     ParameterRoleChirho, ParameterRolesChirho, local_class_roles_chirho,
@@ -97,9 +100,24 @@ pub fn prove_gnd_coercions_chirho(
     let roles_chirho = local_parameter_roles_chirho(module_chirho);
     let families_chirho = local_type_families_chirho(module_chirho);
     let associated_chirho = associated_families_chirho(module_chirho);
+    let identity_chirho =
+        StockIdentityChirho::of_module_chirho(module_chirho, builtin_classes_chirho);
+    let mut seeded_chirho = ClassEnvChirho::new_chirho();
+    seeded_chirho.seed_standard_chirho();
     let mut proofs_chirho = Vec::new();
     let mut errors_chirho = Vec::new();
     for request_chirho in &requests_chirho {
+        // The entry a proof judges must be the class the spelling names, never a local or
+        // carried homonym under the same bare text (#31891).
+        if let Some(gap_chirho) = class_authority_gap_chirho(
+            &request_chirho.class_chirho,
+            &identity_chirho,
+            class_env_chirho,
+            &seeded_chirho,
+        ) {
+            errors_chirho.push(unsupported_request_chirho(request_chirho, gap_chirho));
+            continue;
+        }
         match prove_request_chirho(
             request_chirho,
             class_env_chirho,
@@ -148,7 +166,25 @@ struct RoleAuthorityChirho<'a> {
     families_chirho: &'a HashSet<String>,
 }
 
-/// The proof for one requested instance, or the refusal at its class.
+/// The named gap for one requested instance, at its class.
+fn unsupported_request_chirho(
+    request_chirho: &GndRequestChirho,
+    reason_chirho: String,
+) -> DeclarationErrorChirho {
+    DeclarationErrorChirho {
+        ghc_code_chirho: UNSUPPORTED_SHAPE_CHIRHO,
+        message_chirho: format!(
+            "Deriving `{} {}` through the newtype strategy is not supported yet: {reason_chirho}",
+            request_chirho.class_chirho.text_chirho(),
+            request_chirho.newtype_chirho
+        ),
+        span_chirho: request_chirho.class_chirho.span_chirho(),
+        related_span_chirho: None,
+    }
+}
+
+/// The proof for one requested instance, or the refusal at its class. The class environment's
+/// entry under the spelling's bare text is the class it names (`class_authority_gap_chirho`).
 fn prove_request_chirho(
     request_chirho: &GndRequestChirho,
     class_env_chirho: &ClassEnvChirho,
@@ -157,14 +193,8 @@ fn prove_request_chirho(
 ) -> Result<GndCoercionProofChirho, DeclarationErrorChirho> {
     let class_text_chirho = request_chirho.class_chirho.text_chirho();
     let head_chirho = format!("`{class_text_chirho} {}`", request_chirho.newtype_chirho);
-    let unsupported_chirho = |reason_chirho: String| DeclarationErrorChirho {
-        ghc_code_chirho: UNSUPPORTED_SHAPE_CHIRHO,
-        message_chirho: format!(
-            "Deriving {head_chirho} through the newtype strategy is not supported yet: {reason_chirho}"
-        ),
-        span_chirho: request_chirho.class_chirho.span_chirho(),
-        related_span_chirho: None,
-    };
+    let unsupported_chirho =
+        |reason_chirho: String| unsupported_request_chirho(request_chirho, reason_chirho);
     let Some(class_decl_chirho) = class_env_chirho.classes_chirho.get(class_text_chirho) else {
         return Err(unsupported_chirho(
             "the checker knows no such class".to_string(),

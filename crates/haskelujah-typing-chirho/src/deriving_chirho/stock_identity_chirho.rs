@@ -109,6 +109,12 @@ impl<'a> StockIdentityChirho<'a> {
             && self.local_types_chirho.contains(class_chirho.text_chirho())
     }
 
+    /// Whether the module declares a type-namespace name of this bare text, which then holds
+    /// that name in the checker's environments (row 694, #31891).
+    pub(crate) fn declares_type_name_chirho(&self, text_chirho: &str) -> bool {
+        self.local_types_chirho.contains(text_chirho)
+    }
+
     /// Whether K01 proved that `class_chirho`'s full spelling names a builtin class, stock
     /// derivable or not.
     pub(crate) fn proves_builtin_chirho(&self, class_chirho: &NameChirho) -> bool {
