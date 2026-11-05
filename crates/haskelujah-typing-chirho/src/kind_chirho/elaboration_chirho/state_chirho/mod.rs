@@ -558,22 +558,32 @@ impl ElaborationStateChirho {
             TyChirho::ForallVarChirho(name_chirho) => {
                 TyChirho::ForallVarChirho(self.name_chirho(name_chirho, span_chirho)?)
             }
-            TyChirho::AppChirho(fun_chirho, arg_chirho) => TyChirho::AppChirho(
-                Box::new(self.resolve_depth_chirho(
+            TyChirho::AppChirho(fun_chirho, arg_chirho) => {
+                let fun_chirho = self.resolve_depth_chirho(
                     fun_chirho,
                     span_chirho,
                     depth_chirho + 1,
                     active_chirho,
                     bound_chirho,
-                )?),
-                Box::new(self.resolve_depth_chirho(
+                )?;
+                let arg_chirho = self.resolve_depth_chirho(
                     arg_chirho,
                     span_chirho,
                     depth_chirho + 1,
                     active_chirho,
                     bound_chirho,
-                )?),
-            ),
+                )?;
+                if let Some(key_chirho) =
+                    crate::ty_chirho::representation_chirho::folded_universe_key_chirho(
+                        &fun_chirho,
+                        &arg_chirho,
+                    )
+                {
+                    TyChirho::ConChirho(self.name_chirho(key_chirho, span_chirho)?)
+                } else {
+                    TyChirho::AppChirho(Box::new(fun_chirho), Box::new(arg_chirho))
+                }
+            }
             TyChirho::FunChirho(arg_chirho, res_chirho, mult_chirho) => TyChirho::FunChirho(
                 Box::new(self.resolve_depth_chirho(
                     arg_chirho,
@@ -696,6 +706,17 @@ impl ElaborationStateChirho {
             let left_chirho = self.resolve_chirho(&left_chirho, span_chirho)?;
             let right_chirho = self.resolve_chirho(&right_chirho, span_chirho)?;
             if left_chirho == right_chirho {
+                continue;
+            }
+            if let Some((representation_chirho, lifted_chirho)) =
+                crate::ty_chirho::representation_chirho::lifted_representation_equation_chirho(
+                    &left_chirho,
+                    &right_chirho,
+                )
+            {
+                let representation_chirho = self.copy_chirho(representation_chirho, span_chirho)?;
+                let lifted_chirho = self.copy_chirho(lifted_chirho, span_chirho)?;
+                pending_chirho.push((representation_chirho, lifted_chirho));
                 continue;
             }
             match (left_chirho, right_chirho) {

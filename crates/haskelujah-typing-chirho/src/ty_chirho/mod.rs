@@ -12,6 +12,7 @@ use std::fmt;
 
 pub mod declaration_syntax_chirho;
 pub mod declarations_chirho;
+pub(crate) mod representation_chirho;
 
 /// Multiplicity for LinearTypes: tracks whether a function arrow is linear or unrestricted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

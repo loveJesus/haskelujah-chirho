@@ -19,14 +19,7 @@ fn promoted_representation_term_chirho(name_chirho: &str) -> TyChirho {
 }
 
 fn boxed_representation_term_chirho(lifted_chirho: bool) -> TyChirho {
-    TyChirho::AppChirho(
-        Box::new(promoted_representation_term_chirho("BoxedRep")),
-        Box::new(promoted_representation_term_chirho(if lifted_chirho {
-            "Lifted"
-        } else {
-            "Unlifted"
-        })),
-    )
+    crate::ty_chirho::representation_chirho::boxed_representation_chirho(lifted_chirho).clone()
 }
 
 fn zero_bit_representation_term_chirho() -> TyChirho {

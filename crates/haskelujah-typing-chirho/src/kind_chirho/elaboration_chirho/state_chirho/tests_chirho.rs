@@ -275,3 +275,131 @@ fn qualified_term_homonym_cannot_acquire_a_lexical_type_proof_chirho() {
         }
     }
 }
+
+fn runtime_type_chirho(representation_chirho: TyChirho) -> TyChirho {
+    TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho(
+            haskelujah_ast_chirho::name_chirho::CompilerRepresentationChirho::RuntimeTypeChirho
+                .type_key_chirho()
+                .to_owned(),
+        )),
+        Box::new(representation_chirho),
+    )
+}
+
+#[test]
+fn lifted_equation_uses_the_existing_state_link_and_normalizer_chirho() {
+    let mut state_chirho = ElaborationStateChirho::new_chirho().unwrap();
+    let variable_chirho = state_chirho
+        .fresh_chirho(None, SpanChirho::DUMMY_CHIRHO)
+        .unwrap();
+    state_chirho
+        .begin_inference_links_chirho(SpanChirho::DUMMY_CHIRHO)
+        .unwrap();
+    let application_chirho = runtime_type_chirho(TyChirho::VarChirho(variable_chirho));
+    state_chirho
+        .unify_chirho(
+            &application_chirho,
+            &ElaborationStateChirho::type_universe_chirho(),
+            SpanChirho::DUMMY_CHIRHO,
+        )
+        .unwrap();
+    let links_chirho = state_chirho
+        .finish_inference_links_chirho(SpanChirho::DUMMY_CHIRHO)
+        .unwrap();
+    assert_eq!(
+        links_chirho.lookup_chirho(&variable_chirho),
+        Some(crate::ty_chirho::representation_chirho::boxed_representation_chirho(true))
+    );
+    assert_eq!(
+        state_chirho
+            .resolve_chirho(&application_chirho, SpanChirho::DUMMY_CHIRHO)
+            .unwrap(),
+        ElaborationStateChirho::type_universe_chirho()
+    );
+}
+
+#[test]
+fn representation_equation_preserves_rigidity_and_restores_its_scope_chirho() {
+    let mut state_chirho = ElaborationStateChirho::new_chirho().unwrap();
+    let variable_chirho = state_chirho
+        .fresh_chirho(None, SpanChirho::DUMMY_CHIRHO)
+        .unwrap();
+    let application_chirho = runtime_type_chirho(TyChirho::VarChirho(variable_chirho));
+    let error_chirho = state_chirho
+        .check_rigid_chirho(
+            &application_chirho,
+            &ElaborationStateChirho::type_universe_chirho(),
+            &[variable_chirho],
+            SpanChirho::DUMMY_CHIRHO,
+        )
+        .unwrap_err();
+    assert!(error_chirho.mismatch_chirho.is_some());
+    assert!(
+        state_chirho
+            .substitution_chirho
+            .lookup_chirho(&variable_chirho)
+            .is_none()
+    );
+    assert!(state_chirho.rigid_variables_chirho.is_empty());
+    state_chirho
+        .unify_chirho(
+            &application_chirho,
+            &ElaborationStateChirho::type_universe_chirho(),
+            SpanChirho::DUMMY_CHIRHO,
+        )
+        .unwrap();
+}
+
+#[test]
+fn representation_normalization_preserves_unlifted_and_opaque_terms_chirho() {
+    let mut state_chirho = ElaborationStateChirho::new_chirho().unwrap();
+    let unlifted_chirho = runtime_type_chirho(
+        crate::ty_chirho::representation_chirho::boxed_representation_chirho(false).clone(),
+    );
+    let opaque_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho("TYPE".into())),
+        Box::new(
+            crate::ty_chirho::representation_chirho::boxed_representation_chirho(true).clone(),
+        ),
+    );
+    for term_chirho in [unlifted_chirho, opaque_chirho] {
+        assert_eq!(
+            state_chirho
+                .resolve_chirho(&term_chirho, SpanChirho::DUMMY_CHIRHO)
+                .unwrap(),
+            term_chirho
+        );
+        assert!(
+            state_chirho
+                .unify_chirho(
+                    &term_chirho,
+                    &ElaborationStateChirho::type_universe_chirho(),
+                    SpanChirho::DUMMY_CHIRHO
+                )
+                .is_err()
+        );
+    }
+}
+
+#[test]
+fn representation_normalization_exhaustion_stays_terminal_chirho() {
+    let mut state_chirho = ElaborationStateChirho::new_chirho().unwrap();
+    let term_chirho = runtime_type_chirho(
+        crate::ty_chirho::representation_chirho::boxed_representation_chirho(true).clone(),
+    );
+    state_chirho.output_left_chirho = 0;
+    let error_chirho = state_chirho
+        .resolve_chirho(&term_chirho, SpanChirho::DUMMY_CHIRHO)
+        .unwrap_err();
+    assert_eq!(state_chirho.failure_chirho(), Some(&error_chirho));
+    assert_eq!(
+        state_chirho
+            .resolve_chirho(
+                &ElaborationStateChirho::type_universe_chirho(),
+                SpanChirho::DUMMY_CHIRHO
+            )
+            .unwrap_err(),
+        error_chirho
+    );
+}

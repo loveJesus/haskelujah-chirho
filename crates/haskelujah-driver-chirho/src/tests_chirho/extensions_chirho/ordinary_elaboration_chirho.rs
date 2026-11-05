@@ -816,3 +816,103 @@ fn returned_sigma_publishes_its_original_visibility_chirho() {
         ]
     );
 }
+
+#[test]
+fn representation_normalization_liftedtypeequalitychirho_chirho() {
+    frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/representation_chirho/LiftedTypeEqualityChirho.hs"
+    ))
+    .expect("fresh GHC-positive representation equality checks");
+}
+
+#[test]
+fn representation_normalization_liftedconstraintequalitychirho_chirho() {
+    frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/representation_chirho/LiftedConstraintEqualityChirho.hs"
+    ))
+    .expect("fresh GHC-positive representation equality checks");
+}
+
+#[test]
+fn representation_normalization_unliftedtypedifferentchirho_chirho() {
+    let error_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/representation_chirho/UnliftedTypeDifferentChirho.hs"
+    ))
+    .err()
+    .expect("fresh GHC-negative representation distinction rejects");
+    assert!(error_chirho.contains("error[E"), "{error_chirho}");
+}
+
+#[test]
+fn representation_normalization_sourcetypeopaquechirho_chirho() {
+    let error_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/representation_chirho/SourceTypeOpaqueChirho.hs"
+    ))
+    .err()
+    .expect("fresh GHC-negative representation distinction rejects");
+    assert!(error_chirho.contains("error[E"), "{error_chirho}");
+}
+
+#[test]
+fn representation_normalization_liftedvtachirho_chirho() {
+    frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/representation_chirho/LiftedVtaChirho.hs"
+    ))
+    .expect("fresh GHC-positive representation equality checks");
+}
+
+#[test]
+fn representation_normalization_unliftedvtawrongchirho_chirho() {
+    let error_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/representation_chirho/UnliftedVtaWrongChirho.hs"
+    ))
+    .err()
+    .expect("fresh GHC-negative representation distinction rejects");
+    assert!(error_chirho.contains("error[E"), "{error_chirho}");
+}
+
+#[test]
+fn representation_normalization_rigidrepequalitywrongchirho_chirho() {
+    let error_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/representation_chirho/RigidRepEqualityWrongChirho.hs"
+    ))
+    .err()
+    .expect("fresh GHC-negative representation distinction rejects");
+    assert!(error_chirho.contains("error[E"), "{error_chirho}");
+}
+
+#[test]
+fn representation_normalization_compatibleliftedinstanceschirho_chirho() {
+    frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/representation_chirho/CompatibleLiftedInstancesChirho.hs"
+    ))
+    .expect("fresh GHC-positive family normalization checks");
+}
+
+#[test]
+fn representation_normalization_conflictingliftedinstanceschirho_chirho() {
+    let error_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/representation_chirho/ConflictingLiftedInstancesChirho.hs"
+    ))
+    .err()
+    .expect("fresh GHC-negative family normalization rejects");
+    assert!(error_chirho.contains("error[E"), "{error_chirho}");
+}
+
+#[test]
+fn representation_normalization_closedliftedreductionchirho_chirho() {
+    frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/representation_chirho/ClosedLiftedReductionChirho.hs"
+    ))
+    .expect("fresh GHC-positive family normalization checks");
+}
+
+#[test]
+fn representation_normalization_closedliftedwrongresultchirho_chirho() {
+    let error_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/representation_chirho/ClosedLiftedWrongResultChirho.hs"
+    ))
+    .err()
+    .expect("fresh GHC-negative family normalization rejects");
+    assert!(error_chirho.contains("error[E"), "{error_chirho}");
+}

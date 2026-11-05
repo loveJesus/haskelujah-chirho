@@ -261,7 +261,20 @@ impl SynonymExpansionChirho<'_, '_> {
                         reduced_chirho
                     } else {
                         self.budget_chirho.node_chirho(1)?;
-                        TyChirho::AppChirho(Box::new(expanded_chirho), Box::new(argument_chirho))
+                        if let Some(key_chirho) =
+                            crate::ty_chirho::representation_chirho::folded_universe_key_chirho(
+                                &expanded_chirho,
+                                &argument_chirho,
+                            )
+                        {
+                            self.budget_chirho.node_chirho(key_chirho.len())?;
+                            TyChirho::ConChirho(key_chirho.to_owned())
+                        } else {
+                            TyChirho::AppChirho(
+                                Box::new(expanded_chirho),
+                                Box::new(argument_chirho),
+                            )
+                        }
                     };
                 }
                 return Some(expanded_chirho);
@@ -297,16 +310,23 @@ impl SynonymExpansionChirho<'_, '_> {
                 )?;
                 for argument_chirho in &arguments_chirho[parameters_chirho.len()..] {
                     self.budget_chirho.node_chirho(1)?;
-                    expanded_chirho = TyChirho::AppChirho(
-                        Box::new(expanded_chirho),
-                        Box::new(self.walk_chirho(
-                            argument_chirho,
-                            bindings_chirho,
-                            bound_chirho,
-                            rename_chirho,
-                            depth_chirho + 1,
-                        )?),
-                    );
+                    let argument_chirho = self.walk_chirho(
+                        argument_chirho,
+                        bindings_chirho,
+                        bound_chirho,
+                        rename_chirho,
+                        depth_chirho + 1,
+                    )?;
+                    expanded_chirho = if let Some(key_chirho) =
+                        crate::ty_chirho::representation_chirho::folded_universe_key_chirho(
+                            &expanded_chirho,
+                            &argument_chirho,
+                        ) {
+                        self.budget_chirho.node_chirho(key_chirho.len())?;
+                        TyChirho::ConChirho(key_chirho.to_owned())
+                    } else {
+                        TyChirho::AppChirho(Box::new(expanded_chirho), Box::new(argument_chirho))
+                    };
                 }
                 return Some(expanded_chirho);
             }
@@ -349,22 +369,33 @@ impl SynonymExpansionChirho<'_, '_> {
                     TyChirho::ForallVarChirho(name_chirho.clone())
                 }
             }
-            TyChirho::AppChirho(fun_chirho, argument_chirho) => TyChirho::AppChirho(
-                Box::new(self.walk_chirho(
+            TyChirho::AppChirho(fun_chirho, argument_chirho) => {
+                let fun_chirho = self.walk_chirho(
                     fun_chirho,
                     bindings_chirho,
                     bound_chirho,
                     rename_chirho,
                     depth_chirho + 1,
-                )?),
-                Box::new(self.walk_chirho(
+                )?;
+                let argument_chirho = self.walk_chirho(
                     argument_chirho,
                     bindings_chirho,
                     bound_chirho,
                     rename_chirho,
                     depth_chirho + 1,
-                )?),
-            ),
+                )?;
+                if let Some(key_chirho) =
+                    crate::ty_chirho::representation_chirho::folded_universe_key_chirho(
+                        &fun_chirho,
+                        &argument_chirho,
+                    )
+                {
+                    self.budget_chirho.node_chirho(key_chirho.len())?;
+                    TyChirho::ConChirho(key_chirho.to_owned())
+                } else {
+                    TyChirho::AppChirho(Box::new(fun_chirho), Box::new(argument_chirho))
+                }
+            }
             TyChirho::FunChirho(argument_chirho, result_chirho, multiplicity_chirho) => {
                 TyChirho::FunChirho(
                     Box::new(self.walk_chirho(

@@ -272,20 +272,23 @@ impl<ChargeChirho: FnMut(usize, usize) -> Option<()>>
                 (self.charge_chirho)(name_chirho.len(), name_chirho.len())?;
                 term_chirho.clone()
             }
-            TyChirho::AppChirho(left_chirho, right_chirho) => TyChirho::AppChirho(
-                Box::new(self.walk_chirho(
-                    left_chirho,
-                    bound_chirho,
-                    active_chirho,
-                    depth_chirho + 1,
-                )?),
-                Box::new(self.walk_chirho(
-                    right_chirho,
-                    bound_chirho,
-                    active_chirho,
-                    depth_chirho + 1,
-                )?),
-            ),
+            TyChirho::AppChirho(left_chirho, right_chirho) => {
+                let left_chirho =
+                    self.walk_chirho(left_chirho, bound_chirho, active_chirho, depth_chirho + 1)?;
+                let right_chirho =
+                    self.walk_chirho(right_chirho, bound_chirho, active_chirho, depth_chirho + 1)?;
+                if let Some(key_chirho) =
+                    crate::ty_chirho::representation_chirho::folded_universe_key_chirho(
+                        &left_chirho,
+                        &right_chirho,
+                    )
+                {
+                    (self.charge_chirho)(key_chirho.len(), key_chirho.len())?;
+                    TyChirho::ConChirho(key_chirho.to_owned())
+                } else {
+                    TyChirho::AppChirho(Box::new(left_chirho), Box::new(right_chirho))
+                }
+            }
             TyChirho::FunChirho(left_chirho, right_chirho, multiplicity_chirho) => {
                 TyChirho::FunChirho(
                     Box::new(self.walk_chirho(

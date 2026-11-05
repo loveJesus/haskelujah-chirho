@@ -131,6 +131,20 @@ fn unify_with_kind_policy_chirho(
         return Err(UnifyErrorChirho::ResourceExhaustedChirho { span_chirho });
     }
     *work_left_chirho -= 1;
+    if let Some((representation_chirho, lifted_chirho)) =
+        crate::ty_chirho::representation_chirho::lifted_representation_equation_chirho(
+            ty1_chirho, ty2_chirho,
+        )
+    {
+        return unify_with_kind_policy_chirho(
+            representation_chirho,
+            lifted_chirho,
+            span_chirho,
+            strict_kind_chirho,
+            depth_chirho + 1,
+            work_left_chirho,
+        );
+    }
     match (ty1_chirho, ty2_chirho) {
         (
             TyChirho::QualChirho {

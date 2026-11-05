@@ -2,6 +2,86 @@
 
 use super::*;
 
+fn runtime_universe_chirho(constraint_chirho: bool, representation_chirho: TyChirho) -> TyChirho {
+    let head_chirho = if constraint_chirho {
+        haskelujah_ast_chirho::name_chirho::CompilerRepresentationChirho::RuntimeConstraintChirho
+    } else {
+        haskelujah_ast_chirho::name_chirho::CompilerRepresentationChirho::RuntimeTypeChirho
+    };
+    TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho(head_chirho.type_key_chirho().into())),
+        Box::new(representation_chirho),
+    )
+}
+
+#[test]
+fn representation_equations_reach_both_existing_unifier_policies_chirho() {
+    for constraint_chirho in [false, true] {
+        let universe_chirho = TyChirho::ConChirho(
+            if constraint_chirho {
+                "%universe:constraint"
+            } else {
+                "%universe:type"
+            }
+            .into(),
+        );
+        let variable_chirho = TyVarChirho(74);
+        let application_chirho =
+            runtime_universe_chirho(constraint_chirho, TyChirho::VarChirho(variable_chirho));
+        for substitution_chirho in [
+            unify_chirho(
+                &universe_chirho,
+                &application_chirho,
+                SpanChirho::DUMMY_CHIRHO,
+            )
+            .unwrap(),
+            unify_kind_terms_chirho(
+                &application_chirho,
+                &universe_chirho,
+                SpanChirho::DUMMY_CHIRHO,
+            )
+            .unwrap(),
+        ] {
+            assert_eq!(
+                substitution_chirho.lookup_chirho(&variable_chirho),
+                Some(crate::ty_chirho::representation_chirho::boxed_representation_chirho(true))
+            );
+        }
+        let rigid_chirho = runtime_universe_chirho(
+            constraint_chirho,
+            TyChirho::ConChirho("$rigidRepChirho".into()),
+        );
+        assert!(
+            unify_kind_terms_chirho(&universe_chirho, &rigid_chirho, SpanChirho::DUMMY_CHIRHO)
+                .is_err()
+        );
+    }
+}
+
+#[test]
+fn representation_equation_never_identifies_opaque_or_unlifted_heads_chirho() {
+    let universe_chirho = TyChirho::ConChirho("%universe:type".into());
+    let lifted_chirho =
+        crate::ty_chirho::representation_chirho::boxed_representation_chirho(true).clone();
+    for term_chirho in [
+        runtime_universe_chirho(
+            false,
+            crate::ty_chirho::representation_chirho::boxed_representation_chirho(false).clone(),
+        ),
+        runtime_universe_chirho(true, lifted_chirho.clone()),
+        TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("TYPE".into())),
+            Box::new(lifted_chirho),
+        ),
+    ] {
+        assert!(unify_chirho(&universe_chirho, &term_chirho, SpanChirho::DUMMY_CHIRHO).is_err());
+        assert!(
+            unify_kind_terms_chirho(&universe_chirho, &term_chirho, SpanChirho::DUMMY_CHIRHO)
+                .is_err()
+        );
+    }
+}
+
 #[test]
 fn unify_identical_con_chirho() {
     let s_chirho = unify_chirho(

@@ -12,6 +12,65 @@ fn reduce_chirho(term_chirho: &TyChirho, argument_chirho: &TyChirho) -> TyChirho
 }
 
 #[test]
+fn checked_beta_normalizes_newly_closed_bodies_contexts_and_binder_kinds_chirho() {
+    let variable_chirho = TyVarChirho(0);
+    let runtime_type_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho(
+            haskelujah_ast_chirho::name_chirho::CompilerRepresentationChirho::RuntimeTypeChirho
+                .type_key_chirho()
+                .into(),
+        )),
+        Box::new(TyChirho::VarChirho(variable_chirho)),
+    );
+    let inner_chirho = TyChirho::ForallChirho {
+        vars_chirho: crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(vec![
+            crate::ty_chirho::QuantifiedVariableChirho {
+                variable_chirho: TyVarChirho(1),
+                kind_chirho: Some(std::sync::Arc::new(runtime_type_chirho.clone())),
+                source_chirho: None,
+                specificity_chirho: None,
+            },
+        ]),
+        body_chirho: Box::new(TyChirho::QualChirho {
+            context_chirho: vec![runtime_type_chirho.clone()],
+            body_chirho: Box::new(TyChirho::TupleChirho(vec![
+                runtime_type_chirho,
+                TyChirho::VarChirho(TyVarChirho(1)),
+            ])),
+        }),
+    };
+    let reduced_chirho = reduce_chirho(
+        &TyChirho::ForallChirho {
+            vars_chirho: vec![variable_chirho].into(),
+            body_chirho: Box::new(inner_chirho),
+        },
+        crate::ty_chirho::representation_chirho::boxed_representation_chirho(true),
+    );
+    let TyChirho::ForallChirho {
+        vars_chirho,
+        body_chirho,
+    } = reduced_chirho
+    else {
+        panic!("inner binder survives checked beta")
+    };
+    let type_chirho = TyChirho::ConChirho("%universe:type".into());
+    assert_eq!(
+        vars_chirho.records_chirho()[0].kind_chirho.as_deref(),
+        Some(&type_chirho)
+    );
+    assert_eq!(
+        *body_chirho,
+        TyChirho::QualChirho {
+            context_chirho: vec![type_chirho.clone()],
+            body_chirho: Box::new(TyChirho::TupleChirho(vec![
+                type_chirho,
+                TyChirho::VarChirho(TyVarChirho(1))
+            ]))
+        }
+    );
+}
+
+#[test]
 fn checked_beta_keeps_context_and_partial_required_prefix_chirho() {
     let term_chirho = TyChirho::RequiredForallChirho {
         vars_chirho: vec![TyVarChirho(0), TyVarChirho(1)].into(),

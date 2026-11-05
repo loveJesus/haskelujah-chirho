@@ -13,7 +13,23 @@ use haskelujah_ast_chirho::name_chirho::{
 fn alias_chirho(
     context_chirho: &mut InferCtxChirho,
     name_chirho: &str,
+    body_chirho: TyChirho,
+) -> String {
+    alias_with_kinds_chirho(
+        context_chirho,
+        name_chirho,
+        body_chirho,
+        TyChirho::ConChirho("%universe:type".into()),
+        TyChirho::ConChirho("%universe:type".into()),
+    )
+}
+
+fn alias_with_kinds_chirho(
+    context_chirho: &mut InferCtxChirho,
+    name_chirho: &str,
     mut body_chirho: TyChirho,
+    argument_kind_chirho: TyChirho,
+    result_kind_chirho: TyChirho,
 ) -> String {
     let declaration_chirho = TypeConstructorDeclarationChirho::source_chirho(
         "ProducerChirho",
@@ -87,11 +103,11 @@ fn alias_chirho(
             declaration_chirho: Some(declaration_chirho),
             binders_chirho: vec![DeclarationBinderChirho {
                 variable_chirho: TyVarChirho(0),
-                kind_chirho: TyChirho::ConChirho("%universe:type".to_owned()),
+                kind_chirho: argument_kind_chirho,
                 visibility_chirho: TelescopeVisibilityChirho::RequiredChirho,
             }],
             source_variables_chirho: Vec::new(),
-            result_kind_chirho: TyChirho::ConChirho("%universe:type".to_owned()),
+            result_kind_chirho,
             synonym_rhs_chirho: Some(body_chirho),
             synonym_syntax_chirho: None,
             local_binders_chirho: std::sync::Arc::from(local_binders_chirho),
@@ -253,5 +269,80 @@ fn canonical_local_ast_occurrences_require_their_lexical_binder_chirho() {
     assert!(
         rendered_chirho.contains("foreign or unbound canonical"),
         "{rendered_chirho}"
+    );
+}
+
+#[test]
+fn checked_alias_and_qualified_kind_images_share_representation_normalization_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let representation_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho(
+            haskelujah_ast_chirho::name_chirho::CompilerRepresentationChirho::RuntimeTypeChirho
+                .type_key_chirho()
+                .into(),
+        )),
+        Box::new(
+            crate::ty_chirho::representation_chirho::boxed_representation_chirho(true).clone(),
+        ),
+    );
+    let key_chirho = alias_chirho(
+        &mut context_chirho,
+        "LiftedUniverseChirho",
+        TyChirho::QualChirho {
+            context_chirho: vec![TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("%class:source:ConstraintChirho".into())),
+                Box::new(representation_chirho.clone()),
+            )],
+            body_chirho: Box::new(representation_chirho),
+        },
+    );
+    let expanded_chirho = context_chirho
+        .normalize_equality_type_chirho(&apply_chirho(key_chirho, TyChirho::int_chirho()), 0)
+        .unwrap();
+    let type_chirho = TyChirho::ConChirho("%universe:type".into());
+    assert_eq!(
+        expanded_chirho,
+        TyChirho::QualChirho {
+            context_chirho: vec![TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("%class:source:ConstraintChirho".into())),
+                Box::new(type_chirho.clone())
+            )],
+            body_chirho: Box::new(type_chirho),
+        }
+    );
+    assert!(!context_chirho.has_non_deferrable_failure_chirho());
+}
+
+#[test]
+fn one_shot_checked_alias_oversaturation_finishes_the_lifted_application_chirho() {
+    use haskelujah_ast_chirho::name_chirho::CompilerRepresentationChirho;
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let runtime_rep_chirho = TyChirho::ConChirho(
+        CompilerRepresentationChirho::RuntimeRepChirho
+            .type_key_chirho()
+            .into(),
+    );
+    let type_chirho = TyChirho::ConChirho("%universe:type".into());
+    // type HigherChirho (_ :: Type) = TYPE :: RuntimeRep -> Type
+    let key_chirho = alias_with_kinds_chirho(
+        &mut context_chirho,
+        "HigherChirho",
+        TyChirho::ConChirho(
+            CompilerRepresentationChirho::RuntimeTypeChirho
+                .type_key_chirho()
+                .into(),
+        ),
+        type_chirho.clone(),
+        TyChirho::fun_chirho(runtime_rep_chirho, type_chirho.clone()),
+    );
+    let application_chirho = TyChirho::AppChirho(
+        Box::new(apply_chirho(key_chirho, TyChirho::int_chirho())),
+        Box::new(
+            crate::ty_chirho::representation_chirho::boxed_representation_chirho(true).clone(),
+        ),
+    );
+    assert_eq!(
+        context_chirho.expand_type_synonyms_chirho(&application_chirho),
+        type_chirho
     );
 }

@@ -5,6 +5,55 @@
 use super::*;
 
 #[test]
+fn empty_catalogue_and_equality_images_normalize_only_typed_lifted_universes_chirho() {
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let lifted_chirho =
+        crate::ty_chirho::representation_chirho::boxed_representation_chirho(true).clone();
+    let intrinsic_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho(
+            haskelujah_ast_chirho::name_chirho::CompilerRepresentationChirho::RuntimeTypeChirho
+                .type_key_chirho()
+                .into(),
+        )),
+        Box::new(lifted_chirho.clone()),
+    );
+    let opaque_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho("TYPE".into())),
+        Box::new(lifted_chirho),
+    );
+    let type_chirho = TyChirho::ConChirho("%universe:type".into());
+    assert_eq!(
+        ctx_chirho.expand_type_synonyms_chirho(&intrinsic_chirho),
+        type_chirho
+    );
+    assert_eq!(
+        ctx_chirho
+            .normalize_equality_type_chirho(&intrinsic_chirho, 0)
+            .unwrap(),
+        type_chirho
+    );
+    assert_eq!(
+        ctx_chirho.expand_type_synonyms_chirho(&opaque_chirho),
+        opaque_chirho
+    );
+    assert_eq!(
+        ctx_chirho
+            .normalize_equality_type_chirho(&opaque_chirho, 0)
+            .unwrap(),
+        opaque_chirho
+    );
+    ctx_chirho
+        .equality_substitutions_chirho
+        .insert_chirho(TyVarChirho(74), intrinsic_chirho);
+    assert_eq!(
+        ctx_chirho
+            .normalize_equality_type_chirho(&TyChirho::VarChirho(TyVarChirho(74)), 0)
+            .unwrap(),
+        type_chirho
+    );
+}
+
+#[test]
 fn growing_evidence_exhausts_one_shared_output_allowance_chirho() {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
     let source_chirho = TyChirho::ConChirho("GrowingChirho".to_owned());

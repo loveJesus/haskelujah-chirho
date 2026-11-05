@@ -251,17 +251,30 @@ impl InferCtxChirho {
                     // Apply remaining args (over-saturated)
                     let mut result_chirho = self.expand_syn_chirho(&body_chirho, depth_chirho + 1);
                     for a_chirho in &expanded_args_chirho[params_chirho.len()..] {
-                        result_chirho = TyChirho::AppChirho(
-                            Box::new(result_chirho),
-                            Box::new(a_chirho.clone()),
-                        );
+                        result_chirho = if let Some(key_chirho) =
+                            crate::ty_chirho::representation_chirho::folded_universe_key_chirho(
+                                &result_chirho,
+                                a_chirho,
+                            ) {
+                            TyChirho::ConChirho(key_chirho.to_owned())
+                        } else {
+                            TyChirho::AppChirho(Box::new(result_chirho), Box::new(a_chirho.clone()))
+                        };
                     }
                     return result_chirho;
                 }
                 // Not a synonym application — just expand sub-parts
                 let ef_chirho = self.expand_syn_chirho(fun_chirho, depth_chirho);
                 let ea_chirho = self.expand_syn_chirho(arg_chirho, depth_chirho);
-                TyChirho::AppChirho(Box::new(ef_chirho), Box::new(ea_chirho))
+                if let Some(key_chirho) =
+                    crate::ty_chirho::representation_chirho::folded_universe_key_chirho(
+                        &ef_chirho, &ea_chirho,
+                    )
+                {
+                    TyChirho::ConChirho(key_chirho.to_owned())
+                } else {
+                    TyChirho::AppChirho(Box::new(ef_chirho), Box::new(ea_chirho))
+                }
             }
             TyChirho::FunChirho(a_chirho, b_chirho, mult_chirho) => TyChirho::FunChirho(
                 Box::new(self.expand_syn_chirho(a_chirho, depth_chirho)),
