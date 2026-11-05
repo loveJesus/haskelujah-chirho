@@ -98,12 +98,14 @@ impl NewtypeEraserChirho<'_> {
                 alts_chirho,
                 ..
             } => {
+                // A newtype alternative binds its one field, as the STG erasure requires.
                 let Some(position_chirho) = alts_chirho.iter().position(|alt_chirho| {
-                    matches!(
-                        &alt_chirho.con_chirho,
-                        AltConChirho::DataConChirho(name_chirho)
-                            if self.constructors_chirho.contains(name_chirho.as_str())
-                    )
+                    alt_chirho.binders_chirho.len() == 1
+                        && matches!(
+                            &alt_chirho.con_chirho,
+                            AltConChirho::DataConChirho(name_chirho)
+                                if self.constructors_chirho.contains(name_chirho.as_str())
+                        )
                 }) else {
                     return;
                 };

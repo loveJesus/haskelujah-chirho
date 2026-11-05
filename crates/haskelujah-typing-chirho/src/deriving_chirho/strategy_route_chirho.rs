@@ -21,6 +21,7 @@ use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{BuiltinClassScopeChirho, NameChirho};
 use haskelujah_span_chirho::SpanChirho;
 
+use super::extension_policy_chirho::{DerivingExtensionsChirho, STOCK_DERIVABLE_CLASSES_CHIRHO};
 use super::{declaration_heads_chirho, derive_anyclass_chirho, newtype_route_chirho};
 
 /// The classes the legacy policy derives with their own generator when no strategy is
@@ -53,7 +54,7 @@ pub(super) enum DerivationRouteChirho {
 
 /// What a module enables for deriving, and the class arities a GND head needs.
 pub(super) struct DerivingPolicyChirho<'a> {
-    derive_any_class_chirho: bool,
+    extensions_chirho: DerivingExtensionsChirho,
     builtin_classes_chirho: &'a BuiltinClassScopeChirho,
 }
 
@@ -64,12 +65,19 @@ impl<'a> DerivingPolicyChirho<'a> {
         builtin_classes_chirho: &'a BuiltinClassScopeChirho,
     ) -> Self {
         Self {
-            derive_any_class_chirho: module_chirho
-                .extensions_chirho
-                .iter()
-                .any(|extension_chirho| extension_chirho == "DeriveAnyClass"),
+            extensions_chirho: DerivingExtensionsChirho::of_module_chirho(module_chirho),
             builtin_classes_chirho,
         }
+    }
+
+    /// Whether an unwritten strategy on a newtype takes anyclass over GND for this class:
+    /// GHC 9.14.1 defaults to DeriveAnyClass when both are on, with warning GHC-20042
+    /// (root's D1).
+    fn anyclass_over_newtype_chirho(&self, derived_chirho: &DerivedClassChirho) -> bool {
+        derived_chirho.strategy_chirho.is_none()
+            && self.extensions_chirho.any_class_chirho
+            && self.extensions_chirho.newtype_chirho
+            && !STOCK_DERIVABLE_CLASSES_CHIRHO.contains(&derived_chirho.class_text_chirho())
     }
 
     /// How `derived_chirho` is produced for a newtype (`is_newtype_chirho`) or a data
@@ -105,12 +113,15 @@ impl<'a> DerivingPolicyChirho<'a> {
                     defaults_only_chirho: false,
                 })
             }
-            None if is_newtype_chirho => Some(DerivationRouteChirho::RepresentationChirho),
-            None => self
-                .derive_any_class_chirho
-                .then_some(DerivationRouteChirho::WrittenChirho {
+            // DeriveAnyClass takes precedence over GND (root's D1; D2 without it is GND).
+            None if self.extensions_chirho.any_class_chirho => {
+                Some(DerivationRouteChirho::WrittenChirho {
                     defaults_only_chirho: true,
-                }),
+                })
+            }
+            // Without GND declaration validity refuses it (GHC-82023, root's C1).
+            None if is_newtype_chirho => Some(DerivationRouteChirho::RepresentationChirho),
+            None => None,
         }
     }
 
@@ -192,12 +203,21 @@ pub(super) fn derive_class_chirho(
         }
         Some(DerivationRouteChirho::WrittenChirho {
             defaults_only_chirho: true,
-        }) => instances_chirho.push(derive_anyclass_chirho(
-            declared_chirho.name_chirho,
-            declared_chirho.type_vars_chirho,
-            &derived_chirho.class_chirho,
-            declared_chirho.span_chirho,
-        )),
+        }) => {
+            if declared_chirho.newtype_constructor_chirho.is_some()
+                && policy_chirho.anyclass_over_newtype_chirho(derived_chirho)
+            {
+                warnings_chirho.push(format!(
+                    "Both DeriveAnyClass and GeneralizedNewtypeDeriving are enabled: defaulting to the DeriveAnyClass strategy for {class_text_chirho} on {type_text_chirho} (GHC-20042)"
+                ));
+            }
+            instances_chirho.push(derive_anyclass_chirho(
+                declared_chirho.name_chirho,
+                declared_chirho.type_vars_chirho,
+                &derived_chirho.class_chirho,
+                declared_chirho.span_chirho,
+            ));
+        }
         Some(DerivationRouteChirho::RepresentationChirho) => {
             let Some(constructor_chirho) = declared_chirho.newtype_constructor_chirho else {
                 return;

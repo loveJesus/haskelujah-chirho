@@ -353,3 +353,42 @@ fn an_anyclass_show_has_no_constructor_rendering_chirho() {
             .contains_key("ColorChirho")
     );
 }
+
+#[test]
+fn derive_any_class_takes_an_unwritten_newtype_class_over_gnd_chirho() {
+    // Root's D1 (GHC 9.14.1): with DeriveAnyClass and GND both on, an unwritten strategy is
+    // anyclass, with warning GHC-20042. D2: without DeriveAnyClass it is GND.
+    let mut program_chirho = module_chirho(vec![age_chirho(vec![derived_chirho(
+        "DescribeChirho",
+        None,
+    )])]);
+    program_chirho.extensions_chirho = vec!["DeriveAnyClass".to_string()];
+    let anyclass_chirho = derive_instances_chirho(&program_chirho);
+    assert_eq!(
+        instance_shapes_chirho(&anyclass_chirho),
+        [("DescribeChirho".to_string(), vec![], 0)]
+    );
+    assert!(
+        anyclass_chirho
+            .warnings_chirho
+            .iter()
+            .any(|warning_chirho| warning_chirho.contains("GHC-20042")),
+        "{:?}",
+        anyclass_chirho.warnings_chirho
+    );
+    program_chirho.extensions_chirho.clear();
+    let gnd_chirho = derive_instances_chirho(&program_chirho);
+    assert_eq!(
+        instance_shapes_chirho(&gnd_chirho),
+        [(
+            "DescribeChirho".to_string(),
+            vec![ConstraintChirho::ClassChirho {
+                class_chirho: var_name_chirho("DescribeChirho"),
+                args_chirho: vec![con_ty_chirho("Int")],
+                span_chirho: gen_span_chirho(),
+            }],
+            0
+        )]
+    );
+    assert!(gnd_chirho.warnings_chirho.is_empty());
+}

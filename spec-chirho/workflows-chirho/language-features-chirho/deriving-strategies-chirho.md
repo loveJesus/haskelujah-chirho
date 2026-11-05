@@ -14,7 +14,10 @@ flowchart TD
     cst_chirho["CST data_decls_chirho.rs: any number of deriving clauses; a strategy is stock or anyclass (identifiers) or the newtype keyword token"]
     cst_chirho --> lower_chirho["Lowering deriving_clauses_chirho.rs: one DerivedClassChirho per class, carrying its clause's DerivingStrategyChirho; via clauses stay in deriving_via_chirho"]
     standalone_chirho["CST and lowering: deriving [strategy] instance; StandaloneDerivingDeclChirho.strategy_chirho"]
-    lower_chirho --> validity_chirho["Declaration validity deriving_strategy_chirho.rs: newtype strategy on data is GHC-10333; without GeneralizedNewtypeDeriving it is GHC-26557"]
+    pragmas_chirho["Parser module_extensions_chirho: each written flag after every edition; GHC2024 adds DerivingStrategies"] --> policy_chirho["extension_policy_chirho.rs DerivingExtensionsChirho"]
+    policy_chirho --> validity_chirho
+    policy_chirho --> route_chirho
+    lower_chirho --> validity_chirho["Declaration validity deriving_strategy_chirho.rs, rules 7-12: GHC-87139, 10333, 26557, 38178, 00158, 82023"]
     standalone_chirho --> validity_chirho
     lower_chirho --> route_chirho["strategy_route_chirho.rs DerivingPolicyChirho::route_chirho: written stock, anyclass or newtype; an unwritten strategy keeps the legacy policy"]
     standalone_chirho --> route_chirho
@@ -30,6 +33,7 @@ flowchart TD
     eligible_chirho --> ground_skip_chirho["generate_instance_dicts_chirho skips it"]
     eligible_chirho --> alias_chirho["generate_gnd_dicts_chirho: each method row aliases the representation's row, unless the module wrote it"]
     info_chirho --> erase_chirho["compile_backend_chirho: erase_newtype_constructors_chirho on those newtypes' constructors before simplification"]
+    erase_chirho --> merge_chirho["Native merge: the union of every module's erased set, refusing a spelling another module declares as a constructor"]
     alias_chirho --> erase_chirho
     erase_chirho --> backends_chirho["Interpreter, LLVM and Cranelift all receive the field itself"]
 ```
@@ -48,12 +52,15 @@ flowchart TD
   constructors of newtypes with a newtype-routed class are erased from Core; every other
   newtype keeps its native representation.
 
+- Root's fresh GHC 9.14.1 contracts (A1-A3, B1-B4, C1-C5, D1-D2, O1-O4) pin the policy: a
+  written strategy needs DerivingStrategies or DerivingVia; anyclass needs DeriveAnyClass; an
+  unwritten non-stock class needs DeriveAnyClass, or GND on a newtype; DeriveAnyClass wins over
+  GND (warning GHC-20042); the last edition decides, and a written flag beats any edition.
+- Each module erases its own GND-represented constructors; the native merge erases the union in
+  every module, and refuses by name a spelling another module also declares as a constructor.
+
 ## Residuals
 
-- Not judged yet, until their GHC contracts are measured: `DerivingStrategies` itself (this
-  compiler expands GHC2024 as GHC2021), the `anyclass` strategy's DeriveAnyClass requirement,
-  and an unwritten strategy's Haskell2010 refusal.
 - A standalone `deriving via` keeps its existing route.
 - Classes over a higher-kinded parameter that naming does not prove keep the full GND head.
-- Core erasure is per module. A native program in several modules that matches an imported
-  GND newtype's constructor still needs the program-wide constructor set.
+- GHC2024's additions other than DerivingStrategies belong to the D03 lane.
