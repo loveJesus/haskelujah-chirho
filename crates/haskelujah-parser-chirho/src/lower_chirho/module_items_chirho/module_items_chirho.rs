@@ -20,7 +20,6 @@ use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 use super::LowerCtxChirho;
 use super::bindings_chirho::merge_fun_binds_chirho;
 use super::context_chirho::is_trivia_element_chirho;
-use super::role_annotations_chirho::{RoleAnnotationsChirho, attach_role_annotations_chirho};
 
 impl LowerCtxChirho {
     // -----------------------------------------------------------------------
@@ -42,7 +41,6 @@ impl LowerCtxChirho {
         let mut imports_chirho = Vec::new();
         let mut decls_chirho = Vec::new();
         let mut standalone_kind_sigs_chirho: HashMap<String, TypeChirho> = HashMap::new();
-        let mut role_annotations_chirho = RoleAnnotationsChirho::new();
 
         for child_chirho in &children_chirho {
             if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho
@@ -77,10 +75,14 @@ impl LowerCtxChirho {
                     SyntaxKindChirho::TypeSigDeclChirho => {
                         let span_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        if let Some((name_chirho, roles_chirho)) =
-                            self.lower_role_annotation_chirho(n_chirho, child_chirho.start_chirho)
-                        {
-                            role_annotations_chirho.insert(name_chirho, roles_chirho);
+                        // A role annotation is its own declaration, every word as written
+                        // (row 694).
+                        if let Some(role_annotation_chirho) = self.lower_role_annotation_chirho(
+                            n_chirho,
+                            child_chirho.start_chirho,
+                            span_chirho,
+                        ) {
+                            decls_chirho.push(role_annotation_chirho);
                         } else if let Some((name_chirho, kind_chirho)) = self
                             .lower_standalone_kind_sig_chirho(
                                 n_chirho,
@@ -115,8 +117,6 @@ impl LowerCtxChirho {
         // must be grouped before further analysis.
         let decls_chirho =
             self.attach_standalone_kind_sigs_chirho(decls_chirho, &standalone_kind_sigs_chirho);
-        // Role annotations onto their data and newtype parameters (row 694).
-        let decls_chirho = attach_role_annotations_chirho(decls_chirho, &role_annotations_chirho);
         let decls_chirho = merge_fun_binds_chirho(decls_chirho);
 
         let end_chirho = start_chirho + root_chirho.text_len_chirho();

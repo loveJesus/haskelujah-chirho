@@ -634,6 +634,7 @@ pub(crate) fn collect_all_definitions_chirho(module_chirho: &ModuleChirho) -> If
             | DeclChirho::DefaultDeclChirho { .. }
             | DeclChirho::TypeFamilyInstanceDeclChirho { .. }
             | DeclChirho::SpliceDeclChirho { .. }
+            | DeclChirho::RoleAnnotationDeclChirho { .. }
             | DeclChirho::StandaloneDerivingDeclChirho { .. } => {}
         }
     }

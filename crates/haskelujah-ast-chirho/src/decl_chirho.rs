@@ -71,10 +71,6 @@ pub struct TyVarChirho {
     pub kind_annotation_chirho: Option<AstKindChirho>,
     /// Head binders remain in lexical scope even when they are invisible.
     pub visibility_chirho: TyVarVisibilityChirho,
-    /// The role a `type role` annotation writes for this data or newtype parameter, as the
-    /// written word (`nominal`, `representational`, `phantom`, or `_` to infer it); `None`
-    /// when no annotation names the type (row 694).
-    pub role_annotation_chirho: Option<NameChirho>,
 }
 
 impl TyVarChirho {
@@ -84,7 +80,6 @@ impl TyVarChirho {
             name_chirho,
             kind_annotation_chirho: None,
             visibility_chirho: TyVarVisibilityChirho::VisibleChirho,
-            role_annotation_chirho: None,
         }
     }
 
@@ -94,7 +89,6 @@ impl TyVarChirho {
             name_chirho,
             kind_annotation_chirho: Some(kind_chirho),
             visibility_chirho: TyVarVisibilityChirho::VisibleChirho,
-            role_annotation_chirho: None,
         }
     }
 
@@ -349,6 +343,18 @@ pub enum DeclChirho {
         /// Span covering the whole pattern synonym declaration.
         span_chirho: SpanChirho,
     },
+    /// A role annotation as written (`type role T nominal _ phantom`, RoleAnnotations, row
+    /// 694): the annotated type's name and every role word with its span, malformed ones
+    /// included. Declaration checking judges it; role inference reads a well-formed one as
+    /// the floors of its type's parameters.
+    RoleAnnotationDeclChirho {
+        /// The annotated type's name.
+        type_name_chirho: NameChirho,
+        /// Each role word as written, in order.
+        roles_chirho: Vec<NameChirho>,
+        /// Span covering the whole annotation.
+        span_chirho: SpanChirho,
+    },
     /// Template Haskell splice at declaration level (`$(makeLenses ''Foo)`).
     SpliceDeclChirho {
         /// Splice expression to execute during compilation.
@@ -550,6 +556,7 @@ impl DeclChirho {
             | Self::PatSynDeclChirho { span_chirho, .. }
             | Self::TypeFamilyDeclChirho { span_chirho, .. }
             | Self::TypeFamilyInstanceDeclChirho { span_chirho, .. }
+            | Self::RoleAnnotationDeclChirho { span_chirho, .. }
             | Self::SpliceDeclChirho { span_chirho, .. }
             | Self::StandaloneDerivingDeclChirho { span_chirho, .. } => *span_chirho,
         }

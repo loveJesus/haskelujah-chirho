@@ -339,10 +339,12 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     self.walk_type_chirho(ty_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
                 }
             }
+            // A role annotation names its type; declaration checking judges it (row 694).
             DeclChirho::FunBindChirho { .. }
             | DeclChirho::PatBindChirho { .. }
             | DeclChirho::FixityDeclChirho { .. }
             | DeclChirho::PatSynDeclChirho { .. }
+            | DeclChirho::RoleAnnotationDeclChirho { .. }
             | DeclChirho::SpliceDeclChirho { .. } => {}
         }
     }

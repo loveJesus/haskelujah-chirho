@@ -10,7 +10,7 @@ use crate::{compile_source_chirho, eval_source_with_machine_chirho};
 use haskelujah_span_chirho::SourceMapChirho;
 
 /// What the interpreter prints for an accepted program.
-fn interpreted_chirho(file_name_chirho: &str, source_chirho: &str) -> String {
+pub(super) fn interpreted_chirho(file_name_chirho: &str, source_chirho: &str) -> String {
     let (_, machine_chirho) = eval_source_with_machine_chirho(
         source_chirho,
         &mut SourceMapChirho::new_chirho(),
@@ -22,7 +22,11 @@ fn interpreted_chirho(file_name_chirho: &str, source_chirho: &str) -> String {
 }
 
 /// The compiler refuses the program, naming every reason.
-fn assert_refused_chirho(file_name_chirho: &str, source_chirho: &str, reasons_chirho: &[&str]) {
+pub(super) fn assert_refused_chirho(
+    file_name_chirho: &str,
+    source_chirho: &str,
+    reasons_chirho: &[&str],
+) {
     let message_chirho = match compile_source_chirho(
         source_chirho,
         &mut SourceMapChirho::new_chirho(),

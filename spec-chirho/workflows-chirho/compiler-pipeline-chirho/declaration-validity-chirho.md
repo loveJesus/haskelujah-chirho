@@ -39,6 +39,24 @@ flowchart TD
 6. A data constructor field's lazy annotation (`~T`) needs `StrictData`, or `Strict`, which
    implies it (`GHC-81601`). The flags are read in GHC's order: the last mention wins, and
    `NoStrict` leaves `StrictData` as it was.
+7. to 16. Deriving strategies, the extensions they need and the classes they derive
+   (`deriving_strategy_chirho.rs`, row 694; see `deriving-strategies-chirho.md`).
+17. A role annotation writes only `nominal`, `representational`, `phantom` or `_`
+    (`GHC-09009`, a parse error in GHC). An annotation with an unknown word is judged no
+    further.
+18. A role annotation lists one role per visible parameter of its data or newtype
+    (`GHC-54298`). One that does not is judged no further, and role inference ignores it, as
+    GHC's does.
+19. Each written role is at least the role inference proves for its parameter
+    (`GHC-29178`). Inference starts from the written role and only raises it, so a written
+    role below the final one is contradicted by the declarations. Against a role the module
+    cannot prove (Unknown: an imported or qualified constructor, a synonym, a GADT) the
+    annotation is a named Unsupported gap, never GHC's mismatch.
+
+Rules 17 to 19 judge every annotation, whether or not a GND request reads its roles, on the
+`DeclChirho::RoleAnnotationDeclChirho` lowering keeps with every word as written. Lowering
+never rewrites an annotation. root measured all three refusals and the representational twin
+with GHC 9.14.1 (`role-annotation-r1-chirho`, #31844).
 
 Rule 4 depends on lowering reading the whole class body. `collect_instance_methods_chirho`
 ends its walk at the first non-method member after a method, a defence against sibling
@@ -78,6 +96,9 @@ resolution keeps GHC's order: a renamer error is reported before a validity erro
   (`spec-chirho/bug-existential-constructor-scope-dropped-chirho.md`).
 - Special-class instances, deriving eligibility and the DatatypeContexts head name are
   outside this phase.
+- A role annotation naming no data or newtype of the module (a synonym, a class, a family, an
+  undeclared name), a repeated annotation and a module without RoleAnnotations are not judged
+  yet. GHC rejects them, with codes still to be measured.
 
 ## Controls
 

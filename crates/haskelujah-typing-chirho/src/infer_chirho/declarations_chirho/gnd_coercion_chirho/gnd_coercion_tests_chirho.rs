@@ -65,10 +65,22 @@ fn family_chirho(family_name_chirho: &str) -> DeclChirho {
     }
 }
 
-/// `data <name> <parameters> = <name> <fields>`, each parameter with its written role.
+/// `type role <type> <words>`, as lowering keeps it.
+fn role_chirho(type_chirho: &str, words_chirho: &[&str]) -> DeclChirho {
+    DeclChirho::RoleAnnotationDeclChirho {
+        type_name_chirho: name_chirho(type_chirho),
+        roles_chirho: words_chirho
+            .iter()
+            .map(|word_chirho| name_chirho(word_chirho))
+            .collect(),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+/// `data <name> <parameters> = <name> <fields>`.
 fn data_chirho(
     type_chirho: &str,
-    parameters_chirho: &[(&str, Option<&str>)],
+    parameters_chirho: &[&str],
     fields_chirho: Vec<TypeChirho>,
 ) -> DeclChirho {
     data_with_prefix_chirho(
@@ -82,7 +94,7 @@ fn data_chirho(
 /// `data <name> <parameters> = <prefix> <name> <fields>`.
 fn data_with_prefix_chirho(
     type_chirho: &str,
-    parameters_chirho: &[(&str, Option<&str>)],
+    parameters_chirho: &[&str],
     prefix_chirho: ConPrefixChirho,
     fields_chirho: Vec<TypeChirho>,
 ) -> DeclChirho {
@@ -90,11 +102,7 @@ fn data_with_prefix_chirho(
         name_chirho: name_chirho(type_chirho),
         type_vars_chirho: parameters_chirho
             .iter()
-            .map(|(parameter_chirho, role_chirho)| {
-                let mut binder_chirho = TyVarChirho::plain_chirho(name_chirho(parameter_chirho));
-                binder_chirho.role_annotation_chirho = role_chirho.map(name_chirho);
-                binder_chirho
-            })
+            .map(|parameter_chirho| TyVarChirho::plain_chirho(name_chirho(parameter_chirho)))
             .collect(),
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
             name_chirho: name_chirho(type_chirho),
@@ -136,39 +144,28 @@ const UNKNOWN_CHIRHO: ParameterRoleChirho = ParameterRoleChirho::UNKNOWN_CHIRHO;
 fn a_field_use_decides_each_parameter_role_chirho() {
     let roles_chirho = local_parameter_roles_chirho(&module_chirho(vec![
         // R3: the parameter is the field itself.
-        data_chirho(
-            "HoldChirho",
-            &[("aChirho", None)],
-            vec![var_chirho("aChirho")],
-        ),
+        data_chirho("HoldChirho", &["aChirho"], vec![var_chirho("aChirho")]),
         // R1: an annotation can only make a role more restrictive.
-        data_chirho(
-            "PinnedChirho",
-            &[("aChirho", Some("nominal"))],
-            vec![var_chirho("aChirho")],
-        ),
+        role_chirho("PinnedChirho", &["nominal"]),
+        data_chirho("PinnedChirho", &["aChirho"], vec![var_chirho("aChirho")]),
         // R2: a local type family's argument is nominal.
         family_chirho("LabelChirho"),
         data_chirho(
             "LabelledChirho",
-            &[("aChirho", None)],
+            &["aChirho"],
             vec![app_chirho(con_chirho("LabelChirho"), var_chirho("aChirho"))],
         ),
         // A constructor the module does not declare proves no role: Unknown, not nominal.
         data_chirho(
             "ImportedChirho",
-            &[("aChirho", None)],
+            &["aChirho"],
             vec![app_chirho(con_chirho("Maybe"), var_chirho("aChirho"))],
         ),
-        data_chirho(
-            "UnusedChirho",
-            &[("aChirho", None)],
-            vec![con_chirho("Int")],
-        ),
+        data_chirho("UnusedChirho", &["aChirho"], vec![con_chirho("Int")]),
         // A type variable's application: the head representational, its argument nominal.
         data_chirho(
             "AppliedChirho",
-            &[("fChirho", None), ("aChirho", None)],
+            &["fChirho", "aChirho"],
             vec![app_chirho(var_chirho("fChirho"), var_chirho("aChirho"))],
         ),
     ]));
@@ -186,18 +183,18 @@ fn a_field_use_decides_each_parameter_role_chirho() {
 #[test]
 fn a_local_type_passes_its_roles_on_whatever_the_declaration_order_chirho() {
     for pinned_role_chirho in [Some("nominal"), None] {
-        let roles_chirho = local_parameter_roles_chirho(&module_chirho(vec![
+        let mut decls_chirho = vec![
             data_chirho(
                 "OuterChirho",
-                &[("bChirho", None)],
+                &["bChirho"],
                 vec![app_chirho(con_chirho("InnerChirho"), var_chirho("bChirho"))],
             ),
-            data_chirho(
-                "InnerChirho",
-                &[("aChirho", pinned_role_chirho)],
-                vec![var_chirho("aChirho")],
-            ),
-        ]));
+            data_chirho("InnerChirho", &["aChirho"], vec![var_chirho("aChirho")]),
+        ];
+        decls_chirho.extend(
+            pinned_role_chirho.map(|word_chirho| role_chirho("InnerChirho", &[word_chirho])),
+        );
+        let roles_chirho = local_parameter_roles_chirho(&module_chirho(decls_chirho));
         let expected_chirho = if pinned_role_chirho.is_some() {
             NOMINAL_CHIRHO
         } else {
@@ -217,20 +214,12 @@ fn only_the_local_declaration_has_authority_over_its_roles_chirho() {
         )
     };
     let roles_chirho = local_parameter_roles_chirho(&module_chirho(vec![
-        data_chirho("HoldChirho", &[("aChirho", None)], vec![con_chirho("Int")]),
-        data_chirho(
-            "ElsewhereChirho",
-            &[("aChirho", None)],
-            vec![qualified_chirho("M")],
-        ),
-        data_chirho(
-            "OwnChirho",
-            &[("aChirho", None)],
-            vec![qualified_chirho("Main")],
-        ),
+        data_chirho("HoldChirho", &["aChirho"], vec![con_chirho("Int")]),
+        data_chirho("ElsewhereChirho", &["aChirho"], vec![qualified_chirho("M")]),
+        data_chirho("OwnChirho", &["aChirho"], vec![qualified_chirho("Main")]),
         data_chirho(
             "BareChirho",
-            &[("aChirho", None)],
+            &["aChirho"],
             vec![app_chirho(con_chirho("HoldChirho"), var_chirho("aChirho"))],
         ),
     ]));
@@ -260,19 +249,19 @@ fn a_constructor_prefix_decides_what_its_variables_are_chirho() {
     let roles_chirho = local_parameter_roles_chirho(&module_chirho(vec![
         data_with_prefix_chirho(
             "HoldChirho",
-            &[("aChirho", None)],
+            &["aChirho"],
             equality_chirho,
             vec![con_chirho("Int")],
         ),
         data_with_prefix_chirho(
             "HiddenChirho",
-            &[("aChirho", None)],
+            &["aChirho"],
             shadowing_chirho,
             vec![var_chirho("aChirho")],
         ),
         data_with_prefix_chirho(
             "UnreadChirho",
-            &[("aChirho", None)],
+            &["aChirho"],
             ConPrefixChirho::unread_quantification_chirho(),
             vec![con_chirho("Int")],
         ),
@@ -286,15 +275,11 @@ fn a_constructor_prefix_decides_what_its_variables_are_chirho() {
 fn below_a_nominal_argument_every_variable_is_nominal_chirho() {
     let roles_chirho = local_parameter_roles_chirho(&module_chirho(vec![
         family_chirho("LabelChirho"),
-        data_chirho(
-            "PhantomChirho",
-            &[("aChirho", None)],
-            vec![con_chirho("Int")],
-        ),
+        data_chirho("PhantomChirho", &["aChirho"], vec![con_chirho("Int")]),
         // GHC marks every variable below a family's argument nominal, phantom positions too.
         data_chirho(
             "UnderFamilyChirho",
-            &[("bChirho", None)],
+            &["bChirho"],
             vec![app_chirho(
                 con_chirho("LabelChirho"),
                 app_chirho(con_chirho("PhantomChirho"), var_chirho("bChirho")),
@@ -303,7 +288,7 @@ fn below_a_nominal_argument_every_variable_is_nominal_chirho() {
         // Below an Unknown argument the family's nominal position might be phantom.
         data_chirho(
             "UnderUnknownChirho",
-            &[("bChirho", None)],
+            &["bChirho"],
             vec![app_chirho(
                 con_chirho("Maybe"),
                 app_chirho(con_chirho("LabelChirho"), var_chirho("bChirho")),
@@ -316,29 +301,22 @@ fn below_a_nominal_argument_every_variable_is_nominal_chirho() {
 
 #[test]
 fn a_gadt_parameter_is_unknown_unless_annotated_chirho() {
-    let gadt_chirho = |annotation_chirho: Option<&str>| {
-        let mut binder_chirho = TyVarChirho::plain_chirho(name_chirho("aChirho"));
-        binder_chirho.role_annotation_chirho = annotation_chirho.map(name_chirho);
-        DeclChirho::DataDeclChirho {
-            name_chirho: name_chirho(if annotation_chirho.is_some() {
-                "PinnedGadtChirho"
-            } else {
-                "GadtChirho"
-            }),
-            type_vars_chirho: vec![binder_chirho],
-            constructors_chirho: vec![ConDeclChirho::GadtChirho {
-                name_chirho: name_chirho("MkGadtChirho"),
-                ty_chirho: con_chirho("Int"),
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            }],
-            deriving_chirho: vec![],
-            kind_sig_chirho: None,
+    let gadt_chirho = |type_chirho: &str| DeclChirho::DataDeclChirho {
+        name_chirho: name_chirho(type_chirho),
+        type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("aChirho"))],
+        constructors_chirho: vec![ConDeclChirho::GadtChirho {
+            name_chirho: name_chirho("MkGadtChirho"),
+            ty_chirho: con_chirho("Int"),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
-        }
+        }],
+        deriving_chirho: vec![],
+        kind_sig_chirho: None,
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
     let roles_chirho = local_parameter_roles_chirho(&module_chirho(vec![
-        gadt_chirho(None),
-        gadt_chirho(Some("nominal")),
+        gadt_chirho("GadtChirho"),
+        gadt_chirho("PinnedGadtChirho"),
+        role_chirho("PinnedGadtChirho", &["nominal"]),
     ]));
     assert_eq!(roles_chirho["GadtChirho"], [UNKNOWN_CHIRHO]);
     assert_eq!(roles_chirho["PinnedGadtChirho"], [NOMINAL_CHIRHO]);

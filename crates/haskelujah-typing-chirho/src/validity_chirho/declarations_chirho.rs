@@ -13,8 +13,10 @@
 //! 4. a default signature has a default binding (`GHC-59794`);
 //! 5. a newtype constructor's field has no strictness annotation (`GHC-04049`);
 //! 6. a lazy field annotation (`~T`) needs `StrictData` or `Strict` (`GHC-81601`);
-//! 7. to 15. deriving strategies, the extensions they need and the classes they derive
-//!    (`deriving_strategy_chirho.rs`, row 694).
+//! 7. to 16. deriving strategies, the extensions they need and the classes they derive
+//!    (`deriving_strategy_chirho.rs`, row 694);
+//! 17. to 19. role annotations: their words, their count and each written role against the
+//!    role inference proves (`role_annotations_chirho.rs`, row 694).
 //!
 //! Rule 6 judges the written override only. The module-wide `StrictData`
 //! default (unannotated fields strict) is not implemented: such fields stay
@@ -45,9 +47,12 @@ use haskelujah_span_chirho::SpanChirho;
 
 use super::ValidityResultChirho;
 
-// Rules 7 to 15: deriving strategies and the classes they derive (row 694).
+// Rules 7 to 16: deriving strategies and the classes they derive (row 694).
 #[path = "deriving_strategy_chirho.rs"]
 mod deriving_strategy_chirho;
+// Rules 17 to 19: role annotations (row 694).
+#[path = "role_annotations_chirho.rs"]
+mod role_annotations_chirho;
 
 /// `E0209`: a declaration whose written shape GHC rejects.
 const INVALID_DECLARATION_CODE_CHIRHO: u16 = 209;
@@ -182,6 +187,7 @@ pub fn check_module_declaration_validity_with_builtins_chirho(
         builtin_classes_chirho,
         &mut errors_chirho,
     );
+    role_annotations_chirho::check_role_annotations_chirho(module_chirho, &mut errors_chirho);
     errors_chirho
 }
 

@@ -25,8 +25,11 @@
 //! does not read, and a constructor whose prefix the lowering could not read make every
 //! parameter at least Unknown.
 //!
-//! A `type role` annotation is a floor on the inferred role. The roles are a least fixed point
-//! over the module's declarations, monotone in phantom < representational < Unknown < nominal.
+//! A well-formed `type role` annotation (one known word per visible parameter) is a floor on
+//! the inferred role; a malformed one is ignored here, as GHC's inference ignores one of the
+//! wrong length, and declaration checking refuses it. Nothing here writes a role the program
+//! did not. The roles are a least fixed point over the module's declarations, monotone in
+//! phantom < representational < Unknown < nominal.
 //! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use std::collections::{HashMap, HashSet};
@@ -88,10 +91,11 @@ struct RoledTypeChirho<'a> {
 /// The roles of every local data and newtype declaration's visible parameters.
 /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub fn local_parameter_roles_chirho(module_chirho: &ModuleChirho) -> ParameterRolesChirho {
+    let annotations_chirho = written_role_annotations_chirho(module_chirho);
     let types_chirho: Vec<RoledTypeChirho<'_>> = module_chirho
         .decls_chirho
         .iter()
-        .filter_map(roled_type_chirho)
+        .filter_map(|decl_chirho| roled_type_chirho(decl_chirho, &annotations_chirho))
         .collect();
     let authority_chirho = LocalAuthorityChirho {
         module_name_chirho: module_chirho.name_chirho.full_name_chirho(),
@@ -157,8 +161,31 @@ pub fn local_type_families_chirho(module_chirho: &ModuleChirho) -> HashSet<Strin
     families_chirho
 }
 
+/// Each local type's first role annotation's written words, by type name (`type role`).
+/// Declaration checking refuses a malformed or repeated one.
+fn written_role_annotations_chirho(module_chirho: &ModuleChirho) -> HashMap<&str, &[NameChirho]> {
+    let mut annotations_chirho = HashMap::new();
+    for decl_chirho in &module_chirho.decls_chirho {
+        if let DeclChirho::RoleAnnotationDeclChirho {
+            type_name_chirho,
+            roles_chirho,
+            ..
+        } = decl_chirho
+            && type_name_chirho.qualifier_chirho().is_none()
+        {
+            annotations_chirho
+                .entry(type_name_chirho.text_chirho())
+                .or_insert(roles_chirho.as_slice());
+        }
+    }
+    annotations_chirho
+}
+
 /// A local data or newtype declaration's parameters, starting roles and constructors.
-fn roled_type_chirho(decl_chirho: &DeclChirho) -> Option<RoledTypeChirho<'_>> {
+fn roled_type_chirho<'a>(
+    decl_chirho: &'a DeclChirho,
+    annotations_chirho: &HashMap<&str, &[NameChirho]>,
+) -> Option<RoledTypeChirho<'a>> {
     let (name_chirho, type_vars_chirho, constructors_chirho): (_, _, Vec<&ConDeclChirho>) =
         match decl_chirho {
             DeclChirho::DataDeclChirho {
@@ -183,20 +210,23 @@ fn roled_type_chirho(decl_chirho: &DeclChirho) -> Option<RoledTypeChirho<'_>> {
     let has_gadt_constructor_chirho = constructors_chirho
         .iter()
         .any(|constructor_chirho| matches!(constructor_chirho, ConDeclChirho::GadtChirho { .. }));
+    // Only an annotation with one word per visible parameter gives floors.
+    let written_chirho = annotations_chirho
+        .get(name_chirho.text_chirho())
+        .filter(|words_chirho| words_chirho.len() == visible_chirho.len());
     Some(RoledTypeChirho {
         name_chirho: name_chirho.text_chirho().to_string(),
         parameters_chirho: visible_chirho
             .iter()
             .map(|binder_chirho| binder_chirho.text_chirho().to_string())
             .collect(),
-        start_chirho: visible_chirho
-            .iter()
-            .map(|binder_chirho| {
-                let floor_chirho = binder_chirho
-                    .role_annotation_chirho
-                    .as_ref()
-                    .and_then(|word_chirho| {
-                        ParameterRoleChirho::from_annotation_chirho(word_chirho.text_chirho())
+        start_chirho: (0..visible_chirho.len())
+            .map(|index_chirho| {
+                let floor_chirho = written_chirho
+                    .and_then(|words_chirho| {
+                        ParameterRoleChirho::from_annotation_chirho(
+                            words_chirho[index_chirho].text_chirho(),
+                        )
                     })
                     .unwrap_or(ParameterRoleChirho::PHANTOM_CHIRHO);
                 if has_gadt_constructor_chirho {
