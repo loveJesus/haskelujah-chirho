@@ -43,6 +43,7 @@ fn class_with_default_chirho(
         exports_chirho: None,
         imports_chirho: vec![],
         decls_chirho: vec![DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: name_chirho("ClassChirho"),
             type_vars_chirho: class_params_chirho

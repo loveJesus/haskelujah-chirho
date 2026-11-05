@@ -18,8 +18,8 @@ mod surface_chirho;
 mod transport_chirho;
 mod value_applications_chirho;
 pub(crate) use value_applications_chirho::{
-    ArgumentElaborationContextChirho, CheckedBodyTypeChirho, elaborate_body_type_chirho,
-    elaborate_required_argument_chirho, elaborate_body_pattern_type_chirho,
+    ArgumentElaborationContextChirho, CheckedBodyTypeChirho, elaborate_body_pattern_type_chirho,
+    elaborate_body_type_chirho, elaborate_required_argument_chirho,
 };
 mod values_chirho;
 pub use state_chirho::{ElaborationErrorChirho, ElaborationStateChirho};
@@ -135,6 +135,7 @@ struct TypeElaboratorChirho<'scope_chirho> {
     lexical_equality_chirho:
         Option<crate::infer_chirho::EqualityNormalizationViewChirho<'scope_chirho>>,
     strict_argument_chirho: bool,
+    standalone_kind_scope_chirho: bool,
 }
 
 #[derive(Debug)]
@@ -482,6 +483,7 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
             lexical_refinements_chirho: None,
             lexical_equality_chirho: None,
             strict_argument_chirho: false,
+            standalone_kind_scope_chirho: false,
         })
     }
 }

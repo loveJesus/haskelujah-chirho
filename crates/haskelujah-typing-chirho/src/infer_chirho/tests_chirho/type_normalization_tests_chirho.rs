@@ -138,6 +138,7 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
     };
 
     let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: dummy_name_chirho("Representable"),
         type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -294,6 +295,7 @@ fn infer_proxy_index_instance_method_reduces_rep_to_unit_chirho() {
         imports_chirho: vec![],
         decls_chirho: vec![
             DeclChirho::ClassDeclChirho {
+                standalone_kind_chirho: None,
                 context_chirho: vec![],
                 name_chirho: dummy_name_chirho("Representable"),
                 type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -457,6 +459,7 @@ fn infer_composition_with_tuple_family_projection_preserves_applied_rep_chirho()
 fn infer_tabulate_application_after_tuple_projection_keeps_component_functor_chirho() {
     let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
     let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: dummy_name_chirho("Representable"),
         type_vars_chirho: vec![dummy_name_chirho("f").into()],

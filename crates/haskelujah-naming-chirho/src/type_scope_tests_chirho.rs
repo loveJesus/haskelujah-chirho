@@ -127,6 +127,7 @@ fn resolver_binds_local_associated_family_in_type_namespace_chirho() {
     };
     let module_chirho = module_chirho(vec![
         DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: name_chirho("ClassChirho"),
             type_vars_chirho: vec![tyvar_chirho("aChirho")],
@@ -234,6 +235,7 @@ fn qualified_class_import_without_members_does_not_scope_associated_type_chirho(
 #[test]
 fn associated_family_default_requires_a_declared_variable_chirho() {
     let module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho("ClassChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
@@ -261,6 +263,7 @@ fn associated_family_default_requires_a_declared_variable_chirho() {
 #[test]
 fn associated_family_default_uses_its_equation_binders_chirho() {
     let module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho("ClassChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
@@ -342,6 +345,7 @@ fn datakinds_does_not_treat_a_constructor_as_a_class_chirho() {
         SpanChirho::DUMMY_CHIRHO,
     );
     let mut module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![ConstraintChirho::ClassChirho {
             kind_args_chirho: Vec::new(),
             class_chirho: name_chirho("True"),
@@ -1158,6 +1162,7 @@ fn gadt_without_outer_forall_quantifies_independently_chirho() {
 #[test]
 fn unknown_superclass_is_resolved_in_the_type_namespace_chirho() {
     let decl_chirho = DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![ConstraintChirho::ClassChirho {
             kind_args_chirho: Vec::new(),
             class_chirho: name_chirho("MissingClassChirho"),

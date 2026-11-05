@@ -284,6 +284,42 @@ impl TypeElaboratorChirho<'_> {
             })
     }
 
+    pub(super) fn link_associated_class_kinds_chirho(
+        &mut self,
+        key_chirho: &str,
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        let header_chirho = self
+            .registry_chirho
+            .declaration_schemes_chirho()
+            .get_chirho(key_chirho)
+            .cloned()
+            .ok_or_else(|| {
+                Self::error_chirho("associated family lost its checked header", span_chirho)
+            })?;
+        let DeclarationAssociationChirho::FamilyChirho {
+            correspondence_chirho,
+            ..
+        } = &header_chirho.association_chirho
+        else {
+            return Err(Self::error_chirho(
+                "associated family lost its producer correspondence",
+                span_chirho,
+            ));
+        };
+        for (family_variable_chirho, class_variable_chirho) in correspondence_chirho {
+            self.state_chirho.charge_chirho(1, 0, span_chirho)?;
+            let family_kind_chirho = self
+                .state_chirho
+                .variable_kind_chirho(*family_variable_chirho, span_chirho)?;
+            let class_kind_chirho = self
+                .state_chirho
+                .variable_kind_chirho(*class_variable_chirho, span_chirho)?;
+            self.unify_kinds_chirho(&family_kind_chirho, &class_kind_chirho, span_chirho)?;
+        }
+        Ok(())
+    }
+
     pub(super) fn elaborate_associated_chirho(
         &mut self,
         families_chirho: &mut [AssocTypeFamilyChirho],
@@ -294,34 +330,7 @@ impl TypeElaboratorChirho<'_> {
             let family_chirho = &mut families_chirho[index_chirho];
             let key_chirho = self.local_key_chirho(&family_chirho.name_chirho)?;
             if !self.rechecking_chirho {
-                let association_chirho = self
-                    .registry_chirho
-                    .declaration_schemes_chirho()
-                    .get_chirho(&key_chirho)
-                    .expect("associated header")
-                    .association_chirho
-                    .clone();
-                if let DeclarationAssociationChirho::FamilyChirho {
-                    correspondence_chirho,
-                    ..
-                } = association_chirho
-                {
-                    for (family_variable_chirho, class_variable_chirho) in correspondence_chirho {
-                        let family_kind_chirho = self.state_chirho.variable_kind_chirho(
-                            family_variable_chirho,
-                            family_chirho.span_chirho,
-                        )?;
-                        let class_kind_chirho = self.state_chirho.variable_kind_chirho(
-                            class_variable_chirho,
-                            family_chirho.span_chirho,
-                        )?;
-                        self.unify_kinds_chirho(
-                            &family_kind_chirho,
-                            &class_kind_chirho,
-                            family_chirho.span_chirho,
-                        )?;
-                    }
-                }
+                self.link_associated_class_kinds_chirho(&key_chirho, family_chirho.span_chirho)?;
                 self.scoped_chirho(|this_chirho| {
                     this_chirho.bind_header_scope_chirho(&key_chirho, family_chirho.span_chirho)?;
                     this_chirho

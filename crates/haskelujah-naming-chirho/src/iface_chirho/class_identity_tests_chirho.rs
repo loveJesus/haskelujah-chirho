@@ -34,6 +34,7 @@ fn name_chirho(text_chirho: &str) -> NameChirho {
 /// `class <name> a` with no methods.
 fn class_decl_chirho(class_text_chirho: &str) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho(class_text_chirho),
         type_vars_chirho: vec![name_chirho("a").into()],

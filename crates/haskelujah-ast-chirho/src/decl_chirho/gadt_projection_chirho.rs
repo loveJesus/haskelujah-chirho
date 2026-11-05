@@ -1226,6 +1226,7 @@ fn walk_chirho(
                     push_chirho(ProjectionNodeChirho::TypeChirho(rhs_chirho))?;
                 }
                 DeclChirho::ClassDeclChirho {
+                    standalone_kind_chirho,
                     context_chirho,
                     name_chirho,
                     type_vars_chirho,
@@ -1234,6 +1235,9 @@ fn walk_chirho(
                     fundeps_chirho,
                     ..
                 } => {
+                    if let Some(kind_chirho) = standalone_kind_chirho {
+                        push_chirho(ProjectionNodeChirho::TypeChirho(kind_chirho))?;
+                    }
                     push_chirho(ProjectionNodeChirho::ConstraintsChirho(context_chirho))?;
                     push_chirho(ProjectionNodeChirho::NameChirho(name_chirho))?;
                     push_chirho(ProjectionNodeChirho::BindersChirho(type_vars_chirho))?;

@@ -7,6 +7,10 @@ fn check_chirho(axis_chirho: &str, name_chirho: &str) -> Result<crate::CheckSumm
         .join("../../ghc-tests-chirho/typecheck-chirho")
         .join(axis_chirho)
         .join(name_chirho);
+    check_path_chirho(path_chirho)
+}
+
+fn check_path_chirho(path_chirho: std::path::PathBuf) -> Result<crate::CheckSummaryChirho, String> {
     crate::check_source_path_chirho(path_chirho, crate::ExecutionModeChirho::BatchChirho).map_err(
         |diagnostics_chirho| {
             diagnostics_chirho
@@ -17,6 +21,25 @@ fn check_chirho(axis_chirho: &str, name_chirho: &str) -> Result<crate::CheckSumm
                 .join("\n")
         },
     )
+}
+
+fn class_fixture_chirho(name_chirho: &str) -> Result<crate::CheckSummaryChirho, String> {
+    check_path_chirho(std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/class_contracts_chirho")
+        .join(name_chirho).join(format!("{name_chirho}.hs")))
+}
+
+#[test]
+fn class_contract_cold_polykind_keeps_its_full_supplier_telescope_chirho() {
+    class_fixture_chirho("PolyClassColdChirho")
+        .expect("fresh GHC-positive cold class signature checks");
+}
+
+#[test]
+fn class_contract_cold_written_kind_cannot_be_generalized_away_chirho() {
+    let error_chirho = class_fixture_chirho("FixedClassColdWrongChirho")
+        .expect_err("fresh GHC-negative cold class kind rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
 }
 
 #[test]
@@ -180,4 +203,111 @@ fn checked_alias_result_prefix_wrong_kind_chirho() {
     let error_chirho = super::ordinary_elaboration_chirho::frontend_chirho(include_str!("kind_repair_fixtures_chirho/impredicative-application-chirho/result-prefix-chirho/AliasResultPrefixWrongChirho.hs"))
         .err().expect("actual GHC wrong-kind alias rejects");
     assert!(error_chirho.contains("error[E030"), "{error_chirho}");
+}
+
+#[test]
+fn class_contract_liftedclasscontractchirho_chirho() {
+    super::ordinary_elaboration_chirho::frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/class_contracts_chirho/LiftedClassContractChirho.hs"
+    ))
+    .expect("fresh GHC-positive class kind contract checks");
+}
+
+#[test]
+fn class_contract_polyclasscontractchirho_chirho() {
+    super::ordinary_elaboration_chirho::frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/class_contracts_chirho/PolyClassContractChirho.hs"
+    ))
+    .expect("fresh GHC-positive class kind contract checks");
+}
+
+#[test]
+fn class_contract_repphantomclasscontractchirho_chirho() {
+    super::ordinary_elaboration_chirho::frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/class_contracts_chirho/RepPhantomClassContractChirho.hs"
+    ))
+    .expect("fresh GHC-positive class kind contract checks");
+}
+
+#[test]
+fn class_contract_wrongclasscontractresultchirho_chirho() {
+    let error_chirho = super::ordinary_elaboration_chirho::frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/class_contracts_chirho/WrongClassContractResultChirho.hs"
+    ))
+    .err()
+    .expect("fresh GHC-negative class kind contract rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn class_contract_wrongclassbindercontractchirho_chirho() {
+    let error_chirho = super::ordinary_elaboration_chirho::frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/class_contracts_chirho/WrongClassBinderContractChirho.hs"
+    ))
+    .err()
+    .expect("fresh GHC-negative class kind contract rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn class_contract_written_representation_cannot_be_specialized_by_a_method_chirho() {
+    let error_chirho = super::ordinary_elaboration_chirho::frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/class_contracts_chirho/RepPolyMethodChirho.hs"
+    ))
+    .err()
+    .expect("fresh GHC-negative representation-polymorphic method rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn class_contract_lev_poly_bounded_keeps_its_standalone_representation_chirho() {
+    let error_chirho = check_chirho("should_fail", "LevPolyBounded.hs")
+        .expect_err("fresh GHC-negative standalone class kind stays universal");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn class_contract_classassoccontractchirho_chirho() {
+    super::ordinary_elaboration_chirho::frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/class_contracts_chirho/ClassAssocContractChirho.hs"
+    ))
+    .expect("fresh GHC-positive associated class contract checks");
+}
+
+#[test]
+fn class_contract_classassocdefaultcontractchirho_chirho() {
+    super::ordinary_elaboration_chirho::frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/class_contracts_chirho/ClassAssocDefaultContractChirho.hs"
+    ))
+    .expect("fresh GHC-positive associated class contract checks");
+}
+
+#[test]
+fn class_contract_classassocdefaultwrongchirho_chirho() {
+    let error_chirho = super::ordinary_elaboration_chirho::frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/class_contracts_chirho/ClassAssocDefaultWrongChirho.hs"
+    ))
+    .err()
+    .expect("fresh GHC-negative associated default result rejects");
+    assert!(error_chirho.contains("error[E0200]"), "{error_chirho}");
+}
+
+#[test]
+fn class_contract_classkindwildcardchirho_chirho() {
+    let error_chirho = super::ordinary_elaboration_chirho::frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/class_contracts_chirho/ClassKindWildcardChirho.hs"
+    ))
+    .err()
+    .expect("fresh GHC-negative standalone kind wildcard rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn class_contract_classkindpartialwildcardchirho_chirho() {
+    let error_chirho = super::ordinary_elaboration_chirho::frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/class_contracts_chirho/ClassKindPartialWildcardChirho.hs"
+    ))
+    .err()
+    .expect("fresh GHC-negative standalone kind wildcard rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
 }

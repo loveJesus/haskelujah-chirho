@@ -711,6 +711,7 @@ fn hidden_family_and_instance_prefixes_and_written_kinds_are_precharged_chirho()
     }
     for component_chirho in 0..3 {
         fixtures_chirho.push(DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: name_chirho("CChirho"),
             type_vars_chirho: vec![],

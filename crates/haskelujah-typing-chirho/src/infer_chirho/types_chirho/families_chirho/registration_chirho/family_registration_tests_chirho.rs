@@ -451,6 +451,7 @@ fn associated_header_and_default_supply_one_catalogue_declaration_chirho() {
         (vec![false, true, true], true),
     ] {
         let module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: dummy_name_chirho("HasRepChirho"),
             type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],
@@ -699,6 +700,7 @@ fn nominal_class_chirho(
     associated_tfs_chirho: Vec<haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho>,
 ) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: dummy_name_chirho(name_chirho),
         type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],

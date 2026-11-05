@@ -331,6 +331,12 @@ impl TypeElaboratorChirho<'_> {
                 })
             }
             TypeChirho::WildcardChirho { .. } => {
+                if self.standalone_kind_scope_chirho {
+                    return Err(Self::error_chirho(
+                        "wildcards are not allowed in a standalone kind signature",
+                        span_chirho,
+                    ));
+                }
                 let kind_chirho = self.fresh_kind_chirho(span_chirho)?;
                 let stored_kind_chirho =
                     self.state_chirho.copy_chirho(&kind_chirho, span_chirho)?;

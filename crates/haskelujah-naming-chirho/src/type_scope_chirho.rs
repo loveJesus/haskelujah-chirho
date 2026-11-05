@@ -288,12 +288,16 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 self.walk_type_chirho(rhs_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
             }
             DeclChirho::ClassDeclChirho {
+                standalone_kind_chirho,
                 context_chirho,
                 type_vars_chirho,
                 methods_chirho,
                 associated_tfs_chirho,
                 ..
             } => {
+                if let Some(kind_chirho) = standalone_kind_chirho {
+                    self.walk_signature_type_chirho(kind_chirho);
+                }
                 let pushed_chirho = self.push_decl_binders_chirho(type_vars_chirho);
                 for constraint_chirho in context_chirho {
                     self.walk_constraint_chirho(

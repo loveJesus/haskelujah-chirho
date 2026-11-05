@@ -151,6 +151,7 @@ fn type_family_instance_registration_chirho() {
 #[test]
 fn class_assoc_type_family_default_applies_per_instance_chirho() {
     let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: dummy_name_chirho("Representable"),
         type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -215,6 +216,7 @@ fn class_assoc_type_family_default_applies_per_instance_chirho() {
 #[test]
 fn instance_assoc_type_family_override_beats_class_default_chirho() {
     let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: dummy_name_chirho("Representable"),
         type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -735,6 +737,7 @@ fn written_associated_rows_and_defaults_keep_nested_family_identity_chirho() {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let class_chirho = DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: dummy_name_chirho("HasRepChirho"),
             type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],

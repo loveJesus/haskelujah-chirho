@@ -327,6 +327,8 @@ pub enum DeclChirho {
     },
     /// Type class declaration.
     ClassDeclChirho {
+        /// Complete written standalone kind, before the class's own binders.
+        standalone_kind_chirho: Option<TypeChirho>,
         /// Class context required by the declaration head.
         context_chirho: Vec<ConstraintChirho>,
         /// Class name being introduced.

@@ -97,6 +97,11 @@ impl LowerCtxChirho {
                 name_chirho,
                 standalone_kind_chirho,
                 ..
+            }
+            | DeclChirho::ClassDeclChirho {
+                name_chirho,
+                standalone_kind_chirho,
+                ..
             } = decl_chirho
             {
                 if let Some(signature_chirho) =

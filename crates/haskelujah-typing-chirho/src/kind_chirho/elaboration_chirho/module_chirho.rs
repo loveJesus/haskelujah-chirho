@@ -4,7 +4,9 @@
 //! canonical telescopes before their dependants. Workflow: declaration-kinds-chirho.
 
 use super::*;
-use haskelujah_ast_chirho::decl_chirho::{DataKindSigChirho, DeclChirho, TypeFamilyEquationChirho};
+use haskelujah_ast_chirho::decl_chirho::{
+    AssocTypeFamilyChirho, DataKindSigChirho, DeclChirho, TypeFamilyEquationChirho,
+};
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 
@@ -208,8 +210,13 @@ impl TypeElaboratorChirho<'_> {
                     span_chirho,
                 ));
             }
-            let mut signature_chirho =
-                self.scoped_chirho(|this_chirho| this_chirho.check_type_chirho(signature_chirho))?;
+            let mut signature_chirho = self.scoped_chirho(|this_chirho| {
+                let previous_chirho =
+                    std::mem::replace(&mut this_chirho.standalone_kind_scope_chirho, true);
+                let result_chirho = this_chirho.check_type_chirho(signature_chirho);
+                this_chirho.standalone_kind_scope_chirho = previous_chirho;
+                result_chirho
+            })?;
             let mut rigid_chirho = signature_chirho.free_vars_chirho();
             let mut mapping_chirho = crate::subst_chirho::SubstChirho::empty_chirho();
             let mut binders_chirho = Vec::new();
@@ -349,6 +356,32 @@ impl TypeElaboratorChirho<'_> {
     ) -> Result<(), ElaborationErrorChirho> {
         for index_chirho in group_chirho {
             let declaration_chirho = &mut module_chirho.decls_chirho[*index_chirho];
+            if let DeclChirho::ClassDeclChirho {
+                name_chirho,
+                type_vars_chirho,
+                standalone_kind_chirho: Some(signature_chirho),
+                ..
+            } = declaration_chirho
+            {
+                let span_chirho = name_chirho.span_chirho();
+                let key_chirho = self.local_key_chirho(name_chirho)?;
+                let previous_chirho = self.current_declaration_chirho.replace(key_chirho.clone());
+                let result_chirho = self.scoped_chirho(|this_chirho| {
+                    this_chirho.bind_header_scope_chirho(&key_chirho, span_chirho)?;
+                    this_chirho.check_binder_annotations_chirho(type_vars_chirho)?;
+                    this_chirho.check_kind_contract_chirho(
+                        &key_chirho,
+                        None,
+                        Some(signature_chirho),
+                        span_chirho,
+                    )?;
+                    this_chirho
+                        .finish_catalogue_chirho(std::slice::from_ref(&key_chirho), span_chirho)
+                });
+                self.current_declaration_chirho = previous_chirho;
+                result_chirho?;
+                continue;
+            }
             let (name_chirho, variables_chirho, signature_chirho, newtype_chirho) =
                 match declaration_chirho {
                     DeclChirho::DataDeclChirho {
@@ -637,26 +670,100 @@ impl TypeElaboratorChirho<'_> {
                 }
             }
             DeclChirho::ClassDeclChirho {
+                standalone_kind_chirho,
                 type_vars_chirho,
                 context_chirho,
                 methods_chirho,
                 associated_tfs_chirho,
                 ..
             } => {
-                self.check_binder_annotations_chirho(type_vars_chirho)?;
-                for constraint_chirho in context_chirho {
-                    self.infer_constraint_chirho(constraint_chirho)?;
+                if standalone_kind_chirho.is_none() {
+                    self.check_binder_annotations_chirho(type_vars_chirho)?;
                 }
-                for method_chirho in methods_chirho {
-                    self.scoped_chirho(|this_chirho| {
-                        this_chirho.check_type_chirho(&mut method_chirho.ty_chirho)
-                    })?;
-                }
-                self.elaborate_associated_chirho(associated_tfs_chirho, keys_chirho)?;
+                self.with_class_kind_scope_chirho(
+                    key_chirho,
+                    span_chirho,
+                    associated_tfs_chirho,
+                    keys_chirho,
+                    |this_chirho| {
+                        for constraint_chirho in context_chirho {
+                            this_chirho.infer_constraint_chirho(constraint_chirho)?;
+                        }
+                        for method_chirho in methods_chirho {
+                            this_chirho.scoped_chirho(|this_chirho| {
+                                this_chirho.check_type_chirho(&mut method_chirho.ty_chirho)
+                            })?;
+                        }
+                        Ok(())
+                    },
+                )?;
             }
             _ => {}
         }
         Ok(())
+    }
+
+    /// Class methods cannot specialize the producer's written universals.
+    /// Use live owned header variables, including kind-only dependencies; a
+    /// published telescope's canonical slot numbers are not State variables.
+    fn with_class_kind_scope_chirho<ResultChirho>(
+        &mut self,
+        key_chirho: &Arc<str>,
+        span_chirho: SpanChirho,
+        families_chirho: &mut [AssocTypeFamilyChirho],
+        keys_chirho: &mut Vec<Arc<str>>,
+        action_chirho: impl FnOnce(&mut Self) -> Result<ResultChirho, ElaborationErrorChirho>,
+    ) -> Result<ResultChirho, ElaborationErrorChirho> {
+        let length_chirho = self
+            .declaration_variables_chirho
+            .get(key_chirho)
+            .ok_or_else(|| Self::error_chirho("class body lost its owned header", span_chirho))?
+            .written_chirho
+            .len();
+        self.state_chirho
+            .charge_chirho(length_chirho, length_chirho, span_chirho)?;
+        let mut universals_chirho = std::collections::BTreeSet::new();
+        for index_chirho in 0..length_chirho {
+            let (_, variable_chirho, kind_chirho) =
+                &self.declaration_variables_chirho[key_chirho].written_chirho[index_chirho];
+            universals_chirho.insert(*variable_chirho);
+            let kind_chirho = self.state_chirho.resolve_chirho(kind_chirho, span_chirho)?;
+            for variable_chirho in kind_chirho.free_vars_chirho() {
+                self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+                if self
+                    .state_chirho
+                    .source_specificity_chirho(variable_chirho)
+                    .is_some()
+                {
+                    universals_chirho.insert(variable_chirho);
+                }
+            }
+        }
+        self.state_chirho.charge_chirho(
+            universals_chirho.len(),
+            universals_chirho.len(),
+            span_chirho,
+        )?;
+        let universals_chirho = universals_chirho.into_iter().collect::<Vec<_>>();
+        let rigid_chirho = self
+            .state_chirho
+            .open_rigid_scope_chirho(&universals_chirho, span_chirho)?;
+        let result_chirho = (|| {
+            // Both binder and result-kind metas belong to these associated
+            // declarations. Check their actual headers while the class's
+            // universals are rigid, before guarding enclosing inference metas.
+            self.elaborate_associated_chirho(families_chirho, keys_chirho)?;
+            let guard_chirho = self.state_chirho.open_kind_guard_chirho(
+                &universals_chirho,
+                self.state_chirho.next_variable_chirho,
+                span_chirho,
+            )?;
+            let result_chirho = action_chirho(self);
+            self.state_chirho.close_kind_guard_chirho(guard_chirho);
+            result_chirho
+        })();
+        self.state_chirho.close_rigid_scope_chirho(rigid_chirho);
+        result_chirho
     }
 
     fn data_contract_chirho(

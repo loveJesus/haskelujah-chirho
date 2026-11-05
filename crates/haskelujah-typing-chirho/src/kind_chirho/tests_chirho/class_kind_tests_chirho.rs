@@ -8,6 +8,7 @@ use super::*;
 fn class_single_param_chirho() {
     // class Eq a where eq :: a -> a -> Bool
     let module_chirho = mk_module_chirho(vec![DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: mk_name_chirho("Eq"),
         type_vars_chirho: vec![mk_name_chirho("a").into()],
@@ -45,6 +46,7 @@ fn class_higher_kinded_param_chirho() {
     // class Functor f where fmap :: (a -> b) -> f a -> f b
     // f :: * -> *, Functor :: (* -> *) -> Constraint
     let module_chirho = mk_module_chirho(vec![DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: mk_name_chirho("Functor"),
         type_vars_chirho: vec![mk_name_chirho("f").into()],
@@ -93,6 +95,7 @@ fn class_higher_kinded_param_chirho() {
 fn local_tagged_decl_shadows_builtin_tagged_kind_chirho() {
     let module_chirho = mk_module_chirho(vec![
         DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: mk_name_chirho("SumSize"),
             type_vars_chirho: vec![mk_name_chirho("f").into()],
@@ -161,6 +164,7 @@ fn local_tagged_decl_shadows_builtin_tagged_kind_chirho() {
 #[test]
 fn class_associated_type_family_shadows_builtin_rep_chirho() {
     let module_chirho = mk_module_chirho(vec![DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![ConstraintChirho::ClassChirho {
             kind_args_chirho: Vec::new(),
             class_chirho: mk_name_chirho("Contravariant"),
@@ -247,6 +251,7 @@ fn mk_class_and_instance_module_chirho(
 ) -> ModuleChirho {
     mk_module_chirho(vec![
         DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: mk_name_chirho("CChirho"),
             type_vars_chirho: class_param_names_chirho

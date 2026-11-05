@@ -270,6 +270,7 @@ impl LowerCtxChirho {
             &default_sigs_chirho,
         );
         DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho,
             name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
             type_vars_chirho,

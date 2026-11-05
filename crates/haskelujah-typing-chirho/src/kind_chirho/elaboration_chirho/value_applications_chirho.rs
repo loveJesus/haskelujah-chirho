@@ -129,6 +129,7 @@ fn with_argument_elaborator_chirho<ResultChirho>(
         ElaborationStateChirho::unowned_chirho(),
     );
     let mut elaborator_chirho = TypeElaboratorChirho {
+        standalone_kind_scope_chirho: false,
         state_chirho,
         registry_chirho: ElaborationCatalogueChirho::BorrowedChirho(context_chirho.registry_chirho),
         type_scope_chirho: context_chirho.type_scope_chirho,

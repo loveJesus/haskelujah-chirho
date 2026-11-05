@@ -54,6 +54,7 @@ pub(super) fn declaration_module_chirho(
             .map_err(|failure_chirho| error_chirho(failure_chirho.to_string()))?;
         let declaration_chirho = match declaration_chirho {
             DeclChirho::ClassDeclChirho {
+                standalone_kind_chirho,
                 context_chirho,
                 name_chirho,
                 type_vars_chirho,
@@ -62,6 +63,7 @@ pub(super) fn declaration_module_chirho(
                 fundeps_chirho,
                 span_chirho,
             } => DeclChirho::ClassDeclChirho {
+                standalone_kind_chirho: standalone_kind_chirho.clone(),
                 context_chirho: context_chirho.clone(),
                 name_chirho: name_chirho.clone(),
                 type_vars_chirho: type_vars_chirho.clone(),

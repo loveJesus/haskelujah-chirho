@@ -22,6 +22,7 @@ fn associated_default_arguments_are_measured_before_class_projection_chirho() {
             (vec![], vec![heavy_chirho])
         };
         let declaration_chirho = DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: name_chirho("CChirho"),
             type_vars_chirho: vec![],
@@ -67,4 +68,49 @@ fn associated_default_arguments_are_measured_before_class_projection_chirho() {
             "resource refusal stays latched"
         );
     }
+}
+
+#[test]
+fn standalone_class_kind_shares_the_projection_allowance_and_terminal_failure_chirho() {
+    let mut declaration_chirho = DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
+        context_chirho: vec![],
+        name_chirho: name_chirho("CChirho"),
+        type_vars_chirho: vec![],
+        methods_chirho: vec![],
+        associated_tfs_chirho: vec![],
+        fundeps_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let mut budget_chirho =
+        GadtProjectionBudgetChirho::with_limits_chirho(GadtProjectionLimitsChirho {
+            work_chirho: 1 << 20,
+            output_chirho: 1024,
+            depth_chirho: 128,
+        });
+    check_declaration_projection_chirho(&declaration_chirho, &mut budget_chirho, 1).unwrap();
+    let DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho,
+        ..
+    } = &mut declaration_chirho
+    else {
+        unreachable!()
+    };
+    *standalone_kind_chirho = Some(TypeChirho::ConChirho(name_chirho(&"x".repeat(4096))));
+    assert_eq!(
+        check_declaration_projection_chirho(&declaration_chirho, &mut budget_chirho, 1)
+            .unwrap_err()
+            .limit_chirho,
+        GadtProjectionLimitChirho::OutputChirho
+    );
+    if let DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho,
+        ..
+    } = &mut declaration_chirho
+    {
+        *standalone_kind_chirho = None;
+    }
+    assert!(
+        check_declaration_projection_chirho(&declaration_chirho, &mut budget_chirho, 1).is_err()
+    );
 }

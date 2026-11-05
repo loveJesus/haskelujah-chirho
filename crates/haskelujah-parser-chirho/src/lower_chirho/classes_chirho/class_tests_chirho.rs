@@ -11,6 +11,33 @@ use super::test_support_chirho::{
 use crate::test_fixtures_chirho::CONTRAVARIANT_REP_SOURCE_CHIRHO;
 
 #[test]
+fn standalone_class_kind_retains_the_complete_written_contract_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE PolyKinds, StandaloneKindSignatures #-}\nmodule MChirho where\ntype CChirho :: forall kChirho. kChirho -> Constraint\nclass CChirho aChirho where\n  methodChirho :: Proxy aChirho\n",
+    );
+    let DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: Some(signature_chirho),
+        type_vars_chirho,
+        ..
+    } = find_class_decl_chirho(&module_chirho, "CChirho")
+    else {
+        panic!("class retains its standalone kind")
+    };
+    assert_eq!(type_vars_chirho.len(), 1);
+    let haskelujah_ast_chirho::ty_chirho::TypeChirho::ForallChirho {
+        vars_chirho,
+        body_chirho,
+        ..
+    } = signature_chirho
+    else {
+        panic!("standalone kind retains its universal prefix")
+    };
+    assert_eq!(vars_chirho.len(), 1);
+    assert_eq!(vars_chirho[0].name_chirho.text_chirho(), "kChirho");
+    assert_eq!(type_shape_chirho(body_chirho), "(kChirho -> Constraint)");
+}
+
+#[test]
 fn lower_class_kind_annotation_does_not_collect_kind_vars_chirho() {
     let module_chirho = parse_and_lower_chirho(
         "{-# LANGUAGE ConstraintKinds #-}\n{-# LANGUAGE PolyKinds #-}\n{-# LANGUAGE QuantifiedConstraints #-}\nmodule M where\nclass (forall a. p a) => Forall (p :: k -> Constraint)\nclass ForallF (p :: k2 -> Constraint) (f :: k1 -> k2)\nclass ForallV' p => ForallV_ (p :: k)\n",

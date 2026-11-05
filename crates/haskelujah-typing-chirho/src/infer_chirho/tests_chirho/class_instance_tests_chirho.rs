@@ -19,6 +19,7 @@ fn infer_user_class_decl_chirho() {
         exports_chirho: None,
         imports_chirho: vec![],
         decls_chirho: vec![DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: dummy_name_chirho("MyEqChirho"),
             type_vars_chirho: vec![dummy_name_chirho("a").into()],
@@ -87,6 +88,7 @@ fn infer_user_class_with_superclass_chirho() {
         exports_chirho: None,
         imports_chirho: vec![],
         decls_chirho: vec![DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![AstConstraintChirho::ClassChirho {
                 kind_args_chirho: Vec::new(),
                 class_chirho: dummy_name_chirho("Eq"),
@@ -179,6 +181,7 @@ fn infer_user_class_method_scheme_keeps_outer_forall_and_free_vars_chirho() {
         exports_chirho: None,
         imports_chirho: vec![],
         decls_chirho: vec![DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: dummy_name_chirho("BifunctorMonadChirho"),
             type_vars_chirho: vec![dummy_name_chirho("t").into()],
@@ -300,6 +303,7 @@ fn infer_user_class_method_scheme_through_type_alias_keeps_free_vars_chirho() {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             DeclChirho::ClassDeclChirho {
+                standalone_kind_chirho: None,
                 context_chirho: vec![],
                 name_chirho: dummy_name_chirho("BifunctorMonadChirho"),
                 type_vars_chirho: vec![dummy_name_chirho("t").into()],
@@ -408,6 +412,7 @@ fn infer_user_class_method_scheme_keeps_applied_class_parameter_chirho() {
         exports_chirho: None,
         imports_chirho: vec![],
         decls_chirho: vec![DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: dummy_name_chirho("BiapplicativeChirho"),
             type_vars_chirho: vec![dummy_name_chirho("p").into()],
@@ -489,6 +494,7 @@ fn instantiate_instance_method_expected_ty_keeps_tuple_application_chirho() {
         exports_chirho: None,
         imports_chirho: vec![],
         decls_chirho: vec![DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: dummy_name_chirho("BiapplicativeChirho"),
             type_vars_chirho: vec![dummy_name_chirho("p").into()],
@@ -639,6 +645,7 @@ fn duplicate_written_method_class_chirho() -> DeclChirho {
         }
     };
     DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: dummy_name_chirho("OwnChirho"),
         type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],

@@ -150,6 +150,7 @@ fn instance_chirho(methods_chirho: Vec<LocalBindChirho>) -> DeclChirho {
 
 fn class_chirho(default_sig_chirho: Option<&str>, has_default_chirho: bool) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho("C"),
         type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("a"))],

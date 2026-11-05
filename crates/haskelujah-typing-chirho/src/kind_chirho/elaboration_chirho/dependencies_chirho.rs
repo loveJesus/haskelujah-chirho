@@ -550,12 +550,22 @@ impl TypeElaboratorChirho<'_> {
                 (type_vars_chirho.as_slice(), None, &[][..])
             }
             DeclChirho::ClassDeclChirho {
+                standalone_kind_chirho,
                 type_vars_chirho,
                 context_chirho,
                 methods_chirho,
                 associated_tfs_chirho,
                 ..
             } => {
+                if let Some(kind_chirho) = standalone_kind_chirho {
+                    self.type_references_chirho(
+                        kind_chirho,
+                        indices_chirho,
+                        constructor_owners_chirho,
+                        references_chirho,
+                        0,
+                    )?;
+                }
                 for constraint_chirho in context_chirho {
                     self.constraint_references_chirho(
                         constraint_chirho,

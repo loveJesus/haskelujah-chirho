@@ -195,6 +195,7 @@ fn a_class_associated_family_is_in_the_type_namespace_chirho() {
     // `class CChirho a where type FamChirho a` beside `data DChirho = FamChirho`: GHC
     // reads an unquoted `FamChirho` as the family, and only `'FamChirho` as the constructor.
     let class_chirho = DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: Vec::new(),
         name_chirho: name_chirho("CChirho"),
         type_vars_chirho: Vec::new(),
