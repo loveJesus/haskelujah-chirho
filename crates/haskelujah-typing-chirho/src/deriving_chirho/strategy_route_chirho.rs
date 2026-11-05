@@ -77,9 +77,20 @@ impl<'a> DerivingPolicyChirho<'a> {
         }
     }
 
-    /// The stock derivable class `class_chirho` names in this module, if any.
-    pub(super) fn stock_class_chirho(&self, class_chirho: &NameChirho) -> Option<&'static str> {
-        self.identity_chirho.stock_class_chirho(class_chirho)
+    /// The stock class whose generator may derive `derived_chirho`, by its strategy.
+    pub(super) fn stock_class_for_chirho(
+        &self,
+        derived_chirho: &DerivedClassChirho,
+    ) -> Option<&'static str> {
+        self.identity_chirho.stock_class_for_chirho(derived_chirho)
+    }
+
+    /// The stock class the legacy route takes for `class_chirho` under an unwritten strategy.
+    pub(super) fn legacy_stock_class_chirho(
+        &self,
+        class_chirho: &NameChirho,
+    ) -> Option<&'static str> {
+        self.identity_chirho.legacy_stock_class_chirho(class_chirho)
     }
 
     /// Whether an unwritten strategy on a newtype takes anyclass over GND for this class:
@@ -90,7 +101,7 @@ impl<'a> DerivingPolicyChirho<'a> {
             && self.extensions_chirho.any_class_chirho
             && self.extensions_chirho.newtype_chirho
             && self
-                .stock_class_chirho(&derived_chirho.class_chirho)
+                .legacy_stock_class_chirho(&derived_chirho.class_chirho)
                 .is_none()
     }
 
@@ -103,7 +114,7 @@ impl<'a> DerivingPolicyChirho<'a> {
         is_newtype_chirho: bool,
         derived_chirho: &DerivedClassChirho,
     ) -> Option<DerivationRouteChirho> {
-        let stock_class_chirho = self.stock_class_chirho(&derived_chirho.class_chirho);
+        let stock_class_chirho = self.stock_class_for_chirho(derived_chirho);
         let empty_instance_chirho = stock_class_chirho
             .is_some_and(|class_chirho| EMPTY_INSTANCE_CLASSES_CHIRHO.contains(&class_chirho));
         let route_chirho = match &derived_chirho.strategy_chirho {
@@ -115,8 +126,8 @@ impl<'a> DerivingPolicyChirho<'a> {
                     defaults_only_chirho: true,
                 })
             }
-            // `stock`: the generator, or the empty instance a builtin class already uses;
-            // nothing for a class GHC does not derive with the stock strategy.
+            // `stock`: the proven class's generator, or the empty instance a builtin class
+            // already uses; nothing for a class K01 does not prove stock derivable.
             Some(_) => stock_class_chirho.map(|_| DerivationRouteChirho::WrittenChirho {
                 defaults_only_chirho: empty_instance_chirho,
             }),
@@ -215,8 +226,7 @@ pub(super) fn derive_class_chirho(
             defaults_only_chirho: false,
         }) => {
             // The stock route exists only for a class the judgment names.
-            let Some(stock_class_chirho) =
-                policy_chirho.stock_class_chirho(&derived_chirho.class_chirho)
+            let Some(stock_class_chirho) = policy_chirho.stock_class_for_chirho(derived_chirho)
             else {
                 return;
             };

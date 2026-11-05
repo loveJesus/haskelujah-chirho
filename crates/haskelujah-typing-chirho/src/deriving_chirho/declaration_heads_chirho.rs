@@ -173,7 +173,7 @@ fn derive_standalone_class_chirho(
         return;
     }
     let class_text_chirho = request_chirho.class_chirho.text_chirho();
-    let stock_class_chirho = policy_chirho.stock_class_chirho(request_chirho.class_chirho);
+    let stock_class_chirho = policy_chirho.legacy_stock_class_chirho(request_chirho.class_chirho);
     // A stock class applied to arguments: declaration validity refuses the head (rule 13).
     if stock_class_chirho.is_some() && !request_chirho.class_arguments_chirho.is_empty() {
         return;

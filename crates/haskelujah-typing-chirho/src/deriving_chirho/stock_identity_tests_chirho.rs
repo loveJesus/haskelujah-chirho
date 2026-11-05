@@ -86,16 +86,22 @@ fn a_proven_spelling_names_its_builtin_class_whatever_its_qualifier_chirho() {
     let module_chirho = module_chirho(vec![class_decl_chirho("Eq", &["valueChirho"])]);
     let identity_chirho = StockIdentityChirho::of_module_chirho(&module_chirho, &builtin_chirho);
     assert_eq!(
-        identity_chirho.stock_class_chirho(&qualified_chirho("P", "Eq")),
+        identity_chirho.proven_stock_class_chirho(&qualified_chirho("P", "Eq")),
         Some("Eq")
     );
     // A proven builtin class GHC does not derive with the stock strategy.
     assert_eq!(
-        identity_chirho.stock_class_chirho(&qualified_chirho("P", "Num")),
+        identity_chirho.proven_stock_class_chirho(&qualified_chirho("P", "Num")),
         None
     );
+    assert!(identity_chirho.proves_builtin_chirho(&qualified_chirho("P", "Num")));
     assert_eq!(
-        identity_chirho.parameter_count_chirho(&qualified_chirho("P", "Num")),
+        identity_chirho.parameter_count_chirho(&DerivedClassChirho::new_chirho(
+            qualified_chirho("P", "Num"),
+            Some(DerivingStrategyChirho::stock_at_chirho(
+                SpanChirho::DUMMY_CHIRHO
+            )),
+        )),
         Some(1)
     );
 }
@@ -106,62 +112,93 @@ fn a_local_class_is_never_a_builtin_stock_class_chirho() {
     let builtin_chirho = scope_chirho(&[("P.Eq", "Eq")]);
     let module_chirho = module_chirho(vec![class_decl_chirho("Eq", &["valueChirho"])]);
     let identity_chirho = StockIdentityChirho::of_module_chirho(&module_chirho, &builtin_chirho);
-    assert_eq!(identity_chirho.stock_class_chirho(&name_chirho("Eq")), None);
     assert_eq!(
-        identity_chirho.stock_class_chirho(&qualified_chirho("Main", "Eq")),
+        identity_chirho.legacy_stock_class_chirho(&name_chirho("Eq")),
         None
     );
+    assert!(identity_chirho.names_local_chirho(&name_chirho("Eq")));
+    assert!(identity_chirho.names_local_chirho(&qualified_chirho("Main", "Eq")));
+    assert!(!identity_chirho.names_local_chirho(&qualified_chirho("P", "Eq")));
     assert_eq!(
-        identity_chirho.parameter_count_chirho(&name_chirho("Eq")),
+        identity_chirho
+            .parameter_count_chirho(&DerivedClassChirho::unspecified_chirho(name_chirho("Eq"))),
         Some(1)
     );
 }
 
 #[test]
-fn a_spelling_k01_cannot_judge_keeps_its_written_name_chirho() {
+fn only_the_legacy_route_takes_a_spelling_k01_cannot_judge_chirho() {
     let builtin_chirho = BuiltinClassScopeChirho::default();
     let module_chirho = module_chirho(vec![class_decl_chirho(
         "PairChirho",
         &["keyChirho", "valueChirho"],
     )]);
     let identity_chirho = StockIdentityChirho::of_module_chirho(&module_chirho, &builtin_chirho);
-    for stock_chirho in ["Read", "Generic", "Show"] {
+    let stock_chirho = || {
+        Some(DerivingStrategyChirho::stock_at_chirho(
+            SpanChirho::DUMMY_CHIRHO,
+        ))
+    };
+    for stock_class_chirho in ["Read", "Generic", "Show"] {
+        // An unwritten strategy keeps the legacy route's written name...
+        let unwritten_chirho =
+            DerivedClassChirho::unspecified_chirho(name_chirho(stock_class_chirho));
         assert_eq!(
-            identity_chirho.stock_class_chirho(&name_chirho(stock_chirho)),
-            Some(stock_chirho)
+            identity_chirho.stock_class_for_chirho(&unwritten_chirho),
+            Some(stock_class_chirho)
+        );
+        // ...but an explicit `stock` needs K01's proof (#31786).
+        let explicit_chirho =
+            DerivedClassChirho::new_chirho(name_chirho(stock_class_chirho), stock_chirho());
+        assert_eq!(
+            identity_chirho.stock_class_for_chirho(&explicit_chirho),
+            None
+        );
+        assert_eq!(
+            identity_chirho.parameter_count_chirho(&explicit_chirho),
+            None
+        );
+        assert_eq!(
+            identity_chirho.parameter_count_chirho(&unwritten_chirho),
+            Some(1)
         );
     }
     for other_chirho in ["NFData", "DescribeChirho", "PairChirho"] {
         assert_eq!(
-            identity_chirho.stock_class_chirho(&name_chirho(other_chirho)),
+            identity_chirho.legacy_stock_class_chirho(&name_chirho(other_chirho)),
             None,
             "{other_chirho}"
         );
     }
+    let pair_chirho = DerivedClassChirho::unspecified_chirho(name_chirho("PairChirho"));
     assert_eq!(
-        identity_chirho.parameter_count_chirho(&name_chirho("PairChirho")),
+        identity_chirho.parameter_count_chirho(&pair_chirho),
         Some(2)
     );
-    assert_eq!(
-        identity_chirho.parameter_count_chirho(&name_chirho("Read")),
-        Some(1)
-    );
     // Only an interface knows an imported class's parameters.
+    let describe_chirho = DerivedClassChirho::unspecified_chirho(name_chirho("DescribeChirho"));
     assert_eq!(
-        identity_chirho.parameter_count_chirho(&name_chirho("DescribeChirho")),
+        identity_chirho.parameter_count_chirho(&describe_chirho),
         None
     );
 }
 
 #[test]
 fn only_a_bare_stock_or_unwritten_entry_names_a_stock_class_chirho() {
-    let builtin_chirho = BuiltinClassScopeChirho::default();
+    let builtin_chirho = scope_chirho(&[("Show", "Show")]);
     let module_chirho = module_chirho(vec![]);
     let identity_chirho = StockIdentityChirho::of_module_chirho(&module_chirho, &builtin_chirho);
     let span_chirho = SpanChirho::DUMMY_CHIRHO;
     let show_chirho = DerivedClassChirho::unspecified_chirho(name_chirho("Show"));
     assert!(identity_chirho.names_stock_class_chirho(&show_chirho, "Show"));
     assert!(!identity_chirho.names_stock_class_chirho(&show_chirho, "Eq"));
+    assert!(identity_chirho.names_stock_class_chirho(
+        &DerivedClassChirho::new_chirho(
+            name_chirho("Show"),
+            Some(DerivingStrategyChirho::stock_at_chirho(span_chirho)),
+        ),
+        "Show"
+    ));
     assert!(!identity_chirho.names_stock_class_chirho(
         &DerivedClassChirho::new_chirho(
             name_chirho("Show"),

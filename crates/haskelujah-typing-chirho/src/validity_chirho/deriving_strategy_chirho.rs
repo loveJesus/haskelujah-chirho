@@ -16,8 +16,11 @@
 //!     takes none, a local or proven builtin class one fewer than its parameters (`GHC-73993`,
 //!     W2). A standalone head that gives a class the wrong number of types is refused with
 //!     GHC's code still unmeasured;
-//! 14. the `stock` strategy derives only a stock derivable builtin class, judged by the builtin
-//!     class proof, never the spelling (`GHC-00158`, S1);
+//! 14. the `stock` strategy derives only a stock derivable builtin class K01 proved for the
+//!     spelling: the module's own class, or a proven builtin class GHC does not derive that
+//!     way, is `GHC-00158` (S1); a spelling K01 cannot judge (an imported or re-exported
+//!     source class, Read, Generic) is a named Unsupported gap, never a presumed stock class
+//!     or a GHC claim (#31786);
 //! 15. a class applied to arguments does not derive through GND yet, because the dictionary
 //!     pass keys a representation dictionary by one head type. This is a compatibility gap, not
 //!     a GHC rule: GHC accepts W3 and prints `MeterChirho 12`.
@@ -162,9 +165,10 @@ impl DerivingJudgeChirho<'_> {
             "`{} {type_text_chirho}`",
             applied_class_text_chirho(derived_chirho)
         );
+        // The legacy route's judgment, for an unwritten strategy.
         let stock_chirho = self
             .identity_chirho
-            .stock_class_chirho(class_chirho)
+            .legacy_stock_class_chirho(class_chirho)
             .is_some();
         let unsupported_chirho = || {
             class_error_chirho(
@@ -223,15 +227,33 @@ impl DerivingJudgeChirho<'_> {
                 ),
                 class_chirho,
             ));
-        } else if strategy_chirho.is_stock_chirho() && !stock_chirho {
-            errors_chirho.push(class_error_chirho(
-                "GHC-00158",
-                format!(
-                    "Can't make a derived instance of {head_chirho} with the stock strategy: `{}` is not a stock derivable class (Eq, Show, etc.)",
-                    class_chirho.text_chirho()
-                ),
-                class_chirho,
-            ));
+        } else if strategy_chirho.is_stock_chirho()
+            && self
+                .identity_chirho
+                .proven_stock_class_chirho(class_chirho)
+                .is_none()
+        {
+            let known_chirho = self.identity_chirho.proves_builtin_chirho(class_chirho)
+                || self.identity_chirho.names_local_chirho(class_chirho);
+            errors_chirho.push(if known_chirho {
+                class_error_chirho(
+                    "GHC-00158",
+                    format!(
+                        "Can't make a derived instance of {head_chirho} with the stock strategy: `{}` is not a stock derivable class (Eq, Show, etc.)",
+                        class_chirho.text_chirho()
+                    ),
+                    class_chirho,
+                )
+            } else {
+                class_error_chirho(
+                    UNSUPPORTED_SHAPE_CHIRHO,
+                    format!(
+                        "Deriving {head_chirho} with the stock strategy is not supported yet: Haskelujah cannot prove that `{}` is a builtin stock derivable class",
+                        class_chirho.full_name_chirho()
+                    ),
+                    class_chirho,
+                )
+            });
         }
     }
 
@@ -243,7 +265,9 @@ impl DerivingJudgeChirho<'_> {
         standalone_chirho: bool,
     ) -> Option<DeclarationErrorChirho> {
         let class_chirho = &derived_chirho.class_chirho;
-        let parameters_chirho = self.identity_chirho.parameter_count_chirho(class_chirho)?;
+        let parameters_chirho = self
+            .identity_chirho
+            .parameter_count_chirho(derived_chirho)?;
         let given_chirho = derived_chirho.class_arguments_chirho.len() + 1;
         if parameters_chirho == given_chirho {
             return None;

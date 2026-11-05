@@ -1,6 +1,6 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Which builtin stock class a written deriving class names (row 694, #31771).
+//! Which builtin stock class a written deriving class names (row 694, #31771, #31786).
 //!
 //! The stock route runs a class's own generator, so it must know the class itself, not its
 //! spelling: `deriving stock (P.Eq)` under `import qualified Prelude as P` names the builtin
@@ -8,12 +8,14 @@
 //! generator derives. The builtin class scope naming proved for the module (K01) is the proof:
 //! a proven spelling names its builtin class, whatever qualifier it is written with.
 //!
-//! K01 proves a spelling or says nothing. It excludes a source module's re-export of the
-//! Prelude's class as well as a local declaration, so an exclusion is no disproof. The judgment
-//! therefore refuses a stock class only where the module itself declares the spelling's name,
-//! and keeps the written name for every other unproven spelling: Read and Generic, which K01's
-//! table does not hold, and classes reached through source interfaces. A generated instance
-//! names its class with the written spelling, so naming resolves it to the class proved here.
+//! An explicit `stock` takes a generator only on that proof. K01 proves a spelling or says
+//! nothing: it excludes a source module's re-export of the Prelude's class as well as a local
+//! declaration, so an exclusion is no disproof and no authority either. Declaration validity
+//! refuses the module's own class (GHC-00158) and names every other unproven spelling as
+//! unsupported: an imported or re-exported source class, and Read and Generic, which K01's
+//! table does not hold. An unwritten strategy keeps the legacy route, which takes a written name
+//! K01 cannot judge for that stock class. A generated instance names its class with the written
+//! spelling, so naming resolves it to the class proved here.
 //! workflow: language-features-chirho/deriving-strategies-chirho
 
 use std::collections::HashSet;
@@ -100,26 +102,47 @@ impl<'a> StockIdentityChirho<'a> {
 
     /// Whether `class_chirho` is written as one of this module's own type-namespace names:
     /// unqualified, or qualified with the module's own name.
-    fn names_local_chirho(&self, class_chirho: &NameChirho) -> bool {
+    pub(crate) fn names_local_chirho(&self, class_chirho: &NameChirho) -> bool {
         class_chirho
             .qualifier_chirho()
             .is_none_or(|qualifier_chirho| qualifier_chirho == self.module_name_chirho)
             && self.local_types_chirho.contains(class_chirho.text_chirho())
     }
 
-    /// The stock derivable class `class_chirho` names, by its own name (`Eq` for a written
-    /// `P.Eq`): the builtin class K01 proved for the spelling; none when the spelling names
-    /// one of this module's own declarations; otherwise the written name, which K01 cannot
-    /// judge. `None` for a class GHC does not derive with the stock strategy.
-    /// workflow: language-features-chirho/deriving-strategies-chirho
-    pub(crate) fn stock_class_chirho(&self, class_chirho: &NameChirho) -> Option<&'static str> {
-        if let Some(builtin_chirho) = self
-            .builtin_classes_chirho
+    /// Whether K01 proved that `class_chirho`'s full spelling names a builtin class, stock
+    /// derivable or not.
+    pub(crate) fn proves_builtin_chirho(&self, class_chirho: &NameChirho) -> bool {
+        self.builtin_classes_chirho
             .class_chirho(&class_chirho.full_name_chirho())
-        {
-            return STOCK_DERIVABLE_CLASSES_CHIRHO
-                .contains(&builtin_chirho.name_chirho)
-                .then_some(builtin_chirho.name_chirho);
+            .is_some()
+    }
+
+    /// The stock derivable builtin class K01 proved `class_chirho` names, by its own name
+    /// (`Eq` for a written `P.Eq`): the only authority an explicit `stock` accepts.
+    /// workflow: language-features-chirho/deriving-strategies-chirho
+    pub(crate) fn proven_stock_class_chirho(
+        &self,
+        class_chirho: &NameChirho,
+    ) -> Option<&'static str> {
+        let builtin_chirho = self
+            .builtin_classes_chirho
+            .class_chirho(&class_chirho.full_name_chirho())?;
+        STOCK_DERIVABLE_CLASSES_CHIRHO
+            .contains(&builtin_chirho.name_chirho)
+            .then_some(builtin_chirho.name_chirho)
+    }
+
+    /// The stock class the legacy route takes for an unwritten strategy: K01's proof when
+    /// naming gave one; none when the spelling names one of this module's own declarations or
+    /// a proven builtin class GHC does not derive with the stock strategy; otherwise the
+    /// written name, which K01 cannot judge.
+    /// workflow: language-features-chirho/deriving-strategies-chirho
+    pub(crate) fn legacy_stock_class_chirho(
+        &self,
+        class_chirho: &NameChirho,
+    ) -> Option<&'static str> {
+        if self.proves_builtin_chirho(class_chirho) {
+            return self.proven_stock_class_chirho(class_chirho);
         }
         if self.names_local_chirho(class_chirho) {
             return None;
@@ -130,10 +153,32 @@ impl<'a> StockIdentityChirho<'a> {
             .find(|stock_chirho| *stock_chirho == class_chirho.text_chirho())
     }
 
-    /// How many parameters `class_chirho` takes, where the module can tell: a builtin class
-    /// from K01's proof, a stock derivable class one, a local class from its declaration.
-    /// `None` for a class only an interface knows.
-    pub(crate) fn parameter_count_chirho(&self, class_chirho: &NameChirho) -> Option<usize> {
+    /// The stock class whose generator may derive `derived_chirho`: an explicit `stock` needs
+    /// K01's proof, an unwritten strategy keeps the legacy route, and `anyclass` and `newtype`
+    /// never take a generator.
+    /// workflow: language-features-chirho/deriving-strategies-chirho
+    pub(crate) fn stock_class_for_chirho(
+        &self,
+        derived_chirho: &DerivedClassChirho,
+    ) -> Option<&'static str> {
+        match &derived_chirho.strategy_chirho {
+            None => self.legacy_stock_class_chirho(&derived_chirho.class_chirho),
+            Some(strategy_chirho) if strategy_chirho.is_stock_chirho() => {
+                self.proven_stock_class_chirho(&derived_chirho.class_chirho)
+            }
+            Some(_) => None,
+        }
+    }
+
+    /// How many parameters `derived_chirho`'s class takes, where the module can tell: a
+    /// builtin class from K01's proof, a local class from its declaration, and, on the legacy
+    /// route of an unwritten strategy, a stock class one. `None` for a class only an interface
+    /// knows.
+    pub(crate) fn parameter_count_chirho(
+        &self,
+        derived_chirho: &DerivedClassChirho,
+    ) -> Option<usize> {
+        let class_chirho = &derived_chirho.class_chirho;
         if let Some(builtin_chirho) = self
             .builtin_classes_chirho
             .class_chirho(&class_chirho.full_name_chirho())
@@ -147,19 +192,22 @@ impl<'a> StockIdentityChirho<'a> {
                 .find(|(name_chirho, _)| name_chirho == class_chirho.text_chirho())
                 .map(|(_, count_chirho)| *count_chirho);
         }
-        self.stock_class_chirho(class_chirho).map(|_| 1)
+        if derived_chirho.strategy_chirho.is_none() {
+            return self.legacy_stock_class_chirho(class_chirho).map(|_| 1);
+        }
+        None
     }
 
-    /// Whether `derived_chirho` asks for `stock_class_chirho`'s own stock code: its strategy
-    /// allows stock, it takes no class argument, and it names that stock class.
+    /// Whether `derived_chirho` asks for `stock_class_chirho`'s own stock code, exactly as the
+    /// deriving pass routes it: it takes no class argument, and its strategy's stock judgment
+    /// names that stock class.
     pub(crate) fn names_stock_class_chirho(
         &self,
         derived_chirho: &DerivedClassChirho,
         stock_class_chirho: &str,
     ) -> bool {
-        derived_chirho.allows_stock_chirho()
-            && !derived_chirho.has_class_arguments_chirho()
-            && self.stock_class_chirho(&derived_chirho.class_chirho) == Some(stock_class_chirho)
+        !derived_chirho.has_class_arguments_chirho()
+            && self.stock_class_for_chirho(derived_chirho) == Some(stock_class_chirho)
     }
 }
 

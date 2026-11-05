@@ -160,11 +160,13 @@ fn an_explicit_newtype_show_takes_the_representation_chirho() {
 #[test]
 fn the_stock_twin_and_an_unwritten_show_render_the_constructor_chirho() {
     for strategy_chirho in [stock_chirho(), None] {
-        let result_chirho =
-            derive_instances_chirho(&module_chirho(vec![age_chirho(vec![derived_chirho(
+        let result_chirho = derive_instances_with_builtins_chirho(
+            &module_chirho(vec![age_chirho(vec![derived_chirho(
                 "Show",
                 strategy_chirho.clone(),
-            )])]));
+            )])]),
+            &prelude_scope_chirho(&["Show"]),
+        );
         let shapes_chirho = instance_shapes_chirho(&result_chirho);
         assert_eq!(shapes_chirho.len(), 1, "{strategy_chirho:?}");
         let (class_chirho, context_chirho, methods_chirho) = &shapes_chirho[0];
@@ -227,6 +229,26 @@ fn db_with_chirho() -> ModuleChirho {
         },
         vec![derived_chirho("Functor", newtype_chirho())],
     )])
+}
+
+/// A scope proving each bare spelling for its builtin class over one `Type` parameter, as
+/// the implicit Prelude import does.
+fn prelude_scope_chirho(classes_chirho: &[&'static str]) -> BuiltinClassScopeChirho {
+    BuiltinClassScopeChirho::new_chirho(
+        classes_chirho
+            .iter()
+            .map(|&class_chirho| {
+                (
+                    class_chirho.to_string(),
+                    BuiltinClassChirho {
+                        module_chirho: "Prelude",
+                        name_chirho: class_chirho,
+                        parameter_arities_chirho: &[0],
+                    },
+                )
+            })
+            .collect(),
+    )
 }
 
 fn functor_scope_chirho() -> BuiltinClassScopeChirho {
@@ -361,12 +383,24 @@ fn an_anyclass_show_has_no_constructor_rendering_chirho() {
         kind_sig_chirho: None,
         span_chirho: gen_span_chirho(),
     };
+    let prelude_chirho = prelude_scope_chirho(&["Show"]);
     assert!(
-        derived_show_metadata_chirho(&module_chirho(vec![data_chirho(stock_chirho())]))
-            .contains_key("ColorChirho")
+        derived_show_metadata_with_builtins_chirho(
+            &module_chirho(vec![data_chirho(stock_chirho())]),
+            &prelude_chirho
+        )
+        .contains_key("ColorChirho")
     );
     assert!(
-        !derived_show_metadata_chirho(&module_chirho(vec![data_chirho(anyclass_chirho())]))
+        !derived_show_metadata_with_builtins_chirho(
+            &module_chirho(vec![data_chirho(anyclass_chirho())]),
+            &prelude_chirho
+        )
+        .contains_key("ColorChirho")
+    );
+    // Without the proof an explicit `stock` names no stock class (#31786).
+    assert!(
+        !derived_show_metadata_chirho(&module_chirho(vec![data_chirho(stock_chirho())]))
             .contains_key("ColorChirho")
     );
 }

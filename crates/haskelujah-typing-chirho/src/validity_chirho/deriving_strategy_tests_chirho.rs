@@ -164,9 +164,10 @@ fn a_written_strategy_needs_deriving_strategies_chirho() {
         "Illegal deriving strategy: stock"
     );
     for extensions_chirho in [&["DerivingStrategies"][..], &["DerivingVia"][..]] {
-        let accepted_chirho = errors_chirho(
+        let accepted_chirho = errors_with_chirho(
             vec![data_chirho(vec![class_with_chirho("Show", stock_chirho())])],
             extensions_chirho,
+            &prelude_scope_chirho(&["Show"]),
         );
         assert!(
             accepted_chirho.is_empty(),
@@ -384,12 +385,13 @@ fn a_class_application_must_leave_one_parameter_chirho() {
     );
     // A stock class takes no argument, with or without a written strategy.
     for strategy_chirho in [stock_chirho(), None] {
-        let found_chirho = errors_chirho(
+        let found_chirho = errors_with_chirho(
             vec![data_chirho(vec![applied_to_int_chirho(
                 "Eq",
                 strategy_chirho,
             )])],
             &["DerivingStrategies"],
+            &prelude_scope_chirho(&["Eq"]),
         );
         assert_eq!(
             codes_at_chirho(&found_chirho),
@@ -508,5 +510,71 @@ fn a_standalone_head_derives_for_its_last_type_chirho() {
             (UNMEASURED_GHC_CODE_CHIRHO, span_at_chirho(50)),
             ("GHC-10333", span_at_chirho(50)),
         ]
+    );
+}
+
+/// A scope proving each bare spelling for its builtin class, as the implicit Prelude import
+/// does.
+fn prelude_scope_chirho(classes_chirho: &[&'static str]) -> BuiltinClassScopeChirho {
+    BuiltinClassScopeChirho::new_chirho(
+        classes_chirho
+            .iter()
+            .map(|&class_chirho| {
+                (
+                    class_chirho.to_string(),
+                    BuiltinClassChirho {
+                        module_chirho: "Prelude",
+                        name_chirho: class_chirho,
+                        parameter_arities_chirho: &[0],
+                    },
+                )
+            })
+            .collect(),
+    )
+}
+
+#[test]
+fn an_explicit_stock_needs_the_builtin_proof_chirho() {
+    // #31786: a spelling K01 cannot judge is a named gap, never a presumed stock class.
+    let qualified_eq_chirho = DerivedClassChirho::new_chirho(
+        NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+            "M",
+            "Eq",
+            span_at_chirho(40),
+        )),
+        stock_chirho(),
+    );
+    let found_chirho = errors_chirho(
+        vec![data_chirho(vec![
+            class_with_chirho("Read", stock_chirho()),
+            qualified_eq_chirho,
+        ])],
+        &["DerivingStrategies"],
+    );
+    assert_eq!(
+        codes_at_chirho(&found_chirho),
+        [
+            (UNSUPPORTED_SHAPE_CHIRHO, span_at_chirho(40)),
+            (UNSUPPORTED_SHAPE_CHIRHO, span_at_chirho(40)),
+        ]
+    );
+    assert!(found_chirho[1].message_chirho.contains("`M.Eq`"));
+    // A proven builtin class GHC does not derive with the stock strategy is GHC's refusal.
+    let found_chirho = errors_with_chirho(
+        vec![data_chirho(vec![class_with_chirho("Num", stock_chirho())])],
+        &["DerivingStrategies"],
+        &prelude_scope_chirho(&["Num"]),
+    );
+    assert_eq!(
+        codes_at_chirho(&found_chirho),
+        [("GHC-00158", span_at_chirho(40))]
+    );
+    // An unwritten strategy keeps the legacy route: no refusal for Read.
+    assert!(
+        errors_chirho(
+            vec![data_chirho(vec![class_with_chirho("Read", None)])],
+            &["DerivingStrategies"],
+        )
+        .is_empty()
     );
 }

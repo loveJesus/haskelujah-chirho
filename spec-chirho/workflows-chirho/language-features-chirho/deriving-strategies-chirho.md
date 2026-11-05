@@ -17,7 +17,7 @@ flowchart TD
     pragmas_chirho["Parser module_extensions_chirho: each written flag after every edition; GHC2024 adds DerivingStrategies"] --> policy_chirho["extension_policy_chirho.rs DerivingExtensionsChirho"]
     policy_chirho --> validity_chirho
     policy_chirho --> route_chirho
-    scope_chirho --> identity_chirho["stock_identity_chirho.rs StockIdentityChirho: K01's proof names the builtin stock class; a spelling the module declares itself is never one; any other unproven spelling keeps its written name"]
+    scope_chirho --> identity_chirho["stock_identity_chirho.rs StockIdentityChirho: an explicit stock takes a generator only on K01's proof; an unwritten strategy keeps the legacy route, which takes a written name K01 cannot judge; a spelling the module declares itself is never a builtin stock class"]
     identity_chirho --> validity_chirho
     identity_chirho --> route_chirho
     lower_chirho --> validity_chirho["Declaration validity deriving_strategy_chirho.rs, rules 7-15: GHC-87139, 10333, 26557, 38178, 00158, 82023, 73993 (non-unary class application), 00158 (stock on a non-stock class), Unsupported (newtype strategy with class arguments)"]
@@ -56,12 +56,14 @@ flowchart TD
   head type, so declaration validity refuses a class applied to arguments there: GHC-73993 for a
   stock class, which takes none, and Unsupported for the newtype strategy. GHC accepts the
   latter (W3 prints `MeterChirho 12`), so it is a compatibility gap, not GHC coverage.
-- Stock deriving runs the generator of the builtin class K01 proved for the written spelling,
-  and names the instance's class as written, so `deriving stock (P.Eq)` under a qualified
-  Prelude import is the Prelude's `Eq`. `deriving stock (Eq)` beside a local `class Eq` is
-  GHC-00158. K01 excludes a source re-export as well as a local declaration, so only a local
-  declaration refuses; Read and Generic, which K01's table does not hold, keep their written
-  name.
+- An explicit `stock` runs the generator of the builtin class K01 proved for the written
+  spelling, and names the instance's class as written, so `deriving stock (P.Eq)` under a
+  qualified Prelude import is the Prelude's `Eq`. `deriving stock (Eq)` beside a local
+  `class Eq`, or a proven builtin class GHC does not derive that way, is GHC-00158. K01
+  excludes a source re-export as well as a local declaration, so an exclusion is neither a
+  disproof nor an authority: every other unproven spelling (an imported or re-exported source
+  class, Read, Generic) is a named Unsupported gap (#31786). An unwritten strategy keeps the
+  legacy route, which takes a written name K01 cannot judge.
 - The native backends box an ordinary constructor as a tag word plus its fields. Only the
   constructors of newtypes with a newtype-routed class are erased from Core; every other
   newtype keeps its native representation.
