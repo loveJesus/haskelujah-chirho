@@ -59,10 +59,7 @@ pub(crate) fn elaborate_body_type_chirho(
             .state_chirho
             .copy_syntax_chirho(syntax_chirho)?;
         let typed_chirho = if value_kind_chirho {
-            elaborator_chirho.infer_type_at_kind_chirho(
-                &mut syntax_chirho,
-                &ElaborationStateChirho::type_universe_chirho(),
-            )?
+            elaborator_chirho.infer_value_type_chirho(&mut syntax_chirho)?
         } else {
             elaborator_chirho.infer_type_chirho(&mut syntax_chirho)?
         };

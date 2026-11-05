@@ -70,6 +70,9 @@ struct DeclarationVariablesChirho {
     written_chirho: SourceVariablesChirho,
     publication_chirho: crate::subst_chirho::SubstChirho,
     constructor_inferred_chirho: std::collections::HashSet<TyVarChirho>,
+    // Actual constructor positions in this source declaration. Replaying a
+    // GADT replaces its checked field kinds; no spellings or owner IDs are guessed.
+    fixed_field_kinds_chirho: Vec<Option<Vec<(TyChirho, SpanChirho)>>>,
 }
 
 /// The module owns its staged catalogue; a late argument borrows the SAME

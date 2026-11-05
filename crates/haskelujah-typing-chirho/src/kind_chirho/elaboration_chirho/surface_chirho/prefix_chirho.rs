@@ -55,14 +55,15 @@ impl ResultKindPrefixChirho {
             )?;
             self.binders_chirho.clear();
             self.cursor_chirho = 0;
+            let mut opening_chirho = SubstChirho::empty_chirho();
             for source_record_chirho in variables_chirho.records_chirho() {
-                let variable_chirho = source_record_chirho.variable_chirho;
+                let source_chirho = source_record_chirho.variable_chirho;
                 let specificity_chirho = source_record_chirho
                     .specificity_chirho
                     .or_else(|| {
                         context_chirho
                             .state_chirho
-                            .source_specificity_chirho(variable_chirho)
+                            .source_specificity_chirho(source_chirho)
                     })
                     .ok_or_else(|| {
                         TypeElaboratorChirho::error_chirho(
@@ -83,14 +84,36 @@ impl ResultKindPrefixChirho {
                 } else {
                     TelescopeVisibilityChirho::SpecifiedChirho
                 };
-                let kind_chirho = context_chirho
+                let kind_chirho = if let Some(kind_chirho) = &source_record_chirho.kind_chirho {
+                    context_chirho
+                        .state_chirho
+                        .copy_chirho(kind_chirho, span_chirho)?
+                } else {
+                    context_chirho
+                        .state_chirho
+                        .variable_kind_chirho(source_chirho, span_chirho)?
+                };
+                let kind_chirho = context_chirho.state_chirho.instantiate_term_chirho(
+                    &kind_chirho,
+                    &opening_chirho,
+                    true,
+                    span_chirho,
+                )?;
+                let stored_kind_chirho = context_chirho
                     .state_chirho
-                    .variable_kind_chirho(variable_chirho, span_chirho)?;
+                    .copy_chirho(&kind_chirho, span_chirho)?;
+                let variable_chirho = context_chirho
+                    .state_chirho
+                    .fresh_chirho(Some(stored_kind_chirho), span_chirho)?;
+                context_chirho
+                    .state_chirho
+                    .charge_chirho(1, 1, span_chirho)?;
+                opening_chirho.insert_chirho(source_chirho, TyChirho::VarChirho(variable_chirho));
                 self.binders_chirho.push(ResultKindBinderChirho {
                     record_chirho: crate::ty_chirho::QuantifiedVariableChirho {
                         variable_chirho,
                         kind_chirho: Some(Arc::new(kind_chirho)),
-                        source_chirho: source_record_chirho.source_chirho.clone(),
+                        source_chirho: None,
                         specificity_chirho: source_record_chirho
                             .specificity_chirho
                             .or(Some(specificity_chirho)),
@@ -98,7 +121,12 @@ impl ResultKindPrefixChirho {
                     visibility_chirho,
                 });
             }
-            self.kind_chirho = *body_chirho;
+            self.kind_chirho = context_chirho.state_chirho.instantiate_term_chirho(
+                &body_chirho,
+                &opening_chirho,
+                true,
+                span_chirho,
+            )?;
             if self.binders_chirho.is_empty() {
                 return self.next_chirho(context_chirho, span_chirho);
             }
@@ -145,6 +173,9 @@ impl ResultKindPrefixChirho {
                 .state_chirho
                 .charge_chirho(1, 1, span_chirho)?;
             let mut record_chirho = binder_chirho.record_chirho.clone();
+            context_chirho
+                .state_chirho
+                .mark_universal_chirho(record_chirho.variable_chirho, span_chirho)?;
             let binder_kind_chirho = context_chirho
                 .state_chirho
                 .variable_kind_chirho(record_chirho.variable_chirho, span_chirho)?;
@@ -445,7 +476,11 @@ impl TypeElaboratorChirho<'_> {
         }
         let binder_chirho = prefix_chirho.next_chirho(self, span_chirho)?;
         let elaborated_chirho = if let Some(binder_chirho) = &binder_chirho {
-            self.infer_type_at_kind_chirho(argument_chirho, &binder_chirho.kind_chirho)?
+            self.infer_application_argument_chirho(
+                argument_chirho,
+                &binder_chirho.kind_chirho,
+                kind_argument_chirho,
+            )?
         } else {
             if kind_argument_chirho {
                 return Err(Self::error_chirho(

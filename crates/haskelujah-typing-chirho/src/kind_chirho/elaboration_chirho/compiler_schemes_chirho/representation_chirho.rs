@@ -131,6 +131,48 @@ impl TypeElaboratorChirho<'_> {
                 held_chirho: false,
             })
             .map_err(|message_chirho| Self::error_chirho(message_chirho, span_chirho))?;
+        // The closed RHS and parameter kinds carry these actual compiler
+        // producers too. A consumer must not recover their authority from a
+        // private key that happens to occur inside an expanded alias.
+        match representation_chirho {
+            CompilerRepresentationChirho::RuntimeRepChirho => {
+                for dependency_chirho in [
+                    CompilerRepresentationChirho::LevityChirho,
+                    CompilerRepresentationChirho::VecCountChirho,
+                    CompilerRepresentationChirho::VecElemChirho,
+                ] {
+                    self.seed_representation_header_chirho(dependency_chirho, span_chirho)?;
+                }
+            }
+            CompilerRepresentationChirho::RuntimeTypeChirho
+            | CompilerRepresentationChirho::RuntimeConstraintChirho
+            | CompilerRepresentationChirho::LiftedRepChirho
+            | CompilerRepresentationChirho::UnliftedRepChirho
+            | CompilerRepresentationChirho::ZeroBitRepChirho => {
+                self.seed_representation_header_chirho(
+                    CompilerRepresentationChirho::RuntimeRepChirho,
+                    span_chirho,
+                )?;
+            }
+            CompilerRepresentationChirho::UnliftedTypeChirho
+            | CompilerRepresentationChirho::ZeroBitTypeChirho => {
+                self.seed_representation_header_chirho(
+                    CompilerRepresentationChirho::RuntimeTypeChirho,
+                    span_chirho,
+                )?;
+            }
+            _ => {}
+        }
+        if matches!(
+            representation_chirho,
+            CompilerRepresentationChirho::ZeroBitRepChirho
+                | CompilerRepresentationChirho::ZeroBitTypeChirho
+        ) {
+            self.seed_compiler_header_chirho(
+                CompilerTypeConstructorChirho::ListChirho,
+                span_chirho,
+            )?;
+        }
         for name_chirho in representation_chirho.constructors_chirho() {
             self.seed_representation_constructor_chirho(
                 representation_chirho,

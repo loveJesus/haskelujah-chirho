@@ -174,18 +174,23 @@ impl TypeElaboratorChirho<'_> {
                 mult_chirho,
                 ..
             } => {
-                let argument_chirho = self.infer_type_chirho(arg_chirho)?;
-                let result_chirho = self.infer_type_chirho(result_chirho)?;
-                self.unify_kinds_chirho(
-                    &argument_chirho.kind_chirho,
-                    &ElaborationStateChirho::type_universe_chirho(),
-                    span_chirho,
-                )?;
-                self.unify_kinds_chirho(
-                    &result_chirho.kind_chirho,
-                    &ElaborationStateChirho::type_universe_chirho(),
-                    span_chirho,
-                )?;
+                let (argument_chirho, result_chirho) = if self.checking_kind_chirho {
+                    (
+                        self.infer_type_at_kind_chirho(
+                            arg_chirho,
+                            &ElaborationStateChirho::type_universe_chirho(),
+                        )?,
+                        self.infer_type_at_kind_chirho(
+                            result_chirho,
+                            &ElaborationStateChirho::type_universe_chirho(),
+                        )?,
+                    )
+                } else {
+                    (
+                        self.infer_value_type_chirho(arg_chirho)?,
+                        self.infer_value_type_chirho(result_chirho)?,
+                    )
+                };
                 Ok(ElaboratedTypeChirho {
                     term_chirho: TyChirho::FunChirho(
                         Box::new(argument_chirho.term_chirho),
@@ -270,18 +275,20 @@ impl TypeElaboratorChirho<'_> {
                 for constraint_chirho in context_chirho {
                     context_terms_chirho.push(self.infer_constraint_chirho(constraint_chirho)?);
                 }
-                let body_chirho = self.infer_type_chirho(body_chirho)?;
-                self.unify_kinds_chirho(
-                    &body_chirho.kind_chirho,
-                    &ElaborationStateChirho::type_universe_chirho(),
-                    span_chirho,
-                )?;
+                let body_chirho = if self.checking_kind_chirho {
+                    self.infer_type_at_kind_chirho(
+                        body_chirho,
+                        &ElaborationStateChirho::type_universe_chirho(),
+                    )?
+                } else {
+                    self.infer_value_type_chirho(body_chirho)?
+                };
                 Ok(ElaboratedTypeChirho {
                     term_chirho: TyChirho::QualChirho {
                         context_chirho: context_terms_chirho,
                         body_chirho: Box::new(body_chirho.term_chirho),
                     },
-                    kind_chirho: body_chirho.kind_chirho,
+                    kind_chirho: ElaborationStateChirho::type_universe_chirho(),
                 })
             }
             TypeChirho::ForallChirho {

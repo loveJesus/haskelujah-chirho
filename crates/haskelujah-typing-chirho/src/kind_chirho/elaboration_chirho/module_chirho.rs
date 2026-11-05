@@ -549,17 +549,23 @@ impl TypeElaboratorChirho<'_> {
                             constructors_chirho,
                             ..
                         } => {
-                            for constructor_chirho in constructors_chirho {
+                            for (constructor_index_chirho, constructor_chirho) in
+                                constructors_chirho.iter_mut().enumerate()
+                            {
                                 this_chirho.replay_gadt_constructor_chirho(
                                     constructor_chirho,
                                     &key_chirho,
+                                    constructor_index_chirho,
                                 )?;
                             }
                         }
                         DeclChirho::NewtypeDeclChirho {
                             constructor_chirho, ..
-                        } => this_chirho
-                            .replay_gadt_constructor_chirho(constructor_chirho, &key_chirho)?,
+                        } => this_chirho.replay_gadt_constructor_chirho(
+                            constructor_chirho,
+                            &key_chirho,
+                            0,
+                        )?,
                         _ => unreachable!(),
                     }
                     Ok(())
@@ -570,6 +576,7 @@ impl TypeElaboratorChirho<'_> {
             self.finish_catalogue_chirho(&constructors_chirho, module_chirho.span_chirho)?;
             self.recheck_declaration_bodies_chirho(module_chirho, &group_chirho, &aliases_chirho)?;
             self.check_declaration_contracts_chirho(&keys_chirho, module_chirho.span_chirho)?;
+            self.queue_declaration_field_kinds_chirho(&headers_chirho, module_chirho.span_chirho)?;
         }
         Ok(())
     }
@@ -597,8 +604,15 @@ impl TypeElaboratorChirho<'_> {
                     self.check_binder_annotations_chirho(type_vars_chirho)?;
                     self.data_contract_chirho(key_chirho, kind_sig_chirho, span_chirho)?;
                 }
-                for constructor_chirho in constructors_chirho {
-                    self.elaborate_constructor_chirho(constructor_chirho, key_chirho, keys_chirho)?;
+                for (constructor_index_chirho, constructor_chirho) in
+                    constructors_chirho.iter_mut().enumerate()
+                {
+                    self.elaborate_constructor_chirho(
+                        constructor_chirho,
+                        key_chirho,
+                        constructor_index_chirho,
+                        keys_chirho,
+                    )?;
                 }
             }
             DeclChirho::NewtypeDeclChirho {
@@ -616,7 +630,7 @@ impl TypeElaboratorChirho<'_> {
                     self.check_binder_annotations_chirho(type_vars_chirho)?;
                     self.data_contract_chirho(key_chirho, kind_sig_chirho, span_chirho)?;
                 }
-                self.elaborate_constructor_chirho(constructor_chirho, key_chirho, keys_chirho)?;
+                self.elaborate_constructor_chirho(constructor_chirho, key_chirho, 0, keys_chirho)?;
             }
             DeclChirho::TypeAliasDeclChirho {
                 type_vars_chirho,
@@ -624,9 +638,13 @@ impl TypeElaboratorChirho<'_> {
                 ..
             } => {
                 self.check_binder_annotations_chirho(type_vars_chirho)?;
-                let typed_chirho = self.infer_type_chirho(rhs_chirho)?;
                 let expected_chirho = self.result_kind_chirho(key_chirho, span_chirho)?;
-                self.unify_kinds_chirho(&expected_chirho, &typed_chirho.kind_chirho, span_chirho)?;
+                let typed_chirho = self.infer_type_chirho(rhs_chirho)?;
+                let typed_chirho = self.check_declaration_result_kind_chirho(
+                    rhs_chirho,
+                    typed_chirho,
+                    &expected_chirho,
+                )?;
                 let mut scheme_chirho = self
                     .registry_chirho
                     .declaration_schemes_chirho()
@@ -804,7 +822,10 @@ impl TypeElaboratorChirho<'_> {
                 span_chirho,
             ));
         }
-        if signature_chirho.is_none() {
+        let open_newtype_chirho = self.unlifted_newtypes_chirho
+            && self.registry_chirho.declaration_schemes_chirho().get_chirho(key_chirho)
+                .is_some_and(|scheme_chirho| scheme_chirho.role_chirho == haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho::NewtypeChirho);
+        if signature_chirho.is_none() && !open_newtype_chirho {
             let result_chirho = self.result_kind_chirho(key_chirho, span_chirho)?;
             self.unify_kinds_chirho(
                 &result_chirho,

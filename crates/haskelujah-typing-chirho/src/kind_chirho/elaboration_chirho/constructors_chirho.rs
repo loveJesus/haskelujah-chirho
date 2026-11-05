@@ -30,6 +30,42 @@ pub(super) enum SignatureCheckingChirho {
 }
 
 impl TypeElaboratorChirho<'_> {
+    pub(super) fn queue_declaration_field_kinds_chirho(
+        &mut self,
+        keys_chirho: &[Arc<str>],
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        for key_chirho in keys_chirho {
+            let fixed_chirho = self
+                .registry_chirho
+                .declaration_schemes_chirho()
+                .get_chirho(key_chirho)
+                .is_some_and(|scheme_chirho| {
+                    scheme_chirho.role_chirho == TypeConstructorRoleChirho::DataChirho
+                });
+            let Some(variables_chirho) = self.declaration_variables_chirho.get_mut(key_chirho)
+            else {
+                continue;
+            };
+            let constructors_chirho =
+                std::mem::take(&mut variables_chirho.fixed_field_kinds_chirho);
+            if !fixed_chirho {
+                continue;
+            }
+            for fields_chirho in constructors_chirho {
+                let fields_chirho = fields_chirho.ok_or_else(|| {
+                    Self::error_chirho(
+                        "data field validity lost its checked constructor producer",
+                        span_chirho,
+                    )
+                })?;
+                self.state_chirho
+                    .queue_constructor_field_kinds_chirho(fields_chirho, span_chirho)?;
+            }
+        }
+        Ok(())
+    }
+
     pub(super) fn publish_constructor_result_chirho(
         &mut self,
         key_chirho: &str,
@@ -223,6 +259,20 @@ impl TypeElaboratorChirho<'_> {
             };
             let parent_key_chirho =
                 self.declaration_key_chirho(&proof_chirho, name_chirho.span_chirho())?;
+            self.state_chirho.charge_chirho(
+                constructors_chirho.len(),
+                constructors_chirho.len(),
+                name_chirho.span_chirho(),
+            )?;
+            self.declaration_variables_chirho
+                .get_mut(&parent_key_chirho)
+                .ok_or_else(|| {
+                    Self::error_chirho(
+                        "constructor producer lost its live parent",
+                        name_chirho.span_chirho(),
+                    )
+                })?
+                .fixed_field_kinds_chirho = vec![None; constructors_chirho.len()];
             let Some(parent_chirho) = self
                 .registry_chirho
                 .declaration_schemes_chirho()
@@ -359,6 +409,7 @@ impl TypeElaboratorChirho<'_> {
         &mut self,
         constructor_chirho: &mut ConDeclChirho,
         parent_chirho: &str,
+        constructor_index_chirho: usize,
     ) -> Result<(), ElaborationErrorChirho> {
         let ConDeclChirho::GadtChirho {
             name_chirho,
@@ -382,13 +433,19 @@ impl TypeElaboratorChirho<'_> {
                 )
             })?;
         *signature_chirho = original_chirho;
-        self.elaborate_constructor_chirho(constructor_chirho, parent_chirho, &mut Vec::new())
+        self.elaborate_constructor_chirho(
+            constructor_chirho,
+            parent_chirho,
+            constructor_index_chirho,
+            &mut Vec::new(),
+        )
     }
 
     pub(super) fn elaborate_constructor_chirho(
         &mut self,
         constructor_chirho: &mut ConDeclChirho,
         parent_key_chirho: &str,
+        constructor_index_chirho: usize,
         keys_chirho: &mut Vec<Arc<str>>,
     ) -> Result<(), ElaborationErrorChirho> {
         let constructor_span_chirho = match &*constructor_chirho {
@@ -437,6 +494,8 @@ impl TypeElaboratorChirho<'_> {
             let span_chirho = name_chirho.span_chirho();
             let key_chirho = this_chirho.constructor_key_chirho(name_chirho)?;
             let mut fields_chirho = Vec::new();
+            let mut field_kinds_chirho = Vec::new();
+            let mut gadt_result_kind_chirho = None;
             let mut gadt_result_chirho = None;
             let mut held_chirho = false;
             let mut explicit_chirho = std::collections::HashSet::new();
@@ -447,7 +506,11 @@ impl TypeElaboratorChirho<'_> {
                     ..
                 } => {
                     for (_, field_chirho) in source_fields_chirho {
-                        fields_chirho.push(this_chirho.check_type_chirho(field_chirho)?);
+                        let span_chirho = field_chirho.span_chirho();
+                        let typed_chirho = this_chirho.infer_value_type_chirho(field_chirho)?;
+                        this_chirho.state_chirho.charge_chirho(2, 2, span_chirho)?;
+                        fields_chirho.push(typed_chirho.term_chirho);
+                        field_kinds_chirho.push((typed_chirho.kind_chirho, span_chirho));
                     }
                 }
                 ConDeclChirho::RecordChirho {
@@ -455,13 +518,14 @@ impl TypeElaboratorChirho<'_> {
                     ..
                 } => {
                     for field_chirho in source_fields_chirho {
-                        let typed_chirho =
-                            this_chirho.check_type_chirho(&mut field_chirho.ty_chirho)?;
+                        let typed_chirho = this_chirho.infer_value_type_chirho(&mut field_chirho.ty_chirho)?;
+                        this_chirho.state_chirho.charge_chirho(1, 1, field_chirho.span_chirho)?;
+                        field_kinds_chirho.push((typed_chirho.kind_chirho, field_chirho.span_chirho));
                         for _ in &field_chirho.names_chirho {
                             fields_chirho.push(
                                 this_chirho
                                     .state_chirho
-                                    .copy_chirho(&typed_chirho, field_chirho.span_chirho)?,
+                                    .copy_chirho(&typed_chirho.term_chirho, field_chirho.span_chirho)?,
                             );
                         }
                     }
@@ -514,30 +578,49 @@ impl TypeElaboratorChirho<'_> {
                     match &mut signature_chirho.args_chirho {
                         GadtConArgsChirho::PositionalChirho(source_fields_chirho) => {
                             for field_chirho in source_fields_chirho {
-                                fields_chirho.push(
-                                    this_chirho.check_type_chirho(&mut field_chirho.ty_chirho)?,
-                                );
+                                let span_chirho = field_chirho.ty_chirho.span_chirho();
+                                let typed_chirho = this_chirho.infer_value_type_chirho(&mut field_chirho.ty_chirho)?;
+                                this_chirho.state_chirho.charge_chirho(2, 2, span_chirho)?;
+                                fields_chirho.push(typed_chirho.term_chirho);
+                                field_kinds_chirho.push((typed_chirho.kind_chirho, span_chirho));
                             }
                         }
                         GadtConArgsChirho::RecordChirho(source_fields_chirho) => {
                             for field_chirho in source_fields_chirho {
-                                let typed_chirho =
-                                    this_chirho.check_type_chirho(&mut field_chirho.ty_chirho)?;
+                                let typed_chirho = this_chirho.infer_value_type_chirho(&mut field_chirho.ty_chirho)?;
+                                this_chirho.state_chirho.charge_chirho(1, 1, field_chirho.span_chirho)?;
+                                field_kinds_chirho.push((typed_chirho.kind_chirho, field_chirho.span_chirho));
                                 for _ in &field_chirho.names_chirho {
                                     fields_chirho.push(
                                         this_chirho
                                             .state_chirho
-                                            .copy_chirho(&typed_chirho, field_chirho.span_chirho)?,
+                                            .copy_chirho(&typed_chirho.term_chirho, field_chirho.span_chirho)?,
                                     );
                                 }
                             }
                         }
                     }
-                    gadt_result_chirho = Some(
-                        this_chirho.check_type_chirho(&mut signature_chirho.result_ty_chirho)?,
-                    );
+                    let result_chirho = this_chirho.infer_value_type_chirho(&mut signature_chirho.result_ty_chirho)?;
+                    gadt_result_chirho = Some(result_chirho.term_chirho);
+                    gadt_result_kind_chirho = Some(result_chirho.kind_chirho);
                 }
             }
+            let newtype_chirho = this_chirho.registry_chirho.declaration_schemes_chirho().get_chirho(parent_key_chirho)
+                .is_some_and(|scheme_chirho| scheme_chirho.role_chirho == TypeConstructorRoleChirho::NewtypeChirho);
+            if newtype_chirho {
+                let result_kind_chirho = if let Some(kind_chirho) = gadt_result_kind_chirho {
+                    kind_chirho
+                } else {
+                    this_chirho.result_kind_chirho(parent_key_chirho, span_chirho)?
+                };
+                for (kind_chirho, span_chirho) in &field_kinds_chirho {
+                    this_chirho.unify_kinds_chirho(kind_chirho, &result_kind_chirho, *span_chirho)?;
+                }
+            }
+            let field_slot_chirho = this_chirho.declaration_variables_chirho.get_mut(parent_key_chirho)
+                .and_then(|variables_chirho| variables_chirho.fixed_field_kinds_chirho.get_mut(constructor_index_chirho))
+                .ok_or_else(|| Self::error_chirho("checked fields lost their actual constructor position", span_chirho))?;
+            *field_slot_chirho = Some(field_kinds_chirho);
             if let Some(key_chirho) = key_chirho {
                 let mut scheme_chirho = this_chirho
                     .registry_chirho

@@ -367,7 +367,7 @@ impl TypeElaboratorChirho<'_> {
         ty_chirho: &mut haskelujah_ast_chirho::ty_chirho::TypeChirho,
     ) -> Result<(), ElaborationErrorChirho> {
         let checked_chirho =
-            self.scoped_chirho(|this_chirho| this_chirho.check_type_chirho(ty_chirho))?;
+            self.scoped_chirho(|this_chirho| this_chirho.check_value_type_chirho(ty_chirho))?;
         self.store_checked_signature_scope_chirho(name_chirho, ty_chirho, checked_chirho, false)
     }
 
@@ -747,7 +747,7 @@ impl TypeElaboratorChirho<'_> {
                     ty_chirho,
                     ..
                 } => {
-                    this_chirho.check_type_chirho(ty_chirho)?;
+                    this_chirho.check_value_type_chirho(ty_chirho)?;
                     this_chirho.pattern_chirho(pat_chirho)?;
                 }
                 PatChirho::VarChirho(_)
@@ -830,7 +830,7 @@ impl TypeElaboratorChirho<'_> {
                 } => {
                     this_chirho.scoped_chirho(|this_chirho| {
                         this_chirho.scoped_chirho(|this_chirho| {
-                            this_chirho.check_type_chirho(ty_chirho)
+                            this_chirho.check_value_type_chirho(ty_chirho)
                         })?;
                         let variables_chirho = this_chirho.checked_signature_scope_chirho(
                             ty_chirho,

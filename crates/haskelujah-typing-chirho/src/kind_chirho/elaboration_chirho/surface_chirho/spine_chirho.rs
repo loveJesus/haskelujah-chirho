@@ -155,22 +155,25 @@ impl TypeElaboratorChirho<'_> {
                 )?;
                 continue;
             }
-            let elaborated_argument_chirho = if let Some(binder_chirho) =
-                binders_chirho.get(cursor_chirho)
-            {
-                self.infer_type_at_kind_chirho(&mut argument_chirho, &binder_chirho.kind_chirho)?
-            } else {
-                let expected_chirho = self
-                    .state_chirho
-                    .resolve_chirho(&result_kind_chirho, argument_chirho.span_chirho())?;
-                if let TyChirho::FunChirho(domain_chirho, _, _) = expected_chirho {
-                    // Result arrows are outside the declaration's saturation
-                    // boundary, but their argument kinds are still authoritative.
-                    self.infer_type_at_kind_chirho(&mut argument_chirho, &domain_chirho)?
+            let elaborated_argument_chirho =
+                if let Some(binder_chirho) = binders_chirho.get(cursor_chirho) {
+                    self.infer_application_argument_chirho(
+                        &mut argument_chirho,
+                        &binder_chirho.kind_chirho,
+                        kind_argument_chirho,
+                    )?
                 } else {
-                    self.infer_type_chirho(&mut argument_chirho)?
-                }
-            };
+                    let expected_chirho = self
+                        .state_chirho
+                        .resolve_chirho(&result_kind_chirho, argument_chirho.span_chirho())?;
+                    if let TyChirho::FunChirho(domain_chirho, _, _) = expected_chirho {
+                        // Result arrows are outside the declaration's saturation
+                        // boundary, but their argument kinds are still authoritative.
+                        self.infer_type_at_kind_chirho(&mut argument_chirho, &domain_chirho)?
+                    } else {
+                        self.infer_type_chirho(&mut argument_chirho)?
+                    }
+                };
             if let Some(binder_chirho) = binders_chirho.get(cursor_chirho) {
                 let required_chirho =
                     binder_chirho.visibility_chirho == TelescopeVisibilityChirho::RequiredChirho;

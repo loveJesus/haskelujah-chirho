@@ -255,5 +255,6 @@ pub fn register_source_module_families_chirho(
         }
     }
     context_chirho.verify_imported_open_families_chirho();
+    context_chirho.finish_constructor_field_kinds_chirho();
     finish_chirho(context_chirho)
 }

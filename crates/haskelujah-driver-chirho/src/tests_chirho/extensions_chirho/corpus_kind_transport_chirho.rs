@@ -311,3 +311,137 @@ fn class_contract_classkindpartialwildcardchirho_chirho() {
     .expect("fresh GHC-negative standalone kind wildcard rejects");
     assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
 }
+
+fn representation_field_fixture_chirho(
+    name_chirho: &str,
+) -> Result<crate::CheckSummaryChirho, String> {
+    check_path_chirho(std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/representation_chirho/fields_chirho")
+        .join(format!("{name_chirho}.hs")))
+}
+
+#[test]
+fn representation_open_arrow_keeps_a_class_parameter_universal_chirho() {
+    check_chirho("should_compile", "T12987.hs")
+        .expect("retained GHC-positive open class method arrow checks");
+}
+
+#[test]
+fn representation_newtype_forall_uses_the_parent_result_kind_chirho() {
+    check_chirho("should_compile", "UnliftedNewtypesForall.hs")
+        .expect("retained GHC-positive forall field keeps its newtype result representation");
+}
+
+#[test]
+fn representation_field_boxedlevityfield_chirho() {
+    let error_chirho = representation_field_fixture_chirho("BoxedLevityFieldChirho")
+        .expect_err("fresh GHC-negative nonconcrete field rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_field_boxedunliftedfield_chirho() {
+    representation_field_fixture_chirho("BoxedUnliftedFieldChirho")
+        .expect("fresh GHC-positive fixed field checks");
+}
+
+#[test]
+fn representation_field_tuplerepresentationfield_chirho() {
+    representation_field_fixture_chirho("TupleRepresentationFieldChirho")
+        .expect("fresh GHC-positive fixed field checks");
+}
+
+#[test]
+fn representation_field_tupletailfield_chirho() {
+    let error_chirho = representation_field_fixture_chirho("TupleTailFieldChirho")
+        .expect_err("fresh GHC-negative nonconcrete field rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_field_closedfamilyfield_chirho() {
+    representation_field_fixture_chirho("ClosedFamilyFieldChirho")
+        .expect("fresh GHC-positive fixed field checks");
+}
+
+#[test]
+fn representation_field_openfamilyfield_chirho() {
+    let error_chirho = representation_field_fixture_chirho("OpenFamilyFieldChirho")
+        .expect_err("fresh GHC-negative nonconcrete field rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_field_refinedrepresentationfield_chirho() {
+    let error_chirho = representation_field_fixture_chirho("RefinedRepresentationFieldChirho")
+        .expect_err("fresh GHC-negative nonconcrete field rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_field_forgetfulrepresentationfield_chirho() {
+    representation_field_fixture_chirho("ForgetfulRepresentationFieldChirho")
+        .expect("fresh GHC-positive fixed field checks");
+}
+
+#[test]
+fn representation_field_cold_private_family_uses_its_producer_chirho() {
+    representation_field_fixture_chirho(
+        "handoff_chirho/checked_chirho/ColdCheckedRepresentationFieldChirho",
+    )
+    .expect("fresh GHC-positive supplier keeps its private checked RuntimeRep family");
+}
+
+#[test]
+fn representation_field_invalid_cold_supplier_is_rejected_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "handoff_chirho/wrong_chirho/ColdWrongRepresentationFieldChirho",
+    )
+    .expect_err(
+        "fresh GHC-negative supplier field cannot be authorized by importer specialization",
+    );
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_field_deferral_does_not_authorize_variable_levity_chirho() {
+    let error_chirho =
+        representation_field_fixture_chirho("handoff_chirho/DeferredBoxedLevityFieldChirho")
+            .expect_err("fresh GHC structural field error remains fatal with defer-type-errors");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_field_deferral_does_not_authorize_an_open_family_chirho() {
+    let error_chirho =
+        representation_field_fixture_chirho("handoff_chirho/DeferredOpenFamilyFieldChirho")
+            .expect_err(
+                "fresh GHC stuck representation family remains fatal with defer-type-errors",
+            );
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_field_unlifted_alias_carries_its_constructor_dependencies_chirho() {
+    representation_field_fixture_chirho("aliases_chirho/UnliftedAliasFieldChirho")
+        .expect("fresh GHC-positive UnliftedType alias field keeps its producer dependencies");
+}
+
+#[test]
+fn representation_field_zero_bit_alias_carries_its_checked_list_prefix_chirho() {
+    representation_field_fixture_chirho("aliases_chirho/ZeroBitAliasFieldTypedChirho").expect(
+        "fresh GHC-positive DataKinds ZeroBitType field keeps its complete checked representation",
+    );
+}
+
+#[test]
+fn representation_forall_alias_may_infer_its_own_result_kind_chirho() {
+    representation_field_fixture_chirho("forall_chirho/ProperForallAliasChirho")
+        .expect("fresh GHC-positive forall alias checks");
+}
+
+#[test]
+fn representation_forall_alias_may_have_a_higher_result_kind_chirho() {
+    representation_field_fixture_chirho("forall_chirho/HigherForallAliasWrongChirho")
+        .expect("fresh GHC ACCEPT refutes the original negative prediction; forall alias result need not be a value kind");
+}

@@ -20,6 +20,31 @@ use haskelujah_span_chirho::SpanChirho;
 use std::collections::{HashMap, HashSet};
 
 impl InferCtxChirho {
+    /// Checked fields wait for the existing local/associated family producer.
+    /// Data-layout validity uses no GADT givens and is never a deferred type error.
+    pub(super) fn finish_constructor_field_kinds_chirho(&mut self) -> bool {
+        let view_chirho = super::EqualityNormalizationViewChirho {
+            substitutions_chirho: &self.equality_substitutions_chirho,
+            legacy_synonyms_chirho: &self.type_synonyms_chirho,
+            type_scope_chirho: self.type_constructor_scope_chirho.as_deref(),
+            family_scope_chirho: self.family_scope_chirho.as_deref(),
+            family_module_chirho: &self.family_module_name_chirho,
+            promotion_present_chirho: self.promotion_scope_chirho.is_some(),
+            evidence_chirho: Default::default(),
+        };
+        match self
+            .elaboration_state_chirho
+            .finish_constructor_field_kinds_chirho(&self.type_families_chirho, view_chirho)
+        {
+            Ok(()) => true,
+            Err(error_chirho) => {
+                self.non_deferrable_diagnostics_chirho
+                    .push_chirho(error_chirho.into_diagnostic_chirho());
+                false
+            }
+        }
+    }
+
     /// Run type inference on a module. Returns the result with environment,
     /// substitution, and diagnostics.
     pub fn infer_module_chirho(&mut self, module_chirho: &ModuleChirho) -> SubstChirho {
@@ -207,6 +232,9 @@ impl InferCtxChirho {
         // Phase 1b: Process instance declarations
         for decl_chirho in &module_chirho.decls_chirho {
             self.process_instance_decl_chirho(decl_chirho);
+        }
+        if !self.finish_constructor_field_kinds_chirho() {
+            return subst_chirho;
         }
         // workflow: language-features-chirho/instance-obligations-chirho
         self.check_local_instance_obligations_chirho(module_chirho);

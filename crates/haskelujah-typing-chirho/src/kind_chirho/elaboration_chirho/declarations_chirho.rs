@@ -182,6 +182,7 @@ impl TypeElaboratorChirho<'_> {
                 written_chirho: source_binders_chirho,
                 publication_chirho: SubstChirho::empty_chirho(),
                 constructor_inferred_chirho: std::collections::HashSet::new(),
+                fixed_field_kinds_chirho: Vec::new(),
             },
         );
         self.close_scope_chirho(mark_chirho);
@@ -368,23 +369,70 @@ impl TypeElaboratorChirho<'_> {
             for binder_chirho in &binders_chirho {
                 quantified_chirho.remove(&binder_chirho.variable_chirho);
             }
-            let mut pending_chirho = quantified_chirho.iter().copied().collect::<Vec<_>>();
-            while let Some(variable_chirho) = pending_chirho.pop() {
-                let kind_chirho = self
+            self.state_chirho.charge_chirho(
+                quantified_chirho.len(),
+                quantified_chirho.len(),
+                span_chirho,
+            )?;
+            let roots_chirho = quantified_chirho.iter().copied().collect::<Vec<_>>();
+            let header_dependencies_chirho = self
+                .state_chirho
+                .kind_dependency_closure_chirho(&roots_chirho, span_chirho)?;
+            quantified_chirho.extend(header_dependencies_chirho);
+            // A nested forall can introduce a value-kind Meta used only by its
+            // binder kind, absent from the alias's outer result kind. Default
+            // that actual RHS dependency before publication; it does not invent
+            // an extra public declaration parameter.
+            let mut representation_roots_chirho = roots_chirho;
+            if let Some(rhs_chirho) = &scheme_chirho.synonym_rhs_chirho {
+                let rhs_chirho = self.state_chirho.resolve_chirho(rhs_chirho, span_chirho)?;
+                let rhs_variables_chirho = rhs_chirho.free_vars_chirho();
+                self.state_chirho.charge_chirho(
+                    rhs_variables_chirho.len(),
+                    rhs_variables_chirho.len(),
+                    span_chirho,
+                )?;
+                representation_roots_chirho.extend(rhs_variables_chirho);
+            }
+            let candidates_chirho = self
+                .state_chirho
+                .kind_dependency_closure_chirho(&representation_roots_chirho, span_chirho)?;
+            let defaults_chirho = self.state_chirho.default_representation_variables_chirho(
+                &candidates_chirho,
+                &std::collections::HashSet::new(),
+                span_chirho,
+            )?;
+            if !defaults_chirho.is_empty_chirho() {
+                result_kind_chirho = self
                     .state_chirho
-                    .variable_kind_chirho(variable_chirho, span_chirho)?;
-                let kind_chirho = self
-                    .state_chirho
-                    .resolve_chirho(&kind_chirho, span_chirho)?;
-                for dependency_chirho in kind_chirho.free_vars_chirho() {
-                    if !binders_chirho
+                    .resolve_chirho(&result_kind_chirho, span_chirho)?;
+                quantified_chirho.clear();
+                quantified_chirho.extend(result_kind_chirho.free_vars_chirho());
+                quantified_chirho.extend(
+                    scheme_chirho
+                        .source_variables_chirho
                         .iter()
-                        .any(|binder_chirho| binder_chirho.variable_chirho == dependency_chirho)
-                        && quantified_chirho.insert(dependency_chirho)
-                    {
-                        pending_chirho.push(dependency_chirho);
-                    }
+                        .map(|source_chirho| source_chirho.variable_chirho),
+                );
+                for binder_chirho in &mut binders_chirho {
+                    binder_chirho.kind_chirho = self
+                        .state_chirho
+                        .resolve_chirho(&binder_chirho.kind_chirho, span_chirho)?;
+                    quantified_chirho.extend(binder_chirho.kind_chirho.free_vars_chirho());
                 }
+                self.state_chirho.charge_chirho(
+                    quantified_chirho.len(),
+                    quantified_chirho.len(),
+                    span_chirho,
+                )?;
+                let roots_chirho = quantified_chirho.iter().copied().collect::<Vec<_>>();
+                quantified_chirho.extend(
+                    self.state_chirho
+                        .kind_dependency_closure_chirho(&roots_chirho, span_chirho)?,
+                );
+            }
+            for binder_chirho in &binders_chirho {
+                quantified_chirho.remove(&binder_chirho.variable_chirho);
             }
             if !self.poly_kinds_chirho {
                 // A promoted constructor's field/result terms mention ordinary
@@ -467,6 +515,10 @@ impl TypeElaboratorChirho<'_> {
                 });
             }
             inferred_chirho.extend(binders_chirho);
+            for binder_chirho in &inferred_chirho {
+                self.state_chirho
+                    .mark_universal_chirho(binder_chirho.variable_chirho, span_chirho)?;
+            }
             let mut rename_chirho = SubstChirho::empty_chirho();
             for (index_chirho, binder_chirho) in inferred_chirho.iter().enumerate() {
                 rename_chirho.insert_chirho(

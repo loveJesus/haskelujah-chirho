@@ -10,6 +10,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 mod continuation_chirho;
+mod representation_chirho;
 mod variables_chirho;
 pub use variables_chirho::{ElaborationVariableBindingChirho, ElaborationVariableChirho};
 
@@ -74,6 +75,7 @@ pub struct ElaborationStateChirho {
     pub next_variable_chirho: u32,
     pub substitution_chirho: SubstChirho,
     pub variable_kinds_chirho: HashMap<TyVarChirho, ElaborationVariableChirho>,
+    pending_constructor_fields_chirho: Vec<(TyChirho, SpanChirho)>,
     pub(crate) source_policy_chirho: Option<std::sync::Arc<ElaborationPolicyChirho>>,
     rigid_variables_chirho: HashSet<TyVarChirho>,
     kind_scope_guards_chirho: Vec<KindScopeGuardChirho>,
@@ -124,6 +126,7 @@ impl ElaborationStateChirho {
             next_variable_chirho: 0,
             substitution_chirho: SubstChirho::empty_chirho(),
             variable_kinds_chirho: HashMap::new(),
+            pending_constructor_fields_chirho: Vec::new(),
             source_policy_chirho: None,
             rigid_variables_chirho: HashSet::new(),
             kind_scope_guards_chirho: Vec::new(),

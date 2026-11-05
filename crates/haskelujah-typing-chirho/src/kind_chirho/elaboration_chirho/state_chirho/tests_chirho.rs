@@ -128,37 +128,51 @@ fn late_argument_keeps_the_original_remaining_allowance_chirho() {
 
 #[test]
 fn adopted_latched_failure_is_fatal_without_another_argument_chirho() {
-    let scope_chirho = scopes_chirho();
-    let mut module_chirho = module_chirho();
-    let mut checked_chirho = checked_chirho(&mut module_chirho, &scope_chirho);
-    let failure_chirho = checked_chirho
-        .state_chirho
-        .charge_chirho(usize::MAX, 0, SpanChirho::DUMMY_CHIRHO)
-        .unwrap_err();
-    let result_chirho = crate::infer_chirho::infer_elaborated_module_chirho(
-        &module_chirho,
-        crate::infer_chirho::InferenceImportContextChirho {
-            unary_variable_instance_heads_covered_chirho: false,
-            imported_types_chirho: &HashMap::new(),
-            imported_type_synonyms_chirho: &HashMap::new(),
-            imported_type_families_chirho: &checked_chirho.registry_chirho,
-            imported_class_env_chirho: &crate::class_chirho::ClassEnvChirho::default(),
-            unavailable_selectors_chirho: &HashSet::new(),
-            imported_record_field_names_chirho: &HashMap::new(),
-            safe_unqualified_imported_type_names_chirho: &HashSet::new(),
-            preferred_qualified_type_names_chirho: &HashMap::new(),
-            promotion_scope_chirho: None,
-            family_scope_chirho: None,
-            type_constructor_scope_chirho: Some(Arc::new(scope_chirho)),
-        },
-        checked_chirho.state_chirho,
-    );
-    assert_eq!(
-        result_chirho
-            .non_deferrable_diagnostics_chirho
-            .diagnostics_chirho(),
-        &[failure_chirho.into_diagnostic_chirho()]
-    );
+    for pending_field_chirho in [false, true] {
+        let scope_chirho = scopes_chirho();
+        let mut module_chirho = module_chirho();
+        let mut checked_chirho = checked_chirho(&mut module_chirho, &scope_chirho);
+        if pending_field_chirho {
+            checked_chirho
+                .state_chirho
+                .queue_constructor_field_kinds_chirho(
+                    vec![(
+                        ElaborationStateChirho::type_universe_chirho(),
+                        SpanChirho::DUMMY_CHIRHO,
+                    )],
+                    SpanChirho::DUMMY_CHIRHO,
+                )
+                .unwrap();
+        }
+        let failure_chirho = checked_chirho
+            .state_chirho
+            .charge_chirho(usize::MAX, 0, SpanChirho::DUMMY_CHIRHO)
+            .unwrap_err();
+        let result_chirho = crate::infer_chirho::infer_elaborated_module_chirho(
+            &module_chirho,
+            crate::infer_chirho::InferenceImportContextChirho {
+                unary_variable_instance_heads_covered_chirho: false,
+                imported_types_chirho: &HashMap::new(),
+                imported_type_synonyms_chirho: &HashMap::new(),
+                imported_type_families_chirho: &checked_chirho.registry_chirho,
+                imported_class_env_chirho: &crate::class_chirho::ClassEnvChirho::default(),
+                unavailable_selectors_chirho: &HashSet::new(),
+                imported_record_field_names_chirho: &HashMap::new(),
+                safe_unqualified_imported_type_names_chirho: &HashSet::new(),
+                preferred_qualified_type_names_chirho: &HashMap::new(),
+                promotion_scope_chirho: None,
+                family_scope_chirho: None,
+                type_constructor_scope_chirho: Some(Arc::new(scope_chirho)),
+            },
+            checked_chirho.state_chirho,
+        );
+        assert_eq!(
+            result_chirho
+                .non_deferrable_diagnostics_chirho
+                .diagnostics_chirho(),
+            &[failure_chirho.into_diagnostic_chirho()]
+        );
+    }
 }
 
 #[test]
@@ -521,4 +535,118 @@ fn universal_binding_status_does_not_replace_scoped_rigidity_chirho() {
             span_chirho,
         )
         .expect("temporary scope restoration leaves evidence-based solving available");
+}
+
+#[test]
+fn representation_defaults_only_live_unprotected_meta_roots_chirho() {
+    use haskelujah_ast_chirho::name_chirho::CompilerRepresentationChirho;
+    let span_chirho = SpanChirho::DUMMY_CHIRHO;
+    let mut state_chirho = ElaborationStateChirho::new_chirho().unwrap();
+    let runtime_rep_chirho = TyChirho::ConChirho(
+        CompilerRepresentationChirho::RuntimeRepChirho
+            .type_key_chirho()
+            .into(),
+    );
+    let meta_chirho = state_chirho
+        .fresh_chirho(Some(runtime_rep_chirho.clone()), span_chirho)
+        .unwrap();
+    let universal_chirho = state_chirho
+        .fresh_chirho(Some(runtime_rep_chirho.clone()), span_chirho)
+        .unwrap();
+    state_chirho
+        .mark_universal_chirho(universal_chirho, span_chirho)
+        .unwrap();
+    let unknown_chirho = state_chirho.fresh_chirho(None, span_chirho).unwrap();
+    state_chirho.set_variable_kind_chirho(unknown_chirho, runtime_rep_chirho.clone());
+    let protected_chirho = state_chirho
+        .fresh_chirho(Some(runtime_rep_chirho), span_chirho)
+        .unwrap();
+    let candidates_chirho = HashSet::from([
+        meta_chirho,
+        universal_chirho,
+        unknown_chirho,
+        protected_chirho,
+    ]);
+    let defaults_chirho = state_chirho
+        .default_representation_variables_chirho(
+            &candidates_chirho,
+            &HashSet::from([protected_chirho]),
+            span_chirho,
+        )
+        .unwrap();
+    assert_eq!(defaults_chirho.len_chirho(), 1);
+    assert_eq!(
+        defaults_chirho.lookup_chirho(&meta_chirho),
+        Some(crate::ty_chirho::representation_chirho::boxed_representation_chirho(true))
+    );
+    for variable_chirho in [universal_chirho, unknown_chirho, protected_chirho] {
+        assert_eq!(
+            state_chirho
+                .resolve_chirho(&TyChirho::VarChirho(variable_chirho), span_chirho)
+                .unwrap(),
+            TyChirho::VarChirho(variable_chirho)
+        );
+    }
+}
+
+#[test]
+fn protected_kind_closure_includes_an_outer_types_representation_chirho() {
+    let span_chirho = SpanChirho::DUMMY_CHIRHO;
+    let mut state_chirho = ElaborationStateChirho::new_chirho().unwrap();
+    let kind_chirho = state_chirho.fresh_value_kind_chirho(span_chirho).unwrap();
+    let roots_chirho = kind_chirho.free_vars_chirho();
+    let outer_chirho = state_chirho
+        .fresh_chirho(Some(kind_chirho.clone()), span_chirho)
+        .unwrap();
+    let protected_chirho = state_chirho
+        .kind_dependency_closure_chirho(&[outer_chirho], span_chirho)
+        .unwrap();
+    assert!(
+        roots_chirho
+            .iter()
+            .all(|variable_chirho| protected_chirho.contains(variable_chirho))
+    );
+    let candidates_chirho = roots_chirho.into_iter().collect();
+    assert!(
+        state_chirho
+            .default_representation_variables_chirho(
+                &candidates_chirho,
+                &protected_chirho,
+                span_chirho
+            )
+            .unwrap()
+            .is_empty_chirho()
+    );
+    let defaults_chirho = state_chirho
+        .default_representation_variables_chirho(&candidates_chirho, &HashSet::new(), span_chirho)
+        .unwrap();
+    assert_eq!(defaults_chirho.len_chirho(), 1);
+    assert_eq!(
+        state_chirho
+            .resolve_chirho(&kind_chirho, span_chirho)
+            .unwrap(),
+        ElaborationStateChirho::type_universe_chirho()
+    );
+}
+
+#[test]
+fn representation_defaulting_cannot_reset_an_exhausted_state_chirho() {
+    let span_chirho = SpanChirho::DUMMY_CHIRHO;
+    let mut state_chirho = ElaborationStateChirho::new_chirho().unwrap();
+    let kind_chirho = state_chirho.fresh_value_kind_chirho(span_chirho).unwrap();
+    let candidates_chirho = kind_chirho.free_vars_chirho().into_iter().collect();
+    let failure_chirho = state_chirho
+        .charge_chirho(usize::MAX, 0, span_chirho)
+        .unwrap_err();
+    assert_eq!(
+        state_chirho
+            .default_representation_variables_chirho(
+                &candidates_chirho,
+                &HashSet::new(),
+                span_chirho
+            )
+            .unwrap_err(),
+        failure_chirho
+    );
+    assert_eq!(state_chirho.failure_chirho(), Some(&failure_chirho));
 }
