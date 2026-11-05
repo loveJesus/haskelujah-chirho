@@ -47,7 +47,7 @@ impl BootProjectChirho {
         let mut module_chirho = lower_module_chirho(&tree_chirho, FileIdChirho::SYNTHETIC_CHIRHO);
         crate::inject_prelude_import_chirho(&mut module_chirho);
         let mut sources_chirho = DiscoveredSourceModulesChirho::new();
-        let mut ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+        let ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
         scan_sibling_modules_with_sources_chirho(
             &self.path_chirho,
             &mut SourceMapChirho::new_chirho(),
