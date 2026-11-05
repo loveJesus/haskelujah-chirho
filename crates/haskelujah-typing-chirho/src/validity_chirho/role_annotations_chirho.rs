@@ -34,7 +34,8 @@ use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_span_chirho::SpanChirho;
 
-use super::{DeclarationErrorChirho, UNSUPPORTED_SHAPE_CHIRHO, extension_enabled_chirho};
+use super::super::extension_enabled_chirho;
+use super::{DeclarationErrorChirho, UNSUPPORTED_SHAPE_CHIRHO};
 use crate::infer_chirho::gnd_coercion_chirho::{
     ParameterRoleChirho, ParameterRolesChirho, local_class_roles_chirho,
     local_parameter_roles_chirho,
