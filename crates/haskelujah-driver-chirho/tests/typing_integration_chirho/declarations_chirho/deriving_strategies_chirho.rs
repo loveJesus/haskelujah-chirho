@@ -60,6 +60,8 @@ const PARAMETRIC_WRITTEN_SUPERCLASS_CHIRHO: &str =
     include_str!("gnd_methods_chirho/parametric_written_superclass_chirho.hs");
 const DIRECT_PARAMETRIC_GND_METHODS_CHIRHO: &str =
     include_str!("gnd_methods_chirho/direct_parametric_gnd_methods_chirho.hs");
+const CLASS_ARGUMENT_SUPERCLASS_CHIRHO: &str =
+    include_str!("gnd_methods_chirho/class_argument_superclass_chirho.hs");
 
 #[test]
 fn deriving_newtype_show_prints_the_representation_everywhere_chirho() {
@@ -208,6 +210,16 @@ fn direct_parametric_gnd_methods_take_each_argument_everywhere_chirho() {
         "DirectParametricGndMethodsChirho.hs",
         DIRECT_PARAMETRIC_GND_METHODS_CHIRHO,
         "7\nTrue\ninteger\nboolean\n",
+    );
+}
+
+#[test]
+fn a_class_argument_gnd_superclass_prints_everywhere_chirho() {
+    // A1 (#31897): GHC 9.14.1 is predicted to print 7; root's measurement is pending.
+    assert_prints_everywhere_chirho(
+        "ClassArgumentSuperclassChirho.hs",
+        CLASS_ARGUMENT_SUPERCLASS_CHIRHO,
+        "7\n",
     );
 }
 

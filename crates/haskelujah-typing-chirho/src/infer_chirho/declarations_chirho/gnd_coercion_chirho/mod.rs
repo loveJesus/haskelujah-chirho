@@ -200,7 +200,14 @@ fn prove_request_chirho(
             "the checker knows no such class".to_string(),
         ));
     };
-    if class_decl_chirho.is_mptc_chirho() {
+    // A class of several parameters derives only as the methodless shape the deriving pass
+    // routes (`class_shapes_chirho.rs`, T3955): no method needs a coercion, and its dictionary
+    // holds the newtype's own superclass dictionaries.
+    if class_decl_chirho.is_mptc_chirho()
+        && (!class_decl_chirho.methods_chirho.is_empty()
+            || class_decl_chirho.all_vars_chirho().len()
+                != request_chirho.class_arguments_chirho.len() + 1)
+    {
         return Err(unsupported_chirho(
             "the class has several parameters".to_string(),
         ));

@@ -374,6 +374,7 @@ fn request_chirho(class_chirho: &str) -> GndRequestChirho {
     GndRequestChirho {
         newtype_chirho: "AgeChirho".to_string(),
         class_chirho: name_chirho(class_chirho),
+        class_arguments_chirho: vec![],
     }
 }
 

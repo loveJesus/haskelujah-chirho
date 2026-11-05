@@ -311,6 +311,25 @@ fn gnd_m1_direct_parametric_gnd_methods_chirho() {
     );
 }
 
+/// A1 (#31897): T3955's shape at runtime. GND derives the methodless `AskChirho a` with its
+/// written argument for `TChirho a x`, and `sevenChirho` reaches `Monad m` only through that
+/// derived dictionary's superclass field, the newtype's own `Monad (TChirho a)`. GHC 9.14.1 is
+/// predicted to print 7; root's measurement is pending. sha256 cdce7e412c011dc56559ef286accbee019ed976976c54144fdf374cb442e1263.
+const CLASS_ARGUMENT_SUPERCLASS_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/class_argument_superclass_chirho.hs"
+);
+
+#[test]
+fn gnd_a1_class_argument_superclass_chirho() {
+    assert_eq!(
+        interpreted_chirho(
+            "ClassArgumentSuperclassChirho.hs",
+            CLASS_ARGUMENT_SUPERCLASS_CHIRHO
+        ),
+        "7\n"
+    );
+}
+
 /// Q1: GHC 9.14.1 prints (True,False). sha256 151287147a71c3efc462a709bb33a9f929a23e9033982d455a4e3dbf6ff7911c.
 const QUALIFIED_STOCK_WITH_SHADOWED_INSTANCE_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 {-# LANGUAGE DerivingStrategies #-}

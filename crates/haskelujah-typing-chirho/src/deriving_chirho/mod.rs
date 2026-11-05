@@ -47,6 +47,7 @@
 mod declaration_heads_chirho;
 mod enum_chirho;
 pub(crate) mod extension_policy_chirho;
+pub(crate) mod class_shapes_chirho;
 mod newtype_route_chirho;
 mod show_chirho;
 pub(crate) mod stock_identity_chirho;
