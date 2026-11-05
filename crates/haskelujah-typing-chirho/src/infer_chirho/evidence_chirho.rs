@@ -573,6 +573,7 @@ pub(super) fn concrete_evidence_key_chirho(
         TyChirho::VarChirho(_)
         | TyChirho::ForallVarChirho(_)
         | TyChirho::FunChirho(_, _, _)
+        | TyChirho::QualChirho { .. }
         | TyChirho::ForallChirho { .. }
         | TyChirho::RequiredForallChirho { .. } => None,
         TyChirho::ConChirho(name_chirho) if name_chirho == "String" => {

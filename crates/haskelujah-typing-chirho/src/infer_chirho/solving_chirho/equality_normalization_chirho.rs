@@ -36,7 +36,7 @@ struct NamedEqualityBindingsChirho<'source_chirho> {
     bindings_chirho: Vec<(&'source_chirho str, &'source_chirho TyChirho)>,
 }
 
-fn equal_chirho(
+pub(super) fn equal_chirho(
     left_chirho: &TyChirho,
     right_chirho: &TyChirho,
     budget_chirho: &mut EqualityBudgetChirho,
@@ -48,6 +48,22 @@ fn equal_chirho(
             return None;
         }
         match (left_chirho, right_chirho) {
+            (
+                TyChirho::QualChirho {
+                    context_chirho: left_context_chirho,
+                    body_chirho: left_body_chirho,
+                },
+                TyChirho::QualChirho {
+                    context_chirho: right_context_chirho,
+                    body_chirho: right_body_chirho,
+                },
+            ) if left_context_chirho.len() == right_context_chirho.len() => {
+                budget_chirho.work_chirho(left_context_chirho.len())?;
+                pending_chirho.push((left_body_chirho, right_body_chirho, depth_chirho + 1));
+                pending_chirho.extend(left_context_chirho.iter().zip(right_context_chirho).map(
+                    |(left_chirho, right_chirho)| (left_chirho, right_chirho, depth_chirho + 1),
+                ));
+            }
             (TyChirho::VarChirho(left_chirho), TyChirho::VarChirho(right_chirho))
                 if left_chirho == right_chirho => {}
             (TyChirho::ConChirho(left_chirho), TyChirho::ConChirho(right_chirho))
@@ -357,6 +373,39 @@ fn transform_chirho<'source_chirho>(
             budget_chirho,
             depth_chirho + 1,
         )?)),
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => {
+            budget_chirho.work_chirho(context_chirho.len())?;
+            TyChirho::QualChirho {
+                context_chirho: context_chirho
+                    .iter()
+                    .map(|constraint_chirho| {
+                        transform_chirho(
+                            ctx_chirho,
+                            constraint_chirho,
+                            rewrites_chirho,
+                            named_chirho,
+                            bound_chirho,
+                            expand_chirho,
+                            budget_chirho,
+                            depth_chirho + 1,
+                        )
+                    })
+                    .collect::<Option<Vec<_>>>()?,
+                body_chirho: Box::new(transform_chirho(
+                    ctx_chirho,
+                    body_chirho,
+                    rewrites_chirho,
+                    named_chirho,
+                    bound_chirho,
+                    expand_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?),
+            }
+        }
         TyChirho::ForallChirho {
             vars_chirho,
             body_chirho,
@@ -501,4 +550,218 @@ pub(super) fn normalize_owned_equality_with_budget_chirho<'evidence_chirho>(
         current_chirho = next_chirho;
     }
     Err(EqualityNormalizationExhaustedChirho)
+}
+
+/// Borrowed preflight precedes the clone; all terms in one predicate/context
+/// share the caller's allowance, including names, binders and hidden arguments.
+pub(super) fn copy_term_with_budget_chirho(
+    term_chirho: &TyChirho,
+    budget_chirho: &mut EqualityBudgetChirho,
+) -> Option<TyChirho> {
+    let mut pending_chirho = vec![(term_chirho, 0usize)];
+    while let Some((term_chirho, depth_chirho)) = pending_chirho.pop() {
+        budget_chirho.node_chirho(1)?;
+        if depth_chirho > 128 {
+            return None;
+        }
+        match term_chirho {
+            TyChirho::VarChirho(_) => {}
+            TyChirho::ConChirho(name_chirho) | TyChirho::ForallVarChirho(name_chirho) => {
+                budget_chirho.node_chirho(name_chirho.len())?;
+            }
+            TyChirho::AppChirho(left_chirho, right_chirho)
+            | TyChirho::FunChirho(left_chirho, right_chirho, _) => {
+                pending_chirho.push((left_chirho, depth_chirho + 1));
+                pending_chirho.push((right_chirho, depth_chirho + 1));
+            }
+            TyChirho::TupleChirho(elements_chirho) => {
+                budget_chirho.work_chirho(elements_chirho.len())?;
+                pending_chirho.extend(
+                    elements_chirho
+                        .iter()
+                        .map(|element_chirho| (element_chirho, depth_chirho + 1)),
+                );
+            }
+            TyChirho::ListChirho(element_chirho) => {
+                pending_chirho.push((element_chirho, depth_chirho + 1))
+            }
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            }
+            | TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
+                budget_chirho.node_chirho(vars_chirho.len())?;
+                pending_chirho.push((body_chirho, depth_chirho + 1));
+            }
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                budget_chirho.work_chirho(context_chirho.len())?;
+                pending_chirho.push((body_chirho, depth_chirho + 1));
+                pending_chirho.extend(
+                    context_chirho
+                        .iter()
+                        .map(|constraint_chirho| (constraint_chirho, depth_chirho + 1)),
+                );
+            }
+        }
+    }
+    Some(term_chirho.clone())
+}
+
+/// Fused trial substitution charges each expanded image BEFORE copying it.
+/// This is simultaneous substitution and respects both forall visibilities.
+pub(super) fn substitute_meta_with_budget_chirho(
+    term_chirho: &TyChirho,
+    variable_chirho: TyVarChirho,
+    image_chirho: &TyChirho,
+    budget_chirho: &mut EqualityBudgetChirho,
+) -> Option<TyChirho> {
+    fn walk_chirho(
+        term_chirho: &TyChirho,
+        replacement_chirho: Option<(TyVarChirho, &TyChirho)>,
+        budget_chirho: &mut EqualityBudgetChirho,
+        depth_chirho: usize,
+    ) -> Option<TyChirho> {
+        budget_chirho.node_chirho(1)?;
+        if depth_chirho > 128 {
+            return None;
+        }
+        Some(match term_chirho {
+            TyChirho::VarChirho(variable_chirho) => {
+                if let Some((_target_chirho, image_chirho)) =
+                    replacement_chirho.filter(|(target_chirho, _)| target_chirho == variable_chirho)
+                {
+                    return walk_chirho(image_chirho, None, budget_chirho, depth_chirho + 1);
+                }
+                TyChirho::VarChirho(*variable_chirho)
+            }
+            TyChirho::ConChirho(name_chirho) | TyChirho::ForallVarChirho(name_chirho) => {
+                budget_chirho.node_chirho(name_chirho.len())?;
+                if matches!(term_chirho, TyChirho::ConChirho(_)) {
+                    TyChirho::ConChirho(name_chirho.clone())
+                } else {
+                    TyChirho::ForallVarChirho(name_chirho.clone())
+                }
+            }
+            TyChirho::AppChirho(left_chirho, right_chirho) => TyChirho::AppChirho(
+                Box::new(walk_chirho(
+                    left_chirho,
+                    replacement_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?),
+                Box::new(walk_chirho(
+                    right_chirho,
+                    replacement_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?),
+            ),
+            TyChirho::FunChirho(left_chirho, right_chirho, multiplicity_chirho) => {
+                TyChirho::FunChirho(
+                    Box::new(walk_chirho(
+                        left_chirho,
+                        replacement_chirho,
+                        budget_chirho,
+                        depth_chirho + 1,
+                    )?),
+                    Box::new(walk_chirho(
+                        right_chirho,
+                        replacement_chirho,
+                        budget_chirho,
+                        depth_chirho + 1,
+                    )?),
+                    *multiplicity_chirho,
+                )
+            }
+            TyChirho::ListChirho(element_chirho) => TyChirho::ListChirho(Box::new(walk_chirho(
+                element_chirho,
+                replacement_chirho,
+                budget_chirho,
+                depth_chirho + 1,
+            )?)),
+            TyChirho::TupleChirho(elements_chirho) => {
+                budget_chirho.work_chirho(elements_chirho.len())?;
+                TyChirho::TupleChirho(
+                    elements_chirho
+                        .iter()
+                        .map(|element_chirho| {
+                            walk_chirho(
+                                element_chirho,
+                                replacement_chirho,
+                                budget_chirho,
+                                depth_chirho + 1,
+                            )
+                        })
+                        .collect::<Option<Vec<_>>>()?,
+                )
+            }
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                budget_chirho.work_chirho(context_chirho.len())?;
+                TyChirho::QualChirho {
+                    context_chirho: context_chirho
+                        .iter()
+                        .map(|constraint_chirho| {
+                            walk_chirho(
+                                constraint_chirho,
+                                replacement_chirho,
+                                budget_chirho,
+                                depth_chirho + 1,
+                            )
+                        })
+                        .collect::<Option<Vec<_>>>()?,
+                    body_chirho: Box::new(walk_chirho(
+                        body_chirho,
+                        replacement_chirho,
+                        budget_chirho,
+                        depth_chirho + 1,
+                    )?),
+                }
+            }
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            }
+            | TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
+                budget_chirho.node_chirho(vars_chirho.len())?;
+                let replacement_chirho = replacement_chirho
+                    .filter(|(variable_chirho, _)| !vars_chirho.contains(variable_chirho));
+                let vars_chirho = vars_chirho.clone();
+                let body_chirho = Box::new(walk_chirho(
+                    body_chirho,
+                    replacement_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?);
+                if matches!(term_chirho, TyChirho::ForallChirho { .. }) {
+                    TyChirho::ForallChirho {
+                        vars_chirho,
+                        body_chirho,
+                    }
+                } else {
+                    TyChirho::RequiredForallChirho {
+                        vars_chirho,
+                        body_chirho,
+                    }
+                }
+            }
+        })
+    }
+    walk_chirho(
+        term_chirho,
+        Some((variable_chirho, image_chirho)),
+        budget_chirho,
+        0,
+    )
 }

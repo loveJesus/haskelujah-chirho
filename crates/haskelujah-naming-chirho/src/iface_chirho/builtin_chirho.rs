@@ -190,6 +190,17 @@ fn mk_data_type_chirho(
     (name_chirho, ty_chirho)
 }
 
+/// An actual interface can export another public name for the same compiler
+/// type. The seed supplies both the alias and its typed defining declaration.
+fn mk_data_alias_chirho(
+    alias_chirho: &str,
+    constructor_chirho: CompilerTypeConstructorChirho,
+) -> (String, IfaceTypeChirho) {
+    let (_, mut ty_chirho) = mk_data_type_chirho(constructor_chirho, &[]);
+    ty_chirho.name_chirho = alias_chirho.to_owned();
+    (alias_chirho.to_owned(), ty_chirho)
+}
+
 /// A positive class producer supplies the compiler identity directly. No generic
 /// interface entry is upgraded from its public spelling.
 fn mk_class_type_chirho(

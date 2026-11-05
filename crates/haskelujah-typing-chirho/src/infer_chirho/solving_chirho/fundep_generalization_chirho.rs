@@ -148,7 +148,9 @@ fn mentions_type_variable_chirho(ty_chirho: &TyChirho) -> bool {
             elems_chirho.iter().any(mentions_type_variable_chirho)
         }
         // A polytype in a determined position is outside this rule.
-        TyChirho::ForallChirho { .. } | TyChirho::RequiredForallChirho { .. } => false,
+        TyChirho::QualChirho { .. }
+        | TyChirho::ForallChirho { .. }
+        | TyChirho::RequiredForallChirho { .. } => false,
     }
 }
 
@@ -411,6 +413,7 @@ impl InferCtxChirho {
                 .all(|elem_chirho| self.is_closed_determinant_chirho(elem_chirho)),
             TyChirho::VarChirho(_)
             | TyChirho::ForallVarChirho(_)
+            | TyChirho::QualChirho { .. }
             | TyChirho::ForallChirho { .. }
             | TyChirho::RequiredForallChirho { .. } => false,
         }
@@ -487,6 +490,7 @@ impl InferCtxChirho {
                 .iter()
                 .all(|elem_chirho| self.is_matchable_instance_type_chirho(elem_chirho)),
             TyChirho::ForallVarChirho(_)
+            | TyChirho::QualChirho { .. }
             | TyChirho::ForallChirho { .. }
             | TyChirho::RequiredForallChirho { .. } => false,
         }

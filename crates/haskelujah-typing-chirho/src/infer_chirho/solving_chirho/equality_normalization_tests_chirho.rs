@@ -124,3 +124,45 @@ fn sparse_substitutions_are_chased_without_becoming_synonym_arguments_chirho() {
         TyChirho::int_chirho()
     );
 }
+
+#[test]
+fn tentative_images_exhaust_output_before_copying_the_expansion_chirho() {
+    let variable_chirho = TyVarChirho(990);
+    let source_chirho = TyChirho::TupleChirho(vec![TyChirho::VarChirho(variable_chirho); 1024]);
+    let image_chirho = TyChirho::TupleChirho(vec![TyChirho::int_chirho(); 64]);
+    let mut budget_chirho = equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+    assert!(
+        equality_normalization_chirho::substitute_meta_with_budget_chirho(
+            &source_chirho,
+            variable_chirho,
+            &image_chirho,
+            &mut budget_chirho
+        )
+        .is_none()
+    );
+}
+
+#[test]
+fn ordinary_unification_exhaustion_is_coded_and_non_deferrable_chirho() {
+    let context_chirho = InferCtxChirho::new_chirho();
+    let oversized_chirho = TyChirho::TupleChirho(vec![TyChirho::int_chirho(); 16_385]);
+    let failure_chirho = context_chirho.unify_ordinary_chirho(
+        &TyChirho::VarChirho(TyVarChirho(990)),
+        &oversized_chirho,
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    assert!(matches!(
+        failure_chirho,
+        Err(UnifyErrorChirho::ResourceExhaustedChirho { .. })
+    ));
+    assert!(context_chirho.has_non_deferrable_failure_chirho());
+    let result_chirho = context_chirho.finish_chirho();
+    assert!(result_chirho.diagnostics_chirho.is_empty_chirho());
+    assert!(
+        result_chirho
+            .non_deferrable_diagnostics_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|diagnostic_chirho| diagnostic_chirho.to_string().contains("error[E0300]"))
+    );
+}

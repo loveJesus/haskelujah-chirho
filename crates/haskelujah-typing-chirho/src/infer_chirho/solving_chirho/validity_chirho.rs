@@ -11,18 +11,11 @@ use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
 
 impl InferCtxChirho {
-    /// Extensions under which our wanted constraints do not faithfully mirror
-    /// the source, so an "unsolvable" wanted may be our artifact rather than
-    /// the program's error. RebindableSyntax rebinds `negate`/literals to
-    /// user functions while we still emit `Num` wanteds; the rank-n family
-    /// makes us instantiate a `forall`-typed field once and reuse it at two
-    /// types, inventing constraints the program never had.
-    pub(super) const UNFAITHFUL_CONSTRAINT_EXTENSIONS_CHIRHO: &'static [&'static str] = &[
-        "RebindableSyntax",
-        "RankNTypes",
-        "Rank2Types",
-        "ImpredicativeTypes",
-    ];
+    /// Rebound literals still require a separate producer. Polymorphic
+    /// parameters now retain quantifiers and qualified contexts per use; their
+    /// wanteds are checked inside the corresponding lexical given scope.
+    pub(super) const UNFAITHFUL_CONSTRAINT_EXTENSIONS_CHIRHO: &'static [&'static str] =
+        &["RebindableSyntax"];
 
     /// Classes the certainly-unsolvable check must never fire on: solved by
     /// compiler magic (or a user class colliding with such a name), not by

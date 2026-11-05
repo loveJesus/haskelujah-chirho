@@ -179,6 +179,9 @@ impl InferCtxChirho {
         {
             return false;
         }
+        if self.rigid_pred_certainly_undeducible_chirho(pred_chirho) {
+            return true;
+        }
         let class_instances_chirho = self
             .class_env_chirho
             .instances_chirho()
@@ -360,7 +363,9 @@ impl InferCtxChirho {
             TyChirho::ListChirho(element_chirho) => {
                 self.rigid_only_under_certified_chirho(element_chirho, budget_chirho)
             }
-            TyChirho::ForallChirho { .. } | TyChirho::RequiredForallChirho { .. } => false,
+            TyChirho::QualChirho { .. }
+            | TyChirho::ForallChirho { .. }
+            | TyChirho::RequiredForallChirho { .. } => false,
         }
     }
 }

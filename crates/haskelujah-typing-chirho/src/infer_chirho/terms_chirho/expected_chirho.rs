@@ -14,7 +14,9 @@ use haskelujah_span_chirho::SpanChirho;
 impl InferCtxChirho {
     pub(super) fn contains_polymorphic_component_chirho(ty_chirho: &TyChirho) -> bool {
         match ty_chirho {
-            TyChirho::ForallChirho { .. } | TyChirho::RequiredForallChirho { .. } => true,
+            TyChirho::QualChirho { .. }
+            | TyChirho::ForallChirho { .. }
+            | TyChirho::RequiredForallChirho { .. } => true,
             TyChirho::AppChirho(fun_chirho, arg_chirho)
             | TyChirho::FunChirho(fun_chirho, arg_chirho, _) => {
                 Self::contains_polymorphic_component_chirho(fun_chirho)
@@ -36,6 +38,29 @@ impl InferCtxChirho {
         expected_ty_chirho: &TyChirho,
         span_chirho: SpanChirho,
     ) -> (SubstChirho, TyChirho) {
+        let normalized_expected_chirho = self.normalize_ty_chirho(expected_ty_chirho);
+        if matches!(normalized_expected_chirho, TyChirho::QualChirho { .. }) {
+            let (body_chirho, givens_chirho) =
+                self.expose_qualified_parts_chirho(normalized_expected_chirho, Vec::new());
+            let (substitution_chirho, _) =
+                self.with_signature_givens_chirho(givens_chirho, &body_chirho, |context_chirho| {
+                    context_chirho.infer_expr_against_expected_chirho(
+                        expr_chirho,
+                        &body_chirho,
+                        span_chirho,
+                    )
+                });
+            let checked_chirho = substitution_chirho.apply_ty_chirho(expected_ty_chirho);
+            return (substitution_chirho, checked_chirho);
+        }
+        if matches!(
+            expr_chirho,
+            ExprChirho::VarChirho(_) | ExprChirho::ConChirho(_) | ExprChirho::TypeAppChirho { .. }
+        ) && let Some(result_chirho) =
+            self.infer_application_spine_chirho(expr_chirho, Some(expected_ty_chirho), span_chirho)
+        {
+            return result_chirho;
+        }
         match expr_chirho {
             ExprChirho::TypeLamChirho {
                 binder_chirho,
@@ -188,6 +213,13 @@ impl InferCtxChirho {
                 arg_chirho,
                 span_chirho: app_span_chirho,
             } => {
+                if let Some(result_chirho) = self.infer_application_spine_chirho(
+                    expr_chirho,
+                    Some(expected_ty_chirho),
+                    *app_span_chirho,
+                ) {
+                    return result_chirho;
+                }
                 // Bidirectional application checking lets a known result type
                 // specialize variables that also occur in the parameter. This
                 // is required for `g True :: Char` when `g :: F a -> a` and

@@ -37,6 +37,8 @@ use crate::ty_chirho::{TyChirho, TyVarChirho};
 /// An error from unification.
 #[derive(Debug, Clone, PartialEq)]
 pub enum UnifyErrorChirho {
+    /// A bounded ordinary monotype check could not inspect its complete input.
+    ResourceExhaustedChirho { span_chirho: SpanChirho },
     /// Two types are structurally incompatible.
     MismatchChirho {
         expected_chirho: TyChirho,
@@ -60,7 +62,8 @@ pub enum UnifyErrorChirho {
 impl UnifyErrorChirho {
     pub fn span_chirho(&self) -> SpanChirho {
         match self {
-            Self::MismatchChirho { span_chirho, .. }
+            Self::ResourceExhaustedChirho { span_chirho }
+            | Self::MismatchChirho { span_chirho, .. }
             | Self::OccursCheckChirho { span_chirho, .. }
             | Self::TupleArityChirho { span_chirho, .. } => *span_chirho,
         }
@@ -74,6 +77,32 @@ pub fn unify_chirho(
     span_chirho: SpanChirho,
 ) -> Result<SubstChirho, UnifyErrorChirho> {
     match (ty1_chirho, ty2_chirho) {
+        (
+            TyChirho::QualChirho {
+                context_chirho: left_context_chirho,
+                body_chirho: left_body_chirho,
+            },
+            TyChirho::QualChirho {
+                context_chirho: right_context_chirho,
+                body_chirho: right_body_chirho,
+            },
+        ) if left_context_chirho.len() == right_context_chirho.len() => {
+            let mut substitution_chirho = SubstChirho::empty_chirho();
+            for (left_chirho, right_chirho) in left_context_chirho
+                .iter()
+                .zip(right_context_chirho)
+                .chain(std::iter::once((
+                    left_body_chirho.as_ref(),
+                    right_body_chirho.as_ref(),
+                )))
+            {
+                let left_chirho = substitution_chirho.apply_ty_chirho(left_chirho);
+                let right_chirho = substitution_chirho.apply_ty_chirho(right_chirho);
+                substitution_chirho = unify_chirho(&left_chirho, &right_chirho, span_chirho)?
+                    .compose_chirho(&substitution_chirho);
+            }
+            Ok(substitution_chirho)
+        }
         // Two identical type constructors. Accept different qualified spellings
         // of the same imported type constructor, but do not conflate a local
         // bare name like `Result` with an imported qualified name like `P.Result`.
@@ -475,6 +504,75 @@ fn bind_var_chirho(
         return Ok(SubstChirho::empty_chirho());
     }
 
+    // Ordinary metas are monotypes. Only the separate, short-lived Quick Look
+    // substitution can choose a polytype, before ordinary argument checking.
+    // Inspect before cloning so a wide input cannot bypass this bound.
+    let mut pending_chirho = vec![(ty_chirho, 0usize)];
+    let mut work_chirho = 16_384usize;
+    let mut polymorphic_chirho = false;
+    while let Some((term_chirho, depth_chirho)) = pending_chirho.pop() {
+        if work_chirho == 0 || depth_chirho > 128 {
+            return Err(UnifyErrorChirho::ResourceExhaustedChirho { span_chirho });
+        }
+        work_chirho -= 1;
+        let width_chirho = match term_chirho {
+            TyChirho::TupleChirho(elements_chirho) => elements_chirho.len(),
+            TyChirho::ForallChirho { vars_chirho, .. }
+            | TyChirho::RequiredForallChirho { vars_chirho, .. } => vars_chirho.len(),
+            TyChirho::QualChirho { context_chirho, .. } => context_chirho.len(),
+            TyChirho::ConChirho(name_chirho) | TyChirho::ForallVarChirho(name_chirho) => {
+                name_chirho.len()
+            }
+            _ => 0,
+        };
+        if width_chirho > work_chirho.saturating_sub(pending_chirho.len()) {
+            return Err(UnifyErrorChirho::ResourceExhaustedChirho { span_chirho });
+        }
+        work_chirho -= width_chirho;
+        match term_chirho {
+            TyChirho::ForallChirho { body_chirho, .. }
+            | TyChirho::RequiredForallChirho { body_chirho, .. } => {
+                polymorphic_chirho = true;
+                pending_chirho.push((body_chirho, depth_chirho + 1));
+            }
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                polymorphic_chirho = true;
+                pending_chirho.push((body_chirho, depth_chirho + 1));
+                pending_chirho.extend(
+                    context_chirho
+                        .iter()
+                        .map(|constraint_chirho| (constraint_chirho, depth_chirho + 1)),
+                );
+            }
+            TyChirho::AppChirho(left_chirho, right_chirho)
+            | TyChirho::FunChirho(left_chirho, right_chirho, _) => {
+                pending_chirho.extend([
+                    (left_chirho.as_ref(), depth_chirho + 1),
+                    (right_chirho.as_ref(), depth_chirho + 1),
+                ]);
+            }
+            TyChirho::ListChirho(element_chirho) => {
+                pending_chirho.push((element_chirho, depth_chirho + 1))
+            }
+            TyChirho::TupleChirho(elements_chirho) => pending_chirho.extend(
+                elements_chirho
+                    .iter()
+                    .map(|element_chirho| (element_chirho, depth_chirho + 1)),
+            ),
+            TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => {}
+        }
+    }
+    if polymorphic_chirho {
+        return Err(UnifyErrorChirho::MismatchChirho {
+            expected_chirho: TyChirho::VarChirho(var_chirho),
+            actual_chirho: ty_chirho.clone(),
+            span_chirho,
+        });
+    }
+
     // Occurs check: var must not appear free in ty
     if ty_chirho.free_vars_chirho().contains(&var_chirho) {
         return Err(UnifyErrorChirho::OccursCheckChirho {
@@ -681,8 +779,9 @@ mod tests_chirho {
     }
 
     #[test]
-    fn unify_forall_with_var_chirho() {
-        // forall t0. t0 -> t0 ~ t5 (binds t5 to the forall type)
+    fn ordinary_meta_cannot_receive_a_polytype_chirho() {
+        // Ordinary metas remain monotypes; the application prepass owns the
+        // separate capability for a permitted impredicative instantiation.
         let forall_chirho = TyChirho::ForallChirho {
             vars_chirho: vec![TyVarChirho(0)],
             body_chirho: Box::new(TyChirho::fun_chirho(
@@ -691,10 +790,21 @@ mod tests_chirho {
             )),
         };
         let var_chirho = TyChirho::VarChirho(TyVarChirho(5));
-        let s_chirho = unify_chirho(&var_chirho, &forall_chirho, SpanChirho::DUMMY_CHIRHO).unwrap();
-        assert_eq!(
-            s_chirho.apply_ty_chirho(&TyChirho::VarChirho(TyVarChirho(5))),
-            forall_chirho
+        for (left_chirho, right_chirho) in
+            [(&var_chirho, &forall_chirho), (&forall_chirho, &var_chirho)]
+        {
+            assert!(matches!(
+                unify_chirho(left_chirho, right_chirho, SpanChirho::DUMMY_CHIRHO),
+                Err(UnifyErrorChirho::MismatchChirho { .. })
+            ));
+        }
+        assert!(
+            unify_chirho(
+                &var_chirho,
+                &TyChirho::ListChirho(Box::new(forall_chirho)),
+                SpanChirho::DUMMY_CHIRHO
+            )
+            .is_err()
         );
     }
 

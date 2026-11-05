@@ -61,6 +61,7 @@ fn closed_authoritative_type_chirho(ctx_chirho: &InferCtxChirho, ty_chirho: &TyC
             }
             TyChirho::VarChirho(_)
             | TyChirho::ForallVarChirho(_)
+            | TyChirho::QualChirho { .. }
             | TyChirho::ForallChirho { .. }
             | TyChirho::RequiredForallChirho { .. } => return false,
         }

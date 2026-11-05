@@ -24,6 +24,8 @@ pub struct DeclarationBinderChirho {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceDeclarationVariableChirho {
+    /// Written declaration-header position, independent of hidden telescope slots.
+    pub header_index_chirho: u32,
     pub source_chirho:
         haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho,
     pub variable_chirho: TyVarChirho,
@@ -335,11 +337,14 @@ fn validate_published_chirho(scheme_chirho: &DeclarationSchemeChirho) -> Result<
             return Err("associated default lost its complete bound telescope".to_owned());
         }
     }
+    let mut header_indices_chirho = std::collections::HashSet::new();
     for mapping_chirho in &scheme_chirho.source_variables_chirho {
         if !matches!(
-            mapping_chirho.source_chirho,
-            ScopedTypeVariableIdChirho::QuantifiedChirho { .. }
-        ) || !bound_chirho.contains(&mapping_chirho.variable_chirho)
+            &mapping_chirho.source_chirho,
+            ScopedTypeVariableIdChirho::QuantifiedChirho { declaration_chirho, index_chirho }
+                if declaration_chirho == &scheme_chirho.identity_chirho && *index_chirho == mapping_chirho.variable_chirho.0
+        ) || !header_indices_chirho.insert(mapping_chirho.header_index_chirho)
+            || !bound_chirho.contains(&mapping_chirho.variable_chirho)
             || !source_chirho.insert(&mapping_chirho.source_chirho)
         {
             return Err("invalid source-to-published declaration binder mapping".to_owned());

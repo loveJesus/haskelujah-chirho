@@ -41,6 +41,35 @@ impl ElaborationStateChirho {
             ));
         }
         Ok(match term_chirho {
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                self.charge_chirho(context_chirho.len(), context_chirho.len(), span_chirho)?;
+                TyChirho::QualChirho {
+                    context_chirho: context_chirho
+                        .iter()
+                        .map(|constraint_chirho| {
+                            self.instantiate_depth_chirho(
+                                constraint_chirho,
+                                parameters_chirho,
+                                local_chirho,
+                                span_chirho,
+                                depth_chirho + 1,
+                                bound_chirho,
+                            )
+                        })
+                        .collect::<Result<_, _>>()?,
+                    body_chirho: Box::new(self.instantiate_depth_chirho(
+                        body_chirho,
+                        parameters_chirho,
+                        local_chirho,
+                        span_chirho,
+                        depth_chirho + 1,
+                        bound_chirho,
+                    )?),
+                }
+            }
             TyChirho::VarChirho(variable_chirho) => {
                 if let Some((_, renamed_chirho)) = bound_chirho
                     .iter()

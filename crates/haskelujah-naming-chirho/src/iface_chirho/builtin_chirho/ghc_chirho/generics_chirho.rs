@@ -8,7 +8,7 @@ use haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho;
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::iface_chirho::builtin_chirho::{
-    mk_class_type_chirho, mk_data_type_chirho, mk_type_chirho, mk_val_chirho,
+    mk_class_type_chirho, mk_data_alias_chirho, mk_data_type_chirho, mk_type_chirho, mk_val_chirho,
 };
 use crate::iface_chirho::{IfaceExportsChirho, IfaceTypeChirho, ModuleIfaceChirho};
 
@@ -33,6 +33,9 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         }
         let (k_chirho, v_chirho) =
             mk_data_type_chirho(CompilerTypeConstructorChirho::NatChirho, &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) =
+            mk_data_alias_chirho("Natural", CompilerTypeConstructorChirho::NatChirho);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) =
             mk_data_type_chirho(CompilerTypeConstructorChirho::SymbolChirho, &[]);
@@ -442,6 +445,9 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
             mk_data_type_chirho(CompilerTypeConstructorChirho::NatChirho, &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) =
+            mk_data_alias_chirho("Natural", CompilerTypeConstructorChirho::NatChirho);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) =
             mk_data_type_chirho(CompilerTypeConstructorChirho::SymbolChirho, &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_class_type_chirho(
@@ -593,6 +599,9 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
         }
         let (k_chirho, v_chirho) =
             mk_data_type_chirho(CompilerTypeConstructorChirho::NatChirho, &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) =
+            mk_data_alias_chirho("Natural", CompilerTypeConstructorChirho::NatChirho);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) =
             mk_data_type_chirho(CompilerTypeConstructorChirho::SymbolChirho, &[]);

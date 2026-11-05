@@ -28,6 +28,18 @@ impl SynonymExpansionChirho<'_, '_> {
                 return None;
             }
             match ty_chirho {
+                TyChirho::QualChirho {
+                    context_chirho,
+                    body_chirho,
+                } => {
+                    self.budget_chirho.work_chirho(context_chirho.len())?;
+                    pending_chirho.push((body_chirho, depth_chirho + 1));
+                    pending_chirho.extend(
+                        context_chirho
+                            .iter()
+                            .map(|constraint_chirho| (constraint_chirho, depth_chirho + 1)),
+                    );
+                }
                 TyChirho::VarChirho(variable_chirho) => {
                     self.next_bound_chirho = self
                         .next_bound_chirho
@@ -241,6 +253,33 @@ impl SynonymExpansionChirho<'_, '_> {
         }
         self.budget_chirho.node_chirho(1)?;
         Some(match ty_chirho {
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                self.budget_chirho.work_chirho(context_chirho.len())?;
+                TyChirho::QualChirho {
+                    context_chirho: context_chirho
+                        .iter()
+                        .map(|constraint_chirho| {
+                            self.walk_chirho(
+                                constraint_chirho,
+                                bindings_chirho,
+                                bound_chirho,
+                                rename_chirho,
+                                depth_chirho + 1,
+                            )
+                        })
+                        .collect::<Option<Vec<_>>>()?,
+                    body_chirho: Box::new(self.walk_chirho(
+                        body_chirho,
+                        bindings_chirho,
+                        bound_chirho,
+                        rename_chirho,
+                        depth_chirho + 1,
+                    )?),
+                }
+            }
             TyChirho::VarChirho(variable_chirho) => TyChirho::VarChirho(*variable_chirho),
             TyChirho::ConChirho(name_chirho) | TyChirho::ForallVarChirho(name_chirho) => {
                 self.budget_chirho.node_chirho(name_chirho.len())?;

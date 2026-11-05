@@ -132,7 +132,8 @@ impl TypeElaboratorChirho<'_> {
         let scheme_chirho = DeclarationSchemeChirho {
             association_chirho: crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
             source_variables_chirho: binders_chirho.iter().enumerate().zip(telescope_chirho.iter()).map(|((index_chirho, binder_chirho), typed_chirho)| crate::ty_chirho::declarations_chirho::SourceDeclarationVariableChirho {
-                source_chirho: haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::QuantifiedChirho { declaration_chirho: key_chirho.clone(), index_chirho: index_chirho as u32 },
+                header_index_chirho: index_chirho as u32,
+                source_chirho: haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::QuantifiedChirho { declaration_chirho: key_chirho.clone(), index_chirho: typed_chirho.variable_chirho.0 },
                 variable_chirho: typed_chirho.variable_chirho,
                 specificity_chirho: binder_chirho.specificity_chirho,
             }).collect(),
@@ -162,6 +163,7 @@ impl TypeElaboratorChirho<'_> {
         self.declaration_variables_chirho.insert(
             key_chirho,
             DeclarationVariablesChirho {
+                constructor_result_origin_chirho: None,
                 written_chirho: source_binders_chirho,
                 publication_chirho: SubstChirho::empty_chirho(),
                 constructor_inferred_chirho: std::collections::HashSet::new(),
@@ -286,7 +288,11 @@ impl TypeElaboratorChirho<'_> {
             let mut binders_chirho = Vec::new();
             let mut quantified_chirho = std::collections::BTreeSet::new();
             let result_kind_chirho = if scheme_chirho.promoted_chirho {
-                self.promoted_result_prefix_chirho(&scheme_chirho.result_kind_chirho, span_chirho)?
+                self.publish_constructor_result_chirho(
+                    key_chirho,
+                    &scheme_chirho.result_kind_chirho,
+                    span_chirho,
+                )?
             } else {
                 self.state_chirho
                     .copy_chirho(&scheme_chirho.result_kind_chirho, span_chirho)?
@@ -309,26 +315,6 @@ impl TypeElaboratorChirho<'_> {
             for binder_chirho in &binders_chirho {
                 quantified_chirho.remove(&binder_chirho.variable_chirho);
             }
-            if !self.poly_kinds_chirho {
-                // NoPolyKinds defaults unsolved inferred kind variables at the
-                // declaration boundary. Explicit telescope binders remain bound.
-                for variable_chirho in &quantified_chirho {
-                    self.state_chirho.unify_chirho(
-                        &TyChirho::VarChirho(*variable_chirho),
-                        &ElaborationStateChirho::type_universe_chirho(),
-                        span_chirho,
-                    )?;
-                }
-                quantified_chirho.clear();
-                result_kind_chirho = self
-                    .state_chirho
-                    .resolve_chirho(&result_kind_chirho, span_chirho)?;
-                for binder_chirho in &mut binders_chirho {
-                    binder_chirho.kind_chirho = self
-                        .state_chirho
-                        .resolve_chirho(&binder_chirho.kind_chirho, span_chirho)?;
-                }
-            }
             let mut pending_chirho = quantified_chirho.iter().copied().collect::<Vec<_>>();
             while let Some(variable_chirho) = pending_chirho.pop() {
                 let kind_chirho = self
@@ -345,6 +331,54 @@ impl TypeElaboratorChirho<'_> {
                     {
                         pending_chirho.push(dependency_chirho);
                     }
+                }
+            }
+            if !self.poly_kinds_chirho {
+                // A promoted constructor's field/result terms mention ordinary
+                // type universals too. Only their producer-recorded inferred
+                // KIND dependencies default; the universals remain quantified.
+                let defaultable_chirho = if scheme_chirho.promoted_chirho {
+                    quantified_chirho
+                        .iter()
+                        .filter(|variable_chirho| {
+                            self.declaration_variables_chirho
+                                .get(key_chirho)
+                                .is_some_and(|variables_chirho| {
+                                    variables_chirho
+                                        .constructor_inferred_chirho
+                                        .contains(variable_chirho)
+                                })
+                        })
+                        .copied()
+                        .collect::<std::collections::BTreeSet<_>>()
+                } else {
+                    quantified_chirho.clone()
+                };
+                self.state_chirho.charge_chirho(
+                    defaultable_chirho.len(),
+                    defaultable_chirho.len(),
+                    span_chirho,
+                )?;
+                for variable_chirho in defaultable_chirho {
+                    self.state_chirho.unify_chirho(
+                        &TyChirho::VarChirho(variable_chirho),
+                        &ElaborationStateChirho::type_universe_chirho(),
+                        span_chirho,
+                    )?;
+                }
+                quantified_chirho.clear();
+                result_kind_chirho = self
+                    .state_chirho
+                    .resolve_chirho(&result_kind_chirho, span_chirho)?;
+                quantified_chirho.extend(result_kind_chirho.free_vars_chirho());
+                for binder_chirho in &mut binders_chirho {
+                    binder_chirho.kind_chirho = self
+                        .state_chirho
+                        .resolve_chirho(&binder_chirho.kind_chirho, span_chirho)?;
+                    quantified_chirho.extend(binder_chirho.kind_chirho.free_vars_chirho());
+                }
+                for binder_chirho in &binders_chirho {
+                    quantified_chirho.remove(&binder_chirho.variable_chirho);
                 }
             }
             let mut inferred_chirho = Vec::new();
@@ -421,7 +455,8 @@ impl TypeElaboratorChirho<'_> {
                     };
                     Ok(
                         crate::ty_chirho::declarations_chirho::SourceDeclarationVariableChirho {
-                            source_chirho: source_chirho.source_chirho.clone(),
+                            header_index_chirho: source_chirho.header_index_chirho,
+                            source_chirho: haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::QuantifiedChirho { declaration_chirho: key_chirho.clone(), index_chirho: renamed_chirho.0 },
                             variable_chirho: *renamed_chirho,
                             specificity_chirho: source_chirho.specificity_chirho,
                         },

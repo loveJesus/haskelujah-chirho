@@ -141,14 +141,19 @@ pub(super) fn ast_type_to_syn_rhs_chirho(
             context_chirho,
             body_chirho,
             ..
-        } => {
-            // Preserve constraint context but convert the body.
-            // For now, just pass through the body since constraints in
-            // synonym RHS are handled during instantiation.
-            // TODO: properly preserve constraints as deferred predicates
-            let _ = context_chirho;
-            ast_type_to_syn_rhs_chirho(body_chirho, params_chirho, scope_chirho)
-        }
+        } => TyChirho::QualChirho {
+            context_chirho: context_chirho
+                .iter()
+                .map(|constraint_chirho| {
+                    ast_constraint_to_syn_rhs_chirho(constraint_chirho, params_chirho, scope_chirho)
+                })
+                .collect(),
+            body_chirho: Box::new(ast_type_to_syn_rhs_chirho(
+                body_chirho,
+                params_chirho,
+                scope_chirho,
+            )),
+        },
         TypeChirho::ForallChirho {
             vars_chirho,
             body_chirho,
@@ -347,4 +352,97 @@ pub(super) fn collect_free_type_vars_from_ast_chirho(types_chirho: &[TypeChirho]
         );
     }
     variables_chirho
+}
+
+fn ast_constraint_to_syn_rhs_chirho(
+    constraint_chirho: &haskelujah_ast_chirho::ty_chirho::ConstraintChirho,
+    params_chirho: &[String],
+    scope_chirho: Option<&PromotionScopeChirho>,
+) -> TyChirho {
+    use haskelujah_ast_chirho::ty_chirho::ConstraintChirho;
+    match constraint_chirho {
+        ConstraintChirho::KindAnnotationChirho {
+            constraint_chirho, ..
+        } => ast_constraint_to_syn_rhs_chirho(constraint_chirho, params_chirho, scope_chirho),
+        ConstraintChirho::ClassChirho {
+            class_chirho,
+            kind_args_chirho,
+            args_chirho,
+            ..
+        } => {
+            let key_chirho = class_chirho
+                .family_key_chirho()
+                .map(str::to_owned)
+                .or_else(|| {
+                    class_chirho
+                        .type_constructor_chirho()
+                        .map(|declaration_chirho| declaration_chirho.type_key_chirho())
+                })
+                .unwrap_or_else(|| class_chirho.full_name_chirho());
+            kind_args_chirho.iter().chain(args_chirho).fold(
+                TyChirho::ConChirho(key_chirho),
+                |term_chirho, argument_chirho| {
+                    TyChirho::AppChirho(
+                        Box::new(term_chirho),
+                        Box::new(ast_type_to_syn_rhs_chirho(
+                            argument_chirho,
+                            params_chirho,
+                            scope_chirho,
+                        )),
+                    )
+                },
+            )
+        }
+        ConstraintChirho::QuantifiedChirho {
+            vars_chirho,
+            context_chirho,
+            body_chirho,
+            span_chirho,
+        } => {
+            let syntax_chirho = TypeChirho::ForallChirho {
+                vars_chirho: vars_chirho.clone(),
+                body_chirho: Box::new(TypeChirho::QualChirho {
+                    context_chirho: context_chirho.clone(),
+                    body_chirho: Box::new(TypeChirho::QualChirho {
+                        context_chirho: vec![body_chirho.as_ref().clone()],
+                        body_chirho: Box::new(TypeChirho::TupleChirho {
+                            elements_chirho: Vec::new(),
+                            span_chirho: *span_chirho,
+                        }),
+                        span_chirho: *span_chirho,
+                    }),
+                    span_chirho: *span_chirho,
+                }),
+                span_chirho: *span_chirho,
+            };
+            let TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            } = ast_type_to_syn_rhs_chirho(&syntax_chirho, params_chirho, scope_chirho)
+            else {
+                unreachable!()
+            };
+            let TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } = *body_chirho
+            else {
+                unreachable!()
+            };
+            let TyChirho::QualChirho {
+                context_chirho: mut result_chirho,
+                ..
+            } = *body_chirho
+            else {
+                unreachable!()
+            };
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho: Box::new(TyChirho::QualChirho {
+                    context_chirho,
+                    body_chirho: Box::new(result_chirho.remove(0)),
+                }),
+            }
+        }
+    }
 }

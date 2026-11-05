@@ -387,6 +387,7 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
     ) -> Result<NodeIdChirho, ()> {
         self.tick_chirho(depth_chirho)?;
         match ty_chirho {
+            TyChirho::QualChirho { .. } => Err(()),
             TyChirho::VarChirho(variable_chirho) => {
                 for (bound_depth_chirho, binders_chirho) in
                     context_chirho.binders_chirho.iter().rev().enumerate()

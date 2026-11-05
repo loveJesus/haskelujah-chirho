@@ -39,7 +39,7 @@ impl InferCtxChirho {
         scheme_chirho: &SchemeChirho,
     ) -> (TyChirho, Vec<PredChirho>) {
         if scheme_chirho.vars_chirho.is_empty() && scheme_chirho.preds_chirho.is_empty() {
-            return (scheme_chirho.ty_chirho.clone(), Vec::new());
+            return self.expose_qualified_parts_chirho(scheme_chirho.ty_chirho.clone(), Vec::new());
         }
 
         let mut subst_chirho = SubstChirho::empty_chirho();
@@ -82,7 +82,7 @@ impl InferCtxChirho {
             })
             .collect();
 
-        (
+        self.expose_qualified_parts_chirho(
             subst_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho),
             instantiated_preds_chirho,
         )
@@ -158,7 +158,7 @@ impl InferCtxChirho {
         let result_ty_chirho = nested_body_chirho
             .as_ref()
             .unwrap_or(&scheme_chirho.ty_chirho);
-        Some((
+        Some(self.expose_qualified_parts_chirho(
             subst_chirho.apply_ty_chirho(result_ty_chirho),
             instantiated_preds_chirho,
         ))

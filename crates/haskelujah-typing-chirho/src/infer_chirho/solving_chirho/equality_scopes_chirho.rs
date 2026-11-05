@@ -128,6 +128,118 @@ impl InferCtxChirho {
         )
     }
 
+    /// A whole-meta equality may improve from an accessible GIVEN image only
+    /// after BOTH complete wanted sides become equal. The meta must be absent
+    /// from all given evidence, so trial substitution cannot alter a premise.
+    /// Failed candidates never mutate inference state or become new givens.
+    pub(super) fn improve_equality_from_owned_givens_chirho(
+        &self,
+        wanted_chirho: &WantedEqualityChirho,
+    ) -> Result<
+        Option<SubstChirho>,
+        super::equality_normalization_chirho::EqualityNormalizationExhaustedChirho,
+    > {
+        use super::equality_normalization_chirho::{
+            EqualityBudgetChirho, EqualityNormalizationExhaustedChirho,
+            copy_term_with_budget_chirho, equal_chirho,
+            normalize_owned_equality_with_budget_chirho, substitute_meta_with_budget_chirho,
+        };
+        let evidence_chirho = || {
+            std::iter::successors(
+                self.equality_scopes_chirho[wanted_chirho.owner_chirho]
+                    .evidence_chirho
+                    .as_deref(),
+                |node_chirho| node_chirho.parent_chirho.as_deref(),
+            )
+            .map(|node_chirho| node_chirho.rewrites_chirho.as_slice())
+        };
+        let mut budget_chirho = EqualityBudgetChirho::new_chirho();
+        let left_chirho = normalize_owned_equality_with_budget_chirho(
+            self,
+            &wanted_chirho.lhs_chirho,
+            evidence_chirho(),
+            &mut budget_chirho,
+        )?;
+        let right_chirho = normalize_owned_equality_with_budget_chirho(
+            self,
+            &wanted_chirho.rhs_chirho,
+            evidence_chirho(),
+            &mut budget_chirho,
+        )?;
+        let variable_chirho = match (&left_chirho, &right_chirho) {
+            (TyChirho::VarChirho(variable_chirho), _)
+            | (_, TyChirho::VarChirho(variable_chirho)) => *variable_chirho,
+            _ => return Ok(None),
+        };
+        for chunk_chirho in evidence_chirho() {
+            budget_chirho
+                .work_chirho(chunk_chirho.len())
+                .ok_or(EqualityNormalizationExhaustedChirho)?;
+            for (left_chirho, right_chirho) in chunk_chirho {
+                for term_chirho in [left_chirho, right_chirho] {
+                    // Preflight includes depth, names and every predicate term.
+                    let bounded_chirho =
+                        copy_term_with_budget_chirho(term_chirho, &mut budget_chirho)
+                            .ok_or(EqualityNormalizationExhaustedChirho)?;
+                    if bounded_chirho.free_vars_chirho().contains(&variable_chirho) {
+                        return Ok(None);
+                    }
+                }
+            }
+        }
+        for chunk_chirho in evidence_chirho() {
+            for (_, candidate_chirho) in chunk_chirho {
+                budget_chirho
+                    .work_chirho(1)
+                    .ok_or(EqualityNormalizationExhaustedChirho)?;
+                let image_chirho = normalize_owned_equality_with_budget_chirho(
+                    self,
+                    candidate_chirho,
+                    evidence_chirho(),
+                    &mut budget_chirho,
+                )?;
+                if image_chirho.free_vars_chirho().contains(&variable_chirho) {
+                    continue;
+                }
+                let left_chirho = substitute_meta_with_budget_chirho(
+                    &wanted_chirho.lhs_chirho,
+                    variable_chirho,
+                    &image_chirho,
+                    &mut budget_chirho,
+                )
+                .ok_or(EqualityNormalizationExhaustedChirho)?;
+                let right_chirho = substitute_meta_with_budget_chirho(
+                    &wanted_chirho.rhs_chirho,
+                    variable_chirho,
+                    &image_chirho,
+                    &mut budget_chirho,
+                )
+                .ok_or(EqualityNormalizationExhaustedChirho)?;
+                let left_chirho = normalize_owned_equality_with_budget_chirho(
+                    self,
+                    &left_chirho,
+                    evidence_chirho(),
+                    &mut budget_chirho,
+                )?;
+                let right_chirho = normalize_owned_equality_with_budget_chirho(
+                    self,
+                    &right_chirho,
+                    evidence_chirho(),
+                    &mut budget_chirho,
+                )?;
+                if equal_chirho(&left_chirho, &right_chirho, &mut budget_chirho)
+                    .ok_or(EqualityNormalizationExhaustedChirho)?
+                {
+                    return Ok(Some(SubstChirho::singleton_chirho(
+                        variable_chirho,
+                        image_chirho,
+                    )));
+                }
+            }
+        }
+        Ok(None)
+    }
+
     pub(super) fn equality_scope_contains_chirho(
         &self,
         ancestor_chirho: usize,

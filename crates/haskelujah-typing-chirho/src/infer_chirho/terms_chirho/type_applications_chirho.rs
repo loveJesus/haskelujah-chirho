@@ -97,7 +97,7 @@ impl InferCtxChirho {
         Some((field_names_chirho, field_tys_chirho, remaining_ty_chirho))
     }
 
-    fn peel_type_app_chain_chirho<'a>(
+    pub(super) fn peel_type_app_chain_chirho<'a>(
         expr_chirho: &'a ExprChirho,
         type_args_chirho: &mut Vec<&'a TypeChirho>,
     ) -> &'a ExprChirho {

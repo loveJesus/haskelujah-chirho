@@ -18,6 +18,12 @@ use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
 impl InferCtxChirho {
     /// Infer the type of an expression, returning (substitution, type).
     pub fn infer_expr_chirho(&mut self, expr_chirho: &ExprChirho) -> (SubstChirho, TyChirho) {
+        let (substitution_chirho, ty_chirho) = self.infer_expr_inner_chirho(expr_chirho);
+        let ty_chirho = self.expose_qualified_wanteds_chirho(ty_chirho, expr_chirho.span_chirho());
+        (substitution_chirho, ty_chirho)
+    }
+
+    fn infer_expr_inner_chirho(&mut self, expr_chirho: &ExprChirho) -> (SubstChirho, TyChirho) {
         match expr_chirho {
             ExprChirho::LitChirho(lit_chirho) => match lit_chirho {
                 LitChirho::IntChirho(_, span_chirho, _) => {
@@ -187,6 +193,11 @@ impl InferCtxChirho {
                 arg_chirho,
                 span_chirho,
             } => {
+                if let Some(result_chirho) =
+                    self.infer_application_spine_chirho(expr_chirho, None, *span_chirho)
+                {
+                    return result_chirho;
+                }
                 let (s1_chirho, fun_ty_chirho) = self.infer_expr_chirho(fun_chirho);
                 self.apply_subst_all_chirho(&s1_chirho);
                 let fun_ty_chirho = s1_chirho.apply_ty_chirho(&fun_ty_chirho);
@@ -795,15 +806,20 @@ impl InferCtxChirho {
                 ty_chirho: ann_ty_chirho,
                 span_chirho,
             } => {
-                // Type annotation: infer the expression, then check against annotation
-                // using subsumption to handle higher-rank annotations properly
-                let (s_chirho, inferred_ty_chirho) = self.infer_expr_chirho(expr_chirho);
-                self.apply_subst_all_chirho(&s_chirho);
-
-                // ScopedTypeVariables: a variable of an enclosing signature
-                // names that signature's rigid variable here.
+                // The annotation supplies givens before its expression is checked.
                 let ann_internal_chirho = self.ast_type_to_ty_in_scope_chirho(ann_ty_chirho);
                 let ann_normalized_chirho = self.normalize_ty_chirho(&ann_internal_chirho);
+                if matches!(ann_normalized_chirho, TyChirho::QualChirho { .. }) {
+                    let (substitution_chirho, _) = self.infer_expr_against_expected_chirho(
+                        expr_chirho,
+                        &ann_normalized_chirho,
+                        *span_chirho,
+                    );
+                    let result_chirho = substitution_chirho.apply_ty_chirho(&ann_internal_chirho);
+                    return (substitution_chirho, result_chirho);
+                }
+                let (s_chirho, inferred_ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                self.apply_subst_all_chirho(&s_chirho);
                 let inferred_normalized_chirho = self.normalize_ty_chirho(&inferred_ty_chirho);
 
                 match self.subsume_normalized_chirho(

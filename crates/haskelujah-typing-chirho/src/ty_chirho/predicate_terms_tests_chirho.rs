@@ -228,6 +228,24 @@ fn iterative_legacy_relation_matches_public_eq_for_every_type_variant_and_group_
         TyChirho::TupleChirho(vec![TyChirho::int_chirho(), TyChirho::bool_chirho()]),
         TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
         TyChirho::ForallVarChirho("aChirho".to_owned()),
+        TyChirho::QualChirho {
+            context_chirho: vec![
+                TyChirho::ConChirho("FirstChirho".to_owned()),
+                TyChirho::ConChirho("SecondChirho".to_owned()),
+            ],
+            body_chirho: Box::new(TyChirho::int_chirho()),
+        },
+        TyChirho::QualChirho {
+            context_chirho: vec![
+                TyChirho::ConChirho("SecondChirho".to_owned()),
+                TyChirho::ConChirho("FirstChirho".to_owned()),
+            ],
+            body_chirho: Box::new(TyChirho::int_chirho()),
+        },
+        TyChirho::QualChirho {
+            context_chirho: vec![TyChirho::ConChirho("FirstChirho".to_owned())],
+            body_chirho: Box::new(TyChirho::bool_chirho()),
+        },
         TyChirho::ForallChirho {
             vars_chirho: vec![variable_chirho],
             body_chirho: Box::new(TyChirho::VarChirho(variable_chirho)),

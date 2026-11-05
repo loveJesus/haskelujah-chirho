@@ -60,6 +60,16 @@ impl InferCtxChirho {
 
     pub(super) fn normalize_imported_ty_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
         match ty_chirho {
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => TyChirho::QualChirho {
+                context_chirho: context_chirho
+                    .iter()
+                    .map(|constraint_chirho| self.normalize_imported_ty_chirho(constraint_chirho))
+                    .collect(),
+                body_chirho: Box::new(self.normalize_imported_ty_chirho(body_chirho)),
+            },
             TyChirho::ConChirho(name_chirho) => {
                 TyChirho::ConChirho(self.normalize_imported_type_name_chirho(name_chirho))
             }
@@ -179,6 +189,18 @@ impl InferCtxChirho {
             return ty_chirho.clone(); // guard against cycles
         }
         match ty_chirho {
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => TyChirho::QualChirho {
+                context_chirho: context_chirho
+                    .iter()
+                    .map(|constraint_chirho| {
+                        self.expand_syn_chirho(constraint_chirho, depth_chirho + 1)
+                    })
+                    .collect(),
+                body_chirho: Box::new(self.expand_syn_chirho(body_chirho, depth_chirho + 1)),
+            },
             TyChirho::ConChirho(name_chirho) => {
                 if let Some((params_chirho, rhs_chirho)) =
                     self.lookup_type_synonym_chirho(name_chirho)
@@ -438,6 +460,33 @@ pub(super) fn subst_named_var_chirho(
     replacement_chirho: &TyChirho,
 ) -> TyChirho {
     match ty_chirho {
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => TyChirho::QualChirho {
+            context_chirho: context_chirho
+                .iter()
+                .map(|constraint_chirho| {
+                    subst_named_var_chirho(constraint_chirho, name_chirho, replacement_chirho)
+                })
+                .collect(),
+            body_chirho: Box::new(subst_named_var_chirho(
+                body_chirho,
+                name_chirho,
+                replacement_chirho,
+            )),
+        },
+        TyChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+        } => TyChirho::RequiredForallChirho {
+            vars_chirho: vars_chirho.clone(),
+            body_chirho: Box::new(subst_named_var_chirho(
+                body_chirho,
+                name_chirho,
+                replacement_chirho,
+            )),
+        },
         TyChirho::ConChirho(n_chirho) if n_chirho == name_chirho => replacement_chirho.clone(),
         TyChirho::ForallVarChirho(n_chirho) if n_chirho == name_chirho => {
             replacement_chirho.clone()

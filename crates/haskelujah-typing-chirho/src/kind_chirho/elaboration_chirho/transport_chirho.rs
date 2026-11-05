@@ -243,7 +243,8 @@ impl TypeElaboratorChirho<'_> {
                 element_chirho: Box::new(self.surface_chirho(&element_chirho, span_chirho)?),
                 span_chirho,
             },
-            TyChirho::ForallChirho { .. }
+            TyChirho::QualChirho { .. }
+            | TyChirho::ForallChirho { .. }
             | TyChirho::RequiredForallChirho { .. }
             | TyChirho::ForallVarChirho(_) => {
                 return Err(Self::error_chirho(

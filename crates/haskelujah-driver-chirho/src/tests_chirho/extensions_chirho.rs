@@ -21,8 +21,11 @@ use haskelujah_span_chirho::SourceMapChirho;
 #[allow(unused_imports)]
 use haskelujah_syntax_chirho::SourceFileChirho;
 
+mod corpus_kind_transport_chirho;
 mod deferral_flags_chirho;
+mod impredicative_application_chirho;
 mod kind_import_transport_chirho;
+mod kind_qualified_context_chirho;
 mod kind_repair_chirho;
 mod ordinary_elaboration_chirho;
 mod qualified_do_chirho;

@@ -28,6 +28,15 @@ impl InferCtxChirho {
             return true;
         }
         match ty_chirho {
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                context_chirho
+                    .iter()
+                    .any(|constraint_chirho| self.ty_mentions_family_chirho(constraint_chirho))
+                    || self.ty_mentions_family_chirho(body_chirho)
+            }
             TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => false,
             TyChirho::AppChirho(fun_chirho, arg_chirho) => {
                 self.ty_mentions_family_chirho(fun_chirho)
@@ -74,7 +83,10 @@ impl InferCtxChirho {
         }
         let assigns_whole_type_chirho = matches!(left_chirho, TyChirho::VarChirho(_))
             || matches!(right_chirho, TyChirho::VarChirho(_));
-        if assigns_whole_type_chirho && unify_chirho(left_chirho, right_chirho, span_chirho).is_ok()
+        if assigns_whole_type_chirho
+            && self
+                .unify_ordinary_chirho(left_chirho, right_chirho, span_chirho)
+                .is_ok()
         {
             return false;
         }
@@ -94,6 +106,16 @@ impl InferCtxChirho {
             }
         }
         match ty_chirho {
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => TyChirho::QualChirho {
+                context_chirho: context_chirho
+                    .iter()
+                    .map(|constraint_chirho| self.apply_given_rewrites_chirho(constraint_chirho))
+                    .collect(),
+                body_chirho: Box::new(self.apply_given_rewrites_chirho(body_chirho)),
+            },
             TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => {
                 ty_chirho.clone()
             }
@@ -340,13 +362,23 @@ impl InferCtxChirho {
                 if self.ty_is_stuck_family_on_var_chirho(&left_sub_chirho)
                     || self.ty_is_stuck_family_on_var_chirho(&right_sub_chirho)
                 {
+                    match self.improve_equality_from_owned_givens_chirho(&wanted_chirho) {
+                        Ok(Some(substitution_chirho)) => {
+                            self.apply_subst_all_chirho(&substitution_chirho);
+                            total_chirho = substitution_chirho.compose_chirho(&total_chirho);
+                            progressed_chirho = true;
+                            continue;
+                        }
+                        Err(_) => self.report_equality_normalization_exhausted_chirho(span_chirho),
+                        Ok(None) => {}
+                    }
                     wanted_chirho.lhs_chirho = left_sub_chirho;
                     wanted_chirho.rhs_chirho = right_sub_chirho;
                     still_pending_chirho.push(wanted_chirho);
                     continue;
                 }
                 progressed_chirho = true;
-                match unify_chirho(&left_sub_chirho, &right_sub_chirho, span_chirho) {
+                match self.unify_ordinary_chirho(&left_sub_chirho, &right_sub_chirho, span_chirho) {
                     Ok(subst_chirho) => {
                         self.apply_subst_all_chirho(&subst_chirho);
                         total_chirho = subst_chirho.compose_chirho(&total_chirho);
@@ -539,7 +571,7 @@ impl InferCtxChirho {
                     }
                     let wanted_ty_chirho =
                         improvement_chirho.apply_ty_chirho(&pred_tys_chirho[idx_chirho]);
-                    if let Ok(unifier_chirho) = unify_chirho(
+                    if let Ok(unifier_chirho) = self.unify_ordinary_chirho(
                         &wanted_ty_chirho,
                         &given_tys_chirho[idx_chirho],
                         SpanChirho::DUMMY_CHIRHO,
@@ -563,6 +595,14 @@ fn ty_contains_subterm_chirho(haystack_chirho: &TyChirho, needle_chirho: &TyChir
         return true;
     }
     match haystack_chirho {
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => {
+            context_chirho.iter().any(|constraint_chirho| {
+                ty_contains_subterm_chirho(constraint_chirho, needle_chirho)
+            }) || ty_contains_subterm_chirho(body_chirho, needle_chirho)
+        }
         TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => false,
         TyChirho::AppChirho(fun_chirho, arg_chirho) => {
             ty_contains_subterm_chirho(fun_chirho, needle_chirho)

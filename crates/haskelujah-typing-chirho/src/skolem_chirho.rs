@@ -55,6 +55,16 @@ pub fn rewrite_skolems_chirho(
     rewrite_chirho: &mut impl FnMut(&str) -> Option<TyChirho>,
 ) -> TyChirho {
     match ty_chirho {
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => TyChirho::QualChirho {
+            context_chirho: context_chirho
+                .iter()
+                .map(|constraint_chirho| rewrite_skolems_chirho(constraint_chirho, rewrite_chirho))
+                .collect(),
+            body_chirho: Box::new(rewrite_skolems_chirho(body_chirho, rewrite_chirho)),
+        },
         TyChirho::ForallVarChirho(name_chirho) if is_skolem_name_chirho(name_chirho) => {
             rewrite_chirho(name_chirho).unwrap_or_else(|| ty_chirho.clone())
         }
@@ -141,6 +151,16 @@ fn close_skolems_with_chirho(
     back_chirho: &HashMap<TyVarChirho, &str>,
 ) -> TyChirho {
     match ty_chirho {
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => TyChirho::QualChirho {
+            context_chirho: context_chirho
+                .iter()
+                .map(|constraint_chirho| close_skolems_with_chirho(constraint_chirho, back_chirho))
+                .collect(),
+            body_chirho: Box::new(close_skolems_with_chirho(body_chirho, back_chirho)),
+        },
         TyChirho::VarChirho(var_chirho) => match back_chirho.get(var_chirho) {
             Some(name_chirho) => TyChirho::ForallVarChirho((*name_chirho).to_string()),
             None => ty_chirho.clone(),

@@ -75,9 +75,10 @@ fn a_source_binder_maps_through_an_inferred_prefix_chirho() {
         },
     ];
     header_chirho.source_variables_chirho = vec![SourceDeclarationVariableChirho {
+        header_index_chirho: 0,
         source_chirho: ScopedTypeVariableIdChirho::QuantifiedChirho {
-            declaration_chirho: Arc::from("sourceChirho"),
-            index_chirho: 0,
+            declaration_chirho: header_chirho.identity_chirho.clone(),
+            index_chirho: 1,
         },
         variable_chirho: TyVarChirho(1),
         specificity_chirho: TyVarSpecificityChirho::SpecifiedChirho,
@@ -86,8 +87,20 @@ fn a_source_binder_maps_through_an_inferred_prefix_chirho() {
     header_chirho.reduction_arity_chirho = 2;
     assert!(
         DeclarationSchemesChirho::default()
-            .insert_chirho(header_chirho)
+            .insert_chirho(header_chirho.clone())
             .is_ok()
+    );
+    // Written parameter zero is canonical slot one after its inferred kind.
+    header_chirho.source_variables_chirho[0].source_chirho =
+        ScopedTypeVariableIdChirho::QuantifiedChirho {
+            declaration_chirho: header_chirho.identity_chirho.clone(),
+            index_chirho: 0,
+        };
+    assert!(
+        DeclarationSchemesChirho::default()
+            .insert_chirho(header_chirho)
+            .unwrap_err()
+            .contains("source-to-published")
     );
 }
 

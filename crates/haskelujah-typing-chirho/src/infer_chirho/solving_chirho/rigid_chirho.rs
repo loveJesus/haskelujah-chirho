@@ -30,20 +30,14 @@ impl InferCtxChirho {
                 instantiation_chirho.insert_chirho(*var_chirho, existing_chirho.clone());
                 continue;
             }
-            // Only a variable the programmer wrote becomes rigid. A variable
-            // without a source spelling comes from synonym expansion or from a
-            // lowering artifact (an empty-named binder), and is instantiated
-            // flexibly as before.
-            let Some(base_chirho) = self
+            // Universality comes from the checked quantifier, including one
+            // introduced by a synonym. A display spelling grants no authority.
+            let base_chirho = self
                 .tyvar_source_names_chirho
                 .get(var_chirho)
                 .filter(|name_chirho| !name_chirho.is_empty())
                 .cloned()
-            else {
-                let fresh_chirho = self.fresh_var_chirho();
-                instantiation_chirho.insert_chirho(*var_chirho, fresh_chirho);
-                continue;
-            };
+                .unwrap_or_else(|| "aChirho".to_owned());
             let skolem_chirho = TyChirho::ForallVarChirho(skolem_name_chirho(
                 &base_chirho,
                 self.next_skolem_chirho,
@@ -76,7 +70,7 @@ impl InferCtxChirho {
                 )
             })
             .collect();
-        (
+        self.expose_qualified_parts_chirho(
             instantiation_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho),
             givens_chirho,
         )
@@ -407,6 +401,7 @@ impl InferCtxChirho {
                 crate::skolem_chirho::is_skolem_name_chirho(name_chirho)
             }
             TyChirho::VarChirho(_)
+            | TyChirho::QualChirho { .. }
             | TyChirho::ForallChirho { .. }
             | TyChirho::RequiredForallChirho { .. } => false,
             TyChirho::ConChirho(name_chirho) => {

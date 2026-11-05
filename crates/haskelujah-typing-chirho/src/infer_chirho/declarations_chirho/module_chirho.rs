@@ -23,6 +23,9 @@ impl InferCtxChirho {
     /// Run type inference on a module. Returns the result with environment,
     /// substitution, and diagnostics.
     pub fn infer_module_chirho(&mut self, module_chirho: &ModuleChirho) -> SubstChirho {
+        self.type_validity_license_chirho = Some(
+            crate::validity_chirho::LicenseChirho::from_module_chirho(module_chirho),
+        );
         let mut subst_chirho = SubstChirho::empty_chirho();
         self.prepare_family_scope_chirho(module_chirho, self.family_scope_chirho.clone());
 
@@ -626,19 +629,24 @@ impl InferCtxChirho {
                 subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                 self.apply_subst_all_chirho(&s_chirho);
 
-                // Unify pre-bound type with inferred type
-                let pre_sub_chirho = subst_chirho.apply_ty_chirho(pre_ty_chirho);
-                match self.unify_normalized_chirho(
-                    &pre_sub_chirho,
-                    &inferred_ty_chirho,
-                    span_chirho,
-                ) {
-                    Ok(su_chirho) => {
-                        subst_chirho = su_chirho.compose_chirho(&subst_chirho);
-                        self.apply_subst_all_chirho(&su_chirho);
-                    }
-                    Err(err_chirho) => {
-                        self.report_unify_error_chirho(&err_chirho);
+                // Unsigned recursive placeholders join their inferred result.
+                // A signed binding already uses its full declared scheme and
+                // was checked under that SAME signature's givens. An unrelated
+                // fresh pretype supplies no additional family equality.
+                if !type_sigs_chirho.contains_key(binding_name_chirho) {
+                    let pre_sub_chirho = subst_chirho.apply_ty_chirho(pre_ty_chirho);
+                    match self.unify_normalized_chirho(
+                        &pre_sub_chirho,
+                        &inferred_ty_chirho,
+                        span_chirho,
+                    ) {
+                        Ok(su_chirho) => {
+                            subst_chirho = su_chirho.compose_chirho(&subst_chirho);
+                            self.apply_subst_all_chirho(&su_chirho);
+                        }
+                        Err(err_chirho) => {
+                            self.report_unify_error_chirho(&err_chirho);
+                        }
                     }
                 }
 

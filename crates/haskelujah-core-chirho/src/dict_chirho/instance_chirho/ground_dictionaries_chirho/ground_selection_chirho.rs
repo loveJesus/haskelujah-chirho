@@ -176,6 +176,7 @@ pub(in crate::dict_chirho) fn ty_is_ground_chirho(ty_chirho: &TyChirho) -> bool 
     match ty_chirho {
         TyChirho::VarChirho(_)
         | TyChirho::ForallVarChirho(_)
+        | TyChirho::QualChirho { .. }
         | TyChirho::ForallChirho { .. }
         | TyChirho::RequiredForallChirho { .. } => false,
         TyChirho::ConChirho(_) => true,
@@ -211,6 +212,15 @@ fn collect_constructors_chirho<'ty_chirho>(
     constructors_chirho: &mut BTreeSet<&'ty_chirho str>,
 ) {
     match ty_chirho {
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => {
+            for constraint_chirho in context_chirho {
+                collect_constructors_chirho(constraint_chirho, constructors_chirho);
+            }
+            collect_constructors_chirho(body_chirho, constructors_chirho);
+        }
         TyChirho::ConChirho(name_chirho) => {
             constructors_chirho.insert(name_chirho.as_str());
         }
@@ -316,6 +326,7 @@ fn lettered_chirho(ty_chirho: &TyChirho, letters_chirho: &mut Vec<TyVarChirho>) 
         }
         TyChirho::ConChirho(_)
         | TyChirho::ForallVarChirho(_)
+        | TyChirho::QualChirho { .. }
         | TyChirho::ForallChirho { .. }
         | TyChirho::RequiredForallChirho { .. } => ty_chirho.clone(),
     }

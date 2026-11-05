@@ -702,11 +702,6 @@ fn intrinsics_empty_families_and_unsupported_syntax_remain_stuck_chirho() {
         1,
         vec![branch_chirho(0, vec![var_chirho(0)], var_chirho(0), vec![])],
     );
-    let forall_chirho = TyChirho::ForallChirho {
-        vars_chirho: vec![TyVarChirho(0)],
-        body_chirho: Box::new(var_chirho(0)),
-    };
-    assert_eq!(reduce_chirho(&identity_chirho, &[forall_chirho]), None);
     assert_eq!(
         reduce_chirho(
             &identity_chirho,
@@ -916,5 +911,78 @@ fn held_and_unverified_definitions_never_certify_a_stuck_result_chirho() {
             FamilyReductionLimitsChirho::default()
         ),
         DChirho::NoMatchChirho
+    );
+}
+
+#[test]
+fn equation_variables_carry_checked_polytypes_without_decomposing_them_chirho() {
+    // The measured ExplicitFamilyLengthChirho accepts an explicit polymorphic
+    // family argument. Its bound variable is payload, never an equation meta.
+    let forall_chirho = TyChirho::ForallChirho {
+        vars_chirho: vec![TyVarChirho(0)],
+        body_chirho: Box::new(var_chirho(0)),
+    };
+    let identity_chirho = closed_chirho(
+        1,
+        vec![branch_chirho(0, vec![var_chirho(0)], var_chirho(0), vec![])],
+    );
+    assert_eq!(
+        reduce_chirho(&identity_chirho, &[forall_chirho.clone()]),
+        Some(forall_chirho.clone())
+    );
+    let repeated_chirho = closed_chirho(
+        2,
+        vec![branch_chirho(
+            0,
+            vec![var_chirho(0), var_chirho(0)],
+            var_chirho(0),
+            vec![],
+        )],
+    );
+    assert_eq!(
+        reduce_chirho(
+            &repeated_chirho,
+            &[forall_chirho.clone(), forall_chirho.clone()]
+        ),
+        Some(forall_chirho.clone())
+    );
+    let concrete_chirho = closed_chirho(
+        1,
+        vec![branch_chirho(
+            0,
+            vec![con_chirho("Int")],
+            con_chirho("Bool"),
+            vec![],
+        )],
+    );
+    assert_eq!(
+        reduce_chirho(&concrete_chirho, &[forall_chirho.clone()]),
+        None
+    );
+    let forbidden_pattern_chirho = closed_chirho(
+        1,
+        vec![branch_chirho(
+            0,
+            vec![forall_chirho.clone()],
+            con_chirho("Bool"),
+            vec![],
+        )],
+    );
+    assert_eq!(
+        reduce_chirho(&forbidden_pattern_chirho, &[forall_chirho.clone()]),
+        None
+    );
+    assert_eq!(
+        reduce_family_with_limits_chirho(
+            &identity_chirho,
+            &[forall_chirho],
+            &classify_chirho,
+            FamilyReductionLimitsChirho {
+                steps_chirho: 5,
+                nodes_chirho: 100,
+                depth_chirho: 128
+            }
+        ),
+        None
     );
 }

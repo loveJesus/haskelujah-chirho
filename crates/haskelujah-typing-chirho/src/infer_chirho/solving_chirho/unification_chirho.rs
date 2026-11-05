@@ -17,6 +17,22 @@ impl InferCtxChirho {
     /// `F T1` unifies with `Char` when `type instance F T1 = Char`.
     /// The recursive cases re-normalize after intermediate substitutions so
     /// reductions like `PrimState (ST s) ~ s` become visible once `m ~ ST s`.
+    pub(super) fn unify_ordinary_chirho(
+        &self,
+        left_chirho: &TyChirho,
+        right_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<SubstChirho, UnifyErrorChirho> {
+        let result_chirho = unify_chirho(left_chirho, right_chirho, span_chirho);
+        if matches!(
+            result_chirho,
+            Err(UnifyErrorChirho::ResourceExhaustedChirho { .. })
+        ) {
+            self.type_normalization_exhausted_chirho.set(true);
+        }
+        result_chirho
+    }
+
     pub(super) fn unify_normalized_chirho(
         &mut self,
         ty1_chirho: &TyChirho,
@@ -193,7 +209,7 @@ impl InferCtxChirho {
             (&n1_chirho, &n2_chirho)
         {
             if elems1_chirho.len() != elems2_chirho.len() {
-                return unify_chirho(&n1_chirho, &n2_chirho, span_chirho);
+                return self.unify_ordinary_chirho(&n1_chirho, &n2_chirho, span_chirho);
             }
             let mut subst_chirho = SubstChirho::empty_chirho();
             for (elem1_chirho, elem2_chirho) in elems1_chirho.iter().zip(elems2_chirho.iter()) {
@@ -210,7 +226,7 @@ impl InferCtxChirho {
             }
             return Ok(subst_chirho);
         }
-        unify_chirho(&n1_chirho, &n2_chirho, span_chirho)
+        self.unify_ordinary_chirho(&n1_chirho, &n2_chirho, span_chirho)
     }
 
     pub(super) fn subsume_normalized_chirho(
@@ -297,6 +313,9 @@ impl InferCtxChirho {
     /// Record a unification error as a diagnostic.
     pub(super) fn report_unify_error_chirho(&mut self, err_chirho: &UnifyErrorChirho) {
         match err_chirho {
+            UnifyErrorChirho::ResourceExhaustedChirho { .. } => {
+                self.type_normalization_exhausted_chirho.set(true);
+            }
             UnifyErrorChirho::MismatchChirho {
                 expected_chirho,
                 actual_chirho,

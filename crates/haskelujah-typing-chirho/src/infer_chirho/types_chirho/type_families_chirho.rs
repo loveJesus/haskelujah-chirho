@@ -214,6 +214,22 @@ fn clone_stuck_type_chirho(
     *nodes_chirho = nodes_chirho.checked_sub(1)?;
     let child_chirho = depth_chirho.checked_add(1)?;
     Some(match ty_chirho {
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => TyChirho::QualChirho {
+            context_chirho: context_chirho
+                .iter()
+                .map(|constraint_chirho| {
+                    clone_stuck_type_chirho(constraint_chirho, child_chirho, nodes_chirho)
+                })
+                .collect::<Option<Vec<_>>>()?,
+            body_chirho: Box::new(clone_stuck_type_chirho(
+                body_chirho,
+                child_chirho,
+                nodes_chirho,
+            )?),
+        },
         TyChirho::VarChirho(variable_chirho) => TyChirho::VarChirho(*variable_chirho),
         TyChirho::ForallVarChirho(name_chirho) => {
             *nodes_chirho = nodes_chirho.checked_sub(name_chirho.len())?;

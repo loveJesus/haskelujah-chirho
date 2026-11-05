@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho as AstConstraintChirho, TypeChirho};
 use haskelujah_span_chirho::SpanChirho;
 
-use super::{InferCtxChirho, collect_app_spine_chirho, signature_binders_chirho};
+use super::{InferCtxChirho, signature_binders_chirho};
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
 
@@ -68,11 +68,28 @@ impl InferCtxChirho {
                 .collect(),
             _ => Vec::new(),
         };
+        // Keep family applications opaque in the published term scheme. Quick Look
+        // may expand synonyms, but reducing a family here would invent information
+        // that ordinary implicit instantiation is not allowed to use.
+        let previous_conversion_chirho = self.definition_type_conversion_chirho;
+        self.definition_type_conversion_chirho = true;
         let ty_chirho = self.ast_type_to_ty_chirho(body_ast_chirho, &mut var_map_chirho);
-        self.collect_result_spine_constraints_chirho(
-            body_ast_chirho,
-            &ty_chirho,
-            &mut var_map_chirho,
+        self.definition_type_conversion_chirho = previous_conversion_chirho;
+        let ty_chirho = self.expand_type_synonyms_chirho(&ty_chirho);
+        if let Some(license_chirho) = self.type_validity_license_chirho {
+            let expanded_validity_chirho = crate::validity_chirho::check_expanded_type_chirho(
+                &ty_chirho,
+                license_chirho,
+                self.type_families_chirho.declaration_schemes_chirho(),
+                ast_ty_chirho.span_chirho(),
+            );
+            for diagnostic_chirho in expanded_validity_chirho.diagnostics_chirho() {
+                self.non_deferrable_diagnostics_chirho
+                    .push_chirho(diagnostic_chirho.clone());
+            }
+        }
+        let (outer_forall_vars_chirho, inner_ty_chirho) = self.split_typed_scheme_prefix_chirho(
+            ty_chirho,
             &mut scheme_preds_chirho,
             &mut equality_pairs_chirho,
         );
@@ -131,7 +148,6 @@ impl InferCtxChirho {
         // Peel off the outermost ForallChirho produced by ast_type_to_ty_chirho.
         // The vars in a top-level ForallChirho become scheme vars; nested ForallChirho
         // (inside function args) are preserved for rank-N polymorphism.
-        let (outer_forall_vars_chirho, inner_ty_chirho) = Self::peel_forall_chirho(ty_chirho);
         let outer_forall_vars_chirho = if explicit_forall_vars_chirho.is_empty() {
             outer_forall_vars_chirho
         } else {
@@ -300,204 +316,13 @@ impl InferCtxChirho {
         scheme_preds_chirho: &mut Vec<SchemePredChirho>,
         equality_pairs_chirho: &mut Vec<(TyChirho, TyChirho)>,
     ) {
-        let AstConstraintChirho::ClassChirho {
-            class_chirho,
-            args_chirho,
-            kind_args_chirho,
-            ..
-        } = constraint_chirho.unannotated_chirho()
-        else {
-            return;
-        };
-        let class_name_chirho = class_chirho.text_chirho().to_string();
-        if matches!(class_name_chirho.as_str(), "~" | "~~" | "∼") && args_chirho.len() == 2 {
-            let lhs_chirho = self.ast_type_to_ty_chirho(&args_chirho[0], var_map_chirho);
-            let rhs_chirho = self.ast_type_to_ty_chirho(&args_chirho[1], var_map_chirho);
-            equality_pairs_chirho.push((lhs_chirho, rhs_chirho));
-            return;
-        }
-        let key_chirho = class_chirho
-            .type_constructor_chirho()
-            .or_else(|| {
-                self.type_constructor_scope_chirho
-                    .as_ref()
-                    .and_then(|scope_chirho| {
-                        scope_chirho.declaration_chirho(&class_chirho.full_name_chirho())
-                    })
-            })
-            .map(|declaration_chirho| declaration_chirho.type_key_chirho())
-            .unwrap_or_else(|| class_name_chirho.clone());
-        let kind_tys_chirho = kind_args_chirho
-            .iter()
-            .map(|kind_chirho| self.ast_type_to_ty_chirho(kind_chirho, var_map_chirho))
-            .collect::<Vec<_>>();
-        let visible_tys_chirho = args_chirho
-            .iter()
-            .map(|ty_chirho| self.ast_type_to_ty_chirho(ty_chirho, var_map_chirho))
-            .collect::<Vec<_>>();
-        let is_alias_chirho = self
-            .type_families_chirho
-            .declaration_schemes_chirho()
-            .get_chirho(&key_chirho)
-            .is_some_and(|scheme_chirho| {
-                scheme_chirho.owner_chirho.is_none()
-                    && !scheme_chirho.held_chirho
-                    && scheme_chirho.synonym_rhs_chirho.is_some()
-            })
-            || self.lookup_type_synonym_chirho(&key_chirho).is_some();
-        if is_alias_chirho {
-            let mut application_chirho = TyChirho::ConChirho(key_chirho);
-            for argument_chirho in kind_tys_chirho.into_iter().chain(visible_tys_chirho) {
-                application_chirho =
-                    TyChirho::AppChirho(Box::new(application_chirho), Box::new(argument_chirho));
-            }
-            let expanded_chirho = self.expand_type_synonyms_chirho(&application_chirho);
-            self.scheme_preds_from_constraint_ty_chirho(
-                &expanded_chirho,
-                scheme_preds_chirho,
-                equality_pairs_chirho,
-            );
-            return;
-        }
-        let proof_chirho = self.constraint_head_proof_chirho(&key_chirho);
-        let mut visible_chirho = visible_tys_chirho.into_iter();
-        scheme_preds_chirho.push(SchemePredChirho::from_proof_chirho(
-            proof_chirho,
-            crate::ty_chirho::SchemePredPartsChirho {
-                kind_tys_chirho,
-                class_name_chirho,
-                ty_chirho: visible_chirho
-                    .next()
-                    .unwrap_or_else(|| self.fresh_var_chirho()),
-                extra_tys_chirho: visible_chirho.collect(),
-            },
-        ));
-    }
-
-    fn constraint_head_proof_chirho(
-        &self,
-        key_chirho: &str,
-    ) -> haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho {
-        use haskelujah_ast_chirho::name_chirho::{
-            ClassIdentityUnknownChirho, CompilerTypeConstructorChirho,
-            PredicateClassIdentityChirho, PredicateClassProofChirho, TypeConstructorIdentityChirho,
-            TypeConstructorRoleChirho,
-        };
-        let Some(scheme_chirho) = self
-            .type_families_chirho
-            .declaration_schemes_chirho()
-            .get_chirho(key_chirho)
-            .filter(|scheme_chirho| {
-                scheme_chirho.owner_chirho.is_none()
-                    && !scheme_chirho.held_chirho
-                    && scheme_chirho.role_chirho == TypeConstructorRoleChirho::ClassChirho
-            })
-        else {
-            return PredicateClassProofChirho::UnknownChirho(
-                ClassIdentityUnknownChirho::LegacyChirho,
-            );
-        };
-        match scheme_chirho
-            .declaration_chirho
-            .as_ref()
-            .map(|declaration_chirho| &declaration_chirho.identity_chirho)
-        {
-            Some(TypeConstructorIdentityChirho::CompilerChirho(
-                CompilerTypeConstructorChirho::ClassChirho(identity_chirho),
-            )) => PredicateClassProofChirho::ProvenChirho(
-                PredicateClassIdentityChirho::CompilerChirho(*identity_chirho),
-            ),
-            Some(TypeConstructorIdentityChirho::SourceChirho { .. }) => {
-                PredicateClassProofChirho::UnknownChirho(
-                    ClassIdentityUnknownChirho::MissingUnitChirho,
-                )
-            }
-            _ => PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::LegacyChirho),
-        }
-    }
-
-    fn scheme_preds_from_constraint_ty_chirho(
-        &mut self,
-        ty_chirho: &TyChirho,
-        out_chirho: &mut Vec<SchemePredChirho>,
-        equalities_chirho: &mut Vec<(TyChirho, TyChirho)>,
-    ) {
-        if let TyChirho::TupleChirho(elements_chirho) = ty_chirho {
-            for element_chirho in elements_chirho {
-                self.scheme_preds_from_constraint_ty_chirho(
-                    element_chirho,
-                    out_chirho,
-                    equalities_chirho,
-                );
-            }
-            return;
-        }
-        let (head_chirho, arguments_chirho) = collect_app_spine_chirho(ty_chirho);
-        let TyChirho::ConChirho(key_chirho) = head_chirho else {
-            return;
-        };
-        let schema_chirho = self
-            .type_families_chirho
-            .declaration_schemes_chirho()
-            .get_chirho(&key_chirho)
-            .filter(|scheme_chirho| {
-                scheme_chirho.owner_chirho.is_none()
-                    && !scheme_chirho.held_chirho
-                    && scheme_chirho.reduction_arity_chirho == arguments_chirho.len()
-            })
-            .cloned();
-        let (kind_tys_chirho, visible_tys_chirho) = if let Some(schema_chirho) = &schema_chirho {
-            let (hidden_chirho, visible_chirho): (Vec<_>, Vec<_>) = schema_chirho.binders_chirho.iter().zip(arguments_chirho).partition(|(binder_chirho, _)| binder_chirho.visibility_chirho != crate::ty_chirho::declarations_chirho::TelescopeVisibilityChirho::RequiredChirho);
-            (
-                hidden_chirho
-                    .into_iter()
-                    .map(|(_, ty_chirho)| ty_chirho)
-                    .collect::<Vec<_>>(),
-                visible_chirho
-                    .into_iter()
-                    .map(|(_, ty_chirho)| ty_chirho)
-                    .collect::<Vec<_>>(),
-            )
-        } else {
-            (Vec::new(), arguments_chirho)
-        };
-        if matches!(key_chirho.as_str(), "~" | "~~" | "∼") && visible_tys_chirho.len() == 2 {
-            let mut visible_chirho = visible_tys_chirho.into_iter();
-            equalities_chirho.push((
-                visible_chirho.next().unwrap(),
-                visible_chirho.next().unwrap(),
-            ));
-            return;
-        }
-        use haskelujah_ast_chirho::name_chirho::{
-            CompilerTypeConstructorChirho, TypeConstructorIdentityChirho,
-        };
-        let class_name_chirho = match schema_chirho
-            .as_ref()
-            .and_then(|schema_chirho| schema_chirho.declaration_chirho.as_ref())
-            .map(|declaration_chirho| &declaration_chirho.identity_chirho)
-        {
-            Some(TypeConstructorIdentityChirho::CompilerChirho(
-                CompilerTypeConstructorChirho::ClassChirho(identity_chirho),
-            )) => identity_chirho.legacy_name_chirho().to_owned(),
-            Some(TypeConstructorIdentityChirho::SourceChirho { name_chirho, .. }) => {
-                name_chirho.clone()
-            }
-            _ => key_chirho.clone(),
-        };
-        let proof_chirho = self.constraint_head_proof_chirho(&key_chirho);
-        let mut visible_chirho = visible_tys_chirho.into_iter();
-        out_chirho.push(SchemePredChirho::from_proof_chirho(
-            proof_chirho,
-            crate::ty_chirho::SchemePredPartsChirho {
-                kind_tys_chirho,
-                class_name_chirho,
-                ty_chirho: visible_chirho
-                    .next()
-                    .unwrap_or_else(|| self.fresh_var_chirho()),
-                extra_tys_chirho: visible_chirho.collect(),
-            },
-        ));
+        let term_chirho = self.ast_constraint_to_term_chirho(constraint_chirho, var_map_chirho);
+        let expanded_chirho = self.expand_type_synonyms_chirho(&term_chirho);
+        self.scheme_preds_from_constraint_ty_chirho(
+            &expanded_chirho,
+            scheme_preds_chirho,
+            equality_pairs_chirho,
+        );
     }
 
     /// Peel off the outermost ForallChirho from a TyChirho, collecting bound vars.
@@ -599,127 +424,6 @@ impl InferCtxChirho {
                 equality_pairs_chirho,
             ),
             other_chirho => other_chirho,
-        }
-    }
-
-    /// Convert result-spine predicates under the binders of the converted type.
-    /// A detached list of AST constraints loses that identity when a forall scope
-    /// closes. Pairing the result spines visits each node once without snapshots
-    /// of the growing environment or reallocation of quantified variables.
-    fn collect_result_spine_constraints_chirho(
-        &mut self,
-        ast_ty_chirho: &TypeChirho,
-        ty_chirho: &TyChirho,
-        var_map_chirho: &mut HashMap<String, TyVarChirho>,
-        scheme_preds_chirho: &mut Vec<SchemePredChirho>,
-        equality_pairs_chirho: &mut Vec<(TyChirho, TyChirho)>,
-    ) {
-        match (ast_ty_chirho, ty_chirho) {
-            (
-                TypeChirho::FunChirho { result_chirho, .. },
-                TyChirho::FunChirho(_, result_ty_chirho, _),
-            ) => self.collect_result_spine_constraints_chirho(
-                result_chirho,
-                result_ty_chirho,
-                var_map_chirho,
-                scheme_preds_chirho,
-                equality_pairs_chirho,
-            ),
-            (
-                TypeChirho::QualChirho {
-                    context_chirho,
-                    body_chirho,
-                    ..
-                },
-                _,
-            ) => {
-                for constraint_chirho in context_chirho {
-                    self.convert_signature_constraint_chirho(
-                        constraint_chirho,
-                        var_map_chirho,
-                        scheme_preds_chirho,
-                        equality_pairs_chirho,
-                    );
-                }
-                self.collect_result_spine_constraints_chirho(
-                    body_chirho,
-                    ty_chirho,
-                    var_map_chirho,
-                    scheme_preds_chirho,
-                    equality_pairs_chirho,
-                );
-            }
-            (TypeChirho::ParenChirho { inner_chirho, .. }, _) => {
-                self.collect_result_spine_constraints_chirho(
-                    inner_chirho,
-                    ty_chirho,
-                    var_map_chirho,
-                    scheme_preds_chirho,
-                    equality_pairs_chirho,
-                );
-            }
-            (
-                TypeChirho::ForallChirho {
-                    vars_chirho,
-                    body_chirho,
-                    ..
-                },
-                TyChirho::ForallChirho {
-                    vars_chirho: bound_chirho,
-                    body_chirho: body_ty_chirho,
-                },
-            )
-            | (
-                TypeChirho::RequiredForallChirho {
-                    vars_chirho,
-                    body_chirho,
-                    ..
-                },
-                TyChirho::RequiredForallChirho {
-                    vars_chirho: bound_chirho,
-                    body_chirho: body_ty_chirho,
-                },
-            ) if vars_chirho.len() == bound_chirho.len() => {
-                let bindings_chirho =
-                    vars_chirho
-                        .iter()
-                        .zip(bound_chirho.iter())
-                        .map(|(name_chirho, var_chirho)| {
-                            (name_chirho.text_chirho().to_string(), *var_chirho)
-                        });
-                self.with_type_bindings_chirho(
-                    bindings_chirho,
-                    var_map_chirho,
-                    |context_chirho, map_chirho| {
-                        context_chirho.collect_result_spine_constraints_chirho(
-                            body_chirho,
-                            body_ty_chirho,
-                            map_chirho,
-                            scheme_preds_chirho,
-                            equality_pairs_chirho,
-                        );
-                    },
-                );
-            }
-            (
-                TypeChirho::FunChirho { .. }
-                | TypeChirho::ForallChirho { .. }
-                | TypeChirho::RequiredForallChirho { .. },
-                _,
-            ) => {
-                // The converter preserves these nodes. If that contract changes,
-                // do not silently discard a constraint or attach it to another binder.
-                self.diagnostics_chirho.push_chirho(
-                    haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
-                        haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(
-                            super::SIGNATURE_SCOPE_INVARIANT_CODE_CHIRHO,
-                        ),
-                        "signature result scope does not match its converted type",
-                        ast_ty_chirho.span_chirho(),
-                    ),
-                );
-            }
-            _ => {}
         }
     }
 }

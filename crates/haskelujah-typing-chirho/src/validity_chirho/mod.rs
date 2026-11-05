@@ -26,6 +26,8 @@ use haskelujah_span_chirho::SpanChirho;
 
 pub mod declarations_chirho;
 mod tuple_arity_chirho;
+mod typed_chirho;
+pub(crate) use typed_chirho::check_expanded_type_chirho;
 
 /// `E0206`: a source type form rejected by the syntactic validity rules.
 const ILLEGAL_TYPE_FORM_CODE_CHIRHO: u16 = 206;
@@ -99,7 +101,7 @@ const UNRESOLVED_CONSTRAINT_MARKER_CHIRHO: &str = "?";
 /// Bundled into one `Copy` value so the walker keeps a short argument list;
 /// every flag is decided once, at the top of the pass.
 #[derive(Debug, Clone, Copy)]
-struct LicenseChirho {
+pub(crate) struct LicenseChirho {
     /// `RankNTypes` (or a spelling/edition that implies it) is on.
     rank_n_chirho: bool,
     /// `ImpredicativeTypes` is on.
@@ -110,6 +112,34 @@ struct LicenseChirho {
     /// datatype "stupid theta" is written on the declaration *head*, and we
     /// will not risk judging a head context as if it were a field.
     datatype_contexts_chirho: bool,
+}
+
+impl LicenseChirho {
+    pub(crate) fn impredicative_enabled_chirho(self) -> bool {
+        self.impredicative_chirho
+    }
+
+    pub(crate) fn from_module_chirho(module_chirho: &ModuleChirho) -> Self {
+        // GHC: ImpredicativeTypes implies RankNTypes. `Rank2Types` is a legacy
+        // spelling of `RankNTypes` and still widely used in real source.
+        let impredicative_chirho = extension_enabled_chirho(module_chirho, "ImpredicativeTypes");
+        Self {
+            rank_n_chirho: impredicative_chirho
+            || extension_enabled_chirho(module_chirho, "RankNTypes")
+            || extension_enabled_chirho(module_chirho, "Rank2Types")
+            // A module that never declares a language edition is compiled by
+            // modern GHC under GHC2021, which enables RankNTypes. We do not
+            // model language editions, so assuming rank-N is OFF would reject
+            // ordinary modern code. Only an explicit legacy edition turns it off.
+            || !declares_legacy_edition_chirho(module_chirho),
+            impredicative_chirho,
+            quantified_constraints_chirho: extension_enabled_chirho(
+                module_chirho,
+                "QuantifiedConstraints",
+            ),
+            datatype_contexts_chirho: extension_enabled_chirho(module_chirho, "DatatypeContexts"),
+        }
+    }
 }
 
 /// Check every source type in a module for extension-licensed forms.
@@ -136,25 +166,7 @@ struct LicenseChirho {
 ///     (`decl_chirho.rs:19`) cannot hold a `forall`, and standalone kind
 ///     signatures legitimately carry one.
 pub fn check_module_type_validity_chirho(module_chirho: &ModuleChirho) -> Vec<ValidityErrorChirho> {
-    // GHC: ImpredicativeTypes implies RankNTypes. `Rank2Types` is a legacy
-    // spelling of `RankNTypes` and still widely used in real source.
-    let impredicative_chirho = extension_enabled_chirho(module_chirho, "ImpredicativeTypes");
-    let license_chirho = LicenseChirho {
-        rank_n_chirho: impredicative_chirho
-            || extension_enabled_chirho(module_chirho, "RankNTypes")
-            || extension_enabled_chirho(module_chirho, "Rank2Types")
-            // A module that never declares a language edition is compiled by
-            // modern GHC under GHC2021, which enables RankNTypes. We do not
-            // model language editions, so assuming rank-N is OFF would reject
-            // ordinary modern code. Only an explicit legacy edition turns it off.
-            || !declares_legacy_edition_chirho(module_chirho),
-        impredicative_chirho,
-        quantified_constraints_chirho: extension_enabled_chirho(
-            module_chirho,
-            "QuantifiedConstraints",
-        ),
-        datatype_contexts_chirho: extension_enabled_chirho(module_chirho, "DatatypeContexts"),
-    };
+    let license_chirho = LicenseChirho::from_module_chirho(module_chirho);
 
     let mut errors_chirho = Vec::new();
     let mut projection_budget_chirho =

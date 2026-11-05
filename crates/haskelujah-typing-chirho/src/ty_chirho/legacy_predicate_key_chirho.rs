@@ -47,6 +47,15 @@ fn hash_term_chirho(term_chirho: &TyChirho, hasher_chirho: &mut impl Hasher) {
     let mut pending_chirho = vec![term_chirho];
     while let Some(term_chirho) = pending_chirho.pop() {
         match term_chirho {
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                9u8.hash(hasher_chirho);
+                context_chirho.len().hash(hasher_chirho);
+                pending_chirho.push(body_chirho);
+                pending_chirho.extend(context_chirho.iter().rev());
+            }
             TyChirho::VarChirho(variable_chirho) => {
                 0u8.hash(hasher_chirho);
                 variable_chirho.hash(hasher_chirho);
@@ -103,6 +112,19 @@ fn equal_term_chirho(left_chirho: &TyChirho, right_chirho: &TyChirho) -> bool {
     let mut pending_chirho = vec![(left_chirho, right_chirho)];
     while let Some((left_chirho, right_chirho)) = pending_chirho.pop() {
         match (left_chirho, right_chirho) {
+            (
+                TyChirho::QualChirho {
+                    context_chirho: left_context_chirho,
+                    body_chirho: left_body_chirho,
+                },
+                TyChirho::QualChirho {
+                    context_chirho: right_context_chirho,
+                    body_chirho: right_body_chirho,
+                },
+            ) if left_context_chirho.len() == right_context_chirho.len() => {
+                pending_chirho.push((left_body_chirho, right_body_chirho));
+                pending_chirho.extend(left_context_chirho.iter().zip(right_context_chirho));
+            }
             (TyChirho::VarChirho(left_chirho), TyChirho::VarChirho(right_chirho))
                 if left_chirho == right_chirho => {}
             (TyChirho::ConChirho(left_chirho), TyChirho::ConChirho(right_chirho))

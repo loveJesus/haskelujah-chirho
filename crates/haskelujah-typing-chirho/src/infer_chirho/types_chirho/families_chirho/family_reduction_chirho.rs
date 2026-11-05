@@ -247,6 +247,7 @@ enum PatternVariableChirho {
 enum MatchNodeChirho {
     PatternVariableChirho(PatternVariableChirho),
     TargetVariableChirho(PatternVariableChirho),
+    OpaqueTargetChirho(std::sync::Arc<TyChirho>),
     ConstructorChirho(GenerativeIdentityChirho),
     ApplicationChirho(MatchNodeIdChirho, MatchNodeIdChirho),
     FamilyChirho {
@@ -562,10 +563,78 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
                     result_chirho,
                 ))
             }
-            TyChirho::ForallChirho { .. } | TyChirho::RequiredForallChirho { .. } => {
-                Err(MatchFailureChirho::UnsupportedChirho)
+            TyChirho::QualChirho { .. }
+            | TyChirho::ForallChirho { .. }
+            | TyChirho::RequiredForallChirho { .. } => {
+                if mode_chirho != ConversionModeChirho::TargetChirho {
+                    return Err(MatchFailureChirho::UnsupportedChirho);
+                }
+                // One payload copy and the intern table's two full hashes.
+                for _copy_chirho in 0..3 {
+                    self.charge_opaque_chirho(ty_chirho, depth_chirho)?;
+                }
+                self.intern_chirho(MatchNodeChirho::OpaqueTargetChirho(std::sync::Arc::new(
+                    ty_chirho.clone(),
+                )))
             }
         }
+    }
+
+    fn charge_opaque_chirho(
+        &mut self,
+        term_chirho: &TyChirho,
+        depth_chirho: usize,
+    ) -> Result<(), MatchFailureChirho> {
+        let mut pending_chirho = vec![(term_chirho, depth_chirho)];
+        while let Some((term_chirho, depth_chirho)) = pending_chirho.pop() {
+            self.output_chirho(depth_chirho)?;
+            match term_chirho {
+                TyChirho::ConChirho(name_chirho) | TyChirho::ForallVarChirho(name_chirho) => {
+                    self.charge_chirho(name_chirho.len())?
+                }
+                TyChirho::VarChirho(_) => {}
+                TyChirho::AppChirho(left_chirho, right_chirho)
+                | TyChirho::FunChirho(left_chirho, right_chirho, _) => pending_chirho.extend([
+                    (left_chirho.as_ref(), depth_chirho + 1),
+                    (right_chirho.as_ref(), depth_chirho + 1),
+                ]),
+                TyChirho::ListChirho(element_chirho) => {
+                    pending_chirho.push((element_chirho, depth_chirho + 1))
+                }
+                TyChirho::TupleChirho(elements_chirho) => {
+                    self.charge_chirho(elements_chirho.len())?;
+                    pending_chirho.extend(
+                        elements_chirho
+                            .iter()
+                            .map(|element_chirho| (element_chirho, depth_chirho + 1)),
+                    );
+                }
+                TyChirho::ForallChirho {
+                    vars_chirho,
+                    body_chirho,
+                }
+                | TyChirho::RequiredForallChirho {
+                    vars_chirho,
+                    body_chirho,
+                } => {
+                    self.charge_chirho(vars_chirho.len())?;
+                    pending_chirho.push((body_chirho, depth_chirho + 1));
+                }
+                TyChirho::QualChirho {
+                    context_chirho,
+                    body_chirho,
+                } => {
+                    self.charge_chirho(context_chirho.len())?;
+                    pending_chirho.push((body_chirho, depth_chirho + 1));
+                    pending_chirho.extend(
+                        context_chirho
+                            .iter()
+                            .map(|constraint_chirho| (constraint_chirho, depth_chirho + 1)),
+                    );
+                }
+            }
+        }
+        Ok(())
     }
 
     fn match_chirho(
@@ -652,6 +721,10 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
             )) => {
                 self.charge_chirho(name_chirho.len())?;
                 Ok(TyChirho::ForallVarChirho(name_chirho))
+            }
+            MatchNodeChirho::OpaqueTargetChirho(term_chirho) => {
+                self.charge_opaque_chirho(&term_chirho, depth_chirho)?;
+                Ok(term_chirho.as_ref().clone())
             }
             MatchNodeChirho::ConstructorChirho(identity_chirho) => {
                 self.constructor_output_chirho(&identity_chirho)

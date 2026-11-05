@@ -66,6 +66,13 @@ pub enum TyChirho {
     /// from `VarChirho` (which is a unification variable).
     ForallVarChirho(String),
 
+    /// A checked qualified type. Constraint terms retain their complete
+    /// catalogue telescope and lexical binders until exposed as wanteds/givens.
+    QualChirho {
+        context_chirho: Vec<TyChirho>,
+        body_chirho: Box<TyChirho>,
+    },
+
     /// A universally quantified type for rank-N polymorphism.
     /// `forall a. a -> a` = ForallChirho { vars: [tv0], body: Fun(Var(tv0), Var(tv0)) }
     /// Preserves forall structure in non-prenex positions, enabling higher-rank types.
@@ -216,6 +223,13 @@ impl TyChirho {
     /// Returns `true` if this type contains any type variables.
     pub fn contains_var_chirho(&self) -> bool {
         match self {
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                context_chirho.iter().any(Self::contains_var_chirho)
+                    || body_chirho.contains_var_chirho()
+            }
             TyChirho::VarChirho(_) => true,
             TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => false,
             TyChirho::AppChirho(f_chirho, a_chirho) => {
@@ -241,6 +255,15 @@ impl TyChirho {
 
     fn collect_free_vars_chirho(&self, out_chirho: &mut Vec<TyVarChirho>) {
         match self {
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                for constraint_chirho in context_chirho {
+                    constraint_chirho.collect_free_vars_chirho(out_chirho);
+                }
+                body_chirho.collect_free_vars_chirho(out_chirho);
+            }
             TyChirho::VarChirho(v_chirho) => out_chirho.push(*v_chirho),
             TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => {}
             TyChirho::AppChirho(f_chirho, a_chirho) => {
@@ -283,6 +306,19 @@ impl TyChirho {
 impl fmt::Display for TyChirho {
     fn fmt(&self, f_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                write!(f_chirho, "(")?;
+                for (index_chirho, constraint_chirho) in context_chirho.iter().enumerate() {
+                    if index_chirho != 0 {
+                        write!(f_chirho, ", ")?;
+                    }
+                    write!(f_chirho, "{constraint_chirho}")?;
+                }
+                write!(f_chirho, " => {body_chirho})")
+            }
             TyChirho::VarChirho(v_chirho) => write!(f_chirho, "{v_chirho}"),
             TyChirho::ConChirho(name_chirho) => write!(f_chirho, "{name_chirho}"),
             TyChirho::ForallVarChirho(name_chirho) => write!(

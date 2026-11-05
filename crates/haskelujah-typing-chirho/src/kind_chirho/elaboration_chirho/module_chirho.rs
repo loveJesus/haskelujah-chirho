@@ -154,26 +154,55 @@ impl TypeElaboratorChirho<'_> {
                 .unify_chirho(&expected_chirho, &annotation_chirho, span_chirho)?;
         }
         if let Some(signature_chirho) = standalone_chirho {
-            let (signature_chirho, rigid_chirho) = self.scoped_chirho(|this_chirho| {
-                let mut signature_chirho = this_chirho.check_type_chirho(signature_chirho)?;
-                let mut rigid_chirho = Vec::new();
-                while let TyChirho::ForallChirho {
-                    vars_chirho,
-                    body_chirho,
-                }
-                | TyChirho::RequiredForallChirho {
-                    vars_chirho,
-                    body_chirho,
-                } = signature_chirho
-                {
-                    rigid_chirho.extend(vars_chirho);
-                    signature_chirho = *body_chirho;
-                }
-                rigid_chirho.extend(signature_chirho.free_vars_chirho());
-                rigid_chirho.sort();
-                rigid_chirho.dedup();
-                Ok((signature_chirho, rigid_chirho))
-            })?;
+            let (signature_chirho, rigid_chirho, visibility_chirho) =
+                self.scoped_chirho(|this_chirho| {
+                    let mut leading_chirho = &*signature_chirho;
+                    let mut visibility_chirho = Vec::new();
+                    loop {
+                        match leading_chirho {
+                            TypeChirho::ForallChirho {
+                                vars_chirho,
+                                body_chirho,
+                                ..
+                            } => {
+                                visibility_chirho
+                                    .extend(std::iter::repeat_n(false, vars_chirho.len()));
+                                leading_chirho = body_chirho;
+                            }
+                            TypeChirho::RequiredForallChirho {
+                                vars_chirho,
+                                body_chirho,
+                                ..
+                            } => {
+                                visibility_chirho
+                                    .extend(std::iter::repeat_n(true, vars_chirho.len()));
+                                leading_chirho = body_chirho;
+                            }
+                            TypeChirho::ParenChirho { inner_chirho, .. } => {
+                                leading_chirho = inner_chirho
+                            }
+                            _ => break,
+                        }
+                    }
+                    let mut signature_chirho = this_chirho.check_type_chirho(signature_chirho)?;
+                    let mut rigid_chirho = Vec::new();
+                    while let TyChirho::ForallChirho {
+                        vars_chirho,
+                        body_chirho,
+                    }
+                    | TyChirho::RequiredForallChirho {
+                        vars_chirho,
+                        body_chirho,
+                    } = signature_chirho
+                    {
+                        rigid_chirho.extend(vars_chirho);
+                        signature_chirho = *body_chirho;
+                    }
+                    rigid_chirho.extend(signature_chirho.free_vars_chirho());
+                    rigid_chirho.sort();
+                    rigid_chirho.dedup();
+                    Ok((signature_chirho, rigid_chirho, visibility_chirho))
+                })?;
             let scheme_chirho = self
                 .registry_chirho
                 .declaration_schemes_chirho()
@@ -182,6 +211,22 @@ impl TypeElaboratorChirho<'_> {
                 .ok_or_else(|| {
                     Self::error_chirho("missing declaration kind contract", span_chirho)
                 })?;
+            let mut header_index_chirho = 0;
+            for required_chirho in visibility_chirho {
+                if let Some(binder_chirho) = scheme_chirho.binders_chirho.get(header_index_chirho) {
+                    let header_required_chirho = binder_chirho.visibility_chirho
+                        == TelescopeVisibilityChirho::RequiredChirho;
+                    if required_chirho && !header_required_chirho {
+                        return Err(Self::error_chirho(
+                            "declaration binder visibility disagrees with its required kind quantifier",
+                            span_chirho,
+                        ));
+                    }
+                    if required_chirho || !header_required_chirho {
+                        header_index_chirho += 1;
+                    }
+                }
+            }
             let mut complete_chirho = expected_chirho;
             for binder_chirho in scheme_chirho.binders_chirho.iter().rev() {
                 if binder_chirho.visibility_chirho == TelescopeVisibilityChirho::RequiredChirho {
@@ -390,6 +435,29 @@ impl TypeElaboratorChirho<'_> {
             None => (None, None),
         };
         self.check_kind_contract_chirho(key_chirho, result_chirho, standalone_chirho, span_chirho)?;
+        let kind_chirho = self.result_kind_chirho(key_chirho, span_chirho)?;
+        let kind_chirho = self
+            .state_chirho
+            .resolve_chirho(&kind_chirho, span_chirho)?;
+        let mut tail_chirho = &kind_chirho;
+        while let TyChirho::FunChirho(_, result_chirho, _)
+        | TyChirho::ForallChirho {
+            body_chirho: result_chirho,
+            ..
+        }
+        | TyChirho::RequiredForallChirho {
+            body_chirho: result_chirho,
+            ..
+        } = tail_chirho
+        {
+            tail_chirho = result_chirho;
+        }
+        if *tail_chirho == ElaborationStateChirho::constraint_universe_chirho() {
+            return Err(Self::error_chirho(
+                "an ordinary datatype cannot return Constraint",
+                span_chirho,
+            ));
+        }
         if signature_chirho.is_none() {
             let result_chirho = self.result_kind_chirho(key_chirho, span_chirho)?;
             self.state_chirho.unify_chirho(

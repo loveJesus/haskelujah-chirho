@@ -646,3 +646,73 @@ fn resolved_promoted_indices_determine_universals_but_unknown_ones_do_not_chirho
         assert!(!ctx_chirho.diagnostics_chirho.has_errors_chirho());
     }
 }
+
+#[test]
+fn a_given_image_improves_only_the_complete_owned_wanted_chirho() {
+    let meta_chirho = TyVarChirho(990);
+    let a_chirho = TyChirho::ForallVarChirho("aChirho%1".to_owned());
+    let b_chirho = TyChirho::ForallVarChirho("bChirho%2".to_owned());
+    for (given_chirho, expected_chirho) in [
+        (None, false),
+        (
+            Some((opaque_chirho(a_chirho.clone()), a_chirho.clone())),
+            true,
+        ),
+        (Some((opaque_chirho(a_chirho.clone()), b_chirho)), false),
+    ] {
+        let mut context_chirho = InferCtxChirho::new_chirho();
+        if let Some(given_chirho) = given_chirho {
+            context_chirho.record_equality_rewrites_chirho(vec![given_chirho]);
+        }
+        context_chirho.defer_equality_chirho(
+            opaque_chirho(TyChirho::VarChirho(meta_chirho)),
+            TyChirho::VarChirho(meta_chirho),
+            SpanChirho::DUMMY_CHIRHO,
+        );
+        let wanted_chirho = &context_chirho.deferred_equalities_chirho[0];
+        let result_chirho = context_chirho
+            .improve_equality_from_owned_givens_chirho(wanted_chirho)
+            .expect("small owned evidence fits");
+        assert_eq!(result_chirho.is_some(), expected_chirho);
+        if let Some(substitution_chirho) = result_chirho {
+            assert_eq!(
+                substitution_chirho.lookup_chirho(&meta_chirho),
+                Some(&a_chirho)
+            );
+        }
+        assert!(
+            context_chirho
+                .equality_substitutions_chirho
+                .is_empty_chirho(),
+            "trial never commits inference state"
+        );
+    }
+}
+
+#[test]
+fn a_siblings_given_image_cannot_solve_this_wanted_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let sibling_chirho =
+        context_chirho.begin_equality_scope_chirho(EqualityScopeKindChirho::GivenChirho);
+    let rigid_chirho = TyChirho::ForallVarChirho("aChirho%1".to_owned());
+    context_chirho
+        .record_equality_rewrites_chirho(vec![(opaque_chirho(rigid_chirho.clone()), rigid_chirho)]);
+    context_chirho.end_equality_scope_chirho(sibling_chirho);
+    let owner_chirho =
+        context_chirho.begin_equality_scope_chirho(EqualityScopeKindChirho::CheckedChirho);
+    let meta_chirho = TyChirho::VarChirho(TyVarChirho(990));
+    context_chirho.defer_equality_chirho(
+        opaque_chirho(meta_chirho.clone()),
+        meta_chirho,
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    assert!(
+        context_chirho
+            .improve_equality_from_owned_givens_chirho(
+                &context_chirho.deferred_equalities_chirho[0]
+            )
+            .unwrap()
+            .is_none()
+    );
+    context_chirho.end_equality_scope_chirho(owner_chirho);
+}

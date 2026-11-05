@@ -102,6 +102,16 @@ impl SubstChirho {
     /// Apply this substitution to a type.
     pub fn apply_ty_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
         match ty_chirho {
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => TyChirho::QualChirho {
+                context_chirho: context_chirho
+                    .iter()
+                    .map(|constraint_chirho| self.apply_ty_chirho(constraint_chirho))
+                    .collect(),
+                body_chirho: Box::new(self.apply_ty_chirho(body_chirho)),
+            },
             TyChirho::VarChirho(v_chirho) => self
                 .map_chirho
                 .get(v_chirho)

@@ -367,11 +367,13 @@ impl InferCtxChirho {
 
                 let pre_ty_sub_chirho =
                     subst_chirho.apply_ty_chirho(&fun_pre_tys_chirho[fun_index_chirho]);
-                if let Ok(unify_subst_chirho) = self.unify_normalized_chirho(
-                    &pre_ty_sub_chirho,
-                    &inferred_ty_chirho,
-                    span_chirho,
-                ) {
+                if !local_sigs_chirho.contains_key(&name_str_chirho)
+                    && let Ok(unify_subst_chirho) = self.unify_normalized_chirho(
+                        &pre_ty_sub_chirho,
+                        &inferred_ty_chirho,
+                        span_chirho,
+                    )
+                {
                     *subst_chirho = unify_subst_chirho.compose_chirho(subst_chirho);
                     self.apply_subst_all_chirho(&unify_subst_chirho);
                 }

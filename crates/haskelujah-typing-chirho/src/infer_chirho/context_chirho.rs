@@ -380,6 +380,7 @@ impl InferCtxChirho {
         Self {
             non_deferrable_diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             type_normalization_exhausted_chirho: std::cell::Cell::new(false),
+            type_validity_license_chirho: None,
             next_var_chirho: 0,
             definition_type_conversion_chirho: false,
             elaboration_owner_chirho: None,
@@ -642,8 +643,10 @@ impl InferCtxChirho {
     pub fn finish_chirho(mut self) -> InferResultChirho {
         if self.type_normalization_exhausted_chirho.get() {
             self.non_deferrable_diagnostics_chirho.push_chirho(
-                DiagnosticChirho::error_no_span_chirho(
+                DiagnosticChirho::error_with_code_chirho(
+                    haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
                     "type synonym normalization resource bound exhausted",
+                    haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
                 ),
             );
         }

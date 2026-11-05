@@ -71,6 +71,7 @@ fn authoritative_rigid_type_chirho(ctx_chirho: &InferCtxChirho, ty_chirho: &TyCh
                 pending_chirho.push((element_chirho, depth_chirho + 1))
             }
             TyChirho::VarChirho(_)
+            | TyChirho::QualChirho { .. }
             | TyChirho::ForallChirho { .. }
             | TyChirho::RequiredForallChirho { .. } => return false,
         }

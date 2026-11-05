@@ -195,6 +195,8 @@ fn quantify_family_term_chirho(
         }
         // Higher-rank equations are not representable by first-order branch
         // matching. No inner universal becomes an equation wildcard.
-        TyChirho::ForallChirho { .. } | TyChirho::RequiredForallChirho { .. } => return None,
+        TyChirho::QualChirho { .. }
+        | TyChirho::ForallChirho { .. }
+        | TyChirho::RequiredForallChirho { .. } => return None,
     })
 }

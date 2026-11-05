@@ -14,7 +14,7 @@ use crate::skolem_chirho::{
 };
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
-use crate::unify_chirho::{UnifyErrorChirho, unify_chirho};
+use crate::unify_chirho::UnifyErrorChirho;
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, MatchArmChirho};
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
@@ -51,6 +51,8 @@ mod instance_obligations_chirho;
 mod instance_signatures_chirho;
 #[path = "infer_chirho/declarations_chirho/module_chirho.rs"]
 mod module_chirho;
+#[path = "infer_chirho/declarations_chirho/qualified_types_chirho.rs"]
+mod qualified_types_chirho;
 #[cfg(test)]
 #[path = "infer_chirho/declarations_chirho/signature_binder_tests_chirho.rs"]
 mod signature_binder_tests_chirho;
@@ -88,6 +90,8 @@ mod unification_chirho;
 #[path = "infer_chirho/solving_chirho/validity_chirho.rs"]
 mod validity_chirho;
 // Expressions, matches and bindings live together in `infer_chirho/terms_chirho/`.
+#[path = "infer_chirho/terms_chirho/applications_chirho.rs"]
+mod applications_chirho;
 #[path = "infer_chirho/terms_chirho/bindings_chirho.rs"]
 mod bindings_chirho;
 #[path = "infer_chirho/terms_chirho/conditionals_chirho.rs"]
@@ -245,10 +249,6 @@ const UNBOUND_CONSTRUCTOR_CODE_CHIRHO: u16 = 211;
 /// Two instance declarations with one head (GHC-59692): a declaration error no deferral
 /// switch reaches, so it does not share the unsatisfied-constraint code (row 695).
 const DUPLICATE_INSTANCE_CODE_CHIRHO: u16 = 212;
-
-/// The signature converter's own invariant failed: an internal error, not a source type
-/// error, so it does not share the signature-mismatch code (row 695).
-const SIGNATURE_SCOPE_INVARIANT_CODE_CHIRHO: u16 = 213;
 
 /// A `RecordWildCards` construction field with no same-named variable in scope. It is not a
 /// solver type error, so it does not share the type-mismatch code (row 695).
@@ -426,6 +426,7 @@ pub struct MethodOccurrenceRecordChirho {
 pub struct InferCtxChirho {
     non_deferrable_diagnostics_chirho: DiagnosticBundleChirho,
     type_normalization_exhausted_chirho: std::cell::Cell<bool>,
+    type_validity_license_chirho: Option<crate::validity_chirho::LicenseChirho>,
     definition_type_conversion_chirho: bool,
     elaboration_owner_chirho: Option<
         haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ElaborationOwnerChirho,

@@ -272,12 +272,13 @@ impl InferCtxChirho {
                 if matches!(left_chirho, TyChirho::VarChirho(_))
                     || matches!(right_chirho, TyChirho::VarChirho(_))
                 {
-                    unify_chirho(&left_chirho, &right_chirho, span_chirho).ok()
+                    self.unify_ordinary_chirho(&left_chirho, &right_chirho, span_chirho)
+                        .ok()
                 } else {
                     None
                 }
             } else {
-                unify_chirho(&left_chirho, &right_chirho, span_chirho)
+                self.unify_ordinary_chirho(&left_chirho, &right_chirho, span_chirho)
                     .ok()
                     .or_else(|| {
                         self.refine_skolems_by_unification_chirho(&left_chirho, &right_chirho)

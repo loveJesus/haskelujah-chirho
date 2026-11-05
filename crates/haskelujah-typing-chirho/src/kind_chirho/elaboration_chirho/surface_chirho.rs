@@ -213,10 +213,28 @@ impl TypeElaboratorChirho<'_> {
                 body_chirho,
                 ..
             } => {
+                self.state_chirho.charge_chirho(
+                    context_chirho.len(),
+                    context_chirho.len(),
+                    span_chirho,
+                )?;
+                let mut context_terms_chirho = Vec::with_capacity(context_chirho.len());
                 for constraint_chirho in context_chirho {
-                    self.infer_constraint_chirho(constraint_chirho)?;
+                    context_terms_chirho.push(self.infer_constraint_chirho(constraint_chirho)?);
                 }
-                self.infer_type_chirho(body_chirho)
+                let body_chirho = self.infer_type_chirho(body_chirho)?;
+                self.state_chirho.unify_chirho(
+                    &body_chirho.kind_chirho,
+                    &ElaborationStateChirho::type_universe_chirho(),
+                    span_chirho,
+                )?;
+                Ok(ElaboratedTypeChirho {
+                    term_chirho: TyChirho::QualChirho {
+                        context_chirho: context_terms_chirho,
+                        body_chirho: Box::new(body_chirho.term_chirho),
+                    },
+                    kind_chirho: body_chirho.kind_chirho,
+                })
             }
             TypeChirho::ForallChirho {
                 vars_chirho,
@@ -862,7 +880,7 @@ impl TypeElaboratorChirho<'_> {
     pub(super) fn infer_constraint_chirho(
         &mut self,
         constraint_chirho: &mut ConstraintChirho,
-    ) -> Result<(), ElaborationErrorChirho> {
+    ) -> Result<TyChirho, ElaborationErrorChirho> {
         match constraint_chirho {
             ConstraintChirho::ClassChirho {
                 class_chirho,
@@ -929,7 +947,7 @@ impl TypeElaboratorChirho<'_> {
                 }
                 args_chirho.reverse();
                 kind_args_chirho.reverse();
-                Ok(())
+                Ok(typed_chirho.term_chirho)
             }
             ConstraintChirho::QuantifiedChirho {
                 vars_chirho,
@@ -944,10 +962,23 @@ impl TypeElaboratorChirho<'_> {
                     .state_chirho
                     .open_rigid_scope_chirho(&variables_chirho, span_chirho)?;
                 let result_chirho = (|| {
+                    self.state_chirho.charge_chirho(
+                        context_chirho.len(),
+                        context_chirho.len(),
+                        span_chirho,
+                    )?;
+                    let mut context_terms_chirho = Vec::with_capacity(context_chirho.len());
                     for constraint_chirho in context_chirho {
-                        self.infer_constraint_chirho(constraint_chirho)?;
+                        context_terms_chirho.push(self.infer_constraint_chirho(constraint_chirho)?);
                     }
-                    self.infer_constraint_chirho(body_chirho)
+                    let body_chirho = self.infer_constraint_chirho(body_chirho)?;
+                    Ok(TyChirho::ForallChirho {
+                        vars_chirho: variables_chirho.clone(),
+                        body_chirho: Box::new(TyChirho::QualChirho {
+                            context_chirho: context_terms_chirho,
+                            body_chirho: Box::new(body_chirho),
+                        }),
+                    })
                 })();
                 self.state_chirho.close_rigid_scope_chirho(rigid_chirho);
                 self.close_forall_scope_chirho(mark_chirho, &variables_chirho, span_chirho)?;
@@ -958,7 +989,7 @@ impl TypeElaboratorChirho<'_> {
                 kind_chirho,
                 span_chirho,
             } => {
-                self.infer_constraint_chirho(constraint_chirho)?;
+                let term_chirho = self.infer_constraint_chirho(constraint_chirho)?;
                 let kind_chirho = self.infer_type_chirho(kind_chirho)?;
                 self.state_chirho.unify_chirho(
                     &kind_chirho.kind_chirho,
@@ -969,7 +1000,8 @@ impl TypeElaboratorChirho<'_> {
                     &kind_chirho.term_chirho,
                     &ElaborationStateChirho::constraint_universe_chirho(),
                     *span_chirho,
-                )
+                )?;
+                Ok(term_chirho)
             }
         }
     }

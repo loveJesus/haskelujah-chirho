@@ -9,7 +9,59 @@ use haskelujah_ast_chirho::decl_chirho::{
 };
 use haskelujah_ast_chirho::name_chirho::{NameChirho, TypeConstructorRoleChirho};
 
+/// The source producer states whether its result still needs its parent
+/// header instantiated. An already checked GADT spine keeps every argument,
+/// including applications of arrows in the parent's result kind.
+#[derive(Debug, Clone)]
+pub(super) enum ConstructorResultOriginChirho {
+    ParentHeaderTemplateChirho { parent_chirho: Arc<str> },
+    CheckedSignatureApplicationChirho { parent_chirho: Arc<str> },
+}
+
 impl TypeElaboratorChirho<'_> {
+    pub(super) fn publish_constructor_result_chirho(
+        &mut self,
+        key_chirho: &str,
+        term_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<TyChirho, ElaborationErrorChirho> {
+        let origin_chirho = self
+            .declaration_variables_chirho
+            .get(key_chirho)
+            .and_then(|variables_chirho| variables_chirho.constructor_result_origin_chirho.clone())
+            .ok_or_else(|| {
+                Self::error_chirho(
+                    "promoted constructor lost its result producer contract",
+                    span_chirho,
+                )
+            })?;
+        let (parent_chirho, checked_chirho) = match origin_chirho {
+            ConstructorResultOriginChirho::ParentHeaderTemplateChirho { parent_chirho } => {
+                (parent_chirho, false)
+            }
+            ConstructorResultOriginChirho::CheckedSignatureApplicationChirho { parent_chirho } => {
+                (parent_chirho, true)
+            }
+        };
+        let mut head_chirho = term_chirho;
+        while let TyChirho::AppChirho(function_chirho, _) = head_chirho {
+            self.state_chirho.charge_chirho(1, 0, span_chirho)?;
+            head_chirho = function_chirho;
+        }
+        if !matches!(head_chirho, TyChirho::ConChirho(key_chirho) if key_chirho == parent_chirho.as_ref())
+        {
+            return Err(Self::error_chirho(
+                "constructor result names a different defining datatype",
+                span_chirho,
+            ));
+        }
+        if checked_chirho {
+            self.state_chirho.copy_chirho(term_chirho, span_chirho)
+        } else {
+            self.promoted_result_prefix_chirho(term_chirho, span_chirho)
+        }
+    }
+
     pub(super) fn promoted_result_prefix_chirho(
         &mut self,
         term_chirho: &TyChirho,
@@ -34,11 +86,6 @@ impl TypeElaboratorChirho<'_> {
         else {
             return self.state_chirho.copy_chirho(term_chirho, span_chirho);
         };
-        if parent_chirho.promoted_chirho
-            || arguments_chirho.len() == parent_chirho.binders_chirho.len()
-        {
-            return self.state_chirho.copy_chirho(term_chirho, span_chirho);
-        }
         if arguments_chirho.len() != parent_chirho.source_variables_chirho.len() {
             return Err(Self::error_chirho(
                 "promoted result does not match its parent declaration boundary",
@@ -47,10 +94,11 @@ impl TypeElaboratorChirho<'_> {
         }
         let mut mapping_chirho = crate::subst_chirho::SubstChirho::empty_chirho();
         for source_chirho in &parent_chirho.source_variables_chirho {
-            let haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::QuantifiedChirho { index_chirho, .. } = source_chirho.source_chirho else { return Err(Self::error_chirho("invalid parent source quantifier", span_chirho)); };
-            let argument_chirho = arguments_chirho.get(index_chirho as usize).ok_or_else(|| {
-                Self::error_chirho("missing promoted result argument", span_chirho)
-            })?;
+            let argument_chirho = arguments_chirho
+                .get(source_chirho.header_index_chirho as usize)
+                .ok_or_else(|| {
+                    Self::error_chirho("missing promoted result argument", span_chirho)
+                })?;
             mapping_chirho.insert_chirho(
                 source_chirho.variable_chirho,
                 self.state_chirho
@@ -217,7 +265,7 @@ impl TypeElaboratorChirho<'_> {
                     .declaration_schemes_mut_chirho()
                     .stage_chirho(DeclarationSchemeChirho {
             association_chirho: crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
-                        identity_chirho: key_chirho,
+                        identity_chirho: key_chirho.clone(),
                         owner_chirho: Some(self.state_chirho.owner_chirho),
                         declaration_chirho: None,
                         role_chirho: TypeConstructorRoleChirho::DataChirho,
@@ -229,6 +277,13 @@ impl TypeElaboratorChirho<'_> {
                         synonym_rhs_chirho: None,
                         promoted_chirho: true,
                         held_chirho: false,
+                    });
+                self.declaration_variables_chirho
+                    .entry(key_chirho)
+                    .or_default()
+                    .constructor_result_origin_chirho =
+                    Some(ConstructorResultOriginChirho::ParentHeaderTemplateChirho {
+                        parent_chirho: parent_key_chirho.clone(),
                     });
             }
         }
@@ -395,6 +450,20 @@ impl TypeElaboratorChirho<'_> {
                     binder_chirho.kind_chirho = field_chirho;
                 }
                 if let Some(result_chirho) = gadt_result_chirho {
+                    this_chirho.state_chirho.charge_chirho(
+                        parent_key_chirho.len() + 1,
+                        parent_key_chirho.len() + 1,
+                        span_chirho,
+                    )?;
+                    this_chirho
+                        .declaration_variables_chirho
+                        .entry(key_chirho.clone())
+                        .or_default()
+                        .constructor_result_origin_chirho = Some(
+                        ConstructorResultOriginChirho::CheckedSignatureApplicationChirho {
+                            parent_chirho: Arc::from(parent_key_chirho),
+                        },
+                    );
                     scheme_chirho.result_kind_chirho = result_chirho;
                     scheme_chirho.binders_chirho.retain(|binder_chirho| {
                         binder_chirho.visibility_chirho == TelescopeVisibilityChirho::RequiredChirho

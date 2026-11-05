@@ -506,6 +506,29 @@ impl ImportQualificationChirho<'_> {
         use haskelujah_typing_chirho::TyChirho;
         self.reserve_chirho(1, depth_chirho)?;
         Ok(match ty_chirho {
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                self.reserve_chirho(context_chirho.len(), depth_chirho)?;
+                TyChirho::QualChirho {
+                    context_chirho: context_chirho
+                        .iter()
+                        .map(|constraint_chirho| {
+                            self.typed_chirho(
+                                constraint_chirho,
+                                builtin_seed_chirho,
+                                depth_chirho + 1,
+                            )
+                        })
+                        .collect::<Result<_, _>>()?,
+                    body_chirho: Box::new(self.typed_chirho(
+                        body_chirho,
+                        builtin_seed_chirho,
+                        depth_chirho + 1,
+                    )?),
+                }
+            }
             TyChirho::VarChirho(variable_chirho) => TyChirho::VarChirho(*variable_chirho),
             TyChirho::ConChirho(name_chirho) => {
                 TyChirho::ConChirho(self.typed_head_chirho(name_chirho, builtin_seed_chirho)?)

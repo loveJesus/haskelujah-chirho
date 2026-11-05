@@ -295,6 +295,31 @@ impl ElaborationStateChirho {
             });
         }
         Ok(match ty_chirho {
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                self.charge_chirho(context_chirho.len(), context_chirho.len(), span_chirho)?;
+                TyChirho::QualChirho {
+                    context_chirho: context_chirho
+                        .iter()
+                        .map(|constraint_chirho| {
+                            self.resolve_depth_chirho(
+                                constraint_chirho,
+                                span_chirho,
+                                depth_chirho + 1,
+                                active_chirho,
+                            )
+                        })
+                        .collect::<Result<_, _>>()?,
+                    body_chirho: Box::new(self.resolve_depth_chirho(
+                        body_chirho,
+                        span_chirho,
+                        depth_chirho + 1,
+                        active_chirho,
+                    )?),
+                }
+            }
             TyChirho::VarChirho(variable_chirho) => {
                 if !active_chirho.insert(*variable_chirho) {
                     return Err(ElaborationErrorChirho {
@@ -520,6 +545,15 @@ fn borrowed_weight_chirho(ty_chirho: &TyChirho, depth_chirho: usize) -> Option<u
     }
     let child_chirho = |ty_chirho: &TyChirho| borrowed_weight_chirho(ty_chirho, depth_chirho + 1);
     let weight_chirho = match ty_chirho {
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => context_chirho.iter().try_fold(
+            child_chirho(body_chirho)?.checked_add(1)?,
+            |weight_chirho, constraint_chirho| {
+                weight_chirho.checked_add(child_chirho(constraint_chirho)?)
+            },
+        ),
         TyChirho::VarChirho(_) => Some(1),
         TyChirho::ConChirho(name_chirho) | TyChirho::ForallVarChirho(name_chirho) => {
             name_chirho.len().checked_add(1)
@@ -552,6 +586,15 @@ fn borrowed_weight_chirho(ty_chirho: &TyChirho, depth_chirho: usize) -> Option<u
 
 fn occurs_chirho(variable_chirho: TyVarChirho, ty_chirho: &TyChirho) -> bool {
     match ty_chirho {
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => {
+            context_chirho
+                .iter()
+                .any(|constraint_chirho| occurs_chirho(variable_chirho, constraint_chirho))
+                || occurs_chirho(variable_chirho, body_chirho)
+        }
         TyChirho::VarChirho(found_chirho) => variable_chirho == *found_chirho,
         TyChirho::AppChirho(fun_chirho, arg_chirho)
         | TyChirho::FunChirho(fun_chirho, arg_chirho, _) => {

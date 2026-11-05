@@ -299,6 +299,15 @@ fn term_weight_chirho(
         .checked_add(1)
         .ok_or(PredicateSetErrorChirho::WeightChirho { limit_chirho: 4096 })?;
     match term_chirho {
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => {
+            for constraint_chirho in context_chirho {
+                term_weight_chirho(constraint_chirho, depth_chirho + 1, weight_chirho)?;
+            }
+            term_weight_chirho(body_chirho, depth_chirho + 1, weight_chirho)?;
+        }
         TyChirho::VarChirho(_) => {}
         TyChirho::ConChirho(name_chirho) | TyChirho::ForallVarChirho(name_chirho) => {
             *weight_chirho = weight_chirho

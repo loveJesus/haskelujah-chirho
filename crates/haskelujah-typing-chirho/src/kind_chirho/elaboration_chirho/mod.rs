@@ -51,6 +51,7 @@ type SourceVariablesChirho = Vec<(String, TyVarChirho, TyChirho)>;
 
 #[derive(Default)]
 struct DeclarationVariablesChirho {
+    constructor_result_origin_chirho: Option<constructors_chirho::ConstructorResultOriginChirho>,
     written_chirho: SourceVariablesChirho,
     publication_chirho: crate::subst_chirho::SubstChirho,
     constructor_inferred_chirho: std::collections::HashSet<TyVarChirho>,

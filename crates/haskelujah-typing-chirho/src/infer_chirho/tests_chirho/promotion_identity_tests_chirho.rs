@@ -6,6 +6,7 @@
 //! producers, suffix equality, the imported-name normalizer and rigidity.
 
 use super::*;
+use crate::unify_chirho::unify_chirho;
 use haskelujah_ast_chirho::name_chirho::RawNameChirho;
 use haskelujah_ast_chirho::promotion_chirho::{
     PromotedKeyChirho, PromotionResolutionChirho, PromotionScopeChirho,

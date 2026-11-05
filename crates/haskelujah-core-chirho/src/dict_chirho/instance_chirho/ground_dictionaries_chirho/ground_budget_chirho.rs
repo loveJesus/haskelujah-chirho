@@ -245,6 +245,13 @@ fn push_children_chirho<'ty_chirho>(
     pending_chirho: &mut Vec<&'ty_chirho TyChirho>,
 ) {
     match ty_chirho {
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => {
+            pending_chirho.push(body_chirho);
+            pending_chirho.extend(context_chirho);
+        }
         TyChirho::AppChirho(function_chirho, argument_chirho)
         | TyChirho::FunChirho(function_chirho, argument_chirho, _) => {
             pending_chirho.push(function_chirho);
