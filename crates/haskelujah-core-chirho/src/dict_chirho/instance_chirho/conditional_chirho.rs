@@ -118,7 +118,9 @@ impl DictPassCtxChirho {
         }
     }
 
-    fn generate_list_instance_dict_chirho(
+    /// Build the `[elem]` dictionary of a conditional list instance; the GND pass calls it for
+    /// a list representation once the element's context dictionaries exist (row 694).
+    pub(super) fn generate_list_instance_dict_chirho(
         &mut self,
         class_env_chirho: &ClassEnvChirho,
         class_name_chirho: &str,
@@ -206,13 +208,18 @@ impl DictPassCtxChirho {
 
         for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
             let mut found_chirho = false;
+            // The instance's own row, under whatever variable its head is written with
+            // (`[aChirho]`), when the fixed spellings name none.
+            let written_row_chirho =
+                self.conditional_list_row_chirho(class_name_chirho, method_name_chirho);
             for tk_chirho in &candidate_type_keys_chirho {
                 let prim_name_chirho = format!(
                     "$prim_{}_{}_{}",
                     class_name_chirho, method_name_chirho, tk_chirho
                 );
-                if let Some(prim_id_chirho) =
-                    self.lookup_body_backed_name_id_chirho(&prim_name_chirho)
+                if let Some(prim_id_chirho) = self
+                    .lookup_body_backed_name_id_chirho(&prim_name_chirho)
+                    .or(written_row_chirho)
                 {
                     let mut method_expr_chirho = CoreExprChirho::VarChirho(prim_id_chirho);
                     for context_class_chirho in context_classes_chirho {
@@ -285,6 +292,37 @@ impl DictPassCtxChirho {
             is_rec_chirho: false,
             inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
+    }
+
+    /// The row a conditional list instance writes for `method_chirho`, under the variable its
+    /// head is written with (`[a]`, `[aChirho]`): the class's only body-backed row keyed by a
+    /// list of one type variable. `None` when there is none, or more than one.
+    /// workflow: language-features-chirho/deriving-strategies-chirho
+    fn conditional_list_row_chirho(
+        &self,
+        class_name_chirho: &str,
+        method_name_chirho: &str,
+    ) -> Option<crate::expr_chirho::CoreIdChirho> {
+        let prefix_chirho = format!("$prim_{class_name_chirho}_{method_name_chirho}_[");
+        let mut rows_chirho =
+            self.body_backed_names_chirho
+                .iter()
+                .filter_map(|(row_name_chirho, row_id_chirho)| {
+                    let variable_chirho = row_name_chirho
+                        .strip_prefix(&prefix_chirho)?
+                        .strip_suffix(']')?;
+                    let is_variable_chirho =
+                        variable_chirho.chars().next().is_some_and(|first_chirho| {
+                            first_chirho.is_lowercase() || first_chirho == '_'
+                        }) && variable_chirho.chars().all(|character_chirho| {
+                            character_chirho.is_alphanumeric()
+                                || character_chirho == '_'
+                                || character_chirho == '\''
+                        });
+                    is_variable_chirho.then_some(*row_id_chirho)
+                });
+        let only_chirho = rows_chirho.next()?;
+        rows_chirho.next().is_none().then_some(only_chirho)
     }
 
     /// Generate `Eq [T]` dict with a recursive list equality function.

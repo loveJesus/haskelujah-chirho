@@ -75,6 +75,9 @@ pub struct DictPassResultChirho {
     pub names_chirho: HashMap<CoreIdChirho, String>,
     /// Dictionary layouts for each class.
     pub layouts_chirho: HashMap<String, DictLayoutChirho>,
+    /// Each GND instance whose representation's methods could not be built, said why: the
+    /// driver refuses the module rather than alias a missing method (row 694).
+    pub unsupported_chirho: Vec<String>,
 }
 
 /// A final derived-Show answer (row 533). `Renders` holds at the deepest nesting it was
@@ -175,9 +178,13 @@ pub struct DictPassCtxChirho {
     /// `"Age"` → `MkAge`, `Int`, `["Num"]`.
     newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
     /// A GND newtype's rows the desugarer filled from class defaults, each with the
-    /// representation row it becomes (row 694): the module's binding keeps its id, so every
-    /// reference to it takes the representation's method, as GHC coerces every method.
-    gnd_default_rows_chirho: HashMap<CoreIdChirho, CoreIdChirho>,
+    /// representation's method it becomes (row 694): the module's binding keeps its id, so
+    /// every reference to it takes the representation's method, as GHC coerces every method.
+    gnd_default_rows_chirho: HashMap<CoreIdChirho, CoreExprChirho>,
+    /// Every generated missing-method stub: never a representation's method (row 694).
+    missing_method_ids_chirho: HashSet<CoreIdChirho>,
+    /// Each GND instance whose representation's methods this pass cannot build, said why.
+    gnd_unsupported_chirho: Vec<String>,
     /// Number of type parameters per class. 1 for single-parameter classes
     /// (Eq, Ord, ...), >1 for MPTCs (e.g., Addable a b has 2).
     class_param_count_chirho: HashMap<String, usize>,
@@ -253,6 +260,8 @@ impl DictPassCtxChirho {
             conditional_dicts_chirho: HashMap::new(),
             newtype_info_chirho: HashMap::new(),
             gnd_default_rows_chirho: HashMap::new(),
+            missing_method_ids_chirho: HashSet::new(),
+            gnd_unsupported_chirho: Vec::new(),
             class_param_count_chirho: HashMap::new(),
             method_arities_chirho: HashMap::new(),
             local_shadow_ids_chirho: RefCell::new(HashSet::new()),

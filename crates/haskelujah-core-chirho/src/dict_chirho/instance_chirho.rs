@@ -883,6 +883,8 @@ impl DictPassCtxChirho {
             None => self.fresh_binder_chirho(prim_name_chirho, binder_ty_chirho),
         };
         let binder_id_chirho = binder_chirho.id_chirho;
+        // A stub is never a representation's method (row 694).
+        self.missing_method_ids_chirho.insert(binder_id_chirho);
 
         self.generated_bindings_chirho.push(CoreBindingChirho {
             binder_chirho,

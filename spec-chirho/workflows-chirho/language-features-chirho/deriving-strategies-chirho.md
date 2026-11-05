@@ -38,7 +38,8 @@ flowchart TD
     info_chirho --> eligible_chirho["Dict pass newtype_dicts_chirho.rs takes_representation_dictionary_chirho: the declaration is the only proof"]
     gnd_chirho --> eligible_chirho
     eligible_chirho --> ground_skip_chirho["generate_instance_dicts_chirho skips it"]
-    eligible_chirho --> alias_chirho["generate_gnd_dicts_chirho: each method row aliases the representation's row, unless the module wrote it"]
+    eligible_chirho --> alias_chirho["generate_gnd_dicts_chirho, a worklist: with typing's proof, each method is the representation's real row, or its dictionary's field, building a conditional [E] dictionary once E's context exists; a desugar default row is replaced in place; a stub, a written row or an unbuildable dictionary is Unsupported"]
+    alias_chirho --> refuse_chirho["compile_backend: DictPassResultChirho.unsupported_chirho refuses the module"]
     info_chirho --> erase_chirho["compile_backend_chirho: erase_newtype_constructors_chirho on those newtypes' constructors before simplification"]
     erase_chirho --> merge_chirho["Native merge: the union of every module's erased set, refusing a spelling another module declares as a constructor"]
     alias_chirho --> erase_chirho
@@ -79,6 +80,14 @@ flowchart TD
   position whose role the module cannot prove (another named constructor, a family, a type
   variable's application, a constraint), an associated family (R5) or a multi-parameter class
   is a named Unsupported gap. A method that never mentions the parameter proves (R4).
+- The alias loop requires typing's proof and never aliases a generated missing-method stub.
+  A representation's method is its real row, or its dictionary's field; for a list
+  representation whose class instance is conditional, the existing list machinery builds the
+  `[E]` dictionary once `E`'s context dictionaries exist, which may be another GND newtype's
+  (`[Age]`), so a worklist, not pass or table order, decides. The desugarer names the rows it
+  fills from class defaults, and only those are replaced; anything unbuildable is a compile
+  error. The list machinery finds a list instance's rows under the variable its head is
+  written with (`[aChirho]`).
 - One builtin class K01 proves has at most one instance for a type's whole head, however each
   spells it (`P.Show` and `Show`): GHC-59692, measured.
 - Root's fresh GHC 9.14.1 contracts (A1-A3, B1-B4, C1-C5, D1-D2, O1-O4) pin the policy: a

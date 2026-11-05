@@ -124,8 +124,12 @@ pub(crate) fn compile_backend_chirho(
     // workflow: language-features-chirho/deriving-strategies-chirho
     let builtin_class_scope_chirho =
         haskelujah_naming_chirho::build_builtin_class_scope_chirho(&module_chirho, ifaces_chirho);
-    let newtype_info_chirho =
-        build_newtype_info_chirho(&module_chirho, &builtin_class_scope_chirho);
+    let newtype_info_chirho = build_newtype_info_chirho(
+        &module_chirho,
+        &builtin_class_scope_chirho,
+        &infer_result_chirho.gnd_coercion_proofs_chirho,
+        &desugar_output_chirho.default_method_rows_chirho,
+    );
     let mut newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
         .values()
         .map(|info_chirho| info_chirho.constructor_chirho.clone())
@@ -212,6 +216,14 @@ pub(crate) fn compile_backend_chirho(
         derived_enums_chirho,
         desugar_output_chirho.operator_occurrences_chirho,
     );
+    // A GND instance whose representation's methods the dictionary pass could not build is
+    // refused, never aliased to a missing method (row 694).
+    // workflow: language-features-chirho/deriving-strategies-chirho
+    if !dict_result_chirho.unsupported_chirho.is_empty() {
+        return Err(unsupported_gnd_diagnostics_chirho(
+            &dict_result_chirho.unsupported_chirho,
+        ));
+    }
     let mut core_chirho = dict_result_chirho.module_chirho;
     haskelujah_core_chirho::simplify_chirho::erase_newtype_constructors_chirho(
         &mut core_chirho,
@@ -244,4 +256,26 @@ pub(crate) fn compile_backend_chirho(
         newtype_cons_chirho,
         gnd_newtype_cons_chirho,
     })
+}
+
+/// `E0209`, the code declaration validity reports a refused declaration under.
+const UNSUPPORTED_GND_CODE_CHIRHO: u16 = 209;
+
+/// The dictionary pass's unsupported GND instances, as errors (row 694).
+/// workflow: language-features-chirho/deriving-strategies-chirho
+fn unsupported_gnd_diagnostics_chirho(reasons_chirho: &[String]) -> DiagnosticBundleChirho {
+    let mut diagnostics_chirho = DiagnosticBundleChirho::empty_chirho();
+    for reason_chirho in reasons_chirho {
+        diagnostics_chirho.push_chirho(
+            haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(
+                    UNSUPPORTED_GND_CODE_CHIRHO,
+                ),
+                reason_chirho.clone(),
+                haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+            )
+            .with_note_chirho("Haskelujah does not support this yet"),
+        );
+    }
+    diagnostics_chirho
 }

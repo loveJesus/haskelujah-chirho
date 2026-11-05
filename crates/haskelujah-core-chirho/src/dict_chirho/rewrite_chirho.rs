@@ -484,7 +484,7 @@ impl DictPassCtxChirho {
             {
                 bindings_chirho.push(CoreBindingChirho {
                     binder_chirho: binding_chirho.binder_chirho.clone(),
-                    rhs_chirho: CoreExprChirho::VarChirho(*representation_row_chirho),
+                    rhs_chirho: representation_row_chirho.clone(),
                     is_rec_chirho: false,
                     inline_chirho: InlineAnnotationChirho::NoneChirho,
                 });
@@ -795,6 +795,7 @@ impl DictPassCtxChirho {
             module_chirho,
             names_chirho: self.names_chirho,
             layouts_chirho: self.layouts_chirho,
+            unsupported_chirho: self.gnd_unsupported_chirho,
         }
     }
 }

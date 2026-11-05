@@ -106,6 +106,11 @@ pub struct DesugarOutputChirho {
     /// it stands for, copied from the AST. The join matches by this first.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub occurrence_provenance_chirho: HashMap<CoreIdChirho, ProvenanceChirho>,
+    /// The name of every instance row the desugarer filled from its class's default, never a
+    /// row an instance wrote. A GND newtype's default rows take its representation's methods
+    /// (row 694); every other row keeps its body.
+    /// workflow: language-features-chirho/deriving-strategies-chirho
+    pub default_method_rows_chirho: std::collections::HashSet<String>,
     /// The minted occurrences that stand for a written infix or section Ord operator
     /// (row 610). Desugaring once lowered each to an Int primop; the dictionary pass
     /// gives one that primop back where no row serves its proof.
