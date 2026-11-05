@@ -4,8 +4,10 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::mk_data_type_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
+use haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho;
 
 /// Push the interfaces for `GHC.Prim` and the other primitive modules.
 pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
@@ -47,16 +49,16 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
     // GHC.Types
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &[
-            "Type",
-            "Constraint",
-            "RuntimeRep",
-            "Levity",
-            "Multiplicity",
-            "Symbol",
-        ] {
+        for name_chirho in &["RuntimeRep", "Levity", "Multiplicity", "Symbol"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for constructor_chirho in [
+            CompilerTypeConstructorChirho::TypeUniverseChirho,
+            CompilerTypeConstructorChirho::ConstraintUniverseChirho,
+        ] {
+            let (key_chirho, type_chirho) = mk_data_type_chirho(constructor_chirho, &[]);
+            exports_chirho.types_chirho.insert(key_chirho, type_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "GHC.Types".to_string(),

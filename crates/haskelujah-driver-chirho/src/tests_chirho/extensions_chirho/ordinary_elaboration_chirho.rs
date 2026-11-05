@@ -530,3 +530,168 @@ fn universal_kind_argument_depth_is_bounded_before_deferral_chirho() {
         }
     }
 }
+
+#[test]
+fn inline_complete_header_generalizes_when_cusks_are_enabled_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE Haskell2010, GADTs, PolyKinds, DataKinds, KindSignatures #-}
+module InlineCusksEnabledChirho where
+data TChirho (aChirho :: kChirho) where
+  MkBoolChirho :: TChirho 'True
+  MkTypeChirho :: TChirho Int
+booleanChirho :: TChirho 'True
+booleanChirho = MkBoolChirho
+ordinaryChirho :: TChirho Int
+ordinaryChirho = MkTypeChirho
+"#,
+    );
+    result_chirho.expect("fresh GHC positive preserves the producer contract");
+}
+
+#[test]
+fn inline_complete_header_stays_monomorphic_with_no_cusks_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE Haskell2010, NoCUSKs, GADTs, PolyKinds, DataKinds, KindSignatures #-}
+module InlineCusksDisabledChirho where
+data TChirho (aChirho :: kChirho) where
+  MkBoolChirho :: TChirho 'True
+  MkTypeChirho :: TChirho Int
+booleanChirho :: TChirho 'True
+booleanChirho = MkBoolChirho
+ordinaryChirho :: TChirho Int
+ordinaryChirho = MkTypeChirho
+"#,
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("fresh GHC negative preserves the producer boundary");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn ghc2021_does_not_enable_legacy_complete_headers_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GHC2021 #-}
+{-# LANGUAGE PolyKinds, GADTs #-}
+
+module ResultModeGhc2021Chirho where
+
+import Data.Kind
+
+data Test (a :: x) (b :: x) :: x -> Type
+  where K :: Test Int Bool Double
+"#,
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("fresh GHC negative preserves the producer boundary");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn explicit_cusks_override_the_language_mode_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GHC2021, CUSKs #-}
+{-# LANGUAGE PolyKinds, GADTs #-}
+
+module ResultCusksEnabledChirho where
+
+import Data.Kind
+
+data Test (a :: x) (b :: x) :: x -> Type
+  where K :: Test Int Bool Double
+"#,
+    );
+    result_chirho.expect("fresh GHC positive preserves the producer contract");
+}
+
+#[test]
+fn explicit_no_cusks_override_haskell2010_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE Haskell2010, NoCUSKs #-}
+{-# LANGUAGE PolyKinds, GADTs #-}
+
+module ResultCusksDisabledChirho where
+
+import Data.Kind
+
+data Test (a :: x) (b :: x) :: x -> Type
+  where K :: Test Int Bool Double
+"#,
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("fresh GHC negative preserves the producer boundary");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn ghc_types_universe_uses_its_typed_producer_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, KindSignatures, ConstraintKinds, FlexibleContexts #-}
+module GhcTypesUniverseChirho where
+import qualified GHC.Types as KChirho
+data Type = MkLocalChirho
+data BoxChirho (aChirho :: KChirho.Type)
+type AliasChirho = BoxChirho Int
+"#,
+    );
+    result_chirho.expect("fresh GHC positive preserves the producer contract");
+}
+
+#[test]
+fn source_type_homonym_never_becomes_a_universe_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, KindSignatures, ConstraintKinds, FlexibleContexts #-}
+module GhcTypesSourceHomonymChirho where
+import qualified GHC.Types as KChirho
+data Type = MkLocalChirho
+data BoxChirho (aChirho :: Type)
+type AliasChirho = BoxChirho Int
+"#,
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("fresh GHC negative preserves the producer boundary");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn ghc_exts_constraint_uses_its_typed_producer_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, KindSignatures, ConstraintKinds, FlexibleContexts #-}
+module GhcExtsConstraintUniverseChirho where
+import qualified GHC.Exts as KChirho
+data Constraint = MkLocalChirho
+data BoxChirho (aChirho :: KChirho.Constraint)
+type AliasChirho = BoxChirho (Eq Int)
+"#,
+    );
+    result_chirho.expect("fresh GHC positive preserves the producer contract");
+}
+
+#[test]
+fn source_constraint_homonym_never_becomes_a_universe_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, KindSignatures, ConstraintKinds, FlexibleContexts #-}
+module GhcExtsSourceConstraintChirho where
+import qualified GHC.Exts as KChirho
+data Constraint = MkLocalChirho
+data BoxChirho (aChirho :: Constraint)
+type AliasChirho = BoxChirho (Eq Int)
+"#,
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("fresh GHC negative preserves the producer boundary");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}

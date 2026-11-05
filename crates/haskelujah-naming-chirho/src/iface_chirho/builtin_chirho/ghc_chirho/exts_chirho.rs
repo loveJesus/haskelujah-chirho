@@ -4,8 +4,10 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::mk_data_type_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
+use haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho;
 
 /// Push the interfaces for `GHC.Exts` and `GHC.Base`.
 pub(super) fn push_exts_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
@@ -52,8 +54,6 @@ pub(super) fn push_exts_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         for name_chirho in &[
             "IsList",
             "Item",
-            "Constraint",
-            "Type",
             "RuntimeRep",
             "Int#",
             "Word#",
@@ -63,6 +63,13 @@ pub(super) fn push_exts_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        }
+        for constructor_chirho in [
+            CompilerTypeConstructorChirho::TypeUniverseChirho,
+            CompilerTypeConstructorChirho::ConstraintUniverseChirho,
+        ] {
+            let (key_chirho, type_chirho) = mk_data_type_chirho(constructor_chirho, &[]);
+            exports_chirho.types_chirho.insert(key_chirho, type_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
             name_chirho: "GHC.Exts".to_string(),

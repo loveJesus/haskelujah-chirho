@@ -100,3 +100,31 @@ fn corpus_t16512a_rejects_with_a_coded_diagnostic_chirho() {
         .expect("the retained GHC-rejected source must reject");
     assert!(error_chirho.contains("error[E"), "{error_chirho}");
 }
+
+#[test]
+fn corpus_t23543_keeps_universal_kind_annotations_chirho() {
+    check_chirho("should_compile", "T23543.hs")
+        .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn corpus_tc269_keeps_alpha_equivalent_kinds_and_universe_producers_chirho() {
+    check_chirho("should_compile", "tc269.hs")
+        .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn corpus_visflag2_keeps_required_quantifiers_distinct_chirho() {
+    let error_chirho = check_chirho("should_fail", "VisFlag2.hs")
+        .err()
+        .expect("fresh GHC visibility negative rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn corpus_visflag3_keeps_associated_quantifier_visibility_chirho() {
+    let error_chirho = check_chirho("should_fail", "VisFlag3.hs")
+        .err()
+        .expect("fresh GHC associated visibility negative rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}

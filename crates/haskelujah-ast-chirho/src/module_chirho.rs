@@ -68,9 +68,18 @@ pub fn extension_enabled_with_default_chirho(
     module_chirho.extensions_chirho.iter().fold(
         default_chirho,
         |enabled_chirho, extension_chirho| {
-            if extension_chirho == name_chirho {
+            let positive_mode_chirho = name_chirho == "CUSKs"
+                && matches!(extension_chirho.as_str(), "Haskell98" | "Haskell2010");
+            let negative_mode_chirho = name_chirho == "CUSKs"
+                && matches!(
+                    extension_chirho.as_str(),
+                    "GHC2021" | "GHC2024" | "StandaloneKindSignatures"
+                );
+            if extension_chirho == name_chirho || positive_mode_chirho {
                 true
-            } else if extension_chirho.strip_prefix("No") == Some(name_chirho) {
+            } else if extension_chirho.strip_prefix("No") == Some(name_chirho)
+                || negative_mode_chirho
+            {
                 false
             } else {
                 enabled_chirho

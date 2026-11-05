@@ -340,6 +340,96 @@ impl TypeElaboratorChirho<'_> {
         Ok(())
     }
 
+    /// Complete written kind headers support polymorphic recursion. Inferred
+    /// headers remain shared until their declaration SCC has been checked.
+    fn elaborate_complete_headers_chirho(
+        &mut self,
+        module_chirho: &mut ModuleChirho,
+        group_chirho: &[usize],
+    ) -> Result<(), ElaborationErrorChirho> {
+        for index_chirho in group_chirho {
+            let declaration_chirho = &mut module_chirho.decls_chirho[*index_chirho];
+            let (name_chirho, variables_chirho, signature_chirho, newtype_chirho) =
+                match declaration_chirho {
+                    DeclChirho::DataDeclChirho {
+                        name_chirho,
+                        type_vars_chirho,
+                        kind_sig_chirho,
+                        ..
+                    } => (name_chirho, type_vars_chirho, kind_sig_chirho, false),
+                    DeclChirho::NewtypeDeclChirho {
+                        name_chirho,
+                        type_vars_chirho,
+                        kind_sig_chirho,
+                        ..
+                    } => (name_chirho, type_vars_chirho, kind_sig_chirho, true),
+                    _ => continue,
+                };
+            let standalone_chirho = matches!(
+                signature_chirho,
+                Some(DataKindSigChirho::StandaloneChirho { .. })
+            );
+            if !standalone_chirho
+                && (!self.cusks_chirho
+                    || variables_chirho
+                        .iter()
+                        .any(|variable_chirho| variable_chirho.kind_annotation_chirho.is_none())
+                    || (newtype_chirho
+                        && self.unlifted_newtypes_chirho
+                        && signature_chirho.is_none()))
+            {
+                continue;
+            }
+            let span_chirho = name_chirho.span_chirho();
+            let key_chirho = self.local_key_chirho(name_chirho)?;
+            let previous_chirho = self.current_declaration_chirho.replace(key_chirho.clone());
+            let result_chirho = self.scoped_chirho(|this_chirho| {
+                this_chirho.bind_header_scope_chirho(&key_chirho, span_chirho)?;
+                this_chirho.check_binder_annotations_chirho(variables_chirho)?;
+                let header_chirho = this_chirho
+                    .registry_chirho
+                    .declaration_schemes_chirho()
+                    .get_chirho(&key_chirho)
+                    .cloned()
+                    .ok_or_else(|| {
+                        Self::error_chirho(
+                            "complete kind header has no declaration producer",
+                            span_chirho,
+                        )
+                    })?;
+                let mut known_chirho = std::collections::HashSet::new();
+                for binder_chirho in &header_chirho.binders_chirho {
+                    known_chirho.insert(binder_chirho.variable_chirho);
+                    known_chirho.extend(
+                        this_chirho
+                            .state_chirho
+                            .resolve_chirho(&binder_chirho.kind_chirho, span_chirho)?
+                            .free_vars_chirho(),
+                    );
+                }
+                this_chirho.data_contract_chirho(&key_chirho, signature_chirho, span_chirho)?;
+                let result_chirho = this_chirho.result_kind_chirho(&key_chirho, span_chirho)?;
+                let result_chirho = this_chirho
+                    .state_chirho
+                    .resolve_chirho(&result_chirho, span_chirho)?;
+                // An inline result cannot introduce a free kind variable after
+                // the written header. Explicit foralls bind their own locals.
+                if !standalone_chirho
+                    && result_chirho
+                        .free_vars_chirho()
+                        .iter()
+                        .any(|variable_chirho| !known_chirho.contains(variable_chirho))
+                {
+                    return Ok(());
+                }
+                this_chirho.finish_catalogue_chirho(std::slice::from_ref(&key_chirho), span_chirho)
+            });
+            self.current_declaration_chirho = previous_chirho;
+            result_chirho?;
+        }
+        Ok(())
+    }
+
     pub(super) fn elaborate_declarations_chirho(
         &mut self,
         module_chirho: &mut ModuleChirho,
@@ -349,6 +439,7 @@ impl TypeElaboratorChirho<'_> {
             aliases_chirho,
         } = self.declaration_groups_chirho(module_chirho)?;
         for group_chirho in groups_chirho {
+            self.elaborate_complete_headers_chirho(module_chirho, &group_chirho)?;
             let mut keys_chirho = Vec::new();
             for index_chirho in &group_chirho {
                 let declaration_chirho = &mut module_chirho.decls_chirho[*index_chirho];
@@ -464,8 +555,15 @@ impl TypeElaboratorChirho<'_> {
                 kind_sig_chirho,
                 ..
             } => {
-                self.check_binder_annotations_chirho(type_vars_chirho)?;
-                self.data_contract_chirho(key_chirho, kind_sig_chirho, span_chirho)?;
+                if self
+                    .registry_chirho
+                    .declaration_schemes_chirho()
+                    .get_chirho(key_chirho)
+                    .is_none_or(|scheme_chirho| scheme_chirho.owner_chirho.is_some())
+                {
+                    self.check_binder_annotations_chirho(type_vars_chirho)?;
+                    self.data_contract_chirho(key_chirho, kind_sig_chirho, span_chirho)?;
+                }
                 for constructor_chirho in constructors_chirho {
                     self.elaborate_constructor_chirho(constructor_chirho, key_chirho, keys_chirho)?;
                 }
@@ -476,8 +574,15 @@ impl TypeElaboratorChirho<'_> {
                 kind_sig_chirho,
                 ..
             } => {
-                self.check_binder_annotations_chirho(type_vars_chirho)?;
-                self.data_contract_chirho(key_chirho, kind_sig_chirho, span_chirho)?;
+                if self
+                    .registry_chirho
+                    .declaration_schemes_chirho()
+                    .get_chirho(key_chirho)
+                    .is_none_or(|scheme_chirho| scheme_chirho.owner_chirho.is_some())
+                {
+                    self.check_binder_annotations_chirho(type_vars_chirho)?;
+                    self.data_contract_chirho(key_chirho, kind_sig_chirho, span_chirho)?;
+                }
                 self.elaborate_constructor_chirho(constructor_chirho, key_chirho, keys_chirho)?;
             }
             DeclChirho::TypeAliasDeclChirho {

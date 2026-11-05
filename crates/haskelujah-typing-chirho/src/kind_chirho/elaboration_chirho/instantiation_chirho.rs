@@ -617,16 +617,35 @@ impl TypeElaboratorChirho<'_> {
                 })
             });
         }
-        if !matches!(
-            syntax_chirho,
-            TypeChirho::ConChirho(_) | TypeChirho::PromotedConChirho { .. }
-        ) {
-            return Err(Self::error_chirho(
-                "kind mismatch: a partially applied type cannot regain a universal kind",
+        let empty_list_chirho = matches!(syntax_chirho, TypeChirho::PromotedListChirho { elements_chirho, .. } if elements_chirho.is_empty());
+        let source_chirho = if empty_list_chirho {
+            // The empty promoted-list grammar is the builtin nil producer,
+            // whose complete universal prefix lives in this same catalogue.
+            self.seed_compiler_header_chirho(
+                haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho::ListChirho,
                 span_chirho,
-            ));
+            )?;
+            self.registry_chirho
+                .declaration_schemes_chirho()
+                .get_chirho(
+                    haskelujah_ast_chirho::promotion_chirho::PromotedKeyChirho::builtin_nil_chirho(
+                    )
+                    .as_str_chirho(),
+                )
+                .cloned()
+        } else {
+            if !matches!(
+                syntax_chirho,
+                TypeChirho::ConChirho(_) | TypeChirho::PromotedConChirho { .. }
+            ) {
+                return Err(Self::error_chirho(
+                    "kind mismatch: a partially applied type cannot regain a universal kind",
+                    span_chirho,
+                ));
+            }
+            self.scheme_chirho(syntax_chirho)?
         }
-        let source_chirho = self.scheme_chirho(syntax_chirho)?.ok_or_else(|| {
+        .ok_or_else(|| {
             Self::error_chirho(
                 "universal kind argument has no checked declaration telescope",
                 span_chirho,
@@ -646,6 +665,31 @@ impl TypeElaboratorChirho<'_> {
                 span_chirho,
             ));
         }
+        // Checking abstracts over a fresh copy of the expected kind. Its
+        // bound IDs must not become both a value-syntax binder and the separate
+        // written annotation binder when this argument is published/rechecked.
+        let abstraction_kind_chirho = self.state_chirho.instantiate_term_chirho(
+            &expected_chirho,
+            &SubstChirho::empty_chirho(),
+            true,
+            span_chirho,
+        )?;
+        let (vars_chirho, body_chirho) = match &abstraction_kind_chirho {
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            }
+            | TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => (vars_chirho, body_chirho),
+            _ => {
+                return Err(Self::error_chirho(
+                    "universal abstraction lost its checked kind",
+                    span_chirho,
+                ));
+            }
+        };
         let cutoff_chirho = self.state_chirho.next_variable_chirho;
         let result_chirho = self.with_universal_kind_scope_chirho(
             vars_chirho,

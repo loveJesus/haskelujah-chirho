@@ -289,6 +289,9 @@ impl TypeElaboratorChirho<'_> {
                     span_chirho,
                 ));
             };
+            if scheme_chirho.owner_chirho.is_none() {
+                continue;
+            }
             let mut binders_chirho = Vec::new();
             let mut quantified_chirho = std::collections::BTreeSet::new();
             let result_kind_chirho = if scheme_chirho.promoted_chirho {
