@@ -36,6 +36,30 @@ impl TypeElaboratorChirho<'_> {
                             )
                         })?;
                     let class_map_chirho = &class_map_chirho.publication_chirho;
+                    let family_top_chirho = self
+                        .registry_chirho
+                        .declaration_schemes_chirho()
+                        .get_chirho(&key_chirho)
+                        .ok_or_else(|| {
+                            Self::error_chirho(
+                                "associated family lost its checked telescope",
+                                span_chirho,
+                            )
+                        })?
+                        .binders_chirho
+                        .len();
+                    let class_top_chirho = self
+                        .registry_chirho
+                        .declaration_schemes_chirho()
+                        .get_chirho(&class_chirho)
+                        .ok_or_else(|| {
+                            Self::error_chirho(
+                                "associated owner lost its checked telescope",
+                                span_chirho,
+                            )
+                        })?
+                        .binders_chirho
+                        .len();
                     let mut canonical_chirho = HashMap::new();
                     for (family_source_chirho, class_source_chirho) in correspondence_chirho {
                         self.state_chirho.charge_chirho(1, 1, span_chirho)?;
@@ -52,6 +76,14 @@ impl TypeElaboratorChirho<'_> {
                                 span_chirho,
                             ));
                         };
+                        if family_slot_chirho.0 as usize >= family_top_chirho
+                            || class_slot_chirho.0 as usize >= class_top_chirho
+                        {
+                            return Err(Self::error_chirho(
+                                "associated correspondence names a lexical rather than telescope binder",
+                                span_chirho,
+                            ));
+                        }
                         canonical_chirho.insert(*family_slot_chirho, *class_slot_chirho);
                     }
                     // Shared hidden kinds are the same owned variables, rather
@@ -64,9 +96,13 @@ impl TypeElaboratorChirho<'_> {
                         ) = (
                             family_slot_chirho,
                             class_map_chirho.lookup_chirho(source_chirho),
-                        ) && canonical_chirho
-                            .insert(*family_slot_chirho, *class_slot_chirho)
-                            .is_some_and(|previous_chirho| previous_chirho != *class_slot_chirho)
+                        ) && (family_slot_chirho.0 as usize) < family_top_chirho
+                            && (class_slot_chirho.0 as usize) < class_top_chirho
+                            && canonical_chirho
+                                .insert(*family_slot_chirho, *class_slot_chirho)
+                                .is_some_and(|previous_chirho| {
+                                    previous_chirho != *class_slot_chirho
+                                })
                         {
                             return Err(Self::error_chirho(
                                 "inconsistent associated kind correspondence",

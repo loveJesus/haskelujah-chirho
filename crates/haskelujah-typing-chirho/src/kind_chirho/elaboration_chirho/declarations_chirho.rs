@@ -144,6 +144,8 @@ impl TypeElaboratorChirho<'_> {
             binders_chirho: telescope_chirho,
             result_kind_chirho,
             synonym_rhs_chirho: None,
+            synonym_syntax_chirho: None,
+            local_binders_chirho: std::sync::Arc::from([]),
             visible_arity_chirho,
             reduction_arity_chirho: binders_chirho.len(),
             promoted_chirho: false,
@@ -164,6 +166,8 @@ impl TypeElaboratorChirho<'_> {
             key_chirho,
             DeclarationVariablesChirho {
                 constructor_result_origin_chirho: None,
+                written_signature_chirho: None,
+                owned_result_kind_chirho: None,
                 written_chirho: source_binders_chirho,
                 publication_chirho: SubstChirho::empty_chirho(),
                 constructor_inferred_chirho: std::collections::HashSet::new(),
@@ -422,25 +426,27 @@ impl TypeElaboratorChirho<'_> {
                 );
             }
             let reduction_arity_chirho = inferred_chirho.len();
-            let binders_chirho = inferred_chirho
-                .into_iter()
-                .enumerate()
-                .map(|(index_chirho, binder_chirho)| DeclarationBinderChirho {
-                    variable_chirho: TyVarChirho(index_chirho as u32),
-                    kind_chirho: rename_chirho.apply_ty_chirho(&binder_chirho.kind_chirho),
-                    visibility_chirho: binder_chirho.visibility_chirho,
-                })
-                .collect();
-            let result_kind_chirho = rename_chirho.apply_ty_chirho(&result_kind_chirho);
-            let synonym_rhs_chirho = scheme_chirho
-                .synonym_rhs_chirho
-                .as_ref()
-                .map(|rhs_chirho| {
-                    self.state_chirho
-                        .resolve_chirho(rhs_chirho, span_chirho)
-                        .map(|rhs_chirho| rename_chirho.apply_ty_chirho(&rhs_chirho))
-                })
-                .transpose()?;
+            // Alpha-publish nested kind quantifiers before any owner IDs are
+            // erased. Alias bodies complete later in transparent dependency order.
+            let owned_result_kind_chirho = self
+                .state_chirho
+                .copy_chirho(&result_kind_chirho, span_chirho)?;
+            self.declaration_variables_chirho
+                .entry(key_chirho.clone())
+                .or_default()
+                .owned_result_kind_chirho = Some(owned_result_kind_chirho);
+            let published_chirho = self.publish_header_terms_chirho(
+                key_chirho,
+                &inferred_chirho,
+                &result_kind_chirho,
+                &rename_chirho,
+                span_chirho,
+            )?;
+            let binders_chirho = published_chirho.binders_chirho;
+            let result_kind_chirho = published_chirho.result_kind_chirho;
+            let local_binders_chirho = published_chirho.local_binders_chirho;
+            let rename_chirho = published_chirho.mapping_chirho;
+            let synonym_rhs_chirho = None;
             let source_variables_chirho = scheme_chirho
                 .source_variables_chirho
                 .iter()
@@ -487,6 +493,8 @@ impl TypeElaboratorChirho<'_> {
                 binders_chirho,
                 result_kind_chirho,
                 synonym_rhs_chirho,
+                synonym_syntax_chirho: None,
+                local_binders_chirho,
                 visible_arity_chirho: scheme_chirho.visible_arity_chirho,
                 reduction_arity_chirho,
                 promoted_chirho: scheme_chirho.promoted_chirho,

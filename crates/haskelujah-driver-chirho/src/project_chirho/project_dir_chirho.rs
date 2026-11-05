@@ -543,12 +543,15 @@ pub fn compile_project_dir_chirho(
                 &mut imported_types_chirho,
             );
 
-            imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
-                &module_chirho,
-                &iface_chirho,
-                &resolved_imported_type_synonyms_chirho,
-                &infer_result_chirho,
-            ));
+            imported_type_synonyms_chirho.extend(
+                exported_type_synonyms_from_module_chirho(
+                    &module_chirho,
+                    &iface_chirho,
+                    &resolved_imported_type_synonyms_chirho,
+                    &infer_result_chirho,
+                )
+                .map_err(|error_chirho| format!("{file_name_chirho}: {error_chirho}"))?,
+            );
             imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
 
             ifaces_chirho.push(iface_chirho);

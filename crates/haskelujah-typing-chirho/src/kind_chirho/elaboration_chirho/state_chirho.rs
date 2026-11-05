@@ -40,12 +40,20 @@ impl ElaborationErrorChirho {
 /// Bounds apply before each new copy/expansion. Exhaustion is terminal for
 /// this state: callers publish neither a telescope nor an elaborated module.
 #[derive(Debug)]
+struct KindScopeGuardChirho {
+    cutoff_chirho: u32,
+    variables_chirho: HashSet<TyVarChirho>,
+    protected_chirho: HashSet<TyVarChirho>,
+}
+
+#[derive(Debug)]
 pub struct ElaborationStateChirho {
     pub owner_chirho: ElaborationOwnerChirho,
     pub next_variable_chirho: u32,
     pub substitution_chirho: SubstChirho,
     pub variable_kinds_chirho: HashMap<TyVarChirho, TyChirho>,
     rigid_variables_chirho: HashSet<TyVarChirho>,
+    kind_scope_guards_chirho: Vec<KindScopeGuardChirho>,
     source_specificities_chirho:
         HashMap<TyVarChirho, haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho>,
     work_left_chirho: usize,
@@ -69,6 +77,7 @@ impl ElaborationStateChirho {
             substitution_chirho: SubstChirho::empty_chirho(),
             variable_kinds_chirho: HashMap::new(),
             rigid_variables_chirho: HashSet::new(),
+            kind_scope_guards_chirho: Vec::new(),
             source_specificities_chirho: HashMap::new(),
             work_left_chirho: 1 << 25,
             output_left_chirho: 1 << 24,
@@ -267,6 +276,76 @@ impl ElaborationStateChirho {
         for variable_chirho in added_chirho {
             self.rigid_variables_chirho.remove(&variable_chirho);
         }
+    }
+
+    pub(super) fn open_kind_guard_chirho(
+        &mut self,
+        variables_chirho: &[TyVarChirho],
+        cutoff_chirho: u32,
+        span_chirho: SpanChirho,
+    ) -> Result<usize, ElaborationErrorChirho> {
+        self.charge_chirho(
+            variables_chirho.len() + 1,
+            variables_chirho.len() + 1,
+            span_chirho,
+        )?;
+        let mark_chirho = self.kind_scope_guards_chirho.len();
+        if mark_chirho >= 128 {
+            return Err(ElaborationErrorChirho {
+                message_chirho: "universal kind scope depth bound exhausted".to_owned(),
+                span_chirho,
+            });
+        }
+        self.kind_scope_guards_chirho.push(KindScopeGuardChirho {
+            cutoff_chirho,
+            variables_chirho: variables_chirho.iter().copied().collect(),
+            protected_chirho: HashSet::new(),
+        });
+        Ok(mark_chirho)
+    }
+
+    pub(super) fn close_kind_guard_chirho(&mut self, mark_chirho: usize) {
+        self.kind_scope_guards_chirho.truncate(mark_chirho);
+    }
+
+    fn guard_kind_image_chirho(
+        &mut self,
+        variable_chirho: TyVarChirho,
+        image_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        if self.kind_scope_guards_chirho.is_empty() {
+            return Ok(());
+        }
+        let variables_chirho = image_chirho.free_vars_chirho();
+        let weight_chirho = variables_chirho
+            .len()
+            .saturating_add(1)
+            .saturating_mul(self.kind_scope_guards_chirho.len());
+        self.charge_chirho(weight_chirho, weight_chirho, span_chirho)?;
+        for guard_chirho in &mut self.kind_scope_guards_chirho {
+            if variable_chirho.0 < guard_chirho.cutoff_chirho
+                || guard_chirho.protected_chirho.contains(&variable_chirho)
+            {
+                if variables_chirho
+                    .iter()
+                    .any(|variable_chirho| guard_chirho.variables_chirho.contains(variable_chirho))
+                {
+                    return Err(ElaborationErrorChirho {
+                        message_chirho:
+                            "kind mismatch: a universal binder escaped into an enclosing kind"
+                                .to_owned(),
+                        span_chirho,
+                    });
+                }
+                // Protect fresh dependencies too, so an indirect X -> fresh Y
+                // followed by Y -> skolem cannot evade the enclosing boundary.
+                guard_chirho
+                    .protected_chirho
+                    .extend(variables_chirho.iter().copied());
+            }
+        }
+        Ok(())
     }
 
     /// Normalize under the one current substitution. Unlike the compatibility
@@ -469,6 +548,11 @@ impl ElaborationStateChirho {
                     if self.rigid_variables_chirho.contains(&left_chirho)
                         && !self.rigid_variables_chirho.contains(&right_chirho) =>
                 {
+                    self.guard_kind_image_chirho(
+                        right_chirho,
+                        &TyChirho::VarChirho(left_chirho),
+                        span_chirho,
+                    )?;
                     self.link_source_variable_chirho(right_chirho, left_chirho, span_chirho)?;
                     self.substitution_chirho
                         .insert_chirho(right_chirho, TyChirho::VarChirho(left_chirho));
@@ -484,6 +568,7 @@ impl ElaborationStateChirho {
                             span_chirho,
                         });
                     }
+                    self.guard_kind_image_chirho(variable_chirho, &ty_chirho, span_chirho)?;
                     if let TyChirho::VarChirho(target_chirho) = &ty_chirho {
                         self.link_source_variable_chirho(
                             variable_chirho,
@@ -507,6 +592,93 @@ impl ElaborationStateChirho {
                 ) if left_mult_chirho == right_mult_chirho => {
                     pending_chirho.push((*left_arg_chirho, *right_arg_chirho));
                     pending_chirho.push((*left_res_chirho, *right_res_chirho));
+                }
+                (
+                    TyChirho::ForallChirho {
+                        vars_chirho: left_vars_chirho,
+                        body_chirho: left_body_chirho,
+                    },
+                    TyChirho::ForallChirho {
+                        vars_chirho: right_vars_chirho,
+                        body_chirho: right_body_chirho,
+                    },
+                )
+                | (
+                    TyChirho::RequiredForallChirho {
+                        vars_chirho: left_vars_chirho,
+                        body_chirho: left_body_chirho,
+                    },
+                    TyChirho::RequiredForallChirho {
+                        vars_chirho: right_vars_chirho,
+                        body_chirho: right_body_chirho,
+                    },
+                ) if left_vars_chirho.len() == right_vars_chirho.len() => {
+                    self.charge_chirho(
+                        left_vars_chirho.len(),
+                        left_vars_chirho.len(),
+                        span_chirho,
+                    )?;
+                    let mut mapping_chirho = crate::subst_chirho::SubstChirho::empty_chirho();
+                    for (left_chirho, right_chirho) in
+                        left_vars_chirho.iter().zip(&right_vars_chirho)
+                    {
+                        mapping_chirho
+                            .insert_chirho(*right_chirho, TyChirho::VarChirho(*left_chirho));
+                    }
+                    let right_body_chirho = self.instantiate_term_chirho(
+                        &right_body_chirho,
+                        &mapping_chirho,
+                        true,
+                        span_chirho,
+                    )?;
+                    for (left_chirho, right_chirho) in
+                        left_vars_chirho.iter().zip(&right_vars_chirho)
+                    {
+                        let left_kind_chirho =
+                            self.variable_kind_chirho(*left_chirho, span_chirho)?;
+                        let right_kind_chirho =
+                            self.variable_kind_chirho(*right_chirho, span_chirho)?;
+                        let right_kind_chirho = self.instantiate_term_chirho(
+                            &right_kind_chirho,
+                            &mapping_chirho,
+                            true,
+                            span_chirho,
+                        )?;
+                        self.check_rigid_chirho(
+                            &left_kind_chirho,
+                            &right_kind_chirho,
+                            &left_vars_chirho,
+                            span_chirho,
+                        )?;
+                    }
+                    let outside_chirho = left_body_chirho
+                        .free_vars_chirho()
+                        .into_iter()
+                        .chain(right_body_chirho.free_vars_chirho())
+                        .filter(|variable_chirho| !left_vars_chirho.contains(variable_chirho))
+                        .collect::<HashSet<_>>();
+                    self.check_rigid_chirho(
+                        &left_body_chirho,
+                        &right_body_chirho,
+                        &left_vars_chirho,
+                        span_chirho,
+                    )?;
+                    for variable_chirho in outside_chirho {
+                        let image_chirho = self
+                            .resolve_chirho(&TyChirho::VarChirho(variable_chirho), span_chirho)?;
+                        if image_chirho
+                            .free_vars_chirho()
+                            .iter()
+                            .any(|variable_chirho| left_vars_chirho.contains(variable_chirho))
+                        {
+                            return Err(ElaborationErrorChirho {
+                                message_chirho:
+                                    "kind mismatch: a universal binder escaped its quantifier"
+                                        .to_owned(),
+                                span_chirho,
+                            });
+                        }
+                    }
                 }
                 (TyChirho::ListChirho(left_chirho), TyChirho::ListChirho(right_chirho)) => {
                     pending_chirho.push((*left_chirho, *right_chirho))

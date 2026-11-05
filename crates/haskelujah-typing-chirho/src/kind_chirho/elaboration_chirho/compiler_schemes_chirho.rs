@@ -69,6 +69,8 @@ impl TypeElaboratorChirho<'_> {
                 source_variables_chirho: Vec::new(),
                 result_kind_chirho: ElaborationStateChirho::constraint_universe_chirho(),
                 synonym_rhs_chirho: None,
+                synonym_syntax_chirho: None,
+                local_binders_chirho: std::sync::Arc::from([]),
                 promoted_chirho: false,
                 held_chirho: false,
             })
@@ -168,6 +170,8 @@ impl TypeElaboratorChirho<'_> {
                 source_variables_chirho: Vec::new(),
                 result_kind_chirho: ElaborationStateChirho::constraint_universe_chirho(),
                 synonym_rhs_chirho: None,
+                synonym_syntax_chirho: None,
+                local_binders_chirho: std::sync::Arc::from([]),
                 promoted_chirho: false,
                 held_chirho: false,
             })
@@ -255,6 +259,8 @@ impl TypeElaboratorChirho<'_> {
                 binders_chirho,
                 result_kind_chirho: type_chirho,
                 synonym_rhs_chirho: None,
+                synonym_syntax_chirho: None,
+                local_binders_chirho: std::sync::Arc::from([]),
                 promoted_chirho: false,
                 held_chirho: false,
             })
@@ -414,6 +420,8 @@ impl TypeElaboratorChirho<'_> {
                 binders_chirho,
                 result_kind_chirho: result_chirho,
                 synonym_rhs_chirho: None,
+                synonym_syntax_chirho: None,
+                local_binders_chirho: std::sync::Arc::from([]),
                 visible_arity_chirho,
                 promoted_chirho: true,
                 held_chirho: false,

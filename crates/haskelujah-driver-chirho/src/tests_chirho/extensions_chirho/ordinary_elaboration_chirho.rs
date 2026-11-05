@@ -303,3 +303,230 @@ fn a_constraint_tuple_alias_preserves_every_predicate_telescope_chirho() {
         predicate_chirho.class_name_chirho == "Eq" && predicate_chirho.kind_tys_chirho.is_empty()
     }));
 }
+
+#[test]
+fn alias_datatype_scc_publication_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE RankNTypes, LiberalTypeSynonyms #-}
+module AliasDatatypeSccChirho where
+data DChirho aChirho = MkDChirho (BChirho aChirho) (AChirho aChirho)
+type BChirho aChirho = forall bChirho. bChirho -> DChirho aChirho
+type AChirho aChirho = BChirho aChirho
+"#,
+    );
+    result_chirho.expect("GHC-accepted publication oracle checks");
+}
+
+#[test]
+fn header_nested_forall_publication_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE RankNTypes, PolyKinds, KindSignatures #-}
+module HeaderForallKindChirho where
+import Data.Kind (Type)
+import Data.Proxy (Proxy)
+data HChirho (fChirho :: forall kChirho. kChirho -> Type) = MkHChirho
+type SChirho = HChirho Proxy
+"#,
+    );
+    result_chirho.expect("GHC-accepted publication oracle checks");
+}
+
+#[test]
+fn header_nested_forall_wrong_kind_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE RankNTypes, PolyKinds, KindSignatures #-}
+module HeaderForallWrongKindChirho where
+import Data.Kind (Type)
+data HChirho (fChirho :: forall kChirho. kChirho -> Type) = MkHChirho
+type SChirho = HChirho Maybe
+"#,
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("a monokind constructor cannot satisfy a universal kind");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn result_nested_forall_publication_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE RankNTypes, PolyKinds, KindSignatures, StandaloneKindSignatures, ExplicitForAll #-}
+module ResultForallHeaderChirho where
+import Data.Kind (Type)
+type RChirho :: Type -> forall kChirho. kChirho -> Type
+data RChirho aChirho bChirho = MkRChirho
+"#,
+    );
+    result_chirho.expect("GHC-accepted publication oracle checks");
+}
+
+#[test]
+fn gadt_alias_scc_replays_complete_telescope_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GADTs, RankNTypes, LiberalTypeSynonyms #-}
+module GadtAliasSccChirho where
+data TChirho where
+  MkChirho :: SChirho -> TChirho
+type SChirho = forall aChirho. aChirho -> TChirho
+"#,
+    );
+    result_chirho.expect("fresh GHC-accepted publication oracle checks");
+}
+
+#[test]
+fn gadt_inline_named_kind_cannot_be_specialized_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GADTs, PolyKinds, DataKinds, KindSignatures #-}
+module GadtParentTwoKindsChirho where
+data TChirho (aChirho :: kChirho) where
+  MkBoolChirho :: TChirho 'True
+  MkTypeChirho :: TChirho Int
+booleanChirho :: TChirho 'True
+booleanChirho = MkBoolChirho
+ordinaryChirho :: TChirho Int
+ordinaryChirho = MkTypeChirho
+"#,
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("fresh GHC-rejected publication oracle refuses");
+    assert!(
+        error_chirho.contains("error[E0300]") || error_chirho.contains("error[E0206]"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn gadt_standalone_universal_kind_instantiates_per_constructor_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GADTs, PolyKinds, DataKinds, KindSignatures, StandaloneKindSignatures, ExplicitForAll #-}
+module GadtStandaloneTwoKindsChirho where
+import Data.Kind (Type)
+type TChirho :: forall kChirho. kChirho -> Type
+data TChirho aChirho where
+  MkBoolChirho :: TChirho 'True
+  MkTypeChirho :: TChirho Int
+booleanChirho :: TChirho 'True
+booleanChirho = MkBoolChirho
+ordinaryChirho :: TChirho Int
+ordinaryChirho = MkTypeChirho
+"#,
+    );
+    result_chirho.expect("fresh GHC-accepted publication oracle checks");
+}
+
+#[test]
+fn universal_kind_cannot_be_inferred_by_poly_meta_assignment_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE RankNTypes, PolyKinds, KindSignatures #-}
+module InferredUniversalKindChirho where
+import Data.Kind (Type)
+data HChirho (fChirho :: forall kChirho. kChirho -> Type)
+type SChirho fChirho = HChirho fChirho
+"#,
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("fresh GHC-rejected publication oracle refuses");
+    assert!(
+        error_chirho.contains("error[E0300]") || error_chirho.contains("error[E0206]"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn universal_kind_cannot_capture_a_monomorphic_kind_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE RankNTypes, PolyKinds, KindSignatures #-}
+module MonomorphicCapturedKindChirho where
+import Data.Kind (Type)
+data HChirho (fChirho :: forall kChirho. kChirho -> Type)
+type SChirho (fChirho :: jChirho -> Type) = HChirho fChirho
+"#,
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("fresh GHC-rejected publication oracle refuses");
+    assert!(
+        error_chirho.contains("error[E0300]") || error_chirho.contains("error[E0206]"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn universal_kind_argument_does_not_erase_nested_licence_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE RankNTypes, PolyKinds, KindSignatures #-}
+module NestedImpredicativeKindChirho where
+import Data.Kind (Type)
+data HChirho (fChirho :: forall kChirho. kChirho -> Type)
+data CChirho (aChirho :: Type) (bChirho :: kChirho)
+type BadChirho = HChirho (CChirho (forall aChirho. aChirho -> aChirho))
+"#,
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("fresh GHC-rejected publication oracle refuses");
+    assert!(
+        error_chirho.contains("error[E0300]") || error_chirho.contains("error[E0206]"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn partially_applied_type_cannot_regain_kind_universality_chirho() {
+    let result_chirho = frontend_chirho(
+        r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE RankNTypes, PolyKinds, KindSignatures, ImpredicativeTypes #-}
+module NestedImpredicativeLicensedChirho where
+import Data.Kind (Type)
+data HChirho (fChirho :: forall kChirho. kChirho -> Type)
+data CChirho (aChirho :: Type) (bChirho :: kChirho)
+type GoodChirho = HChirho (CChirho (forall aChirho. aChirho -> aChirho))
+"#,
+    );
+    let error_chirho = result_chirho
+        .err()
+        .expect("fresh GHC-rejected publication oracle refuses");
+    assert!(
+        error_chirho.contains("error[E0300]") || error_chirho.contains("error[E0206]"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn universal_kind_argument_depth_is_bounded_before_deferral_chirho() {
+    for depth_chirho in [8usize, 136] {
+        let argument_chirho = format!(
+            "{}Proxy{}",
+            "(".repeat(depth_chirho),
+            ")".repeat(depth_chirho)
+        );
+        let source_chirho = format!(
+            "{{-# LANGUAGE RankNTypes, PolyKinds, KindSignatures #-}}\n{{-# OPTIONS_GHC -fdefer-type-errors #-}}\nmodule Main where\nimport Data.Kind (Type)\nimport Data.Proxy (Proxy)\ndata HChirho (fChirho :: forall kChirho. kChirho -> Type)\ntype SChirho = HChirho {argument_chirho}\n"
+        );
+        let result_chirho = frontend_chirho(&source_chirho);
+        if depth_chirho == 8 {
+            result_chirho.expect("ordinary parentheses preserve a valid universal kind");
+        } else {
+            let error_chirho = result_chirho
+                .err()
+                .expect("the bounded universal traversal refuses excessive nesting");
+            assert!(
+                error_chirho.contains("error[E0300]")
+                    && error_chirho.contains("depth bound exhausted"),
+                "{error_chirho}"
+            );
+        }
+    }
+}

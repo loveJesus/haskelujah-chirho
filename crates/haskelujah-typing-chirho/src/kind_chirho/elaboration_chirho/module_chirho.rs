@@ -13,14 +13,32 @@ impl TypeElaboratorChirho<'_> {
         &mut self,
         module_chirho: &mut ModuleChirho,
         group_chirho: &[usize],
+        aliases_chirho: &[usize],
     ) -> Result<(), ElaborationErrorChirho> {
+        self.state_chirho.charge_chirho(
+            group_chirho.len().saturating_mul(aliases_chirho.len() + 1),
+            group_chirho.len(),
+            module_chirho.span_chirho,
+        )?;
+        let ordered_chirho = aliases_chirho
+            .iter()
+            .copied()
+            .filter(|index_chirho| group_chirho.contains(index_chirho))
+            .chain(group_chirho.iter().copied().filter(|index_chirho| {
+                !matches!(
+                    module_chirho.decls_chirho[*index_chirho],
+                    DeclChirho::TypeAliasDeclChirho { .. }
+                )
+            }))
+            .collect::<Vec<_>>();
         let previous_chirho = self.rechecking_chirho;
         self.rechecking_chirho = true;
         let result_chirho = (|| {
-            for index_chirho in group_chirho {
+            for index_chirho in &ordered_chirho {
                 match &mut module_chirho.decls_chirho[*index_chirho] {
                     DeclChirho::TypeAliasDeclChirho {
                         name_chirho,
+                        type_vars_chirho,
                         rhs_chirho,
                         ..
                     } => {
@@ -33,14 +51,22 @@ impl TypeElaboratorChirho<'_> {
                                 &typed_chirho.term_chirho,
                                 name_chirho.span_chirho(),
                             )?;
-                            let publication_chirho = &this_chirho.declaration_variables_chirho
-                                [&key_chirho]
-                                .publication_chirho;
-                            let body_chirho = publication_chirho.apply_ty_chirho(&body_chirho);
+                            let (body_chirho, syntax_chirho) = this_chirho
+                                .publish_synonym_body_chirho(
+                                    &key_chirho,
+                                    type_vars_chirho,
+                                    rhs_chirho,
+                                    &body_chirho,
+                                    name_chirho.span_chirho(),
+                                )?;
                             this_chirho
                                 .registry_chirho
                                 .declaration_schemes_mut_chirho()
-                                .complete_synonym_body_chirho(&key_chirho, body_chirho)
+                                .complete_synonym_body_chirho(
+                                    &key_chirho,
+                                    body_chirho,
+                                    syntax_chirho,
+                                )
                                 .map_err(|message_chirho| {
                                     Self::error_chirho(message_chirho, name_chirho.span_chirho())
                                 })
@@ -136,8 +162,22 @@ impl TypeElaboratorChirho<'_> {
             .declaration_schemes_chirho()
             .get_chirho(key_chirho)
             .ok_or_else(|| Self::error_chirho("missing provisional declaration", span_chirho))?;
-        self.state_chirho
-            .copy_chirho(&scheme_chirho.result_kind_chirho, span_chirho)
+        if scheme_chirho.owner_chirho.is_some() {
+            return self
+                .state_chirho
+                .copy_chirho(&scheme_chirho.result_kind_chirho, span_chirho);
+        }
+        let result_chirho = self
+            .declaration_variables_chirho
+            .get(key_chirho)
+            .and_then(|variables_chirho| variables_chirho.owned_result_kind_chirho.as_ref())
+            .ok_or_else(|| {
+                Self::error_chirho(
+                    "local kind recheck lost its owner-local result contract",
+                    span_chirho,
+                )
+            })?;
+        self.state_chirho.copy_chirho(result_chirho, span_chirho)
     }
 
     pub(super) fn check_kind_contract_chirho(
@@ -154,55 +194,6 @@ impl TypeElaboratorChirho<'_> {
                 .unify_chirho(&expected_chirho, &annotation_chirho, span_chirho)?;
         }
         if let Some(signature_chirho) = standalone_chirho {
-            let (signature_chirho, rigid_chirho, visibility_chirho) =
-                self.scoped_chirho(|this_chirho| {
-                    let mut leading_chirho = &*signature_chirho;
-                    let mut visibility_chirho = Vec::new();
-                    loop {
-                        match leading_chirho {
-                            TypeChirho::ForallChirho {
-                                vars_chirho,
-                                body_chirho,
-                                ..
-                            } => {
-                                visibility_chirho
-                                    .extend(std::iter::repeat_n(false, vars_chirho.len()));
-                                leading_chirho = body_chirho;
-                            }
-                            TypeChirho::RequiredForallChirho {
-                                vars_chirho,
-                                body_chirho,
-                                ..
-                            } => {
-                                visibility_chirho
-                                    .extend(std::iter::repeat_n(true, vars_chirho.len()));
-                                leading_chirho = body_chirho;
-                            }
-                            TypeChirho::ParenChirho { inner_chirho, .. } => {
-                                leading_chirho = inner_chirho
-                            }
-                            _ => break,
-                        }
-                    }
-                    let mut signature_chirho = this_chirho.check_type_chirho(signature_chirho)?;
-                    let mut rigid_chirho = Vec::new();
-                    while let TyChirho::ForallChirho {
-                        vars_chirho,
-                        body_chirho,
-                    }
-                    | TyChirho::RequiredForallChirho {
-                        vars_chirho,
-                        body_chirho,
-                    } = signature_chirho
-                    {
-                        rigid_chirho.extend(vars_chirho);
-                        signature_chirho = *body_chirho;
-                    }
-                    rigid_chirho.extend(signature_chirho.free_vars_chirho());
-                    rigid_chirho.sort();
-                    rigid_chirho.dedup();
-                    Ok((signature_chirho, rigid_chirho, visibility_chirho))
-                })?;
             let scheme_chirho = self
                 .registry_chirho
                 .declaration_schemes_chirho()
@@ -211,59 +202,140 @@ impl TypeElaboratorChirho<'_> {
                 .ok_or_else(|| {
                     Self::error_chirho("missing declaration kind contract", span_chirho)
                 })?;
-            let mut header_index_chirho = 0;
-            for required_chirho in visibility_chirho {
-                if let Some(binder_chirho) = scheme_chirho.binders_chirho.get(header_index_chirho) {
-                    let header_required_chirho = binder_chirho.visibility_chirho
-                        == TelescopeVisibilityChirho::RequiredChirho;
-                    if required_chirho && !header_required_chirho {
-                        return Err(Self::error_chirho(
-                            "declaration binder visibility disagrees with its required kind quantifier",
-                            span_chirho,
+            if scheme_chirho.owner_chirho != Some(self.state_chirho.owner_chirho) {
+                return Err(Self::error_chirho(
+                    "standalone kind contract cannot restage a published telescope",
+                    span_chirho,
+                ));
+            }
+            let mut signature_chirho =
+                self.scoped_chirho(|this_chirho| this_chirho.check_type_chirho(signature_chirho))?;
+            let mut rigid_chirho = signature_chirho.free_vars_chirho();
+            let mut mapping_chirho = crate::subst_chirho::SubstChirho::empty_chirho();
+            let mut binders_chirho = Vec::new();
+            let mut checks_chirho = Vec::new();
+            let mut index_chirho = 0;
+            loop {
+                self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+                let required_chirho =
+                    matches!(&signature_chirho, TyChirho::RequiredForallChirho { .. });
+                match signature_chirho {
+                    TyChirho::ForallChirho {
+                        vars_chirho,
+                        body_chirho,
+                    }
+                    | TyChirho::RequiredForallChirho {
+                        vars_chirho,
+                        body_chirho,
+                    } if index_chirho < scheme_chirho.binders_chirho.len() || index_chirho == 0 => {
+                        for variable_chirho in vars_chirho {
+                            let kind_chirho = self
+                                .state_chirho
+                                .variable_kind_chirho(variable_chirho, span_chirho)?;
+                            let header_chirho = scheme_chirho.binders_chirho.get(index_chirho);
+                            if required_chirho
+                                || header_chirho.is_some_and(|binder_chirho| {
+                                    binder_chirho.visibility_chirho
+                                        != TelescopeVisibilityChirho::RequiredChirho
+                                })
+                            {
+                                let header_chirho = header_chirho.ok_or_else(|| {
+                                    Self::error_chirho(
+                                        "required kind quantifier has no declaration binder",
+                                        span_chirho,
+                                    )
+                                })?;
+                                if required_chirho
+                                    != (header_chirho.visibility_chirho
+                                        == TelescopeVisibilityChirho::RequiredChirho)
+                                {
+                                    return Err(Self::error_chirho(
+                                        "declaration binder visibility disagrees with its required kind quantifier",
+                                        span_chirho,
+                                    ));
+                                }
+                                mapping_chirho.insert_chirho(
+                                    variable_chirho,
+                                    TyChirho::VarChirho(header_chirho.variable_chirho),
+                                );
+                                checks_chirho.push((
+                                    self.state_chirho
+                                        .copy_chirho(&header_chirho.kind_chirho, span_chirho)?,
+                                    kind_chirho,
+                                ));
+                                binders_chirho.push(header_chirho.clone());
+                                index_chirho += 1;
+                            } else {
+                                rigid_chirho.push(variable_chirho);
+                                binders_chirho.push(DeclarationBinderChirho { variable_chirho, kind_chirho, visibility_chirho: if self.state_chirho.source_specificity_chirho(variable_chirho) == Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho) { TelescopeVisibilityChirho::InferredChirho } else { TelescopeVisibilityChirho::SpecifiedChirho } });
+                            }
+                        }
+                        signature_chirho = *body_chirho;
+                    }
+                    TyChirho::FunChirho(argument_chirho, result_chirho, _)
+                        if index_chirho < scheme_chirho.binders_chirho.len() =>
+                    {
+                        let header_chirho = &scheme_chirho.binders_chirho[index_chirho];
+                        if header_chirho.visibility_chirho
+                            != TelescopeVisibilityChirho::RequiredChirho
+                        {
+                            return Err(Self::error_chirho(
+                                "invisible declaration binder has no kind quantifier",
+                                span_chirho,
+                            ));
+                        }
+                        checks_chirho.push((
+                            self.state_chirho
+                                .copy_chirho(&header_chirho.kind_chirho, span_chirho)?,
+                            *argument_chirho,
                         ));
+                        binders_chirho.push(header_chirho.clone());
+                        index_chirho += 1;
+                        signature_chirho = *result_chirho;
                     }
-                    if required_chirho || !header_required_chirho {
-                        header_index_chirho += 1;
-                    }
+                    _ => break,
                 }
             }
-            let mut complete_chirho = expected_chirho;
-            for binder_chirho in scheme_chirho.binders_chirho.iter().rev() {
-                if binder_chirho.visibility_chirho == TelescopeVisibilityChirho::RequiredChirho {
-                    complete_chirho = ElaborationStateChirho::arrow_chirho(
-                        self.state_chirho
-                            .copy_chirho(&binder_chirho.kind_chirho, span_chirho)?,
-                        complete_chirho,
-                    );
-                }
+            if index_chirho != scheme_chirho.binders_chirho.len() {
+                return Err(Self::error_chirho(
+                    "standalone kind signature has fewer required arrows than the declaration header",
+                    span_chirho,
+                ));
             }
-            self.state_chirho.check_rigid_chirho(
-                &complete_chirho,
+            rigid_chirho.sort();
+            rigid_chirho.dedup();
+            for (actual_chirho, contract_chirho) in checks_chirho {
+                let contract_chirho = self.state_chirho.instantiate_term_chirho(
+                    &contract_chirho,
+                    &mapping_chirho,
+                    true,
+                    span_chirho,
+                )?;
+                self.state_chirho.check_rigid_chirho(
+                    &actual_chirho,
+                    &contract_chirho,
+                    &rigid_chirho,
+                    span_chirho,
+                )?;
+            }
+            let result_chirho = self.state_chirho.instantiate_term_chirho(
                 &signature_chirho,
+                &mapping_chirho,
+                true,
+                span_chirho,
+            )?;
+            self.state_chirho.check_rigid_chirho(
+                &expected_chirho,
+                &result_chirho,
                 &rigid_chirho,
                 span_chirho,
             )?;
-            if scheme_chirho.binders_chirho.iter().all(|binder_chirho| {
-                binder_chirho.visibility_chirho == TelescopeVisibilityChirho::RequiredChirho
-            }) {
-                let mut checked_chirho = scheme_chirho.as_ref().clone();
-                let mut prefix_chirho = Vec::new();
-                for variable_chirho in rigid_chirho {
-                    prefix_chirho.push(DeclarationBinderChirho {
-                        variable_chirho,
-                        kind_chirho: self
-                            .state_chirho
-                            .variable_kind_chirho(variable_chirho, span_chirho)?,
-                        visibility_chirho: TelescopeVisibilityChirho::SpecifiedChirho,
-                    });
-                }
-                prefix_chirho.extend(checked_chirho.binders_chirho);
-                checked_chirho.binders_chirho = prefix_chirho;
-                checked_chirho.reduction_arity_chirho = checked_chirho.binders_chirho.len();
-                self.registry_chirho
-                    .declaration_schemes_mut_chirho()
-                    .stage_chirho(checked_chirho);
-            }
+            let mut checked_chirho = scheme_chirho.as_ref().clone();
+            checked_chirho.binders_chirho = binders_chirho;
+            checked_chirho.reduction_arity_chirho = checked_chirho.binders_chirho.len();
+            self.registry_chirho
+                .declaration_schemes_mut_chirho()
+                .stage_chirho(checked_chirho);
         }
         Ok(())
     }
@@ -272,7 +344,11 @@ impl TypeElaboratorChirho<'_> {
         &mut self,
         module_chirho: &mut ModuleChirho,
     ) -> Result<(), ElaborationErrorChirho> {
-        for group_chirho in self.declaration_groups_chirho(module_chirho)? {
+        let dependencies_chirho::DeclarationOrderChirho {
+            groups_chirho,
+            aliases_chirho,
+        } = self.declaration_groups_chirho(module_chirho)?;
+        for group_chirho in groups_chirho {
             let mut keys_chirho = Vec::new();
             for index_chirho in &group_chirho {
                 let declaration_chirho = &mut module_chirho.decls_chirho[*index_chirho];
@@ -299,14 +375,76 @@ impl TypeElaboratorChirho<'_> {
                 result_chirho?;
                 keys_chirho.push(key_chirho);
             }
-            keys_chirho.sort_by_key(|key_chirho| {
-                self.registry_chirho
-                    .declaration_schemes_chirho()
-                    .get_chirho(key_chirho)
-                    .is_some_and(|scheme_chirho| scheme_chirho.promoted_chirho)
-            });
-            self.finish_catalogue_chirho(&keys_chirho, module_chirho.span_chirho)?;
-            self.recheck_declaration_bodies_chirho(module_chirho, &group_chirho)?;
+            let (constructors_chirho, headers_chirho): (Vec<_>, Vec<_>) =
+                keys_chirho.iter().cloned().partition(|key_chirho| {
+                    self.registry_chirho
+                        .declaration_schemes_chirho()
+                        .get_chirho(key_chirho)
+                        .is_some_and(|scheme_chirho| scheme_chirho.promoted_chirho)
+                });
+            self.finish_catalogue_chirho(&headers_chirho, module_chirho.span_chirho)?;
+            // Transparent dependencies must carry their nested binder kinds
+            // before a constructor signature can use the published telescope.
+            let alias_group_chirho = group_chirho
+                .iter()
+                .copied()
+                .filter(|index_chirho| {
+                    matches!(
+                        module_chirho.decls_chirho[*index_chirho],
+                        DeclChirho::TypeAliasDeclChirho { .. }
+                    )
+                })
+                .collect::<Vec<_>>();
+            if constructors_chirho.iter().any(|key_chirho| {
+                self.declaration_variables_chirho
+                    .get(key_chirho)
+                    .is_some_and(|variables_chirho| {
+                        variables_chirho.written_signature_chirho.is_some()
+                    })
+            }) {
+                self.recheck_declaration_bodies_chirho(
+                    module_chirho,
+                    &alias_group_chirho,
+                    &aliases_chirho,
+                )?;
+            }
+            for index_chirho in &group_chirho {
+                let declaration_chirho = &mut module_chirho.decls_chirho[*index_chirho];
+                let name_chirho = match declaration_chirho {
+                    DeclChirho::DataDeclChirho { name_chirho, .. }
+                    | DeclChirho::NewtypeDeclChirho { name_chirho, .. } => name_chirho,
+                    _ => continue,
+                };
+                let key_chirho = self.local_key_chirho(name_chirho)?;
+                let previous_chirho = self.current_declaration_chirho.replace(key_chirho.clone());
+                let result_chirho = self.scoped_chirho(|this_chirho| {
+                    this_chirho
+                        .bind_header_scope_chirho(&key_chirho, declaration_chirho.span_chirho())?;
+                    match declaration_chirho {
+                        DeclChirho::DataDeclChirho {
+                            constructors_chirho,
+                            ..
+                        } => {
+                            for constructor_chirho in constructors_chirho {
+                                this_chirho.replay_gadt_constructor_chirho(
+                                    constructor_chirho,
+                                    &key_chirho,
+                                )?;
+                            }
+                        }
+                        DeclChirho::NewtypeDeclChirho {
+                            constructor_chirho, ..
+                        } => this_chirho
+                            .replay_gadt_constructor_chirho(constructor_chirho, &key_chirho)?,
+                        _ => unreachable!(),
+                    }
+                    Ok(())
+                });
+                self.current_declaration_chirho = previous_chirho;
+                result_chirho?;
+            }
+            self.finish_catalogue_chirho(&constructors_chirho, module_chirho.span_chirho)?;
+            self.recheck_declaration_bodies_chirho(module_chirho, &group_chirho, &aliases_chirho)?;
             self.check_declaration_contracts_chirho(&keys_chirho, module_chirho.span_chirho)?;
         }
         Ok(())

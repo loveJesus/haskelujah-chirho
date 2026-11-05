@@ -6,6 +6,15 @@
 use super::*;
 use crate::subst_chirho::SubstChirho;
 
+struct DeclarationInstantiationChirho<'producer_chirho> {
+    parameters_chirho: &'producer_chirho SubstChirho,
+    local_chirho: bool,
+    span_chirho: SpanChirho,
+    nested_binders_chirho:
+        &'producer_chirho [crate::ty_chirho::declarations_chirho::DeclarationLocalBinderChirho],
+    require_kinds_chirho: bool,
+}
+
 impl ElaborationStateChirho {
     pub(super) fn instantiate_term_chirho(
         &mut self,
@@ -16,9 +25,35 @@ impl ElaborationStateChirho {
     ) -> Result<TyChirho, ElaborationErrorChirho> {
         self.instantiate_depth_chirho(
             term_chirho,
-            parameters_chirho,
-            local_chirho,
-            span_chirho,
+            &DeclarationInstantiationChirho {
+                parameters_chirho,
+                local_chirho,
+                span_chirho,
+                nested_binders_chirho: &[],
+                require_kinds_chirho: false,
+            },
+            0,
+            &mut Vec::new(),
+        )
+    }
+
+    pub(super) fn instantiate_checked_declaration_term_chirho(
+        &mut self,
+        term_chirho: &TyChirho,
+        parameters_chirho: &SubstChirho,
+        local_chirho: bool,
+        nested_binders_chirho: &[crate::ty_chirho::declarations_chirho::DeclarationLocalBinderChirho],
+        span_chirho: SpanChirho,
+    ) -> Result<TyChirho, ElaborationErrorChirho> {
+        self.instantiate_depth_chirho(
+            term_chirho,
+            &DeclarationInstantiationChirho {
+                parameters_chirho,
+                local_chirho,
+                span_chirho,
+                nested_binders_chirho,
+                require_kinds_chirho: true,
+            },
             0,
             &mut Vec::new(),
         )
@@ -27,12 +62,13 @@ impl ElaborationStateChirho {
     fn instantiate_depth_chirho(
         &mut self,
         term_chirho: &TyChirho,
-        parameters_chirho: &SubstChirho,
-        local_chirho: bool,
-        span_chirho: SpanChirho,
+        context_chirho: &DeclarationInstantiationChirho<'_>,
         depth_chirho: usize,
         bound_chirho: &mut Vec<(TyVarChirho, TyVarChirho)>,
     ) -> Result<TyChirho, ElaborationErrorChirho> {
+        let parameters_chirho = context_chirho.parameters_chirho;
+        let local_chirho = context_chirho.local_chirho;
+        let span_chirho = context_chirho.span_chirho;
         self.charge_chirho(1, 1, span_chirho)?;
         if depth_chirho > 128 {
             return Err(TypeElaboratorChirho::error_chirho(
@@ -42,19 +78,21 @@ impl ElaborationStateChirho {
         }
         Ok(match term_chirho {
             TyChirho::QualChirho {
-                context_chirho,
+                context_chirho: constraints_chirho,
                 body_chirho,
             } => {
-                self.charge_chirho(context_chirho.len(), context_chirho.len(), span_chirho)?;
+                self.charge_chirho(
+                    constraints_chirho.len(),
+                    constraints_chirho.len(),
+                    span_chirho,
+                )?;
                 TyChirho::QualChirho {
-                    context_chirho: context_chirho
+                    context_chirho: constraints_chirho
                         .iter()
                         .map(|constraint_chirho| {
                             self.instantiate_depth_chirho(
                                 constraint_chirho,
-                                parameters_chirho,
-                                local_chirho,
-                                span_chirho,
+                                context_chirho,
                                 depth_chirho + 1,
                                 bound_chirho,
                             )
@@ -62,9 +100,7 @@ impl ElaborationStateChirho {
                         .collect::<Result<_, _>>()?,
                     body_chirho: Box::new(self.instantiate_depth_chirho(
                         body_chirho,
-                        parameters_chirho,
-                        local_chirho,
-                        span_chirho,
+                        context_chirho,
                         depth_chirho + 1,
                         bound_chirho,
                     )?),
@@ -96,17 +132,13 @@ impl ElaborationStateChirho {
             TyChirho::AppChirho(left_chirho, right_chirho) => TyChirho::AppChirho(
                 Box::new(self.instantiate_depth_chirho(
                     left_chirho,
-                    parameters_chirho,
-                    local_chirho,
-                    span_chirho,
+                    context_chirho,
                     depth_chirho + 1,
                     bound_chirho,
                 )?),
                 Box::new(self.instantiate_depth_chirho(
                     right_chirho,
-                    parameters_chirho,
-                    local_chirho,
-                    span_chirho,
+                    context_chirho,
                     depth_chirho + 1,
                     bound_chirho,
                 )?),
@@ -114,17 +146,13 @@ impl ElaborationStateChirho {
             TyChirho::FunChirho(left_chirho, right_chirho, mult_chirho) => TyChirho::FunChirho(
                 Box::new(self.instantiate_depth_chirho(
                     left_chirho,
-                    parameters_chirho,
-                    local_chirho,
-                    span_chirho,
+                    context_chirho,
                     depth_chirho + 1,
                     bound_chirho,
                 )?),
                 Box::new(self.instantiate_depth_chirho(
                     right_chirho,
-                    parameters_chirho,
-                    local_chirho,
-                    span_chirho,
+                    context_chirho,
                     depth_chirho + 1,
                     bound_chirho,
                 )?),
@@ -133,9 +161,7 @@ impl ElaborationStateChirho {
             TyChirho::ListChirho(element_chirho) => {
                 TyChirho::ListChirho(Box::new(self.instantiate_depth_chirho(
                     element_chirho,
-                    parameters_chirho,
-                    local_chirho,
-                    span_chirho,
+                    context_chirho,
                     depth_chirho + 1,
                     bound_chirho,
                 )?))
@@ -148,9 +174,7 @@ impl ElaborationStateChirho {
                         .map(|element_chirho| {
                             self.instantiate_depth_chirho(
                                 element_chirho,
-                                parameters_chirho,
-                                local_chirho,
-                                span_chirho,
+                                context_chirho,
                                 depth_chirho + 1,
                                 bound_chirho,
                             )
@@ -174,14 +198,76 @@ impl ElaborationStateChirho {
                     fresh_chirho.push(renamed_chirho);
                     bound_chirho.push((*variable_chirho, renamed_chirho));
                 }
-                let body_chirho = self.instantiate_depth_chirho(
-                    body_chirho,
-                    parameters_chirho,
-                    local_chirho,
-                    span_chirho,
-                    depth_chirho + 1,
-                    bound_chirho,
-                );
+                let body_chirho = (|| {
+                    for (source_chirho, renamed_chirho) in vars_chirho.iter().zip(&fresh_chirho) {
+                        self.charge_chirho(
+                            context_chirho.nested_binders_chirho.len() + 1,
+                            0,
+                            span_chirho,
+                        )?;
+                        let record_chirho =
+                            context_chirho
+                                .nested_binders_chirho
+                                .iter()
+                                .find(|record_chirho| {
+                                    record_chirho.binder_chirho.variable_chirho == *source_chirho
+                                });
+                        let (kind_chirho, specificity_chirho) =
+                            if let Some(record_chirho) = record_chirho {
+                                (
+                                    Some(self.instantiate_depth_chirho(
+                                        &record_chirho.binder_chirho.kind_chirho,
+                                        context_chirho,
+                                        depth_chirho + 1,
+                                        bound_chirho,
+                                    )?),
+                                    Some(record_chirho.specificity_chirho),
+                                )
+                            } else if local_chirho
+                                && self.variable_kinds_chirho.contains_key(source_chirho)
+                            {
+                                let kind_chirho =
+                                    self.variable_kind_chirho(*source_chirho, span_chirho)?;
+                                (
+                                    Some(self.instantiate_depth_chirho(
+                                        &kind_chirho,
+                                        context_chirho,
+                                        depth_chirho + 1,
+                                        bound_chirho,
+                                    )?),
+                                    self.source_specificity_chirho(*source_chirho),
+                                )
+                            } else {
+                                (None, None)
+                            };
+                        if context_chirho.require_kinds_chirho
+                            && (kind_chirho.is_none() || specificity_chirho.is_none())
+                        {
+                            return Err(TypeElaboratorChirho::error_chirho(
+                                "checked synonym universal lost its producer-owned kind or specificity",
+                                span_chirho,
+                            ));
+                        }
+                        if let Some(kind_chirho) = kind_chirho {
+                            self.variable_kinds_chirho
+                                .insert(*renamed_chirho, kind_chirho);
+                        }
+                        if let Some(specificity_chirho) = specificity_chirho {
+                            self.note_source_variable_chirho(
+                                *renamed_chirho,
+                                specificity_chirho,
+                                true,
+                                span_chirho,
+                            )?;
+                        }
+                    }
+                    self.instantiate_depth_chirho(
+                        body_chirho,
+                        context_chirho,
+                        depth_chirho + 1,
+                        bound_chirho,
+                    )
+                })();
                 bound_chirho.truncate(mark_chirho);
                 let body_chirho = Box::new(body_chirho?);
                 if matches!(term_chirho, TyChirho::RequiredForallChirho { .. }) {
@@ -274,5 +360,373 @@ mod tests_chirho {
                 )
                 .is_err()
         );
+    }
+    #[test]
+    fn universal_kind_scope_prevents_direct_and_indirect_escape_chirho() {
+        for indirect_chirho in [false, true] {
+            let mut state_chirho = ElaborationStateChirho::new_chirho().unwrap();
+            let outer_chirho = state_chirho
+                .fresh_chirho(None, SpanChirho::DUMMY_CHIRHO)
+                .unwrap();
+            let universal_chirho = state_chirho
+                .fresh_chirho(
+                    Some(ElaborationStateChirho::type_universe_chirho()),
+                    SpanChirho::DUMMY_CHIRHO,
+                )
+                .unwrap();
+            let cutoff_chirho = state_chirho.next_variable_chirho;
+            let mark_chirho = state_chirho
+                .open_kind_guard_chirho(
+                    &[universal_chirho],
+                    cutoff_chirho,
+                    SpanChirho::DUMMY_CHIRHO,
+                )
+                .unwrap();
+            let target_chirho = if indirect_chirho {
+                let fresh_chirho = state_chirho
+                    .fresh_chirho(None, SpanChirho::DUMMY_CHIRHO)
+                    .unwrap();
+                state_chirho
+                    .unify_chirho(
+                        &TyChirho::VarChirho(outer_chirho),
+                        &TyChirho::VarChirho(fresh_chirho),
+                        SpanChirho::DUMMY_CHIRHO,
+                    )
+                    .unwrap();
+                fresh_chirho
+            } else {
+                outer_chirho
+            };
+            let error_chirho = state_chirho
+                .unify_chirho(
+                    &TyChirho::VarChirho(target_chirho),
+                    &TyChirho::VarChirho(universal_chirho),
+                    SpanChirho::DUMMY_CHIRHO,
+                )
+                .unwrap_err();
+            assert!(
+                error_chirho
+                    .message_chirho
+                    .contains("universal binder escaped")
+            );
+            state_chirho.close_kind_guard_chirho(mark_chirho);
+            state_chirho
+                .unify_chirho(
+                    &TyChirho::VarChirho(target_chirho),
+                    &ElaborationStateChirho::type_universe_chirho(),
+                    SpanChirho::DUMMY_CHIRHO,
+                )
+                .expect("closing the failed scope restores ordinary solving");
+        }
+    }
+}
+
+impl TypeElaboratorChirho<'_> {
+    fn with_universal_kind_scope_chirho<ResultChirho>(
+        &mut self,
+        variables_chirho: &[TyVarChirho],
+        cutoff_chirho: u32,
+        span_chirho: SpanChirho,
+        action_chirho: impl FnOnce(&mut Self) -> Result<ResultChirho, ElaborationErrorChirho>,
+    ) -> Result<ResultChirho, ElaborationErrorChirho> {
+        let added_chirho = self
+            .state_chirho
+            .open_rigid_scope_chirho(variables_chirho, span_chirho)?;
+        let guard_chirho = match self.state_chirho.open_kind_guard_chirho(
+            variables_chirho,
+            cutoff_chirho,
+            span_chirho,
+        ) {
+            Ok(guard_chirho) => guard_chirho,
+            Err(error_chirho) => {
+                self.state_chirho.close_rigid_scope_chirho(added_chirho);
+                return Err(error_chirho);
+            }
+        };
+        let result_chirho = action_chirho(self);
+        self.state_chirho.close_kind_guard_chirho(guard_chirho);
+        self.state_chirho.close_rigid_scope_chirho(added_chirho);
+        result_chirho
+    }
+
+    pub(super) fn check_universal_kind_argument_chirho(
+        &mut self,
+        syntax_chirho: &mut haskelujah_ast_chirho::ty_chirho::TypeChirho,
+        expected_chirho: TyChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<ElaboratedTypeChirho, ElaborationErrorChirho> {
+        self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+        if self.type_depth_chirho >= 128 {
+            return Err(Self::error_chirho(
+                "universal kind argument depth bound exhausted",
+                span_chirho,
+            ));
+        }
+        self.type_depth_chirho += 1;
+        let result_chirho = self.check_universal_kind_argument_inner_chirho(
+            syntax_chirho,
+            expected_chirho,
+            span_chirho,
+        );
+        self.type_depth_chirho -= 1;
+        result_chirho
+    }
+
+    fn check_universal_kind_argument_inner_chirho(
+        &mut self,
+        syntax_chirho: &mut haskelujah_ast_chirho::ty_chirho::TypeChirho,
+        expected_chirho: TyChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<ElaboratedTypeChirho, ElaborationErrorChirho> {
+        use haskelujah_ast_chirho::decl_chirho::TyVarChirho as AstTyVarChirho;
+        use haskelujah_ast_chirho::ty_chirho::TypeChirho;
+        let (vars_chirho, body_chirho) = match &expected_chirho {
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            }
+            | TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => (vars_chirho, body_chirho),
+            _ => {
+                return Err(Self::error_chirho(
+                    "universal kind check requires a checked quantified kind",
+                    span_chirho,
+                ));
+            }
+        };
+        let required_chirho = matches!(&expected_chirho, TyChirho::RequiredForallChirho { .. });
+        if matches!(syntax_chirho, TypeChirho::VarChirho(_)) {
+            let result_chirho = self.infer_type_chirho(syntax_chirho)?;
+            let kind_chirho = self
+                .state_chirho
+                .resolve_chirho(&result_chirho.kind_chirho, span_chirho)?;
+            if matches!(
+                kind_chirho,
+                TyChirho::ForallChirho { .. } | TyChirho::RequiredForallChirho { .. }
+            ) {
+                self.state_chirho
+                    .unify_chirho(&kind_chirho, &expected_chirho, span_chirho)?;
+                return Ok(ElaboratedTypeChirho {
+                    term_chirho: result_chirho.term_chirho,
+                    kind_chirho: expected_chirho,
+                });
+            }
+            return Err(Self::error_chirho(
+                "kind mismatch: an inferred or monomorphic variable cannot acquire a universal kind",
+                span_chirho,
+            ));
+        }
+        if let TypeChirho::ParenChirho { inner_chirho, .. } = syntax_chirho {
+            return self.check_universal_kind_argument_chirho(
+                inner_chirho,
+                expected_chirho,
+                span_chirho,
+            );
+        }
+        if matches!(syntax_chirho, TypeChirho::KindAnnotationChirho { .. }) {
+            let result_chirho = self.infer_type_chirho(syntax_chirho)?;
+            self.state_chirho.unify_chirho(
+                &result_chirho.kind_chirho,
+                &expected_chirho,
+                span_chirho,
+            )?;
+            return Ok(result_chirho);
+        }
+        let syntax_required_chirho =
+            matches!(syntax_chirho, TypeChirho::RequiredForallChirho { .. });
+        if let TypeChirho::ForallChirho {
+            vars_chirho: syntax_vars_chirho,
+            body_chirho: syntax_body_chirho,
+            ..
+        }
+        | TypeChirho::RequiredForallChirho {
+            vars_chirho: syntax_vars_chirho,
+            body_chirho: syntax_body_chirho,
+            ..
+        } = syntax_chirho
+        {
+            if required_chirho != syntax_required_chirho
+                || vars_chirho.len() != syntax_vars_chirho.len()
+            {
+                return Err(Self::error_chirho(
+                    "universal kind argument has different quantifier visibility or arity",
+                    span_chirho,
+                ));
+            }
+            return self.scoped_chirho(|this_chirho| {
+                let cutoff_chirho = this_chirho.state_chirho.next_variable_chirho;
+                let variables_chirho = this_chirho.bind_forall_chirho(syntax_vars_chirho)?;
+                let mut mapping_chirho = SubstChirho::empty_chirho();
+                for (source_chirho, actual_chirho) in vars_chirho.iter().zip(&variables_chirho) {
+                    mapping_chirho
+                        .insert_chirho(*source_chirho, TyChirho::VarChirho(*actual_chirho));
+                }
+                let result_chirho = this_chirho.with_universal_kind_scope_chirho(
+                    &variables_chirho,
+                    cutoff_chirho,
+                    span_chirho,
+                    |this_chirho| {
+                        for (source_chirho, actual_chirho) in
+                            vars_chirho.iter().zip(&variables_chirho)
+                        {
+                            let expected_kind_chirho = this_chirho
+                                .state_chirho
+                                .variable_kind_chirho(*source_chirho, span_chirho)?;
+                            let expected_kind_chirho =
+                                this_chirho.state_chirho.instantiate_term_chirho(
+                                    &expected_kind_chirho,
+                                    &mapping_chirho,
+                                    true,
+                                    span_chirho,
+                                )?;
+                            let actual_kind_chirho = this_chirho
+                                .state_chirho
+                                .variable_kind_chirho(*actual_chirho, span_chirho)?;
+                            this_chirho.state_chirho.unify_chirho(
+                                &actual_kind_chirho,
+                                &expected_kind_chirho,
+                                span_chirho,
+                            )?;
+                        }
+                        let kind_chirho = this_chirho.state_chirho.instantiate_term_chirho(
+                            body_chirho,
+                            &mapping_chirho,
+                            true,
+                            span_chirho,
+                        )?;
+                        this_chirho.infer_type_at_kind_chirho(syntax_body_chirho, &kind_chirho)
+                    },
+                )?;
+                Ok(ElaboratedTypeChirho {
+                    term_chirho: if required_chirho {
+                        TyChirho::RequiredForallChirho {
+                            vars_chirho: variables_chirho,
+                            body_chirho: Box::new(result_chirho.term_chirho),
+                        }
+                    } else {
+                        TyChirho::ForallChirho {
+                            vars_chirho: variables_chirho,
+                            body_chirho: Box::new(result_chirho.term_chirho),
+                        }
+                    },
+                    kind_chirho: this_chirho
+                        .state_chirho
+                        .copy_chirho(&expected_chirho, span_chirho)?,
+                })
+            });
+        }
+        if !matches!(
+            syntax_chirho,
+            TypeChirho::ConChirho(_) | TypeChirho::PromotedConChirho { .. }
+        ) {
+            return Err(Self::error_chirho(
+                "kind mismatch: a partially applied type cannot regain a universal kind",
+                span_chirho,
+            ));
+        }
+        let source_chirho = self.scheme_chirho(syntax_chirho)?.ok_or_else(|| {
+            Self::error_chirho(
+                "universal kind argument has no checked declaration telescope",
+                span_chirho,
+            )
+        })?;
+        if source_chirho
+            .binders_chirho
+            .iter()
+            .take_while(|binder_chirho| {
+                binder_chirho.visibility_chirho != TelescopeVisibilityChirho::RequiredChirho
+            })
+            .count()
+            != vars_chirho.len()
+        {
+            return Err(Self::error_chirho(
+                "kind mismatch: constructor universal prefix differs from the expected kind",
+                span_chirho,
+            ));
+        }
+        let cutoff_chirho = self.state_chirho.next_variable_chirho;
+        let result_chirho = self.with_universal_kind_scope_chirho(
+            vars_chirho,
+            cutoff_chirho,
+            span_chirho,
+            |this_chirho| this_chirho.infer_type_at_kind_chirho(syntax_chirho, body_chirho),
+        )?;
+        self.state_chirho
+            .charge_chirho(vars_chirho.len(), vars_chirho.len(), span_chirho)?;
+        let mut binders_chirho = Vec::with_capacity(vars_chirho.len());
+        for variable_chirho in vars_chirho {
+            let TypeChirho::VarChirho(name_chirho) =
+                self.surface_chirho(&TyChirho::VarChirho(*variable_chirho), span_chirho)?
+            else {
+                return Err(Self::error_chirho(
+                    "universal kind argument lost its variable producer",
+                    span_chirho,
+                ));
+            };
+            let specificity_chirho = self
+                .state_chirho
+                .source_specificity_chirho(*variable_chirho)
+                .ok_or_else(|| {
+                    Self::error_chirho("universal kind argument lost its specificity", span_chirho)
+                })?;
+            binders_chirho.push(AstTyVarChirho {
+                name_chirho,
+                kind_annotation_chirho: None,
+                visibility_chirho: if required_chirho {
+                    haskelujah_ast_chirho::decl_chirho::TyVarVisibilityChirho::VisibleChirho
+                } else {
+                    haskelujah_ast_chirho::decl_chirho::TyVarVisibilityChirho::InvisibleChirho
+                },
+                specificity_chirho,
+            });
+        }
+        let body_syntax_chirho = Box::new(std::mem::replace(
+            syntax_chirho,
+            TypeChirho::WildcardChirho { span_chirho },
+        ));
+        *syntax_chirho = if required_chirho {
+            TypeChirho::RequiredForallChirho {
+                vars_chirho: binders_chirho,
+                body_chirho: body_syntax_chirho,
+                span_chirho,
+            }
+        } else {
+            TypeChirho::ForallChirho {
+                vars_chirho: binders_chirho,
+                body_chirho: body_syntax_chirho,
+                span_chirho,
+            }
+        };
+        let annotation_chirho = self.state_chirho.instantiate_term_chirho(
+            &expected_chirho,
+            &SubstChirho::empty_chirho(),
+            true,
+            span_chirho,
+        )?;
+        let annotation_chirho = self.surface_chirho(&annotation_chirho, span_chirho)?;
+        let abstraction_chirho =
+            std::mem::replace(syntax_chirho, TypeChirho::WildcardChirho { span_chirho });
+        *syntax_chirho = TypeChirho::KindAnnotationChirho {
+            ty_chirho: Box::new(abstraction_chirho),
+            kind_chirho: Box::new(annotation_chirho),
+            span_chirho,
+        };
+        let variables_chirho = vars_chirho.clone();
+        Ok(ElaboratedTypeChirho {
+            term_chirho: if required_chirho {
+                TyChirho::RequiredForallChirho {
+                    vars_chirho: variables_chirho,
+                    body_chirho: Box::new(result_chirho.term_chirho),
+                }
+            } else {
+                TyChirho::ForallChirho {
+                    vars_chirho: variables_chirho,
+                    body_chirho: Box::new(result_chirho.term_chirho),
+                }
+            },
+            kind_chirho: expected_chirho,
+        })
     }
 }

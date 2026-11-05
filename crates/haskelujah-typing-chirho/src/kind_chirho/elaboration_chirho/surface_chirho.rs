@@ -6,6 +6,7 @@
 use super::*;
 use crate::subst_chirho::SubstChirho;
 use haskelujah_ast_chirho::decl_chirho::TyVarChirho as AstTyVarChirho;
+use haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho;
 use haskelujah_ast_chirho::name_chirho::{
     CompilerTypeConstructorChirho, NameChirho, RawNameChirho, TypeConstructorDeclarationChirho,
 };
@@ -25,6 +26,16 @@ impl TypeElaboratorChirho<'_> {
         let expected_chirho = self
             .state_chirho
             .resolve_chirho(expected_chirho, span_chirho)?;
+        if matches!(
+            &expected_chirho,
+            TyChirho::ForallChirho { .. } | TyChirho::RequiredForallChirho { .. }
+        ) {
+            return self.check_universal_kind_argument_chirho(
+                syntax_chirho,
+                expected_chirho,
+                span_chirho,
+            );
+        }
         let mut syntax_chirho = syntax_chirho;
         let mut parens_chirho = 0;
         while let TypeChirho::ParenChirho { inner_chirho, .. } = syntax_chirho {
@@ -355,7 +366,7 @@ impl TypeElaboratorChirho<'_> {
         Ok(variables_chirho)
     }
 
-    fn scheme_chirho(
+    pub(super) fn scheme_chirho(
         &mut self,
         head_chirho: &mut TypeChirho,
     ) -> Result<Option<Arc<DeclarationSchemeChirho>>, ElaborationErrorChirho> {
@@ -381,6 +392,15 @@ impl TypeElaboratorChirho<'_> {
                 }
                 if let Some(proof_chirho) = self.declaration_chirho(name_chirho)? {
                     let key_chirho = self.declaration_key_chirho(&proof_chirho, span_chirho)?;
+                    if matches!(
+                        proof_chirho.role_chirho,
+                        TypeConstructorRoleChirho::TypeFamilyChirho
+                            | TypeConstructorRoleChirho::DataFamilyChirho
+                    ) {
+                        name_chirho.set_family_key_chirho(
+                            self.state_chirho.name_chirho(&key_chirho, span_chirho)?,
+                        );
+                    }
                     name_chirho.set_type_constructor_chirho(Some(proof_chirho));
                     return Ok(self
                         .registry_chirho
@@ -518,12 +538,15 @@ impl TypeElaboratorChirho<'_> {
                 self.state_chirho
                     .copy_chirho(&binder_chirho.kind_chirho, span_chirho)?
             };
-            let kind_chirho = self.state_chirho.instantiate_term_chirho(
-                &copied_kind_chirho,
-                &rename_chirho,
-                scheme_chirho.owner_chirho.is_some(),
-                span_chirho,
-            )?;
+            let kind_chirho = self
+                .state_chirho
+                .instantiate_checked_declaration_term_chirho(
+                    &copied_kind_chirho,
+                    &rename_chirho,
+                    scheme_chirho.owner_chirho.is_some(),
+                    &scheme_chirho.local_binders_chirho,
+                    span_chirho,
+                )?;
             let TyChirho::VarChirho(variable_chirho) = rename_chirho
                 .lookup_chirho(&binder_chirho.variable_chirho)
                 .expect("freshened telescope variable")
@@ -551,12 +574,15 @@ impl TypeElaboratorChirho<'_> {
             self.state_chirho
                 .copy_chirho(&scheme_chirho.result_kind_chirho, span_chirho)?
         };
-        let result_kind_chirho = self.state_chirho.instantiate_term_chirho(
-            &result_kind_chirho,
-            &rename_chirho,
-            scheme_chirho.owner_chirho.is_some(),
-            span_chirho,
-        )?;
+        let result_kind_chirho = self
+            .state_chirho
+            .instantiate_checked_declaration_term_chirho(
+                &result_kind_chirho,
+                &rename_chirho,
+                scheme_chirho.owner_chirho.is_some(),
+                &scheme_chirho.local_binders_chirho,
+                span_chirho,
+            )?;
         Ok((
             binders_chirho,
             result_kind_chirho,
@@ -564,12 +590,14 @@ impl TypeElaboratorChirho<'_> {
                 .synonym_rhs_chirho
                 .as_ref()
                 .map(|rhs_chirho| {
-                    self.state_chirho.instantiate_term_chirho(
-                        rhs_chirho,
-                        &rename_chirho,
-                        scheme_chirho.owner_chirho.is_some(),
-                        span_chirho,
-                    )
+                    self.state_chirho
+                        .instantiate_checked_declaration_term_chirho(
+                            rhs_chirho,
+                            &rename_chirho,
+                            scheme_chirho.owner_chirho.is_some(),
+                            &scheme_chirho.local_binders_chirho,
+                            span_chirho,
+                        )
                 })
                 .transpose()?,
         ))

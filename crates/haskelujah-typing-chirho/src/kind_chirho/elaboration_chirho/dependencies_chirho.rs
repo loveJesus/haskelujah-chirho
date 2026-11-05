@@ -11,11 +11,16 @@ use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 use std::collections::{BTreeSet, HashMap};
 
+pub(super) struct DeclarationOrderChirho {
+    pub(super) groups_chirho: Vec<Vec<usize>>,
+    pub(super) aliases_chirho: Vec<usize>,
+}
+
 impl TypeElaboratorChirho<'_> {
     pub(super) fn declaration_groups_chirho(
         &mut self,
         module_chirho: &ModuleChirho,
-    ) -> Result<Vec<Vec<usize>>, ElaborationErrorChirho> {
+    ) -> Result<DeclarationOrderChirho, ElaborationErrorChirho> {
         let mut declarations_chirho = Vec::new();
         let mut indices_chirho = HashMap::new();
         let mut constructor_owners_chirho = HashMap::new();
@@ -101,7 +106,8 @@ impl TypeElaboratorChirho<'_> {
                 }
             }
         }
-        for group_chirho in crate::infer_chirho::dependency_groups_chirho(&aliases_chirho) {
+        let alias_groups_chirho = crate::infer_chirho::dependency_groups_chirho(&aliases_chirho);
+        for group_chirho in &alias_groups_chirho {
             if group_chirho.len() > 1
                 || group_chirho
                     .first()
@@ -113,8 +119,19 @@ impl TypeElaboratorChirho<'_> {
                 ));
             }
         }
-        let groups_chirho = crate::infer_chirho::dependency_groups_chirho(&adjacency_chirho);
-        Ok(groups_chirho
+        let aliases_chirho = alias_groups_chirho
+            .into_iter()
+            .flatten()
+            .filter_map(|node_chirho| {
+                let source_index_chirho = declarations_chirho[node_chirho];
+                matches!(
+                    module_chirho.decls_chirho[source_index_chirho],
+                    DeclChirho::TypeAliasDeclChirho { .. }
+                )
+                .then_some(source_index_chirho)
+            })
+            .collect();
+        let groups_chirho = crate::infer_chirho::dependency_groups_chirho(&adjacency_chirho)
             .into_iter()
             .map(|group_chirho| {
                 group_chirho
@@ -122,7 +139,11 @@ impl TypeElaboratorChirho<'_> {
                     .map(|node_chirho| declarations_chirho[node_chirho])
                     .collect()
             })
-            .collect())
+            .collect();
+        Ok(DeclarationOrderChirho {
+            groups_chirho,
+            aliases_chirho,
+        })
     }
 
     fn reference_chirho(

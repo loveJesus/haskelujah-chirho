@@ -23,6 +23,12 @@ pub struct DeclarationBinderChirho {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DeclarationLocalBinderChirho {
+    pub binder_chirho: DeclarationBinderChirho,
+    pub specificity_chirho: haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceDeclarationVariableChirho {
     /// Written declaration-header position, independent of hidden telescope slots.
     pub header_index_chirho: u32,
@@ -70,6 +76,8 @@ pub struct DeclarationSchemeChirho {
     pub declaration_chirho:
         Option<haskelujah_ast_chirho::name_chirho::TypeConstructorDeclarationChirho>,
     pub binders_chirho: Vec<DeclarationBinderChirho>,
+    /// Lexical forall binders nested in parameter kinds, result kind or RHS.
+    pub local_binders_chirho: Arc<[DeclarationLocalBinderChirho]>,
     /// Stable source quantifiers are mapped explicitly. Inferred binders can
     /// precede them, so a source index is never a typed telescope ordinal.
     pub source_variables_chirho: Vec<SourceDeclarationVariableChirho>,
@@ -77,6 +85,10 @@ pub struct DeclarationSchemeChirho {
     /// Only a type synonym owns a transparent RHS. Its telescope variables
     /// use exactly the same IDs as the kind and argument binders.
     pub synonym_rhs_chirho: Option<TyChirho>,
+    /// Producer-checked AST shares the canonical telescope and local forall
+    /// slots of the typed body. An importer never receives solver-owner IDs.
+    pub synonym_syntax_chirho:
+        Option<Arc<super::declaration_syntax_chirho::PublishedSynonymSyntaxChirho>>,
     pub visible_arity_chirho: usize,
     pub reduction_arity_chirho: usize,
     pub promoted_chirho: bool,
@@ -212,6 +224,7 @@ impl DeclarationSchemesChirho {
         &mut self,
         identity_chirho: &str,
         body_chirho: TyChirho,
+        syntax_chirho: Arc<super::declaration_syntax_chirho::PublishedSynonymSyntaxChirho>,
     ) -> Result<(), String> {
         let previous_chirho = self
             .definitions_chirho
@@ -224,6 +237,8 @@ impl DeclarationSchemesChirho {
         }
         let mut completed_chirho = previous_chirho.as_ref().clone();
         completed_chirho.synonym_rhs_chirho = Some(body_chirho);
+        completed_chirho.local_binders_chirho = syntax_chirho.binder_table_chirho();
+        completed_chirho.synonym_syntax_chirho = Some(syntax_chirho);
         validate_published_chirho(&completed_chirho)?;
         self.definitions_chirho.insert(
             completed_chirho.identity_chirho.clone(),
@@ -256,6 +271,8 @@ fn validate_published_chirho(scheme_chirho: &DeclarationSchemeChirho) -> Result<
     if scheme_chirho.owner_chirho.is_some() {
         return Err("unpublished declaration telescope".to_owned());
     }
+    // Validate bounded lexical structure before recursive free-variable helpers.
+    super::declaration_syntax_chirho::validate_declaration_scopes_chirho(scheme_chirho)?;
     let mut bound_chirho = std::collections::HashSet::new();
     for binder_chirho in &scheme_chirho.binders_chirho {
         if binder_chirho

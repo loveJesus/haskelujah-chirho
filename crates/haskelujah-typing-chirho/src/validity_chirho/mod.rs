@@ -75,18 +75,16 @@ pub fn check_module_type_validity_diagnostics_chirho(
 /// decides which extension (if any) is needed to license a `forall` or a
 /// context appearing there.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum TyPositionChirho {
-    /// The very top of a signature. Haskell2010 already allows a leading
-    /// `forall` and a leading context here.
-    TopChirho,
-    /// Nested beneath a function arrow — rank-N. Needs `RankNTypes`.
-    RankNChirho,
-    /// An argument of a type constructor, list, or tuple — impredicative.
-    /// Needs `ImpredicativeTypes`.
-    ImpredicativeChirho,
-    /// Kind syntax has its own semantic elaboration/visibility rules. Do not
-    /// apply the ordinary value-type rank/impredicativity licence to it.
-    KindChirho,
+struct TyPositionChirho(u8);
+
+impl TyPositionChirho {
+    const TOP_CHIRHO: Self = Self(0);
+    const RANK_N_CHIRHO: Self = Self(1);
+    const IMPREDICATIVE_CHIRHO: Self = Self(2);
+    const KIND_CHIRHO: Self = Self(3);
+    // Only leading forall nodes abstract over a checked universal kind.
+    // Applications in the body retain ordinary validity rules.
+    const KIND_ABSTRACTION_CHIRHO: Self = Self(4);
 }
 
 /// The synthetic class name the parser writes when a constraint shape did not
@@ -190,7 +188,7 @@ pub fn check_module_type_validity_chirho(module_chirho: &ModuleChirho) -> Vec<Va
             DeclChirho::TypeSigChirho { ty_chirho, .. } => {
                 walk_type_chirho(
                     ty_chirho,
-                    TyPositionChirho::TopChirho,
+                    TyPositionChirho::TOP_CHIRHO,
                     license_chirho,
                     &mut errors_chirho,
                 );
@@ -200,7 +198,7 @@ pub fn check_module_type_validity_chirho(module_chirho: &ModuleChirho) -> Vec<Va
                 // is rejected by GHC without RankNTypes.
                 walk_type_chirho(
                     rhs_chirho,
-                    TyPositionChirho::RankNChirho,
+                    TyPositionChirho::RANK_N_CHIRHO,
                     license_chirho,
                     &mut errors_chirho,
                 );
@@ -211,7 +209,7 @@ pub fn check_module_type_validity_chirho(module_chirho: &ModuleChirho) -> Vec<Va
                 for method_chirho in methods_chirho {
                     walk_type_chirho(
                         &method_chirho.ty_chirho,
-                        TyPositionChirho::TopChirho,
+                        TyPositionChirho::TOP_CHIRHO,
                         license_chirho,
                         &mut errors_chirho,
                     );
@@ -267,7 +265,7 @@ fn walk_con_decl_chirho(
             for (_, ty_chirho) in fields_chirho {
                 walk_type_chirho(
                     ty_chirho,
-                    TyPositionChirho::RankNChirho,
+                    TyPositionChirho::RANK_N_CHIRHO,
                     license_chirho,
                     errors_chirho,
                 );
@@ -291,7 +289,7 @@ fn walk_con_decl_chirho(
             };
             walk_type_chirho(
                 ty_chirho,
-                TyPositionChirho::TopChirho,
+                TyPositionChirho::TOP_CHIRHO,
                 license_chirho,
                 errors_chirho,
             );
@@ -320,7 +318,7 @@ fn walk_constraint_chirho(
             walk_constraint_chirho(constraint_chirho, license_chirho, errors_chirho);
             walk_type_chirho(
                 kind_chirho,
-                TyPositionChirho::KindChirho,
+                TyPositionChirho::KIND_CHIRHO,
                 license_chirho,
                 errors_chirho,
             );
@@ -352,7 +350,7 @@ fn walk_constraint_chirho(
             for arg_chirho in kind_args_chirho {
                 walk_type_chirho(
                     arg_chirho,
-                    TyPositionChirho::KindChirho,
+                    TyPositionChirho::KIND_CHIRHO,
                     license_chirho,
                     errors_chirho,
                 );
@@ -360,7 +358,7 @@ fn walk_constraint_chirho(
             for arg_chirho in args_chirho {
                 walk_type_chirho(
                     arg_chirho,
-                    TyPositionChirho::ImpredicativeChirho,
+                    TyPositionChirho::IMPREDICATIVE_CHIRHO,
                     license_chirho,
                     errors_chirho,
                 );
@@ -580,10 +578,20 @@ fn walk_type_chirho(
             kind_chirho,
             ..
         } => {
+            // A universally kinded argument is a kind abstraction. Its
+            // annotation is checked by the common elaborator before this pass.
+            let position_chirho = if matches!(
+                kind_chirho.as_ref(),
+                TypeChirho::ForallChirho { .. } | TypeChirho::RequiredForallChirho { .. }
+            ) {
+                TyPositionChirho::KIND_ABSTRACTION_CHIRHO
+            } else {
+                position_chirho
+            };
             walk_type_chirho(ty_chirho, position_chirho, license_chirho, errors_chirho);
             walk_type_chirho(
                 kind_chirho,
-                TyPositionChirho::KindChirho,
+                TyPositionChirho::KIND_CHIRHO,
                 license_chirho,
                 errors_chirho,
             );
@@ -596,7 +604,7 @@ fn walk_type_chirho(
             walk_type_chirho(fun_chirho, position_chirho, license_chirho, errors_chirho);
             walk_type_chirho(
                 arg_chirho,
-                TyPositionChirho::KindChirho,
+                TyPositionChirho::KIND_CHIRHO,
                 license_chirho,
                 errors_chirho,
             );
@@ -654,10 +662,10 @@ fn walk_type_chirho(
             for side_chirho in [arg_chirho, result_chirho] {
                 walk_type_chirho(
                     side_chirho,
-                    if position_chirho == TyPositionChirho::KindChirho {
-                        TyPositionChirho::KindChirho
+                    if position_chirho == TyPositionChirho::KIND_CHIRHO {
+                        TyPositionChirho::KIND_CHIRHO
                     } else {
-                        TyPositionChirho::RankNChirho
+                        TyPositionChirho::RANK_N_CHIRHO
                     },
                     license_chirho,
                     errors_chirho,
@@ -674,10 +682,10 @@ fn walk_type_chirho(
             walk_type_chirho(fun_chirho, position_chirho, license_chirho, errors_chirho);
             walk_type_chirho(
                 arg_chirho,
-                if position_chirho == TyPositionChirho::KindChirho {
-                    TyPositionChirho::KindChirho
+                if position_chirho == TyPositionChirho::KIND_CHIRHO {
+                    TyPositionChirho::KIND_CHIRHO
                 } else {
-                    TyPositionChirho::ImpredicativeChirho
+                    TyPositionChirho::IMPREDICATIVE_CHIRHO
                 },
                 license_chirho,
                 errors_chirho,
@@ -686,10 +694,10 @@ fn walk_type_chirho(
         TypeChirho::ListChirho { element_chirho, .. } => {
             walk_type_chirho(
                 element_chirho,
-                if position_chirho == TyPositionChirho::KindChirho {
-                    TyPositionChirho::KindChirho
+                if position_chirho == TyPositionChirho::KIND_CHIRHO {
+                    TyPositionChirho::KIND_CHIRHO
                 } else {
-                    TyPositionChirho::ImpredicativeChirho
+                    TyPositionChirho::IMPREDICATIVE_CHIRHO
                 },
                 license_chirho,
                 errors_chirho,
@@ -704,10 +712,10 @@ fn walk_type_chirho(
             for element_chirho in elements_chirho {
                 walk_type_chirho(
                     element_chirho,
-                    if position_chirho == TyPositionChirho::KindChirho {
-                        TyPositionChirho::KindChirho
+                    if position_chirho == TyPositionChirho::KIND_CHIRHO {
+                        TyPositionChirho::KIND_CHIRHO
                     } else {
-                        TyPositionChirho::ImpredicativeChirho
+                        TyPositionChirho::IMPREDICATIVE_CHIRHO
                     },
                     license_chirho,
                     errors_chirho,
@@ -734,9 +742,9 @@ fn report_if_unlicensed_chirho(
     errors_chirho: &mut Vec<ValidityErrorChirho>,
 ) {
     let needed_chirho = match position_chirho {
-        TyPositionChirho::TopChirho => None,
-        TyPositionChirho::RankNChirho if !license_chirho.rank_n_chirho => Some("RankNTypes"),
-        TyPositionChirho::ImpredicativeChirho if !license_chirho.impredicative_chirho => {
+        TyPositionChirho::TOP_CHIRHO => None,
+        TyPositionChirho::RANK_N_CHIRHO if !license_chirho.rank_n_chirho => Some("RankNTypes"),
+        TyPositionChirho::IMPREDICATIVE_CHIRHO if !license_chirho.impredicative_chirho => {
             Some("ImpredicativeTypes")
         }
         _ => None,

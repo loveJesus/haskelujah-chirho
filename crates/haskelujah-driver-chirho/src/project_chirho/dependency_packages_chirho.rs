@@ -559,12 +559,15 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
                 &infer_result_chirho,
                 &mut imported_types_chirho,
             );
-            imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
-                &module_chirho,
-                &iface_chirho,
-                &resolved_imported_type_synonyms_chirho,
-                &infer_result_chirho,
-            ));
+            imported_type_synonyms_chirho.extend(
+                exported_type_synonyms_from_module_chirho(
+                    &module_chirho,
+                    &iface_chirho,
+                    &resolved_imported_type_synonyms_chirho,
+                    &infer_result_chirho,
+                )
+                .map_err(|error_chirho| format!("{file_name_chirho}: {error_chirho}"))?,
+            );
             imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
             imported_class_env_chirho = infer_result_chirho.class_env_chirho.try_snapshot_chirho().map_err(|error_chirho| format!("{file_name_chirho}: class registry snapshot resource limit reached: {error_chirho:?}"))?;
             ifaces_chirho.push(iface_chirho);
@@ -718,12 +721,15 @@ pub(crate) fn compile_module_sources_with_extra_ifaces_chirho(
                 &infer_result_chirho,
                 &mut imported_types_chirho,
             );
-            imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
-                &module_chirho,
-                &iface_chirho,
-                &resolved_imported_type_synonyms_chirho,
-                &infer_result_chirho,
-            ));
+            imported_type_synonyms_chirho.extend(
+                exported_type_synonyms_from_module_chirho(
+                    &module_chirho,
+                    &iface_chirho,
+                    &resolved_imported_type_synonyms_chirho,
+                    &infer_result_chirho,
+                )
+                .map_err(|error_chirho| format!("{file_name_chirho}: {error_chirho}"))?,
+            );
             imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
             imported_class_env_chirho = infer_result_chirho.class_env_chirho.try_snapshot_chirho().map_err(|error_chirho| format!("{file_name_chirho}: class registry snapshot resource limit reached: {error_chirho:?}"))?;
             ifaces_chirho.push(iface_chirho);

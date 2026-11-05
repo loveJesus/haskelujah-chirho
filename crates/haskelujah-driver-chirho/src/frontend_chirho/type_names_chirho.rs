@@ -158,159 +158,245 @@ fn collect_type_constructor_names_chirho(
 }
 
 fn insert_type_synonym_with_module_alias_chirho(
-    exported_type_synonyms_chirho: &mut ImportedTypeSynonymsChirho,
-    module_name_chirho: &str,
-    alias_name_chirho: &str,
-    params_chirho: Vec<String>,
-    rhs_chirho: TypeChirho,
-) {
-    exported_type_synonyms_chirho.insert(
-        alias_name_chirho.to_string(),
-        (params_chirho.clone(), rhs_chirho.clone()),
-    );
-    exported_type_synonyms_chirho.insert(
-        format!("{module_name_chirho}.{alias_name_chirho}"),
-        (params_chirho, rhs_chirho),
-    );
+    exported_chirho: &mut ImportedTypeSynonymsChirho,
+    module_chirho: &str,
+    alias_chirho: &str,
+    parameters_chirho: &[String],
+    rhs_chirho: &TypeChirho,
+    transport_chirho: &mut ImportQualificationChirho<'_>,
+) -> Result<(), DiagnosticBundleChirho> {
+    let module_chirho = transport_chirho.key_chirho(module_chirho)?;
+    let alias_chirho = transport_chirho.key_chirho(alias_chirho)?;
+    let qualified_chirho =
+        transport_chirho.key_chirho(&format!("{module_chirho}.{alias_chirho}"))?;
+    // Both map entries are real copies and share one latched transport budget.
+    for key_chirho in [alias_chirho, qualified_chirho] {
+        let parameters_chirho = transport_chirho.parameters_chirho(parameters_chirho)?;
+        let rhs_chirho = transport_chirho.ast_chirho(rhs_chirho)?;
+        exported_chirho.insert(key_chirho, (parameters_chirho, rhs_chirho));
+    }
+    Ok(())
 }
 
 fn seed_transitive_type_synonyms_chirho(
-    exported_type_synonyms_chirho: &mut ImportedTypeSynonymsChirho,
-    module_name_chirho: &str,
+    exported_chirho: &mut ImportedTypeSynonymsChirho,
+    module_chirho: &str,
     rhs_chirho: &TypeChirho,
-    resolved_imported_type_synonyms_chirho: &ImportedTypeSynonymsChirho,
+    imported_chirho: &ImportedTypeSynonymsChirho,
     seen_chirho: &mut std::collections::HashSet<String>,
-) {
-    let mut referenced_names_chirho = std::collections::HashSet::new();
-    collect_type_constructor_names_chirho(rhs_chirho, &mut referenced_names_chirho);
-    for referenced_name_chirho in referenced_names_chirho {
-        let bare_name_chirho = referenced_name_chirho
-            .rsplit_once('.')
-            .map(|(_prefix_chirho, bare_name_chirho)| bare_name_chirho)
-            .unwrap_or(referenced_name_chirho.as_str())
-            .to_string();
-        if !seen_chirho.insert(bare_name_chirho.clone()) {
-            continue;
+    transport_chirho: &mut ImportQualificationChirho<'_>,
+) -> Result<(), DiagnosticBundleChirho> {
+    // This compatibility path is only for unknown metadata. Checked aliases
+    // retain their complete private dependency closure in the common catalogue.
+    let mut pending_chirho = vec![rhs_chirho];
+    while let Some(rhs_chirho) = pending_chirho.pop() {
+        haskelujah_ast_chirho::decl_chirho::check_type_projection_chirho(
+            rhs_chirho,
+            transport_chirho.budget_chirho,
+        )
+        .map_err(|_| {
+            synonym_export_failure_chirho(
+                "type synonym dependency transport resource bound exhausted",
+                rhs_chirho.span_chirho(),
+            )
+        })?;
+        let mut names_chirho = std::collections::HashSet::new();
+        collect_type_constructor_names_chirho(rhs_chirho, &mut names_chirho);
+        let mut names_chirho: Vec<_> = names_chirho.into_iter().collect();
+        names_chirho.sort();
+        for name_chirho in names_chirho {
+            let bare_chirho = name_chirho
+                .rsplit_once('.')
+                .map_or(name_chirho.as_str(), |(_, bare_chirho)| bare_chirho);
+            if !seen_chirho.insert(transport_chirho.key_chirho(bare_chirho)?) {
+                continue;
+            }
+            let qualified_chirho =
+                transport_chirho.key_chirho(&format!("{module_chirho}.{bare_chirho}"))?;
+            let Some((parameters_chirho, body_chirho)) = imported_chirho
+                .get(&name_chirho)
+                .or_else(|| imported_chirho.get(&qualified_chirho))
+                .or_else(|| imported_chirho.get(bare_chirho))
+            else {
+                continue;
+            };
+            insert_type_synonym_with_module_alias_chirho(
+                exported_chirho,
+                module_chirho,
+                bare_chirho,
+                parameters_chirho,
+                body_chirho,
+                transport_chirho,
+            )?;
+            pending_chirho.push(body_chirho);
         }
-        let candidate_keys_chirho = [
-            referenced_name_chirho.clone(),
-            format!("{module_name_chirho}.{bare_name_chirho}"),
-            bare_name_chirho.clone(),
-        ];
-        let Some((params_chirho, transitive_rhs_chirho)) = candidate_keys_chirho
-            .iter()
-            .find_map(|key_chirho| resolved_imported_type_synonyms_chirho.get(key_chirho))
-            .cloned()
-        else {
-            continue;
-        };
-        insert_type_synonym_with_module_alias_chirho(
-            exported_type_synonyms_chirho,
-            module_name_chirho,
-            &bare_name_chirho,
-            params_chirho,
-            transitive_rhs_chirho.clone(),
-        );
-        seed_transitive_type_synonyms_chirho(
-            exported_type_synonyms_chirho,
-            module_name_chirho,
-            &transitive_rhs_chirho,
-            resolved_imported_type_synonyms_chirho,
-            seen_chirho,
-        );
     }
+    Ok(())
+}
+
+fn synonym_export_failure_chirho(
+    message_chirho: &str,
+    span_chirho: haskelujah_span_chirho::SpanChirho,
+) -> DiagnosticBundleChirho {
+    let mut diagnostics_chirho = DiagnosticBundleChirho::default();
+    diagnostics_chirho.push_chirho(
+        haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+            haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
+            message_chirho,
+            span_chirho,
+        ),
+    );
+    diagnostics_chirho
 }
 
 pub(crate) fn exported_type_synonyms_from_module_chirho(
     module_chirho: &ModuleChirho,
     iface_chirho: &ModuleIfaceChirho,
-    resolved_imported_type_synonyms_chirho: &ImportedTypeSynonymsChirho,
-    infer_result_chirho: &InferResultChirho,
-) -> ImportedTypeSynonymsChirho {
-    let mut exported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
-    let mut local_type_alias_names_chirho = std::collections::HashSet::new();
-    let mut transitive_seen_chirho = std::collections::HashSet::new();
-    for decl_chirho in &module_chirho.decls_chirho {
-        if let DeclChirho::TypeAliasDeclChirho {
-            name_chirho,
-            type_vars_chirho,
-            rhs_chirho,
-            ..
-        } = decl_chirho
-        {
-            let alias_name_chirho = name_chirho.text_chirho().to_string();
-            local_type_alias_names_chirho.insert(alias_name_chirho.clone());
-            if iface_chirho
-                .exports_chirho
-                .types_chirho
-                .contains_key(&alias_name_chirho)
-            {
-                let exported_rhs_chirho = stamped_synonym_rhs_chirho(
-                    rhs_chirho,
-                    infer_result_chirho,
-                    &iface_chirho.name_chirho,
-                );
-                insert_type_synonym_with_module_alias_chirho(
-                    &mut exported_type_synonyms_chirho,
-                    &iface_chirho.name_chirho,
-                    &alias_name_chirho,
-                    type_vars_chirho
-                        .iter()
-                        .map(|ty_var_chirho| ty_var_chirho.text_chirho().to_string())
-                        .collect(),
-                    exported_rhs_chirho.clone(),
-                );
-                seed_transitive_type_synonyms_chirho(
-                    &mut exported_type_synonyms_chirho,
-                    &iface_chirho.name_chirho,
-                    &exported_rhs_chirho,
-                    resolved_imported_type_synonyms_chirho,
-                    &mut transitive_seen_chirho,
-                );
-            }
-        }
-    }
-    for exported_type_name_chirho in iface_chirho.exports_chirho.types_chirho.keys() {
-        if local_type_alias_names_chirho.contains(exported_type_name_chirho)
-            || exported_type_synonyms_chirho.contains_key(exported_type_name_chirho)
-        {
-            continue;
-        }
-        if let Some((params_chirho, rhs_chirho)) =
-            resolved_imported_type_synonyms_chirho.get(exported_type_name_chirho)
-        {
-            insert_type_synonym_with_module_alias_chirho(
-                &mut exported_type_synonyms_chirho,
-                &iface_chirho.name_chirho,
-                exported_type_name_chirho,
-                params_chirho.clone(),
-                rhs_chirho.clone(),
-            );
-            seed_transitive_type_synonyms_chirho(
-                &mut exported_type_synonyms_chirho,
-                &iface_chirho.name_chirho,
-                rhs_chirho,
-                resolved_imported_type_synonyms_chirho,
-                &mut transitive_seen_chirho,
-            );
-        }
-    }
-    exported_type_synonyms_chirho
+    imported_chirho: &ImportedTypeSynonymsChirho,
+    infer_chirho: &InferResultChirho,
+) -> Result<ImportedTypeSynonymsChirho, DiagnosticBundleChirho> {
+    let mut budget_chirho =
+        haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho();
+    exported_type_synonyms_with_budget_chirho(
+        module_chirho,
+        iface_chirho,
+        imported_chirho,
+        infer_chirho,
+        &mut budget_chirho,
+    )
 }
 
-fn stamped_synonym_rhs_chirho(
-    rhs_chirho: &TypeChirho,
-    infer_result_chirho: &InferResultChirho,
-    module_name_chirho: &str,
-) -> TypeChirho {
-    let mut exported_rhs_chirho = rhs_chirho.clone();
-    if let Some(scope_chirho) = infer_result_chirho.promotion_scope_chirho.as_deref() {
-        stamp_promotions_chirho(&mut exported_rhs_chirho, scope_chirho);
+pub(super) fn exported_type_synonyms_with_budget_chirho(
+    module_chirho: &ModuleChirho,
+    iface_chirho: &ModuleIfaceChirho,
+    imported_chirho: &ImportedTypeSynonymsChirho,
+    infer_chirho: &InferResultChirho,
+    budget_chirho: &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
+) -> Result<ImportedTypeSynonymsChirho, DiagnosticBundleChirho> {
+    let names_chirho = std::collections::HashSet::new();
+    let preferred_chirho = std::collections::HashMap::new();
+    let mut transport_chirho = ImportQualificationChirho {
+        iface_chirho: None,
+        type_names_chirho: &names_chirho,
+        qualifier_chirho: "",
+        safe_chirho: &names_chirho,
+        preferred_chirho: &preferred_chirho,
+        budget_chirho,
+        span_chirho: module_chirho.span_chirho,
+    };
+    let mut exported_chirho = ImportedTypeSynonymsChirho::new();
+    let mut seen_chirho = std::collections::HashSet::new();
+    let mut exports_chirho: Vec<_> = iface_chirho.exports_chirho.types_chirho.iter().collect();
+    exports_chirho.sort_by_key(|(name_chirho, _)| *name_chirho);
+    for (name_chirho, entry_chirho) in exports_chirho {
+        transport_chirho.key_chirho(name_chirho)?;
+        if let Some(declaration_chirho) = &entry_chirho.declaration_chirho {
+            if declaration_chirho.role_chirho
+                != haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho::TypeSynonymChirho
+            {
+                continue;
+            }
+            let key_chirho = declaration_chirho.type_key_chirho();
+            let schema_chirho = infer_chirho
+                .type_families_chirho
+                .declaration_schemes_chirho()
+                .get_chirho(&key_chirho)
+                .ok_or_else(|| {
+                    synonym_export_failure_chirho(
+                        "checked exported synonym has no declaration telescope",
+                        entry_chirho.span_chirho,
+                    )
+                })?;
+            let syntax_chirho = schema_chirho
+                .synonym_syntax_chirho
+                .as_ref()
+                .filter(|_| schema_chirho.owner_chirho.is_none() && !schema_chirho.held_chirho)
+                .ok_or_else(|| {
+                    synonym_export_failure_chirho(
+                        "checked exported synonym has no canonical producer syntax",
+                        entry_chirho.span_chirho,
+                    )
+                })?;
+            let parameters_chirho = syntax_chirho
+                .parameters_chirho()
+                .iter()
+                .map(|parameter_chirho| transport_chirho.key_chirho(parameter_chirho.text_chirho()))
+                .collect::<Result<Vec<_>, _>>()?;
+            insert_type_synonym_with_module_alias_chirho(
+                &mut exported_chirho,
+                &iface_chirho.name_chirho,
+                name_chirho,
+                &parameters_chirho,
+                syntax_chirho.rhs_chirho(),
+                &mut transport_chirho,
+            )?;
+            continue;
+        }
+        let local_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .find_map(|declaration_chirho| {
+                if let DeclChirho::TypeAliasDeclChirho {
+                    name_chirho: local_chirho,
+                    type_vars_chirho,
+                    rhs_chirho,
+                    ..
+                } = declaration_chirho
+                {
+                    (local_chirho.text_chirho() == name_chirho)
+                        .then_some((type_vars_chirho, rhs_chirho))
+                } else {
+                    None
+                }
+            });
+        if let Some((parameters_chirho, rhs_chirho)) = local_chirho {
+            let parameters_chirho = parameters_chirho
+                .iter()
+                .map(|parameter_chirho| transport_chirho.key_chirho(parameter_chirho.text_chirho()))
+                .collect::<Result<Vec<_>, _>>()?;
+            let mut rhs_chirho = transport_chirho.ast_chirho(rhs_chirho)?;
+            if let Some(scope_chirho) = infer_chirho.promotion_scope_chirho.as_deref() {
+                stamp_promotions_chirho(&mut rhs_chirho, scope_chirho);
+            }
+            stamp_exported_family_references_chirho(
+                &mut rhs_chirho,
+                infer_chirho,
+                &iface_chirho.name_chirho,
+            );
+            insert_type_synonym_with_module_alias_chirho(
+                &mut exported_chirho,
+                &iface_chirho.name_chirho,
+                name_chirho,
+                &parameters_chirho,
+                &rhs_chirho,
+                &mut transport_chirho,
+            )?;
+            seed_transitive_type_synonyms_chirho(
+                &mut exported_chirho,
+                &iface_chirho.name_chirho,
+                &rhs_chirho,
+                imported_chirho,
+                &mut seen_chirho,
+                &mut transport_chirho,
+            )?;
+        } else if let Some((parameters_chirho, rhs_chirho)) = imported_chirho.get(name_chirho) {
+            insert_type_synonym_with_module_alias_chirho(
+                &mut exported_chirho,
+                &iface_chirho.name_chirho,
+                name_chirho,
+                parameters_chirho,
+                rhs_chirho,
+                &mut transport_chirho,
+            )?;
+            seed_transitive_type_synonyms_chirho(
+                &mut exported_chirho,
+                &iface_chirho.name_chirho,
+                rhs_chirho,
+                imported_chirho,
+                &mut seen_chirho,
+                &mut transport_chirho,
+            )?;
+        }
     }
-    stamp_exported_family_references_chirho(
-        &mut exported_rhs_chirho,
-        infer_result_chirho,
-        module_name_chirho,
-    );
-    exported_rhs_chirho
+    Ok(exported_chirho)
 }

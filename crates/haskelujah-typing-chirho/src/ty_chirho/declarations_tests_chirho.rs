@@ -18,6 +18,8 @@ fn header_chirho(identity_chirho: &str) -> DeclarationSchemeChirho {
         source_variables_chirho: Vec::new(),
         result_kind_chirho: TyChirho::ConChirho("TypeChirho".to_owned()),
         synonym_rhs_chirho: None,
+        synonym_syntax_chirho: None,
+        local_binders_chirho: std::sync::Arc::from([]),
         visible_arity_chirho: 0,
         reduction_arity_chirho: 0,
         promoted_chirho: false,
@@ -188,4 +190,43 @@ fn associated_owner_and_default_slots_are_validated_before_publication_chirho() 
             .association_chirho,
         valid_chirho
     );
+}
+
+#[test]
+fn local_binder_kinds_require_preceding_lexical_owners_chirho() {
+    use super::DeclarationLocalBinderChirho;
+    for invalid_chirho in [None, Some(TyVarChirho(1)), Some(TyVarChirho(2))] {
+        let mut schema_chirho = header_chirho("localScopeChirho");
+        schema_chirho.result_kind_chirho = TyChirho::ForallChirho {
+            vars_chirho: vec![TyVarChirho(1), TyVarChirho(2)],
+            body_chirho: Box::new(TyChirho::VarChirho(TyVarChirho(2))),
+        };
+        schema_chirho.local_binders_chirho = std::sync::Arc::from([
+            DeclarationLocalBinderChirho {
+                binder_chirho: DeclarationBinderChirho {
+                    variable_chirho: TyVarChirho(1),
+                    kind_chirho: invalid_chirho
+                        .map_or_else(|| TyChirho::ConChirho("Type".into()), TyChirho::VarChirho),
+                    visibility_chirho: TelescopeVisibilityChirho::SpecifiedChirho,
+                },
+                specificity_chirho:
+                    haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho,
+            },
+            DeclarationLocalBinderChirho {
+                binder_chirho: DeclarationBinderChirho {
+                    variable_chirho: TyVarChirho(2),
+                    kind_chirho: TyChirho::VarChirho(TyVarChirho(1)),
+                    visibility_chirho: TelescopeVisibilityChirho::SpecifiedChirho,
+                },
+                specificity_chirho:
+                    haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho,
+            },
+        ]);
+        let result_chirho = DeclarationSchemesChirho::default().insert_chirho(schema_chirho);
+        assert_eq!(
+            result_chirho.is_ok(),
+            invalid_chirho.is_none(),
+            "self/forward kinds must refuse; preceding dependent kinds must publish: {result_chirho:?}"
+        );
+    }
 }

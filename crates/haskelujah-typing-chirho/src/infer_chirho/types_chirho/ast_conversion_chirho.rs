@@ -40,32 +40,42 @@ impl InferCtxChirho {
                 declaration_chirho,
                 index_chirho,
             }) => {
-                let source_chirho = name_chirho.type_variable_chirho().unwrap();
-                let proven_chirho = self
+                let schema_chirho = self
                     .type_families_chirho
                     .declaration_schemes_chirho()
-                    .get_chirho(declaration_chirho)
-                    .is_some_and(|scheme_chirho| {
-                        scheme_chirho
-                            .source_variables_chirho
-                            .iter()
-                            .any(|mapping_chirho| &mapping_chirho.source_chirho == source_chirho)
-                    });
-                if proven_chirho {
-                    let key_chirho = format!(
-                        "%quantifier:{}:{declaration_chirho}:{index_chirho}",
-                        declaration_chirho.len()
-                    );
+                    .get_chirho(declaration_chirho);
+                let top_chirho = schema_chirho.is_some_and(|schema_chirho| {
+                    schema_chirho
+                        .binders_chirho
+                        .iter()
+                        .any(|binder_chirho| binder_chirho.variable_chirho.0 == *index_chirho)
+                });
+                let local_chirho = schema_chirho.is_some_and(|schema_chirho| {
+                    schema_chirho
+                        .local_binders_chirho
+                        .iter()
+                        .any(|record_chirho| {
+                            record_chirho.binder_chirho.variable_chirho.0 == *index_chirho
+                        })
+                });
+                let key_chirho = format!(
+                    "%quantifier:{}:{declaration_chirho}:{index_chirho}",
+                    declaration_chirho.len()
+                );
+                if top_chirho || local_chirho {
                     if let Some(variable_chirho) = variables_chirho.get(&key_chirho) {
                         return *variable_chirho;
                     }
-                    let variable_chirho = TyVarChirho(self.next_var_chirho);
-                    self.next_var_chirho += 1;
-                    variables_chirho.insert(key_chirho, variable_chirho);
-                    variable_chirho
-                } else {
-                    self.invalid_surface_variable_chirho(name_chirho)
+                    // Only the published head telescope is implicitly opened.
+                    // A local forall occurrence needs its lexical binder action.
+                    if top_chirho {
+                        let variable_chirho = TyVarChirho(self.next_var_chirho);
+                        self.next_var_chirho += 1;
+                        variables_chirho.insert(key_chirho, variable_chirho);
+                        return variable_chirho;
+                    }
                 }
+                self.invalid_surface_variable_chirho(name_chirho)
             }
             Some(_) => self.invalid_surface_variable_chirho(name_chirho),
             None => {
@@ -96,17 +106,27 @@ impl InferCtxChirho {
             index_chirho,
         }) = name_chirho.type_variable_chirho()
         {
-            let key_chirho = format!(
-                "%quantifier:{}:{declaration_chirho}:{index_chirho}",
-                declaration_chirho.len()
-            );
-            let previous_chirho = variables_chirho.remove(&key_chirho);
-            let variable_chirho = self.surface_variable_chirho(name_chirho, variables_chirho);
-            if let Some(previous_chirho) = previous_chirho {
-                variables_chirho.insert(key_chirho, previous_chirho);
-            } else {
-                variables_chirho.remove(&key_chirho);
+            let proven_chirho = self
+                .type_families_chirho
+                .declaration_schemes_chirho()
+                .get_chirho(declaration_chirho)
+                .is_some_and(|schema_chirho| {
+                    schema_chirho
+                        .binders_chirho
+                        .iter()
+                        .any(|binder_chirho| binder_chirho.variable_chirho.0 == *index_chirho)
+                        || schema_chirho
+                            .local_binders_chirho
+                            .iter()
+                            .any(|record_chirho| {
+                                record_chirho.binder_chirho.variable_chirho.0 == *index_chirho
+                            })
+                });
+            if !proven_chirho {
+                return self.invalid_surface_variable_chirho(name_chirho);
             }
+            let variable_chirho = TyVarChirho(self.next_var_chirho);
+            self.next_var_chirho += 1;
             return variable_chirho;
         }
         let previous_chirho = variables_chirho.get(name_chirho.text_chirho()).copied();
@@ -123,11 +143,13 @@ impl InferCtxChirho {
         &mut self,
         name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
     ) -> TyVarChirho {
-        self.non_deferrable_diagnostics_chirho
-            .push_chirho(DiagnosticChirho::error_chirho(
+        self.non_deferrable_diagnostics_chirho.push_chirho(
+            DiagnosticChirho::error_with_code_chirho(
+                ErrorCodeChirho::error_chirho(300),
                 "foreign or unbound canonical type variable at the kind/type inference boundary",
                 name_chirho.span_chirho(),
-            ));
+            ),
+        );
         let variable_chirho = TyVarChirho(self.next_var_chirho);
         self.next_var_chirho += 1;
         variable_chirho

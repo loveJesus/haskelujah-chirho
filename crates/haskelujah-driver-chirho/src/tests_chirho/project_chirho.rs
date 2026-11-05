@@ -1285,12 +1285,15 @@ treeWordSizeChirho = wordSize\n",
                     &ifaces_chirho,
                 )
                 .expect("small source interface fixture fits constructor projection budget");
-                imported_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
-                    &frontend_result_chirho.module_chirho,
-                    &iface_chirho,
-                    &imported_synonyms_chirho,
-                    &frontend_result_chirho.infer_result_chirho,
-                ));
+                imported_synonyms_chirho.extend(
+                    exported_type_synonyms_from_module_chirho(
+                        &frontend_result_chirho.module_chirho,
+                        &iface_chirho,
+                        &imported_synonyms_chirho,
+                        &frontend_result_chirho.infer_result_chirho,
+                    )
+                    .expect("bounded checked synonym export"),
+                );
                 ifaces_chirho.push(iface_chirho);
             }
         }
@@ -1453,12 +1456,15 @@ treeWordSizeChirho = wordSize\n",
                     &ifaces_chirho,
                 )
                 .expect("small source interface fixture fits constructor projection budget");
-                imported_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
-                    &frontend_result_chirho.module_chirho,
-                    &iface_chirho,
-                    &imported_synonyms_chirho,
-                    &frontend_result_chirho.infer_result_chirho,
-                ));
+                imported_synonyms_chirho.extend(
+                    exported_type_synonyms_from_module_chirho(
+                        &frontend_result_chirho.module_chirho,
+                        &iface_chirho,
+                        &imported_synonyms_chirho,
+                        &frontend_result_chirho.infer_result_chirho,
+                    )
+                    .expect("bounded checked synonym export"),
+                );
                 ifaces_chirho.push(iface_chirho);
             }
         }

@@ -10,6 +10,7 @@
 use haskelujah_ast_chirho::promotion_chirho::PromotedKeyChirho;
 use std::fmt;
 
+pub mod declaration_syntax_chirho;
 pub mod declarations_chirho;
 
 /// Multiplicity for LinearTypes: tracks whether a function arrow is linear or unrestricted.

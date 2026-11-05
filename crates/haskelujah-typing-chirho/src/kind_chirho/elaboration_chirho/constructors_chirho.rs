@@ -14,8 +14,19 @@ use haskelujah_ast_chirho::name_chirho::{NameChirho, TypeConstructorRoleChirho};
 /// including applications of arrows in the parent's result kind.
 #[derive(Debug, Clone)]
 pub(super) enum ConstructorResultOriginChirho {
-    ParentHeaderTemplateChirho { parent_chirho: Arc<str> },
-    CheckedSignatureApplicationChirho { parent_chirho: Arc<str> },
+    ParentHeaderTemplateChirho {
+        parent_chirho: Arc<str>,
+    },
+    SignatureApplicationChirho {
+        parent_chirho: Arc<str>,
+        checking_chirho: SignatureCheckingChirho,
+    },
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) enum SignatureCheckingChirho {
+    ProvisionalChirho,
+    CompleteChirho,
 }
 
 impl TypeElaboratorChirho<'_> {
@@ -36,12 +47,22 @@ impl TypeElaboratorChirho<'_> {
                 )
             })?;
         let (parent_chirho, checked_chirho) = match origin_chirho {
+            ConstructorResultOriginChirho::SignatureApplicationChirho {
+                checking_chirho: SignatureCheckingChirho::ProvisionalChirho,
+                ..
+            } => {
+                return Err(Self::error_chirho(
+                    "GADT signature was not checked against its published parent telescope",
+                    span_chirho,
+                ));
+            }
             ConstructorResultOriginChirho::ParentHeaderTemplateChirho { parent_chirho } => {
                 (parent_chirho, false)
             }
-            ConstructorResultOriginChirho::CheckedSignatureApplicationChirho { parent_chirho } => {
-                (parent_chirho, true)
-            }
+            ConstructorResultOriginChirho::SignatureApplicationChirho {
+                parent_chirho,
+                checking_chirho: SignatureCheckingChirho::CompleteChirho,
+            } => (parent_chirho, true),
         };
         let mut head_chirho = term_chirho;
         while let TyChirho::AppChirho(function_chirho, _) = head_chirho {
@@ -166,6 +187,8 @@ impl TypeElaboratorChirho<'_> {
         &mut self,
         module_chirho: &ModuleChirho,
     ) -> Result<(), ElaborationErrorChirho> {
+        let mut snapshot_budget_chirho =
+            haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho();
         for declaration_chirho in &module_chirho.decls_chirho {
             let (name_chirho, constructors_chirho) = match declaration_chirho {
                 DeclChirho::DataDeclChirho {
@@ -275,13 +298,37 @@ impl TypeElaboratorChirho<'_> {
                         source_variables_chirho: Vec::new(),
                         result_kind_chirho,
                         synonym_rhs_chirho: None,
+                        synonym_syntax_chirho: None,
+                        local_binders_chirho: std::sync::Arc::from([]),
                         promoted_chirho: true,
                         held_chirho: false,
                     });
-                self.declaration_variables_chirho
+                let written_signature_chirho = if let ConDeclChirho::GadtChirho {
+                    signature_chirho,
+                    ..
+                } = constructor_chirho
+                {
+                    haskelujah_ast_chirho::decl_chirho::check_projection_chirho(
+                        signature_chirho,
+                        &mut snapshot_budget_chirho,
+                        1,
+                    )
+                    .map_err(|_| {
+                        Self::error_chirho(
+                            "GADT written signature snapshot resource bound exhausted",
+                            span_chirho,
+                        )
+                    })?;
+                    Some(signature_chirho.clone())
+                } else {
+                    None
+                };
+                let variables_chirho = self
+                    .declaration_variables_chirho
                     .entry(key_chirho)
-                    .or_default()
-                    .constructor_result_origin_chirho =
+                    .or_default();
+                variables_chirho.written_signature_chirho = written_signature_chirho;
+                variables_chirho.constructor_result_origin_chirho =
                     Some(ConstructorResultOriginChirho::ParentHeaderTemplateChirho {
                         parent_chirho: parent_key_chirho.clone(),
                     });
@@ -290,13 +337,80 @@ impl TypeElaboratorChirho<'_> {
         Ok(())
     }
 
+    pub(super) fn replay_gadt_constructor_chirho(
+        &mut self,
+        constructor_chirho: &mut ConDeclChirho,
+        parent_chirho: &str,
+    ) -> Result<(), ElaborationErrorChirho> {
+        let ConDeclChirho::GadtChirho {
+            name_chirho,
+            signature_chirho,
+            ..
+        } = constructor_chirho
+        else {
+            return Ok(());
+        };
+        let Some(key_chirho) = self.constructor_key_chirho(name_chirho)? else {
+            return Ok(());
+        };
+        let original_chirho = self
+            .declaration_variables_chirho
+            .get_mut(&key_chirho)
+            .and_then(|variables_chirho| variables_chirho.written_signature_chirho.take())
+            .ok_or_else(|| {
+                Self::error_chirho(
+                    "GADT replay lost its written signature producer",
+                    name_chirho.span_chirho(),
+                )
+            })?;
+        *signature_chirho = original_chirho;
+        self.elaborate_constructor_chirho(constructor_chirho, parent_chirho, &mut Vec::new())
+    }
+
     pub(super) fn elaborate_constructor_chirho(
         &mut self,
         constructor_chirho: &mut ConDeclChirho,
         parent_key_chirho: &str,
         keys_chirho: &mut Vec<Arc<str>>,
     ) -> Result<(), ElaborationErrorChirho> {
-        self.scoped_chirho(|this_chirho| {
+        let constructor_span_chirho = match &*constructor_chirho {
+            ConDeclChirho::OrdinaryChirho { name_chirho, .. }
+            | ConDeclChirho::RecordChirho { name_chirho, .. }
+            | ConDeclChirho::GadtChirho { name_chirho, .. } => name_chirho.span_chirho(),
+        };
+        let mut universals_chirho = std::collections::BTreeSet::new();
+        if matches!(constructor_chirho, ConDeclChirho::GadtChirho { .. })
+            && let Some(parent_chirho) = self
+                .registry_chirho
+                .declaration_schemes_chirho()
+                .get_chirho(parent_key_chirho)
+                .cloned()
+                .filter(|parent_chirho| parent_chirho.owner_chirho.is_some())
+        {
+            for binder_chirho in &parent_chirho.binders_chirho {
+                let kind_chirho = self
+                    .state_chirho
+                    .resolve_chirho(&binder_chirho.kind_chirho, constructor_span_chirho)?;
+                for variable_chirho in kind_chirho.free_vars_chirho() {
+                    if self
+                        .state_chirho
+                        .source_specificity_chirho(variable_chirho)
+                        .is_some()
+                        && !parent_chirho
+                            .binders_chirho
+                            .iter()
+                            .any(|binder_chirho| binder_chirho.variable_chirho == variable_chirho)
+                    {
+                        universals_chirho.insert(variable_chirho);
+                    }
+                }
+            }
+        }
+        let universals_chirho = universals_chirho.into_iter().collect::<Vec<_>>();
+        let rigid_chirho = self
+            .state_chirho
+            .open_rigid_scope_chirho(&universals_chirho, constructor_span_chirho)?;
+        let result_chirho = self.scoped_chirho(|this_chirho| {
             let name_chirho = match constructor_chirho {
                 ConDeclChirho::OrdinaryChirho { name_chirho, .. }
                 | ConDeclChirho::RecordChirho { name_chirho, .. }
@@ -455,15 +569,26 @@ impl TypeElaboratorChirho<'_> {
                         parent_key_chirho.len() + 1,
                         span_chirho,
                     )?;
+                    let parent_checked_chirho = this_chirho
+                        .registry_chirho
+                        .declaration_schemes_chirho()
+                        .get_chirho(parent_key_chirho)
+                        .is_some_and(|parent_chirho| parent_chirho.owner_chirho.is_none());
                     this_chirho
                         .declaration_variables_chirho
                         .entry(key_chirho.clone())
                         .or_default()
-                        .constructor_result_origin_chirho = Some(
-                        ConstructorResultOriginChirho::CheckedSignatureApplicationChirho {
+                        .constructor_result_origin_chirho = Some(if parent_checked_chirho {
+                        ConstructorResultOriginChirho::SignatureApplicationChirho {
                             parent_chirho: Arc::from(parent_key_chirho),
-                        },
-                    );
+                            checking_chirho: SignatureCheckingChirho::CompleteChirho,
+                        }
+                    } else {
+                        ConstructorResultOriginChirho::SignatureApplicationChirho {
+                            parent_chirho: Arc::from(parent_key_chirho),
+                            checking_chirho: SignatureCheckingChirho::ProvisionalChirho,
+                        }
+                    });
                     scheme_chirho.result_kind_chirho = result_chirho;
                     scheme_chirho.binders_chirho.retain(|binder_chirho| {
                         binder_chirho.visibility_chirho == TelescopeVisibilityChirho::RequiredChirho
@@ -482,6 +607,8 @@ impl TypeElaboratorChirho<'_> {
                 keys_chirho.push(key_chirho);
             }
             Ok(())
-        })
+        });
+        self.state_chirho.close_rigid_scope_chirho(rigid_chirho);
+        result_chirho
     }
 }

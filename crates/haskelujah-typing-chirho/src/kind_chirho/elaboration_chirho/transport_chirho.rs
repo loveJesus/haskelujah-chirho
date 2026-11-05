@@ -21,6 +21,10 @@ impl TypeElaboratorChirho<'_> {
             .saturating_add(name_chirho.qualifier_chirho().map_or(0, str::len))
             .saturating_add(name_chirho.family_key_chirho().map_or(0, str::len))
             .saturating_add(1);
+        if let Some(promotion_chirho) = name_chirho.promotion_chirho() {
+            weight_chirho =
+                weight_chirho.saturating_add(promotion_chirho.key_chirho().as_str_chirho().len());
+        }
         if let Some(declaration_chirho) = name_chirho.type_constructor_chirho()
             && let TypeConstructorIdentityChirho::SourceChirho {
                 defining_module_chirho,
@@ -149,7 +153,26 @@ impl TypeElaboratorChirho<'_> {
         term_chirho: &TyChirho,
         span_chirho: SpanChirho,
     ) -> Result<TypeChirho, ElaborationErrorChirho> {
+        self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+        if self.type_depth_chirho >= 128 {
+            return Err(Self::error_chirho(
+                "kind syntax projection depth bound exhausted",
+                span_chirho,
+            ));
+        }
+        self.type_depth_chirho += 1;
+        let result_chirho = self.surface_inner_chirho(term_chirho, span_chirho);
+        self.type_depth_chirho -= 1;
+        result_chirho
+    }
+
+    fn surface_inner_chirho(
+        &mut self,
+        term_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<TypeChirho, ElaborationErrorChirho> {
         let term_chirho = self.state_chirho.resolve_chirho(term_chirho, span_chirho)?;
+        let required_forall_chirho = matches!(&term_chirho, TyChirho::RequiredForallChirho { .. });
         Ok(match term_chirho {
             TyChirho::VarChirho(variable_chirho) => {
                 self.state_chirho.charge_chirho(32, 32, span_chirho)?;
@@ -243,12 +266,236 @@ impl TypeElaboratorChirho<'_> {
                 element_chirho: Box::new(self.surface_chirho(&element_chirho, span_chirho)?),
                 span_chirho,
             },
-            TyChirho::QualChirho { .. }
-            | TyChirho::ForallChirho { .. }
-            | TyChirho::RequiredForallChirho { .. }
-            | TyChirho::ForallVarChirho(_) => {
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            }
+            | TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
+                let required_chirho = required_forall_chirho;
+                self.state_chirho.charge_chirho(
+                    vars_chirho.len(),
+                    vars_chirho.len(),
+                    span_chirho,
+                )?;
+                let mut binders_chirho = Vec::with_capacity(vars_chirho.len());
+                for variable_chirho in vars_chirho {
+                    let TypeChirho::VarChirho(name_chirho) =
+                        self.surface_chirho(&TyChirho::VarChirho(variable_chirho), span_chirho)?
+                    else {
+                        return Err(Self::error_chirho(
+                            "universal kind projection lost its checked variable",
+                            span_chirho,
+                        ));
+                    };
+                    let kind_chirho = self
+                        .state_chirho
+                        .variable_kind_chirho(variable_chirho, span_chirho)?;
+                    let kind_chirho = self.surface_chirho(&kind_chirho, span_chirho)?;
+                    let specificity_chirho = self
+                        .state_chirho
+                        .source_specificity_chirho(variable_chirho)
+                        .ok_or_else(|| {
+                            Self::error_chirho(
+                                "universal kind projection lost its specificity",
+                                span_chirho,
+                            )
+                        })?;
+                    binders_chirho.push(haskelujah_ast_chirho::decl_chirho::TyVarChirho { name_chirho, kind_annotation_chirho: Some(Box::new(kind_chirho)), visibility_chirho: if required_chirho { haskelujah_ast_chirho::decl_chirho::TyVarVisibilityChirho::VisibleChirho } else { haskelujah_ast_chirho::decl_chirho::TyVarVisibilityChirho::InvisibleChirho }, specificity_chirho });
+                }
+                let body_chirho = Box::new(self.surface_chirho(&body_chirho, span_chirho)?);
+                if required_chirho {
+                    TypeChirho::RequiredForallChirho {
+                        vars_chirho: binders_chirho,
+                        body_chirho,
+                        span_chirho,
+                    }
+                } else {
+                    TypeChirho::ForallChirho {
+                        vars_chirho: binders_chirho,
+                        body_chirho,
+                        span_chirho,
+                    }
+                }
+            }
+            TyChirho::QualChirho { .. } | TyChirho::ForallVarChirho(_) => {
                 return Err(Self::error_chirho(
                     "a quantified or rigid kind escaped its declaration telescope",
+                    span_chirho,
+                ));
+            }
+        })
+    }
+}
+
+impl TypeElaboratorChirho<'_> {
+    /// Project an already canonical solver solution without reinterpreting its
+    /// slots as this module's owner IDs. Hidden prefix syntax follows the same
+    /// checked telescope used by elaboration and synonym reduction.
+    pub(super) fn canonical_surface_chirho(
+        &mut self,
+        term_chirho: &TyChirho,
+        identity_chirho: &Arc<str>,
+        allowed_chirho: &std::collections::HashSet<TyVarChirho>,
+        span_chirho: SpanChirho,
+        depth_chirho: usize,
+    ) -> Result<TypeChirho, ElaborationErrorChirho> {
+        self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+        if depth_chirho > 128 {
+            return Err(Self::error_chirho(
+                "canonical syntax projection depth bound exhausted",
+                span_chirho,
+            ));
+        }
+        Ok(match term_chirho {
+            TyChirho::VarChirho(variable_chirho) => {
+                if !allowed_chirho.contains(variable_chirho) {
+                    return Err(Self::error_chirho(
+                        "canonical syntax solution contains an unbound slot",
+                        span_chirho,
+                    ));
+                }
+                self.state_chirho.charge_chirho(64, 64, span_chirho)?;
+                let mut name_chirho = NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                    format!("published{}Chirho", variable_chirho.0),
+                    span_chirho,
+                ));
+                name_chirho.set_type_variable_chirho(Some(
+                    ScopedTypeVariableIdChirho::QuantifiedChirho {
+                        declaration_chirho: identity_chirho.clone(),
+                        index_chirho: variable_chirho.0,
+                    },
+                ));
+                TypeChirho::VarChirho(name_chirho)
+            }
+            TyChirho::ConChirho(_) => self.surface_chirho(term_chirho, span_chirho)?,
+            TyChirho::AppChirho(_, _) => {
+                let mut head_chirho = term_chirho;
+                let mut arguments_chirho = Vec::new();
+                while let TyChirho::AppChirho(function_chirho, argument_chirho) = head_chirho {
+                    self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+                    if depth_chirho.saturating_add(arguments_chirho.len()) >= 128 {
+                        return Err(Self::error_chirho(
+                            "canonical syntax spine depth bound exhausted",
+                            span_chirho,
+                        ));
+                    }
+                    arguments_chirho.push(argument_chirho.as_ref());
+                    head_chirho = function_chirho;
+                }
+                arguments_chirho.reverse();
+                let schema_chirho = if let TyChirho::ConChirho(key_chirho) = head_chirho {
+                    self.registry_chirho
+                        .declaration_schemes_chirho()
+                        .get_chirho(key_chirho)
+                        .cloned()
+                } else {
+                    None
+                };
+                let mut result_chirho = self.canonical_surface_chirho(
+                    head_chirho,
+                    identity_chirho,
+                    allowed_chirho,
+                    span_chirho,
+                    depth_chirho + arguments_chirho.len(),
+                )?;
+                for (index_chirho, argument_chirho) in arguments_chirho.iter().enumerate() {
+                    let argument_chirho = Box::new(self.canonical_surface_chirho(
+                        argument_chirho,
+                        identity_chirho,
+                        allowed_chirho,
+                        span_chirho,
+                        depth_chirho + arguments_chirho.len() - index_chirho,
+                    )?);
+                    let hidden_chirho = schema_chirho
+                        .as_ref()
+                        .and_then(|schema_chirho| schema_chirho.binders_chirho.get(index_chirho))
+                        .is_some_and(|binder_chirho| {
+                            binder_chirho.visibility_chirho
+                                != TelescopeVisibilityChirho::RequiredChirho
+                        });
+                    result_chirho = if hidden_chirho {
+                        TypeChirho::KindApplicationChirho {
+                            fun_chirho: Box::new(result_chirho),
+                            arg_chirho: argument_chirho,
+                            written_chirho: false,
+                            span_chirho,
+                        }
+                    } else {
+                        TypeChirho::AppChirho {
+                            fun_chirho: Box::new(result_chirho),
+                            arg_chirho: argument_chirho,
+                            span_chirho,
+                        }
+                    };
+                }
+                result_chirho
+            }
+            TyChirho::FunChirho(argument_chirho, result_chirho, multiplicity_chirho) => {
+                TypeChirho::FunChirho {
+                    arg_chirho: Box::new(self.canonical_surface_chirho(
+                        argument_chirho,
+                        identity_chirho,
+                        allowed_chirho,
+                        span_chirho,
+                        depth_chirho + 1,
+                    )?),
+                    mult_chirho: if *multiplicity_chirho == crate::ty_chirho::MultChirho::OneChirho
+                    {
+                        Some(haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::OneChirho)
+                    } else {
+                        None
+                    },
+                    result_chirho: Box::new(self.canonical_surface_chirho(
+                        result_chirho,
+                        identity_chirho,
+                        allowed_chirho,
+                        span_chirho,
+                        depth_chirho + 1,
+                    )?),
+                    span_chirho,
+                }
+            }
+            TyChirho::TupleChirho(elements_chirho) => {
+                self.state_chirho.charge_chirho(
+                    elements_chirho.len(),
+                    elements_chirho.len(),
+                    span_chirho,
+                )?;
+                TypeChirho::TupleChirho {
+                    elements_chirho: elements_chirho
+                        .iter()
+                        .map(|element_chirho| {
+                            self.canonical_surface_chirho(
+                                element_chirho,
+                                identity_chirho,
+                                allowed_chirho,
+                                span_chirho,
+                                depth_chirho + 1,
+                            )
+                        })
+                        .collect::<Result<_, _>>()?,
+                    span_chirho,
+                }
+            }
+            TyChirho::ListChirho(element_chirho) => TypeChirho::ListChirho {
+                element_chirho: Box::new(self.canonical_surface_chirho(
+                    element_chirho,
+                    identity_chirho,
+                    allowed_chirho,
+                    span_chirho,
+                    depth_chirho + 1,
+                )?),
+                span_chirho,
+            },
+            TyChirho::ForallChirho { .. }
+            | TyChirho::RequiredForallChirho { .. }
+            | TyChirho::QualChirho { .. }
+            | TyChirho::ForallVarChirho(_) => {
+                return Err(Self::error_chirho(
+                    "canonical solution requires retained checked binder syntax",
                     span_chirho,
                 ));
             }

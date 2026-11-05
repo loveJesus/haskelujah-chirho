@@ -111,7 +111,7 @@ pub fn compile_modules_chirho(
             &iface_chirho,
             &resolved_imported_type_synonyms_chirho,
             &infer_result_chirho,
-        ));
+        )?);
         imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
 
         ifaces_chirho.push(iface_chirho);

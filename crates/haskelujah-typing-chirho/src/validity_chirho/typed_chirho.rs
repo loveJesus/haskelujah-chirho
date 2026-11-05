@@ -18,7 +18,7 @@ pub(crate) fn check_expanded_type_chirho(
     span_chirho: SpanChirho,
 ) -> DiagnosticBundleChirho {
     let mut diagnostics_chirho = DiagnosticBundleChirho::empty_chirho();
-    let mut pending_chirho = vec![(ty_chirho, TyPositionChirho::TopChirho, 0usize)];
+    let mut pending_chirho = vec![(ty_chirho, TyPositionChirho::TOP_CHIRHO, 0usize)];
     let mut work_chirho = 1_000_000usize;
     while let Some((ty_chirho, position_chirho, depth_chirho)) = pending_chirho.pop() {
         if work_chirho == 0 || depth_chirho > 128 {
@@ -48,10 +48,10 @@ pub(crate) fn check_expanded_type_chirho(
             | TyChirho::RequiredForallChirho { body_chirho, .. }
             | TyChirho::QualChirho { body_chirho, .. } => {
                 let extension_chirho = match position_chirho {
-                    TyPositionChirho::RankNChirho if !license_chirho.rank_n_chirho => {
+                    TyPositionChirho::RANK_N_CHIRHO if !license_chirho.rank_n_chirho => {
                         Some("RankNTypes")
                     }
-                    TyPositionChirho::ImpredicativeChirho
+                    TyPositionChirho::IMPREDICATIVE_CHIRHO
                         if !license_chirho.impredicative_chirho =>
                     {
                         Some("ImpredicativeTypes")
@@ -76,17 +76,17 @@ pub(crate) fn check_expanded_type_chirho(
                     for constraint_chirho in context_chirho {
                         pending_chirho.push((
                             constraint_chirho,
-                            TyPositionChirho::TopChirho,
+                            TyPositionChirho::TOP_CHIRHO,
                             depth_chirho + 1,
                         ));
                     }
                 }
             }
             TyChirho::FunChirho(argument_chirho, result_chirho, _) => {
-                let nested_chirho = if position_chirho == TyPositionChirho::KindChirho {
+                let nested_chirho = if position_chirho == TyPositionChirho::KIND_CHIRHO {
                     position_chirho
                 } else {
-                    TyPositionChirho::RankNChirho
+                    TyPositionChirho::RANK_N_CHIRHO
                 };
                 pending_chirho.extend([
                     (argument_chirho.as_ref(), nested_chirho, depth_chirho + 1),
@@ -120,12 +120,26 @@ pub(crate) fn check_expanded_type_chirho(
                             },
                         )
                     });
+                    let abstraction_chirho = schema_chirho.is_some_and(|schema_chirho| {
+                        schema_chirho.binders_chirho.get(index_chirho).is_some_and(
+                            |binder_chirho| {
+                                matches!(
+                                    binder_chirho.kind_chirho,
+                                    TyChirho::ForallChirho { .. }
+                                        | TyChirho::RequiredForallChirho { .. }
+                                )
+                            },
+                        )
+                    });
                     pending_chirho.push((
                         argument_chirho,
-                        if hidden_chirho || position_chirho == TyPositionChirho::KindChirho {
-                            TyPositionChirho::KindChirho
+                        if abstraction_chirho && position_chirho != TyPositionChirho::KIND_CHIRHO {
+                            TyPositionChirho::KIND_ABSTRACTION_CHIRHO
+                        } else if hidden_chirho || position_chirho == TyPositionChirho::KIND_CHIRHO
+                        {
+                            TyPositionChirho::KIND_CHIRHO
                         } else {
-                            TyPositionChirho::ImpredicativeChirho
+                            TyPositionChirho::IMPREDICATIVE_CHIRHO
                         },
                         depth_chirho + 1,
                     ));
@@ -133,18 +147,18 @@ pub(crate) fn check_expanded_type_chirho(
             }
             TyChirho::ListChirho(element_chirho) => pending_chirho.push((
                 element_chirho,
-                if position_chirho == TyPositionChirho::KindChirho {
+                if position_chirho == TyPositionChirho::KIND_CHIRHO {
                     position_chirho
                 } else {
-                    TyPositionChirho::ImpredicativeChirho
+                    TyPositionChirho::IMPREDICATIVE_CHIRHO
                 },
                 depth_chirho + 1,
             )),
             TyChirho::TupleChirho(elements_chirho) => {
-                let nested_chirho = if position_chirho == TyPositionChirho::KindChirho {
+                let nested_chirho = if position_chirho == TyPositionChirho::KIND_CHIRHO {
                     position_chirho
                 } else {
-                    TyPositionChirho::ImpredicativeChirho
+                    TyPositionChirho::IMPREDICATIVE_CHIRHO
                 };
                 pending_chirho.extend(
                     elements_chirho

@@ -12,6 +12,7 @@ mod dependencies_chirho;
 mod instantiation_chirho;
 pub use dependencies_chirho::source_declaration_dependencies_chirho;
 mod module_chirho;
+mod publication_chirho;
 mod state_chirho;
 mod surface_chirho;
 mod transport_chirho;
@@ -52,6 +53,8 @@ type SourceVariablesChirho = Vec<(String, TyVarChirho, TyChirho)>;
 #[derive(Default)]
 struct DeclarationVariablesChirho {
     constructor_result_origin_chirho: Option<constructors_chirho::ConstructorResultOriginChirho>,
+    written_signature_chirho: Option<haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho>,
+    owned_result_kind_chirho: Option<TyChirho>,
     written_chirho: SourceVariablesChirho,
     publication_chirho: crate::subst_chirho::SubstChirho,
     constructor_inferred_chirho: std::collections::HashSet<TyVarChirho>,

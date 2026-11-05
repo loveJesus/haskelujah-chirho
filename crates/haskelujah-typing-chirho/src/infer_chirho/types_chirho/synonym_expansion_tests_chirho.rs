@@ -21,6 +21,39 @@ fn alias_chirho(
         TypeConstructorRoleChirho::TypeSynonymChirho,
     );
     let key_chirho = declaration_chirho.type_key_chirho();
+    let mut local_binders_chirho = Vec::new();
+    let mut pending_chirho = vec![&body_chirho];
+    while let Some(term_chirho) = pending_chirho.pop() {
+        match term_chirho {
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            }
+            | TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
+                for variable_chirho in vars_chirho {
+                    local_binders_chirho.push(crate::ty_chirho::declarations_chirho::DeclarationLocalBinderChirho { binder_chirho: DeclarationBinderChirho { variable_chirho: *variable_chirho, kind_chirho: TyChirho::ConChirho("%universe:type".into()), visibility_chirho: if matches!(term_chirho, TyChirho::RequiredForallChirho { .. }) { TelescopeVisibilityChirho::RequiredChirho } else { TelescopeVisibilityChirho::SpecifiedChirho } }, specificity_chirho: haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho });
+                }
+                pending_chirho.push(body_chirho);
+            }
+            TyChirho::AppChirho(left_chirho, right_chirho)
+            | TyChirho::FunChirho(left_chirho, right_chirho, _) => {
+                pending_chirho.extend([left_chirho.as_ref(), right_chirho.as_ref()])
+            }
+            TyChirho::ListChirho(element_chirho) => pending_chirho.push(element_chirho),
+            TyChirho::TupleChirho(elements_chirho) => pending_chirho.extend(elements_chirho),
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                pending_chirho.extend(context_chirho);
+                pending_chirho.push(body_chirho);
+            }
+            _ => {}
+        }
+    }
     context_chirho
         .type_families_chirho
         .declaration_schemes_mut_chirho()
@@ -39,6 +72,8 @@ fn alias_chirho(
             source_variables_chirho: Vec::new(),
             result_kind_chirho: TyChirho::ConChirho("%universe:type".to_owned()),
             synonym_rhs_chirho: Some(body_chirho),
+            synonym_syntax_chirho: None,
+            local_binders_chirho: std::sync::Arc::from(local_binders_chirho),
             visible_arity_chirho: 1,
             reduction_arity_chirho: 1,
             promoted_chirho: false,
@@ -130,5 +165,60 @@ fn checked_aliases_share_the_equality_normalizers_allowance_and_substitution_chi
             .normalize_equality_type_chirho(&application_chirho, 0)
             .unwrap(),
         TyChirho::int_chirho()
+    );
+}
+
+#[test]
+fn canonical_local_ast_occurrences_require_their_lexical_binder_chirho() {
+    use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+    use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let key_chirho = alias_chirho(
+        &mut context_chirho,
+        "ScopedChirho",
+        TyChirho::ForallChirho {
+            vars_chirho: vec![TyVarChirho(1)],
+            body_chirho: Box::new(TyChirho::VarChirho(TyVarChirho(1))),
+        },
+    );
+    let mut name_chirho = NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+        "localChirho",
+        SpanChirho::DUMMY_CHIRHO,
+    ));
+    name_chirho.set_type_variable_chirho(Some(ScopedTypeVariableIdChirho::QuantifiedChirho {
+        declaration_chirho: key_chirho.into(),
+        index_chirho: 1,
+    }));
+    let binder_chirho = haskelujah_ast_chirho::decl_chirho::TyVarChirho {
+        name_chirho: name_chirho.clone(),
+        kind_annotation_chirho: None,
+        visibility_chirho:
+            haskelujah_ast_chirho::decl_chirho::TyVarVisibilityChirho::InvisibleChirho,
+        specificity_chirho:
+            haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho,
+    };
+    let mut variables_chirho = HashMap::from([("localChirho".to_owned(), TyVarChirho(99))]);
+    let (bound_chirho, occurrence_chirho) = context_chirho.with_ast_forall_bindings_chirho(
+        &[binder_chirho],
+        &mut variables_chirho,
+        |context_chirho, variables_chirho| {
+            context_chirho.surface_variable_chirho(&name_chirho, variables_chirho)
+        },
+    );
+    assert_eq!(bound_chirho, vec![occurrence_chirho]);
+    assert!(
+        !context_chirho
+            .non_deferrable_diagnostics_chirho
+            .has_errors_chirho()
+    );
+    context_chirho.surface_variable_chirho(&name_chirho, &mut variables_chirho);
+    let rendered_chirho = format!("{}", context_chirho.non_deferrable_diagnostics_chirho);
+    assert!(
+        rendered_chirho.contains("error[E0300]"),
+        "{rendered_chirho}"
+    );
+    assert!(
+        rendered_chirho.contains("foreign or unbound canonical"),
+        "{rendered_chirho}"
     );
 }

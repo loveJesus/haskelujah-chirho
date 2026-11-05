@@ -806,7 +806,8 @@ fn exported_synonym_family_identity_wins_over_the_importers_namesake_chirho() {
         &exported_iface_chirho,
         &exporter_chirho.resolved_imported_type_synonyms_chirho,
         &exporter_chirho.infer_result_chirho,
-    );
+    )
+    .expect("bounded checked synonym export");
     let exported_key_chirho = match &synonyms_chirho["SChirho"].1 {
         haskelujah_ast_chirho::ty_chirho::TypeChirho::AppChirho { fun_chirho, .. } => {
             match fun_chirho.as_ref() {
