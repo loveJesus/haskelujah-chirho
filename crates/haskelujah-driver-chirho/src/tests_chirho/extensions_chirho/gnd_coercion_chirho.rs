@@ -240,17 +240,9 @@ fn gnd_r5t_associated_family_forward_undecidable_chirho() {
 }
 
 /// P1: GHC 9.14.1 prints 7 then True. sha256 a68f213fb4e799407a14dd546b694952695b3ff0dfb9fde2dbde0a255a62ba45.
-const PARAMETRIC_NO_INLINE_SHOW_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
-{-# LANGUAGE DerivingStrategies, GeneralizedNewtypeDeriving #-}
-newtype BoxChirho aChirho = BoxChirho aChirho deriving newtype (Show)
-{-# NOINLINE renderChirho #-}
-renderChirho :: Show aChirho => aChirho -> String
-renderChirho valueChirho = show valueChirho
-main :: IO ()
-main = do
-  putStrLn (renderChirho (BoxChirho (7 :: Int)))
-  putStrLn (renderChirho (BoxChirho True))
-"#;
+const PARAMETRIC_NO_INLINE_SHOW_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/parametric_no_inline_show_chirho.hs"
+);
 
 #[test]
 fn gnd_p1_parametric_no_inline_show_chirho() {
@@ -264,23 +256,9 @@ fn gnd_p1_parametric_no_inline_show_chirho() {
 }
 
 /// P2: GHC 9.14.1 prints integer then boolean. sha256 76f2a192bcbf2dd58c0bf97e865fce5271cf12e92dff823f05df1b985ffc8fcd.
-const PARAMETRIC_USER_DICTIONARY_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
-{-# LANGUAGE DerivingStrategies, GeneralizedNewtypeDeriving #-}
-class DescribeChirho aChirho where
-  describeChirho :: aChirho -> String
-instance DescribeChirho Int where
-  describeChirho _ = "integer"
-instance DescribeChirho Bool where
-  describeChirho _ = "boolean"
-newtype BoxChirho aChirho = BoxChirho aChirho deriving newtype (DescribeChirho)
-{-# NOINLINE renderChirho #-}
-renderChirho :: DescribeChirho aChirho => aChirho -> String
-renderChirho valueChirho = describeChirho valueChirho
-main :: IO ()
-main = do
-  putStrLn (renderChirho (BoxChirho (7 :: Int)))
-  putStrLn (renderChirho (BoxChirho True))
-"#;
+const PARAMETRIC_USER_DICTIONARY_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/parametric_user_dictionary_chirho.hs"
+);
 
 #[test]
 fn gnd_p2_parametric_user_dictionary_chirho() {
@@ -319,27 +297,9 @@ fn gnd_q1_qualified_stock_with_shadowed_instance_chirho() {
 }
 
 /// C1: GHC 9.14.1 prints 78. sha256 c7eae33b2c35720f26260d9cb232fc3b677305536bef471afcae2ad3b41f43c5.
-const CONTEXTUAL_REPRESENTATION_DEFAULT_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
--- gpt #31791 counterexample for aeeed9f9. GHC 9.14.1 prediction (UNEXECUTED): ACCEPT, prints 78.
--- aeeed9f9 code reading: the newtype's default-filled row is replaced by the
--- "missing method DescribeChirho.describeChirho for [Int]" error stub, because the
--- representation instance is contextual and its ground row is built only after the GND pass.
-{-# LANGUAGE DerivingStrategies, GeneralizedNewtypeDeriving #-}
-class DescribeChirho aChirho where
-  describeChirho :: aChirho -> String
-  describeChirho _ = "default"
-
-instance DescribeChirho Int where
-  describeChirho valueChirho = show valueChirho
-
-instance DescribeChirho aChirho => DescribeChirho [aChirho] where
-  describeChirho valuesChirho = concatMap describeChirho valuesChirho
-
-newtype AgesChirho = AgesChirho [Int] deriving newtype DescribeChirho
-
-main :: IO ()
-main = putStrLn (describeChirho (AgesChirho [7, 8]))
-"#;
+const CONTEXTUAL_REPRESENTATION_DEFAULT_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/contextual_representation_default_chirho.hs"
+);
 
 #[test]
 fn gnd_c1_contextual_representation_default_chirho() {
@@ -353,20 +313,9 @@ fn gnd_c1_contextual_representation_default_chirho() {
 }
 
 /// C2: GHC 9.14.1 prints 78. sha256 b46b09a3c2898eb221e8ba3357228239e11f598178412e7070d79740008a0481.
-const NESTED_GND_CONTEXT_DEPENDENCY_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
-{-# LANGUAGE DerivingStrategies, GeneralizedNewtypeDeriving #-}
-class DescribeChirho aChirho where
-  describeChirho :: aChirho -> String
-  describeChirho _ = "default"
-instance DescribeChirho Int where
-  describeChirho valueChirho = show valueChirho
-instance DescribeChirho aChirho => DescribeChirho [aChirho] where
-  describeChirho valuesChirho = concatMap describeChirho valuesChirho
-newtype AgeChirho = AgeChirho Int deriving newtype DescribeChirho
-newtype AgesChirho = AgesChirho [AgeChirho] deriving newtype DescribeChirho
-main :: IO ()
-main = putStrLn (describeChirho (AgesChirho [AgeChirho 7, AgeChirho 8]))
-"#;
+const NESTED_GND_CONTEXT_DEPENDENCY_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/nested_gnd_context_dependency_chirho.hs"
+);
 
 #[test]
 fn gnd_c2_nested_gnd_context_dependency_chirho() {

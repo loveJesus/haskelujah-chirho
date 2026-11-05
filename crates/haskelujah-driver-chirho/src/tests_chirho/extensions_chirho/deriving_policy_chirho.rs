@@ -319,19 +319,9 @@ fn policy_d1_newtype_any_class_precedence_chirho() {
 
 /// D2: alpha-renamed from root's measured source (sha256 29e544e7dab5aadbd508acc46d4f88190de23c3f9002f3a2e89f95f3a77a398f), bare `a` written
 /// `aChirho`; these bytes are not the measured GHC input.
-const NEWTYPE_GND_PRECEDENCE_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
-class DescribeChirho aChirho where
-  describeChirho :: aChirho -> String
-  describeChirho _ = "described"
-
-instance DescribeChirho Int where
-  describeChirho _ = "int"
-
-newtype WrapChirho = WrapChirho Int deriving (DescribeChirho)
-
-main :: IO ()
-main = putStrLn (describeChirho (WrapChirho 5))
-"#;
+const NEWTYPE_GND_PRECEDENCE_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/newtype_gnd_precedence_chirho.hs"
+);
 
 #[test]
 fn policy_d2_newtype_gnd_precedence_chirho() {
@@ -456,17 +446,9 @@ fn direct_method_g2_polymorphic_newtype_show_chirho() {
 }
 
 /// G3 (gpt #31759; GHC 9.14.1 prints 8): sha256 3495c70d90799a842fb599e6f969e61990f1782c2bdd9f90a041685e8497508a.
-const USER_CLASS_NEWTYPE_METHOD_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
-{-# LANGUAGE DerivingStrategies, GeneralizedNewtypeDeriving #-}
-class DescribeChirho aChirho where
-  describeChirho :: aChirho -> String
-  describeChirho _ = "default"
-instance DescribeChirho Int where
-  describeChirho valueChirho = show (valueChirho + 1)
-newtype AgeChirho = AgeChirho Int deriving newtype DescribeChirho
-main :: IO ()
-main = putStrLn (describeChirho (AgeChirho 7))
-"#;
+const USER_CLASS_NEWTYPE_METHOD_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/user_class_newtype_method_chirho.hs"
+);
 
 #[test]
 fn direct_method_g3_user_class_newtype_method_chirho() {

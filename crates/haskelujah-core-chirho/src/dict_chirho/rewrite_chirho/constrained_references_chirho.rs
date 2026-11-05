@@ -17,7 +17,13 @@
 
 use std::collections::{HashMap, HashSet};
 
+use haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho;
+use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
+
 use super::{CoreExprChirho, CoreIdChirho, CoreLitChirho, DictPassCtxChirho};
+
+/// How deep a conditional dictionary's context may nest before the pass gives up on it.
+const CONDITIONAL_DICTIONARY_DEPTH_CHIRHO: usize = 16;
 
 /// The classes whose method occurrences `proven_list_dispatch_chirho` governs
 /// (gpt_chirho #27488): their list dictionaries are ground specializations per
@@ -55,11 +61,13 @@ impl DictPassCtxChirho {
         let mut result_chirho =
             CoreExprChirho::VarChirho(self.canonical_id_chirho(written_id_chirho));
         for class_name_chirho in classes_chirho {
-            let evidence_key_chirho = Self::take_reference_evidence_chirho(
+            let proof_chirho = Self::take_reference_evidence_chirho(
                 &mut reference_evidence_chirho,
                 class_name_chirho,
-            )
-            .flatten();
+            );
+            let evidence_key_chirho = proof_chirho
+                .as_ref()
+                .and_then(|proof_chirho| proof_chirho.ty_key_chirho.clone());
             let evidence_dict_chirho = self.evidence_dict_for_class_chirho(
                 class_name_chirho,
                 evidence_key_chirho.as_deref(),
@@ -70,7 +78,24 @@ impl DictPassCtxChirho {
             let proven_ground_chirho = evidence_key_chirho
                 .as_deref()
                 .is_some_and(Self::is_whole_list_key_chirho);
-            let dict_id_chirho = evidence_dict_chirho
+            // A ground application the checker proved (`BoxChirho Int`) is served by its
+            // conditional instance's factory before any guess (row 694).
+            // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+            let conditional_chirho = || {
+                proof_chirho
+                    .as_ref()
+                    .and_then(|proof_chirho| proof_chirho.applied_ty_chirho.as_ref())
+                    .and_then(|applied_chirho| {
+                        self.conditional_dictionary_chirho(
+                            class_name_chirho,
+                            applied_chirho,
+                            local_instance_dicts_chirho,
+                        )
+                    })
+            };
+            let dict_arg_chirho = evidence_dict_chirho
+                .map(CoreExprChirho::VarChirho)
+                .or_else(conditional_chirho)
                 .or_else(|| {
                     syntactic_type_key_chirho
                         .filter(|_| !proven_ground_chirho)
@@ -79,6 +104,7 @@ impl DictPassCtxChirho {
                                 .get(&(class_name_chirho.clone(), type_key_chirho.to_string()))
                                 .copied()
                         })
+                        .map(CoreExprChirho::VarChirho)
                 })
                 .or_else(|| {
                     (!proven_ground_chirho)
@@ -90,15 +116,15 @@ impl DictPassCtxChirho {
                             )
                         })
                         .flatten()
+                        .map(CoreExprChirho::VarChirho)
+                })
+                .unwrap_or_else(|| {
+                    self.missing_dictionary_chirho(
+                        class_name_chirho,
+                        evidence_key_chirho.as_deref(),
+                        written_id_chirho,
+                    )
                 });
-            let dict_arg_chirho = match dict_id_chirho {
-                Some(dict_id_chirho) => CoreExprChirho::VarChirho(dict_id_chirho),
-                None => self.missing_dictionary_chirho(
-                    class_name_chirho,
-                    evidence_key_chirho.as_deref(),
-                    written_id_chirho,
-                ),
-            };
             result_chirho = CoreExprChirho::AppChirho {
                 fun_chirho: Box::new(result_chirho),
                 arg_chirho: Box::new(dict_arg_chirho),
@@ -191,8 +217,9 @@ impl DictPassCtxChirho {
             }
             _ => class_name_chirho.to_string(),
         };
-        // A GND instance over a parametric newtype has no dictionary this pass can build, so a
-        // use that needs one is refused when the module compiles (row 694, P1, P2).
+        // A GND instance over a parametric newtype has a dictionary only through its factory,
+        // at a ground application whose context dictionaries exist; a use that needs one the
+        // factory cannot give is refused when the module compiles (row 694, P1, P2).
         // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
         if let Some(key_chirho) = key_chirho
             && self
@@ -200,7 +227,7 @@ impl DictPassCtxChirho {
                 .contains(&(class_name_chirho.to_string(), key_chirho.to_string()))
         {
             self.gnd_unbuilt_uses_chirho.borrow_mut().insert(format!(
-                "deriving {class_name_chirho} for {key_chirho} through the newtype strategy: `{callee_chirho}` needs its dictionary at an application of the newtype to a type, which this pass cannot build yet"
+                "deriving {class_name_chirho} for {key_chirho} through the newtype strategy: `{callee_chirho}` needs its dictionary at an application of the newtype whose context dictionaries this pass cannot build"
             ));
         }
         CoreExprChirho::PrimOpChirho {
@@ -564,13 +591,145 @@ impl DictPassCtxChirho {
     /// Take the evidence for the next predicate of `class_name` from a
     /// reference's evidence list (scheme order), if the checker recorded one.
     pub(super) fn take_reference_evidence_chirho(
-        evidence_chirho: &mut Vec<(String, Option<String>)>,
+        evidence_chirho: &mut Vec<ReferenceEvidenceChirho>,
         class_name_chirho: &str,
-    ) -> Option<Option<String>> {
+    ) -> Option<ReferenceEvidenceChirho> {
         let position_chirho = evidence_chirho
             .iter()
-            .position(|(class_chirho, _key_chirho)| class_chirho == class_name_chirho)?;
-        Some(evidence_chirho.remove(position_chirho).1)
+            .position(|proof_chirho| proof_chirho.class_name_chirho == class_name_chirho)?;
+        Some(evidence_chirho.remove(position_chirho))
+    }
+
+    /// The dictionary of `class_chirho` at the ground application `ty_chirho` through its
+    /// conditional instance's factory (`conditional_dicts_chirho`): the factory applied to its
+    /// context's dictionaries, each predicate instantiated by mapping the head's formal binders
+    /// to `ty_chirho`'s arguments, its dictionary the registry's at that type or another
+    /// factory's. `None` when any of them is missing (row 694, P1, P2).
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+    pub(super) fn conditional_dictionary_chirho(
+        &self,
+        class_name_chirho: &str,
+        ty_chirho: &TyChirho,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        self.conditional_dictionary_at_depth_chirho(
+            class_name_chirho,
+            ty_chirho,
+            local_instance_dicts_chirho,
+            0,
+        )
+    }
+
+    fn conditional_dictionary_at_depth_chirho(
+        &self,
+        class_name_chirho: &str,
+        ty_chirho: &TyChirho,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+        depth_chirho: usize,
+    ) -> Option<CoreExprChirho> {
+        if depth_chirho > CONDITIONAL_DICTIONARY_DEPTH_CHIRHO {
+            return None;
+        }
+        let (head_chirho, arguments_chirho) = type_application_spine_chirho(ty_chirho);
+        let TyChirho::ConChirho(head_name_chirho) = head_chirho else {
+            return None;
+        };
+        let factory_chirho = self
+            .conditional_dicts_chirho
+            .get(&(class_name_chirho.to_string(), head_name_chirho.clone()))?;
+        if factory_chirho.formals_chirho.len() != arguments_chirho.len() {
+            return None;
+        }
+        let binding_chirho: HashMap<TyVarChirho, &TyChirho> = factory_chirho
+            .formals_chirho
+            .iter()
+            .copied()
+            .zip(arguments_chirho)
+            .collect();
+        factory_chirho.context_chirho.iter().try_fold(
+            CoreExprChirho::VarChirho(factory_chirho.builder_chirho),
+            |dictionary_chirho, predicate_chirho| {
+                let argument_chirho = self.dictionary_at_type_chirho(
+                    &predicate_chirho.class_name_chirho,
+                    &instantiated_ty_chirho(&predicate_chirho.ty_chirho, &binding_chirho),
+                    local_instance_dicts_chirho,
+                    depth_chirho + 1,
+                )?;
+                Some(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(dictionary_chirho),
+                    arg_chirho: Box::new(argument_chirho),
+                })
+            },
+        )
+    }
+
+    /// `show` for a `print` occurrence whose `Show` evidence is a ground application with a
+    /// conditional instance's factory (a parametric GND newtype, row 694): the `show` selector
+    /// applied to the dictionary the factory builds. `None` for any other occurrence.
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+    pub(super) fn print_show_through_factory_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        let (reference_name_chirho, _canonical_id_chirho) =
+            self.method_occurrence_canon_chirho.get(&head_id_chirho)?;
+        if reference_name_chirho
+            .rsplit('.')
+            .next()
+            .unwrap_or(reference_name_chirho)
+            != "print"
+        {
+            return None;
+        }
+        let applied_chirho = self
+            .reference_evidence_chirho
+            .get(&head_id_chirho)?
+            .iter()
+            .find(|proof_chirho| proof_chirho.class_name_chirho == "Show")?
+            .applied_ty_chirho
+            .as_ref()?;
+        let dictionary_chirho = self.conditional_dictionary_chirho(
+            "Show",
+            applied_chirho,
+            local_instance_dicts_chirho,
+        )?;
+        let (selector_class_chirho, selector_chirho) = self.method_selectors_chirho.get("show")?;
+        (selector_class_chirho == "Show").then(|| CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(*selector_chirho)),
+            arg_chirho: Box::new(dictionary_chirho),
+        })
+    }
+
+    /// The dictionary of `class_chirho` at the ground type `ty_chirho`: the registry's under
+    /// the key the type displays as (the spelling instance heads register under), else a
+    /// conditional instance's factory at its arguments.
+    fn dictionary_at_type_chirho(
+        &self,
+        class_name_chirho: &str,
+        ty_chirho: &TyChirho,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+        depth_chirho: usize,
+    ) -> Option<CoreExprChirho> {
+        // The engine's body-backed rows are keyed "Int"; the checker defaults an ambiguous
+        // numeric to "Integer", as the evidence join already maps it.
+        let displayed_chirho = format!("{ty_chirho}");
+        let key_chirho = if displayed_chirho == "Integer" {
+            "Int".to_string()
+        } else {
+            displayed_chirho
+        };
+        if let Some(dictionary_chirho) =
+            self.registry_dict_chirho(class_name_chirho, &key_chirho, local_instance_dicts_chirho)
+        {
+            return Some(CoreExprChirho::VarChirho(dictionary_chirho));
+        }
+        self.conditional_dictionary_at_depth_chirho(
+            class_name_chirho,
+            ty_chirho,
+            local_instance_dicts_chirho,
+            depth_chirho,
+        )
     }
 
     pub(super) fn fallback_dict_for_class_chirho(
@@ -611,5 +770,52 @@ impl DictPassCtxChirho {
                 | "MonadPlus"
                 | "MonadFix"
         )
+    }
+}
+
+/// A type application's head and its arguments in order.
+fn type_application_spine_chirho(ty_chirho: &TyChirho) -> (&TyChirho, Vec<&TyChirho>) {
+    let mut arguments_chirho = Vec::new();
+    let mut head_chirho = ty_chirho;
+    while let TyChirho::AppChirho(function_chirho, argument_chirho) = head_chirho {
+        arguments_chirho.push(argument_chirho.as_ref());
+        head_chirho = function_chirho.as_ref();
+    }
+    arguments_chirho.reverse();
+    (head_chirho, arguments_chirho)
+}
+
+/// `ty_chirho` with each formal binder replaced by the type it is bound to.
+fn instantiated_ty_chirho(
+    ty_chirho: &TyChirho,
+    binding_chirho: &HashMap<TyVarChirho, &TyChirho>,
+) -> TyChirho {
+    match ty_chirho {
+        TyChirho::VarChirho(var_chirho) => binding_chirho
+            .get(var_chirho)
+            .map(|bound_chirho| (*bound_chirho).clone())
+            .unwrap_or_else(|| ty_chirho.clone()),
+        TyChirho::AppChirho(function_chirho, argument_chirho) => TyChirho::AppChirho(
+            Box::new(instantiated_ty_chirho(function_chirho, binding_chirho)),
+            Box::new(instantiated_ty_chirho(argument_chirho, binding_chirho)),
+        ),
+        TyChirho::FunChirho(argument_chirho, result_chirho, mult_chirho) => TyChirho::FunChirho(
+            Box::new(instantiated_ty_chirho(argument_chirho, binding_chirho)),
+            Box::new(instantiated_ty_chirho(result_chirho, binding_chirho)),
+            *mult_chirho,
+        ),
+        TyChirho::TupleChirho(elements_chirho) => TyChirho::TupleChirho(
+            elements_chirho
+                .iter()
+                .map(|element_chirho| instantiated_ty_chirho(element_chirho, binding_chirho))
+                .collect(),
+        ),
+        TyChirho::ListChirho(element_chirho) => TyChirho::ListChirho(Box::new(
+            instantiated_ty_chirho(element_chirho, binding_chirho),
+        )),
+        TyChirho::ConChirho(_)
+        | TyChirho::ForallVarChirho(_)
+        | TyChirho::ForallChirho { .. }
+        | TyChirho::RequiredForallChirho { .. } => ty_chirho.clone(),
     }
 }

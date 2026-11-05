@@ -41,9 +41,11 @@ impl DictPassCtxChirho {
                     && free_ids_chirho.iter().any(|id_chirho| {
                         self.reference_evidence_chirho.get(id_chirho).is_some_and(
                             |evidence_chirho| {
-                                evidence_chirho.iter().any(|(class_chirho, key_chirho)| {
-                                    class_chirho == &predicate_chirho.class_name_chirho
-                                        && key_chirho.as_deref() == Some(own_key_chirho.as_str())
+                                evidence_chirho.iter().any(|proof_chirho| {
+                                    proof_chirho.class_name_chirho
+                                        == predicate_chirho.class_name_chirho
+                                        && proof_chirho.ty_key_chirho.as_deref()
+                                            == Some(own_key_chirho.as_str())
                                 })
                             },
                         )
@@ -545,6 +547,18 @@ mod tests_chirho {
     use haskelujah_span_chirho::SpanChirho;
     use haskelujah_typing_chirho::ty_chirho::{SchemePredChirho, TyVarChirho};
 
+    /// The checker's record proving `class_chirho` at `key_chirho`, with no applied type.
+    fn keyed_proof_chirho(
+        class_chirho: &str,
+        key_chirho: &str,
+    ) -> haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
+        haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
+            class_name_chirho: class_chirho.to_string(),
+            ty_key_chirho: Some(key_chirho.to_string()),
+            applied_ty_chirho: None,
+        }
+    }
+
     fn result_only_binding_chirho(rhs_id_chirho: u32) -> CoreBindingChirho {
         CoreBindingChirho {
             binder_chirho: BinderChirho {
@@ -592,8 +606,8 @@ mod tests_chirho {
         pass_chirho.reference_evidence_chirho.insert(
             rhs_id_chirho,
             vec![
-                ("Integral".to_string(), Some("$own:0".to_string())),
-                ("Num".to_string(), Some("$own:1".to_string())),
+                keyed_proof_chirho("Integral", "$own:0"),
+                keyed_proof_chirho("Num", "$own:1"),
             ],
         );
         assert_eq!(
@@ -603,7 +617,7 @@ mod tests_chirho {
 
         pass_chirho.reference_evidence_chirho.insert(
             rhs_id_chirho,
-            vec![("Integral".to_string(), Some("$own:0".to_string()))],
+            vec![keyed_proof_chirho("Integral", "$own:0")],
         );
         assert_eq!(
             pass_chirho.binding_dict_param_indices_chirho(&binding_chirho, &scheme_chirho),
@@ -630,7 +644,7 @@ mod tests_chirho {
             .insert(("Enum".to_string(), "Int".to_string()), CoreIdChirho(91));
         pass_chirho.reference_evidence_chirho.insert(
             rhs_id_chirho,
-            vec![("Integral".to_string(), Some("$own:0".to_string()))],
+            vec![keyed_proof_chirho("Integral", "$own:0")],
         );
         pass_chirho
             .occurrence_evidence_chirho

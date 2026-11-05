@@ -100,6 +100,10 @@ pub fn is_own_dictionary_key_chirho(key_chirho: &str) -> bool {
 pub struct ReferenceEvidenceChirho {
     pub class_name_chirho: String,
     pub ty_key_chirho: Option<String>,
+    /// The predicate's resolved type when it is a ground application (`BoxChirho Int`), so a
+    /// conditional instance's factory can take its context's dictionaries at the actual
+    /// arguments (row 694); `None` otherwise (`applied_evidence_chirho.rs`).
+    pub applied_ty_chirho: Option<TyChirho>,
 }
 
 /// The solved instance of one overloaded literal.
@@ -401,13 +405,19 @@ impl InferCtxChirho {
             let records_chirho: Vec<ReferenceEvidenceChirho> = capture_chirho
                 .preds_chirho
                 .iter()
-                .map(|(class_name_chirho, ty_chirho)| ReferenceEvidenceChirho {
-                    class_name_chirho: class_name_chirho.clone(),
-                    ty_key_chirho: self.reference_key_chirho(
-                        class_name_chirho,
-                        &final_subst_chirho.apply_ty_chirho(ty_chirho),
-                        final_subst_chirho,
-                    ),
+                .map(|(class_name_chirho, ty_chirho)| {
+                    let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
+                    ReferenceEvidenceChirho {
+                        class_name_chirho: class_name_chirho.clone(),
+                        ty_key_chirho: self.reference_key_chirho(
+                            class_name_chirho,
+                            &resolved_chirho,
+                            final_subst_chirho,
+                        ),
+                        applied_ty_chirho: applied_evidence_chirho::applied_evidence_ty_chirho(
+                            &resolved_chirho,
+                        ),
+                    }
                 })
                 .collect();
             match capture_chirho.origin_chirho {
@@ -423,8 +433,8 @@ impl InferCtxChirho {
             }
         }
         (
-            agreeing_chirho(by_span_chirho),
-            agreeing_chirho(by_origin_chirho),
+            applied_evidence_chirho::agreeing_references_chirho(by_span_chirho),
+            applied_evidence_chirho::agreeing_references_chirho(by_origin_chirho),
         )
     }
 

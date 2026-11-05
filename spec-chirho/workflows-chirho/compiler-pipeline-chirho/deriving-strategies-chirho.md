@@ -41,8 +41,10 @@ flowchart TD
     eligible_chirho --> ground_skip_chirho["generate_instance_dicts_chirho skips it"]
     eligible_chirho --> alias_chirho["generate_gnd_dicts_chirho, a worklist: with typing's proof, each method is the representation's real row, or its dictionary's field, building a conditional [E] dictionary once E's context exists; a desugar default row is replaced in place behind its leading context dictionaries; the dictionary's fields are the methods; a stub, a written row or an unbuildable dictionary is Unsupported"]
     alias_chirho --> refuse_chirho["compile_backend: DictPassResultChirho.unsupported_chirho refuses the module"]
-    eligible_chirho --> parametric_chirho["parametric_gnd_instances_chirho: C (N a) has no dictionary here; a use that needs one is Unsupported"]
-    parametric_chirho --> refuse_chirho
+    eligible_chirho --> parametric_chirho["generate_parametric_gnd_factories_chirho: C (N a) gets a factory over its context dictionaries, registered in conditional_dicts_chirho with the head's formal binders"]
+    evidence_chirho["Typing applied_evidence_chirho.rs: a reference's evidence carries its ground applied type (BoxChirho Int)"] --> use_chirho
+    parametric_chirho --> use_chirho["conditional_dictionary_chirho at a reference or print: the factory applied to its context, instantiated at the proved arguments; else Unsupported"]
+    use_chirho --> refuse_chirho
     info_chirho --> erase_chirho["compile_backend_chirho: erase_newtype_constructors_chirho on those newtypes' constructors before simplification"]
     erase_chirho --> merge_chirho["Native merge: the union of every module's erased set, refusing a spelling another module declares as a constructor"]
     alias_chirho --> erase_chirho
@@ -93,9 +95,15 @@ flowchart TD
   lose) and a GADT record's signature are unread: every parameter is at least Unknown.
 - A GND instance is `C rep => C N`, so a desugar default row of it takes that context's
   dictionaries first, as every caller passes them; its replacement keeps those leading
-  parameters (G3, D2, C1, C2). A GND instance over a parametric newtype (`C (N a)`, P1, P2)
-  gets no dictionary in this pass, and a use that needs one is refused when the module
-  compiles, never left to the runtime.
+  parameters (G3, D2, C1, C2).
+- A GND instance over a parametric newtype (`Show a => Show (BoxChirho a)`, P1, P2) is a
+  factory: a lambda over its context dictionaries whose dictionary reads every field from the
+  context dictionary of its own class, the representation's. It is the conditional instance's
+  builder (`conditional_dicts_chirho`), with the head's formal binders. A reference whose
+  evidence carries a ground applied type (`BoxChirho Int`, never parsed from a key) gets the
+  factory applied to the context instantiated at those arguments: the registry's dictionary,
+  or another factory's. `print` takes `show` from that dictionary instead of the generic
+  `showInt#` fallback. A use the factory cannot serve is refused when the module compiles.
 - The alias loop requires typing's proof and never aliases a generated missing-method stub.
   A representation's method is its real row, or its dictionary's field; for a list
   representation whose class instance is conditional, the existing list machinery builds the
@@ -115,8 +123,9 @@ flowchart TD
 
 ## Residuals
 
-- A parametric GND dictionary (P1, P2) needs evidence keys that carry the applied type and a
-  builder over the context dictionaries; until then it is a compile-time Unsupported.
+- A parametric GND dictionary at a non-ground application (a rigid variable's) and a direct
+  method occurrence at one (`show (BoxChirho 7)`, keyed only by its head) are not served yet;
+  the first is refused at compile time.
 - An H98 context written without `forall` (`data T a = Eq a => MkT a`) is not parsed as a
   context; GADT signatures and roles of imported types are Unknown, not read.
 

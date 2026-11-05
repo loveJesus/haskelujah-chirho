@@ -209,6 +209,7 @@ fn legacy_reference_join_chirho(
         vec![ReferenceEvidenceChirho {
             class_name_chirho: "Show".to_string(),
             ty_key_chirho: Some(key_chirho.to_string()),
+            applied_ty_chirho: None,
         }]
     };
     let mut result_chirho = infer_result_chirho(vec![]);
@@ -226,6 +227,12 @@ fn legacy_reference_join_chirho(
         &HashMap::new(),
     )
     .remove(&CoreIdChirho(10))
+    .map(|records_chirho| {
+        records_chirho
+            .into_iter()
+            .map(|record_chirho| (record_chirho.class_name_chirho, record_chirho.ty_key_chirho))
+            .collect()
+    })
 }
 
 #[test]

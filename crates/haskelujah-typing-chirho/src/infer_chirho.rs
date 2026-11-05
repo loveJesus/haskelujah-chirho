@@ -27,6 +27,7 @@ use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, Er
 use haskelujah_span_chirho::SpanChirho;
 use std::collections::{HashMap, HashSet};
 
+mod applied_evidence_chirho;
 mod builtins_chirho;
 #[path = "infer_chirho/context_chirho.rs"]
 mod context_chirho;

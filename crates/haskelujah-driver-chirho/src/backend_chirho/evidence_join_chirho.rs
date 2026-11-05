@@ -547,7 +547,7 @@ pub(crate) fn join_reference_evidence_chirho(
     infer_result_chirho: &InferResultChirho,
     reference_occurrence_spans_chirho: &HashMap<CoreIdChirho, haskelujah_span_chirho::SpanChirho>,
     occurrence_provenance_chirho: &HashMap<CoreIdChirho, ProvenanceChirho>,
-) -> HashMap<CoreIdChirho, Vec<(String, Option<String>)>> {
+) -> HashMap<CoreIdChirho, Vec<haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho>> {
     reference_occurrence_spans_chirho
         .iter()
         .filter_map(|(occ_id_chirho, span_chirho)| {
@@ -578,7 +578,13 @@ pub(crate) fn join_reference_evidence_chirho(
                                 key_chirho.to_string()
                             }
                         });
-                        (record_chirho.class_name_chirho.clone(), key_chirho)
+                        // The applied type rides along unchanged: it is the checker's
+                        // structure, which the dictionary pass instantiates (row 694).
+                        haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
+                            class_name_chirho: record_chirho.class_name_chirho.clone(),
+                            ty_key_chirho: key_chirho,
+                            applied_ty_chirho: record_chirho.applied_ty_chirho.clone(),
+                        }
                     })
                     .collect(),
             ))

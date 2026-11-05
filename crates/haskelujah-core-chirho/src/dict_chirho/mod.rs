@@ -46,7 +46,8 @@ use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
 use haskelujah_typing_chirho::deriving_chirho::DerivedShowChirho;
 use haskelujah_typing_chirho::env_chirho::TyEnvChirho;
-use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, TyChirho};
+use haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho;
+use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 
 use crate::expr_chirho::{
     BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreModuleChirho,
@@ -65,6 +66,18 @@ pub struct DictLayoutChirho {
     pub method_slots_chirho: Vec<(String, usize)>,
     /// Total number of fields (super dicts + methods).
     pub field_count_chirho: usize,
+}
+
+/// One conditional instance's dictionary factory (row 694): the binding that takes the
+/// instance's context dictionaries, in context order, and returns its dictionary; the formal
+/// binders its head applies the type constructor to, in order; and the context, over those
+/// binders, whose dictionaries the factory takes. A use instantiates the context through the
+/// binders at the actual arguments, never from a formatted key.
+#[derive(Debug, Clone)]
+pub(crate) struct ConditionalDictChirho {
+    pub(crate) builder_chirho: CoreIdChirho,
+    pub(crate) formals_chirho: Vec<TyVarChirho>,
+    pub(crate) context_chirho: Vec<haskelujah_typing_chirho::class_chirho::PredChirho>,
 }
 
 /// Result of the dictionary-passing transform.
@@ -150,10 +163,11 @@ pub struct DictPassCtxChirho {
     /// Populated by later phases (typing bridge / defaulting); when present the
     /// occurrence dispatches directly to `$prim_{class}_{method}_{key}`.
     occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
-    /// Reference evidence: occurrence id of a constrained reference → one
-    /// (class, key) per predicate in scheme order; a `None` key is "nothing
-    /// proved for this position". See `evidence_dict_for_class_chirho`.
-    reference_evidence_chirho: HashMap<CoreIdChirho, Vec<(String, Option<String>)>>,
+    /// Reference evidence: occurrence id of a constrained reference → the checker's record
+    /// per predicate in scheme order, its class, its key (a `None` key is "nothing proved
+    /// for this position") and, for a ground application, its type. See
+    /// `evidence_dict_for_class_chirho` and `conditional_dictionary_chirho`.
+    reference_evidence_chirho: HashMap<CoreIdChirho, Vec<ReferenceEvidenceChirho>>,
     /// The occurrences of written infix and section Ord operators, from
     /// `DesugarOutputChirho::operator_occurrences_chirho` (row 610).
     /// workflow: language-features-chirho/dictionary-evidence-chirho
@@ -167,13 +181,11 @@ pub struct DictPassCtxChirho {
     /// Superclass selector CoreIds: `(subclass, superclass)` → selector id.
     /// Used to extract a superclass dictionary from a subclass dictionary.
     super_selectors_chirho: HashMap<(String, String), CoreIdChirho>,
-    /// Conditional instance dict builders: `(class_name, type_constructor)` →
-    /// `(builder_id, context_classes)`. The builder is a lambda that takes
-    /// element/component dictionaries and returns the constructed class dict.
-    /// For example, `Eq a => Eq [a]` yields `("Eq", "List")` →
-    /// `($fEqList, ["Eq"])` where `$fEqList = \$dEqA -> $DictEq (list_eq_impl $dEqA)`.
-    #[allow(dead_code)]
-    conditional_dicts_chirho: HashMap<(String, String), (CoreIdChirho, Vec<String>)>,
+    /// Conditional instance dict builders: `(class_name, type_constructor)` → the builder, a
+    /// lambda that takes the instance's context dictionaries and returns the constructed
+    /// class dict, with the head's formal binders and the context those parameters stand for.
+    /// A parametric GND instance (`Show a => Show (BoxChirho a)`) has one (row 694).
+    conditional_dicts_chirho: HashMap<(String, String), ConditionalDictChirho>,
     /// Newtype info by type name: its constructor, its representation's key and the
     /// classes it derives with the newtype strategy. Used for GND (row 694):
     /// `"Age"` → `MkAge`, `Int`, `["Num"]`.
@@ -652,7 +664,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     extra_dict_param_names_chirho: HashSet<String>,
     method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
     occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
-    reference_evidence_chirho: HashMap<CoreIdChirho, Vec<(String, Option<String>)>>,
+    reference_evidence_chirho: HashMap<CoreIdChirho, Vec<ReferenceEvidenceChirho>>,
     derived_shows_chirho: HashMap<String, DerivedShowChirho>,
     derived_enums_chirho: HashMap<String, Vec<String>>,
     operator_occurrences_chirho: HashSet<CoreIdChirho>,

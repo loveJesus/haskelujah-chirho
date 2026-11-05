@@ -23,6 +23,12 @@
 //! a replaced default row keeps those leading parameters and ignores them. The dictionary's
 //! fields are the representation's methods themselves.
 //!
+//! A GND instance over a parametric newtype (`Show a => Show (BoxChirho a)`, P1, P2) has no
+//! one dictionary: it is a factory, a lambda over the instance's context dictionaries whose
+//! dictionary reads every field from the representation's, the context dictionary of the same
+//! class. It is registered as that conditional instance's builder with the head's formal
+//! binders, and a use applies it at the arguments the checker proved.
+//!
 //! Core erases these newtypes' constructors (`simplify_chirho/newtype_erasure_chirho.rs`),
 //! so a representation's method receives the field itself on every backend.
 //! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
@@ -30,10 +36,10 @@
 use std::collections::HashSet;
 
 use haskelujah_typing_chirho::GndCoercionProofChirho;
-use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
+use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho};
 use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
-use super::super::{DictLayoutChirho, DictPassCtxChirho};
+use super::super::{ConditionalDictChirho, DictLayoutChirho, DictPassCtxChirho};
 use crate::expr_chirho::{
     BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, InlineAnnotationChirho,
 };
@@ -126,7 +132,7 @@ impl DictPassCtxChirho {
     /// progress; what is left, and what no row or dictionary serves, is unsupported.
     /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub fn generate_gnd_dicts_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
-        self.gnd_parametric_chirho = self.parametric_gnd_instances_chirho(class_env_chirho);
+        self.generate_parametric_gnd_factories_chirho(class_env_chirho);
         let mut pending_chirho = self.gnd_pairs_chirho(class_env_chirho);
         while !pending_chirho.is_empty() {
             let before_chirho = pending_chirho.len();
@@ -155,31 +161,147 @@ impl DictPassCtxChirho {
         }
     }
 
-    /// Each (class, newtype) whose GND instance applies the newtype to type variables: its head
-    /// is no newtype's name, so no pair below builds its dictionary.
-    fn parametric_gnd_instances_chirho(
-        &self,
-        class_env_chirho: &ClassEnvChirho,
-    ) -> HashSet<(String, String)> {
-        let mut parametric_chirho = HashSet::new();
+    /// Each GND instance that applies its newtype to type variables (its head is no newtype's
+    /// name, so no pair below builds its dictionary) gets a factory, registered as its
+    /// conditional instance's builder, whenever one can be built. Every such (class, newtype)
+    /// is recorded, so a use the factory cannot serve is refused by name.
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+    fn generate_parametric_gnd_factories_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
+        let mut parametric_chirho: Vec<(String, String, InstDeclChirho)> = Vec::new();
         for (class_name_chirho, instances_chirho) in &class_env_chirho.instances_chirho {
             for inst_chirho in instances_chirho {
-                let mut head_chirho = &inst_chirho.head_ty_chirho;
-                let mut applied_chirho = false;
-                while let TyChirho::AppChirho(function_chirho, _) = head_chirho {
-                    head_chirho = function_chirho.as_ref();
-                    applied_chirho = true;
-                }
+                let (head_chirho, arguments_chirho) =
+                    head_application_chirho(&inst_chirho.head_ty_chirho);
                 if let TyChirho::ConChirho(newtype_chirho) = head_chirho
-                    && applied_chirho
+                    && !arguments_chirho.is_empty()
                     && self
                         .takes_representation_dictionary_chirho(class_name_chirho, newtype_chirho)
                 {
-                    parametric_chirho.insert((class_name_chirho.clone(), newtype_chirho.clone()));
+                    parametric_chirho.push((
+                        class_name_chirho.clone(),
+                        newtype_chirho.clone(),
+                        inst_chirho.clone(),
+                    ));
                 }
             }
         }
-        parametric_chirho
+        parametric_chirho.sort_by(|left_chirho, right_chirho| {
+            (&left_chirho.0, &left_chirho.1).cmp(&(&right_chirho.0, &right_chirho.1))
+        });
+        let mut recorded_chirho = HashSet::new();
+        for (class_name_chirho, newtype_chirho, inst_chirho) in parametric_chirho {
+            let key_chirho = (class_name_chirho, newtype_chirho);
+            if !recorded_chirho.insert(key_chirho.clone()) {
+                continue;
+            }
+            if let Some(factory_chirho) =
+                self.gnd_factory_chirho(&key_chirho.0, &key_chirho.1, &inst_chirho)
+            {
+                self.conditional_dicts_chirho
+                    .insert(key_chirho, factory_chirho);
+            }
+        }
+        self.gnd_parametric_chirho = recorded_chirho;
+    }
+
+    /// One parametric GND instance's factory: a lambda over its context's dictionaries, in
+    /// context order, returning `$Dict_C` with every superclass and method field read from the
+    /// context dictionary of class `C` itself, the representation's. `None` when the head does
+    /// not apply the newtype to distinct variables, the class has several parameters, its
+    /// context names no dictionary of `C`, or a selector is missing.
+    fn gnd_factory_chirho(
+        &mut self,
+        class_name_chirho: &str,
+        newtype_chirho: &str,
+        inst_chirho: &InstDeclChirho,
+    ) -> Option<ConditionalDictChirho> {
+        let layout_chirho = self.layouts_chirho.get(class_name_chirho)?.clone();
+        if !inst_chirho.extra_head_tys_chirho.is_empty()
+            || inst_chirho
+                .context_chirho
+                .iter()
+                .any(|predicate_chirho| !predicate_chirho.extra_tys_chirho.is_empty())
+        {
+            return None;
+        }
+        let (_, arguments_chirho) = head_application_chirho(&inst_chirho.head_ty_chirho);
+        let mut formals_chirho: Vec<TyVarChirho> = Vec::new();
+        for argument_chirho in arguments_chirho {
+            let TyChirho::VarChirho(formal_chirho) = argument_chirho else {
+                return None;
+            };
+            if formals_chirho.contains(formal_chirho) {
+                return None;
+            }
+            formals_chirho.push(*formal_chirho);
+        }
+        let representation_index_chirho = inst_chirho
+            .context_chirho
+            .iter()
+            .position(|predicate_chirho| predicate_chirho.class_name_chirho == class_name_chirho)?;
+        let mut selectors_chirho = Vec::new();
+        for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
+            selectors_chirho.push(
+                *self
+                    .super_selectors_chirho
+                    .get(&(class_name_chirho.to_string(), super_name_chirho.clone()))?,
+            );
+        }
+        for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
+            let (selector_class_chirho, selector_chirho) =
+                self.method_selectors_chirho.get(method_name_chirho)?;
+            if selector_class_chirho != class_name_chirho {
+                return None;
+            }
+            selectors_chirho.push(*selector_chirho);
+        }
+        let parameters_chirho: Vec<BinderChirho> = inst_chirho
+            .context_chirho
+            .iter()
+            .map(|predicate_chirho| {
+                self.fresh_binder_chirho(
+                    &format!("$d{}", predicate_chirho.class_name_chirho),
+                    TyChirho::ConChirho(format!("$Dict_{}", predicate_chirho.class_name_chirho)),
+                )
+            })
+            .collect();
+        let representation_chirho = parameters_chirho[representation_index_chirho].id_chirho;
+        let dict_ty_chirho = TyChirho::ConChirho(format!("$Dict_{class_name_chirho}"));
+        let mut factory_chirho = CoreExprChirho::ConAppChirho {
+            con_name_chirho: format!("$Dict_{class_name_chirho}"),
+            args_chirho: selectors_chirho
+                .into_iter()
+                .map(|selector_chirho| CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(selector_chirho)),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(representation_chirho)),
+                })
+                .collect(),
+        };
+        let mut factory_ty_chirho = dict_ty_chirho;
+        for parameter_chirho in parameters_chirho.iter().rev() {
+            factory_ty_chirho =
+                TyChirho::fun_chirho(parameter_chirho.ty_chirho.clone(), factory_ty_chirho);
+            factory_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: parameter_chirho.clone(),
+                body_chirho: Box::new(factory_chirho),
+            };
+        }
+        let builder_chirho = self.fresh_binder_chirho(
+            &format!("$fFactory{class_name_chirho}{newtype_chirho}"),
+            factory_ty_chirho,
+        );
+        let builder_id_chirho = builder_chirho.id_chirho;
+        self.generated_bindings_chirho.push(CoreBindingChirho {
+            binder_chirho: builder_chirho,
+            rhs_chirho: factory_chirho,
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        });
+        Some(ConditionalDictChirho {
+            builder_chirho: builder_id_chirho,
+            formals_chirho,
+            context_chirho: inst_chirho.context_chirho.clone(),
+        })
     }
 
     /// Every GND instance the class environment holds, in (class, newtype) order.
@@ -546,4 +668,16 @@ impl DictPassCtxChirho {
             inline_chirho: InlineAnnotationChirho::NoneChirho,
         })
     }
+}
+
+/// An instance head's type constructor and the arguments it applies it to, in order.
+fn head_application_chirho(head_ty_chirho: &TyChirho) -> (&TyChirho, Vec<&TyChirho>) {
+    let mut arguments_chirho = Vec::new();
+    let mut head_chirho = head_ty_chirho;
+    while let TyChirho::AppChirho(function_chirho, argument_chirho) = head_chirho {
+        arguments_chirho.push(argument_chirho.as_ref());
+        head_chirho = function_chirho.as_ref();
+    }
+    arguments_chirho.reverse();
+    (head_chirho, arguments_chirho)
 }
