@@ -47,6 +47,30 @@ impl DictPassCtxChirho {
             })
     }
 
+    /// The key whose rows a newtype's rows alias: its representation's, or, while that is
+    /// itself a newtype taking the class through the newtype strategy, the next
+    /// representation's (`newtype Older = Older Age` with GND `Age` reaches `Int`). Every
+    /// such newtype is erased, so the value is the last representation's, and no alias
+    /// waits on another newtype's alias being built first. Each step names a distinct
+    /// newtype; a longer chain is a cycle, which the checker refuses, and stops.
+    fn representation_key_chirho(&self, class_name_chirho: &str, key_chirho: &str) -> String {
+        let mut representation_chirho = key_chirho.to_string();
+        for _ in 0..self.newtype_info_chirho.len() {
+            if !self
+                .takes_representation_dictionary_chirho(class_name_chirho, &representation_chirho)
+            {
+                break;
+            }
+            match self.newtype_info_chirho.get(&representation_chirho) {
+                Some(info_chirho) => {
+                    representation_chirho = info_chirho.underlying_key_chirho.clone();
+                }
+                None => break,
+            }
+        }
+        representation_chirho
+    }
+
     /// Generate dictionary bindings for GeneralizedNewtypeDeriving instances.
     ///
     /// A newtype instance whose class the newtype's own declarations route through the
@@ -74,10 +98,14 @@ impl DictPassCtxChirho {
                     continue;
                 }
                 if let Some(info_chirho) = self.newtype_info_chirho.get(&type_key_chirho) {
+                    let representation_key_chirho = self.representation_key_chirho(
+                        class_name_chirho,
+                        &info_chirho.underlying_key_chirho,
+                    );
                     gnd_instances_chirho.push((
                         class_name_chirho.clone(),
                         type_key_chirho,
-                        info_chirho.underlying_key_chirho.clone(),
+                        representation_key_chirho,
                         layout_chirho.clone(),
                     ));
                 }

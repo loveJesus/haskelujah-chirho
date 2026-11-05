@@ -617,7 +617,7 @@ pub(crate) fn merge_compile_results_core_chirho(
         merged_provenance_chirho.remap_chirho(&duplicate_binding_remap_chirho);
     }
 
-    Ok(CoreModuleChirho {
+    let mut merged_chirho = CoreModuleChirho {
         name_chirho: results_chirho
             .last()
             .map(|result_chirho| {
@@ -633,5 +633,18 @@ pub(crate) fn merge_compile_results_core_chirho(
         specialize_pragmas_chirho: std::collections::HashMap::new(),
         foreign_exports_chirho: vec![],
         provenance_chirho: merged_provenance_chirho,
-    })
+    };
+    // One representation per newtype in the whole program (row 694): each module erased
+    // its own GND-represented constructors, and an importer's construction, match and
+    // selector use of them is erased here.
+    // workflow: language-features-chirho/deriving-strategies-chirho
+    let erased_chirho: HashSet<String> = results_chirho
+        .iter()
+        .flat_map(|result_chirho| result_chirho.gnd_newtype_cons_chirho.iter().cloned())
+        .collect();
+    haskelujah_core_chirho::simplify_chirho::erase_newtype_constructors_chirho(
+        &mut merged_chirho,
+        &erased_chirho,
+    );
+    Ok(merged_chirho)
 }

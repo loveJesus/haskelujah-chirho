@@ -228,5 +228,6 @@ pub(crate) fn compile_backend_chirho(
         llvm_ir_chirho,
         wasm_bytes_chirho,
         newtype_cons_chirho,
+        gnd_newtype_cons_chirho,
     })
 }
