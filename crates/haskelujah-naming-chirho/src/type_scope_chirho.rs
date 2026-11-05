@@ -135,8 +135,8 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 kind_sig_chirho,
                 ..
             } => {
-                for class_chirho in deriving_chirho {
-                    self.check_type_name_chirho(class_chirho, false);
+                for derived_chirho in deriving_chirho {
+                    self.check_type_name_chirho(&derived_chirho.class_chirho, false);
                 }
                 if let Some(signature_chirho) = kind_sig_chirho
                     .as_ref()
@@ -173,8 +173,8 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 kind_sig_chirho,
                 ..
             } => {
-                for class_chirho in deriving_chirho {
-                    self.check_type_name_chirho(class_chirho, false);
+                for derived_chirho in deriving_chirho {
+                    self.check_type_name_chirho(&derived_chirho.class_chirho, false);
                 }
                 if let Some(signature_chirho) = kind_sig_chirho
                     .as_ref()

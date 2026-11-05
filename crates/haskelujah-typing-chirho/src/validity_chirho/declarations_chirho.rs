@@ -12,7 +12,9 @@
 //! 3. one instance body binds a name once (`GHC-10498`);
 //! 4. a default signature has a default binding (`GHC-59794`);
 //! 5. a newtype constructor's field has no strictness annotation (`GHC-04049`);
-//! 6. a lazy field annotation (`~T`) needs `StrictData` or `Strict` (`GHC-81601`).
+//! 6. a lazy field annotation (`~T`) needs `StrictData` or `Strict` (`GHC-81601`);
+//! 7. the `newtype` deriving strategy derives only for a newtype (`GHC-10333`);
+//! 8. the `newtype` deriving strategy needs GeneralizedNewtypeDeriving (`GHC-26557`).
 //!
 //! Rule 6 judges the written override only. The module-wide `StrictData`
 //! default (unannotated fields strict) is not implemented: such fields stay
@@ -42,6 +44,10 @@ use haskelujah_diagnostics_chirho::{
 use haskelujah_span_chirho::SpanChirho;
 
 use super::ValidityResultChirho;
+
+// Rules 7 and 8: a written `newtype` deriving strategy (row 694).
+#[path = "deriving_strategy_chirho.rs"]
+mod deriving_strategy_chirho;
 
 /// `E0209`: a declaration whose written shape GHC rejects.
 const INVALID_DECLARATION_CODE_CHIRHO: u16 = 209;
@@ -114,6 +120,7 @@ pub fn check_module_declaration_validity_chirho(
             _ => {}
         }
     }
+    deriving_strategy_chirho::check_deriving_strategies_chirho(module_chirho, &mut errors_chirho);
     errors_chirho
 }
 

@@ -120,7 +120,15 @@ pub(crate) fn compile_backend_chirho(
     let newtype_info_chirho = build_newtype_info_chirho(&module_chirho);
     let mut newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
         .values()
-        .map(|(con_name_chirho, _)| con_name_chirho.clone())
+        .map(|info_chirho| info_chirho.constructor_chirho.clone())
+        .collect();
+    // The constructors of newtypes that take a class through the newtype strategy. Core
+    // erases them, so the representation's rows receive the field itself on every backend
+    // (row 694). workflow: language-features-chirho/deriving-strategies-chirho
+    let gnd_newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
+        .values()
+        .filter(|info_chirho| !info_chirho.newtype_derived_classes_chirho.is_empty())
+        .map(|info_chirho| info_chirho.constructor_chirho.clone())
         .collect();
     if !con_types_chirho.contains_key("Identity")
         && module_chirho.imports_chirho.iter().any(|import_chirho| {
@@ -190,7 +198,11 @@ pub(crate) fn compile_backend_chirho(
         derived_enums_chirho,
         desugar_output_chirho.operator_occurrences_chirho,
     );
-    let core_chirho = dict_result_chirho.module_chirho;
+    let mut core_chirho = dict_result_chirho.module_chirho;
+    haskelujah_core_chirho::simplify_chirho::erase_newtype_constructors_chirho(
+        &mut core_chirho,
+        &gnd_newtype_cons_chirho,
+    );
 
     // Phase 6: Core-to-Core simplification (beta reduction, dead code, case-of-known)
     let config_chirho = SimplifyConfigChirho::default();

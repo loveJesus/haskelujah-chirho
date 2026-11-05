@@ -11,11 +11,47 @@
 //! (`DeclChirho`, `TypeChirho`, etc.) to TH types (`ThDecChirho`, `ThTypeChirho`, etc.).
 
 use haskelujah_ast_chirho::decl_chirho::{
-    ClassMethodChirho, ConDeclChirho, DeclChirho, FieldDeclChirho, TyVarChirho,
+    ClassMethodChirho, ConDeclChirho, DeclChirho, DerivedClassChirho, FieldDeclChirho, TyVarChirho,
 };
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 
 use crate::th_ast_chirho::*;
+
+/// A declaration's derived classes as TH deriving clauses: consecutive classes with the
+/// same strategy share one clause, as written (row 694).
+fn th_deriv_clauses_chirho(deriving_chirho: &[DerivedClassChirho]) -> Vec<ThDerivClauseChirho> {
+    let mut clauses_chirho: Vec<ThDerivClauseChirho> = Vec::new();
+    for derived_chirho in deriving_chirho {
+        let strategy_chirho = derived_chirho
+            .strategy_chirho
+            .as_ref()
+            .map(|strategy_chirho| {
+                if strategy_chirho.is_newtype_chirho() {
+                    ThDerivStrategyChirho::NewtypeStrategyChirho
+                } else if strategy_chirho.is_anyclass_chirho() {
+                    ThDerivStrategyChirho::AnyclassStrategyChirho
+                } else {
+                    ThDerivStrategyChirho::StockStrategyChirho
+                }
+            });
+        let class_chirho = ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
+            derived_chirho.class_text_chirho(),
+        ));
+        let joins_last_chirho = clauses_chirho
+            .last()
+            .is_some_and(|clause_chirho| clause_chirho.strategy_chirho == strategy_chirho);
+        match clauses_chirho.last_mut() {
+            Some(clause_chirho) if joins_last_chirho => {
+                clause_chirho.classes_chirho.push(class_chirho)
+            }
+            _ => clauses_chirho.push(ThDerivClauseChirho {
+                strategy_chirho,
+                classes_chirho: vec![class_chirho],
+            }),
+        }
+    }
+    clauses_chirho
+}
 
 fn ast_constraint_to_th_chirho(constraint_chirho: &ConstraintChirho) -> ThTypeChirho {
     match constraint_chirho {
@@ -297,21 +333,7 @@ pub fn reify_decl_chirho(decl_chirho: &DeclChirho) -> Option<ThInfoChirho> {
                 .iter()
                 .map(|c_chirho| ast_con_to_th_chirho(c_chirho))
                 .collect();
-            let th_deriving_chirho: Vec<ThDerivClauseChirho> = if deriving_chirho.is_empty() {
-                vec![]
-            } else {
-                vec![ThDerivClauseChirho {
-                    strategy_chirho: None,
-                    classes_chirho: deriving_chirho
-                        .iter()
-                        .map(|d_chirho| {
-                            ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
-                                d_chirho.text_chirho(),
-                            ))
-                        })
-                        .collect(),
-                }]
-            };
+            let th_deriving_chirho = th_deriv_clauses_chirho(deriving_chirho);
 
             Some(ThInfoChirho::TyConIChirho(ThDecChirho::DataDChirho(
                 vec![],
@@ -335,21 +357,7 @@ pub fn reify_decl_chirho(decl_chirho: &DeclChirho) -> Option<ThInfoChirho> {
                 .map(|tv_chirho| ast_tyvar_to_th_chirho(tv_chirho))
                 .collect();
             let th_con_chirho = ast_con_to_th_chirho(constructor_chirho);
-            let th_deriving_chirho: Vec<ThDerivClauseChirho> = if deriving_chirho.is_empty() {
-                vec![]
-            } else {
-                vec![ThDerivClauseChirho {
-                    strategy_chirho: None,
-                    classes_chirho: deriving_chirho
-                        .iter()
-                        .map(|d_chirho| {
-                            ThTypeChirho::ConTChirho(ThNameChirho::mk_name_chirho(
-                                d_chirho.text_chirho(),
-                            ))
-                        })
-                        .collect(),
-                }]
-            };
+            let th_deriving_chirho = th_deriv_clauses_chirho(deriving_chirho);
 
             Some(ThInfoChirho::TyConIChirho(ThDecChirho::NewtypeDChirho(
                 vec![],
@@ -474,7 +482,9 @@ mod tests_chirho {
                 ],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
-            deriving_chirho: vec![mk_name_chirho("Show")],
+            deriving_chirho: vec![DerivedClassChirho::unspecified_chirho(mk_name_chirho(
+                "Show",
+            ))],
             kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };

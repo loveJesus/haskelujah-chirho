@@ -5,7 +5,7 @@
 
 use super::*;
 use haskelujah_ast_chirho::decl_chirho::{
-    DataKindSigChirho, FieldDeclChirho, FixityChirho, StrictnessChirho,
+    DataKindSigChirho, DerivedClassChirho, FieldDeclChirho, FixityChirho, StrictnessChirho,
 };
 use haskelujah_ast_chirho::module_chirho::ImportDeclChirho;
 
@@ -36,7 +36,9 @@ fn data_chirho(
         constructors_chirho,
         deriving_chirho: classes_chirho
             .iter()
-            .map(|class_chirho| var_name_chirho(class_chirho))
+            .map(|class_chirho| {
+                DerivedClassChirho::unspecified_chirho(var_name_chirho(class_chirho))
+            })
             .collect(),
         kind_sig_chirho: None,
         span_chirho: gen_span_chirho(),
@@ -255,7 +257,9 @@ fn a_kind_signature_tail_gives_the_metadata_the_instance_heads_parameters_chirho
                 .map(|binder_chirho| TyVarChirho::plain_chirho(var_name_chirho(binder_chirho)))
                 .collect(),
             constructors_chirho: vec![],
-            deriving_chirho: vec![var_name_chirho("Show")],
+            deriving_chirho: vec![DerivedClassChirho::unspecified_chirho(var_name_chirho(
+                "Show",
+            ))],
             kind_sig_chirho: Some(DataKindSigChirho::ResultChirho(TypeChirho::FunChirho {
                 arg_chirho: Box::new(con_type_chirho("Type")),
                 result_chirho: Box::new(con_type_chirho("Type")),

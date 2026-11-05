@@ -4,7 +4,9 @@
 
 use std::collections::HashMap;
 
-use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, StrictnessChirho};
+use haskelujah_ast_chirho::decl_chirho::{
+    ConDeclChirho, DeclChirho, DerivedClassChirho, StrictnessChirho,
+};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 
@@ -42,7 +44,9 @@ fn data_chirho(
         constructors_chirho,
         deriving_chirho: deriving_chirho
             .iter()
-            .map(|class_chirho| var_name_chirho(class_chirho))
+            .map(|class_chirho| {
+                DerivedClassChirho::unspecified_chirho(var_name_chirho(class_chirho))
+            })
             .collect(),
         kind_sig_chirho: None,
         span_chirho: gen_span_chirho(),

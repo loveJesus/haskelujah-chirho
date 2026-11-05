@@ -39,17 +39,28 @@
 //!
 //! The generated instances are inserted into the module's declaration list
 //! before type inference runs, so they go through the normal pipeline.
+//!
+//! Each class carries its clause's deriving strategy; `strategy_route_chirho.rs` decides
+//! whether the class's generator, an empty anyclass instance or the representation's
+//! instance (`newtype_route_chirho.rs`, GND) produces it (row 694).
 
 mod declaration_heads_chirho;
 mod enum_chirho;
+mod newtype_route_chirho;
 mod show_chirho;
+mod strategy_route_chirho;
+#[cfg(test)]
+mod strategy_route_tests_chirho;
 
+pub(crate) use declaration_heads_chirho::target_name_chirho;
 pub use enum_chirho::derived_enum_metadata_chirho;
 use show_chirho::derive_show_chirho;
 pub use show_chirho::{
     DerivedShowChirho, DerivedShowConChirho, ShowConFormChirho, ShowFieldTypeChirho,
     derived_show_metadata_chirho,
 };
+pub use strategy_route_chirho::newtype_strategy_classes_chirho;
+use strategy_route_chirho::{DeclaredTypeChirho, DerivingPolicyChirho};
 
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, TyVarChirho};
 use haskelujah_ast_chirho::expr_chirho::{
@@ -57,7 +68,7 @@ use haskelujah_ast_chirho::expr_chirho::{
 };
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+use haskelujah_ast_chirho::name_chirho::{BuiltinClassScopeChirho, NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::occurrences_chirho::remint_decls_chirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
@@ -77,9 +88,22 @@ pub struct DerivingResultChirho {
 }
 
 /// Process all `deriving` clauses in a module, generating instance declarations.
+/// Without the builtin classes naming proved, a GND head keeps every type variable.
 pub fn derive_instances_chirho(module_chirho: &ModuleChirho) -> DerivingResultChirho {
+    derive_instances_with_builtins_chirho(module_chirho, &BuiltinClassScopeChirho::default())
+}
+
+/// Process all `deriving` clauses, eta-reducing a GND head by the arity of the builtin
+/// class naming proved (`Functor` drops one variable).
+/// workflow: language-features-chirho/deriving-strategies-chirho
+pub fn derive_instances_with_builtins_chirho(
+    module_chirho: &ModuleChirho,
+    builtin_classes_chirho: &BuiltinClassScopeChirho,
+) -> DerivingResultChirho {
     let mut instances_chirho = Vec::new();
     let mut warnings_chirho = Vec::new();
+    let policy_chirho =
+        DerivingPolicyChirho::of_module_chirho(module_chirho, builtin_classes_chirho);
 
     for decl_chirho in &module_chirho.decls_chirho {
         match decl_chirho {
@@ -97,139 +121,20 @@ pub fn derive_instances_chirho(module_chirho: &ModuleChirho) -> DerivingResultCh
                     kind_sig_chirho.as_ref(),
                     *span_chirho,
                 );
-                let type_vars_chirho = visible_vars_chirho.as_ref();
-                for class_chirho in deriving_chirho {
-                    match class_chirho.text_chirho() {
-                        "Eq" => {
-                            instances_chirho.push(derive_eq_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                constructors_chirho,
-                                *span_chirho,
-                            ));
-                        }
-                        "Ord" => {
-                            instances_chirho.push(derive_ord_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                constructors_chirho,
-                                *span_chirho,
-                            ));
-                        }
-                        "Show" => {
-                            instances_chirho.push(derive_show_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                constructors_chirho,
-                                *span_chirho,
-                            ));
-                        }
-                        "Enum" => {
-                            match derive_enum_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                constructors_chirho,
-                                *span_chirho,
-                            ) {
-                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
-                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
-                            }
-                        }
-                        "Bounded" => {
-                            match derive_bounded_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                constructors_chirho,
-                                *span_chirho,
-                            ) {
-                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
-                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
-                            }
-                        }
-                        "Read" => {
-                            instances_chirho.push(derive_read_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                constructors_chirho,
-                                *span_chirho,
-                            ));
-                        }
-                        "Functor" => {
-                            match derive_functor_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                constructors_chirho,
-                                *span_chirho,
-                            ) {
-                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
-                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
-                            }
-                        }
-                        "Foldable" => {
-                            match derive_foldable_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                constructors_chirho,
-                                *span_chirho,
-                            ) {
-                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
-                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
-                            }
-                        }
-                        "Traversable" => {
-                            match derive_traversable_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                constructors_chirho,
-                                *span_chirho,
-                            ) {
-                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
-                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
-                            }
-                        }
-                        "Generic" => {
-                            match derive_generic_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                constructors_chirho,
-                                *span_chirho,
-                            ) {
-                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
-                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
-                            }
-                        }
-                        // DeriveDataTypeable / DeriveGeneric: empty instance for known classes
-                        "Typeable" | "Data" | "Lift" | "NFData" => {
-                            instances_chirho.push(derive_anyclass_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                class_chirho,
-                                *span_chirho,
-                            ));
-                        }
-                        other_chirho => {
-                            if module_chirho
-                                .extensions_chirho
-                                .iter()
-                                .any(|e_chirho| e_chirho == "DeriveAnyClass")
-                            {
-                                // DeriveAnyClass: generate empty instance relying on defaults
-                                instances_chirho.push(derive_anyclass_chirho(
-                                    name_chirho,
-                                    type_vars_chirho,
-                                    class_chirho,
-                                    *span_chirho,
-                                ));
-                            } else {
-                                warnings_chirho.push(format!(
-                                    "deriving {} not yet supported for {}",
-                                    other_chirho,
-                                    name_chirho.text_chirho()
-                                ));
-                            }
-                        }
-                    }
-                }
+                let declared_chirho = DeclaredTypeChirho {
+                    name_chirho,
+                    type_vars_chirho: &visible_vars_chirho,
+                    constructors_chirho,
+                    newtype_constructor_chirho: None,
+                    span_chirho: *span_chirho,
+                };
+                strategy_route_chirho::derive_declared_classes_chirho(
+                    &declared_chirho,
+                    deriving_chirho,
+                    &policy_chirho,
+                    &mut instances_chirho,
+                    &mut warnings_chirho,
+                );
             }
             DeclChirho::NewtypeDeclChirho {
                 name_chirho,
@@ -246,122 +151,20 @@ pub fn derive_instances_chirho(module_chirho: &ModuleChirho) -> DerivingResultCh
                     kind_sig_chirho.as_ref(),
                     *span_chirho,
                 );
-                let type_vars_chirho = visible_vars_chirho.as_ref();
-                for class_chirho in deriving_chirho {
-                    match class_chirho.text_chirho() {
-                        "Eq" => {
-                            instances_chirho.push(derive_eq_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                &cons_chirho,
-                                *span_chirho,
-                            ));
-                        }
-                        "Ord" => {
-                            instances_chirho.push(derive_ord_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                &cons_chirho,
-                                *span_chirho,
-                            ));
-                        }
-                        "Show" => {
-                            instances_chirho.push(derive_show_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                &cons_chirho,
-                                *span_chirho,
-                            ));
-                        }
-                        "Enum" => {
-                            match derive_enum_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                &cons_chirho,
-                                *span_chirho,
-                            ) {
-                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
-                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
-                            }
-                        }
-                        "Bounded" => {
-                            match derive_bounded_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                &cons_chirho,
-                                *span_chirho,
-                            ) {
-                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
-                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
-                            }
-                        }
-                        "Read" => {
-                            instances_chirho.push(derive_read_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                &cons_chirho,
-                                *span_chirho,
-                            ));
-                        }
-                        "Functor" => {
-                            match derive_functor_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                &cons_chirho,
-                                *span_chirho,
-                            ) {
-                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
-                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
-                            }
-                        }
-                        "Foldable" => {
-                            match derive_foldable_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                &cons_chirho,
-                                *span_chirho,
-                            ) {
-                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
-                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
-                            }
-                        }
-                        "Traversable" => {
-                            match derive_traversable_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                &cons_chirho,
-                                *span_chirho,
-                            ) {
-                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
-                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
-                            }
-                        }
-                        "Generic" => {
-                            match derive_generic_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                &cons_chirho,
-                                *span_chirho,
-                            ) {
-                                Ok(inst_chirho) => instances_chirho.push(inst_chirho),
-                                Err(msg_chirho) => warnings_chirho.push(msg_chirho),
-                            }
-                        }
-                        _other_chirho => {
-                            // Generalized newtype deriving (GND):
-                            // For any class not in the standard set, generate
-                            // a delegation instance that coerces to/from the
-                            // underlying type.
-                            instances_chirho.push(derive_newtype_gnd_chirho(
-                                name_chirho,
-                                type_vars_chirho,
-                                constructor_chirho,
-                                class_chirho,
-                                *span_chirho,
-                            ));
-                        }
-                    }
-                }
+                let declared_chirho = DeclaredTypeChirho {
+                    name_chirho,
+                    type_vars_chirho: &visible_vars_chirho,
+                    constructors_chirho: &cons_chirho,
+                    newtype_constructor_chirho: Some(constructor_chirho),
+                    span_chirho: *span_chirho,
+                };
+                strategy_route_chirho::derive_declared_classes_chirho(
+                    &declared_chirho,
+                    deriving_chirho,
+                    &policy_chirho,
+                    &mut instances_chirho,
+                    &mut warnings_chirho,
+                );
             }
             _ => {}
         }
@@ -380,6 +183,7 @@ pub fn derive_instances_chirho(module_chirho: &ModuleChirho) -> DerivingResultCh
 
     declaration_heads_chirho::derive_standalone_instances_chirho(
         module_chirho,
+        &policy_chirho,
         &mut instances_chirho,
         &mut warnings_chirho,
     );
@@ -606,7 +410,17 @@ fn derive_via_num_methods_chirho(con_name_str_chirho: &str) -> Vec<LocalBindChir
 
 /// Insert generated instances into a module's declaration list.
 pub fn apply_deriving_chirho(module_chirho: &mut ModuleChirho) -> Vec<String> {
-    let mut result_chirho = derive_instances_chirho(module_chirho);
+    apply_deriving_with_builtins_chirho(module_chirho, &BuiltinClassScopeChirho::default())
+}
+
+/// Insert generated instances, eta-reducing GND heads by the builtin classes naming proved.
+/// workflow: language-features-chirho/deriving-strategies-chirho
+pub fn apply_deriving_with_builtins_chirho(
+    module_chirho: &mut ModuleChirho,
+    builtin_classes_chirho: &BuiltinClassScopeChirho,
+) -> Vec<String> {
+    let mut result_chirho =
+        derive_instances_with_builtins_chirho(module_chirho, builtin_classes_chirho);
     // The instances are fresh output: every occurrence in them takes a new
     // origin from the module's supply before anything can read them, including
     // any subtree a generator copied from user code.
@@ -1437,67 +1251,6 @@ fn derive_read_chirho(
 // Derive: Generalized Newtype Deriving (GND)
 // ---------------------------------------------------------------------------
 
-/// Generate a delegation instance for a newtype.
-///
-/// For `newtype N = MkN T deriving (SomeClass)`, generates:
-///
-/// ```haskell
-/// instance SomeClass T => SomeClass N where
-///   -- Each method m is implemented as:
-///   --   m (MkN x) = MkN (m x)
-///   -- For the simplest case (single-method classes), we generate a stub
-///   -- that wraps/unwraps the constructor, delegating to the underlying type.
-/// ```
-///
-/// Since we don't know the class methods at deriving time (that requires the
-/// class environment), we generate a marker instance with an empty method list.
-/// The dictionary pass will fill in methods via coercion when it sees that the
-/// underlying type already has an instance.
-fn derive_newtype_gnd_chirho(
-    type_name_chirho: &NameChirho,
-    type_vars_chirho: &[TyVarChirho],
-    constructor_chirho: &ConDeclChirho,
-    class_name_chirho: &NameChirho,
-    _span_chirho: SpanChirho,
-) -> DeclChirho {
-    // Extract the underlying type from the constructor's single field.
-    let underlying_type_chirho = match constructor_chirho {
-        ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => fields_chirho
-            .first()
-            .map(|(_s_chirho, ty_chirho)| ty_chirho.clone())
-            .unwrap_or_else(|| TypeChirho::ConChirho(var_name_chirho("()"))),
-        ConDeclChirho::RecordChirho { fields_chirho, .. } => fields_chirho
-            .first()
-            .map(|fd_chirho| fd_chirho.ty_chirho.clone())
-            .unwrap_or_else(|| TypeChirho::ConChirho(var_name_chirho("()"))),
-        ConDeclChirho::GadtChirho { ty_chirho, .. } => {
-            // For newtype GADT, the first function argument is the underlying type.
-            extract_gadt_args_chirho(ty_chirho)
-                .into_iter()
-                .next()
-                .unwrap_or_else(|| TypeChirho::ConChirho(var_name_chirho("()")))
-        }
-    };
-
-    // Build context: ClassChirho underlyingType
-    let context_chirho = vec![
-        haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
-            class_chirho: class_name_chirho.clone(),
-            args_chirho: vec![underlying_type_chirho],
-            span_chirho: gen_span_chirho(),
-        },
-    ];
-
-    DeclChirho::InstanceDeclChirho {
-        context_chirho,
-        class_chirho: class_name_chirho.clone(),
-        types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
-        methods_chirho: vec![], // Filled by dictionary pass via coercion
-        assoc_tf_instances_chirho: vec![],
-        span_chirho: gen_span_chirho(),
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Derive Functor / Foldable / Traversable
 // ---------------------------------------------------------------------------
@@ -2053,7 +1806,18 @@ fn generic_sum_pat_chirho(
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
+    use haskelujah_ast_chirho::decl_chirho::DerivedClassChirho;
     use haskelujah_ast_chirho::decl_chirho::StrictnessChirho;
+
+    /// Classes from a deriving clause that writes no strategy.
+    fn unspecified_chirho(classes_chirho: &[&str]) -> Vec<DerivedClassChirho> {
+        classes_chirho
+            .iter()
+            .map(|class_chirho| {
+                DerivedClassChirho::unspecified_chirho(var_name_chirho(class_chirho))
+            })
+            .collect()
+    }
 
     fn make_enum_module_chirho() -> ModuleChirho {
         ModuleChirho {
@@ -2080,11 +1844,7 @@ mod tests_chirho {
                         span_chirho: gen_span_chirho(),
                     },
                 ],
-                deriving_chirho: vec![
-                    var_name_chirho("Eq"),
-                    var_name_chirho("Ord"),
-                    var_name_chirho("Show"),
-                ],
+                deriving_chirho: unspecified_chirho(&["Eq", "Ord", "Show"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -2120,7 +1880,7 @@ mod tests_chirho {
                     ],
                     span_chirho: gen_span_chirho(),
                 }],
-                deriving_chirho: vec![var_name_chirho("Eq"), var_name_chirho("Show")],
+                deriving_chirho: unspecified_chirho(&["Eq", "Show"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -2296,7 +2056,7 @@ mod tests_chirho {
                     fields_chirho: vec![],
                     span_chirho: gen_span_chirho(),
                 }],
-                deriving_chirho: vec![var_name_chirho("Functor")],
+                deriving_chirho: unspecified_chirho(&["Functor"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -2348,7 +2108,7 @@ mod tests_chirho {
                     ],
                     span_chirho: gen_span_chirho(),
                 }],
-                deriving_chirho: vec![var_name_chirho("Eq")],
+                deriving_chirho: unspecified_chirho(&["Eq"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -2404,7 +2164,7 @@ mod tests_chirho {
                     )],
                     span_chirho: gen_span_chirho(),
                 },
-                deriving_chirho: vec![var_name_chirho("Eq"), var_name_chirho("Show")],
+                deriving_chirho: unspecified_chirho(&["Eq", "Show"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -2456,7 +2216,7 @@ mod tests_chirho {
                         span_chirho: gen_span_chirho(),
                     },
                 ],
-                deriving_chirho: vec![var_name_chirho("Enum"), var_name_chirho("Bounded")],
+                deriving_chirho: unspecified_chirho(&["Enum", "Bounded"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -2566,7 +2326,7 @@ mod tests_chirho {
                     )],
                     span_chirho: gen_span_chirho(),
                 }],
-                deriving_chirho: vec![var_name_chirho("Enum")],
+                deriving_chirho: unspecified_chirho(&["Enum"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -2598,7 +2358,7 @@ mod tests_chirho {
                     fields_chirho: vec![],
                     span_chirho: gen_span_chirho(),
                 }],
-                deriving_chirho: vec![var_name_chirho("Enum")],
+                deriving_chirho: unspecified_chirho(&["Enum"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -2641,7 +2401,7 @@ mod tests_chirho {
                         span_chirho: gen_span_chirho(),
                     },
                 ],
-                deriving_chirho: vec![var_name_chirho("Read")],
+                deriving_chirho: unspecified_chirho(&["Read"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -2700,7 +2460,7 @@ mod tests_chirho {
                     )],
                     span_chirho: gen_span_chirho(),
                 }],
-                deriving_chirho: vec![var_name_chirho("Read")],
+                deriving_chirho: unspecified_chirho(&["Read"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -2753,14 +2513,9 @@ mod tests_chirho {
                         span_chirho: gen_span_chirho(),
                     },
                 ],
-                deriving_chirho: vec![
-                    var_name_chirho("Eq"),
-                    var_name_chirho("Ord"),
-                    var_name_chirho("Show"),
-                    var_name_chirho("Read"),
-                    var_name_chirho("Enum"),
-                    var_name_chirho("Bounded"),
-                ],
+                deriving_chirho: unspecified_chirho(&[
+                    "Eq", "Ord", "Show", "Read", "Enum", "Bounded",
+                ]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -2813,7 +2568,7 @@ mod tests_chirho {
                     )],
                     span_chirho: gen_span_chirho(),
                 },
-                deriving_chirho: vec![var_name_chirho("Num")],
+                deriving_chirho: unspecified_chirho(&["Num"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -2893,7 +2648,7 @@ mod tests_chirho {
                     )],
                     span_chirho: gen_span_chirho(),
                 },
-                deriving_chirho: vec![var_name_chirho("Eq"), var_name_chirho("Show")],
+                deriving_chirho: unspecified_chirho(&["Eq", "Show"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -2946,7 +2701,7 @@ mod tests_chirho {
                     )],
                     span_chirho: gen_span_chirho(),
                 },
-                deriving_chirho: vec![var_name_chirho("Functor")],
+                deriving_chirho: unspecified_chirho(&["Functor"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -2994,7 +2749,7 @@ mod tests_chirho {
                     )],
                     span_chirho: gen_span_chirho(),
                 }],
-                deriving_chirho: vec![var_name_chirho("Functor")],
+                deriving_chirho: unspecified_chirho(&["Functor"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -3037,7 +2792,7 @@ mod tests_chirho {
                     fields_chirho: vec![],
                     span_chirho: gen_span_chirho(),
                 }],
-                deriving_chirho: vec![var_name_chirho("Functor")],
+                deriving_chirho: unspecified_chirho(&["Functor"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -3078,7 +2833,7 @@ mod tests_chirho {
                     ],
                     span_chirho: gen_span_chirho(),
                 }],
-                deriving_chirho: vec![var_name_chirho("Foldable")],
+                deriving_chirho: unspecified_chirho(&["Foldable"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -3131,7 +2886,7 @@ mod tests_chirho {
                         span_chirho: gen_span_chirho(),
                     },
                 ],
-                deriving_chirho: vec![var_name_chirho("Traversable")],
+                deriving_chirho: unspecified_chirho(&["Traversable"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -3210,7 +2965,7 @@ mod tests_chirho {
                         span_chirho: gen_span_chirho(),
                     },
                 ],
-                deriving_chirho: vec![var_name_chirho("Generic")],
+                deriving_chirho: unspecified_chirho(&["Generic"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -3277,7 +3032,7 @@ mod tests_chirho {
                     ],
                     span_chirho: gen_span_chirho(),
                 }],
-                deriving_chirho: vec![var_name_chirho("Generic")],
+                deriving_chirho: unspecified_chirho(&["Generic"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -3343,7 +3098,7 @@ mod tests_chirho {
                     fields_chirho: vec![],
                     span_chirho: gen_span_chirho(),
                 }],
-                deriving_chirho: vec![var_name_chirho("Generic")],
+                deriving_chirho: unspecified_chirho(&["Generic"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],
@@ -3389,7 +3144,7 @@ mod tests_chirho {
                     )],
                     span_chirho: gen_span_chirho(),
                 },
-                deriving_chirho: vec![var_name_chirho("Generic")],
+                deriving_chirho: unspecified_chirho(&["Generic"]),
                 kind_sig_chirho: None,
                 span_chirho: gen_span_chirho(),
             }],

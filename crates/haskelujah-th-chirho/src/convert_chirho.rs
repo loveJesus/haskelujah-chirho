@@ -10,7 +10,8 @@
 //! normal compilation pipeline.
 
 use haskelujah_ast_chirho::decl_chirho::{
-    ConDeclChirho, DeclChirho, FieldDeclChirho, StrictnessChirho, TyVarChirho,
+    ConDeclChirho, DeclChirho, DerivedClassChirho, DerivingStrategyChirho, FieldDeclChirho,
+    StrictnessChirho, TyVarChirho,
 };
 use haskelujah_ast_chirho::expr_chirho::{
     AltChirho, ExprChirho, FieldAssignChirho, LocalBindChirho, MatchArmChirho, RhsChirho,
@@ -566,12 +567,29 @@ pub fn th_dec_to_ast_chirho(dec_chirho: &ThDecChirho) -> Option<DeclChirho> {
                 .iter()
                 .filter_map(|c_chirho| th_con_to_ast_chirho(c_chirho))
                 .collect();
-            let deriving_names_chirho: Vec<NameChirho> = derivs_chirho
+            // Each class keeps its clause's strategy (row 694); a `via` clause keeps the
+            // unspecified route it had.
+            let deriving_names_chirho: Vec<DerivedClassChirho> = derivs_chirho
                 .iter()
                 .flat_map(|dc_chirho| {
-                    dc_chirho.classes_chirho.iter().filter_map(|t_chirho| {
+                    let strategy_chirho = match &dc_chirho.strategy_chirho {
+                        Some(ThDerivStrategyChirho::StockStrategyChirho) => {
+                            Some(DerivingStrategyChirho::stock_at_chirho(TH_SPAN_CHIRHO))
+                        }
+                        Some(ThDerivStrategyChirho::NewtypeStrategyChirho) => {
+                            Some(DerivingStrategyChirho::newtype_at_chirho(TH_SPAN_CHIRHO))
+                        }
+                        Some(ThDerivStrategyChirho::AnyclassStrategyChirho) => {
+                            Some(DerivingStrategyChirho::anyclass_at_chirho(TH_SPAN_CHIRHO))
+                        }
+                        Some(ThDerivStrategyChirho::ViaStrategyChirho(_)) | None => None,
+                    };
+                    dc_chirho.classes_chirho.iter().filter_map(move |t_chirho| {
                         if let ThTypeChirho::ConTChirho(n_chirho) = t_chirho {
-                            Some(th_name_to_ast_chirho(n_chirho))
+                            Some(DerivedClassChirho::new_chirho(
+                                th_name_to_ast_chirho(n_chirho),
+                                strategy_chirho.clone(),
+                            ))
                         } else {
                             None
                         }

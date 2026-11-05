@@ -36,9 +36,10 @@ pub fn derived_enum_metadata_chirho(module_chirho: &ModuleChirho) -> HashMap<Str
         else {
             continue;
         };
+        // Only the stock instance enumerates constructors (row 694).
         if !deriving_chirho
             .iter()
-            .any(|class_chirho| class_chirho.text_chirho() == "Enum")
+            .any(|derived_chirho| derived_chirho.names_stock_class_chirho("Enum"))
         {
             continue;
         }

@@ -94,9 +94,10 @@ pub fn derived_show_metadata_chirho(
         else {
             continue;
         };
+        // A `newtype` or `anyclass` strategy is not the constructor rendering (row 694).
         if !deriving_chirho
             .iter()
-            .any(|class_chirho| class_chirho.text_chirho() == "Show")
+            .any(|derived_chirho| derived_chirho.names_stock_class_chirho("Show"))
         {
             continue;
         }

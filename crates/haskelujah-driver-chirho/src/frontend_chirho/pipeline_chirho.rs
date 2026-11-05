@@ -123,9 +123,20 @@ pub(crate) fn run_frontend_under_deferral_chirho(
             &module_chirho,
         );
 
+    // The builtin classes the module's class spellings name, proven from the same
+    // interfaces resolution reads (K01). Deriving reads their parameter kinds to eta-reduce
+    // a GND head (row 694), and the kind pass binds them. Deriving appends only instances,
+    // which declare no type name, so the scope is the same before and after it.
+    // workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
+    let builtin_class_scope_chirho =
+        haskelujah_naming_chirho::build_builtin_class_scope_chirho(&module_chirho, ifaces_chirho);
+
     // Phase 2.5: Deriving — generate instance declarations for `deriving` clauses
     let deriving_warnings_chirho =
-        haskelujah_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
+        haskelujah_typing_chirho::deriving_chirho::apply_deriving_with_builtins_chirho(
+            &mut module_chirho,
+            &builtin_class_scope_chirho,
+        );
 
     // Phase 2.6: Do-statement failability — clear the `fail` lowering RESERVED on
     // every bind wherever the pattern cannot fail, so what survives is a
@@ -158,10 +169,8 @@ pub(crate) fn run_frontend_under_deferral_chirho(
         haskelujah_naming_chirho::check_orphan_instances_chirho(&module_chirho);
 
     // Phase 3.5: Kind inference, knowing the builtin classes the module's class spellings
-    // name, proven from the same interfaces resolution read (K01).
+    // name (the scope built before deriving).
     // workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
-    let builtin_class_scope_chirho =
-        haskelujah_naming_chirho::build_builtin_class_scope_chirho(&module_chirho, ifaces_chirho);
     let kind_result_chirho = haskelujah_typing_chirho::infer_module_kinds_with_imports_chirho(
         &module_chirho,
         haskelujah_typing_chirho::KindImportsChirho {

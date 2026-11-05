@@ -48,6 +48,11 @@ mod declaration_kinds_chirho;
 mod declaration_tests_chirho;
 #[path = "lower_chirho/declarations_chirho/declarations_chirho.rs"]
 mod declarations_chirho;
+#[cfg(test)]
+#[path = "lower_chirho/data_types_chirho/deriving_clause_tests_chirho.rs"]
+mod deriving_clause_tests_chirho;
+#[path = "lower_chirho/data_types_chirho/deriving_clauses_chirho.rs"]
+mod deriving_clauses_chirho;
 #[path = "lower_chirho/bindings_chirho/do_selection_chirho.rs"]
 mod do_selection_chirho;
 #[cfg(test)]

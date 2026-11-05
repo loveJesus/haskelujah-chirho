@@ -28,6 +28,7 @@
 //! - Instance method body compilation from source `where` clauses
 
 pub mod instance_chirho;
+pub use instance_chirho::NewtypeInfoChirho;
 pub mod layout_chirho;
 mod monad_fix_chirho;
 mod parameters_chirho;
@@ -169,9 +170,10 @@ pub struct DictPassCtxChirho {
     /// `($fEqList, ["Eq"])` where `$fEqList = \$dEqA -> $DictEq (list_eq_impl $dEqA)`.
     #[allow(dead_code)]
     conditional_dicts_chirho: HashMap<(String, String), (CoreIdChirho, Vec<String>)>,
-    /// Newtype info: maps type name to (constructor name, underlying type key).
-    /// Used for GND: `"Age"` → `("MkAge", "Int")`.
-    newtype_info_chirho: HashMap<String, (String, String)>,
+    /// Newtype info by type name: its constructor, its representation's key and the
+    /// classes it derives with the newtype strategy. Used for GND (row 694):
+    /// `"Age"` → `MkAge`, `Int`, `["Num"]`.
+    newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
     /// Number of type parameters per class. 1 for single-parameter classes
     /// (Eq, Ord, ...), >1 for MPTCs (e.g., Addable a b has 2).
     class_param_count_chirho: HashMap<String, usize>,
@@ -548,7 +550,7 @@ pub fn dict_pass_module_full_chirho(
     type_env_chirho: &TyEnvChirho,
     class_env_chirho: &ClassEnvChirho,
     con_types_chirho: HashMap<String, String>,
-    newtype_info_chirho: HashMap<String, (String, String)>,
+    newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
 ) -> DictPassResultChirho {
     dict_pass_module_full_with_extra_dict_param_names_chirho(
         module_chirho,
@@ -567,7 +569,7 @@ pub fn dict_pass_module_full_with_extra_dict_param_names_chirho(
     type_env_chirho: &TyEnvChirho,
     class_env_chirho: &ClassEnvChirho,
     con_types_chirho: HashMap<String, String>,
-    newtype_info_chirho: HashMap<String, (String, String)>,
+    newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
     extra_dict_param_names_chirho: HashSet<String>,
 ) -> DictPassResultChirho {
     dict_pass_module_full_with_method_occurrences_chirho(
@@ -594,7 +596,7 @@ pub fn dict_pass_module_full_with_method_occurrences_chirho(
     type_env_chirho: &TyEnvChirho,
     class_env_chirho: &ClassEnvChirho,
     con_types_chirho: HashMap<String, String>,
-    newtype_info_chirho: HashMap<String, (String, String)>,
+    newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
     extra_dict_param_names_chirho: HashSet<String>,
     method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
     occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
@@ -623,7 +625,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     type_env_chirho: &TyEnvChirho,
     class_env_chirho: &ClassEnvChirho,
     con_types_chirho: HashMap<String, String>,
-    newtype_info_chirho: HashMap<String, (String, String)>,
+    newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
     extra_dict_param_names_chirho: HashSet<String>,
     method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
     occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
