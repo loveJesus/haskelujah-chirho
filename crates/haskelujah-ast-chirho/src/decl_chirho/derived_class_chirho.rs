@@ -9,7 +9,7 @@
 //! type, so `deriving anyclass (Pair Int)` asks for `Pair Int T`, never `Pair T`.
 //! `deriving C via T` clauses keep their own module-level record
 //! (`ModuleChirho::deriving_via_chirho`) and never appear here.
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use haskelujah_span_chirho::SpanChirho;
 

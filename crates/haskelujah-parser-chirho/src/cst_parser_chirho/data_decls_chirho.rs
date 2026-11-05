@@ -500,7 +500,7 @@ impl ParserChirho<'_> {
 
     /// Every deriving clause of one `data` or `newtype` declaration: GHC allows any number,
     /// each with its own strategy (`deriving stock Eq` then `deriving newtype Num`).
-    /// workflow: language-features-chirho/deriving-strategies-chirho
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     fn parse_deriving_clauses_chirho(&mut self) {
         self.eat_trivia_chirho();
         while self.at_chirho(RawTokenKindChirho::DerivingChirho) {

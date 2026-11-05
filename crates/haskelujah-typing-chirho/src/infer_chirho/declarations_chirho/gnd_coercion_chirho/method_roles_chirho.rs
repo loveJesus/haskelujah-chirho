@@ -15,7 +15,7 @@
 //!   refuses these until a proven role table exists; GHC accepts some of them.
 //!
 //! A method that never mentions the class parameter needs no coercion of it (R4).
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 
@@ -32,7 +32,7 @@ pub(crate) struct BlockedPositionChirho {
 
 /// The first position in `scheme_chirho` where class `class_name_chirho`'s parameter
 /// `class_var_chirho` cannot change representation; `None` when every occurrence can.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub(crate) fn blocked_method_position_chirho(
     scheme_chirho: &SchemeChirho,
     class_name_chirho: &str,

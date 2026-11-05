@@ -16,7 +16,7 @@
 //! is a floor on the inferred one. A type with a GADT constructor, whose result indices GHC
 //! makes nominal, reads every parameter as nominal. The roles are a least fixed point over the
 //! module's declarations, monotone in the order phantom < representational < nominal.
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use std::collections::{HashMap, HashSet};
 
@@ -73,7 +73,7 @@ struct RoledTypeChirho<'a> {
 }
 
 /// The roles of every local data and newtype declaration's visible parameters.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub fn local_parameter_roles_chirho(module_chirho: &ModuleChirho) -> ParameterRolesChirho {
     let types_chirho: Vec<RoledTypeChirho<'_>> = module_chirho
         .decls_chirho

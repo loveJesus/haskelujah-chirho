@@ -477,7 +477,7 @@ impl DictPassCtxChirho {
         let mut bindings_chirho = Vec::new();
         for binding_chirho in resolved_bindings_chirho.iter() {
             // A GND newtype's default-filled row takes its representation's row (row 694).
-            // workflow: language-features-chirho/deriving-strategies-chirho
+            // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
             if let Some(representation_row_chirho) = self
                 .gnd_default_rows_chirho
                 .get(&binding_chirho.binder_chirho.id_chirho)

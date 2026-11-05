@@ -13,7 +13,7 @@
 //! names its class as written. A class applied to arguments derives only as an anyclass
 //! instance over the full head `C args (T vs)`: the stock generators and the GND dictionary
 //! write one head type, so declaration validity refuses those routes for it.
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use std::collections::HashMap;
 
@@ -187,7 +187,7 @@ pub(super) struct DeclaredTypeChirho<'a> {
 }
 
 /// Derive every class a declaration's deriving clauses request.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub(super) fn derive_declared_classes_chirho(
     declared_chirho: &DeclaredTypeChirho<'_>,
     deriving_chirho: &[DerivedClassChirho],
@@ -207,7 +207,7 @@ pub(super) fn derive_declared_classes_chirho(
 }
 
 /// Derive one class for a declaration, by its route.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub(super) fn derive_class_chirho(
     declared_chirho: &DeclaredTypeChirho<'_>,
     derived_chirho: &DerivedClassChirho,
@@ -311,7 +311,7 @@ pub struct GndRequestChirho {
 /// for the module, the same routing the deriving pass used, and its `deriving newtype
 /// instance` declarations. GND's coercion proof checks exactly these, and the dictionary pass
 /// gives only these the representation's dictionary.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub fn newtype_strategy_requests_chirho(
     module_chirho: &ModuleChirho,
     builtin_classes_chirho: &BuiltinClassScopeChirho,
@@ -369,7 +369,7 @@ pub fn newtype_strategy_requests_chirho(
 }
 
 /// Each local newtype's classes from `newtype_strategy_requests_chirho`, by newtype name.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub fn newtype_strategy_classes_chirho(
     module_chirho: &ModuleChirho,
     builtin_classes_chirho: &BuiltinClassScopeChirho,

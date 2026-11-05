@@ -1,9 +1,12 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 //! Row 694 deriving policy on the interpreter, against root's fresh GHC 9.14.1 contracts
 //! (#31749): the 18 policy probes and gpt's three direct-method controls (#31759), each source
-//! byte for byte, with the sha256 its plan pins. A refusal must name its reason through the
-//! frontend; an accepted program must print GHC's output.
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! byte for byte, with the sha256 its plan pins. Six probes wrote a bare type variable `a`;
+//! their product copies write it `aChirho` (alpha-renamed, the same programs), and each one's
+//! comment keeps the measured source's hash without claiming these bytes are that input. A
+//! refusal must name its reason through the frontend; an accepted program must print GHC's
+//! output.
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use crate::{compile_source_chirho, eval_source_with_machine_chirho};
 use haskelujah_span_chirho::SourceMapChirho;
@@ -95,10 +98,11 @@ fn policy_a3_stock_keyword_ghc_2_0_2_4_chirho() {
     );
 }
 
-/// B1: sha256 e4601b9ec08be1aa80425989758f9d45c168c142fb72e333c58c6b9905093c33.
+/// B1: alpha-renamed from root's measured source (sha256 e4601b9ec08be1aa80425989758f9d45c168c142fb72e333c58c6b9905093c33), bare `a` written
+/// `aChirho`; these bytes are not the measured GHC input.
 const ANY_CLASS_UNWRITTEN_OFF_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
-class DescribeChirho a where
-  describeChirho :: a -> String
+class DescribeChirho aChirho where
+  describeChirho :: aChirho -> String
   describeChirho _ = "described"
 
 data PointChirho = PointChirho deriving (DescribeChirho)
@@ -120,11 +124,12 @@ fn policy_b1_any_class_unwritten_off_chirho() {
     );
 }
 
-/// B2: sha256 9f74cf9ca1f01b61d2c09f58c44e3c6e11eee8b4d386eac72dc61012afa90b32.
+/// B2: alpha-renamed from root's measured source (sha256 9f74cf9ca1f01b61d2c09f58c44e3c6e11eee8b4d386eac72dc61012afa90b32), bare `a` written
+/// `aChirho`; these bytes are not the measured GHC input.
 const ANY_CLASS_UNWRITTEN_ON_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 {-# LANGUAGE DeriveAnyClass #-}
-class DescribeChirho a where
-  describeChirho :: a -> String
+class DescribeChirho aChirho where
+  describeChirho :: aChirho -> String
   describeChirho _ = "described"
 
 data PointChirho = PointChirho deriving (DescribeChirho)
@@ -144,11 +149,12 @@ fn policy_b2_any_class_unwritten_on_chirho() {
     );
 }
 
-/// B3: sha256 5cbeaf8ccc373b533c34508d1ae2db5a7c39f72cfe5d5d9c3446fdacadfd9aec.
+/// B3: alpha-renamed from root's measured source (sha256 5cbeaf8ccc373b533c34508d1ae2db5a7c39f72cfe5d5d9c3446fdacadfd9aec), bare `a` written
+/// `aChirho`; these bytes are not the measured GHC input.
 const ANY_CLASS_WRITTEN_OFF_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 {-# LANGUAGE DerivingStrategies #-}
-class DescribeChirho a where
-  describeChirho :: a -> String
+class DescribeChirho aChirho where
+  describeChirho :: aChirho -> String
   describeChirho _ = "described"
 
 data PointChirho = PointChirho deriving anyclass (DescribeChirho)
@@ -169,11 +175,12 @@ fn policy_b3_any_class_written_off_chirho() {
     );
 }
 
-/// B4: sha256 201f421efeefce909c858f8716062e64f21d8785b4d343d524cb34caf9f8e8be.
+/// B4: alpha-renamed from root's measured source (sha256 201f421efeefce909c858f8716062e64f21d8785b4d343d524cb34caf9f8e8be), bare `a` written
+/// `aChirho`; these bytes are not the measured GHC input.
 const ANY_CLASS_WRITTEN_ON_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 {-# LANGUAGE DerivingStrategies, DeriveAnyClass #-}
-class DescribeChirho a where
-  describeChirho :: a -> String
+class DescribeChirho aChirho where
+  describeChirho :: aChirho -> String
   describeChirho _ = "described"
 
 data PointChirho = PointChirho deriving anyclass (DescribeChirho)
@@ -282,11 +289,12 @@ fn policy_c5_gnd_unwritten_haskell_2_0_1_0_on_chirho() {
     );
 }
 
-/// D1: sha256 927cbca742d3cb32c4df07a69afec6f2e6b6c2de0008b5ff00c6d71b08ebe279.
+/// D1: alpha-renamed from root's measured source (sha256 927cbca742d3cb32c4df07a69afec6f2e6b6c2de0008b5ff00c6d71b08ebe279), bare `a` written
+/// `aChirho`; these bytes are not the measured GHC input.
 const NEWTYPE_ANY_CLASS_PRECEDENCE_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 {-# LANGUAGE DeriveAnyClass #-}
-class DescribeChirho a where
-  describeChirho :: a -> String
+class DescribeChirho aChirho where
+  describeChirho :: aChirho -> String
   describeChirho _ = "described"
 
 instance DescribeChirho Int where
@@ -309,10 +317,11 @@ fn policy_d1_newtype_any_class_precedence_chirho() {
     );
 }
 
-/// D2: sha256 29e544e7dab5aadbd508acc46d4f88190de23c3f9002f3a2e89f95f3a77a398f.
+/// D2: alpha-renamed from root's measured source (sha256 29e544e7dab5aadbd508acc46d4f88190de23c3f9002f3a2e89f95f3a77a398f), bare `a` written
+/// `aChirho`; these bytes are not the measured GHC input.
 const NEWTYPE_GND_PRECEDENCE_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
-class DescribeChirho a where
-  describeChirho :: a -> String
+class DescribeChirho aChirho where
+  describeChirho :: aChirho -> String
   describeChirho _ = "described"
 
 instance DescribeChirho Int where

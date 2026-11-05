@@ -121,7 +121,7 @@ pub(crate) fn compile_backend_chirho(
     // same scope from the same declarations, imports and interfaces before deriving, and
     // deriving adds only instances. The newtype inventory and the derived Show and Enum
     // metadata judge each derived class by it, exactly as the deriving pass routed it (row 694).
-    // workflow: language-features-chirho/deriving-strategies-chirho
+    // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     let builtin_class_scope_chirho =
         haskelujah_naming_chirho::build_builtin_class_scope_chirho(&module_chirho, ifaces_chirho);
     let newtype_info_chirho = build_newtype_info_chirho(
@@ -136,7 +136,7 @@ pub(crate) fn compile_backend_chirho(
         .collect();
     // The constructors of newtypes that take a class through the newtype strategy. Core
     // erases them, so the representation's rows receive the field itself on every backend
-    // (row 694). workflow: language-features-chirho/deriving-strategies-chirho
+    // (row 694). workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     let gnd_newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
         .values()
         .filter(|info_chirho| !info_chirho.newtype_derived_classes_chirho.is_empty())
@@ -218,7 +218,7 @@ pub(crate) fn compile_backend_chirho(
     );
     // A GND instance whose representation's methods the dictionary pass could not build is
     // refused, never aliased to a missing method (row 694).
-    // workflow: language-features-chirho/deriving-strategies-chirho
+    // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     if !dict_result_chirho.unsupported_chirho.is_empty() {
         return Err(unsupported_gnd_diagnostics_chirho(
             &dict_result_chirho.unsupported_chirho,
@@ -262,7 +262,7 @@ pub(crate) fn compile_backend_chirho(
 const UNSUPPORTED_GND_CODE_CHIRHO: u16 = 209;
 
 /// The dictionary pass's unsupported GND instances, as errors (row 694).
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 fn unsupported_gnd_diagnostics_chirho(reasons_chirho: &[String]) -> DiagnosticBundleChirho {
     let mut diagnostics_chirho = DiagnosticBundleChirho::empty_chirho();
     for reason_chirho in reasons_chirho {

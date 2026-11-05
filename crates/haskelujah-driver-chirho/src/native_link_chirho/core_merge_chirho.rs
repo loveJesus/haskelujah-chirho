@@ -667,7 +667,7 @@ pub(crate) fn merge_compile_results_core_chirho(
     // selector use of them is erased here. Merged Core names constructors unqualified, so a
     // spelling another module also declares as a constructor is refused by name rather than
     // erased there too.
-    // workflow: language-features-chirho/deriving-strategies-chirho
+    // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     for (index_chirho, result_chirho) in results_chirho.iter().enumerate() {
         for spelling_chirho in &result_chirho.gnd_newtype_cons_chirho {
             if let Some(other_chirho) = results_chirho

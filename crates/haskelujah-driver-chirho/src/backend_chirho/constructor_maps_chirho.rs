@@ -94,7 +94,7 @@ pub(crate) fn build_con_type_map_chirho(
 /// Build each newtype's record by type name: its constructor, its underlying type key, and
 /// the classes its own declarations derive with the newtype strategy, routed with the builtin
 /// classes naming proved for the module (row 694).
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub(crate) fn build_newtype_info_chirho(
     module_chirho: &ModuleChirho,
     builtin_classes_chirho: &haskelujah_ast_chirho::name_chirho::BuiltinClassScopeChirho,

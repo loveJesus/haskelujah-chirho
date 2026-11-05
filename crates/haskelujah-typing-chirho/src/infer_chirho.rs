@@ -316,7 +316,7 @@ pub struct InferResultChirho {
     /// One typed proof per GND instance that its methods have one representation at the
     /// newtype and at its representation (row 694). The frontend fills it after inference;
     /// the dictionary pass aliases a newtype's rows only with its proof.
-    /// workflow: language-features-chirho/deriving-strategies-chirho
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub gnd_coercion_proofs_chirho: Vec<gnd_coercion_chirho::GndCoercionProofChirho>,
 }
 

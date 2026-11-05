@@ -7,7 +7,7 @@
 //! declaration, where GND's method coercion proof reads it. An annotation that names a role
 //! GHC does not accept, or a different number of roles than the type has parameters, is one
 //! GHC refuses; every parameter of that type then reads as nominal, the conservative role.
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use std::collections::HashMap;
 
@@ -29,7 +29,7 @@ const NOMINAL_WORD_CHIRHO: &str = "nominal";
 
 impl LowerCtxChirho {
     /// The annotated type and its role words when `node_chirho` is `type role T r1 .. rn`.
-    /// workflow: language-features-chirho/deriving-strategies-chirho
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub(super) fn lower_role_annotation_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
@@ -70,7 +70,7 @@ impl LowerCtxChirho {
 
 /// Write each annotation's roles onto its data or newtype declaration's visible parameters,
 /// in order. An unreadable annotation marks every visible parameter nominal.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub(super) fn attach_role_annotations_chirho(
     mut decls_chirho: Vec<DeclChirho>,
     annotations_chirho: &RoleAnnotationsChirho,

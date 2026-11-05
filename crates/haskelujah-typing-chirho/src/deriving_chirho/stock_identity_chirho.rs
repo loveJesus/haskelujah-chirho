@@ -16,7 +16,7 @@
 //! table does not hold. An unwritten strategy keeps the legacy route, which takes a written name
 //! K01 cannot judge for that stock class. A generated instance names its class with the written
 //! spelling, so naming resolves it to the class proved here.
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use std::collections::HashSet;
 
@@ -119,7 +119,7 @@ impl<'a> StockIdentityChirho<'a> {
 
     /// The stock derivable builtin class K01 proved `class_chirho` names, by its own name
     /// (`Eq` for a written `P.Eq`): the only authority an explicit `stock` accepts.
-    /// workflow: language-features-chirho/deriving-strategies-chirho
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub(crate) fn proven_stock_class_chirho(
         &self,
         class_chirho: &NameChirho,
@@ -136,7 +136,7 @@ impl<'a> StockIdentityChirho<'a> {
     /// naming gave one; none when the spelling names one of this module's own declarations or
     /// a proven builtin class GHC does not derive with the stock strategy; otherwise the
     /// written name, which K01 cannot judge.
-    /// workflow: language-features-chirho/deriving-strategies-chirho
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub(crate) fn legacy_stock_class_chirho(
         &self,
         class_chirho: &NameChirho,
@@ -156,7 +156,7 @@ impl<'a> StockIdentityChirho<'a> {
     /// The stock class whose generator may derive `derived_chirho`: an explicit `stock` needs
     /// K01's proof, an unwritten strategy keeps the legacy route, and `anyclass` and `newtype`
     /// never take a generator.
-    /// workflow: language-features-chirho/deriving-strategies-chirho
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub(crate) fn stock_class_for_chirho(
         &self,
         derived_chirho: &DerivedClassChirho,
@@ -215,7 +215,7 @@ impl<'a> StockIdentityChirho<'a> {
 /// the generators name `stock_class_chirho` unqualified, which a qualified-only import or a
 /// local class of that name would misread. The head's class and each context constraint on the
 /// same class take `written_chirho`.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub(crate) fn spell_generated_class_chirho(
     generated_chirho: &mut [DeclChirho],
     stock_class_chirho: &str,

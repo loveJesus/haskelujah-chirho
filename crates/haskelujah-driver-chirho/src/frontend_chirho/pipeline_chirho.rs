@@ -400,7 +400,7 @@ pub(crate) fn run_frontend_under_deferral_chirho(
     // the newtype strategy needs a typed proof that its class's methods have one
     // representation at the newtype and at its representation, before the dictionary pass may
     // alias a row. A refusal is a declaration error and never defers.
-    // workflow: language-features-chirho/deriving-strategies-chirho
+    // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     infer_result_chirho.gnd_coercion_proofs_chirho =
         haskelujah_typing_chirho::prove_gnd_coercions_chirho(
             &module_chirho,

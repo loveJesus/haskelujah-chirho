@@ -5,7 +5,7 @@
 //! DeriveAnyClass (B1-B4), GND is on under GHC2021 and GHC2024 and off under an explicit
 //! Haskell2010 (C1-C5), and the last edition or written flag decides (O1-O4). The parser
 //! appends each written flag after every edition, so last-wins here is GHC's order.
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 
@@ -23,7 +23,7 @@ pub(crate) struct DerivingExtensionsChirho {
 
 impl DerivingExtensionsChirho {
     /// The deriving extensions `module_chirho`'s pragmas enable.
-    /// workflow: language-features-chirho/deriving-strategies-chirho
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub(crate) fn of_module_chirho(module_chirho: &ModuleChirho) -> Self {
         let extensions_chirho = &module_chirho.extensions_chirho;
         Self {

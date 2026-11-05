@@ -146,7 +146,7 @@ pub fn pragma_extension_entries_from_inner_chirho(
 /// (root's O1-O4, GHC 9.14.1): `NoGeneralizedNewtypeDeriving, GHC2021` leaves it off, though
 /// the edition implies it. So the last written setting of each extension an edition covers is
 /// appended again at the end, where no edition can follow it.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub fn module_extensions_chirho(
     entries_chirho: impl IntoIterator<Item = PragmaExtensionChirho>,
 ) -> Vec<String> {

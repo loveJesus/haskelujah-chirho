@@ -6,7 +6,7 @@
 //! the three-engine controls run too. Only `newtype_show` and the two refusals are measured
 //! with GHC 9.14.1 (root's D01 controls); the other outputs are GHC's semantics, still to be
 //! measured, and `parametric_newtype_show` is a pinned prediction (#31740).
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use crate::{
     compile_source_chirho, eval_modules_with_machine_chirho, eval_source_with_machine_chirho,

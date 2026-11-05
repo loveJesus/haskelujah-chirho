@@ -20,7 +20,7 @@
 //!   class, and a position whose role the module cannot prove are named Unsupported gaps.
 //!
 //! A method that never mentions the class parameter needs no proof of it (R4).
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 mod method_roles_chirho;
 mod parameter_roles_chirho;
@@ -77,7 +77,7 @@ impl GndCoercionProofChirho {
 /// Prove every GND instance the module's declarations request, judged with the builtin
 /// classes naming proved for it and the class environment inference built. Each refusal is
 /// a declaration error at the requested class.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub fn prove_gnd_coercions_chirho(
     module_chirho: &ModuleChirho,
     builtin_classes_chirho: &BuiltinClassScopeChirho,

@@ -297,7 +297,7 @@ impl DictPassCtxChirho {
     /// The row a conditional list instance writes for `method_chirho`, under the variable its
     /// head is written with (`[a]`, `[aChirho]`): the class's only body-backed row keyed by a
     /// list of one type variable. `None` when there is none, or more than one.
-    /// workflow: language-features-chirho/deriving-strategies-chirho
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     fn conditional_list_row_chirho(
         &self,
         class_name_chirho: &str,

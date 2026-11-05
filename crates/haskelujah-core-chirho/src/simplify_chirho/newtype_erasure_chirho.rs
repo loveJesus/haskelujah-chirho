@@ -17,7 +17,7 @@
 //!   constructor, so the remaining alternatives are unreachable.
 //!
 //! The caller lists the constructors; nothing here is chosen by spelling.
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use std::collections::HashSet;
 
@@ -33,7 +33,7 @@ use crate::transform_chirho::{children_mut_chirho, max_expr_id_chirho};
 const ERASED_FIELD_NAME_CHIRHO: &str = "$newtype_field_chirho";
 
 /// Erase every constructor in `constructors_chirho` from `module_chirho`'s bindings.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub fn erase_newtype_constructors_chirho(
     module_chirho: &mut CoreModuleChirho,
     constructors_chirho: &HashSet<String>,

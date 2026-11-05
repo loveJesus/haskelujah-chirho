@@ -99,7 +99,7 @@ pub fn derive_instances_chirho(module_chirho: &ModuleChirho) -> DerivingResultCh
 
 /// Process all `deriving` clauses, eta-reducing a GND head by the arity of the builtin
 /// class naming proved (`Functor` drops one variable).
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub fn derive_instances_with_builtins_chirho(
     module_chirho: &ModuleChirho,
     builtin_classes_chirho: &BuiltinClassScopeChirho,
@@ -418,7 +418,7 @@ pub fn apply_deriving_chirho(module_chirho: &mut ModuleChirho) -> Vec<String> {
 }
 
 /// Insert generated instances, eta-reducing GND heads by the builtin classes naming proved.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub fn apply_deriving_with_builtins_chirho(
     module_chirho: &mut ModuleChirho,
     builtin_classes_chirho: &BuiltinClassScopeChirho,

@@ -149,7 +149,7 @@ fn derive_standalone_for_type_chirho(
 
 /// A written strategy routes like a deriving clause's (row 694); an unwritten one keeps
 /// standalone deriving's stock-only route, for the stock class the builtin class proof names.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 fn derive_standalone_class_chirho(
     declared_chirho: &DeclaredTypeChirho<'_>,
     request_chirho: &StandaloneRequestChirho<'_>,

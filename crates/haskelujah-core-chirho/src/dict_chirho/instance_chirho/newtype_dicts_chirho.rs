@@ -20,7 +20,7 @@
 //!
 //! Core erases these newtypes' constructors (`simplify_chirho/newtype_erasure_chirho.rs`),
 //! so a representation's method receives the field itself on every backend.
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use haskelujah_typing_chirho::GndCoercionProofChirho;
 use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
@@ -68,7 +68,7 @@ impl GndPairChirho {
 impl DictPassCtxChirho {
     /// Whether the newtype keyed `type_key_chirho` routes `class_name_chirho` through the
     /// newtype strategy, so its dictionary is the representation's.
-    /// workflow: language-features-chirho/deriving-strategies-chirho
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub(in crate::dict_chirho) fn takes_representation_dictionary_chirho(
         &self,
         class_name_chirho: &str,
@@ -115,7 +115,7 @@ impl DictPassCtxChirho {
     /// that has a body is the class default the desugarer filled in, and it becomes the
     /// representation's method in place. Instances wait for each other until none can
     /// progress; what is left, and what no row or dictionary serves, is unsupported.
-    /// workflow: language-features-chirho/deriving-strategies-chirho
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub fn generate_gnd_dicts_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
         let mut pending_chirho = self.gnd_pairs_chirho(class_env_chirho);
         while !pending_chirho.is_empty() {

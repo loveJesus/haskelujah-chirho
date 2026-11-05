@@ -9,7 +9,7 @@
 //! head and the same `k` from the representation: `newtype App a = App (IO a)` derives
 //! `Functor IO => Functor App`. A representation that does not end in exactly those
 //! variables cannot be reduced, and nothing is derived (GHC rejects it, GHC-38996).
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, TyVarChirho};
 use haskelujah_ast_chirho::name_chirho::NameChirho;
@@ -22,7 +22,7 @@ use super::{
 
 /// The GND instance of `class_name_chirho` for a newtype, its head reduced by
 /// `eta_arity_chirho` trailing variables. `None` when the representation cannot drop them.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub(super) fn derive_newtype_instance_chirho(
     type_name_chirho: &NameChirho,
     type_vars_chirho: &[TyVarChirho],

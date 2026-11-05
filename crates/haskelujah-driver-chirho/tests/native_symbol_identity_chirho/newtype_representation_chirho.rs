@@ -6,7 +6,7 @@
 //! crosses a NOINLINE helper and the imported GND rows as its field. Row 629's harness runs
 //! the program on the interpreter, LLVM and true Cranelift. The expected output is GHC's
 //! semantics; its GHC 9.14.1 run is still to be measured.
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use std::time::Duration;
 

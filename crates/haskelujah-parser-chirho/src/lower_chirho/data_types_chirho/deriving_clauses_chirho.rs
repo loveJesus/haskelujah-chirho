@@ -7,7 +7,7 @@
 //! strategy. Each comma-separated entry lowers through the flat type lowering record fields
 //! use, and splits into its class and the arguments written after it: `C (Maybe Int)` is the
 //! class `C` applied to `Maybe Int`, never two classes, and the arguments are never dropped.
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use haskelujah_ast_chirho::decl_chirho::{DerivedClassChirho, DerivingStrategyChirho};
 use haskelujah_ast_chirho::name_chirho::NameChirho;
@@ -21,7 +21,7 @@ impl LowerCtxChirho {
     /// The classes one deriving clause lists, each with the clause's strategy and its own
     /// arguments. A `deriving C via T` clause yields nothing: the module's via record
     /// derives it.
-    /// workflow: language-features-chirho/deriving-strategies-chirho
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub(super) fn lower_deriving_clause_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
@@ -108,7 +108,7 @@ impl LowerCtxChirho {
     /// The strategy a standalone deriving declaration writes before `instance`
     /// (`deriving newtype instance Show Age`). `via` is not a strategy here: a standalone
     /// `deriving via` keeps its existing route.
-    /// workflow: language-features-chirho/deriving-strategies-chirho
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub(super) fn standalone_deriving_strategy_chirho(
         &self,
         children_chirho: &[ChildChirho<'_>],

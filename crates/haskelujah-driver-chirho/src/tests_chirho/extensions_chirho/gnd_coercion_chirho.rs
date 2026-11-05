@@ -4,7 +4,7 @@
 //! byte for byte the reference's, with the sha256 its plan pins. Where Haskelujah matches GHC
 //! the test asserts GHC's output or refusal; where it names an Unsupported gap the test
 //! asserts that refusal and its comment says what GHC does.
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use crate::{compile_source_chirho, eval_source_with_machine_chirho};
 use haskelujah_span_chirho::SourceMapChirho;

@@ -36,7 +36,7 @@
 //! declaration derives for its head's last type, with the types before it as the class's
 //! arguments. Rule 13 judges every standalone declaration; the other rules judge one with a
 //! written strategy for a local target.
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use std::collections::{HashMap, HashSet};
 
@@ -59,7 +59,7 @@ struct DerivingJudgeChirho<'a> {
 
 /// Rules 7 to 16 over every deriving clause, standalone deriving declaration and written
 /// instance, with the builtin classes naming proved for the module.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub(super) fn check_deriving_strategies_chirho(
     module_chirho: &ModuleChirho,
     builtin_classes_chirho: &BuiltinClassScopeChirho,
@@ -142,7 +142,7 @@ pub(super) fn check_deriving_strategies_chirho(
 /// in declaration order: every derived class, and each written or standalone instance whose
 /// head is a local type applied to distinct variables. A second one for a pair is GHC's
 /// duplicate instance error, pointing at it with the first as related.
-/// workflow: language-features-chirho/deriving-strategies-chirho
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 fn check_builtin_duplicates_chirho(
     module_chirho: &ModuleChirho,
     judge_chirho: &DerivingJudgeChirho<'_>,

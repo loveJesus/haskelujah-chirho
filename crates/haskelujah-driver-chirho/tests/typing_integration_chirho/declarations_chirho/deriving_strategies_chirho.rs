@@ -10,7 +10,7 @@
 //! 9.14.1: `7`, GHC-10333 and GHC-26557. Every other expected output is GHC's semantics,
 //! still to be measured with GHC 9.14.1. `parametric_newtype_show` is a pinned prediction
 //! (#31740): its GND instance has a context, so its dictionary must take that context.
-//! workflow: language-features-chirho/deriving-strategies-chirho
+//! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use super::{assert_prints_everywhere_chirho, rejected_like_ghc_chirho};
 
