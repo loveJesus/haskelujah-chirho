@@ -579,13 +579,25 @@ impl InferCtxChirho {
         let mut vars_chirho: Vec<TyVarChirho> =
             instance_chirho.var_map_chirho.values().copied().collect();
         vars_chirho.sort();
-        let rigid_vars_chirho = vars_chirho
-            .iter()
-            .copied()
-            .chain(method_vars_chirho.iter().copied())
-            .collect::<Vec<_>>();
-        let vars_chirho = crate::ty_chirho::QuantifiedVariablesChirho::unknown_chirho(vars_chirho)
-            .concat_chirho(&method_vars_chirho);
+        vars_chirho.extend(method_vars_chirho.iter().copied());
+        // This is the same checked quantifier operation as written signatures:
+        // retain source owners and kind dependencies before making them rigid.
+        let mut budget_chirho =
+            super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+        let vars_chirho = self.quantify_variables_chirho(
+            vars_chirho,
+            method_vars_chirho.records_chirho(),
+            &[],
+            &SubstChirho::empty_chirho(),
+            haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho,
+            &mut budget_chirho,
+        );
+        if self.type_normalization_exhausted_chirho.get()
+            || self.non_deferrable_diagnostics_chirho.has_errors_chirho()
+        {
+            return MethodRouteChirho::RigidChirho;
+        }
+        let rigid_vars_chirho = vars_chirho.iter().copied().collect::<Vec<_>>();
         let mut preds_chirho = instance_chirho.context_chirho.clone();
         preds_chirho.extend(method_preds_chirho);
         let (rigid_ty_chirho, givens_chirho) = self.skolemize_scheme_parts_chirho(&SchemeChirho {

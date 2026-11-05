@@ -49,15 +49,15 @@ enum LayoutContextChirho {
     /// - `paren_depth`: the `(` nesting depth when the implicit block opened.
     ///   Parenthesized `do`/`case-of` blocks must close before the matching `)`.
     ImplicitChirho(u32, bool, bool, bool, u32),
-    /// An explicit block opened by `{`.
-    ExplicitChirho,
+    /// An explicit block opened by `{`, retaining whether its keyword was `let`.
+    ExplicitChirho(bool),
 }
 
 impl LayoutContextChirho {
     fn paren_depth_chirho(&self) -> Option<u32> {
         match self {
             Self::ImplicitChirho(_, _, _, _, paren_depth_chirho) => Some(*paren_depth_chirho),
-            Self::ExplicitChirho => None,
+            Self::ExplicitChirho(_) => None,
         }
     }
 
@@ -72,7 +72,7 @@ impl LayoutContextChirho {
             ) => {
                 *paren_depth_chirho > 0 && (*is_of_chirho || (!*is_let_chirho && !*is_where_chirho))
             }
-            Self::ExplicitChirho => false,
+            Self::ExplicitChirho(_) => false,
         }
     }
 }
@@ -116,6 +116,7 @@ impl<'src> LayoutRuleChirho<'src> {
         let mut after_of_keyword_chirho = false;
         let mut after_where_keyword_chirho = false;
         let mut after_module_where_chirho = false;
+        let mut completed_explicit_let_chirho = false;
 
         // Collect non-trivia token indices for lookahead
         let non_trivia_indices_chirho: Vec<usize> = self
@@ -172,6 +173,7 @@ impl<'src> LayoutRuleChirho<'src> {
             }
 
             let col_chirho = self.column_of_chirho(&token_chirho);
+            let closes_explicit_let_chirho = std::mem::take(&mut completed_explicit_let_chirho);
 
             // After a layout keyword, the next non-trivia token determines
             // whether we get an implicit or explicit layout block.
@@ -179,9 +181,12 @@ impl<'src> LayoutRuleChirho<'src> {
                 after_layout_keyword_chirho = false;
 
                 if token_chirho.kind_chirho == RawTokenKindChirho::LeftBraceChirho {
-                    // Explicit block — no virtual tokens, no implicit let/where tag
-                    context_stack_chirho.push(LayoutContextChirho::ExplicitChirho);
+                    // Preserve the actual let delimiter for its following `in`.
+                    context_stack_chirho.push(LayoutContextChirho::ExplicitChirho(
+                        after_let_keyword_chirho,
+                    ));
                     after_let_keyword_chirho = false;
+                    after_of_keyword_chirho = false;
                     after_where_keyword_chirho = false;
                     output_chirho.push(token_chirho);
                     nt_pos_chirho += 1;
@@ -197,7 +202,7 @@ impl<'src> LayoutRuleChirho<'src> {
                             LayoutContextChirho::ImplicitChirho(c_chirho, _, _, _, _) => {
                                 Some(*c_chirho)
                             }
-                            LayoutContextChirho::ExplicitChirho => None,
+                            LayoutContextChirho::ExplicitChirho(_) => None,
                         });
 
                 let is_let_context_chirho = after_let_keyword_chirho;
@@ -277,9 +282,9 @@ impl<'src> LayoutRuleChirho<'src> {
             // enclosing module's declaration separators after constructs such
             // as `case x of { A -> case y of B -> z }`.
             if token_chirho.kind_chirho == RawTokenKindChirho::RightBraceChirho
-                && context_stack_chirho
-                    .iter()
-                    .any(|context_chirho| *context_chirho == LayoutContextChirho::ExplicitChirho)
+                && context_stack_chirho.iter().any(|context_chirho| {
+                    matches!(context_chirho, LayoutContextChirho::ExplicitChirho(_))
+                })
             {
                 while matches!(
                     context_stack_chirho.last(),
@@ -327,7 +332,9 @@ impl<'src> LayoutRuleChirho<'src> {
             // `case-of` block nested inside the `let` binding) until it
             // finds the `let` context.  This handles single-line patterns
             // like: `let d' = case x of P -> E in d'`
-            if token_chirho.kind_chirho == RawTokenKindChirho::InChirho {
+            if token_chirho.kind_chirho == RawTokenKindChirho::InChirho
+                && !closes_explicit_let_chirho
+            {
                 // Close intervening non-let implicit contexts, then the let.
                 while let Some(ctx_chirho) = context_stack_chirho.last() {
                     match ctx_chirho {
@@ -503,7 +510,7 @@ impl<'src> LayoutRuleChirho<'src> {
                             break;
                         }
                     }
-                    Some(LayoutContextChirho::ExplicitChirho) => {
+                    Some(LayoutContextChirho::ExplicitChirho(_)) => {
                         // In explicit context, layout doesn't apply
                         break;
                     }
@@ -516,11 +523,14 @@ impl<'src> LayoutRuleChirho<'src> {
 
             // Handle explicit brace tracking
             if token_chirho.kind_chirho == RawTokenKindChirho::LeftBraceChirho {
-                context_stack_chirho.push(LayoutContextChirho::ExplicitChirho);
+                context_stack_chirho.push(LayoutContextChirho::ExplicitChirho(false));
             } else if token_chirho.kind_chirho == RawTokenKindChirho::RightBraceChirho {
                 // Close matching explicit context
-                if context_stack_chirho.last() == Some(&LayoutContextChirho::ExplicitChirho) {
+                if let Some(LayoutContextChirho::ExplicitChirho(is_let_chirho)) =
+                    context_stack_chirho.last().copied()
+                {
                     context_stack_chirho.pop();
+                    completed_explicit_let_chirho = is_let_chirho;
                 }
             }
 

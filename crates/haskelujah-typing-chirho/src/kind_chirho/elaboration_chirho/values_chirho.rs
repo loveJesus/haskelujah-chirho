@@ -105,11 +105,17 @@ impl TypeElaboratorChirho<'_> {
                 methods_chirho,
                 ..
             } => {
+                let class_scope_chirho = self.scope_undo_chirho.len();
                 if let Some(proof_chirho) = self.declaration_chirho(name_chirho)? {
                     let key_chirho =
                         self.declaration_key_chirho(&proof_chirho, name_chirho.span_chirho())?;
-                    self.bind_header_scope_chirho(&key_chirho, name_chirho.span_chirho())?;
+                    self.bind_published_header_scope_chirho(
+                        &key_chirho,
+                        name_chirho.span_chirho(),
+                    )?;
                 }
+                let hidden_chirho = self
+                    .body_hidden_variables_chirho(class_scope_chirho, name_chirho.span_chirho())?;
                 for method_chirho in methods_chirho {
                     if let Some(matches_chirho) = &mut method_chirho.default_chirho {
                         self.scoped_chirho(|this_chirho| {
@@ -121,6 +127,10 @@ impl TypeElaboratorChirho<'_> {
                                 &method_chirho.ty_chirho,
                                 checked_chirho,
                             )?;
+                            for name_chirho in &hidden_chirho {
+                                this_chirho
+                                    .hide_variable_chirho(name_chirho, method_chirho.span_chirho)?;
+                            }
                             let required_chirho =
                                 this_chirho.signature_scope_chirho(&method_chirho.name_chirho)?;
                             this_chirho.matches_with_signature_chirho(
@@ -140,6 +150,7 @@ impl TypeElaboratorChirho<'_> {
                 assoc_tf_instances_chirho,
                 span_chirho,
             } => {
+                let instance_scope_chirho = self.scope_undo_chirho.len();
                 for constraint_chirho in context_chirho {
                     self.infer_constraint_chirho(constraint_chirho)?;
                 }
@@ -162,7 +173,9 @@ impl TypeElaboratorChirho<'_> {
                     *types_chirho = args_chirho;
                     *kind_args_chirho = hidden_chirho;
                 }
-                self.local_binds_chirho(methods_chirho)?;
+                let hidden_chirho =
+                    self.body_hidden_variables_chirho(instance_scope_chirho, *span_chirho)?;
+                self.local_binds_in_scope_chirho(methods_chirho, &hidden_chirho)?;
                 for equation_chirho in assoc_tf_instances_chirho {
                     self.scoped_chirho(|this_chirho| {
                         this_chirho.elaborate_family_application_chirho(
@@ -245,9 +258,37 @@ impl TypeElaboratorChirho<'_> {
         Ok(())
     }
 
+    /// A declaration's variables still scope over method signatures and
+    /// associated equations. Without ScopedTypeVariables they do not scope
+    /// over method bodies; retain the exact original-state undo names only.
+    fn body_hidden_variables_chirho(
+        &mut self,
+        mark_chirho: usize,
+        span_chirho: SpanChirho,
+    ) -> Result<Vec<String>, ElaborationErrorChirho> {
+        if self.scoped_type_variables_chirho {
+            return Ok(Vec::new());
+        }
+        let entries_chirho = &self.scope_undo_chirho[mark_chirho..];
+        self.state_chirho
+            .charge_chirho(entries_chirho.len(), entries_chirho.len(), span_chirho)?;
+        entries_chirho
+            .iter()
+            .map(|(name_chirho, _)| self.state_chirho.name_chirho(name_chirho, span_chirho))
+            .collect()
+    }
+
     fn local_binds_chirho(
         &mut self,
         binds_chirho: &mut [LocalBindChirho],
+    ) -> Result<(), ElaborationErrorChirho> {
+        self.local_binds_in_scope_chirho(binds_chirho, &[])
+    }
+
+    fn local_binds_in_scope_chirho(
+        &mut self,
+        binds_chirho: &mut [LocalBindChirho],
+        hidden_chirho: &[String],
     ) -> Result<(), ElaborationErrorChirho> {
         for bind_chirho in binds_chirho.iter_mut() {
             if let LocalBindChirho::TypeSigChirho {
@@ -260,24 +301,36 @@ impl TypeElaboratorChirho<'_> {
             }
         }
         for bind_chirho in binds_chirho {
-            self.scoped_chirho(|this_chirho| match bind_chirho {
-                LocalBindChirho::TypeSigChirho { .. } => Ok(()),
-                LocalBindChirho::FunBindChirho {
-                    name_chirho,
-                    matches_chirho,
-                    ..
-                } => {
-                    let required_chirho = this_chirho.signature_scope_chirho(name_chirho)?;
-                    this_chirho
-                        .matches_with_signature_chirho(matches_chirho, required_chirho.as_deref())
+            self.scoped_chirho(|this_chirho| {
+                let span_chirho = match bind_chirho {
+                    LocalBindChirho::TypeSigChirho { .. } => return Ok(()),
+                    LocalBindChirho::FunBindChirho { span_chirho, .. }
+                    | LocalBindChirho::PatBindChirho { span_chirho, .. } => *span_chirho,
+                };
+                for name_chirho in hidden_chirho {
+                    this_chirho.hide_variable_chirho(name_chirho, span_chirho)?;
                 }
-                LocalBindChirho::PatBindChirho {
-                    pat_chirho,
-                    rhs_chirho,
-                    ..
-                } => {
-                    this_chirho.pattern_chirho(pat_chirho)?;
-                    this_chirho.rhs_chirho(rhs_chirho)
+                match bind_chirho {
+                    LocalBindChirho::TypeSigChirho { .. } => Ok(()),
+                    LocalBindChirho::FunBindChirho {
+                        name_chirho,
+                        matches_chirho,
+                        ..
+                    } => {
+                        let required_chirho = this_chirho.signature_scope_chirho(name_chirho)?;
+                        this_chirho.matches_with_signature_chirho(
+                            matches_chirho,
+                            required_chirho.as_deref(),
+                        )
+                    }
+                    LocalBindChirho::PatBindChirho {
+                        pat_chirho,
+                        rhs_chirho,
+                        ..
+                    } => {
+                        this_chirho.pattern_chirho(pat_chirho)?;
+                        this_chirho.rhs_chirho(rhs_chirho)
+                    }
                 }
             })?;
         }

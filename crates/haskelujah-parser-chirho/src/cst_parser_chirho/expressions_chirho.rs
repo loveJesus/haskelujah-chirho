@@ -208,7 +208,19 @@ impl ParserChirho<'_> {
         if self.at_chirho(RawTokenKindChirho::InChirho) {
             self.bump_chirho(); // in
             self.eat_trivia_chirho();
+            let before_chirho = self.pos_chirho;
             self.parse_expr_chirho();
+            if self.pos_chirho == before_chirho {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                self.builder_chirho.finish_node_chirho();
+            }
+        } else {
+            // Expression-let requires `in`; do/comprehension qualifiers use
+            // their own parser and do not pass through this production.
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+            self.builder_chirho.finish_node_chirho();
         }
 
         self.builder_chirho.finish_node_chirho();

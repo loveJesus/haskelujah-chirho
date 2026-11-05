@@ -14,6 +14,212 @@ use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use std::collections::HashMap;
 
 impl InferCtxChirho {
+    /// Actual header syntax names and checked records establish correspondence.
+    /// Nested kind foralls have different source IDs and cannot become body scope.
+    fn class_default_scope_chirho(
+        &mut self,
+        header_chirho: &[haskelujah_ast_chirho::decl_chirho::TyVarChirho],
+        signature_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirho,
+        scheme_chirho: &crate::ty_chirho::SchemeChirho,
+    ) -> Result<
+        Vec<(String, TyVarChirho)>,
+        crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho,
+    > {
+        use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
+        let span_chirho = signature_chirho.span_chirho();
+        let mut names_chirho = Vec::new();
+        let mut types_chirho = Vec::new();
+        let mut constraints_chirho = Vec::new();
+        self.elaboration_state_chirho.charge_chirho(
+            header_chirho.len(),
+            header_chirho.len().saturating_mul(2),
+            span_chirho,
+        )?;
+        for binder_chirho in header_chirho {
+            names_chirho.push(&binder_chirho.name_chirho);
+            if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                types_chirho.push(kind_chirho.as_ref());
+            }
+        }
+        if let TypeChirho::ForallChirho { vars_chirho, .. } = signature_chirho {
+            self.elaboration_state_chirho.charge_chirho(
+                vars_chirho.len(),
+                vars_chirho.len(),
+                span_chirho,
+            )?;
+            names_chirho.extend(
+                vars_chirho
+                    .iter()
+                    .map(|binder_chirho| &binder_chirho.name_chirho),
+            );
+        }
+        while !types_chirho.is_empty() || !constraints_chirho.is_empty() {
+            self.elaboration_state_chirho
+                .charge_chirho(1, 1, span_chirho)?;
+            if let Some(ty_chirho) = types_chirho.pop() {
+                match ty_chirho {
+                    TypeChirho::VarChirho(name_chirho) => names_chirho.push(name_chirho),
+                    TypeChirho::AppChirho {
+                        fun_chirho,
+                        arg_chirho,
+                        ..
+                    }
+                    | TypeChirho::KindApplicationChirho {
+                        fun_chirho,
+                        arg_chirho,
+                        ..
+                    } => {
+                        types_chirho.push(fun_chirho);
+                        types_chirho.push(arg_chirho);
+                    }
+                    TypeChirho::KindAnnotationChirho {
+                        ty_chirho,
+                        kind_chirho,
+                        ..
+                    } => {
+                        types_chirho.push(ty_chirho);
+                        types_chirho.push(kind_chirho);
+                    }
+                    TypeChirho::FunChirho {
+                        arg_chirho,
+                        result_chirho,
+                        ..
+                    } => {
+                        types_chirho.push(arg_chirho);
+                        types_chirho.push(result_chirho);
+                    }
+                    TypeChirho::ListChirho { element_chirho, .. } => {
+                        types_chirho.push(element_chirho)
+                    }
+                    TypeChirho::TupleChirho {
+                        elements_chirho, ..
+                    }
+                    | TypeChirho::PromotedListChirho {
+                        elements_chirho, ..
+                    } => {
+                        self.elaboration_state_chirho.charge_chirho(
+                            elements_chirho.len(),
+                            elements_chirho.len(),
+                            span_chirho,
+                        )?;
+                        types_chirho.extend(elements_chirho);
+                    }
+                    TypeChirho::ParenChirho { inner_chirho, .. } => types_chirho.push(inner_chirho),
+                    TypeChirho::ForallChirho {
+                        vars_chirho,
+                        body_chirho,
+                        ..
+                    }
+                    | TypeChirho::RequiredForallChirho {
+                        vars_chirho,
+                        body_chirho,
+                        ..
+                    } => {
+                        self.elaboration_state_chirho.charge_chirho(
+                            vars_chirho.len(),
+                            vars_chirho.len(),
+                            span_chirho,
+                        )?;
+                        types_chirho.push(body_chirho);
+                        types_chirho.extend(vars_chirho.iter().filter_map(|binder_chirho| {
+                            binder_chirho.kind_annotation_chirho.as_deref()
+                        }));
+                    }
+                    TypeChirho::QualChirho {
+                        context_chirho,
+                        body_chirho,
+                        ..
+                    } => {
+                        self.elaboration_state_chirho.charge_chirho(
+                            context_chirho.len(),
+                            context_chirho.len(),
+                            span_chirho,
+                        )?;
+                        types_chirho.push(body_chirho);
+                        constraints_chirho.extend(context_chirho);
+                    }
+                    TypeChirho::ConChirho(_)
+                    | TypeChirho::PromotedConChirho { .. }
+                    | TypeChirho::WildcardChirho { .. }
+                    | TypeChirho::LitChirho { .. } => {}
+                }
+            } else if let Some(constraint_chirho) = constraints_chirho.pop() {
+                match constraint_chirho {
+                    ConstraintChirho::ClassChirho {
+                        args_chirho,
+                        kind_args_chirho,
+                        ..
+                    } => {
+                        let width_chirho = args_chirho.len().saturating_add(kind_args_chirho.len());
+                        self.elaboration_state_chirho.charge_chirho(
+                            width_chirho,
+                            width_chirho,
+                            span_chirho,
+                        )?;
+                        types_chirho.extend(args_chirho);
+                        types_chirho.extend(kind_args_chirho);
+                    }
+                    ConstraintChirho::QuantifiedChirho {
+                        vars_chirho,
+                        context_chirho,
+                        body_chirho,
+                        ..
+                    } => {
+                        let width_chirho = vars_chirho
+                            .len()
+                            .saturating_add(context_chirho.len())
+                            .saturating_add(1);
+                        self.elaboration_state_chirho.charge_chirho(
+                            width_chirho,
+                            width_chirho,
+                            span_chirho,
+                        )?;
+                        constraints_chirho.push(body_chirho);
+                        constraints_chirho.extend(context_chirho);
+                        types_chirho.extend(vars_chirho.iter().filter_map(|binder_chirho| {
+                            binder_chirho.kind_annotation_chirho.as_deref()
+                        }));
+                    }
+                    ConstraintChirho::KindAnnotationChirho {
+                        constraint_chirho,
+                        kind_chirho,
+                        ..
+                    } => {
+                        constraints_chirho.push(constraint_chirho);
+                        types_chirho.push(kind_chirho);
+                    }
+                }
+            }
+        }
+        let mut bindings_chirho = Vec::new();
+        for name_chirho in names_chirho {
+            let Some(source_chirho) = name_chirho.type_variable_chirho() else {
+                continue;
+            };
+            for record_chirho in scheme_chirho.vars_chirho.records_chirho() {
+                self.elaboration_state_chirho
+                    .charge_chirho(1, 0, name_chirho.span_chirho())?;
+                let same_chirho = match source_chirho {
+                    haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::InferenceChirho { owner_chirho, variable_chirho } => Some(*owner_chirho) == self.elaboration_state_chirho.owner_chirho && *variable_chirho == record_chirho.variable_chirho,
+                    haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::QuantifiedChirho { declaration_chirho, .. } => {
+                        self.elaboration_state_chirho.charge_chirho(declaration_chirho.len(),0,name_chirho.span_chirho())?;
+                        record_chirho.source_chirho.as_ref() == Some(source_chirho)
+                    }
+                };
+                if same_chirho {
+                    let name_chirho = self
+                        .elaboration_state_chirho
+                        .name_chirho(name_chirho.text_chirho(), name_chirho.span_chirho())?;
+                    self.elaboration_state_chirho
+                        .charge_chirho(1, 1, span_chirho)?;
+                    bindings_chirho.push((name_chirho, record_chirho.variable_chirho));
+                    break;
+                }
+            }
+        }
+        Ok(bindings_chirho)
+    }
+
     /// Defaults are checked at their abstract class telescope, even when no
     /// instance supplies an overriding method. This uses ordinary givens only.
     pub(super) fn check_class_default_methods_chirho(
@@ -23,6 +229,7 @@ impl InferCtxChirho {
         for declaration_chirho in &module_chirho.decls_chirho {
             let DeclChirho::ClassDeclChirho {
                 name_chirho,
+                type_vars_chirho,
                 methods_chirho,
                 ..
             } = declaration_chirho
@@ -47,6 +254,19 @@ impl InferCtxChirho {
                     continue;
                 };
                 let saved_scope_chirho = self.scoped_tyvars_chirho.clone();
+                if self.scoped_type_variables_chirho {
+                    match self.class_default_scope_chirho(
+                        type_vars_chirho,
+                        &method_chirho.ty_chirho,
+                        scheme_chirho,
+                    ) {
+                        Ok(bindings_chirho) => self.scoped_tyvars_chirho.extend(bindings_chirho),
+                        Err(error_chirho) => {
+                            self.record_body_kind_error_chirho(error_chirho);
+                            continue;
+                        }
+                    }
+                }
                 let ((solution_chirho, _), public_chirho) = self.with_rigid_signature_chirho(
                     scheme_chirho,
                     method_chirho.span_chirho,

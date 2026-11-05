@@ -253,6 +253,32 @@ impl TypeElaboratorChirho<'_> {
         Ok(())
     }
 
+    pub(super) fn bind_published_header_scope_chirho(
+        &mut self,
+        key_chirho: &Arc<str>,
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        self.bind_header_scope_chirho(key_chirho, span_chirho)?;
+        let variables_chirho = &self.declaration_variables_chirho[key_chirho];
+        for (name_chirho, variable_chirho, _) in &variables_chirho.written_chirho {
+            self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+            if let Some(TyChirho::VarChirho(published_chirho)) = variables_chirho
+                .publication_chirho
+                .lookup_chirho(variable_chirho)
+            {
+                let record_chirho =
+                    self.variables_chirho.get_mut(name_chirho).ok_or_else(|| {
+                        Self::error_chirho(
+                            "published header lost its lexical variable",
+                            span_chirho,
+                        )
+                    })?;
+                record_chirho.source_chirho = Some(haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::QuantifiedChirho { declaration_chirho: key_chirho.clone(), index_chirho: published_chirho.0 });
+            }
+        }
+        Ok(())
+    }
+
     pub(super) fn check_binder_annotations_chirho(
         &mut self,
         binders_chirho: &mut [AstTyVarChirho],
