@@ -97,61 +97,15 @@ impl InferCtxChirho {
     /// Rewrite every subterm equal to a given equality's left side to its
     /// right side (one pass; normalization iterates).
     pub(super) fn apply_given_rewrites_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
-        if self.given_rewrites_chirho.is_empty() {
-            return ty_chirho.clone();
-        }
-        for (lhs_chirho, rhs_chirho) in &self.given_rewrites_chirho {
-            if ty_chirho == lhs_chirho {
-                return rhs_chirho.clone();
-            }
-        }
-        match ty_chirho {
-            TyChirho::QualChirho {
-                context_chirho,
-                body_chirho,
-            } => TyChirho::QualChirho {
-                context_chirho: context_chirho
-                    .iter()
-                    .map(|constraint_chirho| self.apply_given_rewrites_chirho(constraint_chirho))
-                    .collect(),
-                body_chirho: Box::new(self.apply_given_rewrites_chirho(body_chirho)),
-            },
-            TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => {
-                ty_chirho.clone()
-            }
-            TyChirho::AppChirho(fun_chirho, arg_chirho) => TyChirho::AppChirho(
-                Box::new(self.apply_given_rewrites_chirho(fun_chirho)),
-                Box::new(self.apply_given_rewrites_chirho(arg_chirho)),
-            ),
-            TyChirho::FunChirho(arg_chirho, result_chirho, mult_chirho) => TyChirho::FunChirho(
-                Box::new(self.apply_given_rewrites_chirho(arg_chirho)),
-                Box::new(self.apply_given_rewrites_chirho(result_chirho)),
-                *mult_chirho,
-            ),
-            TyChirho::TupleChirho(elems_chirho) => TyChirho::TupleChirho(
-                elems_chirho
-                    .iter()
-                    .map(|elem_chirho| self.apply_given_rewrites_chirho(elem_chirho))
-                    .collect(),
-            ),
-            TyChirho::ListChirho(inner_chirho) => {
-                TyChirho::ListChirho(Box::new(self.apply_given_rewrites_chirho(inner_chirho)))
-            }
-            TyChirho::ForallChirho {
-                vars_chirho,
-                body_chirho,
-            } => TyChirho::ForallChirho {
-                vars_chirho: vars_chirho.clone(),
-                body_chirho: Box::new(self.apply_given_rewrites_chirho(body_chirho)),
-            },
-            TyChirho::RequiredForallChirho {
-                vars_chirho,
-                body_chirho,
-            } => TyChirho::RequiredForallChirho {
-                vars_chirho: vars_chirho.clone(),
-                body_chirho: Box::new(self.apply_given_rewrites_chirho(body_chirho)),
-            },
-        }
+        super::equality_normalization_chirho::rewrite_givens_with_budget_chirho(
+            self,
+            ty_chirho,
+            &mut super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho(),
+        )
+        .unwrap_or_else(|| {
+            self.type_normalization_exhausted_chirho.set(true);
+            TyChirho::ConChirho("%normalization:resource-exhausted".to_owned())
+        })
     }
 
     /// Turn the `~` givens of a signature into rewrite rules. A rule rewrites
@@ -304,9 +258,9 @@ impl InferCtxChirho {
                 continue;
             }
             let left_closed_chirho = !left_norm_chirho.contains_var_chirho()
-                && !contains_skolem_chirho(&left_norm_chirho);
+                && !self.type_contains_skolem_chirho(&left_norm_chirho);
             let right_closed_chirho = !right_norm_chirho.contains_var_chirho()
-                && !contains_skolem_chirho(&right_norm_chirho);
+                && !self.type_contains_skolem_chirho(&right_norm_chirho);
             if left_closed_chirho || right_closed_chirho {
                 self.report_unify_error_chirho(&UnifyErrorChirho::MismatchChirho {
                     expected_chirho: left_norm_chirho,
@@ -469,7 +423,7 @@ impl InferCtxChirho {
         match self.pred_entailment_under_givens_chirho(pred_chirho, givens_chirho, 0) {
             None => false,
             Some(true) => true,
-            Some(false) => Self::pred_mentions_rigid_chirho(pred_chirho),
+            Some(false) => self.pred_mentions_rigid_chirho(pred_chirho),
         }
     }
 

@@ -238,7 +238,7 @@ pub fn elaborate_module_chirho(
     module_chirho: &mut ModuleChirho,
     imports_chirho: ElaborationImportsChirho<'_>,
 ) -> Result<ElaborationResultChirho, ElaborationErrorChirho> {
-    elaborate_module_under_policy_chirho(module_chirho, imports_chirho, true)
+    elaborate_module_under_policy_chirho(module_chirho, imports_chirho, true, true)
 }
 
 /// The authoritative cold source path checks declaration kinds and family
@@ -246,19 +246,29 @@ pub fn elaborate_module_chirho(
 pub fn elaborate_declaration_module_chirho(
     module_chirho: &mut ModuleChirho,
     imports_chirho: ElaborationImportsChirho<'_>,
+    signature_headers_chirho: bool,
 ) -> Result<ElaborationResultChirho, ElaborationErrorChirho> {
-    elaborate_module_under_policy_chirho(module_chirho, imports_chirho, false)
+    elaborate_module_under_policy_chirho(
+        module_chirho,
+        imports_chirho,
+        false,
+        signature_headers_chirho,
+    )
 }
 
 fn elaborate_module_under_policy_chirho(
     module_chirho: &mut ModuleChirho,
     imports_chirho: ElaborationImportsChirho<'_>,
     values_chirho: bool,
+    signature_headers_chirho: bool,
 ) -> Result<ElaborationResultChirho, ElaborationErrorChirho> {
     let mut elaborator_chirho = TypeElaboratorChirho::new_chirho(module_chirho, imports_chirho)?;
     elaborator_chirho.predeclare_chirho(module_chirho)?;
     elaborator_chirho.predeclare_constructors_chirho(module_chirho)?;
     elaborator_chirho.elaborate_declarations_chirho(module_chirho)?;
+    if signature_headers_chirho {
+        elaborator_chirho.elaborate_signature_headers_chirho(module_chirho)?;
+    }
     if values_chirho {
         elaborator_chirho.elaborate_values_chirho(module_chirho)?;
     } else {
@@ -279,7 +289,9 @@ fn elaborate_module_under_policy_chirho(
         if elaborator_chirho
             .state_chirho
             .variable_kinds_chirho
-            .contains_key(&variable_chirho)
+            .get(&variable_chirho)
+            .and_then(|record_chirho| record_chirho.kind_chirho.as_ref())
+            .is_some()
         {
             let kind_chirho = elaborator_chirho
                 .state_chirho
@@ -289,8 +301,7 @@ fn elaborate_module_under_policy_chirho(
                 .resolve_chirho(&kind_chirho, module_chirho.span_chirho)?;
             elaborator_chirho
                 .state_chirho
-                .variable_kinds_chirho
-                .insert(variable_chirho, kind_chirho);
+                .set_variable_kind_chirho(variable_chirho, kind_chirho);
         }
     }
     Ok(ElaborationResultChirho {

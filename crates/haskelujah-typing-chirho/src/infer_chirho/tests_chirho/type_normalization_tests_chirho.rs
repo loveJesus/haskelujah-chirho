@@ -647,7 +647,7 @@ fn unify_normalized_instantiates_forall_before_reducing_primstate_chirho() {
     );
     let state_var_chirho = TyVarChirho(8000);
     let expected_ty_chirho = TyChirho::ForallChirho {
-        vars_chirho: vec![state_var_chirho],
+        vars_chirho: vec![state_var_chirho].into(),
         body_chirho: Box::new(TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
                 Box::new(TyChirho::ConChirho("ST".to_string())),

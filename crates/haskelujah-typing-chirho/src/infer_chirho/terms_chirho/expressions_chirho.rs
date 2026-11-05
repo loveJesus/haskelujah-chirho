@@ -10,7 +10,7 @@ use super::{
 };
 use crate::class_chirho::PredChirho;
 use crate::subst_chirho::SubstChirho;
-use crate::ty_chirho::{MultChirho, TyChirho, TyVarChirho};
+use crate::ty_chirho::{MultChirho, TyChirho};
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, StmtChirho};
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
@@ -327,8 +327,16 @@ impl InferCtxChirho {
                 body_chirho,
                 ..
             } => {
-                let ty_var_chirho = TyVarChirho(self.next_var_chirho);
-                self.next_var_chirho += 1;
+                let ty_var_chirho = self.surface_binder_variable_chirho(
+                    binder_chirho,
+                    &mut std::collections::HashMap::new(),
+                );
+                let preceding_chirho = self.scoped_tyvars_chirho.clone();
+                let kind_chirho = self.surface_quantifier_kind_chirho(
+                    binder_chirho,
+                    &preceding_chirho,
+                    &mut super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho(),
+                );
                 let binder_text_chirho = binder_chirho.text_chirho().to_string();
                 let previous_chirho = self
                     .scoped_tyvars_chirho
@@ -343,7 +351,12 @@ impl InferCtxChirho {
                 (
                     subst_chirho.clone(),
                     TyChirho::ForallChirho {
-                        vars_chirho: vec![ty_var_chirho],
+                        vars_chirho: crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(vec![crate::ty_chirho::QuantifiedVariableChirho {
+                            variable_chirho: ty_var_chirho,
+                            source_chirho: binder_chirho.type_variable_chirho().cloned(),
+                            specificity_chirho: Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho),
+                            kind_chirho,
+                        }]),
                         body_chirho: Box::new(subst_chirho.apply_ty_chirho(&body_ty_chirho)),
                     },
                 )
@@ -688,7 +701,7 @@ impl InferCtxChirho {
 
                 self.env_chirho.push_scope_chirho();
                 for (name_chirho, variable_chirho, image_chirho) in body_aliases_chirho {
-                    self.install_type_pattern_alias_chirho(
+                    self.install_type_pattern_alias_image_chirho(
                         name_chirho,
                         variable_chirho,
                         image_chirho,
@@ -1062,9 +1075,8 @@ impl InferCtxChirho {
                 (combined_chirho, base_ty_chirho)
             }
 
-            // TypeApplications: infer the inner expression, then unify
-            // the result type with the provided type argument so that the
-            // type annotation constrains polymorphic instantiation.
+            // TypeApplications consume an actual specified quantifier and
+            // compare the producer-checked kind before ordinary instantiation.
             ExprChirho::TypeAppChirho {
                 expr_chirho: inner_expr_chirho,
                 ty_chirho,
@@ -1076,27 +1088,32 @@ impl InferCtxChirho {
                     return result_chirho;
                 }
 
-                let (s1_chirho, inferred_chirho) = self.infer_expr_chirho(inner_expr_chirho);
+                let (s1_chirho, inferred_chirho) = self
+                    .infer_application_sigma_chirho(inner_expr_chirho, *span_chirho)
+                    .unwrap_or_else(|| self.infer_expr_chirho(inner_expr_chirho));
+                let inferred_chirho =
+                    self.expose_qualified_wanteds_chirho(inferred_chirho, *span_chirho);
+                let kind_chirho = self.checked_type_argument_kind_chirho(ty_chirho);
                 let target_chirho = self.ast_type_to_ty_in_scope_chirho(ty_chirho);
                 let inferred_sub_chirho = s1_chirho.apply_ty_chirho(&inferred_chirho);
-                if let Some(result_chirho) =
-                    self.apply_visible_type_arg_chirho(&inferred_sub_chirho, target_chirho.clone())
-                {
+                if let Some(result_chirho) = self.apply_visible_type_arg_chirho(
+                    &inferred_sub_chirho,
+                    target_chirho,
+                    kind_chirho.as_ref(),
+                    *span_chirho,
+                ) {
                     return (s1_chirho, result_chirho);
                 }
-                match self.unify_normalized_chirho(&inferred_chirho, &target_chirho, *span_chirho) {
-                    Ok(s2_chirho) => {
-                        let composed_chirho = s2_chirho.compose_chirho(&s1_chirho);
-                        let result_chirho = composed_chirho.apply_ty_chirho(&inferred_chirho);
-                        (composed_chirho, result_chirho)
-                    }
-                    Err(_) => {
-                        // If unification fails (e.g. applying @Int to a
-                        // monomorphic String), just keep the inferred type.
-                        // The type argument served as documentation.
-                        (s1_chirho, inferred_chirho)
-                    }
-                }
+                self.diagnostics_chirho.push_chirho(
+                    haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                        haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(
+                            super::TYPE_MISMATCH_CODE_CHIRHO,
+                        ),
+                        "no specified type binder remains for visible type application",
+                        *span_chirho,
+                    ),
+                );
+                (s1_chirho, inferred_chirho)
             }
 
             // For remaining expression forms, return a fresh variable

@@ -9,7 +9,9 @@ use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
 
 use super::InferCtxChirho;
-use crate::ty_chirho::{MultChirho, TyChirho, TyVarChirho};
+use crate::ty_chirho::{
+    MultChirho, QuantifiedVariableChirho, QuantifiedVariablesChirho, TyChirho, TyVarChirho,
+};
 use haskelujah_ast_chirho::promotion_chirho::{
     quoted_promoted_spelling_chirho, unquoted_promoted_spelling_chirho,
 };
@@ -202,8 +204,10 @@ impl InferCtxChirho {
                         source_chirho.variable_chirho,
                         TyChirho::VarChirho(variable_chirho),
                     );
-                    if let Some(actual_kind_chirho) =
-                        self.elaboration_variable_kinds_chirho.get(&variable_chirho)
+                    if let Some(actual_kind_chirho) = self
+                        .elaboration_variable_kinds_chirho
+                        .get(&variable_chirho)
+                        .and_then(|record_chirho| record_chirho.kind_chirho.as_deref())
                         && let Some(typed_binder_chirho) =
                             scheme_chirho.binders_chirho.iter().find(|binder_chirho| {
                                 binder_chirho.variable_chirho == source_chirho.variable_chirho
@@ -230,6 +234,17 @@ impl InferCtxChirho {
                         .insert_chirho(binder_chirho.variable_chirho, argument_chirho.clone());
                     argument_chirho
                 };
+                if let TyChirho::VarChirho(variable_chirho) = &argument_chirho {
+                    variables_chirho.insert(
+                        format!(
+                            "%quantifier:{}:{}:{}",
+                            scheme_chirho.identity_chirho.len(),
+                            scheme_chirho.identity_chirho,
+                            binder_chirho.variable_chirho.0
+                        ),
+                        *variable_chirho,
+                    );
+                }
                 result_chirho =
                     TyChirho::AppChirho(Box::new(result_chirho), Box::new(argument_chirho));
             }
@@ -457,7 +472,7 @@ impl InferCtxChirho {
         vars_chirho: &[AstTyVarChirho],
         body_chirho: &TypeChirho,
         var_map_chirho: &mut HashMap<String, TyVarChirho>,
-    ) -> (Vec<TyVarChirho>, TyChirho) {
+    ) -> (QuantifiedVariablesChirho, TyChirho) {
         self.with_ast_forall_bindings_chirho(
             vars_chirho,
             var_map_chirho,
@@ -472,60 +487,181 @@ impl InferCtxChirho {
         vars_chirho: &[AstTyVarChirho],
         var_map_chirho: &mut HashMap<String, TyVarChirho>,
         action_chirho: impl FnOnce(&mut Self, &mut HashMap<String, TyVarChirho>) -> ResultChirho,
-    ) -> (Vec<TyVarChirho>, ResultChirho) {
-        use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
-        let mut bound_vars_chirho = Vec::with_capacity(vars_chirho.len());
-        let mut bindings_chirho = Vec::new();
-        for var_chirho in vars_chirho {
-            let name_chirho = var_chirho.text_chirho().to_string();
-            let fresh_chirho =
-                self.surface_binder_variable_chirho(&var_chirho.name_chirho, var_map_chirho);
-            self.tyvar_source_names_chirho
-                .insert(fresh_chirho, name_chirho.clone());
-            bound_vars_chirho.push(fresh_chirho);
-            bindings_chirho.push((name_chirho, fresh_chirho));
-            if let Some(ScopedTypeVariableIdChirho::QuantifiedChirho {
-                declaration_chirho,
-                index_chirho,
-            }) = var_chirho.name_chirho.type_variable_chirho()
-            {
-                bindings_chirho.push((
-                    format!(
-                        "%quantifier:{}:{declaration_chirho}:{index_chirho}",
-                        declaration_chirho.len()
-                    ),
-                    fresh_chirho,
-                ));
-            }
+    ) -> (QuantifiedVariablesChirho, ResultChirho) {
+        let mut budget_chirho =
+            super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+        let mut records_chirho = Vec::new();
+        let mut undo_chirho = Vec::new();
+        for binder_chirho in vars_chirho {
+            records_chirho.push(self.open_ast_quantifier_chirho(
+                binder_chirho,
+                var_map_chirho,
+                &mut undo_chirho,
+                &mut budget_chirho,
+            ));
         }
-        let result_chirho =
-            self.with_type_bindings_chirho(bindings_chirho, var_map_chirho, action_chirho);
-        (bound_vars_chirho, result_chirho)
-    }
-
-    /// Scope fresh binders during conversion, or existing binders when attaching
-    /// predicates to the already-converted signature result spine.
-    pub(super) fn with_type_bindings_chirho<ResultChirho>(
-        &mut self,
-        bindings_chirho: impl IntoIterator<Item = (String, TyVarChirho)>,
-        var_map_chirho: &mut HashMap<String, TyVarChirho>,
-        action_chirho: impl FnOnce(&mut Self, &mut HashMap<String, TyVarChirho>) -> ResultChirho,
-    ) -> ResultChirho {
-        let prior_bindings_chirho: Vec<_> = bindings_chirho
-            .into_iter()
-            .map(|(name_chirho, var_chirho)| {
-                let prior_chirho = var_map_chirho.insert(name_chirho.clone(), var_chirho);
-                (name_chirho, prior_chirho)
-            })
-            .collect();
         let result_chirho = action_chirho(self, var_map_chirho);
-        for (name_chirho, prior_chirho) in prior_bindings_chirho.into_iter().rev() {
-            if let Some(prior_chirho) = prior_chirho {
-                var_map_chirho.insert(name_chirho, prior_chirho);
+        for (name_chirho, previous_chirho) in undo_chirho.into_iter().rev() {
+            if let Some(variable_chirho) = previous_chirho {
+                var_map_chirho.insert(name_chirho, variable_chirho);
             } else {
                 var_map_chirho.remove(&name_chirho);
             }
         }
-        result_chirho
+        (
+            QuantifiedVariablesChirho::from_records_chirho(records_chirho),
+            result_chirho,
+        )
+    }
+
+    /// The source binder is the producer. Recover its full kind before admitting
+    /// its lexical names; canonical free captures must already have a mapping.
+    pub(super) fn open_ast_quantifier_chirho(
+        &mut self,
+        binder_chirho: &AstTyVarChirho,
+        variables_chirho: &mut HashMap<String, TyVarChirho>,
+        undo_chirho: &mut Vec<(String, Option<TyVarChirho>)>,
+        budget_chirho: &mut super::equality_normalization_chirho::EqualityBudgetChirho,
+    ) -> QuantifiedVariableChirho {
+        use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
+        let variable_chirho =
+            self.surface_binder_variable_chirho(&binder_chirho.name_chirho, variables_chirho);
+        let kind_chirho = self.surface_quantifier_kind_chirho(
+            &binder_chirho.name_chirho,
+            variables_chirho,
+            budget_chirho,
+        );
+        if budget_chirho
+            .node_chirho(binder_chirho.text_chirho().len().saturating_add(2))
+            .is_none()
+        {
+            self.type_normalization_exhausted_chirho.set(true);
+        }
+        let name_chirho = binder_chirho.text_chirho().to_owned();
+        self.tyvar_source_names_chirho
+            .insert(variable_chirho, name_chirho.clone());
+        let previous_chirho = variables_chirho.insert(name_chirho.clone(), variable_chirho);
+        undo_chirho.push((name_chirho, previous_chirho));
+        if let Some(ScopedTypeVariableIdChirho::QuantifiedChirho {
+            declaration_chirho,
+            index_chirho,
+        }) = binder_chirho.name_chirho.type_variable_chirho()
+        {
+            if budget_chirho
+                .node_chirho(declaration_chirho.len().saturating_add(64))
+                .is_none()
+            {
+                self.type_normalization_exhausted_chirho.set(true);
+            }
+            let key_chirho = format!(
+                "%quantifier:{}:{declaration_chirho}:{index_chirho}",
+                declaration_chirho.len()
+            );
+            let previous_chirho = variables_chirho.insert(key_chirho.clone(), variable_chirho);
+            undo_chirho.push((key_chirho, previous_chirho));
+        }
+        QuantifiedVariableChirho {
+            variable_chirho,
+            kind_chirho,
+            source_chirho: binder_chirho.name_chirho.type_variable_chirho().cloned(),
+            specificity_chirho: Some(binder_chirho.specificity_chirho),
+        }
+    }
+
+    pub(super) fn surface_quantifier_kind_chirho(
+        &mut self,
+        name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
+        variables_chirho: &HashMap<String, TyVarChirho>,
+        budget_chirho: &mut super::equality_normalization_chirho::EqualityBudgetChirho,
+    ) -> Option<std::sync::Arc<TyChirho>> {
+        use crate::subst_chirho::SubstChirho;
+        use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
+        let mut charge_chirho = |work_chirho: usize, output_chirho: usize| {
+            budget_chirho.node_chirho(output_chirho)?;
+            budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+        };
+        let result_chirho = match name_chirho.type_variable_chirho()? {
+            ScopedTypeVariableIdChirho::InferenceChirho {
+                owner_chirho,
+                variable_chirho,
+            } if Some(*owner_chirho) == self.elaboration_owner_chirho
+                && variable_chirho.0 < self.next_var_chirho =>
+            {
+                let kind_chirho = self
+                    .elaboration_variable_kinds_chirho
+                    .get(variable_chirho)?
+                    .kind_chirho
+                    .as_ref()?;
+                self.elaboration_substitution_chirho
+                    .resolve_owned_bounded_chirho(kind_chirho, &mut charge_chirho)
+            }
+            ScopedTypeVariableIdChirho::QuantifiedChirho {
+                declaration_chirho,
+                index_chirho,
+            } => {
+                let schema_chirho = self
+                    .type_families_chirho
+                    .declaration_schemes_chirho()
+                    .get_chirho(declaration_chirho)
+                    .cloned()?;
+                if schema_chirho.held_chirho || schema_chirho.owner_chirho.is_some() {
+                    return None;
+                }
+                let kind_chirho = schema_chirho
+                    .binders_chirho
+                    .iter()
+                    .find(|binder_chirho| binder_chirho.variable_chirho.0 == *index_chirho)
+                    .map(|binder_chirho| &binder_chirho.kind_chirho)
+                    .or_else(|| {
+                        schema_chirho
+                            .local_binders_chirho
+                            .iter()
+                            .find(|record_chirho| {
+                                record_chirho.binder_chirho.variable_chirho.0 == *index_chirho
+                            })
+                            .map(|record_chirho| &record_chirho.binder_chirho.kind_chirho)
+                    })?;
+                let Some(free_chirho) =
+                    SubstChirho::free_variables_bounded_chirho(kind_chirho, &mut charge_chirho)
+                else {
+                    self.type_normalization_exhausted_chirho.set(true);
+                    return None;
+                };
+                let mut mapping_chirho = SubstChirho::empty_chirho();
+                for source_chirho in free_chirho {
+                    if charge_chirho(1, declaration_chirho.len().saturating_add(64)).is_none() {
+                        self.type_normalization_exhausted_chirho.set(true);
+                        return None;
+                    }
+                    let key_chirho = format!(
+                        "%quantifier:{}:{declaration_chirho}:{}",
+                        declaration_chirho.len(),
+                        source_chirho.0
+                    );
+                    let Some(actual_chirho) = variables_chirho.get(&key_chirho) else {
+                        self.non_deferrable_diagnostics_chirho.push_chirho(
+                            DiagnosticChirho::error_with_code_chirho(
+                                ErrorCodeChirho::error_chirho(300),
+                                "checked quantifier kind contains an unbound canonical capture",
+                                name_chirho.span_chirho(),
+                            ),
+                        );
+                        return None;
+                    };
+                    mapping_chirho
+                        .insert_chirho(source_chirho, TyChirho::VarChirho(*actual_chirho));
+                }
+                mapping_chirho.apply_freshened_bounded_chirho(
+                    kind_chirho,
+                    &mut self.next_var_chirho,
+                    &mut charge_chirho,
+                )
+            }
+            _ => return None,
+        };
+        if result_chirho.is_none() {
+            self.type_normalization_exhausted_chirho.set(true);
+        }
+        result_chirho.map(std::sync::Arc::new)
     }
 }

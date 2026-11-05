@@ -155,8 +155,7 @@ fn pattern_universals_stay_flexible_but_field_only_existentials_are_rigid_chirho
         Box::new(TyChirho::VarChirho(universal_chirho)),
     );
     let scheme_chirho = SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![universal_chirho, existential_chirho],
+        vars_chirho: vec![universal_chirho, existential_chirho].into(),
         preds_chirho: vec![SchemePredChirho::legacy_chirho(
             crate::ty_chirho::SchemePredPartsChirho {
                 kind_tys_chirho: Vec::new(),
@@ -170,7 +169,7 @@ fn pattern_universals_stay_flexible_but_field_only_existentials_are_rigid_chirho
     let (fields_chirho, result_chirho, givens_chirho) =
         ctx_chirho.instantiate_constructor_pattern_chirho(&scheme_chirho);
     assert!(matches!(fields_chirho[0], TyChirho::ForallVarChirho(_)));
-    assert!(!contains_skolem_chirho(&result_chirho));
+    assert!(!contains_skolem_chirho(&result_chirho).expect("bounded inspection"));
     assert_eq!(givens_chirho[0].ty_chirho, fields_chirho[0]);
     assert!(ctx_chirho.deferred_preds_chirho.is_empty());
     ctx_chirho.end_pattern_implication_chirho(
@@ -186,8 +185,7 @@ fn constructor_expression_instantiation_stays_flexible_and_emits_wanteds_chirho(
     let mut ctx_chirho = InferCtxChirho::new_chirho();
     let var_chirho = TyVarChirho(900);
     let scheme_chirho = SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![var_chirho],
+        vars_chirho: vec![var_chirho].into(),
         preds_chirho: vec![SchemePredChirho::legacy_chirho(
             crate::ty_chirho::SchemePredPartsChirho {
                 kind_tys_chirho: Vec::new(),
@@ -203,7 +201,7 @@ fn constructor_expression_instantiation_stays_flexible_and_emits_wanteds_chirho(
     };
     let instantiated_chirho =
         ctx_chirho.instantiate_chirho(&scheme_chirho, SpanChirho::DUMMY_CHIRHO);
-    assert!(!contains_skolem_chirho(&instantiated_chirho));
+    assert!(!contains_skolem_chirho(&instantiated_chirho).expect("bounded inspection"));
     assert_eq!(ctx_chirho.deferred_preds_chirho.len(), 1);
 }
 
@@ -319,8 +317,7 @@ fn an_existential_cannot_escape_through_an_older_function_parameter_meta_chirho(
     let frame_chirho = ctx_chirho.begin_pattern_implication_chirho();
     let var_chirho = TyVarChirho(900);
     let scheme_chirho = SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![var_chirho],
+        vars_chirho: vec![var_chirho].into(),
         preds_chirho: vec![],
         ty_chirho: TyChirho::fun_chirho(
             TyChirho::VarChirho(var_chirho),
@@ -348,8 +345,7 @@ fn local_refinement_does_not_export_existentials_from_an_outer_rigid_type_chirho
     let frame_chirho = ctx_chirho.begin_pattern_implication_chirho();
     let var_chirho = TyVarChirho(900);
     let scheme_chirho = SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![var_chirho],
+        vars_chirho: vec![var_chirho].into(),
         preds_chirho: vec![],
         ty_chirho: TyChirho::fun_chirho(
             TyChirho::VarChirho(var_chirho),
@@ -386,8 +382,7 @@ fn constructor_result_tuple_parameters_are_universal_but_family_arguments_are_no
         )
     };
     let tuple_scheme_chirho = SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![var_chirho],
+        vars_chirho: vec![var_chirho].into(),
         preds_chirho: vec![],
         ty_chirho: TyChirho::fun_chirho(
             TyChirho::VarChirho(var_chirho),
@@ -396,10 +391,9 @@ fn constructor_result_tuple_parameters_are_universal_but_family_arguments_are_no
     };
     let (tuple_fields_chirho, _, _) =
         ctx_chirho.instantiate_constructor_pattern_chirho(&tuple_scheme_chirho);
-    assert!(!contains_skolem_chirho(&tuple_fields_chirho[0]));
+    assert!(!contains_skolem_chirho(&tuple_fields_chirho[0]).expect("bounded inspection"));
     let family_scheme_chirho = SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![var_chirho],
+        vars_chirho: vec![var_chirho].into(),
         preds_chirho: vec![],
         ty_chirho: TyChirho::fun_chirho(
             TyChirho::VarChirho(var_chirho),
@@ -408,7 +402,7 @@ fn constructor_result_tuple_parameters_are_universal_but_family_arguments_are_no
     };
     let (family_fields_chirho, _, _) =
         ctx_chirho.instantiate_constructor_pattern_chirho(&family_scheme_chirho);
-    assert!(contains_skolem_chirho(&family_fields_chirho[0]));
+    assert!(contains_skolem_chirho(&family_fields_chirho[0]).expect("bounded inspection"));
     ctx_chirho.end_pattern_implication_chirho(
         frame_chirho,
         &TyChirho::int_chirho(),
@@ -426,8 +420,7 @@ fn an_existential_eliminated_by_local_evidence_is_materialized_before_pop_chirho
     let frame_chirho = ctx_chirho.begin_pattern_implication_chirho();
     let var_chirho = TyVarChirho(900);
     let scheme_chirho = SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![var_chirho],
+        vars_chirho: vec![var_chirho].into(),
         preds_chirho: vec![],
         ty_chirho: TyChirho::fun_chirho(
             TyChirho::VarChirho(var_chirho),
@@ -554,8 +547,7 @@ fn a_case_alternative_cannot_hide_its_mismatch_behind_an_earlier_given_chirho() 
             ctx_chirho.env_chirho.bind_chirho(
                 name_chirho.to_owned(),
                 SchemeChirho {
-                    source_binders_chirho: Vec::new(),
-                    vars_chirho: vec![var_chirho],
+                    vars_chirho: vec![var_chirho].into(),
                     preds_chirho,
                     ty_chirho: branch_chirho(TyChirho::VarChirho(var_chirho)),
                 },
@@ -638,15 +630,14 @@ fn resolved_promoted_indices_determine_universals_but_unknown_ones_do_not_chirho
             Box::new(index_chirho),
         );
         let scheme_chirho = SchemeChirho {
-            source_binders_chirho: Vec::new(),
-            vars_chirho: vec![var_chirho],
+            vars_chirho: vec![var_chirho].into(),
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(TyChirho::VarChirho(var_chirho), result_chirho),
         };
         let (fields_chirho, _, _) =
             ctx_chirho.instantiate_constructor_pattern_chirho(&scheme_chirho);
         assert_eq!(
-            !contains_skolem_chirho(&fields_chirho[0]),
+            !contains_skolem_chirho(&fields_chirho[0]).expect("bounded inspection"),
             determined_chirho
         );
         ctx_chirho.end_pattern_implication_chirho(

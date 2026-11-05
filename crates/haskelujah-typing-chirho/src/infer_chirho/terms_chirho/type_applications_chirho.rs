@@ -159,11 +159,18 @@ impl InferCtxChirho {
 
         // A name known only through a placeholder import scheme has no
         // quantifiers to apply type arguments to; its type stays unknown.
-        if matches!(base_expr_chirho, ExprChirho::VarChirho(_) | ExprChirho::ConChirho(_))
-            && is_placeholder_import_scheme_chirho(&scheme_chirho) {
+        if matches!(
+            base_expr_chirho,
+            ExprChirho::VarChirho(_) | ExprChirho::ConChirho(_)
+        ) && is_placeholder_import_scheme_chirho(&scheme_chirho)
+        {
             let fresh_chirho = self.fresh_var_chirho();
             return Some((SubstChirho::empty_chirho(), fresh_chirho));
         }
+        let explicit_kinds_chirho: Vec<_> = type_args_ast_chirho
+            .iter()
+            .map(|argument_chirho| self.checked_type_argument_kind_chirho(argument_chirho))
+            .collect();
         let explicit_tys_chirho: Vec<TyChirho> = type_args_ast_chirho
             .into_iter()
             .map(|ty_chirho| self.ast_type_to_ty_in_scope_chirho(ty_chirho))
@@ -172,6 +179,8 @@ impl InferCtxChirho {
             .instantiate_scheme_parts_with_visible_type_args_chirho(
                 &scheme_chirho,
                 &explicit_tys_chirho,
+                &explicit_kinds_chirho,
+                span_chirho,
             )
         else {
             self.diagnostics_chirho.push_chirho(
@@ -190,6 +199,23 @@ impl InferCtxChirho {
             self.defer_pred_chirho(pred_inst_chirho, span_chirho);
         }
         Some((carried_chirho, instantiated_ty_chirho))
+    }
+
+    /// The kind phase retains its checked result on the existing type syntax.
+    /// An absent annotation supplies no ordinary kind proof.
+    pub(super) fn checked_type_argument_kind_chirho(
+        &mut self,
+        argument_chirho: &TypeChirho,
+    ) -> Option<TyChirho> {
+        match argument_chirho {
+            TypeChirho::KindAnnotationChirho { kind_chirho, .. } => {
+                Some(self.ast_type_to_ty_in_scope_chirho(kind_chirho))
+            }
+            TypeChirho::ParenChirho { inner_chirho, .. } => {
+                self.checked_type_argument_kind_chirho(inner_chirho)
+            }
+            _ => None,
+        }
     }
 
     fn instantiate_checked_constructor_type_application_chirho(
@@ -370,21 +396,23 @@ impl InferCtxChirho {
         let (first_var_chirho, remaining_vars_chirho) = vars_chirho.split_first()?;
         let mut subst_chirho = SubstChirho::empty_chirho();
         subst_chirho.insert_chirho(*first_var_chirho, arg_ty_chirho);
-        let body_chirho = subst_chirho.apply_ty_chirho(body_chirho);
-        if remaining_vars_chirho.is_empty() {
-            Some(body_chirho)
+        let remaining_chirho = if remaining_vars_chirho.is_empty() {
+            body_chirho.as_ref().clone()
         } else {
-            Some(TyChirho::RequiredForallChirho {
-                vars_chirho: remaining_vars_chirho.to_vec(),
-                body_chirho: Box::new(body_chirho),
-            })
-        }
+            TyChirho::RequiredForallChirho {
+                vars_chirho: vars_chirho.slice_chirho(1..vars_chirho.len()),
+                body_chirho: body_chirho.clone(),
+            }
+        };
+        Some(subst_chirho.apply_ty_chirho(&remaining_chirho))
     }
 
     pub(super) fn apply_visible_type_arg_chirho(
-        &self,
+        &mut self,
         fun_ty_chirho: &TyChirho,
         arg_ty_chirho: TyChirho,
+        argument_kind_chirho: Option<&TyChirho>,
+        span_chirho: SpanChirho,
     ) -> Option<TyChirho> {
         let TyChirho::ForallChirho {
             vars_chirho,
@@ -393,17 +421,102 @@ impl InferCtxChirho {
         else {
             return None;
         };
-        let (first_var_chirho, remaining_vars_chirho) = vars_chirho.split_first()?;
-        let mut subst_chirho = SubstChirho::empty_chirho();
-        subst_chirho.insert_chirho(*first_var_chirho, arg_ty_chirho);
-        let body_chirho = subst_chirho.apply_ty_chirho(body_chirho);
-        if remaining_vars_chirho.is_empty() {
-            Some(body_chirho)
-        } else {
-            Some(TyChirho::ForallChirho {
-                vars_chirho: remaining_vars_chirho.to_vec(),
-                body_chirho: Box::new(body_chirho),
-            })
+        let mut budget_chirho =
+            super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+        if budget_chirho.node_chirho(vars_chirho.len()).is_none() {
+            self.type_normalization_exhausted_chirho.set(true);
+            return None;
         }
+        let mut substitution_chirho = SubstChirho::empty_chirho();
+        let mut consumed_chirho = 0;
+        for record_chirho in vars_chirho.records_chirho() {
+            if record_chirho.specificity_chirho
+                == Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho)
+            {
+                let Some(kind_chirho) = self.instantiate_quantifier_kind_chirho(
+                    record_chirho,
+                    &substitution_chirho,
+                    &mut budget_chirho,
+                ) else {
+                    self.type_normalization_exhausted_chirho.set(true);
+                    return None;
+                };
+                let fresh_chirho = self.fresh_var_chirho();
+                self.note_fresh_quantifier_kind_chirho(&fresh_chirho, &kind_chirho);
+                substitution_chirho.insert_chirho(record_chirho.variable_chirho, fresh_chirho);
+                consumed_chirho += 1;
+            } else {
+                break;
+            }
+        }
+        let selected_chirho = vars_chirho.record_chirho(consumed_chirho)?;
+        let Some(expected_kind_chirho) = self.instantiate_quantifier_kind_chirho(
+            selected_chirho,
+            &substitution_chirho,
+            &mut budget_chirho,
+        ) else {
+            self.type_normalization_exhausted_chirho.set(true);
+            return None;
+        };
+        if let (Some(expected_chirho), Some(actual_chirho)) =
+            (&expected_kind_chirho, argument_kind_chirho)
+        {
+            match crate::unify_chirho::unify_kind_terms_chirho(
+                expected_chirho,
+                actual_chirho,
+                span_chirho,
+            ) {
+                Ok(solution_chirho) => {
+                    substitution_chirho = solution_chirho.compose_chirho(&substitution_chirho);
+                    self.apply_subst_all_chirho(&solution_chirho);
+                }
+                Err(error_chirho) => {
+                    self.report_unify_error_chirho(&error_chirho);
+                    return None;
+                }
+            }
+        }
+        substitution_chirho.insert_chirho(selected_chirho.variable_chirho, arg_ty_chirho);
+        consumed_chirho += 1;
+        let Some(copied_chirho) =
+            super::equality_normalization_chirho::copy_term_with_budget_chirho(
+                body_chirho,
+                &mut budget_chirho,
+            )
+        else {
+            self.type_normalization_exhausted_chirho.set(true);
+            return None;
+        };
+        if budget_chirho
+            .node_chirho(
+                vars_chirho
+                    .len()
+                    .saturating_sub(consumed_chirho)
+                    .saturating_mul(2),
+            )
+            .is_none()
+        {
+            self.type_normalization_exhausted_chirho.set(true);
+            return None;
+        }
+        let remaining_chirho = if consumed_chirho == vars_chirho.len() {
+            copied_chirho
+        } else {
+            TyChirho::ForallChirho {
+                vars_chirho: vars_chirho.slice_chirho(consumed_chirho..vars_chirho.len()),
+                body_chirho: Box::new(copied_chirho),
+            }
+        };
+        let result_chirho = substitution_chirho.apply_bounded_chirho(
+            &remaining_chirho,
+            &mut |work_chirho, output_chirho| {
+                budget_chirho.node_chirho(output_chirho)?;
+                budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+            },
+        );
+        if result_chirho.is_none() {
+            self.type_normalization_exhausted_chirho.set(true);
+        }
+        result_chirho
     }
 }

@@ -49,11 +49,36 @@ impl InferCtxChirho {
                 .declaration_schemes_chirho()
                 .get_chirho(key_chirho)
         }) {
+            let written_chirho = signature_chirho
+                .prefix_chirho
+                .iter()
+                .filter_map(|prefix_chirho| {
+                    if let haskelujah_ast_chirho::decl_chirho::GadtConPrefixChirho::ForallChirho {
+                        vars_chirho,
+                        ..
+                    } = prefix_chirho
+                    {
+                        Some(vars_chirho.as_slice())
+                    } else {
+                        None
+                    }
+                })
+                .flatten()
+                .collect::<Vec<_>>();
+            let mut correspondence_chirho = HashMap::new();
             for source_chirho in &header_chirho.source_variables_chirho {
-                let Some(binder_chirho) = scheme_chirho
-                    .source_binders_chirho
-                    .get_mut(source_chirho.header_index_chirho as usize)
-                else {
+                let original_chirho = written_chirho
+                    .get(source_chirho.header_index_chirho as usize)
+                    .and_then(|binder_chirho| binder_chirho.name_chirho.type_variable_chirho());
+                let Some(original_chirho) = original_chirho.filter(|original_chirho| {
+                    scheme_chirho
+                        .vars_chirho
+                        .records_chirho()
+                        .iter()
+                        .any(|record_chirho| {
+                            record_chirho.source_chirho.as_ref() == Some(original_chirho)
+                        })
+                }) else {
                     self.non_deferrable_diagnostics_chirho.push_chirho(haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
                         haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
                         "checked constructor source correspondence is absent from its term scheme",
@@ -61,8 +86,23 @@ impl InferCtxChirho {
                     ));
                     return;
                 };
-                binder_chirho.source_chirho = source_chirho.source_chirho.clone();
+                correspondence_chirho
+                    .insert(original_chirho.clone(), source_chirho.source_chirho.clone());
             }
+            scheme_chirho.vars_chirho =
+                scheme_chirho
+                    .vars_chirho
+                    .map_records_chirho(|record_chirho| {
+                        let mut record_chirho = record_chirho.clone();
+                        if let Some(source_chirho) = record_chirho
+                            .source_chirho
+                            .as_ref()
+                            .and_then(|source_chirho| correspondence_chirho.get(source_chirho))
+                        {
+                            record_chirho.source_chirho = Some(source_chirho.clone());
+                        }
+                        record_chirho
+                    });
         }
         if signature_chirho
             .positional_fields_chirho()

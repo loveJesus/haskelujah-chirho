@@ -38,13 +38,21 @@ impl InferCtxChirho {
         &mut self,
         scheme_chirho: &SchemeChirho,
     ) -> (TyChirho, Vec<PredChirho>) {
-        if scheme_chirho.vars_chirho.is_empty() && scheme_chirho.preds_chirho.is_empty() {
-            return self.expose_qualified_parts_chirho(scheme_chirho.ty_chirho.clone(), Vec::new());
-        }
-
         let mut subst_chirho = SubstChirho::empty_chirho();
-        for v_chirho in &scheme_chirho.vars_chirho {
+        let mut budget_chirho =
+            super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+        for record_chirho in scheme_chirho.vars_chirho.records_chirho() {
+            let Some(kind_chirho) = self.instantiate_quantifier_kind_chirho(
+                record_chirho,
+                &subst_chirho,
+                &mut budget_chirho,
+            ) else {
+                self.type_normalization_exhausted_chirho.set(true);
+                return (self.fresh_var_chirho(), Vec::new());
+            };
+            let v_chirho = &record_chirho.variable_chirho;
             let fresh_chirho = self.fresh_var_chirho();
+            self.note_fresh_quantifier_kind_chirho(&fresh_chirho, &kind_chirho);
             if self.local_generalized_vars_chirho.contains(v_chirho)
                 && let TyChirho::VarChirho(fresh_var_chirho) = fresh_chirho
             {
@@ -56,36 +64,16 @@ impl InferCtxChirho {
             subst_chirho.insert_chirho(*v_chirho, fresh_chirho);
         }
 
-        let instantiated_preds_chirho: Vec<PredChirho> = scheme_chirho
-            .preds_chirho
-            .iter()
-            .map(|pred_chirho| {
-                let instantiated_ty_chirho = subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
-                let instantiated_extra_chirho: Vec<TyChirho> = pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|t_chirho| subst_chirho.apply_ty_chirho(t_chirho))
-                    .collect();
-                PredChirho::from_proof_chirho(
-                    pred_chirho.class_identity_chirho().clone(),
-                    crate::class_chirho::PredPartsChirho {
-                        kind_tys_chirho: pred_chirho
-                            .kind_tys_chirho
-                            .iter()
-                            .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
-                            .collect(),
-                        class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                        ty_chirho: instantiated_ty_chirho,
-                        extra_tys_chirho: instantiated_extra_chirho,
-                    },
-                )
-            })
-            .collect();
-
-        self.expose_qualified_parts_chirho(
-            subst_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho),
-            instantiated_preds_chirho,
-        )
+        let Some((body_chirho, predicates_chirho)) = self.instantiate_scheme_terms_chirho(
+            scheme_chirho,
+            &scheme_chirho.ty_chirho,
+            &subst_chirho,
+            &mut budget_chirho,
+        ) else {
+            self.type_normalization_exhausted_chirho.set(true);
+            return (self.fresh_var_chirho(), Vec::new());
+        };
+        self.expose_qualified_parts_chirho(body_chirho, predicates_chirho)
     }
 
     /// Align written @ arguments only with source-proven specified binders.
@@ -94,108 +82,84 @@ impl InferCtxChirho {
         &mut self,
         scheme_chirho: &SchemeChirho,
         explicit_tys_chirho: &[TyChirho],
+        explicit_kinds_chirho: &[Option<TyChirho>],
+        span_chirho: SpanChirho,
     ) -> Option<(TyChirho, Vec<PredChirho>)> {
-        if scheme_chirho.source_binders_chirho.is_empty() {
-            return self.instantiate_scheme_parts_with_type_args_chirho(
-                scheme_chirho,
-                explicit_tys_chirho,
-            );
+        let mut prefix_chirho = SubstChirho::empty_chirho();
+        let mut budget_chirho =
+            super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+        let mut groups_chirho = vec![&scheme_chirho.vars_chirho];
+        let mut body_chirho = &scheme_chirho.ty_chirho;
+        while let TyChirho::ForallChirho {
+            vars_chirho,
+            body_chirho: nested_body_chirho,
+        } = body_chirho
+        {
+            if budget_chirho.node_chirho(1).is_none() {
+                self.type_normalization_exhausted_chirho.set(true);
+                return None;
+            }
+            groups_chirho.push(vars_chirho);
+            body_chirho = nested_body_chirho;
         }
-        let mut aligned_chirho = Vec::new();
         let mut cursor_chirho = 0;
-        for variable_chirho in &scheme_chirho.vars_chirho {
-            let specified_chirho = scheme_chirho.source_binders_chirho.iter().any(|binder_chirho|
-                binder_chirho.variable_chirho == *variable_chirho
-                    && binder_chirho.specificity_chirho == haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho);
+        for record_chirho in groups_chirho
+            .into_iter()
+            .flat_map(|group_chirho| group_chirho.records_chirho())
+        {
+            let specified_chirho = record_chirho.specificity_chirho
+                != Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho);
+            let Some(expected_kind_chirho) = self.instantiate_quantifier_kind_chirho(
+                record_chirho,
+                &prefix_chirho,
+                &mut budget_chirho,
+            ) else {
+                self.type_normalization_exhausted_chirho.set(true);
+                return None;
+            };
             let argument_chirho = if specified_chirho && cursor_chirho < explicit_tys_chirho.len() {
                 let argument_chirho = explicit_tys_chirho[cursor_chirho].clone();
+                if let (Some(expected_chirho), Some(Some(actual_chirho))) = (
+                    &expected_kind_chirho,
+                    explicit_kinds_chirho.get(cursor_chirho),
+                ) {
+                    match crate::unify_chirho::unify_kind_terms_chirho(
+                        expected_chirho,
+                        actual_chirho,
+                        span_chirho,
+                    ) {
+                        Ok(solution_chirho) => {
+                            prefix_chirho = solution_chirho.compose_chirho(&prefix_chirho);
+                            self.apply_subst_all_chirho(&solution_chirho);
+                        }
+                        Err(error_chirho) => {
+                            self.report_unify_error_chirho(&error_chirho);
+                            return None;
+                        }
+                    }
+                }
                 cursor_chirho += 1;
                 argument_chirho
             } else {
-                self.fresh_var_chirho()
+                let argument_chirho = self.fresh_var_chirho();
+                self.note_fresh_quantifier_kind_chirho(&argument_chirho, &expected_kind_chirho);
+                argument_chirho
             };
-            aligned_chirho.push(argument_chirho);
+            prefix_chirho.insert_chirho(record_chirho.variable_chirho, argument_chirho.clone());
         }
         if cursor_chirho != explicit_tys_chirho.len() {
             return None;
         }
-        self.instantiate_scheme_parts_with_type_args_chirho(scheme_chirho, &aligned_chirho)
-    }
-
-    pub(super) fn instantiate_scheme_parts_with_type_args_chirho(
-        &mut self,
-        scheme_chirho: &SchemeChirho,
-        explicit_tys_chirho: &[TyChirho],
-    ) -> Option<(TyChirho, Vec<PredChirho>)> {
-        let scheme_var_count_chirho = scheme_chirho.vars_chirho.len();
-        let nested_arg_count_chirho = explicit_tys_chirho
-            .len()
-            .saturating_sub(scheme_var_count_chirho);
-        let (nested_vars_chirho, nested_body_chirho) = if nested_arg_count_chirho > 0 {
-            let (vars_chirho, body_chirho) =
-                Self::peel_forall_chirho(scheme_chirho.ty_chirho.clone());
-            if nested_arg_count_chirho > vars_chirho.len() {
-                return None;
-            }
-            (vars_chirho, Some(body_chirho))
-        } else {
-            (Vec::new(), None)
+        let Some((body_chirho, predicates_chirho)) = self.instantiate_scheme_terms_chirho(
+            scheme_chirho,
+            body_chirho,
+            &prefix_chirho,
+            &mut budget_chirho,
+        ) else {
+            self.type_normalization_exhausted_chirho.set(true);
+            return None;
         };
-
-        let mut subst_chirho = SubstChirho::empty_chirho();
-        for (index_chirho, v_chirho) in scheme_chirho.vars_chirho.iter().enumerate() {
-            let inst_ty_chirho = explicit_tys_chirho
-                .get(index_chirho)
-                .cloned()
-                .unwrap_or_else(|| self.fresh_var_chirho());
-            subst_chirho.insert_chirho(*v_chirho, inst_ty_chirho);
-        }
-        for (index_chirho, v_chirho) in nested_vars_chirho.iter().enumerate() {
-            let inst_ty_chirho = explicit_tys_chirho
-                .get(scheme_var_count_chirho + index_chirho)
-                .cloned()
-                .unwrap_or_else(|| self.fresh_var_chirho());
-            subst_chirho.insert_chirho(*v_chirho, inst_ty_chirho);
-        }
-
-        let instantiated_preds_chirho: Vec<PredChirho> = scheme_chirho
-            .preds_chirho
-            .iter()
-            .map(|pred_chirho| {
-                let instantiated_ty_chirho = subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
-                let instantiated_extra_chirho: Vec<TyChirho> = pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|t_chirho| subst_chirho.apply_ty_chirho(t_chirho))
-                    .collect();
-                PredChirho::from_proof_chirho(
-                    pred_chirho.class_identity_chirho().clone(),
-                    crate::class_chirho::PredPartsChirho {
-                        kind_tys_chirho: pred_chirho
-                            .kind_tys_chirho
-                            .iter()
-                            .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
-                            .collect(),
-                        class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                        ty_chirho: instantiated_ty_chirho,
-                        extra_tys_chirho: instantiated_extra_chirho,
-                    },
-                )
-            })
-            .collect();
-
-        // A rank-N parameter keeps its quantifier inside `TyChirho`, rather
-        // than lifting it into the local scheme. Visible type application may
-        // consume that quantifier only while it is outermost; peeling here
-        // cannot skip a function arrow or enter a supplied polymorphic type.
-        // workflow: language-features-chirho/rank-n-visible-type-application-chirho
-        let result_ty_chirho = nested_body_chirho
-            .as_ref()
-            .unwrap_or(&scheme_chirho.ty_chirho);
-        Some(self.expose_qualified_parts_chirho(
-            subst_chirho.apply_ty_chirho(result_ty_chirho),
-            instantiated_preds_chirho,
-        ))
+        Some(self.expose_qualified_parts_chirho(body_chirho, predicates_chirho))
     }
 
     /// Instantiate a type scheme with fresh unification variables.
@@ -273,7 +237,7 @@ impl InferCtxChirho {
         finish_chirho: impl FnOnce(&mut Self),
     ) -> TChirho {
         let skolems_chirho =
-            Self::signature_scope_skolems_chirho(signature_ty_chirho, &preds_chirho);
+            self.signature_scope_skolems_chirho(signature_ty_chirho, &preds_chirho);
         self.with_given_scope_chirho(preds_chirho, Some(&skolems_chirho), f_chirho, finish_chirho)
     }
 
@@ -396,6 +360,16 @@ impl InferCtxChirho {
                 !env_fvs_chirho.contains(v_chirho) && !newly_mono_chirho.contains(v_chirho)
             })
             .collect();
+        let mut scoped_chirho = env_fvs_chirho.clone();
+        scoped_chirho.extend(newly_mono_chirho.iter().copied());
+        let vars_chirho = self.quantify_variables_chirho(
+            vars_chirho,
+            &[],
+            &scoped_chirho,
+            &SubstChirho::empty_chirho(),
+            haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho,
+            &mut super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho(),
+        );
         let fundeps_chirho = FundepGeneralizationChirho {
             newly_mono_chirho,
             quantified_chirho: &vars_chirho,
@@ -427,7 +401,7 @@ impl InferCtxChirho {
             // A predicate over a rigid signature variable belongs to the
             // enclosing signature's context: it is discharged by those givens
             // when their scope ends, or reported. It is never quantified away.
-            let mentions_rigid_chirho = Self::pred_mentions_rigid_chirho(&pred_chirho);
+            let mentions_rigid_chirho = self.pred_mentions_rigid_chirho(&pred_chirho);
             if !mentions_rigid_chirho
                 && pred_fvs_chirho
                     .iter()
@@ -565,10 +539,11 @@ impl InferCtxChirho {
             // Apply IO defaulting: substitute in the type, remove defaulted
             // vars, and remove satisfied predicates.
             let defaulted_ty_chirho = io_default_subst_chirho.apply_ty_chirho(ty_chirho);
-            let defaulted_vars_chirho: Vec<TyVarChirho> = vars_chirho
-                .into_iter()
-                .filter(|v_chirho| io_default_subst_chirho.lookup_chirho(v_chirho).is_none())
-                .collect();
+            let defaulted_vars_chirho = vars_chirho.filter_chirho(|record_chirho| {
+                io_default_subst_chirho
+                    .lookup_chirho(&record_chirho.variable_chirho)
+                    .is_none()
+            });
             let defaulted_preds_chirho: Vec<SchemePredChirho> = scheme_preds_chirho
                 .into_iter()
                 .filter(|p_chirho| {
@@ -580,11 +555,11 @@ impl InferCtxChirho {
                 })
                 .collect();
             let scheme_chirho = SchemeChirho {
-                source_binders_chirho: Vec::new(),
                 vars_chirho: defaulted_vars_chirho,
                 preds_chirho: defaulted_preds_chirho,
                 ty_chirho: defaulted_ty_chirho,
             };
+            let scheme_chirho = io_default_subst_chirho.apply_scheme_chirho(&scheme_chirho);
             if scope_chirho == GeneralizationScopeChirho::TopLevelChirho {
                 self.record_inferred_dictionary_owners_chirho(&scheme_chirho);
             }
@@ -592,7 +567,6 @@ impl InferCtxChirho {
         }
 
         let scheme_chirho = SchemeChirho {
-            source_binders_chirho: Vec::new(),
             vars_chirho,
             preds_chirho: scheme_preds_chirho,
             ty_chirho: ty_chirho.clone(),
@@ -702,19 +676,6 @@ impl InferCtxChirho {
                 }
             }
             self.occurrence_generalized_vars_chirho = updated_vars_chirho;
-        }
-        for pred_chirho in &mut self.given_preds_chirho {
-            pred_chirho.kind_tys_chirho = pred_chirho
-                .kind_tys_chirho
-                .iter()
-                .map(|kind_chirho| subst_chirho.apply_ty_chirho(kind_chirho))
-                .collect();
-            pred_chirho.ty_chirho = subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho);
-            pred_chirho.extra_tys_chirho = pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .map(|t_chirho| subst_chirho.apply_ty_chirho(t_chirho))
-                .collect();
         }
     }
 }

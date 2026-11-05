@@ -228,7 +228,7 @@ impl TypeElaboratorChirho<'_> {
                         vars_chirho,
                         body_chirho,
                     } if index_chirho < scheme_chirho.binders_chirho.len() || index_chirho == 0 => {
-                        for variable_chirho in vars_chirho {
+                        for variable_chirho in vars_chirho.iter().copied() {
                             let kind_chirho = self
                                 .state_chirho
                                 .variable_kind_chirho(variable_chirho, span_chirho)?;

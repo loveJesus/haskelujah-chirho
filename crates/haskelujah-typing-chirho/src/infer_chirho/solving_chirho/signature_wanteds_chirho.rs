@@ -36,20 +36,29 @@ const CERTIFICATE_BUDGET_CHIRHO: usize = 64;
 impl InferCtxChirho {
     /// The rigid variables a signature introduces, from its type and its context.
     pub(super) fn signature_scope_skolems_chirho(
+        &self,
         signature_ty_chirho: &TyChirho,
         givens_chirho: &[PredChirho],
     ) -> HashSet<String> {
         let mut skolems_chirho = HashSet::new();
         let types_chirho = std::iter::once(signature_ty_chirho).chain(
             givens_chirho.iter().flat_map(|given_chirho| {
-                std::iter::once(&given_chirho.ty_chirho).chain(&given_chirho.extra_tys_chirho)
+                given_chirho
+                    .kind_tys_chirho
+                    .iter()
+                    .chain(std::iter::once(&given_chirho.ty_chirho))
+                    .chain(&given_chirho.extra_tys_chirho)
             }),
         );
         for ty_chirho in types_chirho {
-            rewrite_skolems_chirho(ty_chirho, &mut |name_chirho| {
+            if rewrite_skolems_chirho(ty_chirho, &mut |name_chirho| {
                 skolems_chirho.insert(name_chirho.to_string());
                 None
-            });
+            })
+            .is_err()
+            {
+                self.type_normalization_exhausted_chirho.set(true);
+            }
         }
         skolems_chirho
     }
@@ -79,7 +88,7 @@ impl InferCtxChirho {
         for (pred_chirho, span_chirho) in deferred_chirho {
             // Skolem ordinals are unique per signature: another scope's wanted is passed over
             // before any normalization is spent on it.
-            if !Self::pred_names_scope_chirho(&pred_chirho, scope_skolems_chirho) {
+            if !self.pred_names_scope_chirho(&pred_chirho, scope_skolems_chirho) {
                 self.deferred_preds_chirho.push((pred_chirho, span_chirho));
                 continue;
             }
@@ -104,6 +113,7 @@ impl InferCtxChirho {
 
     /// Whether a predicate mentions one of the scope's rigid variables.
     fn pred_names_scope_chirho(
+        &self,
         pred_chirho: &PredChirho,
         scope_skolems_chirho: &HashSet<String>,
     ) -> bool {
@@ -114,10 +124,14 @@ impl InferCtxChirho {
             .chain(std::iter::once(&pred_chirho.ty_chirho))
             .chain(&pred_chirho.extra_tys_chirho)
         {
-            rewrite_skolems_chirho(argument_chirho, &mut |name_chirho| {
+            if rewrite_skolems_chirho(argument_chirho, &mut |name_chirho| {
                 names_scope_chirho |= scope_skolems_chirho.contains(name_chirho);
                 None
-            });
+            })
+            .is_err()
+            {
+                self.type_normalization_exhausted_chirho.set(true);
+            }
         }
         names_scope_chirho
     }
@@ -169,7 +183,7 @@ impl InferCtxChirho {
         {
             return false;
         }
-        if !Self::pred_names_scope_chirho(pred_chirho, scope_skolems_chirho)
+        if !self.pred_names_scope_chirho(pred_chirho, scope_skolems_chirho)
             || self
                 .pred_entailment_under_givens_chirho(pred_chirho, givens_chirho, 0)
                 .is_some()

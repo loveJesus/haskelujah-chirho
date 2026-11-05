@@ -32,6 +32,9 @@ pub struct SourceFamilyRegistrationContextChirho<'source_chirho> {
 
 /// A cold registration snapshot, never a claim that the source's values type-check.
 pub struct SourceFamilyRegistrationResultChirho {
+    /// The existing ordinary environment contains only actual checked headers;
+    /// callers admit its explicit source signatures using naming's export owner.
+    pub env_chirho: crate::env_chirho::TyEnvChirho,
     pub registry_chirho: TypeFamilyRegistryChirho,
     pub family_scope_chirho: Arc<TypeFamilyScopeChirho>,
 }
@@ -39,8 +42,12 @@ pub struct SourceFamilyRegistrationResultChirho {
 fn context_chirho(
     module_chirho: &ModuleChirho,
     imports_chirho: SourceFamilyRegistrationContextChirho<'_>,
+    signature_headers_chirho: bool,
 ) -> Result<(ModuleChirho, InferCtxChirho), DiagnosticBundleChirho> {
-    let mut owned_chirho = source_declarations_chirho::declaration_module_chirho(module_chirho)?;
+    let mut owned_chirho = source_declarations_chirho::declaration_module_chirho(
+        module_chirho,
+        signature_headers_chirho,
+    )?;
     let elaboration_chirho =
         crate::kind_chirho::elaboration_chirho::elaborate_declaration_module_chirho(
             &mut owned_chirho,
@@ -51,6 +58,7 @@ fn context_chirho(
                 promotion_scope_chirho: &imports_chirho.promotion_scope_chirho,
                 builtin_classes_chirho: &imports_chirho.builtin_classes_chirho,
             },
+            signature_headers_chirho,
         )
         .map_err(|error_chirho| {
             DiagnosticBundleChirho::new_chirho(vec![error_chirho.into_diagnostic_chirho()])
@@ -149,6 +157,7 @@ fn finish_chirho(
         return Err(result_chirho.diagnostics_chirho);
     }
     Ok(SourceFamilyRegistrationResultChirho {
+        env_chirho: result_chirho.env_chirho,
         registry_chirho: result_chirho.type_families_chirho,
         family_scope_chirho: result_chirho
             .family_scope_chirho
@@ -162,7 +171,7 @@ pub fn predeclare_source_open_families_chirho(
     module_chirho: &ModuleChirho,
     imports_chirho: SourceFamilyRegistrationContextChirho<'_>,
 ) -> Result<SourceFamilyRegistrationResultChirho, DiagnosticBundleChirho> {
-    let (owned_chirho, mut context_chirho) = context_chirho(module_chirho, imports_chirho)?;
+    let (owned_chirho, mut context_chirho) = context_chirho(module_chirho, imports_chirho, false)?;
     let module_chirho = &owned_chirho;
     for declaration_chirho in &module_chirho.decls_chirho {
         match declaration_chirho {
@@ -218,7 +227,7 @@ pub fn register_source_module_families_chirho(
     module_chirho: &ModuleChirho,
     imports_chirho: SourceFamilyRegistrationContextChirho<'_>,
 ) -> Result<SourceFamilyRegistrationResultChirho, DiagnosticBundleChirho> {
-    let (owned_chirho, mut context_chirho) = context_chirho(module_chirho, imports_chirho)?;
+    let (owned_chirho, mut context_chirho) = context_chirho(module_chirho, imports_chirho, true)?;
     let module_chirho = &owned_chirho;
     context_chirho.register_module_families_chirho(module_chirho);
     // Associated defaults and explicit instance-body family equations are
@@ -228,6 +237,22 @@ pub fn register_source_module_families_chirho(
     }
     for declaration_chirho in &module_chirho.decls_chirho {
         context_chirho.process_instance_decl_chirho(declaration_chirho);
+    }
+    context_chirho.type_validity_license_chirho = Some(
+        crate::validity_chirho::LicenseChirho::from_module_chirho(module_chirho),
+    );
+    for declaration_chirho in &module_chirho.decls_chirho {
+        if let DeclChirho::TypeSigChirho {
+            name_chirho,
+            ty_chirho,
+            ..
+        } = declaration_chirho
+        {
+            let scheme_chirho = context_chirho.ast_type_to_scheme_chirho(ty_chirho);
+            context_chirho
+                .env_chirho
+                .bind_chirho(name_chirho.text_chirho().to_owned(), scheme_chirho);
+        }
     }
     context_chirho.verify_imported_open_families_chirho();
     finish_chirho(context_chirho)

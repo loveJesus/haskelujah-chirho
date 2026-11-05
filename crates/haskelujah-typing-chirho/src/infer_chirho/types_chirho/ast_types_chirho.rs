@@ -189,7 +189,7 @@ pub(super) fn ast_type_to_syn_rhs_chirho(
                 );
             }
             TyChirho::ForallChirho {
-                vars_chirho: bound_vars_chirho,
+                vars_chirho: bound_vars_chirho.into(),
                 body_chirho: Box::new(renamed_body_chirho),
             }
         }
@@ -222,7 +222,7 @@ pub(super) fn ast_type_to_syn_rhs_chirho(
                 );
             }
             TyChirho::RequiredForallChirho {
-                vars_chirho: bound_vars_chirho,
+                vars_chirho: bound_vars_chirho.into(),
                 body_chirho: Box::new(renamed_body_chirho),
             }
         }

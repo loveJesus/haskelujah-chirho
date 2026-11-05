@@ -44,7 +44,7 @@ fn annotation_escape_respects_nested_binders_and_foreign_rigids_chirho() {
     context_chirho.equality_substitutions_chirho.insert_chirho(
         TyVarChirho(0),
         TyChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho(2)],
+            vars_chirho: vec![TyVarChirho(2)].into(),
             body_chirho: Box::new(TyChirho::VarChirho(TyVarChirho(2))),
         },
     );
@@ -110,8 +110,7 @@ fn nested_signature_check_reports_capture_before_restoring_skolems_chirho() {
         unreachable!()
     };
     let scheme_chirho = SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![quantified_chirho],
+        vars_chirho: vec![quantified_chirho].into(),
         preds_chirho: vec![],
         ty_chirho: TyChirho::VarChirho(quantified_chirho),
     };
@@ -141,8 +140,7 @@ fn signature_equality_exports_safe_public_image_before_evidence_leaves_chirho() 
         unreachable!()
     };
     let scheme_chirho = SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![quantified_chirho],
+        vars_chirho: vec![quantified_chirho].into(),
         preds_chirho: vec![crate::ty_chirho::SchemePredChirho::legacy_chirho(
             crate::ty_chirho::SchemePredPartsChirho {
                 kind_tys_chirho: vec![],
@@ -234,7 +232,7 @@ fn type_pattern_alias_shadow_restores_exact_previous_image_chirho() {
             .is_none()
     );
     for (name_chirho, variable_chirho, image_chirho) in aliases_chirho {
-        context_chirho.install_type_pattern_alias_chirho(
+        context_chirho.install_type_pattern_alias_image_chirho(
             name_chirho,
             variable_chirho,
             image_chirho,

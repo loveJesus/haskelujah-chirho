@@ -34,7 +34,6 @@ use haskelujah_span_chirho::SpanChirho;
 
 use super::{InferCtxChirho, UNSATISFIED_CONSTRAINT_CODE_CHIRHO};
 use crate::class_chirho::{PredChirho, match_ty_chirho};
-use crate::skolem_chirho::contains_skolem_chirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemePredChirho, TyChirho, TyVarChirho};
 
@@ -138,7 +137,7 @@ fn needs_syntax_split_chirho(pattern_chirho: &TyChirho, target_chirho: &TyChirho
 fn mentions_type_variable_chirho(ty_chirho: &TyChirho) -> bool {
     match ty_chirho {
         TyChirho::VarChirho(_) | TyChirho::ForallVarChirho(_) => true,
-        TyChirho::ConChirho(_) => contains_skolem_chirho(ty_chirho),
+        TyChirho::ConChirho(_) => false,
         TyChirho::AppChirho(fun_chirho, arg_chirho)
         | TyChirho::FunChirho(fun_chirho, arg_chirho, _) => {
             mentions_type_variable_chirho(fun_chirho) || mentions_type_variable_chirho(arg_chirho)
@@ -238,7 +237,7 @@ impl InferCtxChirho {
         remaining_chirho: &mut Vec<(PredChirho, SpanChirho)>,
     ) -> Option<(PredChirho, SpanChirho)> {
         if fundeps_chirho.newly_mono_chirho.is_empty()
-            || Self::pred_mentions_rigid_chirho(&wanted_chirho.0)
+            || self.pred_mentions_rigid_chirho(&wanted_chirho.0)
         {
             return Some(wanted_chirho);
         }
@@ -397,7 +396,7 @@ impl InferCtxChirho {
     fn is_closed_determinant_chirho(&self, ty_chirho: &TyChirho) -> bool {
         match ty_chirho {
             TyChirho::ConChirho(name_chirho) => {
-                !contains_skolem_chirho(ty_chirho)
+                !self.type_contains_skolem_chirho(ty_chirho)
                     && !self.is_type_family_name_chirho(name_chirho)
                     && !self.type_synonyms_chirho.contains_key(name_chirho)
                     && !name_chirho.ends_with('#')

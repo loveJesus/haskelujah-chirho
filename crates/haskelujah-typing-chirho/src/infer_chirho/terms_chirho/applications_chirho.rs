@@ -144,24 +144,46 @@ impl QuickLookChirho {
                 } => {
                     budget_chirho.node_chirho(vars_chirho.len())?;
                     let previous_chirho = bound_chirho.len();
-                    bound_chirho.extend(vars_chirho);
-                    let body_chirho = walk_chirho(
-                        look_chirho,
-                        body_chirho,
-                        budget_chirho,
-                        bound_chirho,
-                        depth_chirho + 1,
-                    );
+                    let result_chirho = (|| {
+                        let mut records_chirho = Vec::new();
+                        for record_chirho in vars_chirho.records_chirho() {
+                            let mut mapped_chirho = record_chirho.clone();
+                            mapped_chirho.kind_chirho = match &record_chirho.kind_chirho {
+                                Some(kind_chirho) => Some(std::sync::Arc::new(walk_chirho(
+                                    look_chirho,
+                                    kind_chirho,
+                                    budget_chirho,
+                                    bound_chirho,
+                                    depth_chirho + 1,
+                                )?)),
+                                None => None,
+                            };
+                            records_chirho.push(mapped_chirho);
+                            bound_chirho.push(record_chirho.variable_chirho);
+                        }
+                        Some((
+                            crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(
+                                records_chirho,
+                            ),
+                            Box::new(walk_chirho(
+                                look_chirho,
+                                body_chirho,
+                                budget_chirho,
+                                bound_chirho,
+                                depth_chirho + 1,
+                            )?),
+                        ))
+                    })();
                     bound_chirho.truncate(previous_chirho);
-                    let body_chirho = Box::new(body_chirho?);
+                    let (vars_chirho, body_chirho) = result_chirho?;
                     if matches!(term_chirho, TyChirho::ForallChirho { .. }) {
                         TyChirho::ForallChirho {
-                            vars_chirho: vars_chirho.clone(),
+                            vars_chirho,
                             body_chirho,
                         }
                     } else {
                         TyChirho::RequiredForallChirho {
-                            vars_chirho: vars_chirho.clone(),
+                            vars_chirho,
                             body_chirho,
                         }
                     }
@@ -317,6 +339,12 @@ impl QuickLookChirho {
     }
 }
 
+#[derive(Clone, Copy)]
+struct ApplicationPreparationChirho {
+    quick_look_chirho: bool,
+    retain_result_chirho: bool,
+}
+
 impl InferCtxChirho {
     fn quick_look_generative_head_chirho(&self, head_chirho: &TyChirho) -> bool {
         match head_chirho {
@@ -354,6 +382,26 @@ impl InferCtxChirho {
         expected_chirho: Option<&TyChirho>,
         span_chirho: SpanChirho,
     ) -> Option<(SubstChirho, TyChirho)> {
+        self.infer_application_result_chirho(expression_chirho, expected_chirho, span_chirho, false)
+    }
+
+    /// A following written @ argument consumes the result's original lexical
+    /// prefix. Ordinary term uses still instantiate that same result implicitly.
+    pub(super) fn infer_application_sigma_chirho(
+        &mut self,
+        expression_chirho: &ExprChirho,
+        span_chirho: SpanChirho,
+    ) -> Option<(SubstChirho, TyChirho)> {
+        self.infer_application_result_chirho(expression_chirho, None, span_chirho, true)
+    }
+
+    fn infer_application_result_chirho(
+        &mut self,
+        expression_chirho: &ExprChirho,
+        expected_chirho: Option<&TyChirho>,
+        span_chirho: SpanChirho,
+        retain_result_chirho: bool,
+    ) -> Option<(SubstChirho, TyChirho)> {
         let enabled_chirho = self
             .type_validity_license_chirho
             .is_some_and(|license_chirho| license_chirho.impredicative_enabled_chirho());
@@ -361,7 +409,10 @@ impl InferCtxChirho {
         let mut budget_chirho = EqualityBudgetChirho::new_chirho();
         let prepared_chirho = self.prepare_application_chirho(
             expression_chirho,
-            enabled_chirho,
+            ApplicationPreparationChirho {
+                quick_look_chirho: enabled_chirho,
+                retain_result_chirho,
+            },
             &mut look_chirho,
             &mut budget_chirho,
             0,
@@ -408,7 +459,7 @@ impl InferCtxChirho {
     fn prepare_application_chirho<'source_chirho>(
         &mut self,
         expression_chirho: &'source_chirho ExprChirho,
-        enabled_chirho: bool,
+        mode_chirho: ApplicationPreparationChirho,
         look_chirho: &mut QuickLookChirho,
         budget_chirho: &mut EqualityBudgetChirho,
         depth_chirho: usize,
@@ -452,6 +503,10 @@ impl InferCtxChirho {
             return Ok(None);
         };
         let mut variables_chirho = self.scoped_tyvars_chirho.clone();
+        let explicit_kinds_chirho: Vec<_> = explicit_ast_chirho
+            .iter()
+            .map(|argument_chirho| self.checked_type_argument_kind_chirho(argument_chirho))
+            .collect();
         let explicit_chirho: Vec<_> = explicit_ast_chirho
             .iter()
             .map(|argument_chirho| {
@@ -465,6 +520,8 @@ impl InferCtxChirho {
             self.instantiate_scheme_parts_with_visible_type_args_chirho(
                 &scheme_chirho,
                 &explicit_chirho,
+                &explicit_kinds_chirho,
+                name_chirho.span_chirho(),
             )
         };
         let Some((mut current_chirho, mut predicates_chirho)) = instantiated_chirho else {
@@ -495,10 +552,13 @@ impl InferCtxChirho {
                     | TyChirho::RequiredForallChirho { .. }
                     | TyChirho::QualChirho { .. }
             );
-            let prepared_chirho = if enabled_chirho && !sigma_chirho {
+            let prepared_chirho = if mode_chirho.quick_look_chirho && !sigma_chirho {
                 self.prepare_application_chirho(
                     argument_chirho,
-                    enabled_chirho,
+                    ApplicationPreparationChirho {
+                        retain_result_chirho: false,
+                        ..mode_chirho
+                    },
                     look_chirho,
                     budget_chirho,
                     depth_chirho + 1,
@@ -528,9 +588,12 @@ impl InferCtxChirho {
             });
             current_chirho = *result_chirho;
         }
-        let (current_chirho, additional_chirho) =
-            self.open_application_prefix_chirho(current_chirho, look_chirho, budget_chirho)?;
-        predicates_chirho.extend(additional_chirho);
+        if !mode_chirho.retain_result_chirho {
+            let (opened_chirho, additional_chirho) =
+                self.open_application_prefix_chirho(current_chirho, look_chirho, budget_chirho)?;
+            predicates_chirho.extend(additional_chirho);
+            current_chirho = opened_chirho;
+        }
         Ok(Some(ApplicationPlanChirho {
             name_chirho,
             variable_head_chirho,
@@ -576,7 +639,6 @@ impl InferCtxChirho {
                     let start_chirho = self.next_var_chirho;
                     let (opened_chirho, additional_chirho) =
                         self.instantiate_scheme_parts_chirho(&SchemeChirho {
-                            source_binders_chirho: Vec::new(),
                             vars_chirho,
                             preds_chirho: Vec::new(),
                             ty_chirho: *body_chirho,
@@ -632,7 +694,6 @@ impl InferCtxChirho {
             ));
             let (checked_chirho, public_chirho) = self.with_rigid_signature_chirho(
                 &SchemeChirho {
-                    source_binders_chirho: Vec::new(),
                     vars_chirho,
                     preds_chirho: predicates_chirho,
                     ty_chirho: body_chirho,

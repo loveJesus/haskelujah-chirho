@@ -9,9 +9,10 @@ use haskelujah_ast_chirho::expr_chirho::{
     ExprChirho, GuardedExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho, StmtChirho,
 };
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
+use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 
 impl TypeElaboratorChirho<'_> {
-    pub(super) fn elaborate_values_chirho(
+    pub(super) fn elaborate_signature_headers_chirho(
         &mut self,
         module_chirho: &mut ModuleChirho,
     ) -> Result<(), ElaborationErrorChirho> {
@@ -25,6 +26,13 @@ impl TypeElaboratorChirho<'_> {
                 self.value_signature_chirho(name_chirho, ty_chirho)?;
             }
         }
+        Ok(())
+    }
+
+    pub(super) fn elaborate_values_chirho(
+        &mut self,
+        module_chirho: &mut ModuleChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
         for declaration_chirho in &mut module_chirho.decls_chirho {
             self.scoped_chirho(|this_chirho| {
                 this_chirho.value_declaration_chirho(declaration_chirho)
@@ -535,7 +543,17 @@ impl TypeElaboratorChirho<'_> {
                     ty_chirho,
                     ..
                 } => {
-                    this_chirho.infer_type_chirho(ty_chirho)?;
+                    let typed_chirho = this_chirho.infer_type_chirho(ty_chirho)?;
+                    let span_chirho = ty_chirho.span_chirho();
+                    let kind_chirho =
+                        this_chirho.surface_chirho(&typed_chirho.kind_chirho, span_chirho)?;
+                    let original_chirho =
+                        std::mem::replace(ty_chirho, TypeChirho::WildcardChirho { span_chirho });
+                    *ty_chirho = TypeChirho::KindAnnotationChirho {
+                        ty_chirho: Box::new(original_chirho),
+                        kind_chirho: Box::new(kind_chirho),
+                        span_chirho,
+                    };
                     this_chirho.expression_chirho(expr_chirho)?;
                 }
                 ExprChirho::AnnChirho {

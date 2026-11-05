@@ -437,6 +437,7 @@ fn check_source_file_with_search_path_chirho(
     register_discovered_type_families_chirho(
         &discovery_module_chirho,
         DiscoveredFamilyContextChirho {
+            imported_types_chirho: Some(&mut imported_types_chirho),
             modules_chirho: &discovered_sources_chirho,
             ifaces_chirho: &mut all_ifaces_chirho,
             registry_chirho: &mut imported_type_families_chirho,
@@ -936,6 +937,7 @@ fn compile_source_with_search_context_chirho(
     register_discovered_type_families_chirho(
         &discovery_module_chirho,
         DiscoveredFamilyContextChirho {
+            imported_types_chirho: Some(&mut imported_types_chirho),
             modules_chirho: &discovered_sources_chirho,
             ifaces_chirho: &mut all_ifaces_chirho,
             registry_chirho: &mut imported_type_families_chirho,

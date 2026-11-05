@@ -59,6 +59,20 @@ impl InferCtxChirho {
     }
 
     pub(super) fn normalize_imported_ty_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
+        let copied_chirho = super::equality_normalization_chirho::copy_term_with_budget_chirho(
+            ty_chirho,
+            &mut super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho(),
+        );
+        match copied_chirho {
+            Some(term_chirho) => self.normalize_imported_ty_inner_chirho(&term_chirho),
+            None => {
+                self.type_normalization_exhausted_chirho.set(true);
+                TyChirho::ConChirho("%normalization:resource-exhausted".to_owned())
+            }
+        }
+    }
+
+    pub(super) fn normalize_imported_ty_inner_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
         match ty_chirho {
             TyChirho::QualChirho {
                 context_chirho,
@@ -66,44 +80,64 @@ impl InferCtxChirho {
             } => TyChirho::QualChirho {
                 context_chirho: context_chirho
                     .iter()
-                    .map(|constraint_chirho| self.normalize_imported_ty_chirho(constraint_chirho))
+                    .map(|constraint_chirho| {
+                        self.normalize_imported_ty_inner_chirho(constraint_chirho)
+                    })
                     .collect(),
-                body_chirho: Box::new(self.normalize_imported_ty_chirho(body_chirho)),
+                body_chirho: Box::new(self.normalize_imported_ty_inner_chirho(body_chirho)),
             },
             TyChirho::ConChirho(name_chirho) => {
                 TyChirho::ConChirho(self.normalize_imported_type_name_chirho(name_chirho))
             }
             TyChirho::AppChirho(fun_chirho, arg_chirho) => TyChirho::AppChirho(
-                Box::new(self.normalize_imported_ty_chirho(fun_chirho)),
-                Box::new(self.normalize_imported_ty_chirho(arg_chirho)),
+                Box::new(self.normalize_imported_ty_inner_chirho(fun_chirho)),
+                Box::new(self.normalize_imported_ty_inner_chirho(arg_chirho)),
             ),
             TyChirho::FunChirho(arg_chirho, result_chirho, mult_chirho) => TyChirho::FunChirho(
-                Box::new(self.normalize_imported_ty_chirho(arg_chirho)),
-                Box::new(self.normalize_imported_ty_chirho(result_chirho)),
+                Box::new(self.normalize_imported_ty_inner_chirho(arg_chirho)),
+                Box::new(self.normalize_imported_ty_inner_chirho(result_chirho)),
                 *mult_chirho,
             ),
             TyChirho::TupleChirho(elements_chirho) => TyChirho::TupleChirho(
                 elements_chirho
                     .iter()
-                    .map(|element_chirho| self.normalize_imported_ty_chirho(element_chirho))
+                    .map(|element_chirho| self.normalize_imported_ty_inner_chirho(element_chirho))
                     .collect(),
             ),
-            TyChirho::ListChirho(inner_chirho) => {
-                TyChirho::ListChirho(Box::new(self.normalize_imported_ty_chirho(inner_chirho)))
-            }
+            TyChirho::ListChirho(inner_chirho) => TyChirho::ListChirho(Box::new(
+                self.normalize_imported_ty_inner_chirho(inner_chirho),
+            )),
             TyChirho::ForallChirho {
                 vars_chirho,
                 body_chirho,
             } => TyChirho::ForallChirho {
-                vars_chirho: vars_chirho.clone(),
-                body_chirho: Box::new(self.normalize_imported_ty_chirho(body_chirho)),
+                vars_chirho: vars_chirho.map_records_chirho(|record_chirho| {
+                    let mut mapped_chirho = record_chirho.clone();
+                    mapped_chirho.kind_chirho =
+                        record_chirho.kind_chirho.as_ref().map(|kind_chirho| {
+                            std::sync::Arc::new(
+                                self.normalize_imported_ty_inner_chirho(kind_chirho),
+                            )
+                        });
+                    mapped_chirho
+                }),
+                body_chirho: Box::new(self.normalize_imported_ty_inner_chirho(body_chirho)),
             },
             TyChirho::RequiredForallChirho {
                 vars_chirho,
                 body_chirho,
             } => TyChirho::RequiredForallChirho {
-                vars_chirho: vars_chirho.clone(),
-                body_chirho: Box::new(self.normalize_imported_ty_chirho(body_chirho)),
+                vars_chirho: vars_chirho.map_records_chirho(|record_chirho| {
+                    let mut mapped_chirho = record_chirho.clone();
+                    mapped_chirho.kind_chirho =
+                        record_chirho.kind_chirho.as_ref().map(|kind_chirho| {
+                            std::sync::Arc::new(
+                                self.normalize_imported_ty_inner_chirho(kind_chirho),
+                            )
+                        });
+                    mapped_chirho
+                }),
+                body_chirho: Box::new(self.normalize_imported_ty_inner_chirho(body_chirho)),
             },
             _ => ty_chirho.clone(),
         }
@@ -263,14 +297,32 @@ impl InferCtxChirho {
                 vars_chirho,
                 body_chirho,
             } => TyChirho::ForallChirho {
-                vars_chirho: vars_chirho.clone(),
+                vars_chirho: vars_chirho.map_records_chirho(|record_chirho| {
+                    let mut mapped_chirho = record_chirho.clone();
+                    mapped_chirho.kind_chirho =
+                        record_chirho.kind_chirho.as_ref().map(|kind_chirho| {
+                            std::sync::Arc::new(
+                                self.expand_syn_chirho(kind_chirho, depth_chirho + 1),
+                            )
+                        });
+                    mapped_chirho
+                }),
                 body_chirho: Box::new(self.expand_syn_chirho(body_chirho, depth_chirho)),
             },
             TyChirho::RequiredForallChirho {
                 vars_chirho,
                 body_chirho,
             } => TyChirho::RequiredForallChirho {
-                vars_chirho: vars_chirho.clone(),
+                vars_chirho: vars_chirho.map_records_chirho(|record_chirho| {
+                    let mut mapped_chirho = record_chirho.clone();
+                    mapped_chirho.kind_chirho =
+                        record_chirho.kind_chirho.as_ref().map(|kind_chirho| {
+                            std::sync::Arc::new(
+                                self.expand_syn_chirho(kind_chirho, depth_chirho + 1),
+                            )
+                        });
+                    mapped_chirho
+                }),
                 body_chirho: Box::new(self.expand_syn_chirho(body_chirho, depth_chirho)),
             },
             _ => ty_chirho.clone(),
@@ -288,9 +340,16 @@ impl InferCtxChirho {
             let normalized_ty_chirho = self.expand_type_synonyms_chirho(&reduced_ty_chirho);
             // Local given equalities from GADT patterns rewrite rigid variables
             // in scope. workflow: language-features-chirho/rigid-type-variables-chirho
-            let normalized_ty_chirho = self
+            let normalized_ty_chirho = match self
                 .env_chirho
-                .apply_refinements_chirho(&normalized_ty_chirho);
+                .apply_refinements_chirho(&normalized_ty_chirho)
+            {
+                Ok(term_chirho) => term_chirho,
+                Err(_) => {
+                    self.type_normalization_exhausted_chirho.set(true);
+                    return TyChirho::ConChirho("%normalization:resource-exhausted".to_owned());
+                }
+            };
             let normalized_ty_chirho = self.apply_given_rewrites_chirho(&normalized_ty_chirho);
             if normalized_ty_chirho == current_ty_chirho {
                 return normalized_ty_chirho;
@@ -480,7 +539,17 @@ pub(super) fn subst_named_var_chirho(
             vars_chirho,
             body_chirho,
         } => TyChirho::RequiredForallChirho {
-            vars_chirho: vars_chirho.clone(),
+            vars_chirho: vars_chirho.map_records_chirho(|record_chirho| {
+                let mut mapped_chirho = record_chirho.clone();
+                mapped_chirho.kind_chirho = record_chirho.kind_chirho.as_ref().map(|kind_chirho| {
+                    std::sync::Arc::new(subst_named_var_chirho(
+                        kind_chirho,
+                        name_chirho,
+                        replacement_chirho,
+                    ))
+                });
+                mapped_chirho
+            }),
             body_chirho: Box::new(subst_named_var_chirho(
                 body_chirho,
                 name_chirho,
@@ -531,7 +600,17 @@ pub(super) fn subst_named_var_chirho(
             vars_chirho,
             body_chirho,
         } => TyChirho::ForallChirho {
-            vars_chirho: vars_chirho.clone(),
+            vars_chirho: vars_chirho.map_records_chirho(|record_chirho| {
+                let mut mapped_chirho = record_chirho.clone();
+                mapped_chirho.kind_chirho = record_chirho.kind_chirho.as_ref().map(|kind_chirho| {
+                    std::sync::Arc::new(subst_named_var_chirho(
+                        kind_chirho,
+                        name_chirho,
+                        replacement_chirho,
+                    ))
+                });
+                mapped_chirho
+            }),
             body_chirho: Box::new(subst_named_var_chirho(
                 body_chirho,
                 name_chirho,

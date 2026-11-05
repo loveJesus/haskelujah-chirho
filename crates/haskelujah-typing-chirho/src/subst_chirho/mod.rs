@@ -11,13 +11,22 @@ use std::collections::HashMap;
 mod bounded_chirho;
 #[cfg(test)]
 mod bounded_tests_chirho;
+mod ordinary_terms_chirho;
 
 use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
+
+/// A rigid/alias image and its checked kind live in the same existing keyed
+/// entry. Ordinary equality substitutions have no kind proof to add.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct SubstitutionImageChirho {
+    pub image_chirho: TyChirho,
+    pub kind_chirho: Option<std::sync::Arc<TyChirho>>,
+}
 
 /// A substitution: a finite mapping from type variables to types.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct SubstChirho {
-    map_chirho: HashMap<TyVarChirho, TyChirho>,
+    map_chirho: HashMap<TyVarChirho, SubstitutionImageChirho>,
 }
 
 impl SubstChirho {
@@ -31,18 +40,47 @@ impl SubstChirho {
     /// Create a singleton substitution `[v ↦ ty]`.
     pub fn singleton_chirho(var_chirho: TyVarChirho, ty_chirho: TyChirho) -> Self {
         let mut map_chirho = HashMap::new();
-        map_chirho.insert(var_chirho, ty_chirho);
+        map_chirho.insert(
+            var_chirho,
+            SubstitutionImageChirho {
+                image_chirho: ty_chirho,
+                kind_chirho: None,
+            },
+        );
         Self { map_chirho }
     }
 
     /// Look up a variable in this substitution.
     pub fn lookup_chirho(&self, var_chirho: &TyVarChirho) -> Option<&TyChirho> {
-        self.map_chirho.get(var_chirho)
+        self.map_chirho
+            .get(var_chirho)
+            .map(|entry_chirho| &entry_chirho.image_chirho)
     }
 
     /// Insert a mapping `var ↦ ty`.
     pub fn insert_chirho(&mut self, var_chirho: TyVarChirho, ty_chirho: TyChirho) {
-        self.map_chirho.insert(var_chirho, ty_chirho);
+        self.insert_image_chirho(
+            var_chirho,
+            SubstitutionImageChirho {
+                image_chirho: ty_chirho,
+                kind_chirho: None,
+            },
+        );
+    }
+
+    pub(crate) fn lookup_image_chirho(
+        &self,
+        variable_chirho: &TyVarChirho,
+    ) -> Option<&SubstitutionImageChirho> {
+        self.map_chirho.get(variable_chirho)
+    }
+
+    pub(crate) fn insert_image_chirho(
+        &mut self,
+        variable_chirho: TyVarChirho,
+        image_chirho: SubstitutionImageChirho,
+    ) {
+        self.map_chirho.insert(variable_chirho, image_chirho);
     }
 
     pub(crate) fn remove_chirho(&mut self, variable_chirho: &TyVarChirho) {
@@ -61,7 +99,9 @@ impl SubstChirho {
 
     /// Iterate over the bindings `var ↦ ty` (unordered).
     pub fn iter_chirho(&self) -> impl Iterator<Item = (&TyVarChirho, &TyChirho)> {
-        self.map_chirho.iter()
+        self.map_chirho
+            .iter()
+            .map(|(variable_chirho, entry_chirho)| (variable_chirho, &entry_chirho.image_chirho))
     }
 
     /// Compose two substitutions: `self ∘ other`.
@@ -75,9 +115,16 @@ impl SubstChirho {
 
         // Apply self to every image in other
         for (var_chirho, ty_chirho) in &other_chirho.map_chirho {
-            result_chirho
-                .map_chirho
-                .insert(*var_chirho, self.apply_ty_chirho(ty_chirho));
+            result_chirho.map_chirho.insert(
+                *var_chirho,
+                SubstitutionImageChirho {
+                    image_chirho: self.apply_ty_chirho(&ty_chirho.image_chirho),
+                    kind_chirho: ty_chirho
+                        .kind_chirho
+                        .as_ref()
+                        .map(|kind_chirho| std::sync::Arc::new(self.apply_ty_chirho(kind_chirho))),
+                },
+            );
         }
 
         // Add bindings from self that aren't in other
@@ -121,8 +168,7 @@ impl SubstChirho {
                 body_chirho: Box::new(self.apply_ty_chirho(body_chirho)),
             },
             TyChirho::VarChirho(v_chirho) => self
-                .map_chirho
-                .get(v_chirho)
+                .lookup_chirho(v_chirho)
                 .cloned()
                 .unwrap_or_else(|| ty_chirho.clone()),
             TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => ty_chirho.clone(),
@@ -147,28 +193,34 @@ impl SubstChirho {
             TyChirho::ForallChirho {
                 vars_chirho,
                 body_chirho,
-            } => {
-                // Don't substitute bound variables — restrict the substitution
-                let mut restricted_chirho = self.clone();
-                for v_chirho in vars_chirho {
-                    restricted_chirho.map_chirho.remove(v_chirho);
-                }
-                TyChirho::ForallChirho {
-                    vars_chirho: vars_chirho.clone(),
-                    body_chirho: Box::new(restricted_chirho.apply_ty_chirho(body_chirho)),
-                }
             }
-            TyChirho::RequiredForallChirho {
+            | TyChirho::RequiredForallChirho {
                 vars_chirho,
                 body_chirho,
             } => {
                 let mut restricted_chirho = self.clone();
-                for var_chirho in vars_chirho {
-                    restricted_chirho.map_chirho.remove(var_chirho);
-                }
-                TyChirho::RequiredForallChirho {
-                    vars_chirho: vars_chirho.clone(),
-                    body_chirho: Box::new(restricted_chirho.apply_ty_chirho(body_chirho)),
+                let variables_chirho = vars_chirho.map_records_chirho(|record_chirho| {
+                    let mut mapped_chirho = record_chirho.clone();
+                    mapped_chirho.kind_chirho =
+                        record_chirho.kind_chirho.as_ref().map(|kind_chirho| {
+                            std::sync::Arc::new(restricted_chirho.apply_ty_chirho(kind_chirho))
+                        });
+                    restricted_chirho
+                        .map_chirho
+                        .remove(&record_chirho.variable_chirho);
+                    mapped_chirho
+                });
+                let body_chirho = Box::new(restricted_chirho.apply_ty_chirho(body_chirho));
+                if matches!(ty_chirho, TyChirho::RequiredForallChirho { .. }) {
+                    TyChirho::RequiredForallChirho {
+                        vars_chirho: variables_chirho,
+                        body_chirho,
+                    }
+                } else {
+                    TyChirho::ForallChirho {
+                        vars_chirho: variables_chirho,
+                        body_chirho,
+                    }
                 }
             }
         }
@@ -178,12 +230,20 @@ impl SubstChirho {
     pub fn apply_scheme_chirho(&self, scheme_chirho: &SchemeChirho) -> SchemeChirho {
         // Remove bound variables from the substitution before applying
         let mut restricted_chirho = self.clone();
-        for v_chirho in &scheme_chirho.vars_chirho {
-            restricted_chirho.map_chirho.remove(v_chirho);
-        }
+        let variables_chirho = scheme_chirho
+            .vars_chirho
+            .map_records_chirho(|record_chirho| {
+                let mut mapped_chirho = record_chirho.clone();
+                mapped_chirho.kind_chirho = record_chirho.kind_chirho.as_ref().map(|kind_chirho| {
+                    std::sync::Arc::new(restricted_chirho.apply_ty_chirho(kind_chirho))
+                });
+                restricted_chirho
+                    .map_chirho
+                    .remove(&record_chirho.variable_chirho);
+                mapped_chirho
+            });
         SchemeChirho {
-            source_binders_chirho: scheme_chirho.source_binders_chirho.clone(),
-            vars_chirho: scheme_chirho.vars_chirho.clone(),
+            vars_chirho: variables_chirho,
             preds_chirho: scheme_chirho
                 .preds_chirho
                 .iter()
@@ -284,8 +344,7 @@ mod tests_chirho {
             s_chirho
         };
         let scheme_chirho = SchemeChirho {
-            source_binders_chirho: vec![],
-            vars_chirho: vec![TyVarChirho(0)],
+            vars_chirho: vec![TyVarChirho(0)].into(),
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(TyVarChirho(0)),

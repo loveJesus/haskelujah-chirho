@@ -100,15 +100,31 @@ fn reaches_skolem_chirho(
         } => {
             budget_chirho.work_chirho(vars_chirho.len())?;
             let previous_chirho = bound_chirho.len();
-            bound_chirho.extend(vars_chirho);
-            let result_chirho = reaches_skolem_chirho(
-                body_chirho,
-                substitutions_chirho,
-                skolems_chirho,
-                bound_chirho,
-                budget_chirho,
-                depth_chirho + 1,
-            );
+            let result_chirho = (|| {
+                for record_chirho in vars_chirho.records_chirho() {
+                    if let Some(kind_chirho) = &record_chirho.kind_chirho
+                        && reaches_skolem_chirho(
+                            kind_chirho,
+                            substitutions_chirho,
+                            skolems_chirho,
+                            bound_chirho,
+                            budget_chirho,
+                            depth_chirho + 1,
+                        )?
+                    {
+                        return Some(true);
+                    }
+                    bound_chirho.push(record_chirho.variable_chirho);
+                }
+                reaches_skolem_chirho(
+                    body_chirho,
+                    substitutions_chirho,
+                    skolems_chirho,
+                    bound_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )
+            })();
             bound_chirho.truncate(previous_chirho);
             result_chirho
         }
@@ -211,9 +227,20 @@ fn collect_free_chirho(
                 .budget_chirho
                 .work_chirho(vars_chirho.len())?;
             let previous_chirho = bound_chirho.len();
-            bound_chirho.extend(vars_chirho);
-            let result_chirho =
-                collect_free_chirho(body_chirho, bound_chirho, captured_chirho, depth_chirho + 1);
+            let result_chirho = (|| {
+                for record_chirho in vars_chirho.records_chirho() {
+                    if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                        collect_free_chirho(
+                            kind_chirho,
+                            bound_chirho,
+                            captured_chirho,
+                            depth_chirho + 1,
+                        )?;
+                    }
+                    bound_chirho.push(record_chirho.variable_chirho);
+                }
+                collect_free_chirho(body_chirho, bound_chirho, captured_chirho, depth_chirho + 1)
+            })();
             bound_chirho.truncate(previous_chirho);
             result_chirho?;
         }
@@ -257,7 +284,13 @@ impl InferCtxChirho {
             captured_chirho
                 .budget_chirho
                 .work_chirho(entry_chirho.vars_chirho.len())?;
-            let mut bound_chirho = entry_chirho.vars_chirho.clone();
+            let mut bound_chirho = Vec::new();
+            for record_chirho in entry_chirho.vars_chirho.records_chirho() {
+                if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                    collect_free_chirho(kind_chirho, &mut bound_chirho, &mut captured_chirho, 0)?;
+                }
+                bound_chirho.push(record_chirho.variable_chirho);
+            }
             collect_free_chirho(
                 &entry_chirho.ty_chirho,
                 &mut bound_chirho,
@@ -299,17 +332,18 @@ impl InferCtxChirho {
     fn project_signature_term_chirho(
         &self,
         term_chirho: &TyChirho,
-        variables_chirho: &[TyVarChirho],
+        variables_chirho: &crate::ty_chirho::QuantifiedVariablesChirho,
         budget_chirho: &mut EqualityBudgetChirho,
-    ) -> Option<TyChirho> {
+    ) -> Option<(crate::ty_chirho::QuantifiedVariablesChirho, TyChirho)> {
         if variables_chirho.is_empty() {
             return self
                 .normalize_signature_public_image_chirho(term_chirho, budget_chirho)
-                .ok();
+                .ok()
+                .map(|term_chirho| (variables_chirho.clone(), term_chirho));
         }
         budget_chirho.node_chirho(variables_chirho.len().saturating_add(1))?;
         let protected_chirho = TyChirho::ForallChirho {
-            vars_chirho: variables_chirho.to_vec(),
+            vars_chirho: variables_chirho.clone(),
             body_chirho: Box::new(copy_term_with_budget_chirho(term_chirho, budget_chirho)?),
         };
         match self
@@ -319,7 +353,9 @@ impl InferCtxChirho {
             TyChirho::ForallChirho {
                 vars_chirho,
                 body_chirho,
-            } if vars_chirho == variables_chirho => Some(*body_chirho),
+            } if vars_chirho.iter().eq(variables_chirho.iter()) => {
+                Some((vars_chirho, *body_chirho))
+            }
             _ => None,
         }
     }
@@ -337,8 +373,21 @@ impl InferCtxChirho {
         {
             budget_chirho.work_chirho(1)?;
             budget_chirho.work_chirho(scheme_chirho.vars_chirho.len())?;
-            let mut bound_chirho = scheme_chirho.vars_chirho.clone();
+            let mut bound_chirho = Vec::new();
             let mut affected_chirho = false;
+            for record_chirho in scheme_chirho.vars_chirho.records_chirho() {
+                if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                    affected_chirho |= reaches_skolem_chirho(
+                        kind_chirho,
+                        &self.equality_substitutions_chirho,
+                        skolems_chirho,
+                        &mut bound_chirho,
+                        budget_chirho,
+                        0,
+                    )?;
+                }
+                bound_chirho.push(record_chirho.variable_chirho);
+            }
             for term_chirho in std::iter::once(&scheme_chirho.ty_chirho).chain(
                 scheme_chirho
                     .preds_chirho
@@ -363,7 +412,7 @@ impl InferCtxChirho {
             if !affected_chirho {
                 continue;
             }
-            let ty_chirho = self.project_signature_term_chirho(
+            let (variables_chirho, ty_chirho) = self.project_signature_term_chirho(
                 &scheme_chirho.ty_chirho,
                 &scheme_chirho.vars_chirho,
                 budget_chirho,
@@ -378,6 +427,7 @@ impl InferCtxChirho {
                         &scheme_chirho.vars_chirho,
                         budget_chirho,
                     )
+                    .map(|(_, term_chirho)| term_chirho)
                 };
                 predicates_chirho.push(crate::ty_chirho::SchemePredChirho::from_proof_chirho(
                     predicate_chirho.class_identity_chirho().clone(),
@@ -407,8 +457,7 @@ impl InferCtxChirho {
                 index_chirho,
                 name_chirho.clone(),
                 SchemeChirho {
-                    source_binders_chirho: scheme_chirho.source_binders_chirho.clone(),
-                    vars_chirho: scheme_chirho.vars_chirho.clone(),
+                    vars_chirho: variables_chirho,
                     preds_chirho: predicates_chirho,
                     ty_chirho,
                 },

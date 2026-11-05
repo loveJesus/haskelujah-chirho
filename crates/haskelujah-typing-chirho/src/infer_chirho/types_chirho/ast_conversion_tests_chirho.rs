@@ -201,14 +201,25 @@ fn result_predicates_reuse_their_lexically_quantified_type_identity_chirho() {
         let TyChirho::FunChirho(outer_chirho, result_chirho, _) = &scheme_chirho.ty_chirho else {
             panic!("expected outer argument and quantified result");
         };
-        let inner_chirho = quantified_body_chirho(result_chirho, required_chirho);
-        assert_eq!(scheme_chirho.preds_chirho.len(), 2);
+        let TyChirho::QualChirho {
+            context_chirho,
+            body_chirho: inner_chirho,
+        } = quantified_body_chirho(result_chirho, required_chirho)
+        else {
+            panic!("the result predicate remains inside its lexical forall");
+        };
+        assert_eq!(scheme_chirho.preds_chirho.len(), 1);
         assert_eq!(
             &scheme_chirho.preds_chirho[0].ty_chirho,
             outer_chirho.as_ref()
         );
-        assert_eq!(&scheme_chirho.preds_chirho[1].ty_chirho, inner_chirho);
-        assert_ne!(outer_chirho.as_ref(), inner_chirho);
+        assert_eq!(context_chirho.len(), 1);
+        let TyChirho::AppChirho(class_chirho, argument_chirho) = &context_chirho[0] else {
+            panic!("nested Eq predicate keeps its class argument");
+        };
+        assert_eq!(class_chirho.as_ref(), &TyChirho::ConChirho("Eq".into()));
+        assert_eq!(argument_chirho.as_ref(), inner_chirho.as_ref());
+        assert_ne!(outer_chirho.as_ref(), inner_chirho.as_ref());
         assert_eq!(TyChirho::VarChirho(map_chirho["aChirho"]), **outer_chirho);
     }
 }
@@ -243,7 +254,10 @@ fn parenthesized_signature_quantifies_each_written_binder_only_once_chirho() {
     };
     let (scheme_chirho, map_chirho) =
         InferCtxChirho::new_chirho().ast_type_to_scheme_with_var_map_chirho(&signature_chirho);
-    assert_eq!(scheme_chirho.vars_chirho, vec![map_chirho["aChirho"]]);
+    assert_eq!(
+        scheme_chirho.vars_chirho,
+        vec![map_chirho["aChirho"]].into()
+    );
     assert_eq!(
         scheme_chirho.ty_chirho,
         TyChirho::VarChirho(map_chirho["aChirho"])

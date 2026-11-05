@@ -78,3 +78,17 @@ fn swapped_argument_drives_quick_look_chirho() {
 fn rank_n_does_not_enable_implicit_impredicativity_chirho() {
     check_chirho("guarded-chirho", "RankNBottomChirho", false);
 }
+
+#[test]
+fn imported_nested_quantifier_is_consumed_before_implicit_instantiation_chirho() {
+    check_chirho(
+        "quantifiers-chirho/cold-chirho",
+        "NestedImportedPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "quantifiers-chirho/cold-chirho",
+        "NestedImportedWrongChirho",
+        false,
+    );
+}

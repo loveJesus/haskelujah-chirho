@@ -8,9 +8,11 @@
 
 use crate::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredChirho};
 use crate::env_chirho::TyEnvChirho;
+#[cfg(test)]
+use crate::skolem_chirho::contains_skolem_chirho;
 use crate::skolem_chirho::{
-    constructor_result_refines_chirho, contains_skolem_chirho, open_skolems_chirho,
-    skolem_name_chirho, split_refinement_unifier_chirho,
+    constructor_result_refines_chirho, open_skolems_chirho, skolem_name_chirho,
+    split_refinement_unifier_chirho,
 };
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
@@ -55,6 +57,8 @@ mod instance_signatures_chirho;
 mod module_chirho;
 #[path = "infer_chirho/declarations_chirho/qualified_types_chirho.rs"]
 mod qualified_types_chirho;
+#[path = "infer_chirho/types_chirho/quantification_chirho.rs"]
+mod quantification_chirho;
 #[cfg(test)]
 #[path = "infer_chirho/declarations_chirho/signature_binder_tests_chirho.rs"]
 mod signature_binder_tests_chirho;
@@ -434,7 +438,8 @@ pub struct InferCtxChirho {
         haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ElaborationOwnerChirho,
     >,
     elaboration_substitution_chirho: SubstChirho,
-    elaboration_variable_kinds_chirho: HashMap<TyVarChirho, TyChirho>,
+    elaboration_variable_kinds_chirho:
+        HashMap<TyVarChirho, crate::ty_chirho::QuantifiedVariableChirho>,
     /// Fresh type variable counter.
     next_var_chirho: u32,
     /// Type environment (scoped).
@@ -679,6 +684,18 @@ pub fn infer_module_with_imports_chirho(
 
 fn is_placeholder_import_scheme_chirho(scheme_chirho: &SchemeChirho) -> bool {
     if !scheme_chirho.preds_chirho.is_empty() || scheme_chirho.vars_chirho.len() != 1 {
+        return false;
+    }
+    if scheme_chirho
+        .vars_chirho
+        .records_chirho()
+        .iter()
+        .any(|record_chirho| {
+            record_chirho.kind_chirho.is_some()
+                || record_chirho.source_chirho.is_some()
+                || record_chirho.specificity_chirho.is_some()
+        })
+    {
         return false;
     }
     match &scheme_chirho.ty_chirho {

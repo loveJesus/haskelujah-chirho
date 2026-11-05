@@ -67,7 +67,7 @@ impl TypeElaboratorChirho<'_> {
         specificity_chirho: &[TyVarSpecificityChirho],
         syntax_chirho: bool,
         span_chirho: SpanChirho,
-    ) -> Result<Vec<TyVarChirho>, ElaborationErrorChirho> {
+    ) -> Result<crate::ty_chirho::QuantifiedVariablesChirho, ElaborationErrorChirho> {
         self.state_chirho.charge_chirho(
             variables_chirho.len(),
             variables_chirho.len(),
@@ -145,6 +145,8 @@ impl TypeElaboratorChirho<'_> {
                     span_chirho,
                     0,
                 )?;
+                let recorded_kind_chirho =
+                    self.state_chirho.copy_chirho(&kind_chirho, span_chirho)?;
                 if let Some(previous_chirho) =
                     publication_chirho
                         .local_binders_chirho
@@ -153,7 +155,22 @@ impl TypeElaboratorChirho<'_> {
                             record_chirho.binder_chirho.variable_chirho == slot_chirho
                         })
                 {
-                    if previous_chirho.binder_chirho.kind_chirho != kind_chirho
+                    let kinds_agree_chirho = crate::ty_chirho::same_type_contract_chirho(
+                        &previous_chirho.binder_chirho.kind_chirho,
+                        &kind_chirho,
+                        &mut |weight_chirho| {
+                            self.state_chirho
+                                .charge_chirho(weight_chirho, 0, span_chirho)
+                                .ok()
+                        },
+                    )
+                    .ok_or_else(|| {
+                        Self::error_chirho(
+                            "kind contract comparison resource bound exhausted",
+                            span_chirho,
+                        )
+                    })?;
+                    if !kinds_agree_chirho
                         || previous_chirho.binder_chirho.visibility_chirho != visibility_chirho
                         || previous_chirho.specificity_chirho != *specificity_chirho
                     {
@@ -175,9 +192,17 @@ impl TypeElaboratorChirho<'_> {
                         });
                 }
                 publication_chirho.bound_chirho.push(*variable_chirho);
-                slots_chirho.push(slot_chirho);
+                slots_chirho.push(crate::ty_chirho::QuantifiedVariableChirho {
+                    variable_chirho: slot_chirho,
+                    kind_chirho: Some(Arc::new(recorded_kind_chirho)),
+                    source_chirho: Some(ScopedTypeVariableIdChirho::QuantifiedChirho {
+                        declaration_chirho: Arc::clone(&publication_chirho.identity_chirho),
+                        index_chirho: slot_chirho.0,
+                    }),
+                    specificity_chirho: Some(*specificity_chirho),
+                });
             }
-            Ok(slots_chirho)
+            Ok(crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(slots_chirho))
         })();
         if result_chirho.is_err() {
             publication_chirho.bound_chirho.truncate(mark_chirho);

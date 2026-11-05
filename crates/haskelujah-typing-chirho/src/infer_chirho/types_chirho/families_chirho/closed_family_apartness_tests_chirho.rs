@@ -38,7 +38,7 @@ fn list_chirho(element_chirho: TyChirho) -> TyChirho {
 
 fn forall_chirho(index_chirho: u32, body_chirho: TyChirho) -> TyChirho {
     TyChirho::ForallChirho {
-        vars_chirho: vec![TyVarChirho(index_chirho)],
+        vars_chirho: vec![TyVarChirho(index_chirho)].into(),
         body_chirho: Box::new(body_chirho),
     }
 }
@@ -616,7 +616,7 @@ fn forall_variables_are_alpha_renamed_without_capture_chirho() {
 #[test]
 fn malformed_forall_binders_are_unsupported_instead_of_aliasing_chirho() {
     let invalid_chirho = TyChirho::ForallChirho {
-        vars_chirho: vec![TyVarChirho(0), TyVarChirho(0)],
+        vars_chirho: vec![TyVarChirho(0), TyVarChirho(0)].into(),
         body_chirho: Box::new(variable_chirho(0)),
     };
     assert_eq!(

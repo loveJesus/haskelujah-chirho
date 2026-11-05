@@ -226,8 +226,7 @@ fn mptc_class_decl_chirho() {
         methods_chirho: HashMap::from([(
             "convert".to_string(),
             SchemeChirho {
-                source_binders_chirho: Vec::new(),
-                vars_chirho: vec![a_chirho, b_chirho],
+                vars_chirho: vec![a_chirho, b_chirho].into(),
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::VarChirho(a_chirho),

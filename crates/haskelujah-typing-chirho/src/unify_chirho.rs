@@ -31,6 +31,9 @@ fn same_tycon_name_chirho(left_name_chirho: &str, right_name_chirho: &str) -> bo
                 == strip_qualifier_chirho(right_name_chirho))
 }
 
+mod quantifiers_chirho;
+pub(crate) use quantifiers_chirho::align_forall_prefix_chirho;
+
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{TyChirho, TyVarChirho};
 
@@ -76,6 +79,58 @@ pub fn unify_chirho(
     ty2_chirho: &TyChirho,
     span_chirho: SpanChirho,
 ) -> Result<SubstChirho, UnifyErrorChirho> {
+    unify_with_kind_policy_chirho(
+        ty1_chirho,
+        ty2_chirho,
+        span_chirho,
+        false,
+        0,
+        &mut 10_000_000,
+    )
+}
+
+/// Checked kind terms share the unifier, with nominal constructors and no
+/// numeric widening or invisible-forall stripping. This does not infer kinds.
+pub(crate) fn unify_kind_terms_chirho(
+    left_chirho: &TyChirho,
+    right_chirho: &TyChirho,
+    span_chirho: SpanChirho,
+) -> Result<SubstChirho, UnifyErrorChirho> {
+    let mut work_chirho = 10_000_000usize;
+    let mut output_chirho = 16_384usize;
+    let mut charge_chirho = |work_amount_chirho: usize, output_amount_chirho: usize| {
+        work_chirho = work_chirho.checked_sub(work_amount_chirho)?;
+        output_chirho = output_chirho.checked_sub(output_amount_chirho)?;
+        Some(())
+    };
+    let left_chirho = SubstChirho::empty_chirho()
+        .apply_bounded_chirho(left_chirho, &mut charge_chirho)
+        .ok_or(UnifyErrorChirho::ResourceExhaustedChirho { span_chirho })?;
+    let right_chirho = SubstChirho::empty_chirho()
+        .apply_bounded_chirho(right_chirho, &mut charge_chirho)
+        .ok_or(UnifyErrorChirho::ResourceExhaustedChirho { span_chirho })?;
+    unify_with_kind_policy_chirho(
+        &left_chirho,
+        &right_chirho,
+        span_chirho,
+        true,
+        0,
+        &mut work_chirho,
+    )
+}
+
+fn unify_with_kind_policy_chirho(
+    ty1_chirho: &TyChirho,
+    ty2_chirho: &TyChirho,
+    span_chirho: SpanChirho,
+    strict_kind_chirho: bool,
+    depth_chirho: usize,
+    work_left_chirho: &mut usize,
+) -> Result<SubstChirho, UnifyErrorChirho> {
+    if depth_chirho > 128 || *work_left_chirho == 0 {
+        return Err(UnifyErrorChirho::ResourceExhaustedChirho { span_chirho });
+    }
+    *work_left_chirho -= 1;
     match (ty1_chirho, ty2_chirho) {
         (
             TyChirho::QualChirho {
@@ -98,8 +153,15 @@ pub fn unify_chirho(
             {
                 let left_chirho = substitution_chirho.apply_ty_chirho(left_chirho);
                 let right_chirho = substitution_chirho.apply_ty_chirho(right_chirho);
-                substitution_chirho = unify_chirho(&left_chirho, &right_chirho, span_chirho)?
-                    .compose_chirho(&substitution_chirho);
+                substitution_chirho = unify_with_kind_policy_chirho(
+                    &left_chirho,
+                    &right_chirho,
+                    span_chirho,
+                    strict_kind_chirho,
+                    depth_chirho + 1,
+                    work_left_chirho,
+                )?
+                .compose_chirho(&substitution_chirho);
             }
             Ok(substitution_chirho)
         }
@@ -107,25 +169,30 @@ pub fn unify_chirho(
         // of the same imported type constructor, but do not conflate a local
         // bare name like `Result` with an imported qualified name like `P.Result`.
         (TyChirho::ConChirho(a_chirho), TyChirho::ConChirho(b_chirho))
-            if same_tycon_name_chirho(a_chirho, b_chirho) =>
+            if if strict_kind_chirho {
+                a_chirho == b_chirho
+            } else {
+                same_tycon_name_chirho(a_chirho, b_chirho)
+            } =>
         {
             Ok(SubstChirho::empty_chirho())
         }
 
         // Numeric widening: Int unifies with Double (implicit fromInteger)
         (TyChirho::ConChirho(a_chirho), TyChirho::ConChirho(b_chirho))
-            if (a_chirho == "Int" && b_chirho == "Double")
-                || (a_chirho == "Double" && b_chirho == "Int") =>
+            if !strict_kind_chirho
+                && ((a_chirho == "Int" && b_chirho == "Double")
+                    || (a_chirho == "Double" && b_chirho == "Int")) =>
         {
             Ok(SubstChirho::empty_chirho())
         }
 
         // Bind a unification variable
         (TyChirho::VarChirho(v_chirho), ty_chirho) => {
-            bind_var_chirho(*v_chirho, ty_chirho, span_chirho)
+            bind_var_with_kind_policy_chirho(*v_chirho, ty_chirho, span_chirho, strict_kind_chirho)
         }
         (ty_chirho, TyChirho::VarChirho(v_chirho)) => {
-            bind_var_chirho(*v_chirho, ty_chirho, span_chirho)
+            bind_var_with_kind_policy_chirho(*v_chirho, ty_chirho, span_chirho, strict_kind_chirho)
         }
 
         // Function types
@@ -133,19 +200,47 @@ pub fn unify_chirho(
             TyChirho::FunChirho(a1_chirho, b1_chirho, _),
             TyChirho::FunChirho(a2_chirho, b2_chirho, _),
         ) => {
-            let s1_chirho = unify_chirho(a1_chirho, a2_chirho, span_chirho)?;
+            let s1_chirho = unify_with_kind_policy_chirho(
+                a1_chirho,
+                a2_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )?;
             let b1_sub_chirho = s1_chirho.apply_ty_chirho(b1_chirho);
             let b2_sub_chirho = s1_chirho.apply_ty_chirho(b2_chirho);
-            let s2_chirho = unify_chirho(&b1_sub_chirho, &b2_sub_chirho, span_chirho)?;
+            let s2_chirho = unify_with_kind_policy_chirho(
+                &b1_sub_chirho,
+                &b2_sub_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )?;
             Ok(s2_chirho.compose_chirho(&s1_chirho))
         }
 
         // Type application
         (TyChirho::AppChirho(f1_chirho, a1_chirho), TyChirho::AppChirho(f2_chirho, a2_chirho)) => {
-            let s1_chirho = unify_chirho(f1_chirho, f2_chirho, span_chirho)?;
+            let s1_chirho = unify_with_kind_policy_chirho(
+                f1_chirho,
+                f2_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )?;
             let a1_sub_chirho = s1_chirho.apply_ty_chirho(a1_chirho);
             let a2_sub_chirho = s1_chirho.apply_ty_chirho(a2_chirho);
-            let s2_chirho = unify_chirho(&a1_sub_chirho, &a2_sub_chirho, span_chirho)?;
+            let s2_chirho = unify_with_kind_policy_chirho(
+                &a1_sub_chirho,
+                &a2_sub_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )?;
             Ok(s2_chirho.compose_chirho(&s1_chirho))
         }
 
@@ -162,7 +257,14 @@ pub fn unify_chirho(
             for (e1_chirho, e2_chirho) in elems1_chirho.iter().zip(elems2_chirho.iter()) {
                 let e1_sub_chirho = subst_chirho.apply_ty_chirho(e1_chirho);
                 let e2_sub_chirho = subst_chirho.apply_ty_chirho(e2_chirho);
-                let s_chirho = unify_chirho(&e1_sub_chirho, &e2_sub_chirho, span_chirho)?;
+                let s_chirho = unify_with_kind_policy_chirho(
+                    &e1_sub_chirho,
+                    &e2_sub_chirho,
+                    span_chirho,
+                    strict_kind_chirho,
+                    depth_chirho + 1,
+                    work_left_chirho,
+                )?;
                 subst_chirho = s_chirho.compose_chirho(&subst_chirho);
             }
             Ok(subst_chirho)
@@ -170,72 +272,149 @@ pub fn unify_chirho(
 
         // List types
         (TyChirho::ListChirho(a_chirho), TyChirho::ListChirho(b_chirho)) => {
-            unify_chirho(a_chirho, b_chirho, span_chirho)
+            unify_with_kind_policy_chirho(
+                a_chirho,
+                b_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )
         }
 
         // List normalization: App(Con("[]"), a) ≡ List(a)
         // The list type constructor `[]` applied to a type `a` must unify with `[a]`.
         (TyChirho::AppChirho(f_chirho, a1_chirho), TyChirho::ListChirho(a2_chirho)) if matches!(f_chirho.as_ref(), TyChirho::ConChirho(n) if n == "[]") => {
-            unify_chirho(a1_chirho, a2_chirho, span_chirho)
+            unify_with_kind_policy_chirho(
+                a1_chirho,
+                a2_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )
         }
         (TyChirho::ListChirho(a1_chirho), TyChirho::AppChirho(f_chirho, a2_chirho)) if matches!(f_chirho.as_ref(), TyChirho::ConChirho(n) if n == "[]") => {
-            unify_chirho(a1_chirho, a2_chirho, span_chirho)
+            unify_with_kind_policy_chirho(
+                a1_chirho,
+                a2_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )
         }
 
         // General List ↔ App unification: treat List(a) as App(Con("[]"), a)
         // so that `m a` can unify with `[a]` by binding `m := []`.
         (TyChirho::AppChirho(f_chirho, a1_chirho), TyChirho::ListChirho(a2_chirho)) => {
             let list_con_chirho = TyChirho::ConChirho("[]".to_string());
-            let s1_chirho = unify_chirho(f_chirho, &list_con_chirho, span_chirho)?;
+            let s1_chirho = unify_with_kind_policy_chirho(
+                f_chirho,
+                &list_con_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )?;
             let a1_sub_chirho = s1_chirho.apply_ty_chirho(a1_chirho);
             let a2_sub_chirho = s1_chirho.apply_ty_chirho(a2_chirho);
-            let s2_chirho = unify_chirho(&a1_sub_chirho, &a2_sub_chirho, span_chirho)?;
+            let s2_chirho = unify_with_kind_policy_chirho(
+                &a1_sub_chirho,
+                &a2_sub_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )?;
             Ok(s2_chirho.compose_chirho(&s1_chirho))
         }
         (TyChirho::ListChirho(a1_chirho), TyChirho::AppChirho(f_chirho, a2_chirho)) => {
             let list_con_chirho = TyChirho::ConChirho("[]".to_string());
-            let s1_chirho = unify_chirho(f_chirho, &list_con_chirho, span_chirho)?;
+            let s1_chirho = unify_with_kind_policy_chirho(
+                f_chirho,
+                &list_con_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )?;
             let a1_sub_chirho = s1_chirho.apply_ty_chirho(a1_chirho);
             let a2_sub_chirho = s1_chirho.apply_ty_chirho(a2_chirho);
-            let s2_chirho = unify_chirho(&a1_sub_chirho, &a2_sub_chirho, span_chirho)?;
+            let s2_chirho = unify_with_kind_policy_chirho(
+                &a1_sub_chirho,
+                &a2_sub_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )?;
             Ok(s2_chirho.compose_chirho(&s1_chirho))
         }
 
         // Tuple normalization: App(App(Con("(,)"), a), b) ≡ Tuple([a, b])
         // and higher arities: App(...App(Con("(,,)"), a)..., c) ≡ Tuple([a, b, c])
         (TyChirho::AppChirho(..), TyChirho::TupleChirho(elems_chirho)) => {
-            if let Some(app_elems_chirho) = collect_tuple_app_chirho(ty1_chirho) {
-                if app_elems_chirho.len() == elems_chirho.len() {
-                    let mut subst_chirho = SubstChirho::empty_chirho();
-                    for (e1_chirho, e2_chirho) in app_elems_chirho.iter().zip(elems_chirho.iter()) {
-                        let e1_sub_chirho = subst_chirho.apply_ty_chirho(e1_chirho);
-                        let e2_sub_chirho = subst_chirho.apply_ty_chirho(e2_chirho);
-                        let s_chirho = unify_chirho(&e1_sub_chirho, &e2_sub_chirho, span_chirho)?;
-                        subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                    }
-                    return Ok(subst_chirho);
+            if let Some(app_elems_chirho) = collect_tuple_app_chirho(ty1_chirho)
+                && app_elems_chirho.len() == elems_chirho.len()
+            {
+                let mut subst_chirho = SubstChirho::empty_chirho();
+                for (e1_chirho, e2_chirho) in app_elems_chirho.iter().zip(elems_chirho.iter()) {
+                    let e1_sub_chirho = subst_chirho.apply_ty_chirho(e1_chirho);
+                    let e2_sub_chirho = subst_chirho.apply_ty_chirho(e2_chirho);
+                    let s_chirho = unify_with_kind_policy_chirho(
+                        &e1_sub_chirho,
+                        &e2_sub_chirho,
+                        span_chirho,
+                        strict_kind_chirho,
+                        depth_chirho + 1,
+                        work_left_chirho,
+                    )?;
+                    subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                 }
+                return Ok(subst_chirho);
             }
             // General case: convert Tuple to App form and try again
             let tuple_as_app_chirho = tuple_to_app_chirho(elems_chirho);
-            unify_chirho(ty1_chirho, &tuple_as_app_chirho, span_chirho)
+            unify_with_kind_policy_chirho(
+                ty1_chirho,
+                &tuple_as_app_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )
         }
         (TyChirho::TupleChirho(elems_chirho), TyChirho::AppChirho(..)) => {
-            if let Some(app_elems_chirho) = collect_tuple_app_chirho(ty2_chirho) {
-                if app_elems_chirho.len() == elems_chirho.len() {
-                    let mut subst_chirho = SubstChirho::empty_chirho();
-                    for (e1_chirho, e2_chirho) in elems_chirho.iter().zip(app_elems_chirho.iter()) {
-                        let e1_sub_chirho = subst_chirho.apply_ty_chirho(e1_chirho);
-                        let e2_sub_chirho = subst_chirho.apply_ty_chirho(e2_chirho);
-                        let s_chirho = unify_chirho(&e1_sub_chirho, &e2_sub_chirho, span_chirho)?;
-                        subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                    }
-                    return Ok(subst_chirho);
+            if let Some(app_elems_chirho) = collect_tuple_app_chirho(ty2_chirho)
+                && app_elems_chirho.len() == elems_chirho.len()
+            {
+                let mut subst_chirho = SubstChirho::empty_chirho();
+                for (e1_chirho, e2_chirho) in elems_chirho.iter().zip(app_elems_chirho.iter()) {
+                    let e1_sub_chirho = subst_chirho.apply_ty_chirho(e1_chirho);
+                    let e2_sub_chirho = subst_chirho.apply_ty_chirho(e2_chirho);
+                    let s_chirho = unify_with_kind_policy_chirho(
+                        &e1_sub_chirho,
+                        &e2_sub_chirho,
+                        span_chirho,
+                        strict_kind_chirho,
+                        depth_chirho + 1,
+                        work_left_chirho,
+                    )?;
+                    subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                 }
+                return Ok(subst_chirho);
             }
             // General case: convert Tuple to App form and try again
             let tuple_as_app_chirho = tuple_to_app_chirho(elems_chirho);
-            unify_chirho(&tuple_as_app_chirho, ty2_chirho, span_chirho)
+            unify_with_kind_policy_chirho(
+                &tuple_as_app_chirho,
+                ty2_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )
         }
 
         // ForallVar: two identical forall-bound variables
@@ -257,12 +436,28 @@ pub fn unify_chirho(
             },
         ) if v1_chirho.len() == v2_chirho.len() => {
             // Alpha-rename: substitute v2's bound vars with v1's in b2
-            let mut rename_chirho = SubstChirho::empty_chirho();
-            for (v1_item_chirho, v2_item_chirho) in v1_chirho.iter().zip(v2_chirho.iter()) {
-                rename_chirho.insert_chirho(*v2_item_chirho, TyChirho::VarChirho(*v1_item_chirho));
+            let (rename_chirho, kinds_chirho) =
+                align_forall_prefix_chirho(v1_chirho, v2_chirho, span_chirho)?;
+            let b1_chirho = kinds_chirho.apply_ty_chirho(b1_chirho);
+            let b2_chirho = kinds_chirho.apply_ty_chirho(&rename_chirho.apply_ty_chirho(b2_chirho));
+            let body_solution_chirho = unify_with_kind_policy_chirho(
+                &b1_chirho,
+                &b2_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )?;
+            if strict_kind_chirho {
+                quantifiers_chirho::protect_kind_body_chirho(
+                    v1_chirho,
+                    &body_solution_chirho,
+                    &b1_chirho,
+                    &b2_chirho,
+                    span_chirho,
+                )?;
             }
-            let b2_renamed_chirho = rename_chirho.apply_ty_chirho(b2_chirho);
-            unify_chirho(b1_chirho, &b2_renamed_chirho, span_chirho)
+            Ok(body_solution_chirho.compose_chirho(&kinds_chirho))
         }
 
         // Required foralls unify only with required foralls. A regular term
@@ -277,26 +472,56 @@ pub fn unify_chirho(
                 body_chirho: b2_chirho,
             },
         ) if v1_chirho.len() == v2_chirho.len() => {
-            let mut rename_chirho = SubstChirho::empty_chirho();
-            for (v1_item_chirho, v2_item_chirho) in v1_chirho.iter().zip(v2_chirho.iter()) {
-                rename_chirho.insert_chirho(*v2_item_chirho, TyChirho::VarChirho(*v1_item_chirho));
+            let (rename_chirho, kinds_chirho) =
+                align_forall_prefix_chirho(v1_chirho, v2_chirho, span_chirho)?;
+            let b1_chirho = kinds_chirho.apply_ty_chirho(b1_chirho);
+            let b2_chirho = kinds_chirho.apply_ty_chirho(&rename_chirho.apply_ty_chirho(b2_chirho));
+            let body_solution_chirho = unify_with_kind_policy_chirho(
+                &b1_chirho,
+                &b2_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )?;
+            if strict_kind_chirho {
+                quantifiers_chirho::protect_kind_body_chirho(
+                    v1_chirho,
+                    &body_solution_chirho,
+                    &b1_chirho,
+                    &b2_chirho,
+                    span_chirho,
+                )?;
             }
-            let b2_renamed_chirho = rename_chirho.apply_ty_chirho(b2_chirho);
-            unify_chirho(b1_chirho, &b2_renamed_chirho, span_chirho)
+            Ok(body_solution_chirho.compose_chirho(&kinds_chirho))
         }
 
         // ForallChirho vs concrete type: strip the forall wrapper and unify the body.
         // The bound vars become free TyVarChirho and participate in unification normally.
         // This is consistent with GHC 9.0+ SimpleSubsumption.
         (TyChirho::ForallChirho { body_chirho, .. }, other_chirho)
-            if !matches!(other_chirho, TyChirho::VarChirho(_)) =>
+            if !strict_kind_chirho && !matches!(other_chirho, TyChirho::VarChirho(_)) =>
         {
-            unify_chirho(body_chirho, other_chirho, span_chirho)
+            unify_with_kind_policy_chirho(
+                body_chirho,
+                other_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )
         }
         (other_chirho, TyChirho::ForallChirho { body_chirho, .. })
-            if !matches!(other_chirho, TyChirho::VarChirho(_)) =>
+            if !strict_kind_chirho && !matches!(other_chirho, TyChirho::VarChirho(_)) =>
         {
-            unify_chirho(other_chirho, body_chirho, span_chirho)
+            unify_with_kind_policy_chirho(
+                other_chirho,
+                body_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )
         }
 
         // Function ↔ App unification: treat Fun(a, b) as App(App(Con("->"), a), b)
@@ -309,7 +534,14 @@ pub fn unify_chirho(
                 )),
                 Box::new((**b_chirho).clone()),
             );
-            unify_chirho(ty1_chirho, &fun_as_app_chirho, span_chirho)
+            unify_with_kind_policy_chirho(
+                ty1_chirho,
+                &fun_as_app_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )
         }
         (TyChirho::FunChirho(a_chirho, b_chirho, _), TyChirho::AppChirho(_, _)) => {
             let fun_as_app_chirho = TyChirho::AppChirho(
@@ -319,7 +551,14 @@ pub fn unify_chirho(
                 )),
                 Box::new((**b_chirho).clone()),
             );
-            unify_chirho(&fun_as_app_chirho, ty2_chirho, span_chirho)
+            unify_with_kind_policy_chirho(
+                &fun_as_app_chirho,
+                ty2_chirho,
+                span_chirho,
+                strict_kind_chirho,
+                depth_chirho + 1,
+                work_left_chirho,
+            )
         }
 
         // Everything else is a mismatch
@@ -415,12 +654,13 @@ pub fn subsume_chirho(
                 body_chirho: be_chirho,
             },
         ) if va_chirho.len() == ve_chirho.len() => {
-            let mut rename_chirho = SubstChirho::empty_chirho();
-            for (va_item_chirho, ve_item_chirho) in va_chirho.iter().zip(ve_chirho.iter()) {
-                rename_chirho.insert_chirho(*ve_item_chirho, TyChirho::VarChirho(*va_item_chirho));
-            }
-            let be_renamed_chirho = rename_chirho.apply_ty_chirho(be_chirho);
-            unify_chirho(ba_chirho, &be_renamed_chirho, span_chirho)
+            let (rename_chirho, kinds_chirho) =
+                align_forall_prefix_chirho(va_chirho, ve_chirho, span_chirho)?;
+            let actual_chirho = kinds_chirho.apply_ty_chirho(ba_chirho);
+            let expected_chirho =
+                kinds_chirho.apply_ty_chirho(&rename_chirho.apply_ty_chirho(be_chirho));
+            Ok(unify_chirho(&actual_chirho, &expected_chirho, span_chirho)?
+                .compose_chirho(&kinds_chirho))
         }
 
         (
@@ -433,12 +673,13 @@ pub fn subsume_chirho(
                 body_chirho: be_chirho,
             },
         ) if va_chirho.len() == ve_chirho.len() => {
-            let mut rename_chirho = SubstChirho::empty_chirho();
-            for (va_item_chirho, ve_item_chirho) in va_chirho.iter().zip(ve_chirho.iter()) {
-                rename_chirho.insert_chirho(*ve_item_chirho, TyChirho::VarChirho(*va_item_chirho));
-            }
-            let be_renamed_chirho = rename_chirho.apply_ty_chirho(be_chirho);
-            unify_chirho(ba_chirho, &be_renamed_chirho, span_chirho)
+            let (rename_chirho, kinds_chirho) =
+                align_forall_prefix_chirho(va_chirho, ve_chirho, span_chirho)?;
+            let actual_chirho = kinds_chirho.apply_ty_chirho(ba_chirho);
+            let expected_chirho =
+                kinds_chirho.apply_ty_chirho(&rename_chirho.apply_ty_chirho(be_chirho));
+            Ok(unify_chirho(&actual_chirho, &expected_chirho, span_chirho)?
+                .compose_chirho(&kinds_chirho))
         }
 
         // Actual is ForallChirho: instantiate and check against expected
@@ -494,10 +735,11 @@ pub fn subsume_chirho(
 
 /// Attempt to bind a unification variable to a type.
 /// Performs the occurs check to prevent infinite types.
-fn bind_var_chirho(
+fn bind_var_with_kind_policy_chirho(
     var_chirho: TyVarChirho,
     ty_chirho: &TyChirho,
     span_chirho: SpanChirho,
+    strict_kind_chirho: bool,
 ) -> Result<SubstChirho, UnifyErrorChirho> {
     // Variable equals itself: no binding needed
     if *ty_chirho == TyChirho::VarChirho(var_chirho) {
@@ -530,8 +772,19 @@ fn bind_var_chirho(
         }
         work_chirho -= width_chirho;
         match term_chirho {
-            TyChirho::ForallChirho { body_chirho, .. }
-            | TyChirho::RequiredForallChirho { body_chirho, .. } => {
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            }
+            | TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
+                for record_chirho in vars_chirho.records_chirho() {
+                    if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                        pending_chirho.push((kind_chirho.as_ref(), depth_chirho + 1));
+                    }
+                }
                 polymorphic_chirho = true;
                 pending_chirho.push((body_chirho, depth_chirho + 1));
             }
@@ -565,7 +818,7 @@ fn bind_var_chirho(
             TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => {}
         }
     }
-    if polymorphic_chirho {
+    if polymorphic_chirho && !strict_kind_chirho {
         return Err(UnifyErrorChirho::MismatchChirho {
             expected_chirho: TyChirho::VarChirho(var_chirho),
             actual_chirho: ty_chirho.clone(),
@@ -586,252 +839,4 @@ fn bind_var_chirho(
 }
 
 #[cfg(test)]
-mod tests_chirho {
-    use super::*;
-
-    #[test]
-    fn unify_identical_con_chirho() {
-        let s_chirho = unify_chirho(
-            &TyChirho::int_chirho(),
-            &TyChirho::int_chirho(),
-            SpanChirho::DUMMY_CHIRHO,
-        )
-        .unwrap();
-        assert!(s_chirho.is_empty_chirho());
-    }
-
-    #[test]
-    fn unify_var_with_con_chirho() {
-        let v_chirho = TyVarChirho(0);
-        let s_chirho = unify_chirho(
-            &TyChirho::VarChirho(v_chirho),
-            &TyChirho::int_chirho(),
-            SpanChirho::DUMMY_CHIRHO,
-        )
-        .unwrap();
-        assert_eq!(
-            s_chirho.apply_ty_chirho(&TyChirho::VarChirho(v_chirho)),
-            TyChirho::int_chirho()
-        );
-    }
-
-    #[test]
-    fn unify_two_vars_chirho() {
-        let a_chirho = TyVarChirho(0);
-        let b_chirho = TyVarChirho(1);
-        let s_chirho = unify_chirho(
-            &TyChirho::VarChirho(a_chirho),
-            &TyChirho::VarChirho(b_chirho),
-            SpanChirho::DUMMY_CHIRHO,
-        )
-        .unwrap();
-        // After applying, both should map to the same type
-        let ta_chirho = s_chirho.apply_ty_chirho(&TyChirho::VarChirho(a_chirho));
-        let tb_chirho = s_chirho.apply_ty_chirho(&TyChirho::VarChirho(b_chirho));
-        assert_eq!(ta_chirho, tb_chirho);
-    }
-
-    #[test]
-    fn unify_fun_types_chirho() {
-        let a_chirho = TyVarChirho(0);
-        let ty1_chirho =
-            TyChirho::fun_chirho(TyChirho::VarChirho(a_chirho), TyChirho::int_chirho());
-        let ty2_chirho = TyChirho::fun_chirho(TyChirho::bool_chirho(), TyChirho::int_chirho());
-
-        let s_chirho = unify_chirho(&ty1_chirho, &ty2_chirho, SpanChirho::DUMMY_CHIRHO).unwrap();
-        assert_eq!(
-            s_chirho.apply_ty_chirho(&TyChirho::VarChirho(a_chirho)),
-            TyChirho::bool_chirho()
-        );
-    }
-
-    #[test]
-    fn unify_mismatch_chirho() {
-        let result_chirho = unify_chirho(
-            &TyChirho::int_chirho(),
-            &TyChirho::bool_chirho(),
-            SpanChirho::DUMMY_CHIRHO,
-        );
-        assert!(matches!(
-            result_chirho,
-            Err(UnifyErrorChirho::MismatchChirho { .. })
-        ));
-    }
-
-    #[test]
-    fn unify_same_qualified_suffix_tycons_chirho() {
-        let left_ty_chirho = TyChirho::ConChirho("P.Result".to_string());
-        let right_ty_chirho = TyChirho::ConChirho("Test.QuickCheck.Property.Result".to_string());
-        let subst_chirho =
-            unify_chirho(&left_ty_chirho, &right_ty_chirho, SpanChirho::DUMMY_CHIRHO)
-                .expect("qualified aliases of the same imported type should unify");
-        assert!(subst_chirho.is_empty_chirho());
-    }
-
-    #[test]
-    fn unify_bare_and_qualified_tycons_do_not_alias_chirho() {
-        let left_ty_chirho = TyChirho::ConChirho("Result".to_string());
-        let right_ty_chirho = TyChirho::ConChirho("Test.QuickCheck.Property.Result".to_string());
-        let result_chirho =
-            unify_chirho(&left_ty_chirho, &right_ty_chirho, SpanChirho::DUMMY_CHIRHO);
-        assert!(
-            matches!(result_chirho, Err(UnifyErrorChirho::MismatchChirho { .. })),
-            "local bare tycons must stay distinct from imported qualified tycons"
-        );
-    }
-
-    #[test]
-    fn occurs_check_prevents_infinite_type_chirho() {
-        let a_chirho = TyVarChirho(0);
-        // t0 ~ [t0] would require t0 = [[[...infinite...]]]
-        let result_chirho = unify_chirho(
-            &TyChirho::VarChirho(a_chirho),
-            &TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_chirho))),
-            SpanChirho::DUMMY_CHIRHO,
-        );
-        assert!(matches!(
-            result_chirho,
-            Err(UnifyErrorChirho::OccursCheckChirho { .. })
-        ));
-    }
-
-    #[test]
-    fn unify_tuples_same_arity_chirho() {
-        let a_chirho = TyVarChirho(0);
-        let t1_chirho =
-            TyChirho::TupleChirho(vec![TyChirho::VarChirho(a_chirho), TyChirho::int_chirho()]);
-        let t2_chirho =
-            TyChirho::TupleChirho(vec![TyChirho::bool_chirho(), TyChirho::int_chirho()]);
-
-        let s_chirho = unify_chirho(&t1_chirho, &t2_chirho, SpanChirho::DUMMY_CHIRHO).unwrap();
-        assert_eq!(
-            s_chirho.apply_ty_chirho(&TyChirho::VarChirho(a_chirho)),
-            TyChirho::bool_chirho()
-        );
-    }
-
-    #[test]
-    fn unify_tuples_different_arity_fails_chirho() {
-        let t1_chirho = TyChirho::TupleChirho(vec![TyChirho::int_chirho()]);
-        let t2_chirho =
-            TyChirho::TupleChirho(vec![TyChirho::int_chirho(), TyChirho::bool_chirho()]);
-
-        let result_chirho = unify_chirho(&t1_chirho, &t2_chirho, SpanChirho::DUMMY_CHIRHO);
-        assert!(matches!(
-            result_chirho,
-            Err(UnifyErrorChirho::TupleArityChirho { .. })
-        ));
-    }
-
-    #[test]
-    fn unify_list_types_chirho() {
-        let a_chirho = TyVarChirho(0);
-        let s_chirho = unify_chirho(
-            &TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_chirho))),
-            &TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
-            SpanChirho::DUMMY_CHIRHO,
-        )
-        .unwrap();
-        assert_eq!(
-            s_chirho.apply_ty_chirho(&TyChirho::VarChirho(a_chirho)),
-            TyChirho::int_chirho()
-        );
-    }
-
-    #[test]
-    fn unify_forall_same_structure_chirho() {
-        // forall t0. t0 -> t0 ~ forall t1. t1 -> t1 (alpha-equivalent)
-        let fa_chirho = TyChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho(0)],
-            body_chirho: Box::new(TyChirho::fun_chirho(
-                TyChirho::VarChirho(TyVarChirho(0)),
-                TyChirho::VarChirho(TyVarChirho(0)),
-            )),
-        };
-        let fb_chirho = TyChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho(1)],
-            body_chirho: Box::new(TyChirho::fun_chirho(
-                TyChirho::VarChirho(TyVarChirho(1)),
-                TyChirho::VarChirho(TyVarChirho(1)),
-            )),
-        };
-        let s_chirho = unify_chirho(&fa_chirho, &fb_chirho, SpanChirho::DUMMY_CHIRHO).unwrap();
-        assert!(s_chirho.is_empty_chirho());
-    }
-
-    #[test]
-    fn unify_forall_with_concrete_fun_chirho() {
-        // forall t0. t0 -> t0 ~ Int -> Int (strip forall, unify body)
-        let forall_chirho = TyChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho(0)],
-            body_chirho: Box::new(TyChirho::fun_chirho(
-                TyChirho::VarChirho(TyVarChirho(0)),
-                TyChirho::VarChirho(TyVarChirho(0)),
-            )),
-        };
-        let concrete_chirho = TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::int_chirho());
-        let s_chirho =
-            unify_chirho(&forall_chirho, &concrete_chirho, SpanChirho::DUMMY_CHIRHO).unwrap();
-        assert_eq!(
-            s_chirho.apply_ty_chirho(&TyChirho::VarChirho(TyVarChirho(0))),
-            TyChirho::int_chirho()
-        );
-    }
-
-    #[test]
-    fn ordinary_meta_cannot_receive_a_polytype_chirho() {
-        // Ordinary metas remain monotypes; the application prepass owns the
-        // separate capability for a permitted impredicative instantiation.
-        let forall_chirho = TyChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho(0)],
-            body_chirho: Box::new(TyChirho::fun_chirho(
-                TyChirho::VarChirho(TyVarChirho(0)),
-                TyChirho::VarChirho(TyVarChirho(0)),
-            )),
-        };
-        let var_chirho = TyChirho::VarChirho(TyVarChirho(5));
-        for (left_chirho, right_chirho) in
-            [(&var_chirho, &forall_chirho), (&forall_chirho, &var_chirho)]
-        {
-            assert!(matches!(
-                unify_chirho(left_chirho, right_chirho, SpanChirho::DUMMY_CHIRHO),
-                Err(UnifyErrorChirho::MismatchChirho { .. })
-            ));
-        }
-        assert!(
-            unify_chirho(
-                &var_chirho,
-                &TyChirho::ListChirho(Box::new(forall_chirho)),
-                SpanChirho::DUMMY_CHIRHO
-            )
-            .is_err()
-        );
-    }
-
-    #[test]
-    fn subsume_forall_with_forall_chirho() {
-        // forall t0. t0 -> t0 subsumes forall t1. t1 -> t1
-        let fa_chirho = TyChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho(0)],
-            body_chirho: Box::new(TyChirho::fun_chirho(
-                TyChirho::VarChirho(TyVarChirho(0)),
-                TyChirho::VarChirho(TyVarChirho(0)),
-            )),
-        };
-        let fb_chirho = TyChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho(1)],
-            body_chirho: Box::new(TyChirho::fun_chirho(
-                TyChirho::VarChirho(TyVarChirho(1)),
-                TyChirho::VarChirho(TyVarChirho(1)),
-            )),
-        };
-        let mut next_var_chirho = 10u32;
-        let result_chirho = subsume_chirho(
-            &fa_chirho,
-            &fb_chirho,
-            &mut next_var_chirho,
-            SpanChirho::DUMMY_CHIRHO,
-        );
-        assert!(result_chirho.is_ok());
-    }
-}
+mod tests_chirho;

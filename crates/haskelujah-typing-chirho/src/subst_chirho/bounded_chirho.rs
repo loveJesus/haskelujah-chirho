@@ -5,7 +5,7 @@
 
 use super::SubstChirho;
 use crate::ty_chirho::{TyChirho, TyVarChirho};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 fn image_free_chirho(
     term_chirho: &TyChirho,
@@ -92,7 +92,18 @@ fn image_free_chirho(
         } => {
             charge_chirho(vars_chirho.len(), vars_chirho.len())?;
             let mark_chirho = bound_chirho.len();
-            bound_chirho.extend(vars_chirho);
+            for record_chirho in vars_chirho.records_chirho() {
+                if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                    image_free_chirho(
+                        kind_chirho,
+                        free_chirho,
+                        bound_chirho,
+                        charge_chirho,
+                        depth_chirho + 1,
+                    )?;
+                }
+                bound_chirho.push(record_chirho.variable_chirho);
+            }
             let result_chirho = image_free_chirho(
                 body_chirho,
                 free_chirho,
@@ -108,10 +119,91 @@ fn image_free_chirho(
     Some(())
 }
 
+fn reserve_variables_chirho(
+    term_chirho: &TyChirho,
+    next_chirho: &mut u32,
+    charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
+    depth_chirho: usize,
+) -> Option<()> {
+    charge_chirho(1, 0)?;
+    if depth_chirho > 128 {
+        return None;
+    }
+    let mut reserve_chirho = |variable_chirho: TyVarChirho| -> Option<()> {
+        *next_chirho = (*next_chirho).max(variable_chirho.0.checked_add(1)?);
+        Some(())
+    };
+    match term_chirho {
+        TyChirho::VarChirho(variable_chirho) => reserve_chirho(*variable_chirho)?,
+        TyChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+        }
+        | TyChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+        } => {
+            charge_chirho(vars_chirho.len(), 0)?;
+            for record_chirho in vars_chirho.records_chirho() {
+                reserve_chirho(record_chirho.variable_chirho)?;
+            }
+            for record_chirho in vars_chirho.records_chirho() {
+                if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                    reserve_variables_chirho(
+                        kind_chirho,
+                        next_chirho,
+                        charge_chirho,
+                        depth_chirho + 1,
+                    )?;
+                }
+            }
+            reserve_variables_chirho(body_chirho, next_chirho, charge_chirho, depth_chirho + 1)?;
+        }
+        TyChirho::AppChirho(left_chirho, right_chirho)
+        | TyChirho::FunChirho(left_chirho, right_chirho, _) => {
+            reserve_variables_chirho(left_chirho, next_chirho, charge_chirho, depth_chirho + 1)?;
+            reserve_variables_chirho(right_chirho, next_chirho, charge_chirho, depth_chirho + 1)?;
+        }
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => {
+            for term_chirho in context_chirho {
+                reserve_variables_chirho(
+                    term_chirho,
+                    next_chirho,
+                    charge_chirho,
+                    depth_chirho + 1,
+                )?;
+            }
+            reserve_variables_chirho(body_chirho, next_chirho, charge_chirho, depth_chirho + 1)?;
+        }
+        TyChirho::ListChirho(element_chirho) => {
+            reserve_variables_chirho(element_chirho, next_chirho, charge_chirho, depth_chirho + 1)?
+        }
+        TyChirho::TupleChirho(elements_chirho) => {
+            for term_chirho in elements_chirho {
+                reserve_variables_chirho(
+                    term_chirho,
+                    next_chirho,
+                    charge_chirho,
+                    depth_chirho + 1,
+                )?;
+            }
+        }
+        TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => {}
+    }
+    Some(())
+}
+
 struct BoundedSubstitutionChirho<'source_chirho, 'budget_chirho, ChargeChirho> {
     source_chirho: &'source_chirho SubstChirho,
-    free_chirho: Vec<(TyVarChirho, HashSet<TyVarChirho>)>,
+    free_chirho: HashMap<TyVarChirho, HashSet<TyVarChirho>>,
     charge_chirho: &'budget_chirho mut ChargeChirho,
+    resolve_owned_chirho: bool,
+    active_variables_chirho: HashSet<TyVarChirho>,
+    renaming_chirho: Vec<(TyVarChirho, TyVarChirho)>,
+    next_variable_chirho: Option<&'budget_chirho mut u32>,
 }
 
 impl<ChargeChirho: FnMut(usize, usize) -> Option<()>>
@@ -130,17 +222,49 @@ impl<ChargeChirho: FnMut(usize, usize) -> Option<()>>
         }
         Some(match term_chirho {
             TyChirho::VarChirho(variable_chirho) => {
+                (self.charge_chirho)(self.renaming_chirho.len(), 0)?;
+                if active_chirho
+                    && let Some((_, image_chirho)) = self
+                        .renaming_chirho
+                        .iter()
+                        .rev()
+                        .find(|(source_chirho, _)| source_chirho == variable_chirho)
+                {
+                    return Some(TyChirho::VarChirho(*image_chirho));
+                }
                 (self.charge_chirho)(bound_chirho.len(), 0)?;
                 if active_chirho
                     && !bound_chirho.contains(variable_chirho)
                     && let Some(image_chirho) = self.source_chirho.lookup_chirho(variable_chirho)
                 {
-                    return self.walk_chirho(
-                        image_chirho,
-                        &mut Vec::new(),
-                        false,
-                        depth_chirho + 1,
-                    );
+                    if self.resolve_owned_chirho {
+                        (self.charge_chirho)(2, 1)?;
+                        if !self.active_variables_chirho.insert(*variable_chirho) {
+                            return None;
+                        }
+                        let result_chirho =
+                            self.walk_chirho(image_chirho, bound_chirho, true, depth_chirho + 1);
+                        self.active_variables_chirho.remove(variable_chirho);
+                        return result_chirho;
+                    }
+                    if self.next_variable_chirho.is_none()
+                        && let Some(free_chirho) = self.free_chirho.get(variable_chirho)
+                    {
+                        (self.charge_chirho)(bound_chirho.len(), 0)?;
+                        if bound_chirho
+                            .iter()
+                            .any(|variable_chirho| free_chirho.contains(variable_chirho))
+                        {
+                            return None;
+                        }
+                    }
+                    let next_variable_chirho = self.next_variable_chirho.take();
+                    let renaming_chirho = std::mem::take(&mut self.renaming_chirho);
+                    let result_chirho =
+                        self.walk_chirho(image_chirho, &mut Vec::new(), false, depth_chirho + 1);
+                    self.next_variable_chirho = next_variable_chirho;
+                    self.renaming_chirho = renaming_chirho;
+                    return result_chirho;
                 }
                 TyChirho::VarChirho(*variable_chirho)
             }
@@ -237,36 +361,49 @@ impl<ChargeChirho: FnMut(usize, usize) -> Option<()>>
                 body_chirho,
             } => {
                 (self.charge_chirho)(vars_chirho.len(), vars_chirho.len())?;
-                if active_chirho {
-                    for (source_chirho, free_chirho) in &self.free_chirho {
-                        (self.charge_chirho)(
-                            bound_chirho.len().saturating_add(vars_chirho.len()),
-                            0,
-                        )?;
-                        if !bound_chirho.contains(source_chirho)
-                            && !vars_chirho.contains(source_chirho)
-                            && vars_chirho
-                                .iter()
-                                .any(|variable_chirho| free_chirho.contains(variable_chirho))
-                        {
-                            return None;
-                        }
-                    }
-                }
                 let mark_chirho = bound_chirho.len();
-                bound_chirho.extend(vars_chirho);
+                let rename_mark_chirho = self.renaming_chirho.len();
+                let mut records_chirho = Vec::new();
+                for record_chirho in vars_chirho.records_chirho() {
+                    let mut mapped_chirho = record_chirho.clone();
+                    mapped_chirho.kind_chirho = match &record_chirho.kind_chirho {
+                        Some(kind_chirho) => Some(std::sync::Arc::new(self.walk_chirho(
+                            kind_chirho,
+                            bound_chirho,
+                            active_chirho,
+                            depth_chirho + 1,
+                        )?)),
+                        None => None,
+                    };
+                    if active_chirho
+                        && let Some(next_chirho) = self.next_variable_chirho.as_deref_mut()
+                    {
+                        mapped_chirho.variable_chirho = TyVarChirho(*next_chirho);
+                        *next_chirho = next_chirho.checked_add(1)?;
+                        (self.charge_chirho)(1, 1)?;
+                        self.renaming_chirho
+                            .push((record_chirho.variable_chirho, mapped_chirho.variable_chirho));
+                    }
+                    records_chirho.push(mapped_chirho);
+                    bound_chirho.push(record_chirho.variable_chirho);
+                }
                 let body_chirho =
                     self.walk_chirho(body_chirho, bound_chirho, active_chirho, depth_chirho + 1);
                 bound_chirho.truncate(mark_chirho);
+                self.renaming_chirho.truncate(rename_mark_chirho);
                 let body_chirho = Box::new(body_chirho?);
+                let variables_chirho =
+                    crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(
+                        records_chirho,
+                    );
                 if matches!(term_chirho, TyChirho::RequiredForallChirho { .. }) {
                     TyChirho::RequiredForallChirho {
-                        vars_chirho: vars_chirho.clone(),
+                        vars_chirho: variables_chirho,
                         body_chirho,
                     }
                 } else {
                     TyChirho::ForallChirho {
-                        vars_chirho: vars_chirho.clone(),
+                        vars_chirho: variables_chirho,
                         body_chirho,
                     }
                 }
@@ -276,16 +413,78 @@ impl<ChargeChirho: FnMut(usize, usize) -> Option<()>>
 }
 
 impl SubstChirho {
-    /// Callers have freshened producer binders first. A remaining collision is
-    /// an explicit refusal, never accidental capture or spelling-based repair.
-    pub(crate) fn apply_bounded_chirho(
+    pub(crate) fn reserve_fresh_variables_bounded_chirho(
+        term_chirho: &TyChirho,
+        next_chirho: &mut u32,
+        charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
+    ) -> Option<()> {
+        reserve_variables_chirho(term_chirho, next_chirho, charge_chirho, 0)
+    }
+
+    pub(crate) fn free_variables_bounded_chirho(
+        term_chirho: &TyChirho,
+        charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
+    ) -> Option<Vec<TyVarChirho>> {
+        let mut free_chirho = HashSet::new();
+        image_free_chirho(
+            term_chirho,
+            &mut free_chirho,
+            &mut Vec::new(),
+            charge_chirho,
+            0,
+        )?;
+        let mut free_chirho: Vec<_> = free_chirho.into_iter().collect();
+        charge_chirho(
+            free_chirho.len().saturating_mul(
+                free_chirho
+                    .len()
+                    .checked_ilog2()
+                    .unwrap_or(0)
+                    .saturating_add(1) as usize,
+            ),
+            0,
+        )?;
+        free_chirho.sort_unstable();
+        Some(free_chirho)
+    }
+
+    /// Zonk only an already owner-validated solver substitution. Its images
+    /// name that SAME lexical scope, so a preceding binder in an image stays
+    /// bound. External argument instantiation uses apply_bounded_chirho instead.
+    pub(crate) fn resolve_owned_bounded_chirho(
         &self,
         term_chirho: &TyChirho,
         charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
     ) -> Option<TyChirho> {
-        charge_chirho(self.len_chirho(), self.len_chirho())?;
-        let mut free_chirho = Vec::new();
-        for (variable_chirho, image_chirho) in self.iter_chirho() {
+        BoundedSubstitutionChirho {
+            source_chirho: self,
+            free_chirho: HashMap::new(),
+            charge_chirho,
+            resolve_owned_chirho: true,
+            active_variables_chirho: HashSet::new(),
+            renaming_chirho: Vec::new(),
+            next_variable_chirho: None,
+        }
+        .walk_chirho(term_chirho, &mut Vec::new(), true, 0)
+    }
+
+    /// Simultaneously rekey free producer slots while alpha-renaming only
+    /// binders introduced inside this term. Replacement images keep their scope.
+    pub(crate) fn apply_freshened_bounded_chirho(
+        &self,
+        term_chirho: &TyChirho,
+        next_chirho: &mut u32,
+        charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
+    ) -> Option<TyChirho> {
+        reserve_variables_chirho(term_chirho, next_chirho, charge_chirho, 0)?;
+        let used_chirho = Self::free_variables_bounded_chirho(term_chirho, charge_chirho)?;
+        charge_chirho(used_chirho.len(), used_chirho.len())?;
+        let mut free_chirho = HashMap::new();
+        for variable_chirho in used_chirho {
+            let Some(image_chirho) = self.lookup_chirho(&variable_chirho) else {
+                continue;
+            };
+            reserve_variables_chirho(image_chirho, next_chirho, charge_chirho, 0)?;
             let mut free_image_chirho = HashSet::new();
             image_free_chirho(
                 image_chirho,
@@ -294,12 +493,52 @@ impl SubstChirho {
                 charge_chirho,
                 0,
             )?;
-            free_chirho.push((*variable_chirho, free_image_chirho));
+            free_chirho.insert(variable_chirho, free_image_chirho);
         }
         BoundedSubstitutionChirho {
             source_chirho: self,
             free_chirho,
             charge_chirho,
+            resolve_owned_chirho: false,
+            active_variables_chirho: HashSet::new(),
+            renaming_chirho: Vec::new(),
+            next_variable_chirho: Some(next_chirho),
+        }
+        .walk_chirho(term_chirho, &mut Vec::new(), true, 0)
+    }
+
+    /// Callers have freshened producer binders first. A remaining collision is
+    /// an explicit refusal, never accidental capture or spelling-based repair.
+    pub(crate) fn apply_bounded_chirho(
+        &self,
+        term_chirho: &TyChirho,
+        charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
+    ) -> Option<TyChirho> {
+        let used_chirho = Self::free_variables_bounded_chirho(term_chirho, charge_chirho)?;
+        charge_chirho(used_chirho.len(), used_chirho.len())?;
+        let mut free_chirho = HashMap::new();
+        for variable_chirho in used_chirho {
+            let Some(image_chirho) = self.lookup_chirho(&variable_chirho) else {
+                continue;
+            };
+            let mut free_image_chirho = HashSet::new();
+            image_free_chirho(
+                image_chirho,
+                &mut free_image_chirho,
+                &mut Vec::new(),
+                charge_chirho,
+                0,
+            )?;
+            free_chirho.insert(variable_chirho, free_image_chirho);
+        }
+        BoundedSubstitutionChirho {
+            source_chirho: self,
+            free_chirho,
+            charge_chirho,
+            resolve_owned_chirho: false,
+            active_variables_chirho: HashSet::new(),
+            renaming_chirho: Vec::new(),
+            next_variable_chirho: None,
         }
         .walk_chirho(term_chirho, &mut Vec::new(), true, 0)
     }
@@ -355,12 +594,12 @@ fn quantified_body_chirho(
                 body_chirho
             } else if matches!(term_chirho, TyChirho::RequiredForallChirho { .. }) {
                 TyChirho::RequiredForallChirho {
-                    vars_chirho: remaining_chirho.to_vec(),
+                    vars_chirho: vars_chirho.slice_chirho(1..vars_chirho.len()),
                     body_chirho: Box::new(body_chirho),
                 }
             } else {
                 TyChirho::ForallChirho {
-                    vars_chirho: remaining_chirho.to_vec(),
+                    vars_chirho: vars_chirho.slice_chirho(1..vars_chirho.len()),
                     body_chirho: Box::new(body_chirho),
                 }
             };

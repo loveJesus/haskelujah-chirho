@@ -1664,6 +1664,7 @@ mod tests_chirho {
                     name_chirho: dummy_name_chirho("whole"),
                     pattern_chirho: Box::new(PatChirho::ConChirho {
                         con_chirho: dummy_name_chirho("Just"),
+                        type_args_chirho: vec![],
                         args_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("inner"))],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }),

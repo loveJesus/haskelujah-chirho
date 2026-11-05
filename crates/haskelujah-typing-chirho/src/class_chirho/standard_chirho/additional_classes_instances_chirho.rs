@@ -24,8 +24,7 @@ impl ClassEnvChirho {
                     (
                         "empty".to_string(),
                         SchemeChirho {
-                            source_binders_chirho: Vec::new(),
-                            vars_chirho: vec![alt_var_chirho, alt_a_chirho],
+                            vars_chirho: vec![alt_var_chirho, alt_a_chirho].into(),
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::AppChirho(
                                 Box::new(TyChirho::VarChirho(alt_var_chirho)),
@@ -36,8 +35,7 @@ impl ClassEnvChirho {
                     (
                         "<|>".to_string(),
                         SchemeChirho {
-                            source_binders_chirho: Vec::new(),
-                            vars_chirho: vec![alt_var_chirho, alt_a_chirho],
+                            vars_chirho: vec![alt_var_chirho, alt_a_chirho].into(),
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
                                 [
@@ -91,8 +89,7 @@ impl ClassEnvChirho {
                     (
                         "mzero".to_string(),
                         SchemeChirho {
-                            source_binders_chirho: Vec::new(),
-                            vars_chirho: vec![mp_var_chirho, alt_a_chirho],
+                            vars_chirho: vec![mp_var_chirho, alt_a_chirho].into(),
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::AppChirho(
                                 Box::new(TyChirho::VarChirho(mp_var_chirho)),
@@ -103,8 +100,7 @@ impl ClassEnvChirho {
                     (
                         "mplus".to_string(),
                         SchemeChirho {
-                            source_binders_chirho: Vec::new(),
-                            vars_chirho: vec![mp_var_chirho, alt_a_chirho],
+                            vars_chirho: vec![mp_var_chirho, alt_a_chirho].into(),
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
                                 [
@@ -157,8 +153,7 @@ impl ClassEnvChirho {
                 methods_chirho: HashMap::from([(
                     "<>".to_string(),
                     SchemeChirho {
-                        source_binders_chirho: Vec::new(),
-                        vars_chirho: vec![sg_var_chirho],
+                        vars_chirho: vec![sg_var_chirho].into(),
                         preds_chirho: vec![],
                         ty_chirho: TyChirho::fun_n_chirho(
                             [
@@ -188,8 +183,7 @@ impl ClassEnvChirho {
                     (
                         "mappend".to_string(),
                         SchemeChirho {
-                            source_binders_chirho: Vec::new(),
-                            vars_chirho: vec![mon_var_chirho],
+                            vars_chirho: vec![mon_var_chirho].into(),
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
                                 [
@@ -203,8 +197,7 @@ impl ClassEnvChirho {
                     (
                         "mempty".to_string(),
                         SchemeChirho {
-                            source_binders_chirho: Vec::new(),
-                            vars_chirho: vec![mon_var_chirho],
+                            vars_chirho: vec![mon_var_chirho].into(),
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::VarChirho(mon_var_chirho),
                         },
@@ -212,8 +205,7 @@ impl ClassEnvChirho {
                     (
                         "mconcat".to_string(),
                         SchemeChirho {
-                            source_binders_chirho: Vec::new(),
-                            vars_chirho: vec![mon_var_chirho],
+                            vars_chirho: vec![mon_var_chirho].into(),
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(
                                 TyChirho::ListChirho(Box::new(TyChirho::VarChirho(mon_var_chirho))),
@@ -606,8 +598,7 @@ impl ClassEnvChirho {
                 methods_chirho: HashMap::from([(
                     "lift".to_string(),
                     SchemeChirho {
-                        source_binders_chirho: Vec::new(),
-                        vars_chirho: vec![mt_t_chirho, mt_m_chirho, mt_a_chirho],
+                        vars_chirho: vec![mt_t_chirho, mt_m_chirho, mt_a_chirho].into(),
                         preds_chirho: vec![],
                         ty_chirho: TyChirho::FunChirho(
                             Box::new(mt_ma_chirho.clone()),
@@ -634,8 +625,7 @@ impl ClassEnvChirho {
                 methods_chirho: HashMap::from([(
                     "fromString".to_string(),
                     SchemeChirho {
-                        source_binders_chirho: Vec::new(),
-                        vars_chirho: vec![is_string_var_chirho],
+                        vars_chirho: vec![is_string_var_chirho].into(),
                         preds_chirho: vec![],
                         ty_chirho: TyChirho::FunChirho(
                             Box::new(TyChirho::string_chirho()),
@@ -687,8 +677,7 @@ impl ClassEnvChirho {
                     (
                         "fromList".to_string(),
                         SchemeChirho {
-                            source_binders_chirho: Vec::new(),
-                            vars_chirho: vec![is_list_var_chirho, is_list_item_var_chirho],
+                            vars_chirho: vec![is_list_var_chirho, is_list_item_var_chirho].into(),
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::FunChirho(
                                 Box::new(TyChirho::ListChirho(Box::new(TyChirho::VarChirho(
@@ -702,8 +691,7 @@ impl ClassEnvChirho {
                     (
                         "toList".to_string(),
                         SchemeChirho {
-                            source_binders_chirho: Vec::new(),
-                            vars_chirho: vec![is_list_var_chirho, is_list_item_var_chirho],
+                            vars_chirho: vec![is_list_var_chirho, is_list_item_var_chirho].into(),
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::FunChirho(
                                 Box::new(TyChirho::VarChirho(is_list_var_chirho)),
@@ -754,8 +742,7 @@ impl ClassEnvChirho {
                     (
                         "from".to_string(),
                         SchemeChirho {
-                            source_binders_chirho: Vec::new(),
-                            vars_chirho: vec![generic_var_chirho, generic_rep_chirho],
+                            vars_chirho: vec![generic_var_chirho, generic_rep_chirho].into(),
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::FunChirho(
                                 Box::new(TyChirho::VarChirho(generic_var_chirho)),
@@ -767,8 +754,7 @@ impl ClassEnvChirho {
                     (
                         "to".to_string(),
                         SchemeChirho {
-                            source_binders_chirho: Vec::new(),
-                            vars_chirho: vec![generic_var_chirho, generic_rep_chirho],
+                            vars_chirho: vec![generic_var_chirho, generic_rep_chirho].into(),
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::FunChirho(
                                 Box::new(TyChirho::VarChirho(generic_rep_chirho)),

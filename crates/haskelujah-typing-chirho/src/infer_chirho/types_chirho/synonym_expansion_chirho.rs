@@ -59,6 +59,11 @@ impl SynonymExpansionChirho<'_, '_> {
                             .next_bound_chirho
                             .max(variable_chirho.0.checked_add(1)?);
                     }
+                    for record_chirho in vars_chirho.records_chirho() {
+                        if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                            pending_chirho.push((kind_chirho.as_ref(), depth_chirho + 1));
+                        }
+                    }
                     pending_chirho.push((body_chirho, depth_chirho + 1));
                 }
                 TyChirho::AppChirho(left_chirho, right_chirho)
@@ -415,26 +420,51 @@ impl SynonymExpansionChirho<'_, '_> {
             } => {
                 self.budget_chirho.node_chirho(vars_chirho.len())?;
                 let mark_chirho = bound_chirho.len();
-                let mut variables_chirho = Vec::with_capacity(vars_chirho.len());
-                for variable_chirho in vars_chirho {
-                    let image_chirho = if rename_chirho {
-                        let fresh_chirho = TyVarChirho(self.next_bound_chirho);
-                        self.next_bound_chirho = self.next_bound_chirho.checked_add(1)?;
-                        fresh_chirho
-                    } else {
-                        *variable_chirho
-                    };
-                    variables_chirho.push(image_chirho);
-                    bound_chirho.push((*variable_chirho, image_chirho));
-                }
-                let body_chirho = self.walk_chirho(
-                    body_chirho,
-                    bindings_chirho,
-                    bound_chirho,
-                    rename_chirho,
-                    depth_chirho + 1,
-                )?;
+                let result_chirho = (|| {
+                    let mut records_chirho = Vec::with_capacity(vars_chirho.len());
+                    for record_chirho in vars_chirho.records_chirho() {
+                        let image_chirho = if rename_chirho {
+                            let fresh_chirho = TyVarChirho(self.next_bound_chirho);
+                            self.next_bound_chirho = self.next_bound_chirho.checked_add(1)?;
+                            fresh_chirho
+                        } else {
+                            record_chirho.variable_chirho
+                        };
+                        let kind_chirho = if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                            Some(std::sync::Arc::new(self.walk_chirho(
+                                kind_chirho,
+                                bindings_chirho,
+                                bound_chirho,
+                                rename_chirho,
+                                depth_chirho + 1,
+                            )?))
+                        } else {
+                            None
+                        };
+                        records_chirho.push(crate::ty_chirho::QuantifiedVariableChirho {
+                            variable_chirho: image_chirho,
+                            kind_chirho,
+                            source_chirho: record_chirho.source_chirho.clone(),
+                            specificity_chirho: record_chirho.specificity_chirho,
+                        });
+                        bound_chirho.push((record_chirho.variable_chirho, image_chirho));
+                    }
+                    let body_chirho = self.walk_chirho(
+                        body_chirho,
+                        bindings_chirho,
+                        bound_chirho,
+                        rename_chirho,
+                        depth_chirho + 1,
+                    )?;
+                    Some((
+                        crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(
+                            records_chirho,
+                        ),
+                        body_chirho,
+                    ))
+                })();
                 bound_chirho.truncate(mark_chirho);
+                let (variables_chirho, body_chirho) = result_chirho?;
                 if matches!(ty_chirho, TyChirho::ForallChirho { .. }) {
                     TyChirho::ForallChirho {
                         vars_chirho: variables_chirho,

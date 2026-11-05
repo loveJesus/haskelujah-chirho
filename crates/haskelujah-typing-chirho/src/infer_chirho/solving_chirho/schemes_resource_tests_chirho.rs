@@ -136,13 +136,45 @@ fn actual_generalization_conserves_ordinary_predicates_past_metadata_limits_chir
         ));
         assert!(!ctx_chirho.diagnostics_chirho.has_errors_chirho());
         assert!(!ctx_chirho.has_non_deferrable_failure_chirho());
+        let (instantiated_body_chirho, instantiated_predicates_chirho) =
+            ctx_chirho.instantiate_scheme_parts_chirho(&scheme_chirho);
+        assert_eq!(instantiated_predicates_chirho.len(), 1);
+        assert_eq!(instantiated_predicates_chirho[0].class_name_chirho, "Eq");
+        assert_eq!(
+            instantiated_predicates_chirho[0].class_identity_chirho(),
+            scheme_chirho.preds_chirho[0].class_identity_chirho()
+        );
+        let TyChirho::FunChirho(variable_chirho, _, _) = instantiated_body_chirho else {
+            panic!("ordinary body keeps its function type");
+        };
+        let mut instantiated_argument_chirho = *variable_chirho;
+        match case_chirho {
+            0 => {
+                instantiated_argument_chirho = TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("x".repeat(5000))),
+                    Box::new(instantiated_argument_chirho),
+                )
+            }
+            1 => {
+                for _index_chirho in 0..256 {
+                    instantiated_argument_chirho =
+                        TyChirho::ListChirho(Box::new(instantiated_argument_chirho));
+                }
+            }
+            _ => {}
+        }
+        assert_eq!(
+            instantiated_predicates_chirho[0].ty_chirho,
+            instantiated_argument_chirho
+        );
+        assert!(!ctx_chirho.diagnostics_chirho.has_errors_chirho());
+        assert!(!ctx_chirho.has_non_deferrable_failure_chirho());
     }
 }
 
 fn polykinded_predicate_scheme_chirho() -> SchemeChirho {
     SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![TyVarChirho(800), TyVarChirho(801)],
+        vars_chirho: vec![TyVarChirho(800), TyVarChirho(801)].into(),
         preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
             CompilerClassChirho::TypeableChirho,
             crate::ty_chirho::SchemePredPartsChirho {
@@ -170,12 +202,14 @@ fn predicate_telescope_survives_fresh_explicit_and_rigid_instantiation_chirho() 
     assert_ne!(predicates_chirho[0].kind_tys_chirho[0], body_chirho);
     assert_eq!(predicates_chirho[0].class_identity_chirho(), &proof_chirho);
     let (_, predicates_chirho) = ctx_chirho
-        .instantiate_scheme_parts_with_type_args_chirho(
+        .instantiate_scheme_parts_with_visible_type_args_chirho(
             &scheme_chirho,
             &[
                 TyChirho::ConChirho("Nat".to_owned()),
                 TyChirho::ConChirho("3".to_owned()),
             ],
+            &[None, None],
+            SpanChirho::DUMMY_CHIRHO,
         )
         .expect("full explicit telescope");
     assert_eq!(
@@ -196,12 +230,8 @@ fn predicate_telescope_survives_fresh_explicit_and_rigid_instantiation_chirho() 
     let (body_chirho, predicates_chirho) = ctx_chirho.skolemize_scheme_parts_chirho(&scheme_chirho);
     assert_eq!(predicates_chirho[0].ty_chirho, body_chirho);
     assert_eq!(predicates_chirho[0].class_identity_chirho(), &proof_chirho);
-    assert!(InferCtxChirho::pred_mentions_rigid_chirho(
-        &predicates_chirho[0]
-    ));
-    assert!(!InferCtxChirho::pred_fully_ground_chirho(
-        &predicates_chirho[0]
-    ));
+    assert!(ctx_chirho.pred_mentions_rigid_chirho(&predicates_chirho[0]));
+    assert!(!ctx_chirho.pred_fully_ground_chirho(&predicates_chirho[0]));
 }
 
 #[test]
@@ -213,7 +243,7 @@ fn generalization_closes_over_hidden_kinds_without_losing_metadata_chirho() {
         PredChirho::compiler_chirho(CompilerClassChirho::TypeableChirho, argument_chirho.clone());
     predicate_chirho.kind_tys_chirho.push(kind_chirho.clone());
     let proof_chirho = predicate_chirho.class_identity_chirho().clone();
-    assert!(!InferCtxChirho::pred_fully_ground_chirho(&predicate_chirho));
+    assert!(!ctx_chirho.pred_fully_ground_chirho(&predicate_chirho));
     ctx_chirho
         .deferred_preds_chirho
         .push((predicate_chirho, SpanChirho::DUMMY_CHIRHO));

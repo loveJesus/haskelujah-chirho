@@ -10,8 +10,7 @@ fn gcd_and_lcm_keep_their_integral_result_type_chirho() {
 
     let integral_v_chirho = TyVarChirho(2212);
     let expected_chirho = SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![integral_v_chirho],
+        vars_chirho: vec![integral_v_chirho].into(),
         preds_chirho: vec![SchemePredChirho::legacy_chirho(
             crate::ty_chirho::SchemePredPartsChirho {
                 kind_tys_chirho: Vec::new(),

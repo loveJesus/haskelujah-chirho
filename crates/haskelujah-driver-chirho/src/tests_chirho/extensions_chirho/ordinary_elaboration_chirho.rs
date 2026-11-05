@@ -695,3 +695,124 @@ type AliasChirho = BoxChirho (Eq Int)
         .expect("fresh GHC negative preserves the producer boundary");
     assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
 }
+
+#[test]
+fn lexical_quantifier_visibility_survives_nested_and_inferred_bindings_chirho() {
+    for (label_chirho, source_chirho, accepted_chirho) in [
+        (
+            "nested specified positive",
+            include_str!(
+                "kind_repair_fixtures_chirho/impredicative-application-chirho/quantifiers-chirho/NestedInferredPositiveChirho.hs"
+            ),
+            true,
+        ),
+        (
+            "nested inferred selection",
+            include_str!(
+                "kind_repair_fixtures_chirho/impredicative-application-chirho/quantifiers-chirho/NestedInferredWrongChirho.hs"
+            ),
+            false,
+        ),
+        (
+            "inferred local binding",
+            include_str!(
+                "kind_repair_fixtures_chirho/impredicative-application-chirho/quantifiers-chirho/FreshInferredSelectionWrongChirho.hs"
+            ),
+            false,
+        ),
+        (
+            "invisible flag compatibility",
+            include_str!(
+                "kind_repair_fixtures_chirho/impredicative-application-chirho/quantifiers-chirho/InvisibleCompatibilityPositiveChirho.hs"
+            ),
+            true,
+        ),
+    ] {
+        let result_chirho = frontend_chirho(source_chirho);
+        assert_eq!(
+            result_chirho.is_ok(),
+            accepted_chirho,
+            "{label_chirho}: {}",
+            result_chirho.err().unwrap_or_default()
+        );
+    }
+}
+
+#[test]
+fn checked_type_application_kind_survives_an_unused_result_binder_chirho() {
+    for (label_chirho, source_chirho, accepted_chirho) in [
+        (
+            "higher kind positive",
+            include_str!(
+                "kind_repair_fixtures_chirho/impredicative-application-chirho/quantifiers-chirho/UnusedHigherKindPositiveChirho.hs"
+            ),
+            true,
+        ),
+        (
+            "higher kind wrong",
+            include_str!(
+                "kind_repair_fixtures_chirho/impredicative-application-chirho/quantifiers-chirho/UnusedHigherKindWrongChirho.hs"
+            ),
+            false,
+        ),
+        (
+            "dependent binder positive",
+            include_str!(
+                "kind_repair_fixtures_chirho/impredicative-application-chirho/quantifiers-chirho/DependentBinderPositiveChirho.hs"
+            ),
+            true,
+        ),
+        (
+            "dependent binder wrong",
+            include_str!(
+                "kind_repair_fixtures_chirho/impredicative-application-chirho/quantifiers-chirho/DependentBinderWrongChirho.hs"
+            ),
+            false,
+        ),
+    ] {
+        let result_chirho = frontend_chirho(source_chirho);
+        assert_eq!(
+            result_chirho.is_ok(),
+            accepted_chirho,
+            "{label_chirho}: {}",
+            result_chirho.err().unwrap_or_default()
+        );
+    }
+}
+
+#[test]
+fn unused_quantifier_kinds_do_not_overconstrain_subsumption_chirho() {
+    // The original negative prediction failed: fresh GHC accepts this vacuous
+    // quantifier. Keep its unchanged source and actual positive contract.
+    frontend_chirho(include_str!("kind_repair_fixtures_chirho/impredicative-application-chirho/quantifiers-chirho/UnusedBinderWrongChirho.hs"))
+        .expect("GHC accepts unused quantified arguments with different kinds");
+}
+
+#[test]
+fn returned_sigma_publishes_its_original_visibility_chirho() {
+    let result_chirho = frontend_chirho(include_str!("kind_repair_fixtures_chirho/impredicative-application-chirho/quantifiers-chirho/cold-chirho/QuantifierOriginChirho.hs")).expect("actual GHC-valid supplier");
+    let scheme_chirho = result_chirho
+        .infer_result_chirho
+        .env_chirho
+        .lookup_chirho("exposeChirho")
+        .expect("supplier scheme");
+    let haskelujah_typing_chirho::TyChirho::FunChirho(_, body_chirho, _) = &scheme_chirho.ty_chirho
+    else {
+        panic!("supplier keeps arrow: {scheme_chirho:#?}")
+    };
+    let haskelujah_typing_chirho::TyChirho::ForallChirho { vars_chirho, .. } = body_chirho.as_ref()
+    else {
+        panic!("supplier keeps returned sigma: {scheme_chirho:#?}")
+    };
+    assert_eq!(
+        vars_chirho
+            .records_chirho()
+            .iter()
+            .map(|record_chirho| record_chirho.specificity_chirho)
+            .collect::<Vec<_>>(),
+        vec![
+            Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho),
+            Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho)
+        ]
+    );
+}

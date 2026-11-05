@@ -1,7 +1,7 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Family declarations retained by authoritative source discovery. This is a
-//! cold declaration pass; siblings' expressions are not inferred or linked.
+//! Declared types and signature headers retained by authoritative discovery.
+//! The cold pass checks headers with the common engine; it visits no value body.
 //! Workflow: compiler-pipeline-chirho/module-search-authority-chirho.md.
 
 use super::boot_contract_chirho::{
@@ -33,6 +33,12 @@ pub(crate) struct DiscoveredFamilyContextChirho<'source_chirho> {
     pub(crate) modules_chirho: &'source_chirho DiscoveredSourceModulesChirho,
     pub(crate) ifaces_chirho: &'source_chirho mut Vec<ModuleIfaceChirho>,
     pub(crate) registry_chirho: &'source_chirho mut TypeFamilyRegistryChirho,
+    pub(crate) imported_types_chirho: Option<
+        &'source_chirho mut std::collections::HashMap<
+            String,
+            haskelujah_typing_chirho::SchemeChirho,
+        >,
+    >,
     pub(crate) imported_synonyms_chirho: &'source_chirho ImportedTypeSynonymsChirho,
     /// A synthetic source name has no authority to locate an hs-boot file.
     pub(crate) checked_path_chirho: Option<&'source_chirho Path>,
@@ -90,6 +96,46 @@ fn discovered_signature_diagnostics_chirho(
 struct SourceInterfaceDiagnosticsChirho<'source_chirho> {
     sources_chirho: &'source_chirho DiscoveredSourceModulesChirho,
     checked_name_chirho: &'source_chirho str,
+}
+
+/// Cold modules have their own SourceMap. Their byte ranges remain producer
+/// coordinates and must never be rendered as importing-caller locations.
+fn source_bundle_diagnostics_chirho(
+    bundle_chirho: DiagnosticBundleChirho,
+    module_chirho: &ModuleChirho,
+    context_chirho: &SourceInterfaceDiagnosticsChirho<'_>,
+) -> DiagnosticBundleChirho {
+    let name_chirho = module_chirho.name_chirho.full_name_chirho();
+    if name_chirho == context_chirho.checked_name_chirho {
+        return bundle_chirho;
+    }
+    let Some(source_chirho) = context_chirho.sources_chirho.get(&name_chirho) else {
+        return bundle_chirho;
+    };
+    let mut diagnostics_chirho = bundle_chirho.into_vec_chirho();
+    for diagnostic_chirho in &mut diagnostics_chirho {
+        diagnostic_chirho.notes_chirho.push(format!(
+            "source: {} (module {name_chirho})",
+            source_chirho.path_chirho.display(),
+        ));
+        for label_chirho in std::mem::take(&mut diagnostic_chirho.labels_chirho) {
+            diagnostic_chirho.notes_chirho.push(format!(
+                "producer byte range {}..{}: {}",
+                label_chirho.span_chirho.start_chirho().as_u32_chirho(),
+                label_chirho.span_chirho.end_chirho().as_u32_chirho(),
+                label_chirho.message_chirho.as_deref().unwrap_or(""),
+            ));
+        }
+        for suggestion_chirho in std::mem::take(&mut diagnostic_chirho.suggestions_chirho) {
+            diagnostic_chirho.notes_chirho.push(format!(
+                "producer suggestion at byte range {}..{}: {}",
+                suggestion_chirho.span_chirho.start_chirho().as_u32_chirho(),
+                suggestion_chirho.span_chirho.end_chirho().as_u32_chirho(),
+                suggestion_chirho.description_chirho,
+            ));
+        }
+    }
+    DiagnosticBundleChirho::new_chirho(diagnostics_chirho)
 }
 
 fn source_family_diagnostics_chirho(
@@ -384,6 +430,17 @@ pub(crate) fn register_discovered_type_families_chirho(
             dependencies_chirho,
         );
     }
+    let mut signature_exports_chirho = Vec::new();
+    let mut signature_budget_chirho =
+        haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::with_limits_chirho(
+            haskelujah_ast_chirho::decl_chirho::GadtProjectionLimitsChirho {
+                work_chirho: 1 << 25,
+                output_chirho: 1 << 24,
+                depth_chirho: 1024,
+            },
+        );
+    let empty_names_chirho = std::collections::HashSet::new();
+    let empty_preferred_chirho = std::collections::HashMap::new();
     let mut staged_chirho = BTreeSet::new();
     let mut unstaged_chirho = ordered_chirho.clone();
     while !unstaged_chirho.is_empty() {
@@ -434,7 +491,10 @@ pub(crate) fn register_discovered_type_families_chirho(
                 safe_unqualified_type_names_chirho: &safe_names_chirho,
                 preferred_qualified_type_names_chirho: &preferred_names_chirho,
             },
-        )?;
+        )
+        .map_err(|bundle_chirho| {
+            source_bundle_diagnostics_chirho(bundle_chirho, module_chirho, &diagnostics_chirho)
+        })?;
         registry_chirho = result_chirho.registry_chirho;
         staged_chirho.insert(module_chirho.name_chirho.full_name_chirho());
         propagate_headers_chirho(
@@ -507,7 +567,10 @@ pub(crate) fn register_discovered_type_families_chirho(
                 safe_unqualified_type_names_chirho: &safe_names_chirho,
                 preferred_qualified_type_names_chirho: &preferred_names_chirho,
             },
-        )?;
+        )
+        .map_err(|bundle_chirho| {
+            source_bundle_diagnostics_chirho(bundle_chirho, module_chirho, &diagnostics_chirho)
+        })?;
         registry_chirho = result_chirho.registry_chirho;
         let iface_chirho =
             build_family_aware_iface_chirho(module_chirho, &ifaces_chirho, &registry_chirho)
@@ -518,6 +581,71 @@ pub(crate) fn register_discovered_type_families_chirho(
                         &diagnostics_chirho,
                     )
                 })?;
+        if module_chirho.name_chirho.full_name_chirho() != checked_name_chirho
+            && context_chirho.imported_types_chirho.is_some()
+        {
+            let module_name_chirho = module_chirho.name_chirho.full_name_chirho();
+            let mut copy_chirho = crate::ImportQualificationChirho {
+                iface_chirho: None,
+                type_names_chirho: &empty_names_chirho,
+                qualifier_chirho: "",
+                safe_chirho: &empty_names_chirho,
+                preferred_chirho: &empty_preferred_chirho,
+                budget_chirho: &mut signature_budget_chirho,
+                span_chirho: module_chirho.span_chirho,
+            };
+            for declaration_chirho in &module_chirho.decls_chirho {
+                if let DeclChirho::TypeSigChirho { name_chirho, .. } = declaration_chirho {
+                    // Naming selects the real defining export. A private/stub
+                    // spelling cannot become a callable imported value here.
+                    if !iface_chirho
+                        .exports_chirho
+                        .values_chirho
+                        .get(name_chirho.text_chirho())
+                        .is_some_and(|value_chirho| {
+                            value_chirho.defining_module_chirho.as_deref()
+                                == Some(module_name_chirho.as_str())
+                        })
+                    {
+                        continue;
+                    }
+                    if let Some(scheme_chirho) = result_chirho
+                        .env_chirho
+                        .lookup_chirho(name_chirho.text_chirho())
+                    {
+                        let producer_chirho = copy_chirho.key_chirho(&module_name_chirho).map_err(
+                            |bundle_chirho| {
+                                source_bundle_diagnostics_chirho(
+                                    bundle_chirho,
+                                    module_chirho,
+                                    &diagnostics_chirho,
+                                )
+                            },
+                        )?;
+                        let name_chirho = copy_chirho
+                            .key_chirho(name_chirho.text_chirho())
+                            .map_err(|bundle_chirho| {
+                                source_bundle_diagnostics_chirho(
+                                    bundle_chirho,
+                                    module_chirho,
+                                    &diagnostics_chirho,
+                                )
+                            })?;
+                        let scheme_chirho = copy_chirho
+                            .scheme_chirho(scheme_chirho, false)
+                            .map_err(|bundle_chirho| {
+                                source_bundle_diagnostics_chirho(
+                                    bundle_chirho,
+                                    module_chirho,
+                                    &diagnostics_chirho,
+                                )
+                            })?;
+                        signature_exports_chirho
+                            .push((format!("{producer_chirho}.{name_chirho}"), scheme_chirho));
+                    }
+                }
+            }
+        }
         publish_type_family_exports_chirho(
             module_chirho,
             &iface_chirho,
@@ -567,6 +695,11 @@ pub(crate) fn register_discovered_type_families_chirho(
             family_frontend_diagnostics_chirho(error_chirho, module_chirho.span_chirho)
         })?;
         admit_authoritative_iface_chirho(&mut ifaces_chirho, iface_chirho);
+    }
+    if let Some(imported_types_chirho) = context_chirho.imported_types_chirho {
+        for (key_chirho, scheme_chirho) in signature_exports_chirho {
+            imported_types_chirho.insert(key_chirho, scheme_chirho);
+        }
     }
     *context_chirho.registry_chirho = registry_chirho;
     *context_chirho.ifaces_chirho = ifaces_chirho;

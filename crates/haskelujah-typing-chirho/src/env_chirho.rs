@@ -100,9 +100,12 @@ impl TyEnvChirho {
 
     /// Rewrite every refined skolem in `ty_chirho` to its refinement (one
     /// pass; callers iterate to a fixpoint as part of normalization).
-    pub fn apply_refinements_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
+    pub fn apply_refinements_chirho(
+        &self,
+        ty_chirho: &TyChirho,
+    ) -> Result<TyChirho, crate::skolem_chirho::SkolemResourceExhaustedChirho> {
         if !self.has_refinements_chirho() {
-            return ty_chirho.clone();
+            return Ok(ty_chirho.clone());
         }
         rewrite_skolems_chirho(ty_chirho, &mut |name_chirho| {
             self.lookup_refinement_chirho(name_chirho).cloned()
@@ -353,8 +356,9 @@ mod tests_chirho {
         env_chirho
             .add_refinement_chirho(skolem_chirho.clone(), TyChirho::VarChirho(TyVarChirho(5)));
         assert!(env_chirho.has_refinements_chirho());
-        let refined_chirho =
-            env_chirho.apply_refinements_chirho(&TyChirho::ForallVarChirho(skolem_chirho.clone()));
+        let refined_chirho = env_chirho
+            .apply_refinements_chirho(&TyChirho::ForallVarChirho(skolem_chirho.clone()))
+            .expect("bounded refinement");
         assert_eq!(refined_chirho, TyChirho::VarChirho(TyVarChirho(5)));
         // Later substitution of the target is visible through the refinement.
         env_chirho.apply_subst_chirho(&SubstChirho::singleton_chirho(

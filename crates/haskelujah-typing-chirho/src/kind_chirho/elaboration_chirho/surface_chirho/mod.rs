@@ -275,6 +275,8 @@ impl TypeElaboratorChirho<'_> {
                 self.state_chirho.close_rigid_scope_chirho(rigid_chirho);
                 self.close_forall_scope_chirho(mark_chirho, &variables_chirho, span_chirho)?;
                 let body_chirho = body_chirho?;
+                let variables_chirho =
+                    self.introduced_quantifiers_chirho(&variables_chirho, span_chirho)?;
                 Ok(ElaboratedTypeChirho {
                     term_chirho: if matches!(syntax_chirho, TypeChirho::RequiredForallChirho { .. })
                     {
@@ -568,8 +570,7 @@ impl TypeElaboratorChirho<'_> {
             let variable_chirho = *variable_chirho;
             let stored_kind_chirho = self.state_chirho.copy_chirho(&kind_chirho, span_chirho)?;
             self.state_chirho
-                .variable_kinds_chirho
-                .insert(variable_chirho, stored_kind_chirho);
+                .set_variable_kind_chirho(variable_chirho, stored_kind_chirho);
             binders_chirho.push(DeclarationBinderChirho {
                 variable_chirho,
                 kind_chirho,
@@ -759,7 +760,8 @@ impl TypeElaboratorChirho<'_> {
                     }
                     let body_chirho = self.infer_constraint_chirho(body_chirho)?;
                     Ok(TyChirho::ForallChirho {
-                        vars_chirho: variables_chirho.clone(),
+                        vars_chirho: self
+                            .introduced_quantifiers_chirho(&variables_chirho, span_chirho)?,
                         body_chirho: Box::new(TyChirho::QualChirho {
                             context_chirho: context_terms_chirho,
                             body_chirho: Box::new(body_chirho),

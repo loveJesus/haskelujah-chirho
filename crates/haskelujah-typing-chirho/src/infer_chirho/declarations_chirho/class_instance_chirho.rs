@@ -39,25 +39,60 @@ impl InferCtxChirho {
                         .get_chirho(&declaration_chirho.type_key_chirho())
                 })
                 .cloned();
-            let mut class_source_binders_chirho = Vec::new();
-            if let Some(header_chirho) = &schema_chirho {
-                for source_chirho in &header_chirho.source_variables_chirho {
-                    if let Some((_, TyChirho::VarChirho(variable_chirho))) = header_chirho
-                        .binders_chirho
-                        .iter()
-                        .zip(&arguments_chirho)
-                        .find(|(binder_chirho, _)| {
-                            binder_chirho.variable_chirho == source_chirho.variable_chirho
-                        })
-                    {
-                        class_source_binders_chirho.push(
-                            crate::ty_chirho::SchemeSourceBinderChirho {
-                                source_chirho: source_chirho.source_chirho.clone(),
-                                variable_chirho: *variable_chirho,
-                                specificity_chirho: source_chirho.specificity_chirho,
-                            },
+            let mut class_records_chirho = Vec::new();
+            if let Some(header_chirho) = schema_chirho.as_ref().filter(|header_chirho| {
+                !header_chirho.held_chirho && header_chirho.owner_chirho.is_none()
+            }) {
+                if header_chirho.binders_chirho.len() != arguments_chirho.len() {
+                    self.non_deferrable_diagnostics_chirho.push_chirho(
+                        haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                            haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
+                            "checked class telescope lost part of its full argument prefix",
+                            name_chirho.span_chirho(),
+                        ),
+                    );
+                    return;
+                }
+                let mut mapping_chirho = crate::subst_chirho::SubstChirho::empty_chirho();
+                for (binder_chirho, argument_chirho) in
+                    header_chirho.binders_chirho.iter().zip(&arguments_chirho)
+                {
+                    mapping_chirho
+                        .insert_chirho(binder_chirho.variable_chirho, argument_chirho.clone());
+                }
+                let mut budget_chirho =
+                    super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+                for (binder_chirho, argument_chirho) in
+                    header_chirho.binders_chirho.iter().zip(&arguments_chirho)
+                {
+                    let TyChirho::VarChirho(variable_chirho) = argument_chirho else {
+                        self.non_deferrable_diagnostics_chirho.push_chirho(
+                            haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                                haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
+                                "checked class telescope did not produce a bound variable",
+                                name_chirho.span_chirho(),
+                            ),
                         );
-                    }
+                        return;
+                    };
+                    let kind_chirho = mapping_chirho.apply_freshened_bounded_chirho(
+                        &binder_chirho.kind_chirho,
+                        &mut self.next_var_chirho,
+                        &mut |work_chirho, output_chirho| {
+                            budget_chirho.node_chirho(output_chirho)?;
+                            budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+                        },
+                    );
+                    let Some(kind_chirho) = kind_chirho else {
+                        self.type_normalization_exhausted_chirho.set(true);
+                        return;
+                    };
+                    let specificity_chirho = if binder_chirho.visibility_chirho == crate::ty_chirho::declarations_chirho::TelescopeVisibilityChirho::InferredChirho { haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho } else { haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho };
+                    class_records_chirho.push(crate::ty_chirho::QuantifiedVariableChirho {
+                        variable_chirho: *variable_chirho, kind_chirho: Some(std::sync::Arc::new(kind_chirho)),
+                        source_chirho: Some(haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::QuantifiedChirho { declaration_chirho: std::sync::Arc::clone(&header_chirho.identity_chirho), index_chirho: binder_chirho.variable_chirho.0 }),
+                        specificity_chirho: Some(specificity_chirho),
+                    });
                 }
             }
             let checked_association_chirho = schema_chirho.as_ref().is_some_and(|header_chirho| matches!(header_chirho.association_chirho, crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::ClassChirho { .. }));
@@ -150,20 +185,39 @@ impl InferCtxChirho {
                 // first (visible type application `take @n` reaches `n` even
                 // when the method type itself never mentions it), then the
                 // method's own variables in their order of appearance.
-                let mut ordered_vars_chirho: Vec<TyVarChirho> = vec![class_tv_chirho];
-                ordered_vars_chirho.extend(extra_vars_chirho.iter().copied());
-                for var_chirho in &scheme_chirho.vars_chirho {
-                    if !ordered_vars_chirho.contains(var_chirho) {
-                        ordered_vars_chirho.push(*var_chirho);
+                let mut ordered_vars_chirho = class_records_chirho
+                    .iter()
+                    .map(|record_chirho| record_chirho.variable_chirho)
+                    .collect::<Vec<_>>();
+                if ordered_vars_chirho.is_empty() {
+                    ordered_vars_chirho.push(class_tv_chirho);
+                    ordered_vars_chirho.extend(extra_vars_chirho.iter().copied());
+                }
+                for variable_chirho in &scheme_chirho.vars_chirho {
+                    if !ordered_vars_chirho.contains(variable_chirho) {
+                        ordered_vars_chirho.push(*variable_chirho);
                     }
                 }
-                let mut source_binders_chirho = class_source_binders_chirho.clone();
-                source_binders_chirho.extend(scheme_chirho.source_binders_chirho);
-                source_binders_chirho.retain(|binder_chirho| {
-                    ordered_vars_chirho.contains(&binder_chirho.variable_chirho)
-                });
-                scheme_chirho.source_binders_chirho = source_binders_chirho;
-                scheme_chirho.vars_chirho = ordered_vars_chirho;
+                scheme_chirho.vars_chirho =
+                    crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(
+                        ordered_vars_chirho
+                            .into_iter()
+                            .map(|variable_chirho| {
+                                class_records_chirho
+                                    .iter()
+                                    .chain(scheme_chirho.vars_chirho.records_chirho())
+                                    .find(|record_chirho| {
+                                        record_chirho.variable_chirho == variable_chirho
+                                    })
+                                    .cloned()
+                                    .unwrap_or_else(|| {
+                                        crate::ty_chirho::QuantifiedVariableChirho::unknown_chirho(
+                                            variable_chirho,
+                                        )
+                                    })
+                            })
+                            .collect(),
+                    );
                 method_map_chirho.insert(method_name_chirho.clone(), scheme_chirho.clone());
 
                 // Also add method to the type environment so it can be used

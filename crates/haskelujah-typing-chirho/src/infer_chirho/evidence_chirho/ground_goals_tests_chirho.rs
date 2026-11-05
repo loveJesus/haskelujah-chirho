@@ -55,11 +55,11 @@ fn open_rigid_polymorphic_and_uncertain_heads_supply_no_ground_goal_chirho() {
         TyChirho::VarChirho(TyVarChirho(0)),
         TyChirho::ForallVarChirho("a%1".to_owned()),
         TyChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho(0)],
+            vars_chirho: vec![TyVarChirho(0)].into(),
             body_chirho: Box::new(TyChirho::int_chirho()),
         },
         TyChirho::RequiredForallChirho {
-            vars_chirho: vec![TyVarChirho(0)],
+            vars_chirho: vec![TyVarChirho(0)].into(),
             body_chirho: Box::new(TyChirho::int_chirho()),
         },
         TyChirho::ConChirho("UnknownChirho".to_owned()),

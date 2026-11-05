@@ -49,7 +49,6 @@ impl InferCtxChirho {
                         vars_chirho,
                         body_chirho,
                     } => SchemeChirho {
-                        source_binders_chirho: Vec::new(),
                         vars_chirho: vars_chirho.clone(),
                         preds_chirho: vec![],
                         ty_chirho: (**body_chirho).clone(),
@@ -405,9 +404,12 @@ impl InferCtxChirho {
                         continue;
                     };
                     let selected_chirho = scheme_chirho
-                        .source_binders_chirho
+                        .vars_chirho
+                        .records_chirho()
                         .iter()
-                        .find(|binder_chirho| &binder_chirho.source_chirho == source_chirho)
+                        .find(|binder_chirho| {
+                            binder_chirho.source_chirho.as_ref() == Some(source_chirho)
+                        })
                         .and_then(|binder_chirho| {
                             instantiation_chirho.lookup_chirho(&binder_chirho.variable_chirho)
                         });

@@ -12,9 +12,11 @@ use std::collections::HashMap;
 
 pub(super) fn declaration_module_chirho(
     module_chirho: &ModuleChirho,
+    signature_headers_chirho: bool,
 ) -> Result<ModuleChirho, DiagnosticBundleChirho> {
     let error_chirho = |message_chirho: String| {
-        DiagnosticBundleChirho::new_chirho(vec![DiagnosticChirho::error_chirho(
+        DiagnosticBundleChirho::new_chirho(vec![DiagnosticChirho::error_with_code_chirho(
+            haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
             message_chirho,
             module_chirho.span_chirho,
         )])
@@ -31,7 +33,7 @@ pub(super) fn declaration_module_chirho(
     let mut budget_chirho = GadtProjectionBudgetChirho::new_chirho();
     let mut declarations_chirho = Vec::new();
     for declaration_chirho in &module_chirho.decls_chirho {
-        if !matches!(
+        if !(matches!(
             declaration_chirho,
             DeclChirho::DataDeclChirho { .. }
                 | DeclChirho::NewtypeDeclChirho { .. }
@@ -40,7 +42,9 @@ pub(super) fn declaration_module_chirho(
                 | DeclChirho::TypeFamilyInstanceDeclChirho { .. }
                 | DeclChirho::ClassDeclChirho { .. }
                 | DeclChirho::InstanceDeclChirho { .. }
-        ) {
+        ) || signature_headers_chirho
+            && matches!(declaration_chirho, DeclChirho::TypeSigChirho { .. }))
+        {
             continue;
         }
         check_declaration_projection_chirho(declaration_chirho, &mut budget_chirho, 1)

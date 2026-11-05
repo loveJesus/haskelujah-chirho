@@ -30,6 +30,55 @@ fn discovery_chirho(
 
 struct SourceScratchChirho(std::path::PathBuf);
 
+#[test]
+fn cold_signature_errors_keep_the_producers_path_chirho() {
+    let scratch_chirho = SourceScratchChirho::new_chirho();
+    let checked_path_chirho = scratch_chirho.0.join("CheckedChirho.hs");
+    let origin_path_chirho = scratch_chirho.0.join("OriginChirho.hs");
+    std::fs::write(
+        &checked_path_chirho,
+        "module CheckedChirho where\nimport OriginChirho ()\nvalueChirho :: Int\nvalueChirho = 0\n",
+    )
+    .expect("write importing source");
+    for (signature_chirho, accepts_chirho) in [("Int", true), ("Int Bool", false)] {
+        std::fs::write(
+            &origin_path_chirho,
+            format!(
+                "module OriginChirho where\nvalueChirho :: {signature_chirho}\nvalueChirho = 0\n"
+            ),
+        )
+        .expect("write producer signature");
+        let result_chirho = crate::check_source_path_chirho(
+            &checked_path_chirho,
+            crate::ExecutionModeChirho::BatchChirho,
+        );
+        if accepts_chirho {
+            result_chirho.unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+        } else {
+            let diagnostics_chirho =
+                result_chirho.expect_err("ill-kinded producer signature rejects");
+            assert!(
+                diagnostics_chirho
+                    .diagnostics_chirho()
+                    .iter()
+                    .any(|diagnostic_chirho| {
+                        diagnostic_chirho.to_string().contains("error[E0300]")
+                            && diagnostic_chirho.labels_chirho.is_empty()
+                            && diagnostic_chirho.notes_chirho.iter().any(|note_chirho| {
+                                note_chirho
+                                    .contains(origin_path_chirho.to_str().expect("source path"))
+                            })
+                            && diagnostic_chirho
+                                .notes_chirho
+                                .iter()
+                                .any(|note_chirho| note_chirho.contains("producer byte range"))
+                    }),
+                "{diagnostics_chirho}"
+            );
+        }
+    }
+}
+
 impl SourceScratchChirho {
     fn new_chirho() -> Self {
         static NEXT_CHIRHO: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -108,6 +157,7 @@ fn discovery_with_boots_chirho(
     register_discovered_type_families_chirho(
         &checked_module_chirho,
         DiscoveredFamilyContextChirho {
+            imported_types_chirho: None,
             modules_chirho: &modules_chirho,
             ifaces_chirho: &mut ifaces_chirho,
             registry_chirho: &mut registry_chirho,
@@ -252,6 +302,7 @@ fn failed_registration_leaves_registry_and_interfaces_unchanged_chirho() {
     let result_chirho = register_discovered_type_families_chirho(
         &checked_chirho,
         DiscoveredFamilyContextChirho {
+            imported_types_chirho: None,
             modules_chirho: &modules_chirho,
             ifaces_chirho: &mut ifaces_chirho,
             registry_chirho: &mut registry_chirho,
@@ -319,6 +370,7 @@ fn a_discovered_constructor_error_is_reached_only_and_never_published_chirho() {
         register_discovered_type_families_chirho(
             &unused_chirho,
             DiscoveredFamilyContextChirho {
+                imported_types_chirho: None,
                 modules_chirho: &sources_chirho,
                 ifaces_chirho: &mut ifaces_chirho,
                 registry_chirho: &mut registry_chirho,
@@ -333,6 +385,7 @@ fn a_discovered_constructor_error_is_reached_only_and_never_published_chirho() {
         let errors_chirho = register_discovered_type_families_chirho(
             &importing_chirho,
             DiscoveredFamilyContextChirho {
+                imported_types_chirho: None,
                 modules_chirho: &sources_chirho,
                 ifaces_chirho: &mut ifaces_chirho,
                 registry_chirho: &mut registry_chirho,

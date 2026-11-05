@@ -5,7 +5,6 @@
 
 use super::InferCtxChirho;
 use super::build_infix_app_expr_chirho;
-use crate::skolem_chirho::contains_skolem_chirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::TyChirho;
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
@@ -84,7 +83,7 @@ impl InferCtxChirho {
                     forall_body_chirho.as_ref().clone()
                 } else {
                     TyChirho::ForallChirho {
-                        vars_chirho: remaining_vars_chirho.to_vec(),
+                        vars_chirho: vars_chirho.slice_chirho(1..vars_chirho.len()),
                         body_chirho: forall_body_chirho.clone(),
                     }
                 };
@@ -131,7 +130,7 @@ impl InferCtxChirho {
                 alts_chirho,
                 ..
             } if Self::contains_polymorphic_component_chirho(expected_ty_chirho)
-                || contains_skolem_chirho(expected_ty_chirho) =>
+                || self.type_contains_skolem_chirho(expected_ty_chirho) =>
             {
                 // A rigid expected type must reach every alternative, because a
                 // GADT alternative sees it through its own refinement.
@@ -457,7 +456,7 @@ impl InferCtxChirho {
                 // own arm consumes the hint.
                 // workflow: language-features-chirho/rigid-type-variables-chirho
                 if matches!(expr_chirho, ExprChirho::DoChirho { .. })
-                    && contains_skolem_chirho(expected_ty_chirho)
+                    && self.type_contains_skolem_chirho(expected_ty_chirho)
                 {
                     self.do_last_expected_chirho = Some(expected_ty_chirho.clone());
                 }

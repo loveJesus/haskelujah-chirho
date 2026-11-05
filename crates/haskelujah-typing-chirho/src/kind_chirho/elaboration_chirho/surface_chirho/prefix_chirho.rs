@@ -6,9 +6,14 @@
 use super::*;
 use haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho;
 
+struct ResultKindBinderChirho {
+    record_chirho: crate::ty_chirho::QuantifiedVariableChirho,
+    visibility_chirho: TelescopeVisibilityChirho,
+}
+
 pub(super) struct ResultKindPrefixChirho {
     kind_chirho: TyChirho,
-    binders_chirho: Vec<DeclarationBinderChirho>,
+    binders_chirho: Vec<ResultKindBinderChirho>,
     cursor_chirho: usize,
     pub(super) applications_chirho: Option<Vec<(bool, TyChirho)>>,
 }
@@ -50,10 +55,15 @@ impl ResultKindPrefixChirho {
             )?;
             self.binders_chirho.clear();
             self.cursor_chirho = 0;
-            for variable_chirho in variables_chirho {
-                let specificity_chirho = context_chirho
-                    .state_chirho
-                    .source_specificity_chirho(variable_chirho)
+            for source_record_chirho in variables_chirho.records_chirho() {
+                let variable_chirho = source_record_chirho.variable_chirho;
+                let specificity_chirho = source_record_chirho
+                    .specificity_chirho
+                    .or_else(|| {
+                        context_chirho
+                            .state_chirho
+                            .source_specificity_chirho(variable_chirho)
+                    })
                     .ok_or_else(|| {
                         TypeElaboratorChirho::error_chirho(
                             "kind application binder lost its producer-owned specificity",
@@ -73,11 +83,18 @@ impl ResultKindPrefixChirho {
                 } else {
                     TelescopeVisibilityChirho::SpecifiedChirho
                 };
-                self.binders_chirho.push(DeclarationBinderChirho {
-                    variable_chirho,
-                    kind_chirho: context_chirho
-                        .state_chirho
-                        .variable_kind_chirho(variable_chirho, span_chirho)?,
+                let kind_chirho = context_chirho
+                    .state_chirho
+                    .variable_kind_chirho(variable_chirho, span_chirho)?;
+                self.binders_chirho.push(ResultKindBinderChirho {
+                    record_chirho: crate::ty_chirho::QuantifiedVariableChirho {
+                        variable_chirho,
+                        kind_chirho: Some(Arc::new(kind_chirho)),
+                        source_chirho: source_record_chirho.source_chirho.clone(),
+                        specificity_chirho: source_record_chirho
+                            .specificity_chirho
+                            .or(Some(specificity_chirho)),
+                    },
                     visibility_chirho,
                 });
             }
@@ -88,10 +105,10 @@ impl ResultKindPrefixChirho {
         }
         let binder_chirho = &self.binders_chirho[self.cursor_chirho];
         Ok(Some(DeclarationBinderChirho {
-            variable_chirho: binder_chirho.variable_chirho,
+            variable_chirho: binder_chirho.record_chirho.variable_chirho,
             kind_chirho: context_chirho
                 .state_chirho
-                .copy_chirho(&binder_chirho.kind_chirho, span_chirho)?,
+                .variable_kind_chirho(binder_chirho.record_chirho.variable_chirho, span_chirho)?,
             visibility_chirho: binder_chirho.visibility_chirho,
         }))
     }
@@ -127,15 +144,28 @@ impl ResultKindPrefixChirho {
             context_chirho
                 .state_chirho
                 .charge_chirho(1, 1, span_chirho)?;
+            let mut record_chirho = binder_chirho.record_chirho.clone();
+            let binder_kind_chirho = context_chirho
+                .state_chirho
+                .variable_kind_chirho(record_chirho.variable_chirho, span_chirho)?;
+            record_chirho.kind_chirho = Some(Arc::new(
+                context_chirho
+                    .state_chirho
+                    .resolve_chirho(&binder_kind_chirho, span_chirho)?,
+            ));
+            let variables_chirho =
+                crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(vec![
+                    record_chirho,
+                ]);
             kind_chirho =
                 if binder_chirho.visibility_chirho == TelescopeVisibilityChirho::RequiredChirho {
                     TyChirho::RequiredForallChirho {
-                        vars_chirho: vec![binder_chirho.variable_chirho],
+                        vars_chirho: variables_chirho,
                         body_chirho: Box::new(kind_chirho),
                     }
                 } else {
                     TyChirho::ForallChirho {
-                        vars_chirho: vec![binder_chirho.variable_chirho],
+                        vars_chirho: variables_chirho,
                         body_chirho: Box::new(kind_chirho),
                     }
                 };
@@ -306,8 +336,7 @@ impl TypeElaboratorChirho<'_> {
                     })
                 })?;
             self.state_chirho
-                .variable_kinds_chirho
-                .insert(variable_chirho, kind_chirho);
+                .set_variable_kind_chirho(variable_chirho, kind_chirho);
         }
         Ok(result_chirho)
     }
@@ -563,7 +592,7 @@ mod tests_chirho {
             .fresh_chirho(Some(TyChirho::VarChirho(consumed_chirho)), span_chirho)
             .unwrap();
         let nested_kind_chirho = TyChirho::ForallChirho {
-            vars_chirho: vec![nested_chirho],
+            vars_chirho: vec![nested_chirho].into(),
             body_chirho: Box::new(ElaborationStateChirho::type_universe_chirho()),
         };
         let retained_chirho = context_chirho
@@ -582,7 +611,7 @@ mod tests_chirho {
                 .unwrap();
         }
         let term_chirho = TyChirho::ForallChirho {
-            vars_chirho: vec![consumed_chirho, retained_chirho],
+            vars_chirho: vec![consumed_chirho, retained_chirho].into(),
             body_chirho: Box::new(TyChirho::VarChirho(retained_chirho)),
         };
         let result_chirho = context_chirho
@@ -596,7 +625,7 @@ mod tests_chirho {
         assert_eq!(
             result_chirho,
             TyChirho::ForallChirho {
-                vars_chirho: vec![retained_chirho],
+                vars_chirho: vec![retained_chirho].into(),
                 body_chirho: Box::new(TyChirho::VarChirho(retained_chirho))
             }
         );

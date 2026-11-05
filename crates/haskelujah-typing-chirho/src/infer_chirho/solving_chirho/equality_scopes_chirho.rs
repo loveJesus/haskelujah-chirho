@@ -334,8 +334,8 @@ impl InferCtxChirho {
                 && free_chirho
                     .iter()
                     .all(|var_chirho| vars_chirho.contains(var_chirho))
-                && !contains_skolem_chirho(&lhs_chirho)
-                && !contains_skolem_chirho(&rhs_chirho)
+                && !self.type_contains_skolem_chirho(&lhs_chirho)
+                && !self.type_contains_skolem_chirho(&rhs_chirho)
             {
                 predicates_chirho.push(SchemePredChirho::legacy_chirho(
                     crate::ty_chirho::SchemePredPartsChirho {

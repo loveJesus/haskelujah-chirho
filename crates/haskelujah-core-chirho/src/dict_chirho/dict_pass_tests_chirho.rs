@@ -19,8 +19,7 @@ fn dummy_binder_chirho(name_chirho: &str, id_chirho: u32) -> BinderChirho {
 fn num_var_scheme_chirho() -> SchemeChirho {
     let var_chirho = TyChirho::VarChirho(TyVarChirho(0));
     SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![TyVarChirho(0)],
+        vars_chirho: vec![TyVarChirho(0)].into(),
         preds_chirho: vec![SchemePredChirho::legacy_chirho(
             haskelujah_typing_chirho::ty_chirho::SchemePredPartsChirho {
                 kind_tys_chirho: Vec::new(),
@@ -62,8 +61,7 @@ fn single_predicate_adds_dict_lambda_chirho() {
         inline_chirho: InlineAnnotationChirho::NoneChirho,
     };
     let scheme_chirho = SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)],
+        vars_chirho: vec![haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)].into(),
         preds_chirho: vec![SchemePredChirho::legacy_chirho(
             haskelujah_typing_chirho::ty_chirho::SchemePredPartsChirho {
                 kind_tys_chirho: Vec::new(),
@@ -119,8 +117,7 @@ fn multiple_predicates_add_nested_dict_lambdas_chirho() {
         inline_chirho: InlineAnnotationChirho::NoneChirho,
     };
     let scheme_chirho = SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)],
+        vars_chirho: vec![haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)].into(),
         preds_chirho: vec![
             SchemePredChirho::legacy_chirho(
                 haskelujah_typing_chirho::ty_chirho::SchemePredPartsChirho {
@@ -489,8 +486,7 @@ fn method_ref_uses_transitive_superclass_dict_chirho() {
     };
     let integral_var_chirho = TyChirho::VarChirho(TyVarChirho(0));
     let scheme_chirho = SchemeChirho {
-        source_binders_chirho: Vec::new(),
-        vars_chirho: vec![TyVarChirho(0)],
+        vars_chirho: vec![TyVarChirho(0)].into(),
         preds_chirho: vec![SchemePredChirho::legacy_chirho(
             haskelujah_typing_chirho::ty_chirho::SchemePredPartsChirho {
                 kind_tys_chirho: Vec::new(),
@@ -598,8 +594,7 @@ fn transform_module_adds_selectors_and_wraps_chirho() {
     type_env_chirho.bind_chirho(
         "add".to_string(),
         SchemeChirho {
-            source_binders_chirho: Vec::new(),
-            vars_chirho: vec![haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)],
+            vars_chirho: vec![haskelujah_typing_chirho::ty_chirho::TyVarChirho(0)].into(),
             preds_chirho: vec![SchemePredChirho::legacy_chirho(
                 haskelujah_typing_chirho::ty_chirho::SchemePredPartsChirho {
                     kind_tys_chirho: Vec::new(),

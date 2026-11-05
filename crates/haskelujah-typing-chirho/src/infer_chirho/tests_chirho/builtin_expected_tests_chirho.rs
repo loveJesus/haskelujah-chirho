@@ -87,8 +87,7 @@ fn seed_builtins_include_polymorphic_monadfix_method_chirho() {
     assert_eq!(
         mfix_scheme_chirho,
         &SchemeChirho {
-            source_binders_chirho: Vec::new(),
-            vars_chirho: vec![mfix_m_chirho, mfix_a_chirho],
+            vars_chirho: vec![mfix_m_chirho, mfix_a_chirho].into(),
             preds_chirho: vec![SchemePredChirho::legacy_chirho(
                 crate::ty_chirho::SchemePredPartsChirho {
                     kind_tys_chirho: Vec::new(),
@@ -158,8 +157,7 @@ fn builtin_enum_from_to_is_enum_polymorphic_chirho() {
     assert_eq!(
         enum_from_to_scheme_chirho,
         &SchemeChirho {
-            source_binders_chirho: Vec::new(),
-            vars_chirho: vec![ef_a_chirho],
+            vars_chirho: vec![ef_a_chirho].into(),
             preds_chirho: vec![SchemePredChirho::legacy_chirho(
                 crate::ty_chirho::SchemePredPartsChirho {
                     kind_tys_chirho: Vec::new(),
@@ -193,8 +191,7 @@ fn builtin_swap_supports_binary_constructor_polymorphism_chirho() {
     assert_eq!(
         swap_scheme_chirho,
         &SchemeChirho {
-            source_binders_chirho: Vec::new(),
-            vars_chirho: vec![sw_p_chirho, sw_a_chirho, sw_b_chirho],
+            vars_chirho: vec![sw_p_chirho, sw_a_chirho, sw_b_chirho].into(),
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::AppChirho(

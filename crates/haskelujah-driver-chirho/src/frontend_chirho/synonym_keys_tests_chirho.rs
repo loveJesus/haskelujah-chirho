@@ -264,7 +264,7 @@ fn legacy_synonym_ast_cannot_replace_the_checked_catalogue_body_chirho() {
     );
     assert_eq!(
         scheme_chirho.ty_chirho.free_vars_chirho(),
-        scheme_chirho.vars_chirho
+        scheme_chirho.vars_chirho.to_vec()
     );
 }
 

@@ -563,8 +563,7 @@ mod tests_chirho {
         let source_var_chirho = TyChirho::VarChirho(TyVarChirho(0));
         let result_var_chirho = TyChirho::VarChirho(TyVarChirho(1));
         SchemeChirho {
-            source_binders_chirho: Vec::new(),
-            vars_chirho: vec![TyVarChirho(0), TyVarChirho(1)],
+            vars_chirho: vec![TyVarChirho(0), TyVarChirho(1)].into(),
             preds_chirho: vec![
                 SchemePredChirho::legacy_chirho(
                     haskelujah_typing_chirho::ty_chirho::SchemePredPartsChirho {

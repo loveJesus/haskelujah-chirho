@@ -123,8 +123,26 @@ pub(super) fn equal_chirho(
                         .len()
                         .saturating_add(right_vars_chirho.len()),
                 )?;
-                if left_vars_chirho != right_vars_chirho {
+                if left_vars_chirho.len() != right_vars_chirho.len() {
                     return Some(false);
+                }
+                for (left_chirho, right_chirho) in left_vars_chirho
+                    .records_chirho()
+                    .iter()
+                    .zip(right_vars_chirho.records_chirho())
+                {
+                    if left_chirho.variable_chirho != right_chirho.variable_chirho {
+                        return Some(false);
+                    }
+                    match (&left_chirho.kind_chirho, &right_chirho.kind_chirho) {
+                        (Some(left_chirho), Some(right_chirho)) => pending_chirho.push((
+                            left_chirho.as_ref(),
+                            right_chirho.as_ref(),
+                            depth_chirho + 1,
+                        )),
+                        (None, None) => {}
+                        _ => return Some(false),
+                    }
                 }
                 pending_chirho.push((left_body_chirho, right_body_chirho, depth_chirho + 1));
             }
@@ -134,16 +152,28 @@ pub(super) fn equal_chirho(
     Some(true)
 }
 
-fn transform_chirho<'source_chirho>(
+#[derive(Clone, Copy)]
+struct EqualityTransformPolicyChirho<'source_chirho> {
     ctx_chirho: &'source_chirho InferCtxChirho,
-    ty_chirho: &'source_chirho TyChirho,
     rewrites_chirho: &'source_chirho [(TyChirho, TyChirho)],
+    expand_chirho: bool,
+    resolve_meta_chirho: bool,
+}
+
+fn transform_chirho<'source_chirho>(
+    policy_chirho: EqualityTransformPolicyChirho<'source_chirho>,
+    ty_chirho: &'source_chirho TyChirho,
     named_chirho: Option<&'source_chirho NamedEqualityBindingsChirho<'source_chirho>>,
     bound_chirho: &mut HashSet<TyVarChirho>,
-    expand_chirho: bool,
     budget_chirho: &mut EqualityBudgetChirho,
     depth_chirho: usize,
 ) -> Option<TyChirho> {
+    let EqualityTransformPolicyChirho {
+        ctx_chirho,
+        rewrites_chirho,
+        expand_chirho,
+        resolve_meta_chirho,
+    } = policy_chirho;
     budget_chirho.work_chirho(1)?;
     if depth_chirho > 128 {
         return None;
@@ -157,12 +187,15 @@ fn transform_chirho<'source_chirho>(
                     .work_chirho(parameter_chirho.len().saturating_add(name_chirho.len()))?;
                 if *parameter_chirho == name_chirho {
                     return transform_chirho(
-                        ctx_chirho,
+                        EqualityTransformPolicyChirho {
+                            ctx_chirho,
+                            rewrites_chirho,
+                            expand_chirho,
+                            resolve_meta_chirho,
+                        },
                         value_chirho,
-                        rewrites_chirho,
                         current_chirho.parent_chirho,
                         bound_chirho,
-                        expand_chirho,
                         budget_chirho,
                         depth_chirho + 1,
                     );
@@ -172,22 +205,42 @@ fn transform_chirho<'source_chirho>(
         }
     }
     for (lhs_chirho, rhs_chirho) in rewrites_chirho.iter().filter(|_| named_chirho.is_none()) {
+        if !bound_chirho.is_empty() {
+            let free_chirho = SubstChirho::free_variables_bounded_chirho(
+                lhs_chirho,
+                &mut |work_chirho, output_chirho| {
+                    budget_chirho.node_chirho(output_chirho)?;
+                    budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+                },
+            )?;
+            budget_chirho.work_chirho(free_chirho.len())?;
+            if free_chirho
+                .iter()
+                .any(|variable_chirho| bound_chirho.contains(variable_chirho))
+            {
+                continue;
+            }
+        }
         if equal_chirho(ty_chirho, lhs_chirho, budget_chirho)? {
             // Replacement is cloned through the same budget, without recursively
             // firing evidence on itself in this pass. Later passes share the allowance.
             return transform_chirho(
-                ctx_chirho,
+                EqualityTransformPolicyChirho {
+                    ctx_chirho,
+                    rewrites_chirho: &[],
+                    expand_chirho,
+                    resolve_meta_chirho,
+                },
                 rhs_chirho,
-                &[],
                 None,
                 bound_chirho,
-                expand_chirho,
                 budget_chirho,
                 depth_chirho + 1,
             );
         }
     }
-    if let TyChirho::VarChirho(var_chirho) = ty_chirho
+    if resolve_meta_chirho
+        && let TyChirho::VarChirho(var_chirho) = ty_chirho
         && !bound_chirho.contains(var_chirho)
         && let Some(image_chirho) = ctx_chirho
             .equality_substitutions_chirho
@@ -195,12 +248,15 @@ fn transform_chirho<'source_chirho>(
         && !matches!(image_chirho, TyChirho::VarChirho(other_chirho) if other_chirho == var_chirho)
     {
         return transform_chirho(
-            ctx_chirho,
+            EqualityTransformPolicyChirho {
+                ctx_chirho,
+                rewrites_chirho,
+                expand_chirho,
+                resolve_meta_chirho,
+            },
             image_chirho,
-            rewrites_chirho,
             None,
             bound_chirho,
-            expand_chirho,
             budget_chirho,
             depth_chirho + 1,
         );
@@ -219,12 +275,15 @@ fn transform_chirho<'source_chirho>(
             budget_chirho,
         )?;
         return transform_chirho(
-            ctx_chirho,
+            EqualityTransformPolicyChirho {
+                ctx_chirho,
+                rewrites_chirho,
+                expand_chirho: false,
+                resolve_meta_chirho,
+            },
             &expanded_chirho,
-            rewrites_chirho,
             None,
             bound_chirho,
-            false,
             budget_chirho,
             depth_chirho + 1,
         );
@@ -262,12 +321,15 @@ fn transform_chirho<'source_chirho>(
                     .collect(),
             };
             let mut expanded_chirho = transform_chirho(
-                ctx_chirho,
+                EqualityTransformPolicyChirho {
+                    ctx_chirho,
+                    rewrites_chirho,
+                    expand_chirho: true,
+                    resolve_meta_chirho,
+                },
                 rhs_chirho,
-                rewrites_chirho,
                 Some(&frame_chirho),
                 bound_chirho,
-                true,
                 budget_chirho,
                 depth_chirho + 1,
             )?;
@@ -276,12 +338,15 @@ fn transform_chirho<'source_chirho>(
                 expanded_chirho = TyChirho::AppChirho(
                     Box::new(expanded_chirho),
                     Box::new(transform_chirho(
-                        ctx_chirho,
+                        EqualityTransformPolicyChirho {
+                            ctx_chirho,
+                            rewrites_chirho,
+                            expand_chirho: true,
+                            resolve_meta_chirho,
+                        },
                         argument_chirho,
-                        rewrites_chirho,
                         named_chirho,
                         bound_chirho,
-                        true,
                         budget_chirho,
                         depth_chirho + 1,
                     )?),
@@ -303,44 +368,56 @@ fn transform_chirho<'source_chirho>(
         }
         TyChirho::AppChirho(fun_chirho, arg_chirho) => TyChirho::AppChirho(
             Box::new(transform_chirho(
-                ctx_chirho,
+                EqualityTransformPolicyChirho {
+                    ctx_chirho,
+                    rewrites_chirho,
+                    expand_chirho,
+                    resolve_meta_chirho,
+                },
                 fun_chirho,
-                rewrites_chirho,
                 named_chirho,
                 bound_chirho,
-                expand_chirho,
                 budget_chirho,
                 depth_chirho + 1,
             )?),
             Box::new(transform_chirho(
-                ctx_chirho,
+                EqualityTransformPolicyChirho {
+                    ctx_chirho,
+                    rewrites_chirho,
+                    expand_chirho,
+                    resolve_meta_chirho,
+                },
                 arg_chirho,
-                rewrites_chirho,
                 named_chirho,
                 bound_chirho,
-                expand_chirho,
                 budget_chirho,
                 depth_chirho + 1,
             )?),
         ),
         TyChirho::FunChirho(arg_chirho, result_chirho, mult_chirho) => TyChirho::FunChirho(
             Box::new(transform_chirho(
-                ctx_chirho,
+                EqualityTransformPolicyChirho {
+                    ctx_chirho,
+                    rewrites_chirho,
+                    expand_chirho,
+                    resolve_meta_chirho,
+                },
                 arg_chirho,
-                rewrites_chirho,
                 named_chirho,
                 bound_chirho,
-                expand_chirho,
                 budget_chirho,
                 depth_chirho + 1,
             )?),
             Box::new(transform_chirho(
-                ctx_chirho,
+                EqualityTransformPolicyChirho {
+                    ctx_chirho,
+                    rewrites_chirho,
+                    expand_chirho,
+                    resolve_meta_chirho,
+                },
                 result_chirho,
-                rewrites_chirho,
                 named_chirho,
                 bound_chirho,
-                expand_chirho,
                 budget_chirho,
                 depth_chirho + 1,
             )?),
@@ -351,12 +428,15 @@ fn transform_chirho<'source_chirho>(
                 .iter()
                 .map(|element_chirho| {
                     transform_chirho(
-                        ctx_chirho,
+                        EqualityTransformPolicyChirho {
+                            ctx_chirho,
+                            rewrites_chirho,
+                            expand_chirho,
+                            resolve_meta_chirho,
+                        },
                         element_chirho,
-                        rewrites_chirho,
                         named_chirho,
                         bound_chirho,
-                        expand_chirho,
                         budget_chirho,
                         depth_chirho + 1,
                     )
@@ -364,12 +444,15 @@ fn transform_chirho<'source_chirho>(
                 .collect::<Option<Vec<_>>>()?,
         ),
         TyChirho::ListChirho(element_chirho) => TyChirho::ListChirho(Box::new(transform_chirho(
-            ctx_chirho,
+            EqualityTransformPolicyChirho {
+                ctx_chirho,
+                rewrites_chirho,
+                expand_chirho,
+                resolve_meta_chirho,
+            },
             element_chirho,
-            rewrites_chirho,
             named_chirho,
             bound_chirho,
-            expand_chirho,
             budget_chirho,
             depth_chirho + 1,
         )?)),
@@ -383,24 +466,30 @@ fn transform_chirho<'source_chirho>(
                     .iter()
                     .map(|constraint_chirho| {
                         transform_chirho(
-                            ctx_chirho,
+                            EqualityTransformPolicyChirho {
+                                ctx_chirho,
+                                rewrites_chirho,
+                                expand_chirho,
+                                resolve_meta_chirho,
+                            },
                             constraint_chirho,
-                            rewrites_chirho,
                             named_chirho,
                             bound_chirho,
-                            expand_chirho,
                             budget_chirho,
                             depth_chirho + 1,
                         )
                     })
                     .collect::<Option<Vec<_>>>()?,
                 body_chirho: Box::new(transform_chirho(
-                    ctx_chirho,
+                    EqualityTransformPolicyChirho {
+                        ctx_chirho,
+                        rewrites_chirho,
+                        expand_chirho,
+                        resolve_meta_chirho,
+                    },
                     body_chirho,
-                    rewrites_chirho,
                     named_chirho,
                     bound_chirho,
-                    expand_chirho,
                     budget_chirho,
                     depth_chirho + 1,
                 )?),
@@ -415,37 +504,89 @@ fn transform_chirho<'source_chirho>(
             body_chirho,
         } => {
             budget_chirho.node_chirho(vars_chirho.len())?;
-            let inserted_chirho = vars_chirho
-                .iter()
-                .copied()
-                .filter(|var_chirho| bound_chirho.insert(*var_chirho))
-                .collect::<Vec<_>>();
-            let body_chirho = transform_chirho(
-                ctx_chirho,
-                body_chirho,
-                rewrites_chirho,
-                named_chirho,
-                bound_chirho,
-                expand_chirho,
-                budget_chirho,
-                depth_chirho + 1,
-            )?;
+            let mut inserted_chirho = Vec::new();
+            let result_chirho = (|| {
+                let mut records_chirho = Vec::new();
+                for record_chirho in vars_chirho.records_chirho() {
+                    let mut mapped_chirho = record_chirho.clone();
+                    let mapped_kind_chirho = match &record_chirho.kind_chirho {
+                        Some(kind_chirho) => Some(std::sync::Arc::new(transform_chirho(
+                            EqualityTransformPolicyChirho {
+                                ctx_chirho,
+                                rewrites_chirho,
+                                expand_chirho,
+                                resolve_meta_chirho,
+                            },
+                            kind_chirho,
+                            named_chirho,
+                            bound_chirho,
+                            budget_chirho,
+                            depth_chirho + 1,
+                        )?)),
+                        None => None,
+                    };
+                    mapped_chirho.kind_chirho = mapped_kind_chirho;
+                    records_chirho.push(mapped_chirho);
+                    if bound_chirho.insert(record_chirho.variable_chirho) {
+                        inserted_chirho.push(record_chirho.variable_chirho);
+                    }
+                }
+                Some((
+                    crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(
+                        records_chirho,
+                    ),
+                    transform_chirho(
+                        EqualityTransformPolicyChirho {
+                            ctx_chirho,
+                            rewrites_chirho,
+                            expand_chirho,
+                            resolve_meta_chirho,
+                        },
+                        body_chirho,
+                        named_chirho,
+                        bound_chirho,
+                        budget_chirho,
+                        depth_chirho + 1,
+                    )?,
+                ))
+            })();
             for var_chirho in inserted_chirho {
                 bound_chirho.remove(&var_chirho);
             }
+            let (vars_chirho, body_chirho) = result_chirho?;
             if matches!(ty_chirho, TyChirho::ForallChirho { .. }) {
                 TyChirho::ForallChirho {
-                    vars_chirho: vars_chirho.clone(),
+                    vars_chirho,
                     body_chirho: Box::new(body_chirho),
                 }
             } else {
                 TyChirho::RequiredForallChirho {
-                    vars_chirho: vars_chirho.clone(),
+                    vars_chirho,
                     body_chirho: Box::new(body_chirho),
                 }
             }
         }
     })
+}
+
+pub(super) fn rewrite_givens_with_budget_chirho(
+    ctx_chirho: &InferCtxChirho,
+    ty_chirho: &TyChirho,
+    budget_chirho: &mut EqualityBudgetChirho,
+) -> Option<TyChirho> {
+    transform_chirho(
+        EqualityTransformPolicyChirho {
+            ctx_chirho,
+            rewrites_chirho: &ctx_chirho.given_rewrites_chirho,
+            expand_chirho: false,
+            resolve_meta_chirho: false,
+        },
+        ty_chirho,
+        None,
+        &mut HashSet::new(),
+        budget_chirho,
+        0,
+    )
 }
 
 pub(super) fn normalize_owned_equality_chirho<'evidence_chirho>(
@@ -481,23 +622,29 @@ pub(super) fn normalize_owned_equality_with_budget_chirho<'evidence_chirho>(
         let mut copied_chirho = Vec::new();
         for (lhs_chirho, rhs_chirho) in chunk_chirho {
             let lhs_chirho = transform_chirho(
-                ctx_chirho,
+                EqualityTransformPolicyChirho {
+                    ctx_chirho,
+                    rewrites_chirho: &[],
+                    expand_chirho: false,
+                    resolve_meta_chirho: true,
+                },
                 lhs_chirho,
-                &[],
                 None,
                 &mut HashSet::new(),
-                false,
                 budget_chirho,
                 0,
             )
             .ok_or(EqualityNormalizationExhaustedChirho)?;
             let rhs_chirho = transform_chirho(
-                ctx_chirho,
+                EqualityTransformPolicyChirho {
+                    ctx_chirho,
+                    rewrites_chirho: &[],
+                    expand_chirho: false,
+                    resolve_meta_chirho: true,
+                },
                 rhs_chirho,
-                &[],
                 None,
                 &mut HashSet::new(),
-                false,
                 budget_chirho,
                 0,
             )
@@ -512,24 +659,30 @@ pub(super) fn normalize_owned_equality_with_budget_chirho<'evidence_chirho>(
         .flatten()
         .collect::<Vec<_>>();
     let mut current_chirho = transform_chirho(
-        ctx_chirho,
+        EqualityTransformPolicyChirho {
+            ctx_chirho,
+            rewrites_chirho: &[],
+            expand_chirho: false,
+            resolve_meta_chirho: true,
+        },
         ty_chirho,
-        &[],
         None,
         &mut HashSet::new(),
-        false,
         budget_chirho,
         0,
     )
     .ok_or(EqualityNormalizationExhaustedChirho)?;
     for _iteration_chirho in 0..100 {
         let transformed_chirho = transform_chirho(
-            ctx_chirho,
+            EqualityTransformPolicyChirho {
+                ctx_chirho,
+                rewrites_chirho: &rewrites_chirho,
+                expand_chirho: true,
+                resolve_meta_chirho: true,
+            },
             &current_chirho,
-            &rewrites_chirho,
             None,
             &mut HashSet::new(),
-            true,
             budget_chirho,
             0,
         )
@@ -594,6 +747,11 @@ pub(super) fn copy_term_with_budget_chirho(
                 body_chirho,
             } => {
                 budget_chirho.node_chirho(vars_chirho.len())?;
+                for record_chirho in vars_chirho.records_chirho() {
+                    if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                        pending_chirho.push((kind_chirho.as_ref(), depth_chirho + 1));
+                    }
+                }
                 pending_chirho.push((body_chirho, depth_chirho + 1));
             }
             TyChirho::QualChirho {
@@ -735,9 +893,27 @@ pub(super) fn substitute_meta_with_budget_chirho(
                 body_chirho,
             } => {
                 budget_chirho.node_chirho(vars_chirho.len())?;
-                let replacement_chirho = replacement_chirho
-                    .filter(|(variable_chirho, _)| !vars_chirho.contains(variable_chirho));
-                let vars_chirho = vars_chirho.clone();
+                let mut replacement_chirho = replacement_chirho;
+                let mut records_chirho = Vec::new();
+                for record_chirho in vars_chirho.records_chirho() {
+                    let mut mapped_chirho = record_chirho.clone();
+                    mapped_chirho.kind_chirho = match &record_chirho.kind_chirho {
+                        Some(kind_chirho) => Some(std::sync::Arc::new(walk_chirho(
+                            kind_chirho,
+                            replacement_chirho,
+                            budget_chirho,
+                            depth_chirho + 1,
+                        )?)),
+                        None => None,
+                    };
+                    records_chirho.push(mapped_chirho);
+                    replacement_chirho = replacement_chirho.filter(|(variable_chirho, _)| {
+                        *variable_chirho != record_chirho.variable_chirho
+                    });
+                }
+                let vars_chirho = crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(
+                    records_chirho,
+                );
                 let body_chirho = Box::new(walk_chirho(
                     body_chirho,
                     replacement_chirho,

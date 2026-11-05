@@ -53,14 +53,14 @@ impl InferCtxChirho {
     /// Whether every argument of the predicate is free of unification
     /// variables. A fully-ground predicate is invariant under all later
     /// substitution, so its solvability verdict cannot change.
-    pub(super) fn pred_fully_ground_chirho(pred_chirho: &PredChirho) -> bool {
+    pub(super) fn pred_fully_ground_chirho(&self, pred_chirho: &PredChirho) -> bool {
         pred_chirho
             .kind_tys_chirho
             .iter()
             .chain(std::iter::once(&pred_chirho.ty_chirho))
             .chain(&pred_chirho.extra_tys_chirho)
             .all(|ty_chirho| ty_chirho.free_vars_chirho().is_empty())
-            && !Self::pred_mentions_rigid_chirho(pred_chirho)
+            && !self.pred_mentions_rigid_chirho(pred_chirho)
     }
 
     /// Whether an instance could EVER match the predicate, comparing only
@@ -115,7 +115,7 @@ impl InferCtxChirho {
         pred_chirho: &PredChirho,
         span_chirho: SpanChirho,
     ) -> bool {
-        if !(Self::pred_fully_ground_chirho(pred_chirho)
+        if !(self.pred_fully_ground_chirho(pred_chirho)
             && self.is_certainly_unsolvable_pred_chirho(pred_chirho))
         {
             return false;
@@ -149,7 +149,7 @@ impl InferCtxChirho {
                 .contains(class_name_chirho)
             || Self::MAGIC_CLASSES_CHIRHO.contains(&class_name_chirho)
             || class_name_chirho.starts_with('?')
-            || !Self::pred_fully_ground_chirho(pred_chirho)
+            || !self.pred_fully_ground_chirho(pred_chirho)
         {
             return false;
         }

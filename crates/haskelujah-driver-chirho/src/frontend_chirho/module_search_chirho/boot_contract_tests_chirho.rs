@@ -85,6 +85,7 @@ impl BootStateChirho {
         register_discovered_type_families_chirho(
             &self.module_chirho,
             DiscoveredFamilyContextChirho {
+                imported_types_chirho: None,
                 modules_chirho: &self.sources_chirho,
                 ifaces_chirho: &mut self.ifaces_chirho,
                 registry_chirho: &mut self.registry_chirho,

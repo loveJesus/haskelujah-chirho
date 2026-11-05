@@ -394,7 +394,7 @@ impl InferCtxChirho {
             if !has_instances_chirho {
                 continue;
             }
-            if Self::pred_mentions_rigid_chirho(&defaulted_pred_chirho) {
+            if self.pred_mentions_rigid_chirho(&defaulted_pred_chirho) {
                 // A wanted over a rigid signature variable was not discharged
                 // by the signature's givens. Report it only when no instance
                 // could ever apply (see rigid_pred_certainly_undeducible_chirho).

@@ -316,8 +316,8 @@ impl InferCtxChirho {
         mut term_chirho: TyChirho,
         predicates_chirho: &mut Vec<SchemePredChirho>,
         equalities_chirho: &mut Vec<(TyChirho, TyChirho)>,
-    ) -> (Vec<TyVarChirho>, TyChirho) {
-        let mut variables_chirho = Vec::new();
+    ) -> (crate::ty_chirho::QuantifiedVariablesChirho, TyChirho) {
+        let mut variables_chirho = crate::ty_chirho::QuantifiedVariablesChirho::default();
         let mut budget_chirho = EqualityBudgetChirho::new_chirho();
         loop {
             match term_chirho {
@@ -325,7 +325,7 @@ impl InferCtxChirho {
                     vars_chirho,
                     body_chirho,
                 } => {
-                    variables_chirho.extend(vars_chirho);
+                    variables_chirho = variables_chirho.concat_chirho(&vars_chirho);
                     term_chirho = *body_chirho;
                 }
                 TyChirho::QualChirho {
@@ -448,7 +448,6 @@ impl InferCtxChirho {
                 } => {
                     let (opened_chirho, predicates_chirho) =
                         self.skolemize_scheme_parts_chirho(&crate::ty_chirho::SchemeChirho {
-                            source_binders_chirho: Vec::new(),
                             vars_chirho,
                             preds_chirho: Vec::new(),
                             ty_chirho: *body_chirho,

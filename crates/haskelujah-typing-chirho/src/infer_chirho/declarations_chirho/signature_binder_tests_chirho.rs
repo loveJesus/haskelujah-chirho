@@ -39,7 +39,7 @@ fn assert_scheme_order_chirho(signature_chirho: &TypeChirho, names_chirho: &[&st
         .iter()
         .map(|name_chirho| map_chirho[*name_chirho])
         .collect();
-    assert_eq!(scheme_chirho.vars_chirho, expected_chirho);
+    assert_eq!(scheme_chirho.vars_chirho, expected_chirho.into());
 }
 
 #[test]

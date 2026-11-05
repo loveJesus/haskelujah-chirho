@@ -295,8 +295,7 @@ fn infer_dollar_applies_constructor_to_lambda_chirho() {
     ctx_chirho.env_chirho.bind_chirho(
         "WrapChirho".to_string(),
         SchemeChirho {
-            source_binders_chirho: Vec::new(),
-            vars_chirho: vec![wrap_r_chirho, wrap_s_chirho, wrap_a_chirho],
+            vars_chirho: vec![wrap_r_chirho, wrap_s_chirho, wrap_a_chirho].into(),
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(wrap_arg_chirho, wrap_result_chirho.clone()),
         },

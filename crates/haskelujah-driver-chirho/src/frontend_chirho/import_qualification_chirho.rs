@@ -13,6 +13,18 @@ fn is_placeholder_import_scheme_chirho(
     if !scheme_chirho.preds_chirho.is_empty() || scheme_chirho.vars_chirho.len() != 1 {
         return false;
     }
+    if scheme_chirho
+        .vars_chirho
+        .records_chirho()
+        .iter()
+        .any(|record_chirho| {
+            record_chirho.kind_chirho.is_some()
+                || record_chirho.source_chirho.is_some()
+                || record_chirho.specificity_chirho.is_some()
+        })
+    {
+        return false;
+    }
     match &scheme_chirho.ty_chirho {
         haskelujah_typing_chirho::TyChirho::VarChirho(var_chirho) => {
             *var_chirho == scheme_chirho.vars_chirho[0] && var_chirho.0 >= 9000
@@ -568,8 +580,8 @@ impl ImportQualificationChirho<'_> {
                 vars_chirho,
                 body_chirho,
             } => {
-                self.reserve_chirho(vars_chirho.len(), depth_chirho)?;
-                let vars_chirho = vars_chirho.clone();
+                let vars_chirho =
+                    self.quantified_chirho(vars_chirho, builtin_seed_chirho, depth_chirho)?;
                 let body_chirho = Box::new(self.typed_chirho(
                     body_chirho,
                     builtin_seed_chirho,
@@ -590,6 +602,37 @@ impl ImportQualificationChirho<'_> {
         })
     }
 
+    fn quantified_chirho(
+        &mut self,
+        variables_chirho: &haskelujah_typing_chirho::ty_chirho::QuantifiedVariablesChirho,
+        builtin_seed_chirho: bool,
+        depth_chirho: usize,
+    ) -> Result<
+        haskelujah_typing_chirho::ty_chirho::QuantifiedVariablesChirho,
+        DiagnosticBundleChirho,
+    > {
+        self.reserve_chirho(variables_chirho.len(), depth_chirho)?;
+        let mut records_chirho = Vec::with_capacity(variables_chirho.len());
+        for record_chirho in variables_chirho.records_chirho() {
+            let mut record_chirho = record_chirho.clone();
+            record_chirho.kind_chirho = if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                Some(std::sync::Arc::new(self.typed_chirho(
+                    kind_chirho,
+                    builtin_seed_chirho,
+                    depth_chirho + 1,
+                )?))
+            } else {
+                None
+            };
+            records_chirho.push(record_chirho);
+        }
+        Ok(
+            haskelujah_typing_chirho::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(
+                records_chirho,
+            ),
+        )
+    }
+
     pub fn scheme_chirho(
         &mut self,
         scheme_chirho: &haskelujah_typing_chirho::SchemeChirho,
@@ -602,7 +645,8 @@ impl ImportQualificationChirho<'_> {
                 .saturating_add(scheme_chirho.preds_chirho.len()),
             0,
         )?;
-        let vars_chirho = scheme_chirho.vars_chirho.clone();
+        let vars_chirho =
+            self.quantified_chirho(&scheme_chirho.vars_chirho, builtin_seed_chirho, 0)?;
         let mut preds_chirho = Vec::new();
         for predicate_chirho in &scheme_chirho.preds_chirho {
             self.reserve_chirho(
@@ -617,9 +661,7 @@ impl ImportQualificationChirho<'_> {
                 self.typed_chirho(ty_chirho, builtin_seed_chirho, 0)
             })?);
         }
-        self.reserve_chirho(scheme_chirho.source_binders_chirho.len(), scheme_chirho.source_binders_chirho.len())?;
         Ok(haskelujah_typing_chirho::SchemeChirho {
-            source_binders_chirho: scheme_chirho.source_binders_chirho.clone(),
             vars_chirho,
             preds_chirho,
             ty_chirho: self.typed_chirho(&scheme_chirho.ty_chirho, builtin_seed_chirho, 0)?,

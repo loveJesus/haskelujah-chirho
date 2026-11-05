@@ -82,7 +82,7 @@ pub(super) fn rank_n_identity_consumer_ty_chirho() -> TyChirho {
     let identity_var_chirho = TyVarChirho(9006);
     TyChirho::fun_chirho(
         TyChirho::ForallChirho {
-            vars_chirho: vec![identity_var_chirho],
+            vars_chirho: vec![identity_var_chirho].into(),
             body_chirho: Box::new(TyChirho::fun_chirho(
                 TyChirho::VarChirho(identity_var_chirho),
                 TyChirho::VarChirho(identity_var_chirho),

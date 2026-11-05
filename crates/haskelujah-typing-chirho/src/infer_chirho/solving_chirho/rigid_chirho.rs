@@ -9,6 +9,16 @@ use super::*;
 use haskelujah_ast_chirho::promotion_chirho::is_unknown_promoted_key_chirho;
 
 impl InferCtxChirho {
+    pub(super) fn type_contains_skolem_chirho(&self, term_chirho: &TyChirho) -> bool {
+        match crate::skolem_chirho::contains_skolem_chirho(term_chirho) {
+            Ok(found_chirho) => found_chirho,
+            Err(_) => {
+                self.type_normalization_exhausted_chirho.set(true);
+                true
+            }
+        }
+    }
+
     /// Instantiate a signature scheme for CHECKING a binding against it:
     /// every quantified variable becomes a rigid skolem, so the body may use
     /// the variable but can never decide what it is (`f :: a -> a; f x = x + 1`
@@ -25,7 +35,18 @@ impl InferCtxChirho {
         scheme_chirho: &SchemeChirho,
     ) -> (TyChirho, Vec<PredChirho>) {
         let mut instantiation_chirho = SubstChirho::empty_chirho();
-        for var_chirho in &scheme_chirho.vars_chirho {
+        let mut budget_chirho =
+            super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+        for record_chirho in scheme_chirho.vars_chirho.records_chirho() {
+            let var_chirho = &record_chirho.variable_chirho;
+            let Some(kind_chirho) = self.instantiate_quantifier_kind_chirho(
+                record_chirho,
+                &instantiation_chirho,
+                &mut budget_chirho,
+            ) else {
+                self.type_normalization_exhausted_chirho.set(true);
+                return (self.fresh_var_chirho(), Vec::new());
+            };
             if let Some(existing_chirho) = self.skolem_bindings_chirho.lookup_chirho(var_chirho) {
                 instantiation_chirho.insert_chirho(*var_chirho, existing_chirho.clone());
                 continue;
@@ -44,8 +65,13 @@ impl InferCtxChirho {
             ));
             self.next_skolem_chirho += 1;
             instantiation_chirho.insert_chirho(*var_chirho, skolem_chirho.clone());
-            self.skolem_bindings_chirho
-                .insert_chirho(*var_chirho, skolem_chirho);
+            self.skolem_bindings_chirho.insert_image_chirho(
+                *var_chirho,
+                crate::subst_chirho::SubstitutionImageChirho {
+                    image_chirho: skolem_chirho,
+                    kind_chirho,
+                },
+            );
         }
         let givens_chirho: Vec<PredChirho> = scheme_chirho
             .preds_chirho
@@ -224,15 +250,37 @@ impl InferCtxChirho {
     ) -> Option<SubstChirho> {
         let left_norm_chirho = self.normalize_ty_chirho(left_chirho);
         let right_norm_chirho = self.normalize_ty_chirho(right_chirho);
-        if !contains_skolem_chirho(&left_norm_chirho) && !contains_skolem_chirho(&right_norm_chirho)
+        if !self.type_contains_skolem_chirho(&left_norm_chirho)
+            && !self.type_contains_skolem_chirho(&right_norm_chirho)
         {
             return None;
         }
         let mut opened_chirho = HashMap::new();
         let mut next_var_chirho = self.next_var_chirho;
+        let mut budget_chirho =
+            super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+        for term_chirho in [&left_norm_chirho, &right_norm_chirho] {
+            if SubstChirho::reserve_fresh_variables_bounded_chirho(
+                term_chirho,
+                &mut next_var_chirho,
+                &mut |work_chirho, output_chirho| {
+                    budget_chirho.node_chirho(output_chirho)?;
+                    budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+                },
+            )
+            .is_none()
+            {
+                self.type_normalization_exhausted_chirho.set(true);
+                return None;
+            }
+        }
+        let mut supply_exhausted_chirho = false;
         let mut fresh_chirho = || {
             let var_chirho = TyVarChirho(next_var_chirho);
-            next_var_chirho += 1;
+            next_var_chirho = next_var_chirho.checked_add(1).unwrap_or_else(|| {
+                supply_exhausted_chirho = true;
+                next_var_chirho
+            });
             var_chirho
         };
         let opened_left_chirho =
@@ -240,6 +288,16 @@ impl InferCtxChirho {
         let opened_right_chirho =
             open_skolems_chirho(&right_norm_chirho, &mut opened_chirho, &mut fresh_chirho);
         self.next_var_chirho = next_var_chirho;
+        let (Ok(opened_left_chirho), Ok(opened_right_chirho)) =
+            (opened_left_chirho, opened_right_chirho)
+        else {
+            self.type_normalization_exhausted_chirho.set(true);
+            return None;
+        };
+        if supply_exhausted_chirho {
+            self.type_normalization_exhausted_chirho.set(true);
+            return None;
+        }
         let unifier_chirho = self
             .unify_normalized_chirho(
                 &opened_left_chirho,
@@ -247,7 +305,11 @@ impl InferCtxChirho {
                 SpanChirho::DUMMY_CHIRHO,
             )
             .ok()?;
-        let outcome_chirho = split_refinement_unifier_chirho(&unifier_chirho, &opened_chirho);
+        let Ok(outcome_chirho) = split_refinement_unifier_chirho(&unifier_chirho, &opened_chirho)
+        else {
+            self.type_normalization_exhausted_chirho.set(true);
+            return None;
+        };
         for (skolem_chirho, ty_chirho) in outcome_chirho.refinements_chirho {
             self.record_equality_rewrites_chirho(vec![(
                 TyChirho::ForallVarChirho(skolem_chirho.clone()),
@@ -262,13 +324,13 @@ impl InferCtxChirho {
     }
 
     /// Whether a predicate mentions a rigid (skolem) type variable.
-    pub(super) fn pred_mentions_rigid_chirho(pred_chirho: &PredChirho) -> bool {
+    pub(super) fn pred_mentions_rigid_chirho(&self, pred_chirho: &PredChirho) -> bool {
         pred_chirho
             .kind_tys_chirho
             .iter()
             .chain(std::iter::once(&pred_chirho.ty_chirho))
             .chain(&pred_chirho.extra_tys_chirho)
-            .any(contains_skolem_chirho)
+            .any(|term_chirho| self.type_contains_skolem_chirho(term_chirho))
     }
 
     /// A predicate over rigid variables that no instance and no given can
@@ -376,7 +438,7 @@ impl InferCtxChirho {
                 if self.pred_entailed_by_givens_chirho(sub_goal_chirho, &self.given_preds_chirho) {
                     return false;
                 }
-                if Self::pred_mentions_rigid_chirho(sub_goal_chirho) {
+                if self.pred_mentions_rigid_chirho(sub_goal_chirho) {
                     self.rigid_pred_certainly_undeducible_depth_chirho(
                         sub_goal_chirho,
                         depth_chirho + 1,

@@ -247,15 +247,15 @@ fn iterative_legacy_relation_matches_public_eq_for_every_type_variant_and_group_
             body_chirho: Box::new(TyChirho::bool_chirho()),
         },
         TyChirho::ForallChirho {
-            vars_chirho: vec![variable_chirho],
+            vars_chirho: vec![variable_chirho].into(),
             body_chirho: Box::new(TyChirho::VarChirho(variable_chirho)),
         },
         TyChirho::RequiredForallChirho {
-            vars_chirho: vec![variable_chirho],
+            vars_chirho: vec![variable_chirho].into(),
             body_chirho: Box::new(TyChirho::VarChirho(variable_chirho)),
         },
         TyChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho(1)],
+            vars_chirho: vec![TyVarChirho(1)].into(),
             body_chirho: Box::new(TyChirho::VarChirho(TyVarChirho(1))),
         },
     ];

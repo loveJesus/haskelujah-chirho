@@ -77,6 +77,18 @@ fn ty_text_chirho(ty_chirho: &TyChirho, top_chirho: bool) -> String {
                 args_chirho.join(" ")
             ))
         }
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => wrap_chirho(format!(
+            "({}) => {}",
+            context_chirho
+                .iter()
+                .map(|term_chirho| ty_text_chirho(term_chirho, true))
+                .collect::<Vec<_>>()
+                .join(", "),
+            ty_text_chirho(body_chirho, true)
+        )),
         TyChirho::ForallChirho {
             vars_chirho,
             body_chirho,

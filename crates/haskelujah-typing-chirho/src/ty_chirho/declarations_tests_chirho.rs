@@ -198,7 +198,7 @@ fn local_binder_kinds_require_preceding_lexical_owners_chirho() {
     for invalid_chirho in [None, Some(TyVarChirho(1)), Some(TyVarChirho(2))] {
         let mut schema_chirho = header_chirho("localScopeChirho");
         schema_chirho.result_kind_chirho = TyChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho(1), TyVarChirho(2)],
+            vars_chirho: vec![TyVarChirho(1), TyVarChirho(2)].into(),
             body_chirho: Box::new(TyChirho::VarChirho(TyVarChirho(2))),
         };
         schema_chirho.local_binders_chirho = std::sync::Arc::from([
@@ -222,11 +222,88 @@ fn local_binder_kinds_require_preceding_lexical_owners_chirho() {
                     haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho,
             },
         ]);
+        if let TyChirho::ForallChirho { vars_chirho, .. } = &mut schema_chirho.result_kind_chirho {
+            *vars_chirho = checked_group_chirho(
+                &schema_chirho.identity_chirho,
+                &schema_chirho.local_binders_chirho,
+            );
+        }
         let result_chirho = DeclarationSchemesChirho::default().insert_chirho(schema_chirho);
         assert_eq!(
             result_chirho.is_ok(),
             invalid_chirho.is_none(),
             "self/forward kinds must refuse; preceding dependent kinds must publish: {result_chirho:?}"
         );
+    }
+}
+
+fn checked_group_chirho(
+    identity_chirho: &std::sync::Arc<str>,
+    binders_chirho: &[super::DeclarationLocalBinderChirho],
+) -> crate::ty_chirho::QuantifiedVariablesChirho {
+    crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(binders_chirho.iter().map(|record_chirho|
+        crate::ty_chirho::QuantifiedVariableChirho {
+            variable_chirho: record_chirho.binder_chirho.variable_chirho,
+            kind_chirho: Some(std::sync::Arc::new(record_chirho.binder_chirho.kind_chirho.clone())),
+            source_chirho: Some(haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::QuantifiedChirho {
+                declaration_chirho: identity_chirho.clone(), index_chirho: record_chirho.binder_chirho.variable_chirho.0,
+            }),
+            specificity_chirho: Some(record_chirho.specificity_chirho),
+        }).collect())
+}
+
+#[test]
+fn inline_quantifier_proof_drift_is_refused_before_first_publication_chirho() {
+    use haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho;
+    use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
+    let mut schema_chirho = header_chirho("inlineProofChirho");
+    schema_chirho.local_binders_chirho =
+        std::sync::Arc::from([super::DeclarationLocalBinderChirho {
+            binder_chirho: DeclarationBinderChirho {
+                variable_chirho: TyVarChirho(1),
+                kind_chirho: TyChirho::ConChirho("Type".into()),
+                visibility_chirho: TelescopeVisibilityChirho::SpecifiedChirho,
+            },
+            specificity_chirho: TyVarSpecificityChirho::SpecifiedChirho,
+        }]);
+    let records_chirho = checked_group_chirho(
+        &schema_chirho.identity_chirho,
+        &schema_chirho.local_binders_chirho,
+    );
+    schema_chirho.result_kind_chirho = TyChirho::ForallChirho {
+        vars_chirho: records_chirho.clone(),
+        body_chirho: Box::new(TyChirho::VarChirho(TyVarChirho(1))),
+    };
+    DeclarationSchemesChirho::default()
+        .insert_chirho(schema_chirho.clone())
+        .expect("actual producer agrees");
+    for mutation_chirho in 0..4 {
+        let mut invalid_chirho = schema_chirho.clone();
+        let mut record_chirho = records_chirho.records_chirho()[0].clone();
+        match mutation_chirho {
+            0 => record_chirho.kind_chirho = None,
+            1 => record_chirho.source_chirho = None,
+            2 => {
+                record_chirho.source_chirho = Some(ScopedTypeVariableIdChirho::QuantifiedChirho {
+                    declaration_chirho: "foreignChirho".into(),
+                    index_chirho: 1,
+                })
+            }
+            _ => record_chirho.specificity_chirho = Some(TyVarSpecificityChirho::InferredChirho),
+        }
+        let invalid_group_chirho =
+            crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(vec![record_chirho]);
+        if mutation_chirho != 0 {
+            assert_eq!(
+                records_chirho, invalid_group_chirho,
+                "ordinary equality intentionally ignores proof flags"
+            );
+        }
+        if let TyChirho::ForallChirho { vars_chirho, .. } = &mut invalid_chirho.result_kind_chirho {
+            *vars_chirho = invalid_group_chirho;
+        }
+        let mut registry_chirho = DeclarationSchemesChirho::default();
+        assert!(registry_chirho.insert_chirho(invalid_chirho).is_err());
+        assert!(registry_chirho.is_empty_chirho());
     }
 }

@@ -281,7 +281,7 @@ impl TypeElaboratorChirho<'_> {
                     span_chirho,
                 )?;
                 let mut binders_chirho = Vec::with_capacity(vars_chirho.len());
-                for variable_chirho in vars_chirho {
+                for variable_chirho in vars_chirho.iter().copied() {
                     let TypeChirho::VarChirho(name_chirho) =
                         self.surface_chirho(&TyChirho::VarChirho(variable_chirho), span_chirho)?
                     else {

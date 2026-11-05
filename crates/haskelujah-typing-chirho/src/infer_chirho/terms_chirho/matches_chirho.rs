@@ -33,8 +33,7 @@ impl InferCtxChirho {
         seed_vars_chirho.sort_by_key(|tv_chirho| tv_chirho.0);
         seed_vars_chirho.dedup();
         let seed_scheme_chirho = SchemeChirho {
-            source_binders_chirho: Vec::new(),
-            vars_chirho: seed_vars_chirho,
+            vars_chirho: seed_vars_chirho.into(),
             preds_chirho: preds_chirho
                 .iter()
                 .map(|pred_chirho| {
@@ -305,7 +304,10 @@ impl InferCtxChirho {
             required_groups_chirho.push(vars_chirho);
             required_body_chirho = *body_chirho;
         }
-        let required_arity_chirho: usize = required_groups_chirho.iter().map(Vec::len).sum();
+        let required_arity_chirho: usize = required_groups_chirho
+            .iter()
+            .map(|group_chirho| group_chirho.len())
+            .sum();
         if required_arity_chirho > 0 {
             if arity_chirho < required_arity_chirho {
                 return self.infer_matches_chirho(matches_chirho, span_chirho);

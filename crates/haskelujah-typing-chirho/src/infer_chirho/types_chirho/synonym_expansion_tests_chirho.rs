@@ -13,7 +13,7 @@ use haskelujah_ast_chirho::name_chirho::{
 fn alias_chirho(
     context_chirho: &mut InferCtxChirho,
     name_chirho: &str,
-    body_chirho: TyChirho,
+    mut body_chirho: TyChirho,
 ) -> String {
     let declaration_chirho = TypeConstructorDeclarationChirho::source_chirho(
         "ProducerChirho",
@@ -21,6 +21,26 @@ fn alias_chirho(
         TypeConstructorRoleChirho::TypeSynonymChirho,
     );
     let key_chirho = declaration_chirho.type_key_chirho();
+    // These fixtures positively construct a checked Type-kinded local prefix.
+    // The inline record and published table must describe the SAME producer.
+    if let TyChirho::ForallChirho { vars_chirho, .. }
+    | TyChirho::RequiredForallChirho { vars_chirho, .. } = &mut body_chirho
+    {
+        *vars_chirho = crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(
+            vars_chirho.iter().enumerate().map(|(index_chirho, variable_chirho)| {
+                assert_eq!(variable_chirho.0 as usize, index_chirho + 1);
+                crate::ty_chirho::QuantifiedVariableChirho {
+                    variable_chirho: *variable_chirho,
+                    kind_chirho: Some(std::sync::Arc::new(TyChirho::ConChirho("%universe:type".into()))),
+                    source_chirho: Some(haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::QuantifiedChirho {
+                        declaration_chirho: key_chirho.clone().into(),
+                        index_chirho: variable_chirho.0,
+                    }),
+                    specificity_chirho: Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho),
+                }
+            }).collect(),
+        );
+    }
     let mut local_binders_chirho = Vec::new();
     let mut pending_chirho = vec![&body_chirho];
     while let Some(term_chirho) = pending_chirho.pop() {
@@ -97,7 +117,7 @@ fn checked_alias_substitution_does_not_capture_the_callers_free_variable_chirho(
         &mut context_chirho,
         "RankChirho",
         TyChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho(1)],
+            vars_chirho: vec![TyVarChirho(1)].into(),
             body_chirho: Box::new(TyChirho::FunChirho(
                 Box::new(TyChirho::VarChirho(TyVarChirho(1))),
                 Box::new(TyChirho::VarChirho(TyVarChirho(0))),
@@ -177,7 +197,7 @@ fn canonical_local_ast_occurrences_require_their_lexical_binder_chirho() {
         &mut context_chirho,
         "ScopedChirho",
         TyChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho(1)],
+            vars_chirho: vec![TyVarChirho(1)].into(),
             body_chirho: Box::new(TyChirho::VarChirho(TyVarChirho(1))),
         },
     );
@@ -205,7 +225,19 @@ fn canonical_local_ast_occurrences_require_their_lexical_binder_chirho() {
             context_chirho.surface_variable_chirho(&name_chirho, variables_chirho)
         },
     );
-    assert_eq!(bound_chirho, vec![occurrence_chirho]);
+    assert_eq!(
+        bound_chirho.records_chirho(),
+        &[crate::ty_chirho::QuantifiedVariableChirho {
+            variable_chirho: occurrence_chirho,
+            kind_chirho: Some(std::sync::Arc::new(TyChirho::ConChirho(
+                "%universe:type".into()
+            ))),
+            source_chirho: name_chirho.type_variable_chirho().cloned(),
+            specificity_chirho: Some(
+                haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho
+            ),
+        }]
+    );
     assert!(
         !context_chirho
             .non_deferrable_diagnostics_chirho

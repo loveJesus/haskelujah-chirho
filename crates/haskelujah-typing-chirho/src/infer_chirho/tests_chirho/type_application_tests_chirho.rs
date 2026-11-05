@@ -16,8 +16,7 @@ fn infer_visible_type_application_specializes_named_scheme_chirho() {
     ctx_chirho.env_chirho.bind_chirho(
         "idTy".to_string(),
         SchemeChirho {
-            source_binders_chirho: Vec::new(),
-            vars_chirho: vec![a_chirho],
+            vars_chirho: vec![a_chirho].into(),
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(a_chirho),
@@ -52,11 +51,10 @@ fn infer_visible_type_application_specializes_rank_n_parameter_chirho() {
     ctx_chirho.env_chirho.bind_chirho(
         "rankNParameterChirho".to_string(),
         SchemeChirho {
-            source_binders_chirho: Vec::new(),
-            vars_chirho: vec![],
+            vars_chirho: vec![].into(),
             preds_chirho: vec![],
             ty_chirho: TyChirho::ForallChirho {
-                vars_chirho: vec![rank_n_var_chirho],
+                vars_chirho: vec![rank_n_var_chirho].into(),
                 body_chirho: Box::new(TyChirho::fun_chirho(
                     TyChirho::VarChirho(rank_n_var_chirho),
                     TyChirho::VarChirho(rank_n_var_chirho),
@@ -93,7 +91,7 @@ fn infer_required_type_argument_consumes_promoted_list_chirho() {
     ctx_chirho.env_chirho.bind_chirho(
         "requiredChirho".to_string(),
         SchemeChirho::mono_chirho(TyChirho::RequiredForallChirho {
-            vars_chirho: vec![required_var_chirho],
+            vars_chirho: vec![required_var_chirho].into(),
             body_chirho: Box::new(TyChirho::AppChirho(
                 Box::new(TyChirho::ConChirho("Proxy".to_string())),
                 Box::new(TyChirho::VarChirho(required_var_chirho)),
@@ -141,7 +139,7 @@ fn infer_type_lambda_checks_against_outer_forall_chirho() {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
     let expected_var_chirho = TyVarChirho(9005);
     let expected_ty_chirho = TyChirho::ForallChirho {
-        vars_chirho: vec![expected_var_chirho],
+        vars_chirho: vec![expected_var_chirho].into(),
         body_chirho: Box::new(TyChirho::fun_chirho(
             TyChirho::VarChirho(expected_var_chirho),
             TyChirho::VarChirho(expected_var_chirho),
@@ -236,8 +234,7 @@ fn infer_visible_type_application_reuses_scoped_type_variable_chirho() {
     ctx_chirho.env_chirho.bind_chirho(
         "proof".to_string(),
         SchemeChirho {
-            source_binders_chirho: Vec::new(),
-            vars_chirho: vec![n_chirho],
+            vars_chirho: vec![n_chirho].into(),
             preds_chirho: vec![],
             ty_chirho: TyChirho::AppChirho(
                 Box::new(TyChirho::ConChirho("Dict".to_string())),

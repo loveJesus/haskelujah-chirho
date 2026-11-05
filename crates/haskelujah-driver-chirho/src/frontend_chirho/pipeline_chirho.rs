@@ -393,6 +393,19 @@ pub(crate) fn run_frontend_under_deferral_chirho(
                             merged_imported_types_chirho
                                 .get(&module_qualified_name_chirho)
                                 .or_else(|| {
+                                    iface_chirho
+                                        .exports_chirho
+                                        .values_chirho
+                                        .get(name_chirho)
+                                        .and_then(|value_chirho| {
+                                            value_chirho.defining_module_chirho.as_ref()
+                                        })
+                                        .and_then(|producer_chirho| {
+                                            merged_imported_types_chirho
+                                                .get(&format!("{producer_chirho}.{name_chirho}"))
+                                        })
+                                })
+                                .or_else(|| {
                                     (!import_chirho.qualified_chirho)
                                         .then(|| merged_imported_types_chirho.get(name_chirho))
                                         .flatten()
@@ -407,8 +420,7 @@ pub(crate) fn run_frontend_under_deferral_chirho(
                                 9000 + merged_imported_types_chirho.len() as u32,
                             );
                             std::borrow::Cow::Owned(haskelujah_typing_chirho::SchemeChirho {
-                                source_binders_chirho: Vec::new(),
-                                vars_chirho: vec![fresh_var_chirho],
+                                vars_chirho: vec![fresh_var_chirho].into(),
                                 preds_chirho: vec![],
                                 ty_chirho: haskelujah_typing_chirho::TyChirho::VarChirho(
                                     fresh_var_chirho,

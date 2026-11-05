@@ -38,6 +38,9 @@ impl fmt::Display for MultChirho {
 }
 
 pub use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::TyVarChirho;
+mod quantifiers_chirho;
+pub(crate) use quantifiers_chirho::same_type_contract_chirho;
+pub use quantifiers_chirho::{QuantifiedVariableChirho, QuantifiedVariablesChirho};
 
 /// The internal type representation used by the type inference engine.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -78,7 +81,7 @@ pub enum TyChirho {
     /// `forall a. a -> a` = ForallChirho { vars: [tv0], body: Fun(Var(tv0), Var(tv0)) }
     /// Preserves forall structure in non-prenex positions, enabling higher-rank types.
     ForallChirho {
-        vars_chirho: Vec<TyVarChirho>,
+        vars_chirho: QuantifiedVariablesChirho,
         body_chirho: Box<TyChirho>,
     },
 
@@ -86,7 +89,7 @@ pub enum TyChirho {
     /// `forall a -> body` remains visible in the inferred type until an
     /// expression application supplies `a`.
     RequiredForallChirho {
-        vars_chirho: Vec<TyVarChirho>,
+        vars_chirho: QuantifiedVariablesChirho,
         body_chirho: Box<TyChirho>,
     },
 }
@@ -244,13 +247,20 @@ impl TyChirho {
                 .iter()
                 .any(|t_chirho| t_chirho.contains_var_chirho()),
             TyChirho::ForallChirho {
-                body_chirho: t_chirho,
-                ..
+                vars_chirho,
+                body_chirho,
             }
             | TyChirho::RequiredForallChirho {
-                body_chirho: t_chirho,
-                ..
-            } => t_chirho.contains_var_chirho(),
+                vars_chirho,
+                body_chirho,
+            } => {
+                vars_chirho.records_chirho().iter().any(|record_chirho| {
+                    record_chirho
+                        .kind_chirho
+                        .as_ref()
+                        .is_some_and(|kind_chirho| kind_chirho.contains_var_chirho())
+                }) || body_chirho.contains_var_chirho()
+            }
         }
     }
 
@@ -291,7 +301,20 @@ impl TyChirho {
                 vars_chirho,
                 body_chirho,
             } => {
-                // Collect free vars from body, excluding those bound by the forall
+                let mut preceding_chirho = Vec::new();
+                for record_chirho in vars_chirho.records_chirho() {
+                    if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                        out_chirho.extend(
+                            kind_chirho
+                                .free_vars_chirho()
+                                .into_iter()
+                                .filter(|variable_chirho| {
+                                    !preceding_chirho.contains(variable_chirho)
+                                }),
+                        );
+                    }
+                    preceding_chirho.push(record_chirho.variable_chirho);
+                }
                 let mut body_fvs_chirho = Vec::new();
                 body_chirho.collect_free_vars_chirho(&mut body_fvs_chirho);
                 for fv_chirho in body_fvs_chirho {
@@ -548,24 +571,12 @@ impl std::hash::Hash for SchemePredChirho {
     }
 }
 
-/// The actual signature producer's binder correspondence. Constructor source
-/// IDs are canonical declaration slots; other explicit signatures retain their
-/// owner-qualified source ID. No spelling or sorted variable ID grants a slot.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SchemeSourceBinderChirho {
-    pub source_chirho:
-        haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho,
-    pub variable_chirho: TyVarChirho,
-    pub specificity_chirho: haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho,
-}
-
 /// A type scheme: `forall a1 a2 ... . (preds =>) ty`. Represents polymorphism.
 /// When `vars` is empty, the scheme is monomorphic.
 /// When `preds` is non-empty, the scheme is constrained (qualified).
 #[derive(Debug, Clone, PartialEq)]
 pub struct SchemeChirho {
-    pub source_binders_chirho: Vec<SchemeSourceBinderChirho>,
-    pub vars_chirho: Vec<TyVarChirho>,
+    pub vars_chirho: QuantifiedVariablesChirho,
     /// Typeclass predicates on the quantified variables, e.g. `Num a`.
     pub preds_chirho: Vec<SchemePredChirho>,
     pub ty_chirho: TyChirho,
@@ -575,8 +586,7 @@ impl SchemeChirho {
     /// A monomorphic scheme (no quantified variables, no predicates).
     pub fn mono_chirho(ty_chirho: TyChirho) -> Self {
         Self {
-            source_binders_chirho: Vec::new(),
-            vars_chirho: vec![],
+            vars_chirho: QuantifiedVariablesChirho::default(),
             preds_chirho: vec![],
             ty_chirho,
         }
@@ -591,6 +601,18 @@ impl SchemeChirho {
             }
         }
         variables_chirho.retain(|variable_chirho| !self.vars_chirho.contains(variable_chirho));
+        let mut preceding_chirho = Vec::new();
+        for record_chirho in self.vars_chirho.records_chirho() {
+            if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                variables_chirho.extend(
+                    kind_chirho
+                        .free_vars_chirho()
+                        .into_iter()
+                        .filter(|variable_chirho| !preceding_chirho.contains(variable_chirho)),
+                );
+            }
+            preceding_chirho.push(record_chirho.variable_chirho);
+        }
         variables_chirho.sort_unstable();
         variables_chirho.dedup();
         variables_chirho
@@ -708,7 +730,7 @@ mod tests_chirho {
             TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::ConChirho("T".to_string())),
         );
         let scheme_chirho = SchemeChirho::mono_chirho(TyChirho::ForallChirho {
-            vars_chirho: vec![a_chirho],
+            vars_chirho: vec![a_chirho].into(),
             body_chirho: Box::new(inner_chirho),
         });
         assert_eq!(scheme_chirho.spine_arity_chirho(), 2);
@@ -723,8 +745,7 @@ mod tests_chirho {
         let a_chirho = TyVarChirho(0);
         let b_chirho = TyVarChirho(1);
         let scheme_chirho = SchemeChirho {
-            source_binders_chirho: Vec::new(),
-            vars_chirho: vec![a_chirho],
+            vars_chirho: vec![a_chirho].into(),
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(a_chirho),
@@ -759,8 +780,7 @@ mod tests_chirho {
     #[test]
     fn scheme_display_chirho() {
         let scheme_chirho = SchemeChirho {
-            source_binders_chirho: Vec::new(),
-            vars_chirho: vec![TyVarChirho(0), TyVarChirho(1)],
+            vars_chirho: vec![TyVarChirho(0), TyVarChirho(1)].into(),
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(TyVarChirho(0)),
@@ -773,7 +793,7 @@ mod tests_chirho {
     #[test]
     fn forall_ty_display_chirho() {
         let ty_chirho = TyChirho::ForallChirho {
-            vars_chirho: vec![TyVarChirho(0)],
+            vars_chirho: vec![TyVarChirho(0)].into(),
             body_chirho: Box::new(TyChirho::fun_chirho(
                 TyChirho::VarChirho(TyVarChirho(0)),
                 TyChirho::VarChirho(TyVarChirho(0)),
@@ -788,7 +808,7 @@ mod tests_chirho {
         let b_chirho = TyVarChirho(1);
         // forall a. (a -> b) — b is free, a is bound
         let ty_chirho = TyChirho::ForallChirho {
-            vars_chirho: vec![a_chirho],
+            vars_chirho: vec![a_chirho].into(),
             body_chirho: Box::new(TyChirho::fun_chirho(
                 TyChirho::VarChirho(a_chirho),
                 TyChirho::VarChirho(b_chirho),
@@ -802,7 +822,7 @@ mod tests_chirho {
         let a_chirho = TyVarChirho(0);
         // forall a. a -> a — no free vars
         let ty_chirho = TyChirho::ForallChirho {
-            vars_chirho: vec![a_chirho],
+            vars_chirho: vec![a_chirho].into(),
             body_chirho: Box::new(TyChirho::fun_chirho(
                 TyChirho::VarChirho(a_chirho),
                 TyChirho::VarChirho(a_chirho),

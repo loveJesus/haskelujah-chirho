@@ -192,42 +192,48 @@ impl ElaborationStateChirho {
             } => {
                 self.charge_chirho(vars_chirho.len(), vars_chirho.len(), span_chirho)?;
                 let mark_chirho = bound_chirho.len();
-                let mut fresh_chirho = Vec::with_capacity(vars_chirho.len());
-                for variable_chirho in vars_chirho {
-                    let renamed_chirho = self.fresh_chirho(None, span_chirho)?;
-                    fresh_chirho.push(renamed_chirho);
-                    bound_chirho.push((*variable_chirho, renamed_chirho));
-                }
-                let body_chirho = (|| {
-                    for (source_chirho, renamed_chirho) in vars_chirho.iter().zip(&fresh_chirho) {
+                let result_chirho = (|| {
+                    let mut records_chirho = Vec::with_capacity(vars_chirho.len());
+                    for source_record_chirho in vars_chirho.records_chirho() {
+                        let source_chirho = source_record_chirho.variable_chirho;
                         self.charge_chirho(
                             context_chirho.nested_binders_chirho.len() + 1,
                             0,
                             span_chirho,
                         )?;
-                        let record_chirho =
+                        let provider_chirho =
                             context_chirho
                                 .nested_binders_chirho
                                 .iter()
                                 .find(|record_chirho| {
-                                    record_chirho.binder_chirho.variable_chirho == *source_chirho
+                                    record_chirho.binder_chirho.variable_chirho == source_chirho
                                 });
                         let (kind_chirho, specificity_chirho) =
-                            if let Some(record_chirho) = record_chirho {
+                            if let Some(kind_chirho) = &source_record_chirho.kind_chirho {
                                 (
                                     Some(self.instantiate_depth_chirho(
-                                        &record_chirho.binder_chirho.kind_chirho,
+                                        kind_chirho,
                                         context_chirho,
                                         depth_chirho + 1,
                                         bound_chirho,
                                     )?),
-                                    Some(record_chirho.specificity_chirho),
+                                    source_record_chirho.specificity_chirho,
+                                )
+                            } else if let Some(provider_chirho) = provider_chirho {
+                                (
+                                    Some(self.instantiate_depth_chirho(
+                                        &provider_chirho.binder_chirho.kind_chirho,
+                                        context_chirho,
+                                        depth_chirho + 1,
+                                        bound_chirho,
+                                    )?),
+                                    Some(provider_chirho.specificity_chirho),
                                 )
                             } else if local_chirho
-                                && self.variable_kinds_chirho.contains_key(source_chirho)
+                                && self.variable_kinds_chirho.contains_key(&source_chirho)
                             {
                                 let kind_chirho =
-                                    self.variable_kind_chirho(*source_chirho, span_chirho)?;
+                                    self.variable_kind_chirho(source_chirho, span_chirho)?;
                                 (
                                     Some(self.instantiate_depth_chirho(
                                         &kind_chirho,
@@ -235,10 +241,10 @@ impl ElaborationStateChirho {
                                         depth_chirho + 1,
                                         bound_chirho,
                                     )?),
-                                    self.source_specificity_chirho(*source_chirho),
+                                    self.source_specificity_chirho(source_chirho),
                                 )
                             } else {
-                                (None, None)
+                                (None, source_record_chirho.specificity_chirho)
                             };
                         if context_chirho.require_kinds_chirho
                             && (kind_chirho.is_none() || specificity_chirho.is_none())
@@ -248,28 +254,46 @@ impl ElaborationStateChirho {
                                 span_chirho,
                             ));
                         }
-                        if let Some(kind_chirho) = kind_chirho {
-                            self.variable_kinds_chirho
-                                .insert(*renamed_chirho, kind_chirho);
-                        }
+                        let renamed_chirho = self.fresh_chirho(None, span_chirho)?;
+                        let stored_kind_chirho = if let Some(kind_chirho) = kind_chirho {
+                            let copied_chirho = self.copy_chirho(&kind_chirho, span_chirho)?;
+                            self.set_variable_kind_chirho(renamed_chirho, kind_chirho);
+                            Some(Arc::new(copied_chirho))
+                        } else {
+                            None
+                        };
                         if let Some(specificity_chirho) = specificity_chirho {
                             self.note_source_variable_chirho(
-                                *renamed_chirho,
+                                renamed_chirho,
                                 specificity_chirho,
                                 true,
                                 span_chirho,
                             )?;
                         }
+                        records_chirho.push(crate::ty_chirho::QuantifiedVariableChirho {
+                            variable_chirho: renamed_chirho,
+                            kind_chirho: stored_kind_chirho,
+                            source_chirho: source_record_chirho.source_chirho.clone(),
+                            specificity_chirho,
+                        });
+                        bound_chirho.push((source_chirho, renamed_chirho));
                     }
-                    self.instantiate_depth_chirho(
+                    let body_chirho = self.instantiate_depth_chirho(
                         body_chirho,
                         context_chirho,
                         depth_chirho + 1,
                         bound_chirho,
-                    )
+                    )?;
+                    Ok((
+                        crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(
+                            records_chirho,
+                        ),
+                        body_chirho,
+                    ))
                 })();
                 bound_chirho.truncate(mark_chirho);
-                let body_chirho = Box::new(body_chirho?);
+                let (fresh_chirho, body_chirho) = result_chirho?;
+                let body_chirho = Box::new(body_chirho);
                 if matches!(term_chirho, TyChirho::RequiredForallChirho { .. }) {
                     TyChirho::RequiredForallChirho {
                         vars_chirho: fresh_chirho,
@@ -306,12 +330,12 @@ mod tests_chirho {
             ));
             let term_chirho = if required_chirho {
                 TyChirho::RequiredForallChirho {
-                    vars_chirho: vec![TyVarChirho(20)],
+                    vars_chirho: vec![TyVarChirho(20)].into(),
                     body_chirho,
                 }
             } else {
                 TyChirho::ForallChirho {
-                    vars_chirho: vec![TyVarChirho(20)],
+                    vars_chirho: vec![TyVarChirho(20)].into(),
                     body_chirho,
                 }
             };
@@ -330,12 +354,12 @@ mod tests_chirho {
             ));
             let expected_chirho = if required_chirho {
                 TyChirho::RequiredForallChirho {
-                    vars_chirho: vec![TyVarChirho(21)],
+                    vars_chirho: vec![TyVarChirho(21)].into(),
                     body_chirho: expected_body_chirho,
                 }
             } else {
                 TyChirho::ForallChirho {
-                    vars_chirho: vec![TyVarChirho(21)],
+                    vars_chirho: vec![TyVarChirho(21)].into(),
                     body_chirho: expected_body_chirho,
                 }
             };
@@ -422,6 +446,38 @@ mod tests_chirho {
 }
 
 impl TypeElaboratorChirho<'_> {
+    pub(super) fn introduced_quantifiers_chirho(
+        &mut self,
+        variables_chirho: &[TyVarChirho],
+        span_chirho: SpanChirho,
+    ) -> Result<crate::ty_chirho::QuantifiedVariablesChirho, ElaborationErrorChirho> {
+        self.state_chirho.charge_chirho(
+            variables_chirho.len(),
+            variables_chirho.len(),
+            span_chirho,
+        )?;
+        let mut records_chirho = Vec::with_capacity(variables_chirho.len());
+        for variable_chirho in variables_chirho {
+            let kind_chirho = self
+                .state_chirho
+                .variable_kind_chirho(*variable_chirho, span_chirho)?;
+            let kind_chirho = self
+                .state_chirho
+                .resolve_chirho(&kind_chirho, span_chirho)?;
+            let specificity_chirho = self
+                .state_chirho
+                .source_specificity_chirho(*variable_chirho)
+                .ok_or_else(|| {
+                    Self::error_chirho(
+                        "introduced universal lost its actual binder specificity",
+                        span_chirho,
+                    )
+                })?;
+            records_chirho.push(crate::ty_chirho::QuantifiedVariableChirho { variable_chirho: *variable_chirho, kind_chirho: Some(Arc::new(kind_chirho)), source_chirho: Some(haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::InferenceChirho { owner_chirho: self.state_chirho.owner_chirho, variable_chirho: *variable_chirho }), specificity_chirho: Some(specificity_chirho) });
+        }
+        Ok(crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(records_chirho))
+    }
+
     fn with_universal_kind_scope_chirho<ResultChirho>(
         &mut self,
         variables_chirho: &[TyVarChirho],
@@ -599,6 +655,8 @@ impl TypeElaboratorChirho<'_> {
                         this_chirho.infer_type_at_kind_chirho(syntax_body_chirho, &kind_chirho)
                     },
                 )?;
+                let variables_chirho =
+                    this_chirho.introduced_quantifiers_chirho(&variables_chirho, span_chirho)?;
                 Ok(ElaboratedTypeChirho {
                     term_chirho: if required_chirho {
                         TyChirho::RequiredForallChirho {
@@ -757,7 +815,7 @@ impl TypeElaboratorChirho<'_> {
             kind_chirho: Box::new(annotation_chirho),
             span_chirho,
         };
-        let variables_chirho = vars_chirho.clone();
+        let variables_chirho = self.introduced_quantifiers_chirho(vars_chirho, span_chirho)?;
         Ok(ElaboratedTypeChirho {
             term_chirho: if required_chirho {
                 TyChirho::RequiredForallChirho {

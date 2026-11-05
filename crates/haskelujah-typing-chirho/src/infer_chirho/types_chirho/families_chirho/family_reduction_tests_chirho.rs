@@ -919,7 +919,7 @@ fn equation_variables_carry_checked_polytypes_without_decomposing_them_chirho() 
     // The measured ExplicitFamilyLengthChirho accepts an explicit polymorphic
     // family argument. Its bound variable is payload, never an equation meta.
     let forall_chirho = TyChirho::ForallChirho {
-        vars_chirho: vec![TyVarChirho(0)],
+        vars_chirho: vec![TyVarChirho(0)].into(),
         body_chirho: Box::new(var_chirho(0)),
     };
     let identity_chirho = closed_chirho(

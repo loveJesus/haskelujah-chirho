@@ -107,6 +107,110 @@ impl DeclarationSchemeChirho {
     }
 }
 
+pub(crate) fn same_local_binders_chirho(
+    left_chirho: &[DeclarationLocalBinderChirho],
+    right_chirho: &[DeclarationLocalBinderChirho],
+    charge_chirho: &mut impl FnMut(usize) -> Option<()>,
+) -> Option<bool> {
+    charge_chirho(left_chirho.len().checked_add(right_chirho.len())?)?;
+    if left_chirho.len() != right_chirho.len() {
+        return Some(false);
+    }
+    for (left_chirho, right_chirho) in left_chirho.iter().zip(right_chirho) {
+        if left_chirho.specificity_chirho != right_chirho.specificity_chirho
+            || left_chirho.binder_chirho.variable_chirho
+                != right_chirho.binder_chirho.variable_chirho
+            || left_chirho.binder_chirho.visibility_chirho
+                != right_chirho.binder_chirho.visibility_chirho
+            || !super::same_type_contract_chirho(
+                &left_chirho.binder_chirho.kind_chirho,
+                &right_chirho.binder_chirho.kind_chirho,
+                charge_chirho,
+            )?
+        {
+            return Some(false);
+        }
+    }
+    Some(true)
+}
+
+fn contracts_agree_chirho(
+    left_chirho: &DeclarationSchemeChirho,
+    right_chirho: &DeclarationSchemeChirho,
+) -> Result<bool, String> {
+    let mut remaining_chirho = 1usize << 25;
+    let mut charge_chirho = |weight_chirho| {
+        remaining_chirho = remaining_chirho.checked_sub(weight_chirho)?;
+        Some(())
+    };
+    let result_chirho = (|| {
+        // Both schemes have already passed the bounded published-scope validator.
+        // Retain its proof-aware AST/scalar equality, then strengthen every Ty field.
+        if left_chirho != right_chirho {
+            return Some(false);
+        }
+        if !same_local_binders_chirho(
+            &left_chirho.local_binders_chirho,
+            &right_chirho.local_binders_chirho,
+            &mut charge_chirho,
+        )? {
+            return Some(false);
+        }
+        for (left_chirho, right_chirho) in left_chirho
+            .binders_chirho
+            .iter()
+            .map(|binder_chirho| &binder_chirho.kind_chirho)
+            .chain(std::iter::once(&left_chirho.result_kind_chirho))
+            .chain(left_chirho.synonym_rhs_chirho.iter())
+            .zip(
+                right_chirho
+                    .binders_chirho
+                    .iter()
+                    .map(|binder_chirho| &binder_chirho.kind_chirho)
+                    .chain(std::iter::once(&right_chirho.result_kind_chirho))
+                    .chain(right_chirho.synonym_rhs_chirho.iter()),
+            )
+        {
+            if !super::same_type_contract_chirho(left_chirho, right_chirho, &mut charge_chirho)? {
+                return Some(false);
+            }
+        }
+        if let (
+            DeclarationAssociationChirho::FamilyChirho {
+                default_chirho: Some(left_chirho),
+                ..
+            },
+            DeclarationAssociationChirho::FamilyChirho {
+                default_chirho: Some(right_chirho),
+                ..
+            },
+        ) = (
+            &left_chirho.association_chirho,
+            &right_chirho.association_chirho,
+        ) {
+            for (left_chirho, right_chirho) in left_chirho
+                .lhs_chirho
+                .iter()
+                .chain(std::iter::once(&left_chirho.rhs_chirho))
+                .zip(
+                    right_chirho
+                        .lhs_chirho
+                        .iter()
+                        .chain(std::iter::once(&right_chirho.rhs_chirho)),
+                )
+            {
+                if !super::same_type_contract_chirho(left_chirho, right_chirho, &mut charge_chirho)?
+                {
+                    return Some(false);
+                }
+            }
+        }
+        Some(true)
+    })();
+    result_chirho
+        .ok_or_else(|| "declaration contract comparison resource bound exhausted".to_owned())
+}
+
 /// Canonical headers only, not a competing spelling environment. Spellings
 /// resolve through the selected module's naming scopes before this lookup.
 #[derive(Debug, Clone, Default)]
@@ -177,7 +281,7 @@ impl DeclarationSchemesChirho {
     pub fn insert_chirho(&mut self, scheme_chirho: DeclarationSchemeChirho) -> Result<(), String> {
         validate_published_chirho(&scheme_chirho)?;
         if let Some(previous_chirho) = self.definitions_chirho.get(&scheme_chirho.identity_chirho) {
-            if previous_chirho.as_ref() != &scheme_chirho {
+            if !contracts_agree_chirho(previous_chirho, &scheme_chirho)? {
                 return Err("incompatible declaration telescopes".to_owned());
             }
             return Ok(());
@@ -207,7 +311,7 @@ impl DeclarationSchemesChirho {
         validate_published_chirho(&scheme_chirho)?;
         if let Some(previous_chirho) = self.definitions_chirho.get(&scheme_chirho.identity_chirho)
             && previous_chirho.owner_chirho.is_none()
-            && previous_chirho.as_ref() != &scheme_chirho
+            && !contracts_agree_chirho(previous_chirho, &scheme_chirho)?
         {
             return Err("incompatible published declaration telescope".to_owned());
         }
@@ -252,7 +356,7 @@ impl DeclarationSchemesChirho {
         for (identity_chirho, scheme_chirho) in &other_chirho.definitions_chirho {
             validate_published_chirho(scheme_chirho)?;
             if let Some(previous_chirho) = self.definitions_chirho.get(identity_chirho)
-                && previous_chirho != scheme_chirho
+                && !contracts_agree_chirho(previous_chirho, scheme_chirho)?
             {
                 return Err("incompatible declaration telescopes".to_owned());
             }

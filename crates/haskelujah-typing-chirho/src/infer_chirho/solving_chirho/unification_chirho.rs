@@ -52,16 +52,18 @@ impl InferCtxChirho {
                     body_chirho: body2_chirho,
                 },
             ) if vars1_chirho.len() == vars2_chirho.len() => {
-                let mut rename_chirho = SubstChirho::empty_chirho();
-                for (var1_chirho, var2_chirho) in vars1_chirho.iter().zip(vars2_chirho.iter()) {
-                    rename_chirho.insert_chirho(*var2_chirho, TyChirho::VarChirho(*var1_chirho));
-                }
-                let renamed_body2_chirho = rename_chirho.apply_ty_chirho(body2_chirho);
-                return self.unify_normalized_chirho(
-                    body1_chirho,
-                    &renamed_body2_chirho,
-                    span_chirho,
-                );
+                let (rename_chirho, kinds_chirho) =
+                    crate::unify_chirho::align_forall_prefix_chirho(
+                        vars1_chirho,
+                        vars2_chirho,
+                        span_chirho,
+                    )?;
+                let body1_chirho = kinds_chirho.apply_ty_chirho(body1_chirho);
+                let body2_chirho =
+                    kinds_chirho.apply_ty_chirho(&rename_chirho.apply_ty_chirho(body2_chirho));
+                return Ok(self
+                    .unify_normalized_chirho(&body1_chirho, &body2_chirho, span_chirho)?
+                    .compose_chirho(&kinds_chirho));
             }
             (
                 TyChirho::ForallChirho {
@@ -246,22 +248,18 @@ impl InferCtxChirho {
                     body_chirho: expected_body_chirho,
                 },
             ) if actual_vars_chirho.len() == expected_vars_chirho.len() => {
-                let mut rename_chirho = SubstChirho::empty_chirho();
-                for (actual_var_chirho, expected_var_chirho) in
-                    actual_vars_chirho.iter().zip(expected_vars_chirho.iter())
-                {
-                    rename_chirho.insert_chirho(
-                        *expected_var_chirho,
-                        TyChirho::VarChirho(*actual_var_chirho),
-                    );
-                }
-                let renamed_expected_body_chirho =
-                    rename_chirho.apply_ty_chirho(expected_body_chirho);
-                self.unify_normalized_chirho(
-                    actual_body_chirho,
-                    &renamed_expected_body_chirho,
-                    span_chirho,
-                )
+                let (rename_chirho, kinds_chirho) =
+                    crate::unify_chirho::align_forall_prefix_chirho(
+                        actual_vars_chirho,
+                        expected_vars_chirho,
+                        span_chirho,
+                    )?;
+                let actual_chirho = kinds_chirho.apply_ty_chirho(actual_body_chirho);
+                let expected_chirho = kinds_chirho
+                    .apply_ty_chirho(&rename_chirho.apply_ty_chirho(expected_body_chirho));
+                Ok(self
+                    .unify_normalized_chirho(&actual_chirho, &expected_chirho, span_chirho)?
+                    .compose_chirho(&kinds_chirho))
             }
             (
                 TyChirho::ForallChirho {

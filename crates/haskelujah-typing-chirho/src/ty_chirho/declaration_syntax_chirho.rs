@@ -481,7 +481,8 @@ impl DeclarationScopeValidationChirho<'_> {
             } => {
                 let mark_chirho = self.scope_chirho.len();
                 let result_chirho = (|| {
-                    for variable_chirho in vars_chirho {
+                    for inline_chirho in vars_chirho.records_chirho() {
+                        let variable_chirho = &inline_chirho.variable_chirho;
                         let record_chirho = *self
                             .records_chirho
                             .get(variable_chirho)
@@ -494,6 +495,29 @@ impl DeclarationScopeValidationChirho<'_> {
                                 "published typed quantifier and binder visibility disagree"
                                     .to_owned(),
                             );
+                        }
+                        self.charge_chirho(self.identity_chirho.len())?;
+                        let origin_agrees_chirho = matches!(&inline_chirho.source_chirho,
+                            Some(haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::QuantifiedChirho {
+                                declaration_chirho, index_chirho,
+                            }) if declaration_chirho.as_ref() == self.identity_chirho && *index_chirho == variable_chirho.0);
+                        let kind_agrees_chirho = match &inline_chirho.kind_chirho {
+                            Some(kind_chirho) => super::same_type_contract_chirho(
+                                kind_chirho,
+                                &record_chirho.binder_chirho.kind_chirho,
+                                &mut |weight_chirho| self.charge_chirho(weight_chirho).ok(),
+                            )
+                            .ok_or_else(|| {
+                                "declaration kind comparison resource bound exhausted".to_owned()
+                            })?,
+                            None => false,
+                        };
+                        if !origin_agrees_chirho
+                            || !kind_agrees_chirho
+                            || inline_chirho.specificity_chirho
+                                != Some(record_chirho.specificity_chirho)
+                        {
+                            return Err("published inline quantifier lost its checked kind, origin or specificity".to_owned());
                         }
                         self.typed_chirho(
                             &record_chirho.binder_chirho.kind_chirho,
@@ -756,9 +780,14 @@ pub(crate) fn validate_declaration_scopes_chirho(
         validator_chirho.typed_chirho(rhs_chirho, 0)?;
     }
     if let Some(syntax_chirho) = &schema_chirho.synonym_syntax_chirho {
+        let tables_agree_chirho = super::declarations_chirho::same_local_binders_chirho(
+            &schema_chirho.local_binders_chirho,
+            &syntax_chirho.local_binders_chirho,
+            &mut |weight_chirho| validator_chirho.charge_chirho(weight_chirho).ok(),
+        )
+        .ok_or_else(|| "declaration kind comparison resource bound exhausted".to_owned())?;
         if schema_chirho.synonym_rhs_chirho.is_none()
-            || schema_chirho.local_binders_chirho.as_ref()
-                != syntax_chirho.local_binders_chirho.as_ref()
+            || !tables_agree_chirho
             || syntax_chirho.parameters_chirho.len() != schema_chirho.source_variables_chirho.len()
         {
             return Err(
