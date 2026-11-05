@@ -126,6 +126,7 @@ struct TypeElaboratorChirho<'scope_chirho> {
     poly_kinds_chirho: bool,
     cusks_chirho: bool,
     unlifted_newtypes_chirho: bool,
+    unlifted_datatypes_chirho: bool,
     scoped_type_variables_chirho: bool,
     signature_variables_chirho: HashMap<String, ValueSignatureScopeChirho>,
     signature_undo_chirho: Vec<(String, Option<ValueSignatureScopeChirho>)>,
@@ -457,6 +458,12 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
                     "UnliftedNewtypes",
                     false,
                 ),
+            unlifted_datatypes_chirho:
+                haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(
+                    module_chirho,
+                    "UnliftedDatatypes",
+                    false,
+                ),
             scoped_type_variables_chirho:
                 haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(
                     module_chirho,
@@ -478,6 +485,7 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
             poly_kinds_chirho: policy_chirho.poly_kinds_chirho,
             cusks_chirho: policy_chirho.cusks_chirho,
             unlifted_newtypes_chirho: policy_chirho.unlifted_newtypes_chirho,
+            unlifted_datatypes_chirho: policy_chirho.unlifted_datatypes_chirho,
             scoped_type_variables_chirho: policy_chirho.scoped_type_variables_chirho,
             signature_variables_chirho: HashMap::new(),
             signature_undo_chirho: Vec::new(),

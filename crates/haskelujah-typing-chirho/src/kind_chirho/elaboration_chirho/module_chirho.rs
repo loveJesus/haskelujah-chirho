@@ -576,6 +576,7 @@ impl TypeElaboratorChirho<'_> {
             self.finish_catalogue_chirho(&constructors_chirho, module_chirho.span_chirho)?;
             self.recheck_declaration_bodies_chirho(module_chirho, &group_chirho, &aliases_chirho)?;
             self.check_declaration_contracts_chirho(&keys_chirho, module_chirho.span_chirho)?;
+            self.check_datatype_result_roles_chirho(&headers_chirho, module_chirho.span_chirho)?;
             self.queue_declaration_field_kinds_chirho(&headers_chirho, module_chirho.span_chirho)?;
         }
         Ok(())

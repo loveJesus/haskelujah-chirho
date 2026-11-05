@@ -138,6 +138,7 @@ fn with_argument_elaborator_chirho<ResultChirho>(
         poly_kinds_chirho: policy_chirho.poly_kinds_chirho,
         cusks_chirho: policy_chirho.cusks_chirho,
         unlifted_newtypes_chirho: policy_chirho.unlifted_newtypes_chirho,
+        unlifted_datatypes_chirho: policy_chirho.unlifted_datatypes_chirho,
         scoped_type_variables_chirho: policy_chirho.scoped_type_variables_chirho,
         signature_variables_chirho: HashMap::new(),
         signature_undo_chirho: Vec::new(),

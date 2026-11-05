@@ -30,6 +30,86 @@ pub(super) enum SignatureCheckingChirho {
 }
 
 impl TypeElaboratorChirho<'_> {
+    /// Check the completed producer result, rather than specializing a written
+    /// universal to satisfy datatype validity. Data return kinds require the
+    /// actual BoxedRep constructor even when a family could reduce to it;
+    /// newtype results may retain arbitrary checked TYPE representations.
+    pub(super) fn check_datatype_result_roles_chirho(
+        &mut self,
+        keys_chirho: &[Arc<str>],
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        use haskelujah_ast_chirho::name_chirho::CompilerRepresentationChirho;
+        use haskelujah_ast_chirho::promotion_chirho::{
+            BUILTIN_CONSTRUCTOR_MODULE_CHIRHO, PromotedKeyChirho,
+        };
+
+        for key_chirho in keys_chirho {
+            self.state_chirho.charge_chirho(1, 0, span_chirho)?;
+            let Some(role_chirho) = self
+                .registry_chirho
+                .declaration_schemes_chirho()
+                .get_chirho(key_chirho)
+                .map(|scheme_chirho| scheme_chirho.role_chirho)
+            else {
+                continue;
+            };
+            let enabled_chirho = match role_chirho {
+                TypeConstructorRoleChirho::DataChirho => self.unlifted_datatypes_chirho,
+                TypeConstructorRoleChirho::NewtypeChirho => self.unlifted_newtypes_chirho,
+                _ => continue,
+            };
+            let kind_chirho = self.result_kind_chirho(key_chirho, span_chirho)?;
+            let kind_chirho = self
+                .state_chirho
+                .resolve_chirho(&kind_chirho, span_chirho)?;
+            let mut tail_chirho = &kind_chirho;
+            while let TyChirho::FunChirho(_, body_chirho, _)
+            | TyChirho::ForallChirho { body_chirho, .. }
+            | TyChirho::RequiredForallChirho { body_chirho, .. } = tail_chirho
+            {
+                self.state_chirho.charge_chirho(1, 0, span_chirho)?;
+                tail_chirho = body_chirho;
+            }
+            if *tail_chirho == ElaborationStateChirho::type_universe_chirho() {
+                continue;
+            }
+            let allowed_chirho = if enabled_chirho {
+                match tail_chirho {
+                    TyChirho::AppChirho(function_chirho, representation_chirho)
+                        if matches!(&**function_chirho, TyChirho::ConChirho(key_chirho)
+                            if key_chirho == CompilerRepresentationChirho::RuntimeTypeChirho.type_key_chirho()) =>
+                    {
+                        role_chirho == TypeConstructorRoleChirho::NewtypeChirho
+                            || matches!(&**representation_chirho,
+                                TyChirho::AppChirho(boxed_chirho, _)
+                                    if matches!(&**boxed_chirho, TyChirho::ConChirho(key_chirho)
+                                        if key_chirho == PromotedKeyChirho::builtin_chirho(
+                                            BUILTIN_CONSTRUCTOR_MODULE_CHIRHO, "BoxedRep").as_str_chirho()))
+                    }
+                    _ => false,
+                }
+            } else {
+                false
+            };
+            if !allowed_chirho {
+                return Err(Self::error_chirho(
+                    match (role_chirho, enabled_chirho) {
+                        (TypeConstructorRoleChirho::DataChirho, true) => {
+                            "data type return kind must be TYPE with a BoxedRep representation"
+                        }
+                        (TypeConstructorRoleChirho::DataChirho, false) => {
+                            "data type return kind requires UnliftedDatatypes"
+                        }
+                        _ => "newtype return kind requires UnliftedNewtypes",
+                    },
+                    span_chirho,
+                ));
+            }
+        }
+        Ok(())
+    }
+
     pub(super) fn queue_declaration_field_kinds_chirho(
         &mut self,
         keys_chirho: &[Arc<str>],

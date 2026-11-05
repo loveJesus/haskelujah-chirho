@@ -445,3 +445,76 @@ fn representation_forall_alias_may_have_a_higher_result_kind_chirho() {
     representation_field_fixture_chirho("forall_chirho/HigherForallAliasWrongChirho")
         .expect("fresh GHC ACCEPT refutes the original negative prediction; forall alias result need not be a value kind");
 }
+
+#[test]
+fn representation_result_boxed_datatype_chirho() {
+    representation_field_fixture_chirho("forall_chirho/result_kinds_chirho/BoxedDataResultChirho")
+        .expect("fresh GHC-positive boxed unlifted data result checks");
+}
+
+#[test]
+fn representation_result_boxed_datatype_requires_its_option_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/result_kinds_chirho/BoxedDataResultWithoutFlagChirho",
+    )
+    .expect_err("fresh GHC-negative result requires UnliftedDatatypes");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_result_scalar_datatype_is_not_boxed_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/result_kinds_chirho/ScalarDataResultChirho",
+    )
+    .expect_err("fresh GHC-negative scalar data result rejects even with UnliftedDatatypes");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_result_boxed_datatype_may_quantify_levity_chirho() {
+    representation_field_fixture_chirho(
+        "forall_chirho/result_kinds_chirho/PolyLevityDataResultChirho",
+    )
+    .expect("fresh GHC-positive boxed data result keeps universal levity");
+}
+
+#[test]
+fn representation_result_scalar_newtype_requires_its_option_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/result_kinds_chirho/ScalarNewtypeResultWithoutFlagChirho",
+    )
+    .expect_err("fresh GHC-negative result requires UnliftedNewtypes");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_result_scalar_newtype_chirho() {
+    representation_field_fixture_chirho(
+        "forall_chirho/result_kinds_chirho/ScalarNewtypeResultChirho",
+    )
+    .expect("fresh GHC-positive scalar newtype result checks");
+}
+
+#[test]
+fn representation_result_datatype_family_is_not_a_boxed_constructor_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/result_kinds_chirho/ClosedFamilyDataResultChirho",
+    )
+    .expect_err("fresh GHC REJECT refutes the intended positive: result family is not BoxedRep");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_result_newtype_may_retain_a_checked_family_chirho() {
+    representation_field_fixture_chirho(
+        "forall_chirho/result_kinds_chirho/ClosedFamilyNewtypeResultChirho",
+    )
+    .expect("fresh GHC-positive newtype result may retain its checked RuntimeRep family");
+}
+
+#[test]
+fn representation_result_corpus_t16829a_requires_unlifted_newtypes_chirho() {
+    let error_chirho = check_chirho("should_fail", "T16829a.hs")
+        .expect_err("retained GHC-negative explicit scalar newtype requires UnliftedNewtypes");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
