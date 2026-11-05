@@ -4,7 +4,7 @@
 //!
 //! `newtype` is a reserved word, so a clause must consume its keyword token, or the keyword
 //! starts a separate declaration named after the class. A declaration may write several
-//! clauses, and a class's arguments are never read as classes.
+//! clauses, and a class's arguments are never read as classes: the class keeps them.
 
 use haskelujah_ast_chirho::decl_chirho::{DeclChirho, DerivedClassChirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
@@ -142,6 +142,83 @@ fn class_arguments_are_not_classes_chirho() {
             ),
             ("data", "After".to_string(), vec![]),
         ]
+    );
+}
+
+/// A type as a test reads it: constructors and variables by their full names, an application
+/// in parentheses, written parentheses dropped.
+fn type_text_chirho(type_chirho: &TypeChirho) -> String {
+    match type_chirho {
+        TypeChirho::ConChirho(name_chirho) | TypeChirho::VarChirho(name_chirho) => {
+            name_chirho.full_name_chirho()
+        }
+        TypeChirho::ParenChirho { inner_chirho, .. } => type_text_chirho(inner_chirho),
+        TypeChirho::AppChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => format!(
+            "({} {})",
+            type_text_chirho(fun_chirho),
+            type_text_chirho(arg_chirho)
+        ),
+        other_chirho => format!("{other_chirho:?}"),
+    }
+}
+
+/// Each derived class of the first data or newtype declaration: its full written name and
+/// its arguments.
+fn applied_classes_chirho(source_chirho: &str) -> Vec<(String, Vec<String>)> {
+    parse_and_lower_chirho(source_chirho)
+        .decls_chirho
+        .iter()
+        .find_map(|decl_chirho| match decl_chirho {
+            DeclChirho::DataDeclChirho {
+                deriving_chirho, ..
+            }
+            | DeclChirho::NewtypeDeclChirho {
+                deriving_chirho, ..
+            } => Some(deriving_chirho),
+            _ => None,
+        })
+        .expect("the declaration lowers")
+        .iter()
+        .map(|derived_chirho| {
+            (
+                derived_chirho.class_chirho.full_name_chirho(),
+                derived_chirho
+                    .class_arguments_chirho
+                    .iter()
+                    .map(type_text_chirho)
+                    .collect(),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn a_class_keeps_its_arguments_in_written_order_chirho() {
+    assert_eq!(
+        applied_classes_chirho(
+            "module M where\ndata T = T deriving anyclass (C (Maybe Int), D Bool a, E)\n"
+        ),
+        [
+            ("C".to_string(), vec!["(Maybe Int)".to_string()]),
+            ("D".to_string(), vec!["Bool".to_string(), "a".to_string()]),
+            ("E".to_string(), vec![]),
+        ]
+    );
+}
+
+#[test]
+fn a_qualified_class_keeps_its_qualifier_chirho() {
+    assert_eq!(
+        applied_classes_chirho("module M where\ndata T = T deriving stock (P.Eq, P.Show)\n"),
+        [("P.Eq".to_string(), vec![]), ("P.Show".to_string(), vec![]),]
+    );
+    assert_eq!(
+        applied_classes_chirho("module M where\ndata T = T deriving P.Ord\n"),
+        [("P.Ord".to_string(), vec![])]
     );
 }
 

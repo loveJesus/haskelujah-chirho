@@ -54,6 +54,18 @@ fn derived_chirho(
     DerivedClassChirho::new_chirho(var_name_chirho(class_chirho), strategy_chirho)
 }
 
+/// `class_chirho` applied to `Int`.
+fn applied_chirho(
+    class_chirho: &str,
+    strategy_chirho: Option<DerivingStrategyChirho>,
+) -> DerivedClassChirho {
+    DerivedClassChirho::applied_chirho(
+        var_name_chirho(class_chirho),
+        vec![con_ty_chirho("Int")],
+        strategy_chirho,
+    )
+}
+
 fn newtype_chirho() -> Option<DerivingStrategyChirho> {
     Some(DerivingStrategyChirho::newtype_at_chirho(gen_span_chirho()))
 }
@@ -311,16 +323,21 @@ fn only_newtype_routed_classes_take_the_representation_dictionary_chirho() {
         types_chirho: vec![con_ty_chirho("AgeChirho")],
         span_chirho: gen_span_chirho(),
     };
-    let classes_chirho = newtype_strategy_classes_chirho(&module_chirho(vec![
-        age_chirho(vec![
-            derived_chirho("Eq", stock_chirho()),
-            derived_chirho("Show", newtype_chirho()),
-            derived_chirho("Read", None),
-            derived_chirho("Num", None),
-            derived_chirho("Default", anyclass_chirho()),
+    let classes_chirho = newtype_strategy_classes_chirho(
+        &module_chirho(vec![
+            age_chirho(vec![
+                derived_chirho("Eq", stock_chirho()),
+                derived_chirho("Show", newtype_chirho()),
+                derived_chirho("Read", None),
+                derived_chirho("Num", None),
+                derived_chirho("Default", anyclass_chirho()),
+                // A class with arguments never takes the representation's dictionary.
+                applied_chirho("ScaleChirho", newtype_chirho()),
+            ]),
+            standalone_chirho,
         ]),
-        standalone_chirho,
-    ]));
+        &BuiltinClassScopeChirho::default(),
+    );
     assert_eq!(
         classes_chirho,
         HashMap::from([(
@@ -391,4 +408,197 @@ fn derive_any_class_takes_an_unwritten_newtype_class_over_gnd_chirho() {
         )]
     );
     assert!(gnd_chirho.warnings_chirho.is_empty());
+}
+
+/// `data <name> <vars> = <name>` deriving `deriving_chirho`.
+fn data_decl_chirho(
+    name_chirho: &str,
+    vars_chirho: &[&str],
+    deriving_chirho: Vec<DerivedClassChirho>,
+) -> DeclChirho {
+    DeclChirho::DataDeclChirho {
+        name_chirho: var_name_chirho(name_chirho),
+        type_vars_chirho: vars_chirho
+            .iter()
+            .map(|var_chirho| TyVarChirho::plain_chirho(var_name_chirho(var_chirho)))
+            .collect(),
+        constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+            name_chirho: var_name_chirho(name_chirho),
+            fields_chirho: vec![],
+            span_chirho: gen_span_chirho(),
+        }],
+        deriving_chirho,
+        kind_sig_chirho: None,
+        span_chirho: gen_span_chirho(),
+    }
+}
+
+/// Each generated instance's class, as written, and head types.
+fn instance_heads_chirho(result_chirho: &DerivingResultChirho) -> Vec<(String, Vec<TypeChirho>)> {
+    result_chirho
+        .instances_chirho
+        .iter()
+        .map(|instance_chirho| match instance_chirho {
+            DeclChirho::InstanceDeclChirho {
+                class_chirho,
+                types_chirho,
+                ..
+            } => (class_chirho.full_name_chirho(), types_chirho.clone()),
+            other_chirho => panic!("expected an instance, got {other_chirho:?}"),
+        })
+        .collect()
+}
+
+#[test]
+fn an_anyclass_instance_takes_the_full_written_head_chirho() {
+    // W1 (GHC prints `paired`): `deriving anyclass (PairChirho Int)` is `PairChirho Int TagChirho`.
+    let mut module_chirho = module_chirho(vec![
+        data_decl_chirho(
+            "TagChirho",
+            &[],
+            vec![applied_chirho("PairChirho", anyclass_chirho())],
+        ),
+        data_decl_chirho(
+            "BoxChirho",
+            &["a"],
+            vec![derived_chirho("MarkChirho", anyclass_chirho())],
+        ),
+    ]);
+    module_chirho.extensions_chirho = vec![
+        "DerivingStrategies".to_string(),
+        "DeriveAnyClass".to_string(),
+    ];
+    let result_chirho = derive_instances_chirho(&module_chirho);
+    assert_eq!(
+        instance_heads_chirho(&result_chirho),
+        [
+            (
+                "PairChirho".to_string(),
+                vec![con_ty_chirho("Int"), con_ty_chirho("TagChirho")]
+            ),
+            // A parameterized type is one applied head type, never `MarkChirho BoxChirho a`.
+            (
+                "MarkChirho".to_string(),
+                vec![app_ty_chirho(
+                    con_ty_chirho("BoxChirho"),
+                    var_ty_chirho("a")
+                )]
+            ),
+        ]
+    );
+    assert!(result_chirho.warnings_chirho.is_empty());
+}
+
+#[test]
+fn a_class_with_arguments_derives_nothing_through_stock_or_gnd_chirho() {
+    // Declaration validity refuses both by name (GHC-73993; W3's Unsupported gap).
+    let mut module_chirho = module_chirho(vec![
+        data_decl_chirho("TagChirho", &[], vec![applied_chirho("Eq", stock_chirho())]),
+        age_chirho(vec![
+            applied_chirho("ScaleChirho", newtype_chirho()),
+            applied_chirho("ScaleChirho", None),
+        ]),
+    ]);
+    module_chirho.extensions_chirho = vec!["DerivingStrategies".to_string()];
+    let result_chirho = derive_instances_chirho(&module_chirho);
+    assert!(
+        result_chirho.instances_chirho.is_empty(),
+        "{:?}",
+        result_chirho.instances_chirho
+    );
+    assert!(result_chirho.warnings_chirho.is_empty());
+}
+
+#[test]
+fn a_stock_instance_names_its_class_as_written_chirho() {
+    // S2 (GHC prints `same`): `P.Eq` beside a local `class Eq` is the Prelude's class.
+    let builtin_chirho = BuiltinClassScopeChirho::new_chirho(HashMap::from([(
+        "P.Eq".to_string(),
+        BuiltinClassChirho {
+            module_chirho: "GHC.Classes",
+            name_chirho: "Eq",
+            parameter_arities_chirho: &[0],
+        },
+    )]));
+    let local_eq_chirho = DeclChirho::ClassDeclChirho {
+        context_chirho: vec![],
+        name_chirho: var_name_chirho("Eq"),
+        type_vars_chirho: vec![TyVarChirho::plain_chirho(var_name_chirho("valueChirho"))],
+        methods_chirho: vec![],
+        associated_tfs_chirho: vec![],
+        fundeps_chirho: vec![],
+        span_chirho: gen_span_chirho(),
+    };
+    let prelude_eq_chirho = DerivedClassChirho::new_chirho(
+        NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+            "P",
+            "Eq",
+            gen_span_chirho(),
+        )),
+        stock_chirho(),
+    );
+    let mut module_chirho = module_chirho(vec![
+        local_eq_chirho,
+        data_decl_chirho("BoxChirho", &["a"], vec![prelude_eq_chirho]),
+        // S1: the local class is not the builtin one, so no generator derives it.
+        data_decl_chirho(
+            "ColorChirho",
+            &[],
+            vec![derived_chirho("Eq", stock_chirho())],
+        ),
+    ]);
+    module_chirho.extensions_chirho = vec!["DerivingStrategies".to_string()];
+    let result_chirho = derive_instances_with_builtins_chirho(&module_chirho, &builtin_chirho);
+    let [
+        DeclChirho::InstanceDeclChirho {
+            class_chirho,
+            context_chirho,
+            methods_chirho,
+            ..
+        },
+    ] = result_chirho.instances_chirho.as_slice()
+    else {
+        panic!(
+            "expected only P.Eq's instance, got {:?}",
+            result_chirho.instances_chirho
+        );
+    };
+    assert_eq!(class_chirho.full_name_chirho(), "P.Eq");
+    assert!(!methods_chirho.is_empty());
+    let context_classes_chirho: Vec<String> = context_chirho
+        .iter()
+        .map(|constraint_chirho| match constraint_chirho {
+            ConstraintChirho::ClassChirho { class_chirho, .. } => class_chirho.full_name_chirho(),
+            other_chirho => format!("{other_chirho:?}"),
+        })
+        .collect();
+    assert_eq!(context_classes_chirho, ["P.Eq"]);
+}
+
+#[test]
+fn a_standalone_head_derives_for_its_last_type_chirho() {
+    let standalone_chirho = DeclChirho::StandaloneDerivingDeclChirho {
+        strategy_chirho: anyclass_chirho(),
+        context_chirho: vec![],
+        class_chirho: var_name_chirho("PairChirho"),
+        types_chirho: vec![con_ty_chirho("Int"), con_ty_chirho("TagChirho")],
+        span_chirho: gen_span_chirho(),
+    };
+    let mut module_chirho = module_chirho(vec![
+        data_decl_chirho("TagChirho", &[], vec![]),
+        standalone_chirho,
+    ]);
+    module_chirho.extensions_chirho = vec![
+        "DerivingStrategies".to_string(),
+        "DeriveAnyClass".to_string(),
+    ];
+    let result_chirho = derive_instances_chirho(&module_chirho);
+    assert_eq!(
+        instance_heads_chirho(&result_chirho),
+        [(
+            "PairChirho".to_string(),
+            vec![con_ty_chirho("Int"), con_ty_chirho("TagChirho")]
+        )]
+    );
+    assert!(result_chirho.warnings_chirho.is_empty());
 }

@@ -1,12 +1,13 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! The deriving-strategy carrier: which words are strategies, and which entries take the
-//! class's own stock code (row 694).
+//! The deriving-strategy carrier: which words are strategies, which entries allow the class's
+//! own stock code, and the arguments an applied class keeps (row 694).
 
 use haskelujah_span_chirho::SpanChirho;
 
 use super::{DerivedClassChirho, DerivingStrategyChirho};
 use crate::name_chirho::{NameChirho, RawNameChirho};
+use crate::ty_chirho::TypeChirho;
 
 fn name_chirho(text_chirho: &str) -> NameChirho {
     NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
@@ -60,28 +61,42 @@ fn each_strategy_answers_exactly_one_predicate_chirho() {
 }
 
 #[test]
-fn only_unspecified_and_stock_entries_name_a_stock_class_chirho() {
+fn only_unspecified_and_stock_entries_allow_stock_code_chirho() {
     let span_chirho = SpanChirho::DUMMY_CHIRHO;
     let show_with_chirho =
         |strategy_chirho| DerivedClassChirho::new_chirho(name_chirho("Show"), strategy_chirho);
-    assert!(
-        DerivedClassChirho::unspecified_chirho(name_chirho("Show"))
-            .names_stock_class_chirho("Show")
-    );
+    assert!(DerivedClassChirho::unspecified_chirho(name_chirho("Show")).allows_stock_chirho());
     assert!(
         show_with_chirho(Some(DerivingStrategyChirho::stock_at_chirho(span_chirho)))
-            .names_stock_class_chirho("Show")
+            .allows_stock_chirho()
     );
     // `deriving newtype Show` prints the representation, never the constructor.
     assert!(
         !show_with_chirho(Some(DerivingStrategyChirho::newtype_at_chirho(span_chirho)))
-            .names_stock_class_chirho("Show")
+            .allows_stock_chirho()
     );
     assert!(
         !show_with_chirho(Some(DerivingStrategyChirho::anyclass_at_chirho(
             span_chirho
         )))
-        .names_stock_class_chirho("Show")
+        .allows_stock_chirho()
     );
-    assert!(!show_with_chirho(None).names_stock_class_chirho("Eq"));
+}
+
+#[test]
+fn an_applied_class_keeps_its_arguments_in_written_order_chirho() {
+    let arguments_chirho = vec![
+        TypeChirho::ConChirho(name_chirho("Int")),
+        TypeChirho::ConChirho(name_chirho("Bool")),
+    ];
+    let applied_chirho = DerivedClassChirho::applied_chirho(
+        name_chirho("TripleChirho"),
+        arguments_chirho.clone(),
+        None,
+    );
+    assert!(applied_chirho.has_class_arguments_chirho());
+    assert_eq!(applied_chirho.class_arguments_chirho, arguments_chirho);
+    assert!(
+        !DerivedClassChirho::unspecified_chirho(name_chirho("Show")).has_class_arguments_chirho()
+    );
 }

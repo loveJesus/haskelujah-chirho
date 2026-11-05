@@ -1,15 +1,16 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Rules 7 to 12 on hand-built AST: each refusal at GHC's caret, and the strategies, editions
-//! and extensions that must stay accepted (row 694; root's fresh GHC 9.14.1 contracts). The
-//! extension lists are as the parser leaves them, written flags after any edition.
+//! Rules 7 to 15 on hand-built AST: each refusal at GHC's caret, and the strategies, editions
+//! and extensions that must stay accepted (row 694; root's fresh GHC 9.14.1 contracts and the
+//! boundary probes measured at the cf6f7976 gate). The extension lists are as the parser leaves
+//! them, written flags after any edition.
 
 use std::collections::HashMap;
 
 use haskelujah_ast_chirho::decl_chirho::{
     ConDeclChirho, DerivedClassChirho, DerivingStrategyChirho, StrictnessChirho,
 };
-use haskelujah_ast_chirho::name_chirho::RawNameChirho;
+use haskelujah_ast_chirho::name_chirho::{BuiltinClassChirho, RawNameChirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::{ByteOffsetChirho, FileIdChirho, SpanChirho};
 
@@ -106,6 +107,18 @@ fn errors_chirho(
     decls_chirho: Vec<DeclChirho>,
     extensions_chirho: &[&str],
 ) -> Vec<DeclarationErrorChirho> {
+    errors_with_chirho(
+        decls_chirho,
+        extensions_chirho,
+        &BuiltinClassScopeChirho::default(),
+    )
+}
+
+fn errors_with_chirho(
+    decls_chirho: Vec<DeclChirho>,
+    extensions_chirho: &[&str],
+    builtin_classes_chirho: &BuiltinClassScopeChirho,
+) -> Vec<DeclarationErrorChirho> {
     let module_chirho = ModuleChirho {
         name_chirho: name_chirho("Main"),
         exports_chirho: None,
@@ -123,7 +136,7 @@ fn errors_chirho(
         origin_supply_chirho: Default::default(),
     };
     let mut errors_chirho = Vec::new();
-    check_deriving_strategies_chirho(&module_chirho, &mut errors_chirho);
+    check_deriving_strategies_chirho(&module_chirho, builtin_classes_chirho, &mut errors_chirho);
     errors_chirho
 }
 
@@ -304,6 +317,196 @@ fn standalone_newtype_deriving_is_judged_against_its_local_target_chirho() {
         [
             ("GHC-10333", span_at_chirho(50)),
             ("GHC-26557", span_at_chirho(50))
+        ]
+    );
+}
+
+/// `class <name> <parameters>` with no methods.
+fn class_decl_chirho(class_chirho: &str, parameters_chirho: &[&str]) -> DeclChirho {
+    DeclChirho::ClassDeclChirho {
+        context_chirho: vec![],
+        name_chirho: name_chirho(class_chirho),
+        type_vars_chirho: parameters_chirho
+            .iter()
+            .map(|parameter_chirho| {
+                haskelujah_ast_chirho::decl_chirho::TyVarChirho::plain_chirho(name_chirho(
+                    parameter_chirho,
+                ))
+            })
+            .collect(),
+        methods_chirho: vec![],
+        associated_tfs_chirho: vec![],
+        fundeps_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+/// `class_chirho` applied to `Int`, the class at offset 40.
+fn applied_to_int_chirho(
+    class_chirho: &str,
+    strategy_chirho: Option<DerivingStrategyChirho>,
+) -> DerivedClassChirho {
+    DerivedClassChirho::applied_chirho(
+        name_at_chirho(class_chirho, span_at_chirho(40)),
+        vec![TypeChirho::ConChirho(name_chirho("Int"))],
+        strategy_chirho,
+    )
+}
+
+#[test]
+fn a_class_application_must_leave_one_parameter_chirho() {
+    // W2 (GHC-73993): a one-parameter class applied to an argument; W1, its twin, accepts.
+    let found_chirho = errors_chirho(
+        vec![
+            class_decl_chirho("MarkChirho", &["valueChirho"]),
+            data_chirho(vec![applied_to_int_chirho("MarkChirho", anyclass_chirho())]),
+        ],
+        &["DerivingStrategies", "DeriveAnyClass"],
+    );
+    assert_eq!(
+        codes_at_chirho(&found_chirho),
+        [("GHC-73993", span_at_chirho(40))]
+    );
+    assert!(
+        found_chirho[0]
+            .message_chirho
+            .contains("`MarkChirho Int` is not a unary constraint")
+    );
+    assert!(
+        errors_chirho(
+            vec![
+                class_decl_chirho("PairChirho", &["keyChirho", "valueChirho"]),
+                data_chirho(vec![applied_to_int_chirho("PairChirho", anyclass_chirho())]),
+            ],
+            &["DerivingStrategies", "DeriveAnyClass"],
+        )
+        .is_empty()
+    );
+    // A stock class takes no argument, with or without a written strategy.
+    for strategy_chirho in [stock_chirho(), None] {
+        let found_chirho = errors_chirho(
+            vec![data_chirho(vec![applied_to_int_chirho(
+                "Eq",
+                strategy_chirho,
+            )])],
+            &["DerivingStrategies"],
+        );
+        assert_eq!(
+            codes_at_chirho(&found_chirho),
+            [("GHC-73993", span_at_chirho(40))]
+        );
+    }
+}
+
+#[test]
+fn the_stock_strategy_needs_the_builtin_class_itself_chirho() {
+    // S1 (GHC-00158): `Eq` names the module's own class.
+    let local_eq_chirho = || class_decl_chirho("Eq", &["valueChirho"]);
+    let found_chirho = errors_chirho(
+        vec![
+            local_eq_chirho(),
+            data_chirho(vec![class_with_chirho("Eq", stock_chirho())]),
+        ],
+        &["DerivingStrategies"],
+    );
+    assert_eq!(
+        codes_at_chirho(&found_chirho),
+        [("GHC-00158", span_at_chirho(40))]
+    );
+    assert!(
+        found_chirho[0]
+            .message_chirho
+            .contains("with the stock strategy")
+    );
+    // S2: `P.Eq` is the Prelude's class, proved by naming, beside the same local class.
+    let builtin_chirho = BuiltinClassScopeChirho::new_chirho(HashMap::from([(
+        "P.Eq".to_string(),
+        BuiltinClassChirho {
+            module_chirho: "GHC.Classes",
+            name_chirho: "Eq",
+            parameter_arities_chirho: &[0],
+        },
+    )]));
+    let prelude_eq_chirho = DerivedClassChirho::new_chirho(
+        NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+            "P",
+            "Eq",
+            span_at_chirho(40),
+        )),
+        stock_chirho(),
+    );
+    assert!(
+        errors_with_chirho(
+            vec![local_eq_chirho(), data_chirho(vec![prelude_eq_chirho])],
+            &["DerivingStrategies"],
+            &builtin_chirho,
+        )
+        .is_empty()
+    );
+}
+
+#[test]
+fn a_newtype_class_with_arguments_is_an_unsupported_gap_chirho() {
+    // W3: GHC accepts it; the GND dictionary keys one head type, so Haskelujah refuses it by name.
+    let scale_chirho = || class_decl_chirho("ScaleChirho", &["factorChirho", "valueChirho"]);
+    for strategy_chirho in [newtype_strategy_chirho(), None] {
+        let found_chirho = errors_chirho(
+            vec![
+                scale_chirho(),
+                newtype_chirho(vec![applied_to_int_chirho("ScaleChirho", strategy_chirho)]),
+            ],
+            &["DerivingStrategies", "GeneralizedNewtypeDeriving"],
+        );
+        assert_eq!(
+            codes_at_chirho(&found_chirho),
+            [(UNSUPPORTED_SHAPE_CHIRHO, span_at_chirho(40))]
+        );
+    }
+    // DeriveAnyClass takes the unwritten class instead, over the full head.
+    assert!(
+        errors_chirho(
+            vec![
+                scale_chirho(),
+                newtype_chirho(vec![applied_to_int_chirho("ScaleChirho", None)]),
+            ],
+            &["DeriveAnyClass", "GeneralizedNewtypeDeriving"],
+        )
+        .is_empty()
+    );
+}
+
+#[test]
+fn a_standalone_head_derives_for_its_last_type_chirho() {
+    let standalone_chirho = |strategy_chirho: Option<DerivingStrategyChirho>,
+                             class_chirho: &str| {
+        DeclChirho::StandaloneDerivingDeclChirho {
+            strategy_chirho,
+            context_chirho: vec![],
+            class_chirho: name_at_chirho(class_chirho, span_at_chirho(50)),
+            types_chirho: vec![
+                TypeChirho::ConChirho(name_chirho("Int")),
+                TypeChirho::ConChirho(name_chirho("BadChirho")),
+            ],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }
+    };
+    let found_chirho = errors_chirho(
+        vec![
+            class_decl_chirho("PairChirho", &["keyChirho", "valueChirho"]),
+            data_chirho(vec![]),
+            standalone_chirho(anyclass_chirho(), "PairChirho"),
+            standalone_chirho(None, "Eq"),
+            standalone_chirho(newtype_strategy_chirho(), "PairChirho"),
+        ],
+        &["DerivingStrategies", "DeriveAnyClass"],
+    );
+    // `PairChirho Int BadChirho` derives; `Eq Int BadChirho` gives Eq two types; the newtype
+    // strategy on the data type `BadChirho` is GHC-10333.
+    assert_eq!(
+        codes_at_chirho(&found_chirho),
+        [
+            (UNMEASURED_GHC_CODE_CHIRHO, span_at_chirho(50)),
+            ("GHC-10333", span_at_chirho(50)),
         ]
     );
 }

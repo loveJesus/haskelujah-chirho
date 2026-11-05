@@ -5,13 +5,16 @@
 //! `newtype Age = Age Int deriving stock Eq deriving newtype (Show, Num)` derives Eq with
 //! the stock strategy and Show and Num with the newtype strategy, so the strategy is kept
 //! per class, not per declaration. A clause without a strategy keyword leaves the choice to
-//! the deriving pass's legacy policy. `deriving C via T` clauses keep their own module-level
-//! record (`ModuleChirho::deriving_via_chirho`) and never appear here.
+//! the deriving pass's legacy policy. A class keeps the arguments written before the derived
+//! type, so `deriving anyclass (Pair Int)` asks for `Pair Int T`, never `Pair T`.
+//! `deriving C via T` clauses keep their own module-level record
+//! (`ModuleChirho::deriving_via_chirho`) and never appear here.
 //! workflow: language-features-chirho/deriving-strategies-chirho
 
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::name_chirho::{NameChirho, RawNameChirho};
+use crate::ty_chirho::TypeChirho;
 
 /// An explicit `stock`, `newtype` or `anyclass` strategy, as written.
 ///
@@ -87,20 +90,33 @@ impl DerivingStrategyChirho {
 /// One class a deriving clause requests.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DerivedClassChirho {
-    /// The class, as written (`Show`, `P.Show`); its arguments are not kept.
+    /// The class, as written (`Show`, `P.Show`).
     pub class_chirho: NameChirho,
+    /// The arguments written after the class, before the derived type, in order: `Int` in
+    /// `deriving anyclass (Pair Int)`. Empty for a bare class.
+    pub class_arguments_chirho: Vec<TypeChirho>,
     /// The clause's explicit strategy; `None` when the clause names none.
     pub strategy_chirho: Option<DerivingStrategyChirho>,
 }
 
 impl DerivedClassChirho {
-    /// A class requested with `strategy_chirho`.
+    /// A bare class requested with `strategy_chirho`.
     pub fn new_chirho(
         class_chirho: NameChirho,
         strategy_chirho: Option<DerivingStrategyChirho>,
     ) -> Self {
+        Self::applied_chirho(class_chirho, Vec::new(), strategy_chirho)
+    }
+
+    /// A class applied to `class_arguments_chirho`, requested with `strategy_chirho`.
+    pub fn applied_chirho(
+        class_chirho: NameChirho,
+        class_arguments_chirho: Vec<TypeChirho>,
+        strategy_chirho: Option<DerivingStrategyChirho>,
+    ) -> Self {
         Self {
             class_chirho,
+            class_arguments_chirho,
             strategy_chirho,
         }
     }
@@ -115,14 +131,18 @@ impl DerivedClassChirho {
         self.class_chirho.text_chirho()
     }
 
-    /// Whether this entry asks for `class_text_chirho` with no strategy other than
-    /// `stock`, so its instance is the class's own deriving code.
-    pub fn names_stock_class_chirho(&self, class_text_chirho: &str) -> bool {
-        self.class_text_chirho() == class_text_chirho
-            && self
-                .strategy_chirho
-                .as_ref()
-                .is_none_or(DerivingStrategyChirho::is_stock_chirho)
+    /// Whether the class is applied to arguments before the derived type.
+    pub fn has_class_arguments_chirho(&self) -> bool {
+        !self.class_arguments_chirho.is_empty()
+    }
+
+    /// Whether the entry's strategy lets the class's own stock code derive it: none is
+    /// written, or `stock` is. Which stock class the entry names is the deriving pass's
+    /// judgment, not a spelling.
+    pub fn allows_stock_chirho(&self) -> bool {
+        self.strategy_chirho
+            .as_ref()
+            .is_none_or(DerivingStrategyChirho::is_stock_chirho)
     }
 }
 

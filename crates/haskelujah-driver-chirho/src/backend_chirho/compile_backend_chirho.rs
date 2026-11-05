@@ -117,7 +117,15 @@ pub(crate) fn compile_backend_chirho(
 
     // Phase 5.5: Dictionary-passing transform (desugar typeclass constraints)
     let con_types_chirho = build_con_type_map_chirho(&module_chirho);
-    let newtype_info_chirho = build_newtype_info_chirho(&module_chirho);
+    // The builtin classes the module's class spellings name (K01): the frontend built the
+    // same scope from the same declarations, imports and interfaces before deriving, and
+    // deriving adds only instances. The newtype inventory and the derived Show and Enum
+    // metadata judge each derived class by it, exactly as the deriving pass routed it (row 694).
+    // workflow: language-features-chirho/deriving-strategies-chirho
+    let builtin_class_scope_chirho =
+        haskelujah_naming_chirho::build_builtin_class_scope_chirho(&module_chirho, ifaces_chirho);
+    let newtype_info_chirho =
+        build_newtype_info_chirho(&module_chirho, &builtin_class_scope_chirho);
     let mut newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
         .values()
         .map(|info_chirho| info_chirho.constructor_chirho.clone())
@@ -180,9 +188,15 @@ pub(crate) fn compile_backend_chirho(
     // Constructor metadata for every type that derives Show (row 533) or Enum (row 669).
     // workflow: print-show-evidence-chirho
     let derived_shows_chirho =
-        haskelujah_typing_chirho::deriving_chirho::derived_show_metadata_chirho(&module_chirho);
+        haskelujah_typing_chirho::deriving_chirho::derived_show_metadata_with_builtins_chirho(
+            &module_chirho,
+            &builtin_class_scope_chirho,
+        );
     let derived_enums_chirho =
-        haskelujah_typing_chirho::deriving_chirho::derived_enum_metadata_chirho(&module_chirho);
+        haskelujah_typing_chirho::deriving_chirho::derived_enum_metadata_with_builtins_chirho(
+            &module_chirho,
+            &builtin_class_scope_chirho,
+        );
     let dict_result_chirho = haskelujah_core_chirho::dict_pass_module_full_with_evidence_chirho(
         &desugar_output_chirho.module_chirho,
         desugar_output_chirho.names_chirho,

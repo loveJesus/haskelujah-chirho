@@ -13,9 +13,11 @@ use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, TyVarChirho}
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho};
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::name_chirho::NameChirho;
+use haskelujah_ast_chirho::name_chirho::{BuiltinClassScopeChirho, NameChirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
+
+use super::stock_identity_chirho::StockIdentityChirho;
 
 use super::{
     app_chirho, con_field_count_chirho, con_name_chirho, con_pat_chirho, declaration_heads_chirho,
@@ -70,15 +72,29 @@ pub struct DerivedShowChirho {
     pub constructors_chirho: Vec<DerivedShowConChirho>,
 }
 
-/// Every `data` type in the module whose deriving clause names Show, by type name.
+/// Every `data` type in the module whose deriving clause names Show, by type name, with no
+/// builtin class proof: every class keeps its written name.
+/// workflow: print-show-evidence-chirho
+pub fn derived_show_metadata_chirho(
+    module_chirho: &ModuleChirho,
+) -> HashMap<String, DerivedShowChirho> {
+    derived_show_metadata_with_builtins_chirho(module_chirho, &BuiltinClassScopeChirho::default())
+}
+
+/// Every `data` type in the module whose deriving clause asks for the stock Show class, by
+/// type name, judged with the builtin classes naming proved for the module (row 694), as the
+/// deriving pass judged it.
 ///
 /// A type with a GADT constructor, or a field whose type the Show key grammar cannot
 /// spell, is left out, so its Show keeps its existing route. Newtypes and standalone
 /// deriving are not described here.
 /// workflow: print-show-evidence-chirho
-pub fn derived_show_metadata_chirho(
+pub fn derived_show_metadata_with_builtins_chirho(
     module_chirho: &ModuleChirho,
+    builtin_classes_chirho: &BuiltinClassScopeChirho,
 ) -> HashMap<String, DerivedShowChirho> {
+    let identity_chirho =
+        StockIdentityChirho::of_module_chirho(module_chirho, builtin_classes_chirho);
     let precedences_chirho = declared_precedences_chirho(module_chirho);
     let mut metadata_chirho = HashMap::new();
     for decl_chirho in &module_chirho.decls_chirho {
@@ -97,7 +113,7 @@ pub fn derived_show_metadata_chirho(
         // A `newtype` or `anyclass` strategy is not the constructor rendering (row 694).
         if !deriving_chirho
             .iter()
-            .any(|derived_chirho| derived_chirho.names_stock_class_chirho("Show"))
+            .any(|derived_chirho| identity_chirho.names_stock_class_chirho(derived_chirho, "Show"))
         {
             continue;
         }

@@ -4,19 +4,23 @@
 //! Part of CST-to-AST lowering (`lower_chirho.rs`).
 //!
 //! Each clause lowers to the classes it lists, every one carrying the clause's written
-//! strategy. A class is the first constructor name of each comma-separated entry, so the
-//! arguments of `deriving (C (Maybe Int))` are never read as classes of their own.
+//! strategy. Each comma-separated entry lowers through the flat type lowering record fields
+//! use, and splits into its class and the arguments written after it: `C (Maybe Int)` is the
+//! class `C` applied to `Maybe Int`, never two classes, and the arguments are never dropped.
 //! workflow: language-features-chirho/deriving-strategies-chirho
 
 use haskelujah_ast_chirho::decl_chirho::{DerivedClassChirho, DerivingStrategyChirho};
+use haskelujah_ast_chirho::name_chirho::NameChirho;
+use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_syntax_chirho::green_chirho::{GreenElementChirho, GreenNodeChirho};
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
 use super::{ChildChirho, LowerCtxChirho};
 
 impl LowerCtxChirho {
-    /// The classes one deriving clause lists, each with the clause's strategy. A
-    /// `deriving C via T` clause yields nothing: the module's via record derives it.
+    /// The classes one deriving clause lists, each with the clause's strategy and its own
+    /// arguments. A `deriving C via T` clause yields nothing: the module's via record
+    /// derives it.
     /// workflow: language-features-chirho/deriving-strategies-chirho
     pub(super) fn lower_deriving_clause_chirho(
         &self,
@@ -25,13 +29,16 @@ impl LowerCtxChirho {
     ) -> Vec<DerivedClassChirho> {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let mut strategy_chirho = None;
-        let mut classes_chirho = Vec::new();
+        let mut entries_chirho: Vec<Vec<&ChildChirho>> = Vec::new();
+        let mut entry_chirho: Vec<&ChildChirho> = Vec::new();
         // The clause's own list is depth 1; a bare `deriving C` is depth 0.
         let mut depth_chirho = 0usize;
-        let mut expecting_class_chirho = true;
         let mut saw_class_list_chirho = false;
         for child_chirho in &children_chirho {
             let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho else {
+                if depth_chirho > 0 {
+                    entry_chirho.push(child_chirho);
+                }
                 continue;
             };
             let kind_chirho = tok_chirho.kind_chirho();
@@ -49,32 +56,51 @@ impl LowerCtxChirho {
                         self.name_from_token_chirho(tok_chirho, span_chirho),
                     );
                 }
-                TokenKindChirho::LeftParenChirho => {
+                TokenKindChirho::LeftParenChirho if depth_chirho == 0 => {
                     saw_class_list_chirho = true;
-                    depth_chirho += 1;
+                    depth_chirho = 1;
                 }
-                TokenKindChirho::RightParenChirho => {
-                    depth_chirho = depth_chirho.saturating_sub(1);
+                TokenKindChirho::RightParenChirho | TokenKindChirho::CommaChirho
+                    if depth_chirho == 1 =>
+                {
+                    entries_chirho.push(std::mem::take(&mut entry_chirho));
+                    if kind_chirho == TokenKindChirho::RightParenChirho {
+                        depth_chirho = 0;
+                    }
                 }
-                TokenKindChirho::CommaChirho if depth_chirho <= 1 => {
-                    expecting_class_chirho = true;
+                _ if depth_chirho > 0 => {
+                    match kind_chirho {
+                        TokenKindChirho::LeftParenChirho => depth_chirho += 1,
+                        TokenKindChirho::RightParenChirho => depth_chirho -= 1,
+                        _ => {}
+                    }
+                    entry_chirho.push(child_chirho);
                 }
                 TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho
-                    if expecting_class_chirho && depth_chirho <= 1 =>
+                    if !saw_class_list_chirho =>
                 {
                     saw_class_list_chirho = true;
-                    expecting_class_chirho = false;
-                    let span_chirho =
-                        self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                    classes_chirho.push(self.name_from_token_chirho(tok_chirho, span_chirho));
+                    entries_chirho.push(vec![child_chirho]);
                 }
                 _ => saw_class_list_chirho = true,
             }
         }
-        classes_chirho
+        // A list a layout token cut short keeps the entry it was reading.
+        entries_chirho.push(entry_chirho);
+        entries_chirho
             .into_iter()
-            .map(|class_chirho| {
-                DerivedClassChirho::new_chirho(class_chirho, strategy_chirho.clone())
+            .filter_map(|entry_chirho| {
+                let (first_chirho, last_chirho) = (entry_chirho.first()?, entry_chirho.last()?);
+                let span_chirho =
+                    self.span_chirho(first_chirho.start_chirho, last_chirho.end_chirho);
+                let (class_chirho, arguments_chirho) = class_application_chirho(
+                    self.type_from_flat_children_chirho(&entry_chirho, span_chirho),
+                )?;
+                Some(DerivedClassChirho::applied_chirho(
+                    class_chirho,
+                    arguments_chirho,
+                    strategy_chirho.clone(),
+                ))
             })
             .collect()
     }
@@ -104,5 +130,30 @@ impl LowerCtxChirho {
             }
         }
         None
+    }
+}
+
+/// A deriving entry's class and the arguments written after it, in order: `C (Maybe Int) Bool`
+/// is `C` applied to `Maybe Int` and `Bool`. `None` when the entry's head names no class.
+fn class_application_chirho(type_chirho: TypeChirho) -> Option<(NameChirho, Vec<TypeChirho>)> {
+    let mut arguments_chirho = Vec::new();
+    let mut head_chirho = type_chirho;
+    loop {
+        match head_chirho {
+            TypeChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                arguments_chirho.push(*arg_chirho);
+                head_chirho = *fun_chirho;
+            }
+            TypeChirho::ParenChirho { inner_chirho, .. } => head_chirho = *inner_chirho,
+            TypeChirho::ConChirho(class_chirho) => {
+                arguments_chirho.reverse();
+                return Some((class_chirho, arguments_chirho));
+            }
+            _ => return None,
+        }
     }
 }

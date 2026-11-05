@@ -115,21 +115,23 @@ pub(crate) fn run_frontend_under_deferral_chirho(
     let written_decl_count_chirho = module_chirho.decls_chirho.len();
     let splice_warnings_chirho = splice_result_chirho.warnings_chirho;
 
+    // The builtin classes the module's class spellings name, proven from the same
+    // interfaces resolution reads (K01). Declaration validity and deriving judge which stock
+    // class a derived class names by them, and deriving reads their parameter kinds to
+    // eta-reduce a GND head (row 694); the kind pass binds them. Deriving appends only
+    // instances, which declare no type name, so the scope is the same before and after it.
+    // workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
+    let builtin_class_scope_chirho =
+        haskelujah_naming_chirho::build_builtin_class_scope_chirho(&module_chirho, ifaces_chirho);
+
     // Phase 2.4: Declaration validity (row 683), judged on the module as written,
     // before deriving appends generated instances. Reported after name resolution.
     // workflow: compiler-pipeline-chirho/declaration-validity-chirho
     let declaration_validity_chirho =
-        haskelujah_typing_chirho::check_module_declaration_validity_diagnostics_chirho(
+        haskelujah_typing_chirho::check_module_declaration_validity_with_builtins_diagnostics_chirho(
             &module_chirho,
+            &builtin_class_scope_chirho,
         );
-
-    // The builtin classes the module's class spellings name, proven from the same
-    // interfaces resolution reads (K01). Deriving reads their parameter kinds to eta-reduce
-    // a GND head (row 694), and the kind pass binds them. Deriving appends only instances,
-    // which declare no type name, so the scope is the same before and after it.
-    // workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
-    let builtin_class_scope_chirho =
-        haskelujah_naming_chirho::build_builtin_class_scope_chirho(&module_chirho, ifaces_chirho);
 
     // Phase 2.5: Deriving — generate instance declarations for `deriving` clauses
     let deriving_warnings_chirho =

@@ -9,9 +9,11 @@ use haskelujah_ast_chirho::decl_chirho::{DerivedClassChirho, DerivingStrategyChi
 
 use super::strategy_route_chirho::{DeclaredTypeChirho, DerivingPolicyChirho, derive_class_chirho};
 
-/// One standalone deriving declaration's request: its class, written strategy and span.
+/// One standalone deriving declaration's request: its class, the head types before the
+/// derived one (the class's arguments), its written strategy and span.
 struct StandaloneRequestChirho<'a> {
     class_chirho: &'a NameChirho,
+    class_arguments_chirho: &'a [TypeChirho],
     strategy_chirho: Option<&'a DerivingStrategyChirho>,
     span_chirho: SpanChirho,
 }
@@ -32,12 +34,15 @@ pub(super) fn derive_standalone_instances_chirho(
             span_chirho,
         } = decl_chirho
         {
-            let type_name_chirho = types_chirho.first().and_then(target_name_chirho);
+            // The derived type is the head's last type: `deriving anyclass instance
+            // Pair Int T` derives for `T` (row 694).
+            let type_name_chirho = types_chirho.last().and_then(target_name_chirho);
 
             if let Some(target_chirho) = type_name_chirho {
                 let first_generated_chirho = instances_chirho.len();
                 let request_chirho = StandaloneRequestChirho {
                     class_chirho,
+                    class_arguments_chirho: &types_chirho[..types_chirho.len() - 1],
                     strategy_chirho: strategy_chirho.as_ref(),
                     span_chirho: *span_chirho,
                 };
@@ -51,15 +56,18 @@ pub(super) fn derive_standalone_instances_chirho(
                 );
                 // Stock generators supply method bodies, but the instance is
                 // the declaration the user wrote, including specialization and
-                // its context. A kind-signature header may have no AST binders.
+                // its context, and its class as written. A kind-signature header
+                // may have no AST binders.
                 for generated_chirho in &mut instances_chirho[first_generated_chirho..] {
                     if let DeclChirho::InstanceDeclChirho {
                         context_chirho: generated_context_chirho,
+                        class_chirho: generated_class_chirho,
                         types_chirho: generated_types_chirho,
                         ..
                     } = generated_chirho
                     {
                         *generated_context_chirho = context_chirho.clone();
+                        *generated_class_chirho = class_chirho.clone();
                         *generated_types_chirho = types_chirho.clone();
                     }
                 }
@@ -140,7 +148,7 @@ fn derive_standalone_for_type_chirho(
 }
 
 /// A written strategy routes like a deriving clause's (row 694); an unwritten one keeps
-/// standalone deriving's stock-only route.
+/// standalone deriving's stock-only route, for the stock class the builtin class proof names.
 /// workflow: language-features-chirho/deriving-strategies-chirho
 fn derive_standalone_class_chirho(
     declared_chirho: &DeclaredTypeChirho<'_>,
@@ -150,8 +158,9 @@ fn derive_standalone_class_chirho(
     warnings_chirho: &mut Vec<String>,
 ) {
     if let Some(strategy_chirho) = request_chirho.strategy_chirho {
-        let derived_chirho = DerivedClassChirho::new_chirho(
+        let derived_chirho = DerivedClassChirho::applied_chirho(
             request_chirho.class_chirho.clone(),
+            request_chirho.class_arguments_chirho.to_vec(),
             Some(strategy_chirho.clone()),
         );
         derive_class_chirho(
@@ -164,8 +173,20 @@ fn derive_standalone_class_chirho(
         return;
     }
     let class_text_chirho = request_chirho.class_chirho.text_chirho();
+    let stock_class_chirho = policy_chirho.stock_class_chirho(request_chirho.class_chirho);
+    // A stock class applied to arguments: declaration validity refuses the head (rule 13).
+    if stock_class_chirho.is_some() && !request_chirho.class_arguments_chirho.is_empty() {
+        return;
+    }
+    let Some(stock_class_chirho) = stock_class_chirho else {
+        warnings_chirho.push(format!(
+            "standalone deriving {class_text_chirho} not yet supported for {}",
+            declared_chirho.name_chirho.text_chirho()
+        ));
+        return;
+    };
     if !derive_stock_class_chirho(
-        class_text_chirho,
+        stock_class_chirho,
         declared_chirho.name_chirho,
         declared_chirho.type_vars_chirho,
         declared_chirho.constructors_chirho,

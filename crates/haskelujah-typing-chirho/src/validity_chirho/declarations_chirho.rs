@@ -13,8 +13,8 @@
 //! 4. a default signature has a default binding (`GHC-59794`);
 //! 5. a newtype constructor's field has no strictness annotation (`GHC-04049`);
 //! 6. a lazy field annotation (`~T`) needs `StrictData` or `Strict` (`GHC-81601`);
-//! 7. the `newtype` deriving strategy derives only for a newtype (`GHC-10333`);
-//! 8. the `newtype` deriving strategy needs GeneralizedNewtypeDeriving (`GHC-26557`).
+//! 7. to 15. deriving strategies, the extensions they need and the classes they derive
+//!    (`deriving_strategy_chirho.rs`, row 694).
 //!
 //! Rule 6 judges the written override only. The module-wide `StrictData`
 //! default (unannotated fields strict) is not implemented: such fields stay
@@ -36,7 +36,7 @@ use haskelujah_ast_chirho::decl_chirho::{
 };
 use haskelujah_ast_chirho::expr_chirho::LocalBindChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::name_chirho::NameChirho;
+use haskelujah_ast_chirho::name_chirho::{BuiltinClassScopeChirho, NameChirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_diagnostics_chirho::{
     DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho, LabelChirho,
@@ -45,17 +45,26 @@ use haskelujah_span_chirho::SpanChirho;
 
 use super::ValidityResultChirho;
 
-// Rules 7 and 8: a written `newtype` deriving strategy (row 694).
+// Rules 7 to 15: deriving strategies and the classes they derive (row 694).
 #[path = "deriving_strategy_chirho.rs"]
 mod deriving_strategy_chirho;
 
 /// `E0209`: a declaration whose written shape GHC rejects.
 const INVALID_DECLARATION_CODE_CHIRHO: u16 = 209;
 
-/// A declaration that GHC rejects for its written shape.
+/// The code a rule reports for a shape GHC accepts that Haskelujah cannot compile yet, so its
+/// diagnostic names the gap instead of a GHC code.
+pub(crate) const UNSUPPORTED_SHAPE_CHIRHO: &str = "unsupported";
+
+/// The code a rule reports while GHC's code for its error is still to be measured.
+pub(crate) const UNMEASURED_GHC_CODE_CHIRHO: &str = "unmeasured";
+
+/// A declaration that GHC rejects for its written shape, or one whose shape Haskelujah cannot
+/// compile yet.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DeclarationErrorChirho {
-    /// GHC's code for the rule that fired, such as `GHC-23517`.
+    /// GHC's code for the rule that fired, such as `GHC-23517`; `UNSUPPORTED_SHAPE_CHIRHO`
+    /// for a shape GHC accepts, or `UNMEASURED_GHC_CODE_CHIRHO` while GHC's code is unknown.
     pub ghc_code_chirho: &'static str,
     /// Human-readable message, phrased like GHC's.
     pub message_chirho: String,
@@ -65,22 +74,43 @@ pub struct DeclarationErrorChirho {
     pub related_span_chirho: Option<SpanChirho>,
 }
 
-/// Run the declaration rules and package the findings as diagnostics.
+/// Run the declaration rules and package the findings as diagnostics, with no builtin class
+/// proof: a deriving rule judges every class by its written name.
 /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
 pub fn check_module_declaration_validity_diagnostics_chirho(
     module_chirho: &ModuleChirho,
 ) -> ValidityResultChirho {
+    check_module_declaration_validity_with_builtins_diagnostics_chirho(
+        module_chirho,
+        &BuiltinClassScopeChirho::default(),
+    )
+}
+
+/// Run the declaration rules, judging derived classes with the builtin classes naming proved
+/// for the module (K01), and package the findings as diagnostics.
+/// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+pub fn check_module_declaration_validity_with_builtins_diagnostics_chirho(
+    module_chirho: &ModuleChirho,
+    builtin_classes_chirho: &BuiltinClassScopeChirho,
+) -> ValidityResultChirho {
     let mut diagnostics_chirho = DiagnosticBundleChirho::empty_chirho();
-    for error_chirho in check_module_declaration_validity_chirho(module_chirho) {
+    for error_chirho in check_module_declaration_validity_with_builtins_chirho(
+        module_chirho,
+        builtin_classes_chirho,
+    ) {
+        let note_chirho = match error_chirho.ghc_code_chirho {
+            UNSUPPORTED_SHAPE_CHIRHO => "Haskelujah does not support this yet".to_string(),
+            UNMEASURED_GHC_CODE_CHIRHO => {
+                "GHC's code for this error is not measured yet".to_string()
+            }
+            ghc_code_chirho => format!("GHC reports this as {ghc_code_chirho}"),
+        };
         let mut diagnostic_chirho = DiagnosticChirho::error_with_code_chirho(
             ErrorCodeChirho::error_chirho(INVALID_DECLARATION_CODE_CHIRHO),
             error_chirho.message_chirho,
             error_chirho.span_chirho,
         )
-        .with_note_chirho(format!(
-            "GHC reports this as {}",
-            error_chirho.ghc_code_chirho
-        ));
+        .with_note_chirho(note_chirho);
         if let Some(related_chirho) = error_chirho.related_span_chirho {
             diagnostic_chirho = diagnostic_chirho.with_label_chirho(LabelChirho::secondary_chirho(
                 related_chirho,
@@ -92,9 +122,22 @@ pub fn check_module_declaration_validity_diagnostics_chirho(
     ValidityResultChirho { diagnostics_chirho }
 }
 
-/// Every declaration-shape error in a module, in declaration order.
+/// Every declaration-shape error in a module, in declaration order, with no builtin class
+/// proof.
 pub fn check_module_declaration_validity_chirho(
     module_chirho: &ModuleChirho,
+) -> Vec<DeclarationErrorChirho> {
+    check_module_declaration_validity_with_builtins_chirho(
+        module_chirho,
+        &BuiltinClassScopeChirho::default(),
+    )
+}
+
+/// Every declaration-shape error in a module, in declaration order, judging derived classes
+/// with the builtin classes naming proved for it.
+pub fn check_module_declaration_validity_with_builtins_chirho(
+    module_chirho: &ModuleChirho,
+    builtin_classes_chirho: &BuiltinClassScopeChirho,
 ) -> Vec<DeclarationErrorChirho> {
     let mut errors_chirho = Vec::new();
     let strict_data_chirho = strict_data_enabled_chirho(module_chirho);
@@ -120,7 +163,11 @@ pub fn check_module_declaration_validity_chirho(
             _ => {}
         }
     }
-    deriving_strategy_chirho::check_deriving_strategies_chirho(module_chirho, &mut errors_chirho);
+    deriving_strategy_chirho::check_deriving_strategies_chirho(
+        module_chirho,
+        builtin_classes_chirho,
+        &mut errors_chirho,
+    );
     errors_chirho
 }
 

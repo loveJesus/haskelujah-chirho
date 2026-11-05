@@ -9,26 +9,6 @@
 
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 
-/// The classes GHC derives with the stock strategy: its refusal names any other class "not a
-/// stock derivable class (Eq, Show, etc.)" (GHC-00158 on data, GHC-82023 on a newtype).
-pub(crate) const STOCK_DERIVABLE_CLASSES_CHIRHO: &[&str] = &[
-    "Eq",
-    "Ord",
-    "Enum",
-    "Bounded",
-    "Show",
-    "Read",
-    "Ix",
-    "Functor",
-    "Foldable",
-    "Traversable",
-    "Generic",
-    "Generic1",
-    "Data",
-    "Lift",
-    "Typeable",
-];
-
 /// What a module enables for deriving.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct DerivingExtensionsChirho {

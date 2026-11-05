@@ -92,14 +92,19 @@ pub(crate) fn build_con_type_map_chirho(
 }
 
 /// Build each newtype's record by type name: its constructor, its underlying type key, and
-/// the classes its own declarations derive with the newtype strategy (row 694).
+/// the classes its own declarations derive with the newtype strategy, routed with the builtin
+/// classes naming proved for the module (row 694).
 /// workflow: language-features-chirho/deriving-strategies-chirho
 pub(crate) fn build_newtype_info_chirho(
     module_chirho: &ModuleChirho,
+    builtin_classes_chirho: &haskelujah_ast_chirho::name_chirho::BuiltinClassScopeChirho,
 ) -> std::collections::HashMap<String, NewtypeInfoChirho> {
     let mut map_chirho = std::collections::HashMap::new();
     let mut derived_classes_chirho =
-        haskelujah_typing_chirho::deriving_chirho::newtype_strategy_classes_chirho(module_chirho);
+        haskelujah_typing_chirho::deriving_chirho::newtype_strategy_classes_chirho(
+            module_chirho,
+            builtin_classes_chirho,
+        );
     for decl_chirho in &module_chirho.decls_chirho {
         if let haskelujah_ast_chirho::decl_chirho::DeclChirho::NewtypeDeclChirho {
             name_chirho,

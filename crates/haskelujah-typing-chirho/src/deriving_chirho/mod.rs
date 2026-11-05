@@ -49,16 +49,17 @@ mod enum_chirho;
 pub(crate) mod extension_policy_chirho;
 mod newtype_route_chirho;
 mod show_chirho;
+pub(crate) mod stock_identity_chirho;
 mod strategy_route_chirho;
 #[cfg(test)]
 mod strategy_route_tests_chirho;
 
 pub(crate) use declaration_heads_chirho::target_name_chirho;
-pub use enum_chirho::derived_enum_metadata_chirho;
+pub use enum_chirho::{derived_enum_metadata_chirho, derived_enum_metadata_with_builtins_chirho};
 use show_chirho::derive_show_chirho;
 pub use show_chirho::{
     DerivedShowChirho, DerivedShowConChirho, ShowConFormChirho, ShowFieldTypeChirho,
-    derived_show_metadata_chirho,
+    derived_show_metadata_chirho, derived_show_metadata_with_builtins_chirho,
 };
 pub use strategy_route_chirho::newtype_strategy_classes_chirho;
 use strategy_route_chirho::{DeclaredTypeChirho, DerivingPolicyChirho};
@@ -195,17 +196,17 @@ pub fn derive_instances_with_builtins_chirho(
     }
 }
 
-/// Generate a DeriveAnyClass instance: empty methods list relying on defaults.
+/// Generate a DeriveAnyClass instance: empty methods list relying on defaults. The head is
+/// the class's written arguments, then the applied type: `C args (T vs)` (row 694).
 fn derive_anyclass_chirho(
     type_name_chirho: &NameChirho,
     type_vars_chirho: &[TyVarChirho],
     class_name_chirho: &NameChirho,
+    class_arguments_chirho: &[TypeChirho],
     span_chirho: SpanChirho,
 ) -> DeclChirho {
-    let mut types_chirho = vec![TypeChirho::ConChirho(type_name_chirho.clone())];
-    for tv_chirho in type_vars_chirho {
-        types_chirho.push(TypeChirho::VarChirho(tv_chirho.name_chirho.clone()));
-    }
+    let mut types_chirho = class_arguments_chirho.to_vec();
+    types_chirho.push(instance_type_chirho(type_name_chirho, type_vars_chirho));
     DeclChirho::InstanceDeclChirho {
         context_chirho: vec![],
         class_chirho: class_name_chirho.clone(),

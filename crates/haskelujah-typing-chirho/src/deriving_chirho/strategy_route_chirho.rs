@@ -6,10 +6,13 @@
 //! `anyclass` writes an empty instance that takes the class defaults, and `newtype` takes the
 //! representation type's instance through the GND dictionary path; an explicit `newtype`
 //! never falls back to a stock instance. A class with no strategy keeps the legacy policy:
-//! the stock classes run their generators, a data type's well-known builtin classes get an
-//! empty instance, any other class on a newtype goes through GND, and on a data type it
-//! needs DeriveAnyClass. Declaration validity rejects a `newtype` strategy on a data type
-//! (GHC-10333) or without GeneralizedNewtypeDeriving (GHC-26557).
+//! the stock classes run their generators, a data type's builtin classes the compiler does not
+//! generate get an empty instance, DeriveAnyClass takes any other class, then GND on a
+//! newtype. Which stock class a written class names is `stock_identity_chirho.rs`'s judgment
+//! from the builtin classes naming proved (K01), never its spelling, and a generated instance
+//! names its class as written. A class applied to arguments derives only as an anyclass
+//! instance over the full head `C args (T vs)`: the stock generators and the GND dictionary
+//! write one head type, so declaration validity refuses those routes for it.
 //! workflow: language-features-chirho/deriving-strategies-chirho
 
 use std::collections::HashMap;
@@ -21,10 +24,11 @@ use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{BuiltinClassScopeChirho, NameChirho};
 use haskelujah_span_chirho::SpanChirho;
 
-use super::extension_policy_chirho::{DerivingExtensionsChirho, STOCK_DERIVABLE_CLASSES_CHIRHO};
+use super::extension_policy_chirho::DerivingExtensionsChirho;
+use super::stock_identity_chirho::{StockIdentityChirho, spell_generated_class_chirho};
 use super::{declaration_heads_chirho, derive_anyclass_chirho, newtype_route_chirho};
 
-/// The classes the legacy policy derives with their own generator when no strategy is
+/// The stock classes the legacy policy derives with their own generator when no strategy is
 /// written; the generators live beside the root.
 const LEGACY_STOCK_CLASSES_CHIRHO: &[&str] = &[
     "Eq",
@@ -39,8 +43,8 @@ const LEGACY_STOCK_CLASSES_CHIRHO: &[&str] = &[
     "Generic",
 ];
 
-/// Builtin classes a data type's deriving clause gets as an empty instance.
-const EMPTY_INSTANCE_CLASSES_CHIRHO: &[&str] = &["Typeable", "Data", "Lift", "NFData"];
+/// Stock derivable builtin classes the compiler writes as an empty instance.
+const EMPTY_INSTANCE_CLASSES_CHIRHO: &[&str] = &["Typeable", "Data", "Lift"];
 
 /// How one requested class's instance is produced.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,10 +56,10 @@ pub(super) enum DerivationRouteChirho {
     RepresentationChirho,
 }
 
-/// What a module enables for deriving, and the class arities a GND head needs.
+/// What a module enables for deriving, and which builtin classes its spellings name.
 pub(super) struct DerivingPolicyChirho<'a> {
     extensions_chirho: DerivingExtensionsChirho,
-    builtin_classes_chirho: &'a BuiltinClassScopeChirho,
+    identity_chirho: StockIdentityChirho<'a>,
 }
 
 impl<'a> DerivingPolicyChirho<'a> {
@@ -66,8 +70,16 @@ impl<'a> DerivingPolicyChirho<'a> {
     ) -> Self {
         Self {
             extensions_chirho: DerivingExtensionsChirho::of_module_chirho(module_chirho),
-            builtin_classes_chirho,
+            identity_chirho: StockIdentityChirho::of_module_chirho(
+                module_chirho,
+                builtin_classes_chirho,
+            ),
         }
+    }
+
+    /// The stock derivable class `class_chirho` names in this module, if any.
+    pub(super) fn stock_class_chirho(&self, class_chirho: &NameChirho) -> Option<&'static str> {
+        self.identity_chirho.stock_class_chirho(class_chirho)
     }
 
     /// Whether an unwritten strategy on a newtype takes anyclass over GND for this class:
@@ -77,20 +89,24 @@ impl<'a> DerivingPolicyChirho<'a> {
         derived_chirho.strategy_chirho.is_none()
             && self.extensions_chirho.any_class_chirho
             && self.extensions_chirho.newtype_chirho
-            && !STOCK_DERIVABLE_CLASSES_CHIRHO.contains(&derived_chirho.class_text_chirho())
+            && self
+                .stock_class_chirho(&derived_chirho.class_chirho)
+                .is_none()
     }
 
     /// How `derived_chirho` is produced for a newtype (`is_newtype_chirho`) or a data
-    /// type. `None` when nothing is derived: a `newtype` strategy on a data type, which
-    /// declaration validity rejects, or a class the legacy policy cannot derive.
+    /// type. `None` when nothing is derived: a strategy declaration validity refuses, a class
+    /// applied to arguments outside the anyclass route, or a class the legacy policy cannot
+    /// derive.
     pub(super) fn route_chirho(
         &self,
         is_newtype_chirho: bool,
         derived_chirho: &DerivedClassChirho,
     ) -> Option<DerivationRouteChirho> {
-        let class_text_chirho = derived_chirho.class_text_chirho();
-        let empty_instance_chirho = EMPTY_INSTANCE_CLASSES_CHIRHO.contains(&class_text_chirho);
-        match &derived_chirho.strategy_chirho {
+        let stock_class_chirho = self.stock_class_chirho(&derived_chirho.class_chirho);
+        let empty_instance_chirho = stock_class_chirho
+            .is_some_and(|class_chirho| EMPTY_INSTANCE_CLASSES_CHIRHO.contains(&class_chirho));
+        let route_chirho = match &derived_chirho.strategy_chirho {
             Some(strategy_chirho) if strategy_chirho.is_newtype_chirho() => {
                 is_newtype_chirho.then_some(DerivationRouteChirho::RepresentationChirho)
             }
@@ -99,8 +115,9 @@ impl<'a> DerivingPolicyChirho<'a> {
                     defaults_only_chirho: true,
                 })
             }
-            // `stock`: the generator, or the empty instance a builtin class already uses.
-            Some(_) => Some(DerivationRouteChirho::WrittenChirho {
+            // `stock`: the generator, or the empty instance a builtin class already uses;
+            // nothing for a class GHC does not derive with the stock strategy.
+            Some(_) => stock_class_chirho.map(|_| DerivationRouteChirho::WrittenChirho {
                 defaults_only_chirho: empty_instance_chirho,
             }),
             None if empty_instance_chirho && !is_newtype_chirho => {
@@ -108,7 +125,10 @@ impl<'a> DerivingPolicyChirho<'a> {
                     defaults_only_chirho: true,
                 })
             }
-            None if LEGACY_STOCK_CLASSES_CHIRHO.contains(&class_text_chirho) => {
+            None if stock_class_chirho.is_some_and(|class_chirho| {
+                LEGACY_STOCK_CLASSES_CHIRHO.contains(&class_chirho)
+            }) =>
+            {
                 Some(DerivationRouteChirho::WrittenChirho {
                     defaults_only_chirho: false,
                 })
@@ -122,14 +142,22 @@ impl<'a> DerivingPolicyChirho<'a> {
             // Without GND declaration validity refuses it (GHC-82023, root's C1).
             None if is_newtype_chirho => Some(DerivationRouteChirho::RepresentationChirho),
             None => None,
-        }
+        };
+        route_chirho.filter(|route_chirho| {
+            !derived_chirho.has_class_arguments_chirho()
+                || *route_chirho
+                    == DerivationRouteChirho::WrittenChirho {
+                        defaults_only_chirho: true,
+                    }
+        })
     }
 
     /// How many trailing type variables a GND head drops for `class_chirho`: the kind
     /// arity of the builtin class's last parameter, as naming proved the class. Any other
     /// class keeps the full head.
     pub(super) fn eta_arity_chirho(&self, class_chirho: &NameChirho) -> usize {
-        self.builtin_classes_chirho
+        self.identity_chirho
+            .builtin_classes_chirho()
             .class_chirho(&class_chirho.full_name_chirho())
             .and_then(|builtin_chirho| builtin_chirho.parameter_arities_chirho.last())
             .map_or(0, |arity_chirho| usize::from(*arity_chirho))
@@ -186,14 +214,26 @@ pub(super) fn derive_class_chirho(
         Some(DerivationRouteChirho::WrittenChirho {
             defaults_only_chirho: false,
         }) => {
+            // The stock route exists only for a class the judgment names.
+            let Some(stock_class_chirho) =
+                policy_chirho.stock_class_chirho(&derived_chirho.class_chirho)
+            else {
+                return;
+            };
+            let first_generated_chirho = instances_chirho.len();
             let derived_by_stock_chirho = declaration_heads_chirho::derive_stock_class_chirho(
-                class_text_chirho,
+                stock_class_chirho,
                 declared_chirho.name_chirho,
                 declared_chirho.type_vars_chirho,
                 declared_chirho.constructors_chirho,
                 declared_chirho.span_chirho,
                 instances_chirho,
                 warnings_chirho,
+            );
+            spell_generated_class_chirho(
+                &mut instances_chirho[first_generated_chirho..],
+                stock_class_chirho,
+                &derived_chirho.class_chirho,
             );
             if !derived_by_stock_chirho {
                 warnings_chirho.push(format!(
@@ -215,6 +255,7 @@ pub(super) fn derive_class_chirho(
                 declared_chirho.name_chirho,
                 declared_chirho.type_vars_chirho,
                 &derived_chirho.class_chirho,
+                &derived_chirho.class_arguments_chirho,
                 declared_chirho.span_chirho,
             ));
         }
@@ -235,8 +276,10 @@ pub(super) fn derive_class_chirho(
                 )),
             }
         }
-        // A written `newtype` strategy on a data type: declaration validity reports it.
-        None if derived_chirho.strategy_chirho.is_some() => {}
+        // A written strategy no route takes, or a class applied to arguments outside the
+        // anyclass route: declaration validity reports it.
+        None if derived_chirho.strategy_chirho.is_some()
+            || derived_chirho.has_class_arguments_chirho() => {}
         None => warnings_chirho.push(format!(
             "deriving {class_text_chirho} not yet supported for {type_text_chirho}"
         )),
@@ -244,17 +287,17 @@ pub(super) fn derive_class_chirho(
 }
 
 /// Every local newtype that takes a class through the newtype strategy, with those
-/// classes: its deriving clauses as routed, and its `deriving newtype instance`
+/// classes: its deriving clauses as routed with the builtin classes naming proved for the
+/// module, the same routing the deriving pass used, and its `deriving newtype instance`
 /// declarations. The dictionary pass gives only these classes the representation's
 /// dictionary, and Core erases only these newtypes' constructors.
 /// workflow: language-features-chirho/deriving-strategies-chirho
 pub fn newtype_strategy_classes_chirho(
     module_chirho: &ModuleChirho,
+    builtin_classes_chirho: &BuiltinClassScopeChirho,
 ) -> HashMap<String, Vec<String>> {
-    // Routing does not depend on class arities.
-    let builtin_classes_chirho = BuiltinClassScopeChirho::default();
     let policy_chirho =
-        DerivingPolicyChirho::of_module_chirho(module_chirho, &builtin_classes_chirho);
+        DerivingPolicyChirho::of_module_chirho(module_chirho, builtin_classes_chirho);
     let mut classes_chirho: HashMap<String, Vec<String>> = HashMap::new();
     for decl_chirho in &module_chirho.decls_chirho {
         match decl_chirho {
@@ -280,8 +323,14 @@ pub fn newtype_strategy_classes_chirho(
                 types_chirho,
                 ..
             } if strategy_chirho.is_newtype_chirho() => {
+                // The derived type is the head's last type. A class applied to arguments
+                // (`deriving newtype instance C Int N`) is refused by declaration validity
+                // until the GND dictionary keys every head type.
+                if types_chirho.len() > 1 {
+                    continue;
+                }
                 let Some(target_chirho) = types_chirho
-                    .first()
+                    .last()
                     .and_then(declaration_heads_chirho::target_name_chirho)
                 else {
                     continue;
