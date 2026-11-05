@@ -43,7 +43,62 @@ pub struct TyEnvChirho {
     refinements_chirho: Vec<Vec<(String, TyChirho)>>,
 }
 
+/// A prefix of the existing lexical refinement stack. It owns no bindings
+/// and cannot acquire evidence added by this parameter list's own patterns.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct RefinementMarkChirho {
+    scopes_chirho: usize,
+    entries_chirho: usize,
+}
+
 impl TyEnvChirho {
+    pub(crate) fn refinement_mark_chirho(&self) -> RefinementMarkChirho {
+        RefinementMarkChirho {
+            scopes_chirho: self.refinements_chirho.len(),
+            entries_chirho: self.refinements_chirho.last().map_or(0, Vec::len),
+        }
+    }
+
+    pub(crate) fn refinement_mark_is_live_chirho(&self, mark_chirho: RefinementMarkChirho) -> bool {
+        mark_chirho.scopes_chirho <= self.refinements_chirho.len()
+            && self
+                .refinements_chirho
+                .get(mark_chirho.scopes_chirho.saturating_sub(1))
+                .is_some_and(|scope_chirho| mark_chirho.entries_chirho <= scope_chirho.len())
+    }
+
+    pub(crate) fn lookup_refinement_at_mark_chirho(
+        &self,
+        skolem_chirho: &str,
+        mark_chirho: Option<RefinementMarkChirho>,
+    ) -> Option<&TyChirho> {
+        let Some(mark_chirho) = mark_chirho else {
+            return self.lookup_refinement_chirho(skolem_chirho);
+        };
+        for (index_chirho, scope_chirho) in self
+            .refinements_chirho
+            .iter()
+            .take(mark_chirho.scopes_chirho)
+            .enumerate()
+            .rev()
+        {
+            let limit_chirho = if index_chirho + 1 == mark_chirho.scopes_chirho {
+                mark_chirho.entries_chirho
+            } else {
+                scope_chirho.len()
+            };
+            if let Some((_, term_chirho)) = scope_chirho
+                .get(..limit_chirho)?
+                .iter()
+                .rev()
+                .find(|(name_chirho, _)| name_chirho == skolem_chirho)
+            {
+                return Some(term_chirho);
+            }
+        }
+        None
+    }
+
     /// Create a new empty environment with one scope.
     pub fn new_chirho() -> Self {
         Self {

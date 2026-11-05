@@ -332,8 +332,12 @@ impl InferCtxChirho {
                     .map_or(annotation_chirho, |checked_chirho| {
                         &checked_chirho.syntax_chirho
                     });
-                if self.checking_binding_pattern_annotations_chirho {
-                    if !self.scoped_type_variables_chirho {
+                if self.checking_binding_pattern_annotations_chirho
+                    || checked_annotation_chirho.is_some()
+                {
+                    if self.checking_binding_pattern_annotations_chirho
+                        && !self.scoped_type_variables_chirho
+                    {
                         self.diagnostics_chirho.push_chirho(
                             DiagnosticChirho::error_with_code_chirho(
                                 ErrorCodeChirho::error_chirho(PATTERN_SIGNATURE_CODE_CHIRHO),
@@ -362,8 +366,6 @@ impl InferCtxChirho {
                         Err(err_chirho) => self.report_unify_error_chirho(&err_chirho),
                     }
                 }
-                // Argument/lambda annotations retain their existing route here: the inner
-                // pattern uses its supplied type, with no annotation check in this branch.
                 self.bind_pat_chirho(inner_pat_chirho, ty_chirho)
             }
         }

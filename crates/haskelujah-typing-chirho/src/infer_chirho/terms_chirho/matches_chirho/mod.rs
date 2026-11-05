@@ -109,14 +109,17 @@ impl InferCtxChirho {
                         &signature_givens_chirho,
                     )
                     .unwrap_or_else(|| {
-                        let fresh_params_chirho: Vec<TyChirho> =
-                            (0..arity_chirho).map(|_| self.fresh_var_chirho()).collect();
+                        let fresh_params_chirho: Vec<TyChirho> = (0..arity_chirho)
+                            .map(|_| self.fresh_value_parameter_chirho(span_chirho))
+                            .collect();
                         let fresh_result_chirho = self.fresh_var_chirho();
                         (fresh_params_chirho, fresh_result_chirho, Vec::new())
                     })
                 } else {
                     (
-                        (0..arity_chirho).map(|_| self.fresh_var_chirho()).collect(),
+                        (0..arity_chirho)
+                            .map(|_| self.fresh_value_parameter_chirho(span_chirho))
+                            .collect(),
                         self.fresh_var_chirho(),
                         Vec::new(),
                     )
@@ -124,6 +127,13 @@ impl InferCtxChirho {
             if authoritative_seed_chirho {
                 self.given_preds_chirho.extend(eq_given_preds_chirho);
             }
+
+            let parameter_scope_chirho = self.value_parameter_scope_chirho();
+            self.check_value_parameters_chirho(
+                &match_arm_chirho.pats_chirho,
+                &eq_param_tys_chirho,
+                span_chirho,
+            );
 
             // Bind pattern variables against per-equation fresh types
             for (pat_chirho, pat_ty_chirho) in match_arm_chirho
@@ -197,6 +207,11 @@ impl InferCtxChirho {
                 }
             }
 
+            self.check_solved_value_parameters_chirho(
+                parameter_scope_chirho.as_ref(),
+                &eq_param_tys_chirho,
+                span_chirho,
+            );
             let solved_chirho = self.end_pattern_implication_chirho(
                 pattern_frame_chirho,
                 &subst_chirho.apply_ty_chirho(&eq_result_ty_chirho),
@@ -227,8 +242,9 @@ impl InferCtxChirho {
         }
 
         let arity_chirho = matches_chirho[0].pats_chirho.len();
-        let param_tys_chirho: Vec<TyChirho> =
-            (0..arity_chirho).map(|_| self.fresh_var_chirho()).collect();
+        let param_tys_chirho: Vec<TyChirho> = (0..arity_chirho)
+            .map(|_| self.fresh_value_parameter_chirho(span_chirho))
+            .collect();
         let result_ty_chirho = self.fresh_var_chirho();
         self.infer_matches_with_seed_chirho(
             matches_chirho,
@@ -380,6 +396,8 @@ impl InferCtxChirho {
         let pattern_frame_chirho = self.begin_pattern_implication_chirho();
 
         let mut param_subst_chirho = SubstChirho::empty_chirho();
+        let parameter_scope_chirho = self.value_parameter_scope_chirho();
+        self.check_value_parameters_chirho(pats_chirho, &param_tys_chirho, span_chirho);
         for (pat_chirho, pat_ty_chirho) in pats_chirho.iter().zip(param_tys_chirho.iter()) {
             let pat_ty_sub_chirho = param_subst_chirho.apply_ty_chirho(pat_ty_chirho);
             let s_chirho = self.bind_pat_chirho(pat_chirho, &pat_ty_sub_chirho);
@@ -399,6 +417,11 @@ impl InferCtxChirho {
                     span_chirho,
                 )
             },
+            span_chirho,
+        );
+        self.check_solved_value_parameters_chirho(
+            parameter_scope_chirho.as_ref(),
+            &param_tys_chirho,
             span_chirho,
         );
 

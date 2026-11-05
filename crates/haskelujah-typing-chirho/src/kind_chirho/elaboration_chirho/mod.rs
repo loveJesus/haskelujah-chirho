@@ -20,6 +20,7 @@ mod value_applications_chirho;
 pub(crate) use value_applications_chirho::{
     ArgumentElaborationContextChirho, CheckedBodyTypeChirho, elaborate_body_pattern_type_chirho,
     elaborate_body_type_chirho, elaborate_required_argument_chirho,
+    elaborate_value_parameters_chirho,
 };
 mod values_chirho;
 pub use state_chirho::{
@@ -36,6 +37,7 @@ use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{BuiltinClassScopeChirho, TypeConstructorScopeChirho};
 use haskelujah_ast_chirho::promotion_chirho::PromotionScopeChirho;
 use haskelujah_span_chirho::SpanChirho;
+use state_chirho::ValueRepresentationChirho;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -139,6 +141,7 @@ struct TypeElaboratorChirho<'scope_chirho> {
     declaration_contracts_chirho: HashMap<Arc<str>, Arc<DeclarationSchemeChirho>>,
     lexical_images_chirho: Option<&'scope_chirho crate::subst_chirho::SubstChirho>,
     lexical_refinements_chirho: Option<&'scope_chirho crate::env_chirho::TyEnvChirho>,
+    lexical_refinement_mark_chirho: Option<crate::env_chirho::RefinementMarkChirho>,
     lexical_equality_chirho:
         Option<crate::infer_chirho::EqualityNormalizationViewChirho<'scope_chirho>>,
     strict_argument_chirho: bool,
@@ -498,6 +501,7 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
             declaration_contracts_chirho: HashMap::new(),
             lexical_images_chirho: None,
             lexical_refinements_chirho: None,
+            lexical_refinement_mark_chirho: None,
             lexical_equality_chirho: None,
             strict_argument_chirho: false,
             standalone_kind_scope_chirho: false,

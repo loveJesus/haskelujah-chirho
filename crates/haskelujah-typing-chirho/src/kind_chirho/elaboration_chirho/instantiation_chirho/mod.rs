@@ -6,6 +6,8 @@
 use super::*;
 use crate::subst_chirho::SubstChirho;
 
+mod value_kinds_chirho;
+
 struct DeclarationInstantiationChirho<'producer_chirho> {
     parameters_chirho: &'producer_chirho SubstChirho,
     local_chirho: bool,
@@ -13,6 +15,7 @@ struct DeclarationInstantiationChirho<'producer_chirho> {
     nested_binders_chirho:
         &'producer_chirho [crate::ty_chirho::declarations_chirho::DeclarationLocalBinderChirho],
     require_kinds_chirho: bool,
+    local_binder_metadata_chirho: bool,
 }
 
 impl ElaborationStateChirho {
@@ -31,6 +34,7 @@ impl ElaborationStateChirho {
                 span_chirho,
                 nested_binders_chirho: &[],
                 require_kinds_chirho: false,
+                local_binder_metadata_chirho: true,
             },
             0,
             &mut Vec::new(),
@@ -53,6 +57,29 @@ impl ElaborationStateChirho {
                 span_chirho,
                 nested_binders_chirho,
                 require_kinds_chirho: true,
+                local_binder_metadata_chirho: true,
+            },
+            0,
+            &mut Vec::new(),
+        )
+    }
+
+    /// Alpha-copy lexical quantifiers from their actual records. A missing
+    /// local kind stays Unknown even if its erased ID collides with State.
+    pub(super) fn instantiate_lexical_term_chirho(
+        &mut self,
+        term_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<TyChirho, ElaborationErrorChirho> {
+        self.instantiate_depth_chirho(
+            term_chirho,
+            &DeclarationInstantiationChirho {
+                parameters_chirho: &SubstChirho::empty_chirho(),
+                local_chirho: true,
+                span_chirho,
+                nested_binders_chirho: &[],
+                require_kinds_chirho: false,
+                local_binder_metadata_chirho: false,
             },
             0,
             &mut Vec::new(),
@@ -71,7 +98,7 @@ impl ElaborationStateChirho {
         let span_chirho = context_chirho.span_chirho;
         self.charge_chirho(1, 1, span_chirho)?;
         if depth_chirho > 128 {
-            return Err(TypeElaboratorChirho::error_chirho(
+            return Err(self.resource_failure_chirho(
                 "declaration instantiation depth bound exhausted",
                 span_chirho,
             ));
@@ -230,6 +257,7 @@ impl ElaborationStateChirho {
                                     Some(provider_chirho.specificity_chirho),
                                 )
                             } else if local_chirho
+                                && context_chirho.local_binder_metadata_chirho
                                 && self.variable_kinds_chirho.contains_key(&source_chirho)
                             {
                                 let kind_chirho =

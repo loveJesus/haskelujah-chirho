@@ -436,6 +436,7 @@ impl InferCtxChirho {
                             scoped_variables_chirho: &self.scoped_tyvars_chirho,
                             images_chirho: &self.skolem_bindings_chirho,
                             refinements_chirho: &self.env_chirho,
+                            refinement_mark_chirho: None,
                             equality_chirho: super::EqualityNormalizationViewChirho {
                                 substitutions_chirho: &self.equality_substitutions_chirho,
                                 legacy_synonyms_chirho: &self.type_synonyms_chirho,

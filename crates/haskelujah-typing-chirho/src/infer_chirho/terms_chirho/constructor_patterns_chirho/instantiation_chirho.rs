@@ -203,6 +203,19 @@ impl InferCtxChirho {
                 }
                 image_chirho
             };
+            if let TyChirho::ForallVarChirho(name_chirho) = &image_chirho.image_chirho {
+                // Scheme IDs belong to the producer. An anonymous owner-local
+                // handle retains its actual image/kind without replacing a caller slot.
+                budget_chirho.node_chirho(name_chirho.len().saturating_add(1))?;
+                let handle_chirho = self
+                    .elaboration_state_chirho
+                    .fresh_chirho(None, span_chirho)
+                    .ok()?;
+                self.install_anonymous_type_pattern_image_chirho(
+                    handle_chirho,
+                    image_chirho.clone(),
+                );
+            }
             instantiation_chirho.insert_image_chirho(record_chirho.variable_chirho, image_chirho);
         }
         let (result_chirho, predicates_chirho) = self.instantiate_scheme_terms_chirho(

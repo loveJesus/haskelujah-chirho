@@ -518,3 +518,197 @@ fn representation_result_corpus_t16829a_requires_unlifted_newtypes_chirho() {
         .expect_err("retained GHC-negative explicit scalar newtype requires UnliftedNewtypes");
     assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
 }
+
+#[test]
+fn representation_parameter_refinedvalueparameter_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/parameters_chirho/RefinedValueParameterChirho",
+    )
+    .expect_err(
+        "fresh GHC-negative parameter requires a fixed representation before its own patterns",
+    );
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_parameter_laterefinedvalueparameter_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/parameters_chirho/LateRefinedValueParameterChirho",
+    )
+    .expect_err(
+        "fresh GHC-negative parameter requires a fixed representation before its own patterns",
+    );
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_parameter_wildcardvalueparameter_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/parameters_chirho/WildcardValueParameterChirho",
+    )
+    .expect_err(
+        "fresh GHC-negative parameter requires a fixed representation before its own patterns",
+    );
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_parameter_deferredwildcardvalueparameter_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/parameters_chirho/DeferredWildcardValueParameterChirho",
+    )
+    .expect_err(
+        "fresh GHC-negative parameter requires a fixed representation before its own patterns",
+    );
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_parameter_deferredlaterefinedvalueparameter_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/parameters_chirho/DeferredLateRefinedValueParameterChirho",
+    )
+    .expect_err(
+        "fresh GHC-negative parameter requires a fixed representation before its own patterns",
+    );
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_parameter_refinedlambdaparameter_chirho() {
+    representation_field_fixture_chirho(
+        "forall_chirho/parameters_chirho/RefinedLambdaParameterChirho",
+    )
+    .expect("fresh GHC-positive fixed value parameter checks under enclosing evidence");
+}
+
+#[test]
+fn representation_parameter_independentrefinedparameters_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/parameters_chirho/IndependentRefinedParametersChirho",
+    )
+    .expect_err(
+        "fresh GHC-negative parameter requires a fixed representation before its own patterns",
+    );
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_parameter_annotatedunboxedlambda_chirho() {
+    representation_field_fixture_chirho(
+        "forall_chirho/parameters_chirho/AnnotatedUnboxedLambdaChirho",
+    )
+    .expect("fresh GHC-positive fixed value parameter checks under enclosing evidence");
+}
+
+#[test]
+fn representation_parameter_corpus_t15883_chirho() {
+    let error_chirho = check_chirho("should_fail", "T15883.hs")
+        .expect_err("retained GHC-negative representation-polymorphic parameter rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_parameter_corpus_t18357a_chirho() {
+    let error_chirho = check_chirho("should_fail", "T18357a.hs")
+        .expect_err("retained GHC-negative representation-polymorphic parameter rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_parameter_fixed_existential_keeps_its_kind_chirho() {
+    representation_field_fixture_chirho(
+        "forall_chirho/parameters_chirho/existentials_chirho/ExistentialFixedParameterChirho",
+    )
+    .expect("fresh GHC-positive inferred local parameter retains its fixed existential kind");
+}
+
+#[test]
+fn representation_parameter_polymorphic_existential_is_not_a_fixed_parameter_chirho() {
+    let error_chirho = representation_field_fixture_chirho("forall_chirho/parameters_chirho/existentials_chirho/ExistentialPolyParameterChirho")
+        .expect_err("fresh GHC-negative inferred local parameter cannot acquire a polymorphic existential representation");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_parameter_newtype_uniformnewtypeparent_chirho() {
+    representation_field_fixture_chirho(
+        "forall_chirho/newtype_parent_chirho/UniformNewtypeParentChirho",
+    )
+    .expect("fresh GHC-positive newtype parameter renaming and forall checks");
+}
+
+#[test]
+fn representation_parameter_newtype_reorderednewtypeparent_chirho() {
+    representation_field_fixture_chirho(
+        "forall_chirho/newtype_parent_chirho/ReorderedNewtypeParentChirho",
+    )
+    .expect("fresh GHC-positive newtype parameter renaming and forall checks");
+}
+
+#[test]
+fn representation_parameter_newtype_refinednewtypeparent_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/newtype_parent_chirho/RefinedNewtypeParentChirho",
+    )
+    .expect_err("fresh GHC-negative refined or existential newtype parameter rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_parameter_newtype_duplicatenewtypeparent_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/newtype_parent_chirho/DuplicateNewtypeParentChirho",
+    )
+    .expect_err("fresh GHC-negative refined or existential newtype parameter rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_parameter_newtype_forallnewtypefield_chirho() {
+    representation_field_fixture_chirho(
+        "forall_chirho/newtype_parent_chirho/ForallNewtypeFieldChirho",
+    )
+    .expect("fresh GHC-positive newtype parameter renaming and forall checks");
+}
+
+#[test]
+fn representation_parameter_newtype_existentialnewtypeparent_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/newtype_parent_chirho/ExistentialNewtypeParentChirho",
+    )
+    .expect_err("fresh GHC-negative refined or existential newtype parameter rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_parameter_class_method_fixedscalarclassmethod_chirho() {
+    let error_chirho = representation_field_fixture_chirho("forall_chirho/class_methods_chirho/FixedScalarClassMethodChirho").expect_err("fresh GHC83865 refutes the intended bare-unlifted positive: a class method value must be lifted");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_parameter_class_method_fixedboxedclassmethod_chirho() {
+    let error_chirho = representation_field_fixture_chirho("forall_chirho/class_methods_chirho/FixedBoxedClassMethodChirho").expect_err("fresh GHC83865 refutes the intended bare-unlifted positive: a class method value must be lifted");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_parameter_class_function_fixedscalarfunctionmethod_chirho() {
+    representation_field_fixture_chirho(
+        "forall_chirho/class_methods_chirho/FixedScalarFunctionMethodChirho",
+    )
+    .expect(
+        "fresh GHC-positive function-valued class method keeps its concrete unlifted result arrow",
+    );
+}
+
+#[test]
+fn representation_parameter_class_function_fixedboxedfunctionmethod_chirho() {
+    representation_field_fixture_chirho(
+        "forall_chirho/class_methods_chirho/FixedBoxedFunctionMethodChirho",
+    )
+    .expect(
+        "fresh GHC-positive function-valued class method keeps its concrete unlifted result arrow",
+    );
+}

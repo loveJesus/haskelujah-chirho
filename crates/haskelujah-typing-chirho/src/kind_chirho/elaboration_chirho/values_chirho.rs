@@ -30,8 +30,9 @@ impl TypeElaboratorChirho<'_> {
                     ty_chirho,
                     ..
                 } => {
-                    let checked_chirho =
-                        self.scoped_chirho(|this_chirho| this_chirho.check_type_chirho(ty_chirho))?;
+                    let checked_chirho = self.scoped_chirho(|this_chirho| {
+                        this_chirho.check_value_type_chirho(ty_chirho)
+                    })?;
                     for name_chirho in names_chirho {
                         let checked_chirho = self
                             .state_chirho
@@ -103,7 +104,7 @@ impl TypeElaboratorChirho<'_> {
         match declaration_chirho {
             DeclChirho::TypeSigChirho { .. } | DeclChirho::PatSynSigDeclChirho { .. } => {}
             DeclChirho::ForeignDeclChirho { ty_chirho, .. } => {
-                self.check_type_chirho(ty_chirho)?;
+                self.check_value_type_chirho(ty_chirho)?;
             }
             DeclChirho::FunBindChirho {
                 name_chirho,
@@ -141,7 +142,8 @@ impl TypeElaboratorChirho<'_> {
                     if let Some(matches_chirho) = &mut method_chirho.default_chirho {
                         self.scoped_chirho(|this_chirho| {
                             let checked_chirho = this_chirho.scoped_chirho(|this_chirho| {
-                                this_chirho.check_type_chirho(&mut method_chirho.ty_chirho)
+                                this_chirho
+                                    .check_class_method_type_chirho(&mut method_chirho.ty_chirho)
                             })?;
                             this_chirho.store_checked_signature_scope_chirho(
                                 &method_chirho.name_chirho,

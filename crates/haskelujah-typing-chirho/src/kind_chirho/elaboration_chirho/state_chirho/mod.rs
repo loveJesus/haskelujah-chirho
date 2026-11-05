@@ -18,6 +18,25 @@ static NEXT_ELABORATION_OWNER_CHIRHO: AtomicU64 = AtomicU64::new(1);
 pub const TYPE_UNIVERSE_KEY_CHIRHO: &str = "%universe:type";
 pub const CONSTRAINT_UNIVERSE_KEY_CHIRHO: &str = "%universe:constraint";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ValueRepresentationChirho {
+    KnownChirho { fixed_chirho: bool },
+    PendingChirho { inference_chirho: bool },
+}
+
+impl ValueRepresentationChirho {
+    pub(crate) const FIXED_CHIRHO: Self = Self::KnownChirho { fixed_chirho: true };
+    pub(crate) const NONFIXED_CHIRHO: Self = Self::KnownChirho {
+        fixed_chirho: false,
+    };
+    pub(crate) const FLEXIBLE_CHIRHO: Self = Self::PendingChirho {
+        inference_chirho: true,
+    };
+    pub(crate) const UNKNOWN_CHIRHO: Self = Self::PendingChirho {
+        inference_chirho: false,
+    };
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ElaborationErrorChirho {
     /// Only a real unification mismatch owns these complete resolved terms.
@@ -96,7 +115,7 @@ impl ElaborationStateChirho {
         self.error_chirho.as_ref()
     }
 
-    pub(super) fn resource_failure_chirho(
+    pub(crate) fn resource_failure_chirho(
         &mut self,
         message_chirho: &str,
         span_chirho: SpanChirho,

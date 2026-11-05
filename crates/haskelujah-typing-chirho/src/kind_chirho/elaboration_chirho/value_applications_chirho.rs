@@ -17,6 +17,7 @@ pub(crate) struct ArgumentElaborationContextChirho<'scope_chirho> {
     pub images_chirho: &'scope_chirho crate::subst_chirho::SubstChirho,
     pub equality_chirho: crate::infer_chirho::EqualityNormalizationViewChirho<'scope_chirho>,
     pub refinements_chirho: &'scope_chirho crate::env_chirho::TyEnvChirho,
+    pub refinement_mark_chirho: Option<crate::env_chirho::RefinementMarkChirho>,
 }
 
 /// Resume the original checked solver after ordinary inference recognizes a
@@ -44,6 +45,40 @@ pub(crate) struct CheckedBodyTypeChirho {
     pub syntax_chirho: TypeChirho,
     pub term_chirho: TyChirho,
     pub kind_chirho: TyChirho,
+}
+
+/// Fixedness is checked at value-parameter entry, before that parameter list
+/// introduces GADT evidence. A nested lambda resumes under its outer evidence.
+pub(crate) fn elaborate_value_parameters_chirho(
+    parameters_chirho: &[(TyChirho, SpanChirho)],
+    context_chirho: ArgumentElaborationContextChirho<'_>,
+) -> Result<((), crate::subst_chirho::SubstChirho), ElaborationErrorChirho> {
+    let span_chirho = parameters_chirho
+        .first()
+        .map_or(SpanChirho::DUMMY_CHIRHO, |(_, span_chirho)| *span_chirho);
+    with_argument_elaborator_chirho(context_chirho, span_chirho, false, |elaborator_chirho| {
+        for (parameter_chirho, span_chirho) in parameters_chirho {
+            let Some(kind_chirho) =
+                elaborator_chirho.checked_term_kind_chirho(parameter_chirho, *span_chirho)?
+            else {
+                continue;
+            };
+            let kind_chirho =
+                elaborator_chirho.normalize_value_kind_term_chirho(&kind_chirho, *span_chirho)?;
+            if elaborator_chirho.state_chirho.value_representation_chirho(
+                &kind_chirho,
+                &elaborator_chirho.registry_chirho,
+                *span_chirho,
+            )? == ValueRepresentationChirho::NONFIXED_CHIRHO
+            {
+                return Err(TypeElaboratorChirho::error_chirho(
+                    "value parameter does not have a fixed runtime representation",
+                    *span_chirho,
+                ));
+            }
+        }
+        Ok(())
+    })
 }
 
 /// Recheck actual body syntax after its pattern/signature givens are in scope.
@@ -107,6 +142,22 @@ fn with_argument_elaborator_chirho<ResultChirho>(
         &mut TypeElaboratorChirho<'_>,
     ) -> Result<ResultChirho, ElaborationErrorChirho>,
 ) -> Result<(ResultChirho, crate::subst_chirho::SubstChirho), ElaborationErrorChirho> {
+    context_chirho
+        .state_chirho
+        .charge_chirho(0, 0, span_chirho)?;
+    if context_chirho
+        .refinement_mark_chirho
+        .is_some_and(|mark_chirho| {
+            !context_chirho
+                .refinements_chirho
+                .refinement_mark_is_live_chirho(mark_chirho)
+        })
+    {
+        return Err(TypeElaboratorChirho::error_chirho(
+            "value parameter evidence outlived its lexical scope",
+            span_chirho,
+        ));
+    }
     context_chirho.state_chirho.owner_id_chirho(span_chirho)?;
     let policy_chirho = context_chirho
         .state_chirho
@@ -151,6 +202,7 @@ fn with_argument_elaborator_chirho<ResultChirho>(
         declaration_contracts_chirho: HashMap::new(),
         lexical_images_chirho: Some(context_chirho.images_chirho),
         lexical_refinements_chirho: Some(context_chirho.refinements_chirho),
+        lexical_refinement_mark_chirho: context_chirho.refinement_mark_chirho,
         lexical_equality_chirho: Some(context_chirho.equality_chirho),
         strict_argument_chirho,
     };
@@ -256,7 +308,12 @@ impl TypeElaboratorChirho<'_> {
         for _ in 0..128 {
             let next_chirho = crate::skolem_chirho::rewrite_borrowed_skolems_bounded_chirho(
                 &term_chirho,
-                &mut |name_chirho| refinements_chirho.lookup_refinement_chirho(name_chirho),
+                &mut |name_chirho| {
+                    refinements_chirho.lookup_refinement_at_mark_chirho(
+                        name_chirho,
+                        self.lexical_refinement_mark_chirho,
+                    )
+                },
                 &mut |work_chirho, output_chirho| {
                     self.state_chirho
                         .charge_chirho(work_chirho, output_chirho, span_chirho)

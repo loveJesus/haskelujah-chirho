@@ -93,6 +93,7 @@ fn argument_chirho(
             scoped_variables_chirho: &HashMap::new(),
             images_chirho: &SubstChirho::empty_chirho(),
             refinements_chirho: &crate::env_chirho::TyEnvChirho::new_chirho(),
+            refinement_mark_chirho: None,
         },
     )
 }
@@ -272,6 +273,7 @@ fn qualified_term_homonym_cannot_acquire_a_lexical_type_proof_chirho() {
                 scoped_variables_chirho: &variables_chirho,
                 images_chirho: &SubstChirho::empty_chirho(),
                 refinements_chirho: &crate::env_chirho::TyEnvChirho::new_chirho(),
+                refinement_mark_chirho: None,
             },
         );
         if accepts_chirho {

@@ -70,11 +70,15 @@ impl ElaborationStateChirho {
                     span_chirho,
                 )
             })?;
-            if !self.has_fixed_value_kind_chirho(
-                &normalized_chirho,
-                catalogue_chirho,
-                span_chirho,
-            )? {
+            if matches!(
+                self.value_representation_chirho(
+                    &normalized_chirho,
+                    catalogue_chirho,
+                    span_chirho
+                )?,
+                ValueRepresentationChirho::NONFIXED_CHIRHO
+                    | ValueRepresentationChirho::FLEXIBLE_CHIRHO
+            ) {
                 return Err(TypeElaboratorChirho::error_chirho(
                     "data constructor field does not have a fixed runtime representation",
                     span_chirho,
@@ -84,48 +88,60 @@ impl ElaborationStateChirho {
         Ok(())
     }
 
-    /// Ordinary data fields require an already concrete representation. This
-    /// check neither reduces a stuck family nor creates equality evidence.
-    pub(crate) fn has_fixed_value_kind_chirho(
+    /// Read fixedness without converting missing/held metadata into a proof
+    /// or a new ordinary error. Only actual inference metas are Flexible.
+    pub(crate) fn value_representation_chirho(
         &mut self,
         kind_chirho: &TyChirho,
         catalogue_chirho: &TypeFamilyEnvChirho,
         span_chirho: SpanChirho,
-    ) -> Result<bool, ElaborationErrorChirho> {
+    ) -> Result<ValueRepresentationChirho, ElaborationErrorChirho> {
         let kind_chirho = self.resolve_chirho(kind_chirho, span_chirho)?;
         if kind_chirho == Self::type_universe_chirho() {
-            return Ok(true);
+            return Ok(ValueRepresentationChirho::FIXED_CHIRHO);
         }
         let TyChirho::AppChirho(function_chirho, representation_chirho) = &kind_chirho else {
-            return Ok(false);
+            return Ok(
+                if matches!(&kind_chirho, TyChirho::VarChirho(variable_chirho)
+                if self.variable_binding_chirho(*variable_chirho) == ElaborationVariableBindingChirho::UnknownChirho)
+                {
+                    ValueRepresentationChirho::UNKNOWN_CHIRHO
+                } else {
+                    ValueRepresentationChirho::NONFIXED_CHIRHO
+                },
+            );
         };
         if !matches!(&**function_chirho, TyChirho::ConChirho(key_chirho)
             if key_chirho == CompilerRepresentationChirho::RuntimeTypeChirho.type_key_chirho())
         {
-            return Ok(false);
+            return Ok(ValueRepresentationChirho::NONFIXED_CHIRHO);
         }
         let mut pending_chirho = vec![representation_chirho.as_ref()];
+        let mut unknown_chirho = false;
+        let mut nonfixed_chirho = false;
+        let mut flexible_chirho = false;
         while let Some(term_chirho) = pending_chirho.pop() {
             self.charge_chirho(1, 0, span_chirho)?;
             match term_chirho {
                 TyChirho::ConChirho(key_chirho) => {
-                    let Some(scheme_chirho) = catalogue_chirho
+                    let scheme_chirho = catalogue_chirho
                         .declaration_schemes_chirho()
                         .get_chirho(key_chirho)
                         .filter(|scheme_chirho| {
                             !scheme_chirho.held_chirho
                                 && (scheme_chirho.declaration_chirho.is_some()
                                     || scheme_chirho.promoted_chirho.is_some())
-                        })
-                    else {
-                        return Ok(false);
-                    };
-                    if !matches!(scheme_chirho.role_chirho,
-                        haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho::DataChirho
-                        | haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho::NewtypeChirho
-                        | haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho::UniverseChirho)
-                    {
-                        return Ok(false);
+                        });
+                    match scheme_chirho.map(|scheme_chirho| scheme_chirho.role_chirho) {
+                        Some(haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho::DataChirho
+                            | haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho::NewtypeChirho
+                            | haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho::UniverseChirho) => {}
+                        Some(haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho::TypeFamilyChirho)
+                            if catalogue_chirho.definition_chirho(key_chirho).is_none_or(|definition_chirho| {
+                                !definition_chirho.reduction_metadata_complete_chirho()
+                            }) => unknown_chirho = true,
+                        None | Some(haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho::UnknownChirho) => unknown_chirho = true,
+                        _ => nonfixed_chirho = true,
                     }
                 }
                 TyChirho::AppChirho(left_chirho, right_chirho)
@@ -141,14 +157,32 @@ impl ElaborationStateChirho {
                     self.charge_chirho(elements_chirho.len(), elements_chirho.len(), span_chirho)?;
                     pending_chirho.extend(elements_chirho);
                 }
-                TyChirho::VarChirho(_)
-                | TyChirho::ForallVarChirho(_)
+                TyChirho::VarChirho(variable_chirho) => {
+                    if self.rigid_variables_chirho.contains(variable_chirho) {
+                        nonfixed_chirho = true;
+                        continue;
+                    }
+                    match self.variable_binding_chirho(*variable_chirho) {
+                        ElaborationVariableBindingChirho::MetaChirho => flexible_chirho = true,
+                        ElaborationVariableBindingChirho::UniversalChirho => nonfixed_chirho = true,
+                        ElaborationVariableBindingChirho::UnknownChirho => unknown_chirho = true,
+                    }
+                }
+                TyChirho::ForallVarChirho(_)
                 | TyChirho::ForallChirho { .. }
                 | TyChirho::RequiredForallChirho { .. }
-                | TyChirho::QualChirho { .. } => return Ok(false),
+                | TyChirho::QualChirho { .. } => nonfixed_chirho = true,
             }
         }
-        Ok(true)
+        Ok(if unknown_chirho {
+            ValueRepresentationChirho::UNKNOWN_CHIRHO
+        } else if nonfixed_chirho {
+            ValueRepresentationChirho::NONFIXED_CHIRHO
+        } else if flexible_chirho {
+            ValueRepresentationChirho::FLEXIBLE_CHIRHO
+        } else {
+            ValueRepresentationChirho::FIXED_CHIRHO
+        })
     }
 
     /// Close only the supplied live roots, not the growing module record map.

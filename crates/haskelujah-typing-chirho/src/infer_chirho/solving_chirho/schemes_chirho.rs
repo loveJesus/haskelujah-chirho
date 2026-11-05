@@ -34,6 +34,28 @@ impl InferCtxChirho {
         TyChirho::VarChirho(var_chirho)
     }
 
+    /// Only actual value parameters start with an open runtime representation.
+    /// General inference variables retain their existing unsorted behavior.
+    pub(super) fn fresh_value_parameter_chirho(&mut self, span_chirho: SpanChirho) -> TyChirho {
+        if self.elaboration_state_chirho.owner_chirho.is_none() {
+            return self.fresh_var_chirho();
+        }
+        let result_chirho = self
+            .elaboration_state_chirho
+            .fresh_value_kind_chirho(span_chirho)
+            .and_then(|kind_chirho| {
+                self.elaboration_state_chirho
+                    .fresh_chirho(Some(kind_chirho), span_chirho)
+            });
+        match result_chirho {
+            Ok(variable_chirho) => TyChirho::VarChirho(variable_chirho),
+            Err(error_chirho) => {
+                self.record_body_kind_error_chirho(error_chirho);
+                self.fresh_var_chirho()
+            }
+        }
+    }
+
     pub(super) fn instantiate_scheme_parts_chirho(
         &mut self,
         scheme_chirho: &SchemeChirho,
@@ -362,6 +384,56 @@ impl InferCtxChirho {
             .collect();
         let mut scoped_chirho = env_fvs_chirho.clone();
         scoped_chirho.extend(newly_mono_chirho.iter().copied());
+        let representation_defaults_chirho = (|| {
+            if self.elaboration_state_chirho.owner_chirho.is_none() {
+                return Ok(SubstChirho::empty_chirho());
+            }
+            let candidates_chirho = self
+                .elaboration_state_chirho
+                .kind_dependency_closure_chirho(&vars_chirho, SpanChirho::DUMMY_CHIRHO)?;
+            let mut protected_chirho = scoped_chirho.to_vec();
+            protected_chirho.extend(self.scoped_tyvars_chirho.values().copied());
+            let protected_chirho = self
+                .elaboration_state_chirho
+                .kind_dependency_closure_chirho(&protected_chirho, SpanChirho::DUMMY_CHIRHO)?;
+            self.elaboration_state_chirho
+                .default_representation_variables_chirho(
+                    &candidates_chirho,
+                    &protected_chirho,
+                    SpanChirho::DUMMY_CHIRHO,
+                )
+        })();
+        let representation_defaults_chirho = match representation_defaults_chirho {
+            Ok(defaults_chirho) => defaults_chirho,
+            Err(error_chirho) => {
+                self.record_body_kind_error_chirho(error_chirho);
+                SubstChirho::empty_chirho()
+            }
+        };
+        self.apply_subst_all_chirho(&representation_defaults_chirho);
+        let defaulted_ty_chirho = if representation_defaults_chirho.is_empty_chirho() {
+            None
+        } else {
+            match self
+                .elaboration_state_chirho
+                .resolve_chirho(ty_chirho, SpanChirho::DUMMY_CHIRHO)
+            {
+                Ok(term_chirho) => Some(term_chirho),
+                Err(error_chirho) => {
+                    self.record_body_kind_error_chirho(error_chirho);
+                    None
+                }
+            }
+        };
+        let ty_chirho = defaulted_ty_chirho.as_ref().unwrap_or(ty_chirho);
+        let vars_chirho = vars_chirho
+            .into_iter()
+            .filter(|variable_chirho| {
+                representation_defaults_chirho
+                    .lookup_chirho(variable_chirho)
+                    .is_none()
+            })
+            .collect();
         let vars_chirho = self.quantify_variables_chirho(
             vars_chirho,
             &[],

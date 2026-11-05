@@ -36,6 +36,20 @@ pub(crate) struct EqualityEvidenceViewChirho<'view_chirho> {
     head_chirho: Option<&'view_chirho EqualityEvidenceChirho>,
 }
 
+/// A shared view of the same immutable evidence chain at parameter entry.
+/// Later pattern rewrites grow another head; no record arena is copied.
+pub(super) struct EqualityEvidenceSnapshotChirho {
+    head_chirho: Option<Arc<EqualityEvidenceChirho>>,
+}
+
+impl EqualityEvidenceSnapshotChirho {
+    pub(super) fn view_chirho(&self) -> EqualityEvidenceViewChirho<'_> {
+        EqualityEvidenceViewChirho {
+            head_chirho: self.head_chirho.as_deref(),
+        }
+    }
+}
+
 impl<'view_chirho> EqualityEvidenceViewChirho<'view_chirho> {
     pub(crate) fn iter_chirho(self) -> impl Iterator<Item = &'view_chirho [(TyChirho, TyChirho)]> {
         std::iter::successors(self.head_chirho, |node_chirho| {
@@ -55,6 +69,11 @@ pub(super) struct EqualityScopeChirho {
 }
 
 impl EqualityScopeChirho {
+    pub(super) fn evidence_snapshot_chirho(&self) -> EqualityEvidenceSnapshotChirho {
+        EqualityEvidenceSnapshotChirho {
+            head_chirho: self.evidence_chirho.clone(),
+        }
+    }
     pub(super) fn evidence_view_chirho(&self) -> EqualityEvidenceViewChirho<'_> {
         EqualityEvidenceViewChirho {
             head_chirho: self.evidence_chirho.as_deref(),

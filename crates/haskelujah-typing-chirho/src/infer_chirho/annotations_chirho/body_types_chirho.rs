@@ -7,9 +7,146 @@ use super::*;
 use crate::kind_chirho::elaboration_chirho::{
     ArgumentElaborationContextChirho, CheckedBodyTypeChirho, ElaborationErrorChirho,
     elaborate_body_pattern_type_chirho, elaborate_body_type_chirho,
+    elaborate_value_parameters_chirho,
 };
 
+pub(in crate::infer_chirho) struct ValueParameterScopeChirho {
+    refinements_chirho: crate::env_chirho::RefinementMarkChirho,
+    evidence_chirho: super::super::equality_scopes_chirho::EqualityEvidenceSnapshotChirho,
+}
+
 impl InferCtxChirho {
+    pub(in crate::infer_chirho) fn value_parameter_scope_chirho(
+        &self,
+    ) -> Option<ValueParameterScopeChirho> {
+        self.elaboration_state_chirho.owner_chirho?;
+        Some(ValueParameterScopeChirho {
+            refinements_chirho: self.env_chirho.refinement_mark_chirho(),
+            evidence_chirho: self.equality_scopes_chirho[self.active_equality_scope_chirho]
+                .evidence_snapshot_chirho(),
+        })
+    }
+
+    /// Ordinary solving can expose a previously unknown parameter kind. Read
+    /// its solution while retaining exactly the evidence available at entry.
+    pub(in crate::infer_chirho) fn check_solved_value_parameters_chirho(
+        &mut self,
+        entry_chirho: Option<&ValueParameterScopeChirho>,
+        types_chirho: &[TyChirho],
+        span_chirho: SpanChirho,
+    ) {
+        let Some(entry_chirho) = entry_chirho else {
+            return;
+        };
+        let copied_chirho = (|| {
+            self.elaboration_state_chirho.charge_chirho(
+                types_chirho.len(),
+                types_chirho.len(),
+                span_chirho,
+            )?;
+            types_chirho
+                .iter()
+                .map(|term_chirho| {
+                    self.elaboration_state_chirho
+                        .copy_chirho(term_chirho, span_chirho)
+                        .map(|term_chirho| (term_chirho, span_chirho))
+                })
+                .collect::<Result<Vec<_>, _>>()
+        })();
+        let entries_chirho = match copied_chirho {
+            Ok(entries_chirho) => entries_chirho,
+            Err(error_chirho) => {
+                self.record_body_kind_error_chirho(error_chirho);
+                return;
+            }
+        };
+        self.check_body_syntax_at_scope_chirho(span_chirho, Some(entry_chirho), |context_chirho| {
+            elaborate_value_parameters_chirho(&entries_chirho, context_chirho)
+        });
+    }
+    /// Inspect the whole actual parameter list before any of its patterns can
+    /// add givens. Only enclosing implications authorize representation refinement.
+    pub(in crate::infer_chirho) fn check_value_parameters_chirho(
+        &mut self,
+        patterns_chirho: &[haskelujah_ast_chirho::pat_chirho::PatChirho],
+        types_chirho: &[TyChirho],
+        span_chirho: SpanChirho,
+    ) {
+        use haskelujah_ast_chirho::pat_chirho::PatChirho;
+        if self.elaboration_state_chirho.owner_chirho.is_none() {
+            return;
+        }
+        let copied_chirho = (|| {
+            self.elaboration_state_chirho.charge_chirho(
+                types_chirho.len(),
+                types_chirho.len(),
+                span_chirho,
+            )?;
+            types_chirho
+                .iter()
+                .enumerate()
+                .map(|(index_chirho, term_chirho)| {
+                    let span_chirho = patterns_chirho
+                        .get(index_chirho)
+                        .map_or(span_chirho, PatChirho::span_chirho);
+                    self.elaboration_state_chirho
+                        .copy_chirho(term_chirho, span_chirho)
+                        .map(|term_chirho| (term_chirho, span_chirho))
+                })
+                .collect::<Result<Vec<_>, _>>()
+        })();
+        let mut entries_chirho = match copied_chirho {
+            Ok(entries_chirho) => entries_chirho,
+            Err(error_chirho) => {
+                self.record_body_kind_error_chirho(error_chirho);
+                return;
+            }
+        };
+        for pattern_chirho in patterns_chirho {
+            let mut pattern_chirho = pattern_chirho;
+            for depth_chirho in 0..128 {
+                if let Err(error_chirho) =
+                    self.elaboration_state_chirho
+                        .charge_chirho(1, 0, pattern_chirho.span_chirho())
+                {
+                    self.record_body_kind_error_chirho(error_chirho);
+                    return;
+                }
+                pattern_chirho = match pattern_chirho {
+                    PatChirho::ParenChirho { inner_chirho, .. }
+                    | PatChirho::BangChirho { inner_chirho, .. }
+                    | PatChirho::LazyChirho { inner_chirho, .. }
+                    | PatChirho::AsChirho {
+                        pattern_chirho: inner_chirho,
+                        ..
+                    } => inner_chirho,
+                    PatChirho::TypeAnnotChirho {
+                        pat_chirho: inner_chirho,
+                        ty_chirho,
+                        span_chirho,
+                    } => {
+                        if let Some(checked_chirho) = self.check_body_type_chirho(ty_chirho, true) {
+                            entries_chirho.push((checked_chirho.term_chirho, *span_chirho));
+                        }
+                        inner_chirho
+                    }
+                    _ => break,
+                };
+                if depth_chirho == 127 {
+                    let error_chirho = self.elaboration_state_chirho.resource_failure_chirho(
+                        "value parameter pattern depth bound exhausted",
+                        pattern_chirho.span_chirho(),
+                    );
+                    self.record_body_kind_error_chirho(error_chirho);
+                    return;
+                }
+            }
+        }
+        self.check_body_syntax_chirho(span_chirho, |context_chirho| {
+            elaborate_value_parameters_chirho(&entries_chirho, context_chirho)
+        });
+    }
+
     pub(in crate::infer_chirho) fn check_body_type_argument_chirho(
         &mut self,
         syntax_chirho: &TypeChirho,
@@ -115,6 +252,18 @@ impl InferCtxChirho {
         )
             -> Result<(ResultChirho, SubstChirho), ElaborationErrorChirho>,
     ) -> Option<ResultChirho> {
+        self.check_body_syntax_at_scope_chirho(span_chirho, None, elaborate_chirho)
+    }
+
+    fn check_body_syntax_at_scope_chirho<ResultChirho>(
+        &mut self,
+        span_chirho: SpanChirho,
+        entry_chirho: Option<&ValueParameterScopeChirho>,
+        elaborate_chirho: impl FnOnce(
+            ArgumentElaborationContextChirho<'_>,
+        )
+            -> Result<(ResultChirho, SubstChirho), ElaborationErrorChirho>,
+    ) -> Option<ResultChirho> {
         self.elaboration_state_chirho.owner_chirho?;
         let (Some(type_scope_chirho), Some(family_scope_chirho), Some(promotion_scope_chirho)) = (
             self.type_constructor_scope_chirho.clone(),
@@ -137,6 +286,8 @@ impl InferCtxChirho {
             scoped_variables_chirho: &self.scoped_tyvars_chirho,
             images_chirho: &self.skolem_bindings_chirho,
             refinements_chirho: &self.env_chirho,
+            refinement_mark_chirho: entry_chirho
+                .map(|entry_chirho| entry_chirho.refinements_chirho),
             equality_chirho: super::super::EqualityNormalizationViewChirho {
                 substitutions_chirho: &self.equality_substitutions_chirho,
                 legacy_synonyms_chirho: &self.type_synonyms_chirho,
@@ -144,8 +295,13 @@ impl InferCtxChirho {
                 family_scope_chirho: Some(&family_scope_chirho),
                 family_module_chirho: &self.family_module_name_chirho,
                 promotion_present_chirho: true,
-                evidence_chirho: self.equality_scopes_chirho[self.active_equality_scope_chirho]
-                    .evidence_view_chirho(),
+                evidence_chirho: entry_chirho.map_or_else(
+                    || {
+                        self.equality_scopes_chirho[self.active_equality_scope_chirho]
+                            .evidence_view_chirho()
+                    },
+                    |entry_chirho| entry_chirho.evidence_chirho.view_chirho(),
+                ),
             },
         });
         match result_chirho {

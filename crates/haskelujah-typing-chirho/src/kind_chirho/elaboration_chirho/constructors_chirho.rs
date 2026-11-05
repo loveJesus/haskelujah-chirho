@@ -521,6 +521,67 @@ impl TypeElaboratorChirho<'_> {
         )
     }
 
+    /// A newtype's actual checked result may rename its parameters, but cannot
+    /// refine them or hide existential field variables. Data GADTs keep their
+    /// ordinary refinement rule. Result-kind applications remain in this spine.
+    fn check_newtype_result_parameters_chirho(
+        &mut self,
+        result_chirho: &TyChirho,
+        fields_chirho: &[TyChirho],
+        parent_chirho: &str,
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        let result_chirho = self
+            .state_chirho
+            .resolve_chirho(result_chirho, span_chirho)?;
+        let mut head_chirho = &result_chirho;
+        let mut parameters_chirho = std::collections::HashSet::new();
+        while let TyChirho::AppChirho(function_chirho, argument_chirho) = head_chirho {
+            self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+            let TyChirho::VarChirho(variable_chirho) = &**argument_chirho else {
+                return Err(Self::error_chirho(
+                    "newtype constructor result cannot refine its parent parameters",
+                    span_chirho,
+                ));
+            };
+            if !parameters_chirho.insert(*variable_chirho) {
+                return Err(Self::error_chirho(
+                    "newtype constructor result must have distinct parameter variables",
+                    span_chirho,
+                ));
+            }
+            head_chirho = function_chirho;
+        }
+        if !matches!(head_chirho, TyChirho::ConChirho(key_chirho) if key_chirho == parent_chirho) {
+            return Err(Self::error_chirho(
+                "newtype constructor result has a different defining type",
+                span_chirho,
+            ));
+        }
+        let roots_chirho = parameters_chirho.into_iter().collect::<Vec<_>>();
+        let parameters_chirho = self
+            .state_chirho
+            .kind_dependency_closure_chirho(&roots_chirho, span_chirho)?;
+        for field_chirho in fields_chirho {
+            let field_chirho = self
+                .state_chirho
+                .resolve_chirho(field_chirho, span_chirho)?;
+            let variables_chirho = field_chirho.free_vars_chirho();
+            self.state_chirho
+                .charge_chirho(variables_chirho.len(), 0, span_chirho)?;
+            if variables_chirho
+                .iter()
+                .any(|variable_chirho| !parameters_chirho.contains(variable_chirho))
+            {
+                return Err(Self::error_chirho(
+                    "newtype constructor field has an existential type variable",
+                    span_chirho,
+                ));
+            }
+        }
+        Ok(())
+    }
+
     pub(super) fn elaborate_constructor_chirho(
         &mut self,
         constructor_chirho: &mut ConDeclChirho,
@@ -534,6 +595,50 @@ impl TypeElaboratorChirho<'_> {
             | ConDeclChirho::GadtChirho { name_chirho, .. } => name_chirho.span_chirho(),
         };
         let mut universals_chirho = std::collections::BTreeSet::new();
+        let newtype_parent_chirho = self
+            .registry_chirho
+            .declaration_schemes_chirho()
+            .get_chirho(parent_key_chirho)
+            .is_some_and(|parent_chirho| {
+                parent_chirho.role_chirho == TypeConstructorRoleChirho::NewtypeChirho
+            });
+        if newtype_parent_chirho {
+            let variables_chirho = self
+                .declaration_variables_chirho
+                .get(parent_key_chirho)
+                .ok_or_else(|| {
+                    Self::error_chirho(
+                        "newtype constructor lost its owner-local parent",
+                        constructor_span_chirho,
+                    )
+                })?;
+            self.state_chirho.charge_chirho(
+                variables_chirho.written_chirho.len(),
+                variables_chirho.written_chirho.len(),
+                constructor_span_chirho,
+            )?;
+            universals_chirho.extend(
+                variables_chirho
+                    .written_chirho
+                    .iter()
+                    .map(|(_, variable_chirho, _)| *variable_chirho),
+            );
+            let result_chirho =
+                self.result_kind_chirho(parent_key_chirho, constructor_span_chirho)?;
+            let result_chirho = self
+                .state_chirho
+                .resolve_chirho(&result_chirho, constructor_span_chirho)?;
+            let variables_chirho = result_chirho.free_vars_chirho();
+            self.state_chirho.charge_chirho(
+                variables_chirho.len(),
+                variables_chirho.len(),
+                constructor_span_chirho,
+            )?;
+            universals_chirho.extend(variables_chirho.into_iter().filter(|variable_chirho| {
+                self.state_chirho.variable_binding_chirho(*variable_chirho)
+                    == ElaborationVariableBindingChirho::UniversalChirho
+            }));
+        }
         if matches!(constructor_chirho, ConDeclChirho::GadtChirho { .. })
             && let Some(parent_chirho) = self
                 .registry_chirho
@@ -695,6 +800,16 @@ impl TypeElaboratorChirho<'_> {
                 };
                 for (kind_chirho, span_chirho) in &field_kinds_chirho {
                     this_chirho.unify_kinds_chirho(kind_chirho, &result_kind_chirho, *span_chirho)?;
+                }
+                let result_chirho = if let Some(result_chirho) = &gadt_result_chirho {
+                    Some(this_chirho.state_chirho.copy_chirho(result_chirho, span_chirho)?)
+                } else if let Some(key_chirho) = &key_chirho {
+                    this_chirho.registry_chirho.declaration_schemes_chirho().get_chirho(key_chirho)
+                        .map(|scheme_chirho| this_chirho.state_chirho.copy_chirho(&scheme_chirho.result_kind_chirho, span_chirho))
+                        .transpose()?
+                } else { None };
+                if let Some(result_chirho) = result_chirho {
+                    this_chirho.check_newtype_result_parameters_chirho(&result_chirho, &fields_chirho, parent_key_chirho, span_chirho)?;
                 }
             }
             let field_slot_chirho = this_chirho.declaration_variables_chirho.get_mut(parent_key_chirho)

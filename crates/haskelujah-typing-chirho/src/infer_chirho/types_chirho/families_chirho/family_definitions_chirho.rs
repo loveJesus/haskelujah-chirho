@@ -371,6 +371,17 @@ impl TypeFamilyDefinitionChirho {
         &self.branches_chirho
     }
 
+    /// Read the existing cached closed hold boundary or open verification
+    /// certificate. A kind consumer cannot treat held registration as a
+    /// completed stuck family, and needs no new branch scan or registry.
+    pub(crate) fn reduction_metadata_complete_chirho(&self) -> bool {
+        match self.reduction_chirho {
+            TypeFamilyReductionChirho::ClosedChirho => self.first_held_branch_chirho.is_none(),
+            TypeFamilyReductionChirho::OpenChirho => self.open_coherence_verified_chirho,
+            TypeFamilyReductionChirho::IntrinsicChirho(_) => true,
+        }
+    }
+
     pub fn open_coherence_verified_chirho(&self) -> bool {
         self.reduction_chirho == TypeFamilyReductionChirho::OpenChirho
             && self.open_coherence_verified_chirho

@@ -710,7 +710,8 @@ impl TypeElaboratorChirho<'_> {
                         }
                         for method_chirho in methods_chirho {
                             this_chirho.scoped_chirho(|this_chirho| {
-                                this_chirho.check_type_chirho(&mut method_chirho.ty_chirho)
+                                this_chirho
+                                    .check_class_method_type_chirho(&mut method_chirho.ty_chirho)
                             })?;
                         }
                         Ok(())

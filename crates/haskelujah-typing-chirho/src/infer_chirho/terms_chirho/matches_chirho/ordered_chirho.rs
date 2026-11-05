@@ -45,6 +45,22 @@ impl InferCtxChirho {
             self.type_normalization_exhausted_chirho.set(true);
             return SubstChirho::empty_chirho();
         };
+        let Some(entry_chirho) =
+            super::super::equality_normalization_chirho::copy_term_with_budget_chirho(
+                &copied_chirho,
+                &mut budget_chirho,
+            )
+        else {
+            self.type_normalization_exhausted_chirho.set(true);
+            return SubstChirho::empty_chirho();
+        };
+        self.check_ordered_parameter_entry_chirho(
+            patterns_chirho.len(),
+            entry_chirho,
+            span_chirho,
+            &mut budget_chirho,
+            0,
+        );
         self.ordered_pattern_cursor_chirho(
             patterns_chirho,
             (where_chirho, span_chirho),
@@ -53,6 +69,97 @@ impl InferCtxChirho {
             &mut budget_chirho,
             0,
         )
+    }
+
+    /// Open the same checked mixed spine without matching value patterns.
+    /// Later parameter kinds cannot borrow givens from earlier patterns in
+    /// this list; enclosing implications and written contexts remain available.
+    fn check_ordered_parameter_entry_chirho(
+        &mut self,
+        remaining_chirho: usize,
+        current_chirho: TyChirho,
+        span_chirho: SpanChirho,
+        budget_chirho: &mut super::super::equality_normalization_chirho::EqualityBudgetChirho,
+        depth_chirho: usize,
+    ) {
+        if remaining_chirho == 0 {
+            return;
+        }
+        if depth_chirho >= 128 || budget_chirho.work_chirho(1).is_none() {
+            self.type_normalization_exhausted_chirho.set(true);
+            return;
+        }
+        let required_chirho = matches!(&current_chirho, TyChirho::RequiredForallChirho { .. });
+        match current_chirho {
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            }
+            | TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
+                let consumed_chirho = if required_chirho {
+                    remaining_chirho.min(vars_chirho.len())
+                } else {
+                    0
+                };
+                let scheme_chirho = SchemeChirho {
+                    vars_chirho,
+                    preds_chirho: Vec::new(),
+                    ty_chirho: *body_chirho,
+                };
+                self.with_rigid_signature_chirho(&scheme_chirho, span_chirho, |context_chirho, opened_chirho| {
+                    if let Some(copied_chirho) = super::super::equality_normalization_chirho::copy_term_with_budget_chirho(opened_chirho, budget_chirho) {
+                        context_chirho.check_ordered_parameter_entry_chirho(remaining_chirho - consumed_chirho, copied_chirho, span_chirho, budget_chirho, depth_chirho + 1);
+                    } else { context_chirho.type_normalization_exhausted_chirho.set(true); }
+                });
+            }
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                let qualified_chirho = TyChirho::QualChirho {
+                    context_chirho,
+                    body_chirho,
+                };
+                let (next_chirho, givens_chirho) =
+                    self.expose_qualified_parts_chirho(qualified_chirho, Vec::new());
+                self.with_signature_givens_chirho(givens_chirho, &next_chirho, |context_chirho| {
+                    if let Some(copied_chirho) =
+                        super::super::equality_normalization_chirho::copy_term_with_budget_chirho(
+                            &next_chirho,
+                            budget_chirho,
+                        )
+                    {
+                        context_chirho.check_ordered_parameter_entry_chirho(
+                            remaining_chirho,
+                            copied_chirho,
+                            span_chirho,
+                            budget_chirho,
+                            depth_chirho + 1,
+                        );
+                    } else {
+                        context_chirho.type_normalization_exhausted_chirho.set(true);
+                    }
+                });
+            }
+            TyChirho::FunChirho(parameter_chirho, next_chirho, _) => {
+                self.check_value_parameters_chirho(
+                    &[],
+                    std::slice::from_ref(parameter_chirho.as_ref()),
+                    span_chirho,
+                );
+                self.check_ordered_parameter_entry_chirho(
+                    remaining_chirho - 1,
+                    *next_chirho,
+                    span_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                );
+            }
+            _ => {}
+        }
     }
 
     fn ordered_pattern_cursor_chirho(
@@ -215,6 +322,7 @@ impl InferCtxChirho {
             TyChirho::FunChirho(parameter_chirho, next_chirho, _) => {
                 self.env_chirho.push_scope_chirho();
                 let frame_chirho = self.begin_pattern_implication_chirho();
+                let parameter_scope_chirho = self.value_parameter_scope_chirho();
                 let first_chirho = self.bind_pat_chirho(&patterns_chirho[0], &parameter_chirho);
                 self.apply_subst_all_chirho(&first_chirho);
                 let next_chirho = first_chirho.apply_scheme_term_bounded_chirho(
@@ -239,6 +347,11 @@ impl InferCtxChirho {
                         body_chirho,
                         budget_chirho,
                         depth_chirho + 1,
+                    );
+                    self.check_solved_value_parameters_chirho(
+                        parameter_scope_chirho.as_ref(),
+                        std::slice::from_ref(parameter_chirho.as_ref()),
+                        span_chirho,
                     );
                     result_chirho = child_chirho.compose_chirho(&result_chirho);
                     let exit_chirho = exit_chirho.unwrap_or_else(|| {

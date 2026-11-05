@@ -875,6 +875,7 @@ fn held_and_unverified_definitions_never_certify_a_stuck_result_chirho() {
         branch_chirho(0, vec![named_chirho("aChirho")], con_chirho("Int"), vec![]);
     held_chirho.held_chirho = true;
     let closed_chirho = closed_chirho(1, vec![held_chirho]);
+    assert!(!closed_chirho.reduction_metadata_complete_chirho());
     assert_eq!(
         decide_family_with_limits_chirho(
             &closed_chirho,
@@ -891,6 +892,7 @@ fn held_and_unverified_definitions_never_certify_a_stuck_result_chirho() {
         Vec::new(),
     )
     .unwrap();
+    assert!(!open_chirho.reduction_metadata_complete_chirho());
     assert_eq!(
         decide_family_with_limits_chirho(
             &open_chirho,
@@ -903,6 +905,7 @@ fn held_and_unverified_definitions_never_certify_a_stuck_result_chirho() {
     let verified_chirho = open_chirho
         .verify_open_coherence_chirho(&|_left_chirho, _right_chirho| true, 0)
         .unwrap();
+    assert!(verified_chirho.reduction_metadata_complete_chirho());
     assert_eq!(
         decide_family_with_limits_chirho(
             &verified_chirho,

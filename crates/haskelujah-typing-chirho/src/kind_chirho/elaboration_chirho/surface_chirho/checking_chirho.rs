@@ -85,6 +85,29 @@ impl TypeElaboratorChirho<'_> {
             .resolve_chirho(&typed_chirho.term_chirho, span_chirho)
     }
 
+    /// GHC requires a lifted method value. Default only generated representation
+    /// metas first; explicit universal kinds still use the common rigid comparison.
+    /// Value arrows elsewhere retain their open representations.
+    pub(in crate::kind_chirho::elaboration_chirho) fn check_class_method_type_chirho(
+        &mut self,
+        syntax_chirho: &mut TypeChirho,
+    ) -> Result<TyChirho, ElaborationErrorChirho> {
+        let span_chirho = syntax_chirho.span_chirho();
+        let term_chirho = self.check_value_type_chirho(syntax_chirho)?;
+        let Some(kind_chirho) = self.checked_term_kind_chirho(&term_chirho, span_chirho)? else {
+            return Ok(term_chirho);
+        };
+        self.check_inferred_kind_chirho(
+            syntax_chirho,
+            ElaboratedTypeChirho {
+                term_chirho,
+                kind_chirho,
+            },
+            &ElaborationStateChirho::type_universe_chirho(),
+        )
+        .map(|typed_chirho| typed_chirho.term_chirho)
+    }
+
     pub(super) fn infer_application_argument_chirho(
         &mut self,
         syntax_chirho: &mut TypeChirho,
