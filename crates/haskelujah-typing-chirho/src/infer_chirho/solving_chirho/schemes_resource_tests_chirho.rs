@@ -141,6 +141,7 @@ fn actual_generalization_conserves_ordinary_predicates_past_metadata_limits_chir
 
 fn polykinded_predicate_scheme_chirho() -> SchemeChirho {
     SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![TyVarChirho(800), TyVarChirho(801)],
         preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
             CompilerClassChirho::TypeableChirho,

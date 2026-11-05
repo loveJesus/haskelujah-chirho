@@ -5,12 +5,20 @@
 
 use super::*;
 
+pub(super) struct TypePatternAliasUndoChirho {
+    name_chirho: String,
+    variable_chirho: TyVarChirho,
+    previous_name_chirho: Option<TyVarChirho>,
+    previous_image_chirho: Option<TyChirho>,
+}
+
 pub(super) struct PatternImplicationChirho {
     owner_chirho: usize,
     given_start_chirho: usize,
     rewrite_start_chirho: usize,
     first_meta_chirho: u32,
     event_start_chirho: usize,
+    alias_mark_chirho: usize,
 }
 
 /// A public image replacement is a domain update, not ordinary mathematical
@@ -35,6 +43,8 @@ impl PatternImplicationSolutionChirho {
     }
 }
 
+pub(super) type TypePatternAliasesChirho = Vec<(String, TyVarChirho, TyChirho)>;
+
 impl InferCtxChirho {
     pub(super) fn begin_pattern_implication_chirho(&mut self) -> PatternImplicationChirho {
         self.equality_pattern_depth_chirho += 1;
@@ -46,6 +56,7 @@ impl InferCtxChirho {
             rewrite_start_chirho: self.given_rewrites_chirho.len(),
             first_meta_chirho: self.next_var_chirho,
             event_start_chirho: self.equality_substitution_events_chirho.len(),
+            alias_mark_chirho: self.type_pattern_alias_undo_chirho.len(),
         }
     }
 
@@ -70,6 +81,7 @@ impl InferCtxChirho {
             .truncate(frame_chirho.given_start_chirho);
         self.given_rewrites_chirho
             .truncate(frame_chirho.rewrite_start_chirho);
+        self.restore_type_pattern_aliases_chirho(frame_chirho.alias_mark_chirho);
         self.end_equality_scope_chirho(frame_chirho.owner_chirho);
         self.equality_pattern_depth_chirho -= 1;
         if self.equality_pattern_depth_chirho == 0 {
@@ -89,6 +101,15 @@ impl InferCtxChirho {
         &mut self,
         scheme_chirho: &SchemeChirho,
     ) -> (Vec<TyChirho>, TyChirho, Vec<PredChirho>) {
+        let (fields_chirho, result_chirho, predicates_chirho, _) =
+            self.instantiate_constructor_pattern_with_variables_chirho(scheme_chirho);
+        (fields_chirho, result_chirho, predicates_chirho)
+    }
+
+    pub(super) fn instantiate_constructor_pattern_with_variables_chirho(
+        &mut self,
+        scheme_chirho: &SchemeChirho,
+    ) -> (Vec<TyChirho>, TyChirho, Vec<PredChirho>, SubstChirho) {
         let mut binders_chirho = scheme_chirho.vars_chirho.clone();
         let mut fields_chirho = Vec::new();
         let mut remaining_chirho = &scheme_chirho.ty_chirho;
@@ -222,7 +243,431 @@ impl InferCtxChirho {
                 .collect(),
             instantiation_chirho.apply_ty_chirho(remaining_chirho),
             predicates_chirho,
+            instantiation_chirho,
         )
+    }
+
+    pub(super) fn type_pattern_aliases_since_chirho(
+        &self,
+        mark_chirho: usize,
+    ) -> TypePatternAliasesChirho {
+        let mut budget_chirho =
+            super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+        let mut aliases_chirho = Vec::new();
+        for undo_chirho in &self.type_pattern_alias_undo_chirho[mark_chirho..] {
+            if let Some(image_chirho) = self
+                .skolem_bindings_chirho
+                .lookup_chirho(&undo_chirho.variable_chirho)
+            {
+                let copied_chirho = SubstChirho::empty_chirho().apply_bounded_chirho(
+                    image_chirho,
+                    &mut |work_chirho, output_chirho| {
+                        budget_chirho.node_chirho(output_chirho)?;
+                        budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+                    },
+                );
+                if let Some(copied_chirho) = copied_chirho.filter(|_| {
+                    budget_chirho
+                        .node_chirho(undo_chirho.name_chirho.len().saturating_add(1))
+                        .is_some()
+                }) {
+                    aliases_chirho.push((
+                        undo_chirho.name_chirho.clone(),
+                        undo_chirho.variable_chirho,
+                        copied_chirho,
+                    ));
+                } else {
+                    self.type_normalization_exhausted_chirho.set(true);
+                    return Vec::new();
+                }
+            }
+        }
+        aliases_chirho
+    }
+
+    pub(super) fn restore_type_pattern_aliases_chirho(&mut self, mark_chirho: usize) {
+        while self.type_pattern_alias_undo_chirho.len() > mark_chirho {
+            let undo_chirho = self
+                .type_pattern_alias_undo_chirho
+                .pop()
+                .expect("type pattern scope mark");
+            if let Some(previous_chirho) = undo_chirho.previous_name_chirho {
+                self.scoped_tyvars_chirho
+                    .insert(undo_chirho.name_chirho, previous_chirho);
+            } else {
+                self.scoped_tyvars_chirho.remove(&undo_chirho.name_chirho);
+            }
+            if let Some(previous_chirho) = undo_chirho.previous_image_chirho {
+                self.skolem_bindings_chirho
+                    .insert_chirho(undo_chirho.variable_chirho, previous_chirho);
+            } else {
+                self.skolem_bindings_chirho
+                    .remove_chirho(&undo_chirho.variable_chirho);
+            }
+        }
+    }
+
+    pub(super) fn bind_checked_type_pattern_alias_chirho(
+        &mut self,
+        name_chirho: &NameChirho,
+        image_chirho: TyChirho,
+    ) {
+        let mut variables_chirho = HashMap::new();
+        let variable_chirho = self.surface_variable_chirho(name_chirho, &mut variables_chirho);
+        self.install_type_pattern_alias_chirho(
+            name_chirho.text_chirho().to_owned(),
+            variable_chirho,
+            image_chirho,
+        );
+    }
+
+    pub(super) fn install_type_pattern_alias_chirho(
+        &mut self,
+        name_chirho: String,
+        variable_chirho: TyVarChirho,
+        image_chirho: TyChirho,
+    ) {
+        let previous_name_chirho = self
+            .scoped_tyvars_chirho
+            .insert(name_chirho.clone(), variable_chirho);
+        let previous_image_chirho = self
+            .skolem_bindings_chirho
+            .lookup_chirho(&variable_chirho)
+            .cloned();
+        self.skolem_bindings_chirho
+            .insert_chirho(variable_chirho, image_chirho);
+        self.type_pattern_alias_undo_chirho
+            .push(TypePatternAliasUndoChirho {
+                name_chirho: name_chirho.clone(),
+                variable_chirho,
+                previous_name_chirho,
+                previous_image_chirho,
+            });
+    }
+
+    pub(super) fn bind_constructor_type_pattern_chirho(
+        &mut self,
+        pattern_chirho: &TypeChirho,
+        expected_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> SubstChirho {
+        let mut budget_chirho =
+            super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+        let mut seen_chirho = HashSet::new();
+        if self
+            .prepare_type_pattern_variables_chirho(
+                pattern_chirho,
+                &mut seen_chirho,
+                &mut budget_chirho,
+                0,
+            )
+            .is_none()
+        {
+            self.type_normalization_exhausted_chirho.set(true);
+            return SubstChirho::empty_chirho();
+        }
+        self.bind_prepared_constructor_type_pattern_chirho(
+            pattern_chirho,
+            expected_chirho,
+            span_chirho,
+        )
+    }
+
+    fn bind_prepared_constructor_type_pattern_chirho(
+        &mut self,
+        pattern_chirho: &TypeChirho,
+        expected_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> SubstChirho {
+        match pattern_chirho {
+            TypeChirho::ParenChirho { inner_chirho, .. } => self
+                .bind_prepared_constructor_type_pattern_chirho(
+                    inner_chirho,
+                    expected_chirho,
+                    span_chirho,
+                ),
+            TypeChirho::KindAnnotationChirho { ty_chirho, .. } => self
+                .bind_prepared_constructor_type_pattern_chirho(
+                    ty_chirho,
+                    expected_chirho,
+                    span_chirho,
+                ),
+            TypeChirho::WildcardChirho { .. } => SubstChirho::empty_chirho(),
+            TypeChirho::VarChirho(name_chirho) => {
+                self.bind_checked_type_pattern_alias_chirho(name_chirho, expected_chirho.clone());
+                SubstChirho::empty_chirho()
+            }
+            _ => {
+                let matched_chirho = self.ast_type_to_ty_in_scope_chirho(pattern_chirho);
+                match self.unify_normalized_chirho(expected_chirho, &matched_chirho, span_chirho) {
+                    Ok(substitution_chirho) => substitution_chirho,
+                    Err(error_chirho) => {
+                        self.report_unify_error_chirho(&error_chirho);
+                        SubstChirho::empty_chirho()
+                    }
+                }
+            }
+        }
+    }
+
+    fn prepare_type_pattern_variables_chirho(
+        &mut self,
+        pattern_chirho: &TypeChirho,
+        seen_chirho: &mut HashSet<haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho>,
+        budget_chirho: &mut super::equality_normalization_chirho::EqualityBudgetChirho,
+        depth_chirho: usize,
+    ) -> Option<()> {
+        budget_chirho.work_chirho(1)?;
+        if depth_chirho > 128 {
+            return None;
+        }
+        match pattern_chirho {
+            TypeChirho::VarChirho(name_chirho) => {
+                let source_chirho = name_chirho.type_variable_chirho()?;
+                if seen_chirho.insert(source_chirho.clone()) {
+                    budget_chirho.node_chirho(name_chirho.text_chirho().len().saturating_add(1))?;
+                    let variable_chirho = self.fresh_var_chirho();
+                    self.bind_checked_type_pattern_alias_chirho(name_chirho, variable_chirho);
+                }
+            }
+            TypeChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            }
+            | TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                self.prepare_type_pattern_variables_chirho(
+                    fun_chirho,
+                    seen_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?;
+                self.prepare_type_pattern_variables_chirho(
+                    arg_chirho,
+                    seen_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?;
+            }
+            TypeChirho::FunChirho {
+                arg_chirho,
+                result_chirho,
+                ..
+            } => {
+                self.prepare_type_pattern_variables_chirho(
+                    arg_chirho,
+                    seen_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?;
+                self.prepare_type_pattern_variables_chirho(
+                    result_chirho,
+                    seen_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?;
+            }
+            TypeChirho::TupleChirho {
+                elements_chirho, ..
+            }
+            | TypeChirho::PromotedListChirho {
+                elements_chirho, ..
+            } => {
+                for element_chirho in elements_chirho {
+                    self.prepare_type_pattern_variables_chirho(
+                        element_chirho,
+                        seen_chirho,
+                        budget_chirho,
+                        depth_chirho + 1,
+                    )?;
+                }
+            }
+            TypeChirho::ListChirho { element_chirho, .. } => self
+                .prepare_type_pattern_variables_chirho(
+                    element_chirho,
+                    seen_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?,
+            TypeChirho::ParenChirho { inner_chirho, .. } => self
+                .prepare_type_pattern_variables_chirho(
+                    inner_chirho,
+                    seen_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?,
+            TypeChirho::KindAnnotationChirho {
+                ty_chirho,
+                kind_chirho,
+                ..
+            } => {
+                self.prepare_type_pattern_variables_chirho(
+                    ty_chirho,
+                    seen_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?;
+                self.prepare_type_pattern_variables_chirho(
+                    kind_chirho,
+                    seen_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?;
+            }
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            }
+            | TypeChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            } => {
+                let mut bound_chirho = Vec::new();
+                for binder_chirho in vars_chirho {
+                    if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                        self.prepare_type_pattern_variables_chirho(
+                            kind_chirho,
+                            seen_chirho,
+                            budget_chirho,
+                            depth_chirho + 1,
+                        )?;
+                    }
+                    budget_chirho.node_chirho(1)?;
+                    let source_chirho = binder_chirho.name_chirho.type_variable_chirho()?;
+                    if seen_chirho.insert(source_chirho.clone()) {
+                        bound_chirho.push(source_chirho);
+                    }
+                }
+                let result_chirho = self.prepare_type_pattern_variables_chirho(
+                    body_chirho,
+                    seen_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                );
+                for source_chirho in bound_chirho {
+                    seen_chirho.remove(source_chirho);
+                }
+                result_chirho?;
+            }
+            TypeChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+                ..
+            } => {
+                for constraint_chirho in context_chirho {
+                    self.prepare_type_pattern_constraint_chirho(
+                        constraint_chirho,
+                        seen_chirho,
+                        budget_chirho,
+                        depth_chirho + 1,
+                    )?;
+                }
+                self.prepare_type_pattern_variables_chirho(
+                    body_chirho,
+                    seen_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?;
+            }
+            _ => {}
+        }
+        Some(())
+    }
+
+    fn prepare_type_pattern_constraint_chirho(
+        &mut self,
+        constraint_chirho: &haskelujah_ast_chirho::ty_chirho::ConstraintChirho,
+        seen_chirho: &mut HashSet<haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho>,
+        budget_chirho: &mut super::equality_normalization_chirho::EqualityBudgetChirho,
+        depth_chirho: usize,
+    ) -> Option<()> {
+        use haskelujah_ast_chirho::ty_chirho::ConstraintChirho;
+        budget_chirho.work_chirho(1)?;
+        if depth_chirho > 128 {
+            return None;
+        }
+        match constraint_chirho {
+            ConstraintChirho::KindAnnotationChirho {
+                constraint_chirho,
+                kind_chirho,
+                ..
+            } => {
+                self.prepare_type_pattern_constraint_chirho(
+                    constraint_chirho,
+                    seen_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?;
+                self.prepare_type_pattern_variables_chirho(
+                    kind_chirho,
+                    seen_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?;
+            }
+            ConstraintChirho::ClassChirho {
+                args_chirho,
+                kind_args_chirho,
+                ..
+            } => {
+                for term_chirho in kind_args_chirho.iter().chain(args_chirho) {
+                    self.prepare_type_pattern_variables_chirho(
+                        term_chirho,
+                        seen_chirho,
+                        budget_chirho,
+                        depth_chirho + 1,
+                    )?;
+                }
+            }
+            ConstraintChirho::QuantifiedChirho {
+                vars_chirho,
+                context_chirho,
+                body_chirho,
+                ..
+            } => {
+                let mut bound_chirho = Vec::new();
+                for binder_chirho in vars_chirho {
+                    if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                        self.prepare_type_pattern_variables_chirho(
+                            kind_chirho,
+                            seen_chirho,
+                            budget_chirho,
+                            depth_chirho + 1,
+                        )?;
+                    }
+                    budget_chirho.node_chirho(1)?;
+                    let source_chirho = binder_chirho.name_chirho.type_variable_chirho()?;
+                    if seen_chirho.insert(source_chirho.clone()) {
+                        bound_chirho.push(source_chirho);
+                    }
+                }
+                for constraint_chirho in context_chirho {
+                    self.prepare_type_pattern_constraint_chirho(
+                        constraint_chirho,
+                        seen_chirho,
+                        budget_chirho,
+                        depth_chirho + 1,
+                    )?;
+                }
+                let result_chirho = self.prepare_type_pattern_constraint_chirho(
+                    body_chirho,
+                    seen_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                );
+                for source_chirho in bound_chirho {
+                    seen_chirho.remove(source_chirho);
+                }
+                result_chirho?;
+            }
+        }
+        Some(())
     }
 
     pub(super) fn install_pattern_givens_chirho(&mut self, predicates_chirho: Vec<PredChirho>) {

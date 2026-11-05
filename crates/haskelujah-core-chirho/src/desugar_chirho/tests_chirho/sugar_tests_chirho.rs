@@ -168,7 +168,8 @@ fn desugar_where_binds_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let output_chirho = desugar_module_chirho(&module_chirho);
+    let output_chirho =
+        desugar_module_chirho(&module_chirho).expect("valid constructor signatures in fixture");
     let binding_chirho = &output_chirho.module_chirho.bindings_chirho[0];
     assert_eq!(binding_chirho.binder_chirho.name_chirho, "f");
 

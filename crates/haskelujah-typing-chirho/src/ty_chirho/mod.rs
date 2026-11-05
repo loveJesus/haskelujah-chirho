@@ -548,11 +548,23 @@ impl std::hash::Hash for SchemePredChirho {
     }
 }
 
+/// The actual signature producer's binder correspondence. Constructor source
+/// IDs are canonical declaration slots; other explicit signatures retain their
+/// owner-qualified source ID. No spelling or sorted variable ID grants a slot.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SchemeSourceBinderChirho {
+    pub source_chirho:
+        haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho,
+    pub variable_chirho: TyVarChirho,
+    pub specificity_chirho: haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho,
+}
+
 /// A type scheme: `forall a1 a2 ... . (preds =>) ty`. Represents polymorphism.
 /// When `vars` is empty, the scheme is monomorphic.
 /// When `preds` is non-empty, the scheme is constrained (qualified).
 #[derive(Debug, Clone, PartialEq)]
 pub struct SchemeChirho {
+    pub source_binders_chirho: Vec<SchemeSourceBinderChirho>,
     pub vars_chirho: Vec<TyVarChirho>,
     /// Typeclass predicates on the quantified variables, e.g. `Num a`.
     pub preds_chirho: Vec<SchemePredChirho>,
@@ -563,6 +575,7 @@ impl SchemeChirho {
     /// A monomorphic scheme (no quantified variables, no predicates).
     pub fn mono_chirho(ty_chirho: TyChirho) -> Self {
         Self {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![],
             preds_chirho: vec![],
             ty_chirho,
@@ -571,11 +584,16 @@ impl SchemeChirho {
 
     /// Collect free type variables (those NOT bound by the forall).
     pub fn free_vars_chirho(&self) -> Vec<TyVarChirho> {
-        self.ty_chirho
-            .free_vars_chirho()
-            .into_iter()
-            .filter(|v_chirho| !self.vars_chirho.contains(v_chirho))
-            .collect()
+        let mut variables_chirho = self.ty_chirho.free_vars_chirho();
+        for predicate_chirho in &self.preds_chirho {
+            for term_chirho in predicate_chirho.semantic_tys_chirho() {
+                variables_chirho.extend(term_chirho.free_vars_chirho());
+            }
+        }
+        variables_chirho.retain(|variable_chirho| !self.vars_chirho.contains(variable_chirho));
+        variables_chirho.sort_unstable();
+        variables_chirho.dedup();
+        variables_chirho
     }
 
     /// Number of argument arrows on the type's spine, looking through
@@ -705,6 +723,7 @@ mod tests_chirho {
         let a_chirho = TyVarChirho(0);
         let b_chirho = TyVarChirho(1);
         let scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
@@ -740,6 +759,7 @@ mod tests_chirho {
     #[test]
     fn scheme_display_chirho() {
         let scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![TyVarChirho(0), TyVarChirho(1)],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(

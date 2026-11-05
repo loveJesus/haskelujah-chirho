@@ -155,6 +155,7 @@ fn pattern_universals_stay_flexible_but_field_only_existentials_are_rigid_chirho
         Box::new(TyChirho::VarChirho(universal_chirho)),
     );
     let scheme_chirho = SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![universal_chirho, existential_chirho],
         preds_chirho: vec![SchemePredChirho::legacy_chirho(
             crate::ty_chirho::SchemePredPartsChirho {
@@ -185,6 +186,7 @@ fn constructor_expression_instantiation_stays_flexible_and_emits_wanteds_chirho(
     let mut ctx_chirho = InferCtxChirho::new_chirho();
     let var_chirho = TyVarChirho(900);
     let scheme_chirho = SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![var_chirho],
         preds_chirho: vec![SchemePredChirho::legacy_chirho(
             crate::ty_chirho::SchemePredPartsChirho {
@@ -317,6 +319,7 @@ fn an_existential_cannot_escape_through_an_older_function_parameter_meta_chirho(
     let frame_chirho = ctx_chirho.begin_pattern_implication_chirho();
     let var_chirho = TyVarChirho(900);
     let scheme_chirho = SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![var_chirho],
         preds_chirho: vec![],
         ty_chirho: TyChirho::fun_chirho(
@@ -345,6 +348,7 @@ fn local_refinement_does_not_export_existentials_from_an_outer_rigid_type_chirho
     let frame_chirho = ctx_chirho.begin_pattern_implication_chirho();
     let var_chirho = TyVarChirho(900);
     let scheme_chirho = SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![var_chirho],
         preds_chirho: vec![],
         ty_chirho: TyChirho::fun_chirho(
@@ -382,6 +386,7 @@ fn constructor_result_tuple_parameters_are_universal_but_family_arguments_are_no
         )
     };
     let tuple_scheme_chirho = SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![var_chirho],
         preds_chirho: vec![],
         ty_chirho: TyChirho::fun_chirho(
@@ -393,6 +398,7 @@ fn constructor_result_tuple_parameters_are_universal_but_family_arguments_are_no
         ctx_chirho.instantiate_constructor_pattern_chirho(&tuple_scheme_chirho);
     assert!(!contains_skolem_chirho(&tuple_fields_chirho[0]));
     let family_scheme_chirho = SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![var_chirho],
         preds_chirho: vec![],
         ty_chirho: TyChirho::fun_chirho(
@@ -420,6 +426,7 @@ fn an_existential_eliminated_by_local_evidence_is_materialized_before_pop_chirho
     let frame_chirho = ctx_chirho.begin_pattern_implication_chirho();
     let var_chirho = TyVarChirho(900);
     let scheme_chirho = SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![var_chirho],
         preds_chirho: vec![],
         ty_chirho: TyChirho::fun_chirho(
@@ -547,6 +554,7 @@ fn a_case_alternative_cannot_hide_its_mismatch_behind_an_earlier_given_chirho() 
             ctx_chirho.env_chirho.bind_chirho(
                 name_chirho.to_owned(),
                 SchemeChirho {
+                    source_binders_chirho: Vec::new(),
                     vars_chirho: vec![var_chirho],
                     preds_chirho,
                     ty_chirho: branch_chirho(TyChirho::VarChirho(var_chirho)),
@@ -559,6 +567,7 @@ fn a_case_alternative_cannot_hide_its_mismatch_behind_an_earlier_given_chirho() 
             alts_chirho: vec![
                 AltChirho {
                     pat_chirho: PatChirho::ConChirho {
+                        type_args_chirho: Vec::new(),
                         con_chirho: dummy_name_chirho("HasChirho"),
                         args_chirho: vec![],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -569,6 +578,7 @@ fn a_case_alternative_cannot_hide_its_mismatch_behind_an_earlier_given_chirho() 
                 },
                 AltChirho {
                     pat_chirho: PatChirho::ConChirho {
+                        type_args_chirho: Vec::new(),
                         con_chirho: dummy_name_chirho("NoChirho"),
                         args_chirho: vec![],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -628,6 +638,7 @@ fn resolved_promoted_indices_determine_universals_but_unknown_ones_do_not_chirho
             Box::new(index_chirho),
         );
         let scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![var_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(TyChirho::VarChirho(var_chirho), result_chirho),

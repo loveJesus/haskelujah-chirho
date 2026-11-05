@@ -308,6 +308,12 @@ impl TypeElaboratorChirho<'_> {
                 .state_chirho
                 .resolve_chirho(&result_kind_chirho, span_chirho)?;
             quantified_chirho.extend(result_kind_chirho.free_vars_chirho());
+            quantified_chirho.extend(
+                scheme_chirho
+                    .source_variables_chirho
+                    .iter()
+                    .map(|source_chirho| source_chirho.variable_chirho),
+            );
             for binder_chirho in &scheme_chirho.binders_chirho {
                 let kind_chirho = self
                     .state_chirho

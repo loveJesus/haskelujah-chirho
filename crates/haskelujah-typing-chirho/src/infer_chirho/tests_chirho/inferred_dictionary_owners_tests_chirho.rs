@@ -35,6 +35,7 @@ fn num_scheme_chirho(var_chirho: TyVarChirho, preceding_chirho: bool) -> SchemeC
         },
     ));
     SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![var_chirho],
         preds_chirho,
         ty_chirho: TyChirho::fun_chirho(ty_chirho.clone(), ty_chirho),

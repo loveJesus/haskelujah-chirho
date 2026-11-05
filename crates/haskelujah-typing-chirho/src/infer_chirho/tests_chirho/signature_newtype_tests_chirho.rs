@@ -683,7 +683,7 @@ fn infer_gadt_equations_refine_rigid_signature_vars_per_equation_chirho() {
                 name_chirho: dummy_name_chirho("reduceASeqChirho"),
                 matches_chirho: vec![
                     MatchArmChirho {
-                        pats_chirho: vec![PatChirho::ConChirho {
+                        pats_chirho: vec![PatChirho::ConChirho { type_args_chirho: Vec::new(),
                             con_chirho: dummy_name_chirho("ANil"),
                             args_chirho: vec![],
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -700,7 +700,7 @@ fn infer_gadt_equations_refine_rigid_signature_vars_per_equation_chirho() {
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                     MatchArmChirho {
-                        pats_chirho: vec![PatChirho::ConChirho {
+                        pats_chirho: vec![PatChirho::ConChirho { type_args_chirho: Vec::new(),
                             con_chirho: dummy_name_chirho("ACons"),
                             args_chirho: vec![
                                 PatChirho::VarChirho(dummy_name_chirho("xChirho")),

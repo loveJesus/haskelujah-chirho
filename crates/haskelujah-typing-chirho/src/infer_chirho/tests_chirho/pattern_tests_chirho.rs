@@ -123,6 +123,7 @@ fn infer_top_level_magic_hash_pattern_binder_survives_unsafe_coerce_rhs_chirho()
                 name_chirho: dummy_name_chirho("unsafeThawByteArray"),
                 matches_chirho: vec![MatchArmChirho {
                     pats_chirho: vec![PatChirho::ConChirho {
+                        type_args_chirho: Vec::new(),
                         con_chirho: dummy_name_chirho("ByteArray"),
                         args_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("arr#"))],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,

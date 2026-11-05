@@ -32,6 +32,7 @@ pub(super) fn enumeration_scheme_chirho(name_chirho: &str) -> Option<SchemeChirh
     };
     let elem_chirho = TyChirho::VarChirho(var_chirho);
     Some(SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![var_chirho],
         preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::EnumChirho,

@@ -35,6 +35,7 @@ fn soft_predicate_metadata_refusal_does_not_become_an_ordinary_import_error_chir
     predicate_chirho
         .refuse_metadata_chirho(PredicateMetadataRefusalChirho::DepthChirho { limit_chirho: 128 });
     let scheme_chirho = SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![],
         preds_chirho: vec![predicate_chirho],
         ty_chirho: deep_chirho,
@@ -90,6 +91,7 @@ fn hard_import_transport_failure_cannot_be_deferred_by_the_module_chirho() {
     let types_chirho = HashMap::from([(
         "OriginChirho.fooChirho".to_owned(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![],
             preds_chirho: vec![],
             ty_chirho: list_chirho(1030),

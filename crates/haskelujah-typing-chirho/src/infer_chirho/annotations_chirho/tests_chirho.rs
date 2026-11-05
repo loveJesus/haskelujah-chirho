@@ -110,6 +110,7 @@ fn nested_signature_check_reports_capture_before_restoring_skolems_chirho() {
         unreachable!()
     };
     let scheme_chirho = SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![quantified_chirho],
         preds_chirho: vec![],
         ty_chirho: TyChirho::VarChirho(quantified_chirho),
@@ -140,6 +141,7 @@ fn signature_equality_exports_safe_public_image_before_evidence_leaves_chirho() 
         unreachable!()
     };
     let scheme_chirho = SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![quantified_chirho],
         preds_chirho: vec![crate::ty_chirho::SchemePredChirho::legacy_chirho(
             crate::ty_chirho::SchemePredPartsChirho {
@@ -179,4 +181,110 @@ fn signature_equality_exports_safe_public_image_before_evidence_leaves_chirho() 
         TyChirho::int_chirho()
     );
     assert!(context_chirho.skolem_bindings_chirho.is_empty_chirho());
+}
+
+#[test]
+fn checked_annotation_above_import_placeholder_range_retains_its_type_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    context_chirho.next_var_chirho = 9000;
+    let name_chirho = super::super::test_support_chirho::dummy_name_chirho;
+    let span_chirho = SpanChirho::DUMMY_CHIRHO;
+    let expression_chirho = ExprChirho::TypeAppChirho {
+        expr_chirho: Box::new(ExprChirho::AnnChirho {
+            expr_chirho: Box::new(ExprChirho::VarChirho(name_chirho("undefined"))),
+            ty_chirho: TypeChirho::ForallChirho {
+                vars_chirho: vec![name_chirho("aChirho").into()],
+                body_chirho: Box::new(TypeChirho::VarChirho(name_chirho("aChirho"))),
+                span_chirho,
+            },
+            span_chirho,
+        }),
+        ty_chirho: TypeChirho::ConChirho(name_chirho("Int")),
+        span_chirho,
+    };
+    let (_, inferred_chirho) = context_chirho.infer_expr_chirho(&expression_chirho);
+    assert!(!context_chirho.diagnostics_chirho.has_errors_chirho());
+    assert_eq!(inferred_chirho, TyChirho::int_chirho());
+}
+
+#[test]
+fn type_pattern_alias_shadow_restores_exact_previous_image_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    context_chirho.install_type_pattern_alias_chirho(
+        "aChirho".into(),
+        TyVarChirho(0),
+        TyChirho::int_chirho(),
+    );
+    let mark_chirho = context_chirho.type_pattern_alias_undo_chirho.len();
+    context_chirho.install_type_pattern_alias_chirho(
+        "aChirho".into(),
+        TyVarChirho(1),
+        TyChirho::bool_chirho(),
+    );
+    let aliases_chirho = context_chirho.type_pattern_aliases_since_chirho(mark_chirho);
+    context_chirho.restore_type_pattern_aliases_chirho(mark_chirho);
+    assert_eq!(
+        context_chirho.scoped_tyvars_chirho["aChirho"],
+        TyVarChirho(0)
+    );
+    assert!(
+        context_chirho
+            .skolem_bindings_chirho
+            .lookup_chirho(&TyVarChirho(1))
+            .is_none()
+    );
+    for (name_chirho, variable_chirho, image_chirho) in aliases_chirho {
+        context_chirho.install_type_pattern_alias_chirho(
+            name_chirho,
+            variable_chirho,
+            image_chirho,
+        );
+    }
+    assert_eq!(
+        context_chirho.scoped_tyvars_chirho["aChirho"],
+        TyVarChirho(1)
+    );
+    assert_eq!(
+        context_chirho
+            .skolem_bindings_chirho
+            .lookup_chirho(&TyVarChirho(1)),
+        Some(&TyChirho::bool_chirho())
+    );
+    context_chirho.restore_type_pattern_aliases_chirho(mark_chirho);
+    assert_eq!(
+        context_chirho.scoped_tyvars_chirho["aChirho"],
+        TyVarChirho(0)
+    );
+    assert_eq!(
+        context_chirho
+            .skolem_bindings_chirho
+            .lookup_chirho(&TyVarChirho(0)),
+        Some(&TyChirho::int_chirho())
+    );
+}
+
+#[test]
+fn constructor_type_pattern_wrapper_depth_is_non_deferrable_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let span_chirho = SpanChirho::DUMMY_CHIRHO;
+    let mut pattern_chirho = TypeChirho::WildcardChirho { span_chirho };
+    for _index_chirho in 0..130 {
+        pattern_chirho = TypeChirho::ParenChirho {
+            inner_chirho: Box::new(pattern_chirho),
+            span_chirho,
+        };
+    }
+    context_chirho.bind_constructor_type_pattern_chirho(
+        &pattern_chirho,
+        &TyChirho::int_chirho(),
+        span_chirho,
+    );
+    assert!(context_chirho.type_normalization_exhausted_chirho.get());
+    assert!(context_chirho.type_pattern_alias_undo_chirho.is_empty());
+    let result_chirho = context_chirho.finish_chirho();
+    assert!(
+        result_chirho
+            .non_deferrable_diagnostics_chirho
+            .has_errors_chirho()
+    );
 }

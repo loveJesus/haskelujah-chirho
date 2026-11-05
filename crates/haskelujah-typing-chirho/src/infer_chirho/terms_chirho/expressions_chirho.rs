@@ -365,11 +365,13 @@ impl InferCtxChirho {
                 body_chirho,
                 ..
             } => {
+                let type_pattern_scope_mark_chirho = self.type_pattern_alias_undo_chirho.len();
                 self.env_chirho.push_scope_chirho();
                 let mut subst_chirho = SubstChirho::empty_chirho();
                 self.infer_local_binds_chirho(binds_chirho, &mut subst_chirho);
 
                 let (body_s_chirho, body_ty_chirho) = self.infer_expr_chirho(body_chirho);
+                self.restore_type_pattern_aliases_chirho(type_pattern_scope_mark_chirho);
                 self.env_chirho.pop_scope_chirho();
 
                 let combined_chirho = body_s_chirho.compose_chirho(&subst_chirho);
@@ -453,6 +455,7 @@ impl InferCtxChirho {
                 let mut subst_chirho = s1_chirho;
 
                 for alt_chirho in alts_chirho {
+                    let type_pattern_scope_mark_chirho = self.type_pattern_alias_undo_chirho.len();
                     self.env_chirho.push_scope_chirho();
                     let pattern_frame_chirho = self.begin_pattern_implication_chirho();
 
@@ -493,6 +496,7 @@ impl InferCtxChirho {
                         *span_chirho,
                     );
                     subst_chirho = solved_chirho.compose_chirho(&subst_chirho);
+                    self.restore_type_pattern_aliases_chirho(type_pattern_scope_mark_chirho);
                     self.env_chirho.pop_scope_chirho();
                 }
 
@@ -520,6 +524,7 @@ impl InferCtxChirho {
                 let mut last_ty_chirho = TyChirho::unit_chirho();
                 let last_expected_chirho = self.do_last_expected_chirho.take();
 
+                let type_pattern_scope_mark_chirho = self.type_pattern_alias_undo_chirho.len();
                 self.env_chirho.push_scope_chirho();
 
                 for (idx_chirho, stmt_chirho) in stmts_chirho.iter().enumerate() {
@@ -650,6 +655,7 @@ impl InferCtxChirho {
                     }
                 }
 
+                self.restore_type_pattern_aliases_chirho(type_pattern_scope_mark_chirho);
                 self.env_chirho.pop_scope_chirho();
                 (subst_chirho, last_ty_chirho)
             }
@@ -660,23 +666,34 @@ impl InferCtxChirho {
                 parallel_quals_chirho,
                 span_chirho,
             } => {
+                let type_pattern_scope_mark_chirho = self.type_pattern_alias_undo_chirho.len();
+                let mut body_aliases_chirho = Vec::new();
                 let mut subst_chirho = SubstChirho::empty_chirho();
                 let mut body_bindings_chirho = Vec::new();
                 if parallel_quals_chirho.is_empty() {
-                    let (group_subst_chirho, group_bindings_chirho) =
+                    let (group_subst_chirho, group_bindings_chirho, group_aliases_chirho) =
                         self.infer_list_comp_qual_group_chirho(quals_chirho, *span_chirho);
                     subst_chirho = group_subst_chirho.compose_chirho(&subst_chirho);
                     body_bindings_chirho.extend(group_bindings_chirho);
+                    body_aliases_chirho.extend(group_aliases_chirho);
                 } else {
                     for group_chirho in parallel_quals_chirho {
-                        let (group_subst_chirho, group_bindings_chirho) =
+                        let (group_subst_chirho, group_bindings_chirho, group_aliases_chirho) =
                             self.infer_list_comp_qual_group_chirho(group_chirho, *span_chirho);
                         subst_chirho = group_subst_chirho.compose_chirho(&subst_chirho);
                         body_bindings_chirho.extend(group_bindings_chirho);
+                        body_aliases_chirho.extend(group_aliases_chirho);
                     }
                 }
 
                 self.env_chirho.push_scope_chirho();
+                for (name_chirho, variable_chirho, image_chirho) in body_aliases_chirho {
+                    self.install_type_pattern_alias_chirho(
+                        name_chirho,
+                        variable_chirho,
+                        image_chirho,
+                    );
+                }
                 for (name_chirho, scheme_chirho) in body_bindings_chirho {
                     self.env_chirho.bind_chirho(
                         name_chirho,
@@ -686,6 +703,7 @@ impl InferCtxChirho {
                 let (body_subst_chirho, body_ty_chirho) = self.infer_expr_chirho(body_chirho);
                 subst_chirho = body_subst_chirho.compose_chirho(&subst_chirho);
                 self.apply_subst_all_chirho(&body_subst_chirho);
+                self.restore_type_pattern_aliases_chirho(type_pattern_scope_mark_chirho);
                 self.env_chirho.pop_scope_chirho();
 
                 let final_elem_ty_chirho = subst_chirho.apply_ty_chirho(&body_ty_chirho);

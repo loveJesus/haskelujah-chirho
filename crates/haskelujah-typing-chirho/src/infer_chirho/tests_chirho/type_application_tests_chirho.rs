@@ -16,6 +16,7 @@ fn infer_visible_type_application_specializes_named_scheme_chirho() {
     ctx_chirho.env_chirho.bind_chirho(
         "idTy".to_string(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
@@ -51,6 +52,7 @@ fn infer_visible_type_application_specializes_rank_n_parameter_chirho() {
     ctx_chirho.env_chirho.bind_chirho(
         "rankNParameterChirho".to_string(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![],
             preds_chirho: vec![],
             ty_chirho: TyChirho::ForallChirho {
@@ -195,6 +197,7 @@ fn infer_rank_n_expected_type_through_case_chirho() {
     let expected_ty_chirho = rank_n_identity_consumer_ty_chirho();
     let bool_alt_chirho = |constructor_chirho: &str| AltChirho {
         pat_chirho: PatChirho::ConChirho {
+            type_args_chirho: Vec::new(),
             con_chirho: dummy_name_chirho(constructor_chirho),
             args_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -233,6 +236,7 @@ fn infer_visible_type_application_reuses_scoped_type_variable_chirho() {
     ctx_chirho.env_chirho.bind_chirho(
         "proof".to_string(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![n_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::AppChirho(

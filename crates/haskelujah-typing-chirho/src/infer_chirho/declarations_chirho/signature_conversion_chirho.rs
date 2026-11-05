@@ -46,12 +46,14 @@ impl InferCtxChirho {
         // referring to the enclosing function's forall-bound vars reuse the same TyVarChirho.
         let mut var_map_chirho: HashMap<String, TyVarChirho> = seed_chirho.clone();
         let mut explicit_forall_vars_chirho = Vec::new();
+        let mut source_binders_chirho = Vec::new();
         let mut scheme_preds_chirho = Vec::new();
         let mut equality_pairs_chirho = Vec::new();
         let body_ast_chirho = self.prepare_signature_body_chirho(
             ast_ty_chirho,
             &mut var_map_chirho,
             &mut explicit_forall_vars_chirho,
+            &mut source_binders_chirho,
             &mut scheme_preds_chirho,
             &mut equality_pairs_chirho,
         );
@@ -230,10 +232,13 @@ impl InferCtxChirho {
             .into_iter()
             .filter(|var_chirho| !scoped_ids_chirho.contains(var_chirho))
             .collect();
+        source_binders_chirho
+            .retain(|binder_chirho| vars_chirho.contains(&binder_chirho.variable_chirho));
         var_map_chirho.extend(body_bindings_chirho);
         if skolem_bindings_chirho.is_empty_chirho() {
             return (
                 SchemeChirho {
+                    source_binders_chirho: source_binders_chirho.clone(),
                     vars_chirho,
                     preds_chirho: scheme_preds_chirho,
                     ty_chirho: inner_ty_chirho,
@@ -243,6 +248,7 @@ impl InferCtxChirho {
         }
         (
             SchemeChirho {
+                source_binders_chirho,
                 vars_chirho,
                 preds_chirho: scheme_preds_chirho
                     .into_iter()
@@ -369,6 +375,7 @@ impl InferCtxChirho {
         ast_ty_chirho: &'a TypeChirho,
         var_map_chirho: &mut HashMap<String, TyVarChirho>,
         explicit_vars_chirho: &mut Vec<TyVarChirho>,
+        source_binders_chirho: &mut Vec<crate::ty_chirho::SchemeSourceBinderChirho>,
         scheme_preds_chirho: &mut Vec<SchemePredChirho>,
         equality_pairs_chirho: &mut Vec<(TyChirho, TyChirho)>,
     ) -> &'a TypeChirho {
@@ -390,6 +397,7 @@ impl InferCtxChirho {
                     body_chirho,
                     var_map_chirho,
                     explicit_vars_chirho,
+                    source_binders_chirho,
                     scheme_preds_chirho,
                     equality_pairs_chirho,
                 )
@@ -407,11 +415,19 @@ impl InferCtxChirho {
                     self.tyvar_source_names_chirho
                         .insert(fresh_chirho, text_chirho);
                     explicit_vars_chirho.push(fresh_chirho);
+                    if let Some(source_chirho) = name_chirho.name_chirho.type_variable_chirho() {
+                        source_binders_chirho.push(crate::ty_chirho::SchemeSourceBinderChirho {
+                            source_chirho: source_chirho.clone(),
+                            variable_chirho: fresh_chirho,
+                            specificity_chirho: name_chirho.specificity_chirho,
+                        });
+                    }
                 }
                 self.prepare_signature_body_chirho(
                     body_chirho,
                     var_map_chirho,
                     explicit_vars_chirho,
+                    source_binders_chirho,
                     scheme_preds_chirho,
                     equality_pairs_chirho,
                 )
@@ -420,6 +436,7 @@ impl InferCtxChirho {
                 inner_chirho,
                 var_map_chirho,
                 explicit_vars_chirho,
+                source_binders_chirho,
                 scheme_preds_chirho,
                 equality_pairs_chirho,
             ),

@@ -730,12 +730,14 @@ fn field_vars_chirho(prefix_chirho: &str, count_chirho: usize) -> Vec<String> {
 fn con_pat_chirho(con_name_str_chirho: &str, field_names_chirho: &[String]) -> PatChirho {
     if field_names_chirho.is_empty() {
         PatChirho::ConChirho {
+            type_args_chirho: Vec::new(),
             con_chirho: var_name_chirho(con_name_str_chirho),
             args_chirho: vec![],
             span_chirho: gen_span_chirho(),
         }
     } else {
         PatChirho::ConChirho {
+            type_args_chirho: Vec::new(),
             con_chirho: var_name_chirho(con_name_str_chirho),
             args_chirho: field_names_chirho
                 .iter()
@@ -904,6 +906,7 @@ fn derive_ord_chirho(
                     alts_chirho: vec![
                         AltChirho {
                             pat_chirho: PatChirho::ConChirho {
+                                type_args_chirho: Vec::new(),
                                 con_chirho: var_name_chirho("EQ"),
                                 args_chirho: vec![],
                                 span_chirho: gen_span_chirho(),
@@ -1976,6 +1979,7 @@ fn generic_product_expr_chirho(vars_chirho: &[String]) -> ExprChirho {
 fn generic_product_pat_chirho(vars_chirho: &[String]) -> PatChirho {
     match vars_chirho.len() {
         0 => PatChirho::ConChirho {
+            type_args_chirho: Vec::new(),
             con_chirho: var_name_chirho("()"),
             args_chirho: vec![],
             span_chirho: gen_span_chirho(),
@@ -2026,6 +2030,7 @@ fn generic_sum_pat_chirho(
     }
     if idx_chirho == 0 {
         return PatChirho::ConChirho {
+            type_args_chirho: Vec::new(),
             con_chirho: var_name_chirho("Left"),
             args_chirho: vec![product_pat_chirho],
             span_chirho: gen_span_chirho(),
@@ -2033,6 +2038,7 @@ fn generic_sum_pat_chirho(
     }
     let inner_chirho = generic_sum_pat_chirho(product_pat_chirho, idx_chirho - 1, total_chirho - 1);
     PatChirho::ConChirho {
+        type_args_chirho: Vec::new(),
         con_chirho: var_name_chirho("Right"),
         args_chirho: vec![inner_chirho],
         span_chirho: gen_span_chirho(),

@@ -102,7 +102,9 @@ impl LowerCtxChirho {
                     // An annotated binder this helper could not read (a kind
                     // main has no form for): keep the binder, skip its kind,
                     // so the kind's variables are not read as binders.
-                    TokenKindChirho::LeftParenChirho => {
+                    TokenKindChirho::LeftParenChirho | TokenKindChirho::LeftBraceChirho => {
+                        let inferred_chirho =
+                            token_chirho.kind_chirho() == TokenKindChirho::LeftBraceChirho;
                         let mut group_depth_chirho = 0usize;
                         let mut named_chirho = false;
                         while index_chirho < binder_children_chirho.len() {
@@ -111,8 +113,10 @@ impl LowerCtxChirho {
                                 inner_chirho.element_chirho
                             {
                                 match inner_token_chirho.kind_chirho() {
-                                    TokenKindChirho::LeftParenChirho => group_depth_chirho += 1,
-                                    TokenKindChirho::RightParenChirho => {
+                                    TokenKindChirho::LeftParenChirho
+                                    | TokenKindChirho::LeftBraceChirho => group_depth_chirho += 1,
+                                    TokenKindChirho::RightParenChirho
+                                    | TokenKindChirho::RightBraceChirho => {
                                         group_depth_chirho = group_depth_chirho.saturating_sub(1);
                                         if group_depth_chirho == 0 {
                                             break;
@@ -120,15 +124,18 @@ impl LowerCtxChirho {
                                     }
                                     TokenKindChirho::VarIdChirho if !named_chirho => {
                                         named_chirho = true;
-                                        vars_chirho.push(TyVarChirho::plain_chirho(
-                                            self.name_from_token_chirho(
+                                        let mut binder_chirho =
+                                            TyVarChirho::plain_chirho(self.name_from_token_chirho(
                                                 inner_token_chirho,
                                                 self.span_chirho(
                                                     inner_chirho.start_chirho,
                                                     inner_chirho.end_chirho,
                                                 ),
-                                            ),
-                                        ));
+                                            ));
+                                        if inferred_chirho {
+                                            binder_chirho.specificity_chirho = haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho;
+                                        }
+                                        vars_chirho.push(binder_chirho);
                                     }
                                     _ => {}
                                 }

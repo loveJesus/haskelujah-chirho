@@ -14,6 +14,7 @@ impl ClassEnvChirho {
         // pass, as GHC's do (row 606).
         let eq_var_chirho = TyVarChirho(9000);
         let eq_method_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![eq_var_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_n_chirho(
@@ -45,6 +46,7 @@ impl ClassEnvChirho {
         // here, and the dictionary pass defaults the other six from it (row 612).
         let ord_var_chirho = TyVarChirho(9001);
         let ord_method_chirho = |result_ty_chirho: TyChirho| SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![ord_var_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_n_chirho(
@@ -93,6 +95,7 @@ impl ClassEnvChirho {
                 methods_chirho: HashMap::from([(
                     "show".to_string(),
                     SchemeChirho {
+                        source_binders_chirho: Vec::new(),
                         vars_chirho: vec![show_var_chirho],
                         preds_chirho: vec![],
                         ty_chirho: TyChirho::fun_chirho(
@@ -123,6 +126,7 @@ impl ClassEnvChirho {
                     (
                         "+".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![num_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
@@ -137,6 +141,7 @@ impl ClassEnvChirho {
                     (
                         "*".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![num_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
@@ -151,6 +156,7 @@ impl ClassEnvChirho {
                     (
                         "-".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![num_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
@@ -165,6 +171,7 @@ impl ClassEnvChirho {
                     (
                         "negate".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![num_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(
@@ -176,6 +183,7 @@ impl ClassEnvChirho {
                     (
                         "fromInteger".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![num_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(
@@ -187,6 +195,7 @@ impl ClassEnvChirho {
                     (
                         "abs".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![num_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(
@@ -198,6 +207,7 @@ impl ClassEnvChirho {
                     (
                         "signum".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![num_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(
@@ -226,6 +236,7 @@ impl ClassEnvChirho {
                     (
                         "/".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![frac_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
@@ -240,6 +251,7 @@ impl ClassEnvChirho {
                     (
                         "recip".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![frac_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(
@@ -251,6 +263,7 @@ impl ClassEnvChirho {
                     (
                         "fromRational".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![frac_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(
@@ -279,6 +292,7 @@ impl ClassEnvChirho {
                     (
                         ".&.".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
@@ -293,6 +307,7 @@ impl ClassEnvChirho {
                     (
                         ".|.".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
@@ -307,6 +322,7 @@ impl ClassEnvChirho {
                     (
                         "xor".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
@@ -321,6 +337,7 @@ impl ClassEnvChirho {
                     (
                         "complement".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(
@@ -332,6 +349,7 @@ impl ClassEnvChirho {
                     (
                         "shift".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
@@ -343,6 +361,7 @@ impl ClassEnvChirho {
                     (
                         "shiftL".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
@@ -354,6 +373,7 @@ impl ClassEnvChirho {
                     (
                         "shiftR".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
@@ -365,6 +385,7 @@ impl ClassEnvChirho {
                     (
                         "bit".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(
@@ -376,6 +397,7 @@ impl ClassEnvChirho {
                     (
                         "setBit".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
@@ -387,6 +409,7 @@ impl ClassEnvChirho {
                     (
                         "clearBit".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
@@ -398,6 +421,7 @@ impl ClassEnvChirho {
                     (
                         "testBit".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_n_chirho(
@@ -409,6 +433,7 @@ impl ClassEnvChirho {
                     (
                         "bitSize".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(
@@ -420,6 +445,7 @@ impl ClassEnvChirho {
                     (
                         "isSigned".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(
@@ -431,6 +457,7 @@ impl ClassEnvChirho {
                     (
                         "popCount".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(
@@ -442,6 +469,7 @@ impl ClassEnvChirho {
                     (
                         "zeroBits".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::VarChirho(bits_var_chirho),
@@ -467,6 +495,7 @@ impl ClassEnvChirho {
                     (
                         "finiteBitSize".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![finite_bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(
@@ -478,6 +507,7 @@ impl ClassEnvChirho {
                     (
                         "countLeadingZeros".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![finite_bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(
@@ -489,6 +519,7 @@ impl ClassEnvChirho {
                     (
                         "countTrailingZeros".to_string(),
                         SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho: vec![finite_bits_var_chirho],
                             preds_chirho: vec![],
                             ty_chirho: TyChirho::fun_chirho(

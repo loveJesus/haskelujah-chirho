@@ -462,7 +462,10 @@ impl InferCtxChirho {
         let instantiated_chirho = if explicit_chirho.is_empty() {
             Some(self.instantiate_scheme_parts_chirho(&scheme_chirho))
         } else {
-            self.instantiate_scheme_parts_with_type_args_chirho(&scheme_chirho, &explicit_chirho)
+            self.instantiate_scheme_parts_with_visible_type_args_chirho(
+                &scheme_chirho,
+                &explicit_chirho,
+            )
         };
         let Some((mut current_chirho, mut predicates_chirho)) = instantiated_chirho else {
             return Ok(None);
@@ -573,6 +576,7 @@ impl InferCtxChirho {
                     let start_chirho = self.next_var_chirho;
                     let (opened_chirho, additional_chirho) =
                         self.instantiate_scheme_parts_chirho(&SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho,
                             preds_chirho: Vec::new(),
                             ty_chirho: *body_chirho,
@@ -628,6 +632,7 @@ impl InferCtxChirho {
             ));
             let (checked_chirho, public_chirho) = self.with_rigid_signature_chirho(
                 &SchemeChirho {
+                    source_binders_chirho: Vec::new(),
                     vars_chirho,
                     preds_chirho: predicates_chirho,
                     ty_chirho: body_chirho,

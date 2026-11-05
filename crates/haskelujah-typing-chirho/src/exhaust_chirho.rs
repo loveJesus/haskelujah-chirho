@@ -896,6 +896,7 @@ mod tests_chirho {
 
     fn mk_con_pat_chirho(name_chirho: &str) -> PatChirho {
         PatChirho::ConChirho {
+            type_args_chirho: Vec::new(),
             con_chirho: mk_name_chirho(name_chirho),
             args_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,

@@ -448,6 +448,7 @@ impl InferCtxChirho {
                 } => {
                     let (opened_chirho, predicates_chirho) =
                         self.skolemize_scheme_parts_chirho(&crate::ty_chirho::SchemeChirho {
+                            source_binders_chirho: Vec::new(),
                             vars_chirho,
                             preds_chirho: Vec::new(),
                             ty_chirho: *body_chirho,

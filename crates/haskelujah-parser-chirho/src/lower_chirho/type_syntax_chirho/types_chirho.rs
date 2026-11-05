@@ -502,10 +502,18 @@ impl LowerCtxChirho {
 
         if !matches!(children_chirho[idx_chirho].element_chirho,
             GreenElementChirho::TokenChirho(token_chirho)
-                if token_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho)
+                if matches!(token_chirho.kind_chirho(), TokenKindChirho::LeftParenChirho | TokenKindChirho::LeftBraceChirho))
         {
             return None;
         }
+
+        let inferred_chirho = matches!(children_chirho[idx_chirho].element_chirho,
+            GreenElementChirho::TokenChirho(token_chirho) if token_chirho.kind_chirho() == TokenKindChirho::LeftBraceChirho);
+        let closing_chirho = if inferred_chirho {
+            TokenKindChirho::RightBraceChirho
+        } else {
+            TokenKindChirho::RightParenChirho
+        };
 
         // The first child inside the balanced group is the written binder.
         // children_chirho[idx_chirho+1] must be VarId
@@ -534,12 +542,18 @@ impl LowerCtxChirho {
         while close_idx_chirho < children_chirho.len() {
             match children_chirho[close_idx_chirho].element_chirho {
                 GreenElementChirho::TokenChirho(t_chirho)
-                    if t_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho =>
+                    if matches!(
+                        t_chirho.kind_chirho(),
+                        TokenKindChirho::LeftParenChirho | TokenKindChirho::LeftBraceChirho
+                    ) =>
                 {
                     depth_chirho += 1;
                 }
                 GreenElementChirho::TokenChirho(t_chirho)
-                    if t_chirho.kind_chirho() == TokenKindChirho::RightParenChirho =>
+                    if matches!(
+                        t_chirho.kind_chirho(),
+                        TokenKindChirho::RightParenChirho | TokenKindChirho::RightBraceChirho
+                    ) =>
                 {
                     if depth_chirho == 0 {
                         break;
@@ -570,13 +584,17 @@ impl LowerCtxChirho {
         // children_chirho[close_idx_chirho] must be `)`
         match children_chirho[close_idx_chirho].element_chirho {
             GreenElementChirho::TokenChirho(t_chirho)
-                if t_chirho.kind_chirho() == TokenKindChirho::RightParenChirho => {}
+                if t_chirho.kind_chirho() == closing_chirho => {}
             _ => return None,
         }
 
         let s_chirho = self.span_chirho(var_child_chirho.start_chirho, var_child_chirho.end_chirho);
         let name_chirho = self.name_from_token_chirho(var_tok_chirho, s_chirho);
-        let tv_chirho = TyVarChirho::annotated_chirho(name_chirho, kind_chirho);
+        let mut tv_chirho = TyVarChirho::annotated_chirho(name_chirho, kind_chirho);
+        if inferred_chirho {
+            tv_chirho.specificity_chirho =
+                haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho;
+        }
 
         // Total tokens consumed: from `(` through `)` inclusive
         let consumed_chirho = close_idx_chirho - idx_chirho + 1;
@@ -592,6 +610,13 @@ impl LowerCtxChirho {
         base_chirho: usize,
     ) -> Option<TyVarChirho> {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        let inferred_chirho = matches!(children_chirho.first().map(|child_chirho| child_chirho.element_chirho),
+            Some(GreenElementChirho::TokenChirho(token_chirho)) if token_chirho.kind_chirho() == TokenKindChirho::LeftBraceChirho);
+        let specificity_chirho = if inferred_chirho {
+            haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho
+        } else {
+            haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho
+        };
 
         let annotation_index_chirho = children_chirho.iter().position(|child_chirho| {
             matches!(child_chirho.element_chirho,
@@ -618,13 +643,15 @@ impl LowerCtxChirho {
             },
         )?;
         let Some(annotation_index_chirho) = annotation_index_chirho else {
-            return Some(TyVarChirho::plain_chirho(var_name_chirho));
+            let mut binder_chirho = TyVarChirho::plain_chirho(var_name_chirho);
+            binder_chirho.specificity_chirho = specificity_chirho;
+            return Some(binder_chirho);
         };
         let kind_end_chirho = children_chirho.len()
             - usize::from(
                 matches!(children_chirho.last().map(|child_chirho| child_chirho.element_chirho),
                 Some(GreenElementChirho::TokenChirho(token_chirho))
-                    if token_chirho.kind_chirho() == TokenKindChirho::RightParenChirho),
+                    if matches!(token_chirho.kind_chirho(), TokenKindChirho::RightParenChirho | TokenKindChirho::RightBraceChirho)),
             );
         let kind_children_chirho: Vec<_> = children_chirho
             [annotation_index_chirho + 1..kind_end_chirho]
@@ -634,10 +661,12 @@ impl LowerCtxChirho {
             kind_children_chirho.first()?.start_chirho,
             kind_children_chirho.last()?.end_chirho,
         );
-        Some(TyVarChirho::annotated_chirho(
+        let mut binder_chirho = TyVarChirho::annotated_chirho(
             var_name_chirho,
             self.type_from_flat_children_chirho(&kind_children_chirho, kind_span_chirho),
-        ))
+        );
+        binder_chirho.specificity_chirho = specificity_chirho;
+        Some(binder_chirho)
     }
 }
 

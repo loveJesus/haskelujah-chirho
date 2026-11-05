@@ -39,6 +39,7 @@ pub(super) fn seed_constructors_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "Nothing".to_string(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![maybe_arg_chirho],
             preds_chirho: vec![],
             ty_chirho: maybe_ty_chirho.clone(),
@@ -47,6 +48,7 @@ pub(super) fn seed_constructors_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "Just".to_string(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![maybe_arg_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(TyChirho::VarChirho(maybe_arg_chirho), maybe_ty_chirho),
@@ -68,6 +70,7 @@ pub(super) fn seed_constructors_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             name_chirho.to_string(),
             SchemeChirho {
+                source_binders_chirho: Vec::new(),
                 vars_chirho: vec![non_empty_arg_chirho],
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(

@@ -617,7 +617,9 @@ impl ImportQualificationChirho<'_> {
                 self.typed_chirho(ty_chirho, builtin_seed_chirho, 0)
             })?);
         }
+        self.reserve_chirho(scheme_chirho.source_binders_chirho.len(), scheme_chirho.source_binders_chirho.len())?;
         Ok(haskelujah_typing_chirho::SchemeChirho {
+            source_binders_chirho: scheme_chirho.source_binders_chirho.clone(),
             vars_chirho,
             preds_chirho,
             ty_chirho: self.typed_chirho(&scheme_chirho.ty_chirho, builtin_seed_chirho, 0)?,

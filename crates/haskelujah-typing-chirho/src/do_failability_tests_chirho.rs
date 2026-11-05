@@ -99,6 +99,7 @@ fn tuple_chirho(elements_chirho: Vec<PatChirho>) -> PatChirho {
 
 fn con_chirho(con_text_chirho: &str, args_chirho: Vec<PatChirho>) -> PatChirho {
     PatChirho::ConChirho {
+        type_args_chirho: Vec::new(),
         con_chirho: name_chirho(con_text_chirho),
         args_chirho,
         span_chirho: SpanChirho::DUMMY_CHIRHO,

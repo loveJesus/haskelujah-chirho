@@ -37,10 +37,16 @@ impl LowerCtxChirho {
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
                 let mut con_name_chirho = None;
                 let mut args_chirho = Vec::new();
+                let mut type_args_chirho = Vec::new();
+                let mut type_argument_pending_chirho = false;
 
                 for child_chirho in &children_chirho {
                     match child_chirho.element_chirho {
                         GreenElementChirho::TokenChirho(tok_chirho) => {
+                            if tok_chirho.kind_chirho() == TokenKindChirho::AtSignChirho {
+                                type_argument_pending_chirho = true;
+                            }
+
                             if con_name_chirho.is_none()
                                 && (tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
                                     || tok_chirho.kind_chirho()
@@ -55,6 +61,16 @@ impl LowerCtxChirho {
                             }
                         }
                         GreenElementChirho::NodeChirho(n_chirho)
+                            if type_argument_pending_chirho
+                                && super::is_type_kind_chirho(n_chirho.kind_chirho()) =>
+                        {
+                            type_args_chirho.push(haskelujah_ast_chirho::pat_chirho::ConstructorTypePatternChirho {
+                                ty_chirho: self.lower_type_chirho(n_chirho, child_chirho.start_chirho),
+                                checked_binder_chirho: None,
+                            });
+                            type_argument_pending_chirho = false;
+                        }
+                        GreenElementChirho::NodeChirho(n_chirho)
                             if is_pat_kind_chirho(n_chirho.kind_chirho()) =>
                         {
                             args_chirho
@@ -66,6 +82,7 @@ impl LowerCtxChirho {
 
                 PatChirho::ConChirho {
                     con_chirho: con_name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
+                    type_args_chirho,
                     args_chirho,
                     span_chirho,
                 }
@@ -298,6 +315,7 @@ impl LowerCtxChirho {
                                 TokenKindChirho::ConSymChirho
                                 | TokenKindChirho::QualifiedConSymChirho => {
                                     paren_op_pat_chirho = Some(PatChirho::ConChirho {
+                                        type_args_chirho: Vec::new(),
                                         con_chirho: self
                                             .name_from_token_chirho(tok_chirho, child_span_chirho),
                                         args_chirho: vec![],
@@ -541,6 +559,7 @@ impl LowerCtxChirho {
                 {
                     // Constructor with no args
                     PatChirho::ConChirho {
+                        type_args_chirho: Vec::new(),
                         con_chirho: name_chirho.clone().without_origin_chirho(),
                         args_chirho: vec![],
                         span_chirho: name_chirho.span_chirho(),
@@ -593,6 +612,7 @@ impl LowerCtxChirho {
                 app_args_chirho.reverse();
                 match head_expr_chirho {
                     ExprChirho::ConChirho(con_chirho) => PatChirho::ConChirho {
+                        type_args_chirho: Vec::new(),
                         con_chirho: con_chirho.clone(),
                         args_chirho: app_args_chirho,
                         span_chirho: expr_chirho.span_chirho(),
@@ -605,6 +625,7 @@ impl LowerCtxChirho {
                             .is_some_and(|c_chirho| c_chirho.is_uppercase()) =>
                     {
                         PatChirho::ConChirho {
+                            type_args_chirho: Vec::new(),
                             con_chirho: name_chirho.clone().without_origin_chirho(),
                             args_chirho: app_args_chirho,
                             span_chirho: expr_chirho.span_chirho(),

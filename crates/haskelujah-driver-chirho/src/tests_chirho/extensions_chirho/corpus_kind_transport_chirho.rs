@@ -140,3 +140,44 @@ fn corpus_t10031_checks_context_beneath_annotation_forall_chirho() {
     check_chirho("should_compile", "T10031.hs")
         .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
 }
+
+#[test]
+fn corpus_t23501b_instantiates_variable_kind_per_application_chirho() {
+    check_chirho("should_compile", "T23501b.hs")
+        .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn corpus_t18986a_instantiates_kind_through_family_application_chirho() {
+    check_chirho("should_compile", "T18986a.hs")
+        .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn corpus_t18640a_does_not_erase_family_visibility_chirho() {
+    let error_chirho = check_chirho("should_fail", "T18640a.hs")
+        .err()
+        .expect("fresh GHC family visibility negative rejects");
+    assert!(error_chirho.contains("error[E"), "{error_chirho}");
+}
+
+#[test]
+fn corpus_specificity8_does_not_make_inferred_binders_required_chirho() {
+    let error_chirho = check_chirho("should_fail", "ExplicitSpecificity8.hs")
+        .err()
+        .expect("fresh GHC specificity negative rejects");
+    assert!(error_chirho.contains("error[E"), "{error_chirho}");
+}
+
+#[test]
+fn checked_alias_result_prefix_positive_chirho() {
+    super::ordinary_elaboration_chirho::frontend_chirho(include_str!("kind_repair_fixtures_chirho/impredicative-application-chirho/result-prefix-chirho/AliasResultPrefixPositiveChirho.hs"))
+        .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn checked_alias_result_prefix_wrong_kind_chirho() {
+    let error_chirho = super::ordinary_elaboration_chirho::frontend_chirho(include_str!("kind_repair_fixtures_chirho/impredicative-application-chirho/result-prefix-chirho/AliasResultPrefixWrongChirho.hs"))
+        .err().expect("actual GHC wrong-kind alias rejects");
+    assert!(error_chirho.contains("error[E030"), "{error_chirho}");
+}

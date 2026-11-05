@@ -39,6 +39,22 @@ impl ParserChirho<'_> {
             {
                 if self.at_chirho(RawTokenKindChirho::VarIdChirho) {
                     self.bump_chirho();
+                } else if self.at_chirho(RawTokenKindChirho::LeftBraceChirho) {
+                    // Braces are the producer of inferred specificity. Keep
+                    // the complete binder group, including a written kind.
+                    self.builder_chirho
+                        .start_node_chirho(SyntaxKindChirho::ParenTypeChirho);
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                    self.expect_chirho(RawTokenKindChirho::VarIdChirho);
+                    self.eat_trivia_chirho();
+                    if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
+                        self.bump_chirho();
+                        self.eat_trivia_chirho();
+                        self.parse_type_chirho();
+                    }
+                    self.expect_chirho(RawTokenKindChirho::RightBraceChirho);
+                    self.builder_chirho.finish_node_chirho();
                 } else if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
                     // Retain the complete balanced annotation. Kind inference
                     // decides its validity; lookahead only identifies a binder.

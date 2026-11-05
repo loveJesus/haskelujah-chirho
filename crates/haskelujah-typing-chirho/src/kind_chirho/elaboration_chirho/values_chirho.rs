@@ -416,7 +416,14 @@ impl TypeElaboratorChirho<'_> {
             .charge_chirho(1, 0, pattern_chirho.span_chirho())?;
         self.with_syntax_depth_chirho(pattern_chirho.span_chirho(), |this_chirho| {
             match pattern_chirho {
-                PatChirho::ConChirho { args_chirho, .. } => {
+                PatChirho::ConChirho {
+                    con_chirho,
+                    type_args_chirho,
+                    args_chirho,
+                    ..
+                } => {
+                    this_chirho
+                        .elaborate_constructor_pattern_types_chirho(con_chirho, type_args_chirho)?;
                     for argument_chirho in args_chirho {
                         this_chirho.pattern_chirho(argument_chirho)?;
                     }
@@ -477,7 +484,7 @@ impl TypeElaboratorChirho<'_> {
         })
     }
 
-    fn with_syntax_depth_chirho<ResultChirho>(
+    pub(super) fn with_syntax_depth_chirho<ResultChirho>(
         &mut self,
         span_chirho: SpanChirho,
         action_chirho: impl FnOnce(&mut Self) -> Result<ResultChirho, ElaborationErrorChirho>,

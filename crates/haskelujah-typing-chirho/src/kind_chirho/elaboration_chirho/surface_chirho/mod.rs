@@ -4,6 +4,9 @@
 //! explicit metadata nodes until runtime lowering erases their value arity.
 
 use super::*;
+
+mod prefix_chirho;
+mod spine_chirho;
 use crate::subst_chirho::SubstChirho;
 use haskelujah_ast_chirho::decl_chirho::TyVarChirho as AstTyVarChirho;
 use haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho;
@@ -49,7 +52,7 @@ impl TypeElaboratorChirho<'_> {
             }
             syntax_chirho = inner_chirho;
         }
-        let result_chirho = match syntax_chirho {
+        let mut result_chirho = match syntax_chirho {
             TypeChirho::TupleChirho {
                 elements_chirho, ..
             } if elements_chirho.is_empty()
@@ -63,6 +66,7 @@ impl TypeElaboratorChirho<'_> {
             }
             _ => self.infer_type_chirho(syntax_chirho)?,
         };
+        self.instantiate_invisible_kind_chirho(syntax_chirho, &mut result_chirho, span_chirho)?;
         self.state_chirho.unify_chirho(
             &result_chirho.kind_chirho,
             &expected_chirho,
@@ -93,6 +97,8 @@ impl TypeElaboratorChirho<'_> {
     ) -> Result<ElaboratedTypeChirho, ElaborationErrorChirho> {
         let span_chirho = syntax_chirho.span_chirho();
         self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+        let required_forall_chirho =
+            matches!(syntax_chirho, TypeChirho::RequiredForallChirho { .. });
         match syntax_chirho {
             TypeChirho::ConChirho(_)
             | TypeChirho::PromotedConChirho { .. }
@@ -257,6 +263,9 @@ impl TypeElaboratorChirho<'_> {
                 body_chirho,
                 ..
             } => {
+                if required_forall_chirho && vars_chirho.iter().any(|binder_chirho| binder_chirho.specificity_chirho == haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho) {
+                    return Err(Self::error_chirho("inferred variables cannot bind a required forall", span_chirho));
+                }
                 let mark_chirho = self.scope_undo_chirho.len();
                 let variables_chirho = self.bind_forall_chirho(vars_chirho)?;
                 let rigid_chirho = self
@@ -603,266 +612,6 @@ impl TypeElaboratorChirho<'_> {
         ))
     }
 
-    fn infer_spine_chirho(
-        &mut self,
-        syntax_chirho: &mut TypeChirho,
-    ) -> Result<ElaboratedTypeChirho, ElaborationErrorChirho> {
-        let span_chirho = syntax_chirho.span_chirho();
-        let mut head_chirho =
-            std::mem::replace(syntax_chirho, TypeChirho::WildcardChirho { span_chirho });
-        let mut arguments_chirho = Vec::new();
-        loop {
-            self.state_chirho.charge_chirho(1, 1, span_chirho)?;
-            match head_chirho {
-                TypeChirho::AppChirho {
-                    fun_chirho,
-                    arg_chirho,
-                    ..
-                } => {
-                    arguments_chirho.push((false, false, *arg_chirho));
-                    head_chirho = *fun_chirho;
-                }
-                TypeChirho::KindApplicationChirho {
-                    fun_chirho,
-                    arg_chirho,
-                    written_chirho,
-                    ..
-                } => {
-                    arguments_chirho.push((true, written_chirho, *arg_chirho));
-                    head_chirho = *fun_chirho;
-                }
-                _ => break,
-            }
-        }
-        arguments_chirho.reverse();
-        let Some(scheme_chirho) = self.scheme_chirho(&mut head_chirho)? else {
-            // No kind/nominal authority is manufactured for a generic stub.
-            // Such a head is an explicit unsupported boundary of this vertical.
-            if matches!(
-                &head_chirho,
-                TypeChirho::ConChirho(_)
-                    | TypeChirho::VarChirho(_)
-                    | TypeChirho::ParenChirho { .. }
-                    | TypeChirho::KindAnnotationChirho { .. }
-                    | TypeChirho::ForallChirho { .. }
-                    | TypeChirho::RequiredForallChirho { .. }
-            ) {
-                let mut typed_chirho = if let TypeChirho::ConChirho(name_chirho) = &head_chirho {
-                    // An opaque interface entry supplies no declaration proof. Preserve
-                    // ordinary checking conservatively without publishing a telescope.
-                    ElaboratedTypeChirho {
-                        term_chirho: TyChirho::ConChirho(self.written_name_chirho(name_chirho)?),
-                        kind_chirho: self.fresh_kind_chirho(span_chirho)?,
-                    }
-                } else {
-                    self.infer_type_chirho(&mut head_chirho)?
-                };
-                for (kind_argument_chirho, written_chirho, mut argument_chirho) in arguments_chirho
-                {
-                    let argument_chirho_typed = self.infer_type_chirho(&mut argument_chirho)?;
-                    if kind_argument_chirho {
-                        return Err(Self::error_chirho(
-                            "kind application requires a proven specified telescope",
-                            argument_chirho.span_chirho(),
-                        ));
-                    }
-                    let result_kind_chirho =
-                        self.fresh_kind_chirho(argument_chirho.span_chirho())?;
-                    let expected_kind_chirho = ElaborationStateChirho::arrow_chirho(
-                        argument_chirho_typed.kind_chirho,
-                        self.state_chirho
-                            .copy_chirho(&result_kind_chirho, span_chirho)?,
-                    );
-                    self.state_chirho.unify_chirho(
-                        &typed_chirho.kind_chirho,
-                        &expected_kind_chirho,
-                        argument_chirho.span_chirho(),
-                    )?;
-                    typed_chirho = ElaboratedTypeChirho {
-                        term_chirho: TyChirho::AppChirho(
-                            Box::new(typed_chirho.term_chirho),
-                            Box::new(argument_chirho_typed.term_chirho),
-                        ),
-                        kind_chirho: result_kind_chirho,
-                    };
-                    let _ = written_chirho;
-                    head_chirho = TypeChirho::AppChirho {
-                        fun_chirho: Box::new(head_chirho),
-                        arg_chirho: Box::new(argument_chirho),
-                        span_chirho,
-                    };
-                }
-                *syntax_chirho = head_chirho;
-                return Ok(typed_chirho);
-            }
-            *syntax_chirho = head_chirho;
-            return Err(Self::error_chirho(
-                "type constructor has no proven declaration telescope",
-                span_chirho,
-            ));
-        };
-        let (binders_chirho, mut result_kind_chirho, synonym_rhs_chirho) =
-            self.instantiate_header_chirho(&scheme_chirho, span_chirho)?;
-        let mut term_chirho = TyChirho::ConChirho(
-            self.state_chirho
-                .name_chirho(&scheme_chirho.identity_chirho, span_chirho)?,
-        );
-        let mut cursor_chirho = 0;
-        let mut extra_arguments_chirho = Vec::new();
-        for (kind_argument_chirho, written_chirho, mut argument_chirho) in arguments_chirho {
-            while let Some(binder_chirho) = binders_chirho.get(cursor_chirho) {
-                let automatic_chirho = (binder_chirho.visibility_chirho
-                    == TelescopeVisibilityChirho::InferredChirho
-                    && (!kind_argument_chirho || written_chirho))
-                    || (!kind_argument_chirho
-                        && binder_chirho.visibility_chirho
-                            != TelescopeVisibilityChirho::RequiredChirho);
-                if !automatic_chirho {
-                    break;
-                }
-                let argument_term_chirho = TyChirho::VarChirho(binder_chirho.variable_chirho);
-                let argument_syntax_chirho =
-                    self.surface_chirho(&argument_term_chirho, span_chirho)?;
-                head_chirho = TypeChirho::KindApplicationChirho {
-                    fun_chirho: Box::new(head_chirho),
-                    arg_chirho: Box::new(argument_syntax_chirho),
-                    written_chirho: false,
-                    span_chirho,
-                };
-                term_chirho =
-                    TyChirho::AppChirho(Box::new(term_chirho), Box::new(argument_term_chirho));
-                cursor_chirho += 1;
-            }
-            let elaborated_argument_chirho = if let Some(binder_chirho) =
-                binders_chirho.get(cursor_chirho)
-            {
-                self.infer_type_at_kind_chirho(&mut argument_chirho, &binder_chirho.kind_chirho)?
-            } else {
-                let expected_chirho = self
-                    .state_chirho
-                    .resolve_chirho(&result_kind_chirho, argument_chirho.span_chirho())?;
-                if let TyChirho::FunChirho(domain_chirho, _, _) = expected_chirho {
-                    // Result arrows are outside the declaration's saturation
-                    // boundary, but their argument kinds are still authoritative.
-                    self.infer_type_at_kind_chirho(&mut argument_chirho, &domain_chirho)?
-                } else {
-                    self.infer_type_chirho(&mut argument_chirho)?
-                }
-            };
-            if let Some(binder_chirho) = binders_chirho.get(cursor_chirho) {
-                let required_chirho =
-                    binder_chirho.visibility_chirho == TelescopeVisibilityChirho::RequiredChirho;
-                if kind_argument_chirho == required_chirho {
-                    return Err(Self::error_chirho(
-                        "type/kind argument visibility does not match the declaration telescope",
-                        argument_chirho.span_chirho(),
-                    ));
-                }
-                self.state_chirho.unify_chirho(
-                    &elaborated_argument_chirho.kind_chirho,
-                    &binder_chirho.kind_chirho,
-                    argument_chirho.span_chirho(),
-                )?;
-                self.state_chirho.unify_chirho(
-                    &TyChirho::VarChirho(binder_chirho.variable_chirho),
-                    &elaborated_argument_chirho.term_chirho,
-                    argument_chirho.span_chirho(),
-                )?;
-                cursor_chirho += 1;
-            } else {
-                if kind_argument_chirho {
-                    return Err(Self::error_chirho(
-                        "no invisible binder remains for written kind application",
-                        argument_chirho.span_chirho(),
-                    ));
-                }
-                if synonym_rhs_chirho.is_some() {
-                    extra_arguments_chirho.push(
-                        self.state_chirho
-                            .copy_chirho(&elaborated_argument_chirho.term_chirho, span_chirho)?,
-                    );
-                }
-                let next_kind_chirho = self.fresh_kind_chirho(argument_chirho.span_chirho())?;
-                let argument_kind_chirho = self
-                    .state_chirho
-                    .copy_chirho(&elaborated_argument_chirho.kind_chirho, span_chirho)?;
-                let expected_kind_chirho = ElaborationStateChirho::arrow_chirho(
-                    argument_kind_chirho,
-                    self.state_chirho
-                        .copy_chirho(&next_kind_chirho, span_chirho)?,
-                );
-                self.state_chirho.unify_chirho(
-                    &result_kind_chirho,
-                    &expected_kind_chirho,
-                    argument_chirho.span_chirho(),
-                )?;
-                result_kind_chirho = next_kind_chirho;
-            }
-            term_chirho = TyChirho::AppChirho(
-                Box::new(term_chirho),
-                Box::new(elaborated_argument_chirho.term_chirho),
-            );
-            head_chirho = if kind_argument_chirho {
-                TypeChirho::KindApplicationChirho {
-                    fun_chirho: Box::new(head_chirho),
-                    arg_chirho: Box::new(argument_chirho),
-                    written_chirho,
-                    span_chirho,
-                }
-            } else {
-                TypeChirho::AppChirho {
-                    fun_chirho: Box::new(head_chirho),
-                    arg_chirho: Box::new(argument_chirho),
-                    span_chirho,
-                }
-            };
-        }
-        while let Some(binder_chirho) = binders_chirho.get(cursor_chirho) {
-            if binder_chirho.visibility_chirho == TelescopeVisibilityChirho::RequiredChirho {
-                break;
-            }
-            let argument_term_chirho = TyChirho::VarChirho(binder_chirho.variable_chirho);
-            let argument_chirho = self.surface_chirho(&argument_term_chirho, span_chirho)?;
-            head_chirho = TypeChirho::KindApplicationChirho {
-                fun_chirho: Box::new(head_chirho),
-                arg_chirho: Box::new(argument_chirho),
-                written_chirho: false,
-                span_chirho,
-            };
-            term_chirho =
-                TyChirho::AppChirho(Box::new(term_chirho), Box::new(argument_term_chirho));
-            cursor_chirho += 1;
-        }
-        for binder_chirho in binders_chirho[cursor_chirho..].iter().rev() {
-            let kind_chirho = self
-                .state_chirho
-                .resolve_chirho(&binder_chirho.kind_chirho, span_chirho)?;
-            result_kind_chirho =
-                ElaborationStateChirho::arrow_chirho(kind_chirho, result_kind_chirho);
-        }
-        if let Some(rhs_chirho) = synonym_rhs_chirho {
-            if cursor_chirho < binders_chirho.len() {
-                return Err(Self::error_chirho(
-                    "type synonym is not saturated at its declaration boundary",
-                    span_chirho,
-                ));
-            }
-            term_chirho = self.state_chirho.resolve_chirho(&rhs_chirho, span_chirho)?;
-            for argument_chirho in extra_arguments_chirho {
-                term_chirho = TyChirho::AppChirho(Box::new(term_chirho), Box::new(argument_chirho));
-            }
-        }
-        *syntax_chirho = head_chirho;
-        Ok(ElaboratedTypeChirho {
-            term_chirho: self
-                .state_chirho
-                .resolve_chirho(&term_chirho, span_chirho)?,
-            kind_chirho: self
-                .state_chirho
-                .resolve_chirho(&result_kind_chirho, span_chirho)?,
-        })
-    }
-
     fn infer_promoted_list_chirho(
         &mut self,
         syntax_chirho: &mut TypeChirho,
@@ -1073,3 +822,5 @@ fn syntax_constructor_chirho(name_chirho: &NameChirho) -> Option<CompilerTypeCon
         _ => None,
     }
 }
+
+mod pattern_scope_chirho;

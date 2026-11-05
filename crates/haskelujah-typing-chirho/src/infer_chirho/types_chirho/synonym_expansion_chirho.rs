@@ -184,6 +184,14 @@ impl SynonymExpansionChirho<'_, '_> {
                     ));
                 }
                 self.reserve_variables_chirho(rhs_chirho)?;
+                self.reserve_variables_chirho(&scheme_chirho.result_kind_chirho)?;
+                let mut kind_chirho = Some(self.walk_chirho(
+                    &scheme_chirho.result_kind_chirho,
+                    &replacement_chirho,
+                    &mut Vec::new(),
+                    true,
+                    depth_chirho + 1,
+                )?);
                 let mut expanded_chirho = self.walk_chirho(
                     rhs_chirho,
                     &replacement_chirho,
@@ -192,17 +200,64 @@ impl SynonymExpansionChirho<'_, '_> {
                     depth_chirho + 1,
                 )?;
                 for argument_chirho in &arguments_chirho[scheme_chirho.reduction_arity_chirho..] {
-                    self.budget_chirho.node_chirho(1)?;
-                    expanded_chirho = TyChirho::AppChirho(
-                        Box::new(expanded_chirho),
-                        Box::new(self.walk_chirho(
-                            argument_chirho,
-                            bindings_chirho,
-                            bound_chirho,
-                            rename_chirho,
-                            depth_chirho + 1,
-                        )?),
-                    );
+                    let argument_chirho = self.walk_chirho(
+                        argument_chirho,
+                        bindings_chirho,
+                        bound_chirho,
+                        rename_chirho,
+                        depth_chirho + 1,
+                    )?;
+                    let mut quantified_chirho = false;
+                    loop {
+                        match kind_chirho.take() {
+                            Some(TyChirho::ForallChirho {
+                                vars_chirho,
+                                body_chirho,
+                            }) if vars_chirho.is_empty() => kind_chirho = Some(*body_chirho),
+                            Some(TyChirho::RequiredForallChirho {
+                                vars_chirho,
+                                body_chirho,
+                            }) if vars_chirho.is_empty() => kind_chirho = Some(*body_chirho),
+                            Some(
+                                kind_term_chirho @ (TyChirho::ForallChirho { .. }
+                                | TyChirho::RequiredForallChirho { .. }),
+                            ) => {
+                                let reduced_chirho = crate::subst_chirho::SubstChirho::reduce_checked_argument_chirho(
+                                    &kind_term_chirho, &argument_chirho, true, &mut |work_chirho, output_chirho| {
+                                        self.budget_chirho.node_chirho(output_chirho)?;
+                                        self.budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+                                    })??;
+                                kind_chirho = Some(reduced_chirho.0);
+                                quantified_chirho = true;
+                                break;
+                            }
+                            Some(TyChirho::FunChirho(_, result_chirho, _)) => {
+                                kind_chirho = Some(*result_chirho);
+                                break;
+                            }
+                            _ => {
+                                kind_chirho = None;
+                                break;
+                            }
+                        }
+                    }
+                    let reduced_chirho =
+                        crate::subst_chirho::SubstChirho::reduce_checked_argument_chirho(
+                            &expanded_chirho,
+                            &argument_chirho,
+                            quantified_chirho,
+                            &mut |work_chirho, output_chirho| {
+                                self.budget_chirho.node_chirho(output_chirho)?;
+                                self.budget_chirho
+                                    .work_chirho(work_chirho.saturating_sub(output_chirho))
+                            },
+                        )?;
+                    expanded_chirho = if let Some((reduced_chirho, _)) = reduced_chirho {
+                        reduced_chirho
+                    } else {
+                        self.budget_chirho.node_chirho(1)?;
+                        TyChirho::AppChirho(Box::new(expanded_chirho), Box::new(argument_chirho))
+                    };
                 }
                 return Some(expanded_chirho);
             }

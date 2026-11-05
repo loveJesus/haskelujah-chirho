@@ -41,6 +41,7 @@ impl DesugarCtxChirho {
             con_chirho,
             args_chirho,
             span_chirho,
+            ..
         } = pat_chirho
         {
             let name_chirho = con_chirho.text_chirho();
@@ -84,9 +85,11 @@ impl DesugarCtxChirho {
             }
             PatChirho::ConChirho {
                 con_chirho,
+                type_args_chirho,
                 args_chirho,
                 span_chirho,
             } => PatChirho::ConChirho {
+                type_args_chirho: type_args_chirho.clone(),
                 con_chirho: con_chirho.clone(),
                 args_chirho: args_chirho
                     .iter()

@@ -35,8 +35,35 @@ impl InferCtxChirho {
             }
         };
         self.note_written_constructor_context_chirho(name_chirho, &ty_chirho);
-        let (scheme_chirho, _) =
+        let (mut scheme_chirho, _) =
             self.ast_type_to_scheme_seeded_chirho(&ty_chirho, seed_chirho, false);
+        let constructor_key_chirho = self.promotion_scope_chirho.as_ref().map(|scope_chirho| {
+            scope_chirho
+                .quoted_chirho(name_chirho)
+                .key_chirho()
+                .as_str_chirho()
+                .to_owned()
+        });
+        if let Some(header_chirho) = constructor_key_chirho.as_ref().and_then(|key_chirho| {
+            self.type_families_chirho
+                .declaration_schemes_chirho()
+                .get_chirho(key_chirho)
+        }) {
+            for source_chirho in &header_chirho.source_variables_chirho {
+                let Some(binder_chirho) = scheme_chirho
+                    .source_binders_chirho
+                    .get_mut(source_chirho.header_index_chirho as usize)
+                else {
+                    self.non_deferrable_diagnostics_chirho.push_chirho(haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                        haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
+                        "checked constructor source correspondence is absent from its term scheme",
+                        name_chirho.span_chirho(),
+                    ));
+                    return;
+                };
+                binder_chirho.source_chirho = source_chirho.source_chirho.clone();
+            }
+        }
         if signature_chirho
             .positional_fields_chirho()
             .any(|field_chirho| field_chirho.strictness_chirho.is_strict_chirho())

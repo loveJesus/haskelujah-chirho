@@ -24,10 +24,15 @@ impl InferCtxChirho {
         &mut self,
         quals_chirho: &[StmtChirho],
         span_chirho: SpanChirho,
-    ) -> (SubstChirho, Vec<(String, SchemeChirho)>) {
+    ) -> (
+        SubstChirho,
+        Vec<(String, SchemeChirho)>,
+        super::constructor_patterns_chirho::TypePatternAliasesChirho,
+    ) {
         let mut subst_chirho = SubstChirho::empty_chirho();
         let mut bound_names_chirho = Vec::new();
         let mut seen_names_chirho = HashSet::new();
+        let type_pattern_scope_mark_chirho = self.type_pattern_alias_undo_chirho.len();
         self.env_chirho.push_scope_chirho();
 
         for qual_chirho in quals_chirho {
@@ -128,8 +133,10 @@ impl InferCtxChirho {
                     })
             })
             .collect();
+        let aliases_chirho = self.type_pattern_aliases_since_chirho(type_pattern_scope_mark_chirho);
+        self.restore_type_pattern_aliases_chirho(type_pattern_scope_mark_chirho);
         self.env_chirho.pop_scope_chirho();
-        (subst_chirho, bindings_chirho)
+        (subst_chirho, bindings_chirho, aliases_chirho)
     }
 
     /// Pre-bind all variable names in a pattern with fresh type variables.

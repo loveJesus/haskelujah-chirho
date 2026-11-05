@@ -49,6 +49,7 @@ impl InferCtxChirho {
                         vars_chirho,
                         body_chirho,
                     } => SchemeChirho {
+                        source_binders_chirho: Vec::new(),
                         vars_chirho: vars_chirho.clone(),
                         preds_chirho: vec![],
                         ty_chirho: (**body_chirho).clone(),
@@ -126,6 +127,7 @@ impl InferCtxChirho {
                 subst_chirho
             }
             PatChirho::ConChirho {
+                type_args_chirho,
                 con_chirho,
                 args_chirho,
                 span_chirho,
@@ -133,6 +135,7 @@ impl InferCtxChirho {
                 let args_chirho: Vec<&PatChirho> = args_chirho.iter().collect();
                 self.bind_constructor_pattern_chirho(
                     con_chirho,
+                    type_args_chirho,
                     &args_chirho,
                     ty_chirho,
                     *span_chirho,
@@ -242,6 +245,7 @@ impl InferCtxChirho {
                 span_chirho,
             } => self.bind_constructor_pattern_chirho(
                 op_chirho,
+                &[],
                 &[left_chirho.as_ref(), right_chirho.as_ref()],
                 ty_chirho,
                 *span_chirho,
@@ -366,6 +370,7 @@ impl InferCtxChirho {
     fn bind_constructor_pattern_chirho(
         &mut self,
         con_chirho: &NameChirho,
+        type_args_chirho: &[haskelujah_ast_chirho::pat_chirho::ConstructorTypePatternChirho],
         args_chirho: &[&PatChirho],
         scrutinee_chirho: &TyChirho,
         span_chirho: SpanChirho,
@@ -380,8 +385,8 @@ impl InferCtxChirho {
         let mut field_tys_chirho = Vec::with_capacity(args_chirho.len());
         let mut subst_chirho = SubstChirho::empty_chirho();
         if let Some(scheme_chirho) = scheme_chirho {
-            let (fields_chirho, result_chirho, predicates_chirho) =
-                self.instantiate_constructor_pattern_chirho(&scheme_chirho);
+            let (fields_chirho, result_chirho, predicates_chirho, instantiation_chirho) =
+                self.instantiate_constructor_pattern_with_variables_chirho(&scheme_chirho);
             if fields_chirho.len() == args_chirho.len() {
                 field_tys_chirho = fields_chirho;
                 if let Some(result_subst_chirho) = self.unify_constructor_result_chirho(
@@ -392,6 +397,33 @@ impl InferCtxChirho {
                 ) {
                     self.apply_subst_all_chirho(&result_subst_chirho);
                     subst_chirho = result_subst_chirho;
+                }
+                for argument_chirho in type_args_chirho {
+                    let Some(source_chirho) = &argument_chirho.checked_binder_chirho else {
+                        self.equality_scopes_chirho[self.active_equality_scope_chirho]
+                            .complete_chirho = false;
+                        continue;
+                    };
+                    let selected_chirho = scheme_chirho
+                        .source_binders_chirho
+                        .iter()
+                        .find(|binder_chirho| &binder_chirho.source_chirho == source_chirho)
+                        .and_then(|binder_chirho| {
+                            instantiation_chirho.lookup_chirho(&binder_chirho.variable_chirho)
+                        });
+                    let Some(image_chirho) = selected_chirho else {
+                        self.non_deferrable_diagnostics_chirho.push_chirho(DiagnosticChirho::error_with_code_chirho(
+                            ErrorCodeChirho::error_chirho(300), "checked constructor type pattern lost its scheme binder correspondence", argument_chirho.ty_chirho.span_chirho()));
+                        continue;
+                    };
+                    let expected_chirho = subst_chirho.apply_ty_chirho(image_chirho);
+                    let matched_chirho = self.bind_constructor_type_pattern_chirho(
+                        &argument_chirho.ty_chirho,
+                        &expected_chirho,
+                        span_chirho,
+                    );
+                    self.apply_subst_all_chirho(&matched_chirho);
+                    subst_chirho = matched_chirho.compose_chirho(&subst_chirho);
                 }
                 let predicates_chirho = predicates_chirho
                     .into_iter()

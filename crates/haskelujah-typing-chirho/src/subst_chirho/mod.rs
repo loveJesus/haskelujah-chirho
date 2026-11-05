@@ -8,6 +8,10 @@
 
 use std::collections::HashMap;
 
+mod bounded_chirho;
+#[cfg(test)]
+mod bounded_tests_chirho;
+
 use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 
 /// A substitution: a finite mapping from type variables to types.
@@ -39,6 +43,10 @@ impl SubstChirho {
     /// Insert a mapping `var ↦ ty`.
     pub fn insert_chirho(&mut self, var_chirho: TyVarChirho, ty_chirho: TyChirho) {
         self.map_chirho.insert(var_chirho, ty_chirho);
+    }
+
+    pub(crate) fn remove_chirho(&mut self, variable_chirho: &TyVarChirho) {
+        self.map_chirho.remove(variable_chirho);
     }
 
     /// Number of bindings in this substitution.
@@ -174,6 +182,7 @@ impl SubstChirho {
             restricted_chirho.map_chirho.remove(v_chirho);
         }
         SchemeChirho {
+            source_binders_chirho: scheme_chirho.source_binders_chirho.clone(),
             vars_chirho: scheme_chirho.vars_chirho.clone(),
             preds_chirho: scheme_chirho
                 .preds_chirho
@@ -275,6 +284,7 @@ mod tests_chirho {
             s_chirho
         };
         let scheme_chirho = SchemeChirho {
+            source_binders_chirho: vec![],
             vars_chirho: vec![TyVarChirho(0)],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(

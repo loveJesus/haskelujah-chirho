@@ -295,6 +295,7 @@ fn infer_dollar_applies_constructor_to_lambda_chirho() {
     ctx_chirho.env_chirho.bind_chirho(
         "WrapChirho".to_string(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![wrap_r_chirho, wrap_s_chirho, wrap_a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(wrap_arg_chirho, wrap_result_chirho.clone()),
@@ -452,6 +453,7 @@ fn infer_result_bind_lambda_constructor_body_chirho() {
                         alts_chirho: vec![
                             AltChirho {
                                 pat_chirho: PatChirho::ConChirho {
+                                    type_args_chirho: Vec::new(),
                                     con_chirho: dummy_name_chirho("Ok"),
                                     args_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("x"))],
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -470,6 +472,7 @@ fn infer_result_bind_lambda_constructor_body_chirho() {
                             },
                             AltChirho {
                                 pat_chirho: PatChirho::ConChirho {
+                                    type_args_chirho: Vec::new(),
                                     con_chirho: dummy_name_chirho("Err"),
                                     args_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("e"))],
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,

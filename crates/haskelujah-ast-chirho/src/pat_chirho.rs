@@ -8,6 +8,16 @@ use haskelujah_span_chirho::SpanChirho;
 use crate::lit_chirho::LitChirho;
 use crate::name_chirho::NameChirho;
 
+/// A written constructor type pattern and its checked formal binder. Raw
+/// syntax has no binder proof; elaboration supplies the same catalogue ID
+/// carried by the constructor's ordinary quantified scheme.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ConstructorTypePatternChirho {
+    pub ty_chirho: crate::ty_chirho::TypeChirho,
+    pub checked_binder_chirho:
+        Option<crate::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho>,
+}
+
 /// A Haskell pattern.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PatChirho {
@@ -17,6 +27,9 @@ pub enum PatChirho {
     ConChirho {
         /// Constructor name being matched.
         con_chirho: NameChirho,
+        /// Written constructor-pattern type arguments. These bind/check type
+        /// variables and never contribute to the constructor's term arity.
+        type_args_chirho: Vec<ConstructorTypePatternChirho>,
         /// Positional subpatterns matched against constructor fields.
         args_chirho: Vec<PatChirho>,
         /// Span covering the whole constructor pattern.

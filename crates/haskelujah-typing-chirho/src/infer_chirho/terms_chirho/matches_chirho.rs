@@ -33,6 +33,7 @@ impl InferCtxChirho {
         seed_vars_chirho.sort_by_key(|tv_chirho| tv_chirho.0);
         seed_vars_chirho.dedup();
         let seed_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: seed_vars_chirho,
             preds_chirho: preds_chirho
                 .iter()

@@ -422,6 +422,7 @@ impl TypeElaboratorChirho<'_> {
             let mut gadt_result_chirho = None;
             let mut held_chirho = false;
             let mut explicit_chirho = std::collections::HashSet::new();
+            let mut source_variables_chirho = Vec::new();
             match constructor_chirho {
                 ConDeclChirho::OrdinaryChirho {
                     fields_chirho: source_fields_chirho,
@@ -470,8 +471,17 @@ impl TypeElaboratorChirho<'_> {
                                 vars_chirho: binders_chirho,
                                 ..
                             } => {
-                                explicit_chirho
-                                    .extend(this_chirho.bind_forall_chirho(binders_chirho)?);
+                                let bound_chirho = this_chirho.bind_forall_chirho(binders_chirho)?;
+                                for (binder_chirho, variable_chirho) in binders_chirho.iter().zip(&bound_chirho) {
+                                    this_chirho.state_chirho.charge_chirho(1, 1, span_chirho)?;
+                                    let source_chirho = binder_chirho.name_chirho.type_variable_chirho().cloned()
+                                        .ok_or_else(|| Self::error_chirho("checked constructor forall lost its source owner", span_chirho))?;
+                                    source_variables_chirho.push(crate::ty_chirho::declarations_chirho::SourceDeclarationVariableChirho {
+                                        header_index_chirho: u32::try_from(source_variables_chirho.len()).map_err(|_| Self::error_chirho("constructor binder count overflow", span_chirho))?,
+                                        source_chirho, variable_chirho: *variable_chirho, specificity_chirho: binder_chirho.specificity_chirho,
+                                    });
+                                }
+                                explicit_chirho.extend(bound_chirho);
                             }
                             GadtConPrefixChirho::ContextChirho {
                                 constraints_chirho, ..
@@ -521,6 +531,7 @@ impl TypeElaboratorChirho<'_> {
                     })?
                     .as_ref()
                     .clone();
+                scheme_chirho.source_variables_chirho = source_variables_chirho;
                 // Constructor kind variables inferred from parameter kinds are
                 // invisible even when the datatype header wrote their names.
                 // An actual constructor forall retains its own specificity.
@@ -546,6 +557,11 @@ impl TypeElaboratorChirho<'_> {
                             }
                         }
                     }
+                }
+                for variable_chirho in &explicit_chirho {
+                    let kind_chirho = this_chirho.state_chirho.variable_kind_chirho(*variable_chirho, span_chirho)?;
+                    let kind_chirho = this_chirho.state_chirho.resolve_chirho(&kind_chirho, span_chirho)?;
+                    inferred_chirho.extend(kind_chirho.free_vars_chirho().into_iter().filter(|dependency_chirho| !explicit_chirho.contains(dependency_chirho)));
                 }
                 this_chirho
                     .declaration_variables_chirho

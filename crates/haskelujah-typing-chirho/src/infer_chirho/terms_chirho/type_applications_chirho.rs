@@ -159,7 +159,8 @@ impl InferCtxChirho {
 
         // A name known only through a placeholder import scheme has no
         // quantifiers to apply type arguments to; its type stays unknown.
-        if is_placeholder_import_scheme_chirho(&scheme_chirho) {
+        if matches!(base_expr_chirho, ExprChirho::VarChirho(_) | ExprChirho::ConChirho(_))
+            && is_placeholder_import_scheme_chirho(&scheme_chirho) {
             let fresh_chirho = self.fresh_var_chirho();
             return Some((SubstChirho::empty_chirho(), fresh_chirho));
         }
@@ -167,8 +168,24 @@ impl InferCtxChirho {
             .into_iter()
             .map(|ty_chirho| self.ast_type_to_ty_in_scope_chirho(ty_chirho))
             .collect();
-        let (instantiated_ty_chirho, instantiated_preds_chirho) = self
-            .instantiate_scheme_parts_with_type_args_chirho(&scheme_chirho, &explicit_tys_chirho)?;
+        let Some((instantiated_ty_chirho, instantiated_preds_chirho)) = self
+            .instantiate_scheme_parts_with_visible_type_args_chirho(
+                &scheme_chirho,
+                &explicit_tys_chirho,
+            )
+        else {
+            self.diagnostics_chirho.push_chirho(
+                haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                    haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(
+                        super::TYPE_MISMATCH_CODE_CHIRHO,
+                    ),
+                    "no specified type binder remains for visible type application",
+                    span_chirho,
+                ),
+            );
+            let result_chirho = self.fresh_var_chirho();
+            return Some((carried_chirho, result_chirho));
+        };
         for pred_inst_chirho in instantiated_preds_chirho {
             self.defer_pred_chirho(pred_inst_chirho, span_chirho);
         }

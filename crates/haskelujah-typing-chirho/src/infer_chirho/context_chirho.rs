@@ -410,6 +410,7 @@ impl InferCtxChirho {
             checking_binding_pattern_annotations_chirho: false,
             next_skolem_chirho: 0,
             skolem_bindings_chirho: SubstChirho::empty_chirho(),
+            type_pattern_alias_undo_chirho: Vec::new(),
             instance_method_skolems_chirho: HashSet::new(),
             active_instance_context_chirho: None,
             scoped_type_variables_chirho: true,

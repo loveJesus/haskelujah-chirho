@@ -916,6 +916,7 @@ mod tests_chirho {
                 .occurrence_generalized_vars_chirho
                 .insert(var_chirho);
             ctx_chirho.record_inferred_dictionary_owners_chirho(&SchemeChirho {
+                source_binders_chirho: Vec::new(),
                 vars_chirho: vec![var_chirho],
                 preds_chirho: vec![SchemePredChirho::legacy_chirho(
                     crate::ty_chirho::SchemePredPartsChirho {

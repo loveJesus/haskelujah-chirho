@@ -39,6 +39,27 @@ impl InferCtxChirho {
                         .get_chirho(&declaration_chirho.type_key_chirho())
                 })
                 .cloned();
+            let mut class_source_binders_chirho = Vec::new();
+            if let Some(header_chirho) = &schema_chirho {
+                for source_chirho in &header_chirho.source_variables_chirho {
+                    if let Some((_, TyChirho::VarChirho(variable_chirho))) = header_chirho
+                        .binders_chirho
+                        .iter()
+                        .zip(&arguments_chirho)
+                        .find(|(binder_chirho, _)| {
+                            binder_chirho.variable_chirho == source_chirho.variable_chirho
+                        })
+                    {
+                        class_source_binders_chirho.push(
+                            crate::ty_chirho::SchemeSourceBinderChirho {
+                                source_chirho: source_chirho.source_chirho.clone(),
+                                variable_chirho: *variable_chirho,
+                                specificity_chirho: source_chirho.specificity_chirho,
+                            },
+                        );
+                    }
+                }
+            }
             let checked_association_chirho = schema_chirho.as_ref().is_some_and(|header_chirho| matches!(header_chirho.association_chirho, crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::ClassChirho { .. }));
             let (kind_tys_chirho, visible_tys_chirho) = if let Some(schema_chirho) = schema_chirho {
                 let (hidden_chirho, visible_chirho): (Vec<_>, Vec<_>) = schema_chirho.binders_chirho.iter().zip(arguments_chirho).partition(|(binder_chirho, _)| binder_chirho.visibility_chirho != crate::ty_chirho::declarations_chirho::TelescopeVisibilityChirho::RequiredChirho);
@@ -136,6 +157,12 @@ impl InferCtxChirho {
                         ordered_vars_chirho.push(*var_chirho);
                     }
                 }
+                let mut source_binders_chirho = class_source_binders_chirho.clone();
+                source_binders_chirho.extend(scheme_chirho.source_binders_chirho);
+                source_binders_chirho.retain(|binder_chirho| {
+                    ordered_vars_chirho.contains(&binder_chirho.variable_chirho)
+                });
+                scheme_chirho.source_binders_chirho = source_binders_chirho;
                 scheme_chirho.vars_chirho = ordered_vars_chirho;
                 method_map_chirho.insert(method_name_chirho.clone(), scheme_chirho.clone());
 

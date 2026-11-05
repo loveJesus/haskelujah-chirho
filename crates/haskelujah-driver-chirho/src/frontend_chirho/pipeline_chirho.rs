@@ -407,6 +407,7 @@ pub(crate) fn run_frontend_under_deferral_chirho(
                                 9000 + merged_imported_types_chirho.len() as u32,
                             );
                             std::borrow::Cow::Owned(haskelujah_typing_chirho::SchemeChirho {
+                                source_binders_chirho: Vec::new(),
                                 vars_chirho: vec![fresh_var_chirho],
                                 preds_chirho: vec![],
                                 ty_chirho: haskelujah_typing_chirho::TyChirho::VarChirho(

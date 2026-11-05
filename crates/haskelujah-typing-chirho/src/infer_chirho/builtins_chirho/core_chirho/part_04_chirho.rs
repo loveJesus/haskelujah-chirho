@@ -16,6 +16,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "split".to_string(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![randomgen_g_chirho],
             preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
                 haskelujah_ast_chirho::name_chirho::CompilerClassChirho::RandomGenChirho,
@@ -35,6 +36,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "splitGen".to_string(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![randomgen_g_chirho],
             preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
                 haskelujah_ast_chirho::name_chirho::CompilerClassChirho::SplitGenChirho,
@@ -54,6 +56,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "next".to_string(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![randomgen_g_chirho],
             preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
                 haskelujah_ast_chirho::name_chirho::CompilerClassChirho::RandomGenChirho,
@@ -76,6 +79,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "genRange".to_string(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![randomgen_g_chirho],
             preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
                 haskelujah_ast_chirho::name_chirho::CompilerClassChirho::RandomGenChirho,
@@ -134,6 +138,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "random".to_string(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![random_a_chirho, randomgen_g_chirho],
             preds_chirho: random_preds_chirho.clone(),
             ty_chirho: TyChirho::fun_chirho(
@@ -145,6 +150,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "randomR".to_string(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![random_a_chirho, randomgen_g_chirho],
             preds_chirho: random_preds_chirho,
             ty_chirho: TyChirho::fun_n_chirho(
@@ -166,6 +172,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "randomIO".to_string(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![random_a_chirho],
             preds_chirho: vec![random_io_pred_chirho.clone()],
             ty_chirho: TyChirho::io_chirho(TyChirho::VarChirho(random_a_chirho)),
@@ -174,6 +181,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "randomRIO".to_string(),
         SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![random_a_chirho],
             preds_chirho: vec![random_io_pred_chirho],
             ty_chirho: TyChirho::fun_chirho(
@@ -196,6 +204,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
     let io_foreign_ptr_result_ty_chirho =
         TyChirho::io_chirho(TyChirho::VarChirho(foreign_ptr_b_chirho));
     let with_foreign_ptr_scheme_chirho = SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![foreign_ptr_a_chirho, foreign_ptr_b_chirho],
         preds_chirho: vec![],
         ty_chirho: TyChirho::fun_n_chirho(
@@ -216,6 +225,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
     );
 
     let malloc_plain_foreign_ptr_bytes_scheme_chirho = SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![foreign_ptr_a_chirho],
         preds_chirho: vec![],
         ty_chirho: TyChirho::fun_chirho(
@@ -237,6 +247,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
     }
 
     let plus_foreign_ptr_scheme_chirho = SchemeChirho {
+        source_binders_chirho: Vec::new(),
         vars_chirho: vec![foreign_ptr_a_chirho],
         preds_chirho: vec![],
         ty_chirho: TyChirho::fun_n_chirho(
@@ -272,6 +283,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
                 string_ty_chirho.clone(),
             ));
         let unpack_foldr_cstring_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![unpack_foldr_a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_n_chirho(
@@ -369,6 +381,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
             TyChirho::io_chirho(TyChirho::VarChirho(foreign_cstring_a_chirho));
 
         let with_cstring_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![foreign_cstring_a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_n_chirho(
@@ -383,6 +396,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
             ),
         };
         let with_cstring_len_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![foreign_cstring_a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_n_chirho(
@@ -397,6 +411,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
             ),
         };
         let with_encoded_cstring_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![foreign_cstring_a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_n_chirho(
@@ -412,6 +427,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
             ),
         };
         let with_encoded_cstring_len_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![foreign_cstring_a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_n_chirho(
@@ -574,6 +590,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
             Box::new(TyChirho::VarChirho(memset_a_chirho)),
         );
         let memset_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![memset_a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_n_chirho(
@@ -631,6 +648,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
             });
 
         let size_of_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![storable_a_chirho],
             preds_chirho: vec![storable_pred_chirho.clone()],
             ty_chirho: TyChirho::fun_chirho(
@@ -642,6 +660,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho("Foreign.Storable.sizeOf".to_string(), size_of_scheme_chirho);
 
         let alignment_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![storable_a_chirho],
             preds_chirho: vec![storable_pred_chirho.clone()],
             ty_chirho: TyChirho::fun_chirho(
@@ -656,6 +675,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         );
 
         let peek_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![storable_a_chirho],
             preds_chirho: vec![storable_pred_chirho.clone()],
             ty_chirho: TyChirho::fun_chirho(
@@ -673,6 +693,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         );
 
         let peek_byte_off_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![storable_a_chirho, storable_b_chirho],
             preds_chirho: vec![storable_pred_chirho.clone()],
             ty_chirho: TyChirho::fun_n_chirho(
@@ -690,6 +711,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         );
 
         let peek_elem_off_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![storable_a_chirho],
             preds_chirho: vec![storable_pred_chirho.clone()],
             ty_chirho: TyChirho::fun_n_chirho(
@@ -707,6 +729,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         );
 
         let poke_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![storable_a_chirho],
             preds_chirho: vec![storable_pred_chirho],
             ty_chirho: TyChirho::fun_n_chirho(
@@ -728,6 +751,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
                 extra_tys_chirho: vec![],
             });
         let poke_byte_off_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![storable_a_chirho, storable_b_chirho],
             preds_chirho: vec![storable_pred_chirho.clone()],
             ty_chirho: TyChirho::fun_n_chirho(
@@ -749,6 +773,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         );
 
         let poke_elem_off_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![storable_a_chirho],
             preds_chirho: vec![storable_pred_chirho],
             ty_chirho: TyChirho::fun_n_chirho(
@@ -844,6 +869,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
             Box::new(TyChirho::VarChirho(cast_fun_ptr_to_a_chirho)),
         );
         let cast_fun_ptr_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![cast_fun_ptr_from_a_chirho, cast_fun_ptr_to_a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
@@ -864,6 +890,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
     {
         let text_array_a_chirho = TyVarChirho(1697);
         let text_array_a_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![text_array_a_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
@@ -918,6 +945,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         );
 
         let text_array_new_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![text_array_state_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
@@ -932,6 +960,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         );
 
         let text_array_run_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![text_array_state_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
@@ -946,6 +975,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         );
 
         let text_array_copyi_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![text_array_state_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_n_chirho(
@@ -966,6 +996,7 @@ pub(super) fn seed_part_04_chirho(env_chirho: &mut TyEnvChirho) {
         );
 
         let text_array_unsafe_freeze_scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho: vec![text_array_state_chirho],
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(text_marray_ty_chirho, text_st_array_ty_chirho),

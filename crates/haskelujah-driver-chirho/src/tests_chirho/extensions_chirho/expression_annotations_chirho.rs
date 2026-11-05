@@ -68,3 +68,106 @@ fn annotation_annotation_visible_type_application_chirho() {
     ));
     result_chirho.unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
 }
+
+#[test]
+fn annotation_annotated_monomorphic_vta_chirho() {
+    let result_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/impredicative-application-chirho/annotations-chirho/AnnotatedMonomorphicVtaChirho.hs"
+    ));
+    let error_chirho = result_chirho
+        .err()
+        .expect("actual GHC visible type application negative rejects");
+    assert!(error_chirho.contains("error[E020"), "{error_chirho}");
+}
+
+#[test]
+fn annotation_annotated_excess_vta_chirho() {
+    let result_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/impredicative-application-chirho/annotations-chirho/AnnotatedExcessVtaChirho.hs"
+    ));
+    let error_chirho = result_chirho
+        .err()
+        .expect("actual GHC visible type application negative rejects");
+    assert!(error_chirho.contains("error[E020"), "{error_chirho}");
+}
+
+#[test]
+fn annotation_annotated_inferred_selection_positive_chirho() {
+    let result_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/impredicative-application-chirho/annotations-chirho/AnnotatedInferredSelectionPositiveChirho.hs"
+    ));
+    result_chirho.unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn annotation_annotated_inferred_selection_wrong_chirho() {
+    let result_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/impredicative-application-chirho/annotations-chirho/AnnotatedInferredSelectionWrongChirho.hs"
+    ));
+    let error_chirho = result_chirho
+        .err()
+        .expect("actual GHC visible type application negative rejects");
+    assert!(error_chirho.contains("error[E020"), "{error_chirho}");
+}
+
+#[test]
+fn annotation_method_class_positive_chirho() {
+    let result_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/impredicative-application-chirho/pattern-contracts-chirho/MethodClassPositiveChirho.hs"
+    ));
+    result_chirho.unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn annotation_method_class_wrong_chirho() {
+    let result_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/impredicative-application-chirho/pattern-contracts-chirho/MethodClassWrongChirho.hs"
+    ));
+    let error_chirho = result_chirho
+        .err()
+        .expect("actual GHC source-class VTA negative rejects");
+    assert!(error_chirho.contains("error[E020"), "{error_chirho}");
+}
+
+#[test]
+fn annotation_constructor_do_shadow_chirho() {
+    let result_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/impredicative-application-chirho/pattern-contracts-chirho/ConstructorDoShadowChirho.hs"
+    ));
+    result_chirho.unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn annotation_constructor_list_scope_chirho() {
+    let result_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/impredicative-application-chirho/pattern-contracts-chirho/ConstructorListScopeChirho.hs"
+    ));
+    result_chirho.unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn annotation_constructor_guard_scope_chirho() {
+    let result_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/impredicative-application-chirho/pattern-contracts-chirho/ConstructorGuardScopeChirho.hs"
+    ));
+    result_chirho.unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn annotation_structured_pattern_positive_chirho() {
+    let result_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/impredicative-application-chirho/pattern-contracts-chirho/StructuredPatternPositiveChirho.hs"
+    ));
+    result_chirho.unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn annotation_structured_pattern_wrong_chirho() {
+    let result_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/impredicative-application-chirho/pattern-contracts-chirho/StructuredPatternWrongChirho.hs"
+    ));
+    let error_chirho = result_chirho
+        .err()
+        .expect("actual GHC wrong constructor typepattern rejects");
+    assert!(error_chirho.contains("error[E020"), "{error_chirho}");
+}

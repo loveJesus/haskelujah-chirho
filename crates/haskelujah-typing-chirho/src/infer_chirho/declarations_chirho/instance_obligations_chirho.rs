@@ -584,6 +584,7 @@ impl InferCtxChirho {
         preds_chirho.extend(method_preds_chirho);
         let rigid_vars_chirho = vars_chirho.clone();
         let (rigid_ty_chirho, givens_chirho) = self.skolemize_scheme_parts_chirho(&SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho,
             preds_chirho,
             ty_chirho: method_ty_chirho,

@@ -508,6 +508,7 @@ pub struct InferCtxChirho {
     /// scoped type variable of an enclosing signature reappears in an inner
     /// signature or annotation, so both name the same rigid constant.
     skolem_bindings_chirho: SubstChirho,
+    type_pattern_alias_undo_chirho: Vec<constructor_patterns_chirho::TypePatternAliasUndoChirho>,
     /// Skolems made while checking an instance method. They prove the method
     /// against its type; they are not the enclosing binding's own dictionary
     /// parameters, so evidence keys them as open, as the flexible variables

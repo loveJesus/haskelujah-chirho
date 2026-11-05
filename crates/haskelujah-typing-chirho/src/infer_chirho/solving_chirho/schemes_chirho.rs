@@ -88,6 +88,40 @@ impl InferCtxChirho {
         )
     }
 
+    /// Align written @ arguments only with source-proven specified binders.
+    /// Hidden/inferred binders are freshened without consuming a written slot.
+    pub(super) fn instantiate_scheme_parts_with_visible_type_args_chirho(
+        &mut self,
+        scheme_chirho: &SchemeChirho,
+        explicit_tys_chirho: &[TyChirho],
+    ) -> Option<(TyChirho, Vec<PredChirho>)> {
+        if scheme_chirho.source_binders_chirho.is_empty() {
+            return self.instantiate_scheme_parts_with_type_args_chirho(
+                scheme_chirho,
+                explicit_tys_chirho,
+            );
+        }
+        let mut aligned_chirho = Vec::new();
+        let mut cursor_chirho = 0;
+        for variable_chirho in &scheme_chirho.vars_chirho {
+            let specified_chirho = scheme_chirho.source_binders_chirho.iter().any(|binder_chirho|
+                binder_chirho.variable_chirho == *variable_chirho
+                    && binder_chirho.specificity_chirho == haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho);
+            let argument_chirho = if specified_chirho && cursor_chirho < explicit_tys_chirho.len() {
+                let argument_chirho = explicit_tys_chirho[cursor_chirho].clone();
+                cursor_chirho += 1;
+                argument_chirho
+            } else {
+                self.fresh_var_chirho()
+            };
+            aligned_chirho.push(argument_chirho);
+        }
+        if cursor_chirho != explicit_tys_chirho.len() {
+            return None;
+        }
+        self.instantiate_scheme_parts_with_type_args_chirho(scheme_chirho, &aligned_chirho)
+    }
+
     pub(super) fn instantiate_scheme_parts_with_type_args_chirho(
         &mut self,
         scheme_chirho: &SchemeChirho,
@@ -546,6 +580,7 @@ impl InferCtxChirho {
                 })
                 .collect();
             let scheme_chirho = SchemeChirho {
+                source_binders_chirho: Vec::new(),
                 vars_chirho: defaulted_vars_chirho,
                 preds_chirho: defaulted_preds_chirho,
                 ty_chirho: defaulted_ty_chirho,
@@ -557,6 +592,7 @@ impl InferCtxChirho {
         }
 
         let scheme_chirho = SchemeChirho {
+            source_binders_chirho: Vec::new(),
             vars_chirho,
             preds_chirho: scheme_preds_chirho,
             ty_chirho: ty_chirho.clone(),

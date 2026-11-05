@@ -267,7 +267,10 @@ pub fn th_pat_to_ast_chirho(pat_chirho: &ThPatChirho) -> PatChirho {
             PatChirho::LitChirho(th_lit_to_ast_chirho(lit_chirho))
         }
         ThPatChirho::WildPChirho => PatChirho::WildcardChirho(TH_SPAN_CHIRHO),
-        ThPatChirho::ConPChirho(name_chirho, _tys, pats_chirho) => PatChirho::ConChirho {
+        ThPatChirho::ConPChirho(name_chirho, types_chirho, pats_chirho) => PatChirho::ConChirho {
+            type_args_chirho: types_chirho.iter().map(|ty_chirho| haskelujah_ast_chirho::pat_chirho::ConstructorTypePatternChirho {
+                ty_chirho: th_type_to_ast_chirho(ty_chirho), checked_binder_chirho: None,
+            }).collect(),
             con_chirho: th_name_to_ast_chirho(name_chirho),
             args_chirho: pats_chirho
                 .iter()

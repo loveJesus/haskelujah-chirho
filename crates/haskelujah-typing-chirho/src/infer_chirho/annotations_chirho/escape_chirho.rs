@@ -407,6 +407,7 @@ impl InferCtxChirho {
                 index_chirho,
                 name_chirho.clone(),
                 SchemeChirho {
+                    source_binders_chirho: scheme_chirho.source_binders_chirho.clone(),
                     vars_chirho: scheme_chirho.vars_chirho.clone(),
                     preds_chirho: predicates_chirho,
                     ty_chirho,
