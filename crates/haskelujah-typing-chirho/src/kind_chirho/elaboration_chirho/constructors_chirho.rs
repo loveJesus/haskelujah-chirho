@@ -289,7 +289,7 @@ impl TypeElaboratorChirho<'_> {
                     .stage_chirho(DeclarationSchemeChirho {
             association_chirho: crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
                         identity_chirho: key_chirho.clone(),
-                        owner_chirho: Some(self.state_chirho.owner_chirho),
+                        owner_chirho: self.state_chirho.owner_chirho,
                         declaration_chirho: None,
                         role_chirho: TypeConstructorRoleChirho::DataChirho,
                         reduction_arity_chirho: binders_chirho.len(),

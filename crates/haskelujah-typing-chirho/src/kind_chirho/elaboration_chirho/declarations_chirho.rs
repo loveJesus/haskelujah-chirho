@@ -82,7 +82,7 @@ impl TypeElaboratorChirho<'_> {
                 Some(stored_kind_chirho),
                 binder_chirho.name_chirho.span_chirho(),
             )?;
-            self.stamp_variable_chirho(&mut binder_chirho.name_chirho, variable_chirho);
+            self.stamp_variable_chirho(&mut binder_chirho.name_chirho, variable_chirho)?;
             let text_chirho = self.state_chirho.name_chirho(
                 binder_chirho.text_chirho(),
                 binder_chirho.name_chirho.span_chirho(),
@@ -138,7 +138,7 @@ impl TypeElaboratorChirho<'_> {
                 specificity_chirho: binder_chirho.specificity_chirho,
             }).collect(),
             identity_chirho: key_chirho.clone(),
-            owner_chirho: Some(self.state_chirho.owner_chirho),
+            owner_chirho: self.state_chirho.owner_chirho,
             role_chirho: proof_chirho.role_chirho,
             declaration_chirho: Some(proof_chirho.clone()),
             binders_chirho: telescope_chirho,
@@ -253,7 +253,7 @@ impl TypeElaboratorChirho<'_> {
                 binder_chirho.text_chirho(),
                 binder_chirho.name_chirho.span_chirho(),
             )?;
-            self.stamp_variable_chirho(&mut binder_chirho.name_chirho, variable_chirho);
+            self.stamp_variable_chirho(&mut binder_chirho.name_chirho, variable_chirho)?;
             if let Some(kind_chirho) = &mut binder_chirho.kind_annotation_chirho {
                 let annotation_chirho = self.infer_type_chirho(kind_chirho)?;
                 self.state_chirho.unify_chirho(

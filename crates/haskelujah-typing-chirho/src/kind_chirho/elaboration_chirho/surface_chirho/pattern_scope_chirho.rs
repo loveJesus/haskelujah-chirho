@@ -56,7 +56,7 @@ impl TypeElaboratorChirho<'_> {
                             )?;
                             variable_chirho
                         };
-                        this_chirho.stamp_variable_chirho(name_chirho, variable_chirho);
+                        this_chirho.stamp_variable_chirho(name_chirho, variable_chirho)?;
                     }
                 }
                 TypeChirho::AppChirho {

@@ -489,7 +489,7 @@ pub(super) fn expand_synonyms_with_budget_chirho(
     let mut expansion_chirho = SynonymExpansionChirho {
         context_chirho,
         budget_chirho,
-        next_bound_chirho: context_chirho.next_var_chirho,
+        next_bound_chirho: context_chirho.elaboration_state_chirho.next_variable_chirho,
     };
     expansion_chirho.reserve_variables_chirho(ty_chirho)?;
     expansion_chirho.walk_chirho(

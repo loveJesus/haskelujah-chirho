@@ -889,7 +889,7 @@ impl InferCtxChirho {
             };
             head_subst_chirho.apply_freshened_bounded_chirho(
                 &term_chirho,
-                &mut self.next_var_chirho,
+                &mut self.elaboration_state_chirho.next_variable_chirho,
                 &mut charge_chirho,
             )
         })();
@@ -927,7 +927,8 @@ impl InferCtxChirho {
                 };
                 let mut record_chirho = actual_chirho.clone();
                 record_chirho.kind_chirho = Some(std::sync::Arc::new(kind_chirho));
-                self.elaboration_variable_kinds_chirho
+                self.elaboration_state_chirho
+                    .variable_kinds_chirho
                     .insert(actual_chirho.variable_chirho, record_chirho);
             }
         }

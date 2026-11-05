@@ -29,8 +29,8 @@ impl InferCtxChirho {
 
     /// Generate a fresh unification variable.
     pub fn fresh_var_chirho(&mut self) -> TyChirho {
-        let var_chirho = TyVarChirho(self.next_var_chirho);
-        self.next_var_chirho += 1;
+        let var_chirho = TyVarChirho(self.elaboration_state_chirho.next_variable_chirho);
+        self.elaboration_state_chirho.next_variable_chirho += 1;
         TyChirho::VarChirho(var_chirho)
     }
 

@@ -381,8 +381,123 @@ impl InferCtxChirho {
         }
     }
 
-    pub(super) fn apply_required_type_arg_chirho(
-        &self,
+    pub(super) fn infer_required_type_application_chirho(
+        &mut self,
+        function_chirho: &TyChirho,
+        argument_chirho: &ExprChirho,
+        span_chirho: SpanChirho,
+    ) -> Option<(SubstChirho, TyChirho)> {
+        let TyChirho::RequiredForallChirho { vars_chirho, .. } = function_chirho else {
+            return None;
+        };
+        let result_chirho = (|| {
+            let record_chirho = vars_chirho.record_chirho(0).ok_or_else(|| {
+                crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
+                    message_chirho: "required application has an empty binder group".into(),
+                    span_chirho,
+                }
+            })?;
+            let (argument_chirho, links_chirho) =
+                if self.elaboration_state_chirho.owner_chirho.is_some() {
+                    let kind_chirho = record_chirho.kind_chirho.as_ref().ok_or_else(|| {
+                        crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
+                            message_chirho: "required binder has no checked kind".into(),
+                            span_chirho,
+                        }
+                    })?;
+                    let (
+                        Some(type_scope_chirho),
+                        Some(family_scope_chirho),
+                        Some(promotion_scope_chirho),
+                    ) = (
+                        self.type_constructor_scope_chirho.clone(),
+                        self.family_scope_chirho.clone(),
+                        self.promotion_scope_chirho.clone(),
+                    )
+                    else {
+                        return Err(
+                            crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
+                                message_chirho: "required argument lost its checked import scope"
+                                    .into(),
+                                span_chirho,
+                            },
+                        );
+                    };
+                    crate::kind_chirho::elaboration_chirho::elaborate_required_argument_chirho(
+                        argument_chirho,
+                        kind_chirho,
+                        crate::kind_chirho::elaboration_chirho::ArgumentElaborationContextChirho {
+                            state_chirho: &mut self.elaboration_state_chirho,
+                            registry_chirho: &mut self.type_families_chirho,
+                            type_scope_chirho: &type_scope_chirho,
+                            family_scope_chirho: &family_scope_chirho,
+                            promotion_scope_chirho: &promotion_scope_chirho,
+                            scoped_variables_chirho: &self.scoped_tyvars_chirho,
+                            images_chirho: &self.skolem_bindings_chirho,
+                            refinements_chirho: &self.env_chirho,
+                        },
+                    )?
+                } else {
+                    // Direct legacy APIs have no kind producer to upgrade. Their
+                    // ordinary payload still follows the bounded substitution path.
+                    (
+                        self.expr_to_required_type_arg_chirho(argument_chirho)
+                            .ok_or_else(|| {
+                                crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
+                                    message_chirho: "expression is not a required type argument"
+                                        .into(),
+                                    span_chirho,
+                                }
+                            })?,
+                        SubstChirho::empty_chirho(),
+                    )
+                };
+            self.apply_subst_all_chirho(&links_chirho);
+            let mut budget_chirho =
+                super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+            let function_chirho = links_chirho
+                .apply_scheme_term_bounded_chirho(
+                    function_chirho,
+                    &mut self.elaboration_state_chirho.next_variable_chirho,
+                    &mut |work_chirho, output_chirho| {
+                        budget_chirho.node_chirho(output_chirho)?;
+                        budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+                    },
+                )
+                .ok_or_else(
+                    || crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
+                        message_chirho: "required function substitution resource bound exhausted"
+                            .into(),
+                        span_chirho,
+                    },
+                )?;
+            let result_chirho = self
+                .apply_required_type_arg_chirho(&function_chirho, argument_chirho)
+                .ok_or_else(
+                    || crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
+                        message_chirho: "required argument substitution resource bound exhausted"
+                            .into(),
+                        span_chirho,
+                    },
+                )?;
+            let (body_chirho, predicates_chirho) =
+                self.expose_qualified_parts_chirho(result_chirho, Vec::new());
+            for predicate_chirho in predicates_chirho {
+                self.defer_pred_chirho(predicate_chirho, span_chirho);
+            }
+            Ok((links_chirho, body_chirho))
+        })();
+        Some(result_chirho.unwrap_or_else(
+            |error_chirho: crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho| {
+                self.non_deferrable_diagnostics_chirho
+                    .push_chirho(error_chirho.into_diagnostic_chirho());
+                (SubstChirho::empty_chirho(), self.fresh_var_chirho())
+            },
+        ))
+    }
+
+    fn apply_required_type_arg_chirho(
+        &mut self,
         fun_ty_chirho: &TyChirho,
         arg_ty_chirho: TyChirho,
     ) -> Option<TyChirho> {
@@ -394,17 +509,35 @@ impl InferCtxChirho {
             return None;
         };
         let (first_var_chirho, remaining_vars_chirho) = vars_chirho.split_first()?;
+        let mut budget_chirho =
+            super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+        budget_chirho.node_chirho(vars_chirho.len())?;
         let mut subst_chirho = SubstChirho::empty_chirho();
         subst_chirho.insert_chirho(*first_var_chirho, arg_ty_chirho);
         let remaining_chirho = if remaining_vars_chirho.is_empty() {
-            body_chirho.as_ref().clone()
+            super::equality_normalization_chirho::copy_term_with_budget_chirho(
+                body_chirho,
+                &mut budget_chirho,
+            )?
         } else {
             TyChirho::RequiredForallChirho {
                 vars_chirho: vars_chirho.slice_chirho(1..vars_chirho.len()),
-                body_chirho: body_chirho.clone(),
+                body_chirho: Box::new(
+                    super::equality_normalization_chirho::copy_term_with_budget_chirho(
+                        body_chirho,
+                        &mut budget_chirho,
+                    )?,
+                ),
             }
         };
-        Some(subst_chirho.apply_ty_chirho(&remaining_chirho))
+        subst_chirho.apply_scheme_term_bounded_chirho(
+            &remaining_chirho,
+            &mut self.elaboration_state_chirho.next_variable_chirho,
+            &mut |work_chirho, output_chirho| {
+                budget_chirho.node_chirho(output_chirho)?;
+                budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+            },
+        )
     }
 
     pub(super) fn apply_visible_type_arg_chirho(

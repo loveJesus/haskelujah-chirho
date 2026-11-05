@@ -171,7 +171,7 @@ impl InferCtxChirho {
     /// (e.g. `String` → `[Char]`) and parameterised synonyms (e.g.
     /// `Pair Int` → `(Int, Int)` for `type Pair a = (a, a)`).
     pub fn expand_type_synonyms_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
-        if self.elaboration_owner_chirho.is_some()
+        if self.elaboration_state_chirho.owner_chirho.is_some()
             || !self
                 .type_families_chirho
                 .declaration_schemes_chirho()

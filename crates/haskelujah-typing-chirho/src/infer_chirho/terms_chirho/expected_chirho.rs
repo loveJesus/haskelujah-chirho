@@ -229,13 +229,14 @@ impl InferCtxChirho {
                 let inferred_fun_sub_chirho =
                     fun_subst_chirho.apply_ty_chirho(&inferred_fun_ty_chirho);
 
-                if let Some(required_arg_ty_chirho) =
-                    self.expr_to_required_type_arg_chirho(arg_chirho)
-                    && let Some(required_result_ty_chirho) = self.apply_required_type_arg_chirho(
+                if let Some((links_chirho, required_result_ty_chirho)) = self
+                    .infer_required_type_application_chirho(
                         &inferred_fun_sub_chirho,
-                        required_arg_ty_chirho,
+                        arg_chirho,
+                        *app_span_chirho,
                     )
                 {
+                    let fun_subst_chirho = links_chirho.compose_chirho(&fun_subst_chirho);
                     return match self.unify_normalized_chirho(
                         &required_result_ty_chirho,
                         expected_ty_chirho,

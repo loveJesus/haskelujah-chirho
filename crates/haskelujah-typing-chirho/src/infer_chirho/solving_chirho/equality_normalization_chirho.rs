@@ -263,7 +263,7 @@ fn transform_chirho<'source_chirho>(
     }
     if expand_chirho
         && named_chirho.is_none()
-        && (ctx_chirho.elaboration_owner_chirho.is_some()
+        && (ctx_chirho.elaboration_state_chirho.owner_chirho.is_some()
             || !ctx_chirho
                 .type_families_chirho
                 .declaration_schemes_chirho()

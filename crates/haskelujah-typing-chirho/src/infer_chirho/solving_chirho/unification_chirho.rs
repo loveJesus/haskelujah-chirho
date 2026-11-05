@@ -270,8 +270,9 @@ impl InferCtxChirho {
             ) => {
                 let mut instantiation_chirho = SubstChirho::empty_chirho();
                 for var_chirho in vars_chirho {
-                    let fresh_var_chirho = TyVarChirho(self.next_var_chirho);
-                    self.next_var_chirho += 1;
+                    let fresh_var_chirho =
+                        TyVarChirho(self.elaboration_state_chirho.next_variable_chirho);
+                    self.elaboration_state_chirho.next_variable_chirho += 1;
                     instantiation_chirho
                         .insert_chirho(*var_chirho, TyChirho::VarChirho(fresh_var_chirho));
                 }
@@ -291,8 +292,9 @@ impl InferCtxChirho {
             ) => {
                 let mut instantiation_chirho = SubstChirho::empty_chirho();
                 for var_chirho in vars_chirho {
-                    let fresh_var_chirho = TyVarChirho(self.next_var_chirho);
-                    self.next_var_chirho += 1;
+                    let fresh_var_chirho =
+                        TyVarChirho(self.elaboration_state_chirho.next_variable_chirho);
+                    self.elaboration_state_chirho.next_variable_chirho += 1;
                     instantiation_chirho
                         .insert_chirho(*var_chirho, TyChirho::VarChirho(fresh_var_chirho));
                 }

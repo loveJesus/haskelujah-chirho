@@ -6,7 +6,7 @@
 use super::*;
 
 pub(super) struct TypePatternAliasUndoChirho {
-    name_chirho: String,
+    name_chirho: Option<String>,
     variable_chirho: TyVarChirho,
     previous_name_chirho: Option<TyVarChirho>,
     previous_image_chirho: Option<crate::subst_chirho::SubstitutionImageChirho>,
@@ -58,7 +58,7 @@ impl InferCtxChirho {
             ),
             given_start_chirho: self.given_preds_chirho.len(),
             rewrite_start_chirho: self.given_rewrites_chirho.len(),
-            first_meta_chirho: self.next_var_chirho,
+            first_meta_chirho: self.elaboration_state_chirho.next_variable_chirho,
             event_start_chirho: self.equality_substitution_events_chirho.len(),
             alias_mark_chirho: self.type_pattern_alias_undo_chirho.len(),
         }
@@ -259,6 +259,9 @@ impl InferCtxChirho {
             super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
         let mut aliases_chirho = Vec::new();
         for undo_chirho in &self.type_pattern_alias_undo_chirho[mark_chirho..] {
+            let Some(name_chirho) = &undo_chirho.name_chirho else {
+                continue;
+            };
             if let Some(image_chirho) = self
                 .skolem_bindings_chirho
                 .lookup_image_chirho(&undo_chirho.variable_chirho)
@@ -272,15 +275,16 @@ impl InferCtxChirho {
                 );
                 if let Some(copied_chirho) = copied_chirho.filter(|_| {
                     budget_chirho
-                        .node_chirho(undo_chirho.name_chirho.len().saturating_add(1))
+                        .node_chirho(name_chirho.len().saturating_add(1))
                         .is_some()
                 }) {
                     aliases_chirho.push((
-                        undo_chirho.name_chirho.clone(),
+                        name_chirho.clone(),
                         undo_chirho.variable_chirho,
                         crate::subst_chirho::SubstitutionImageChirho {
                             image_chirho: copied_chirho,
                             kind_chirho: image_chirho.kind_chirho.clone(),
+                            source_chirho: image_chirho.source_chirho.clone(),
                         },
                     ));
                 } else {
@@ -298,11 +302,13 @@ impl InferCtxChirho {
                 .type_pattern_alias_undo_chirho
                 .pop()
                 .expect("type pattern scope mark");
-            if let Some(previous_chirho) = undo_chirho.previous_name_chirho {
-                self.scoped_tyvars_chirho
-                    .insert(undo_chirho.name_chirho, previous_chirho);
-            } else {
-                self.scoped_tyvars_chirho.remove(&undo_chirho.name_chirho);
+            if let Some(name_chirho) = undo_chirho.name_chirho {
+                if let Some(previous_chirho) = undo_chirho.previous_name_chirho {
+                    self.scoped_tyvars_chirho
+                        .insert(name_chirho, previous_chirho);
+                } else {
+                    self.scoped_tyvars_chirho.remove(&name_chirho);
+                }
             }
             if let Some(previous_chirho) = undo_chirho.previous_image_chirho {
                 self.skolem_bindings_chirho
@@ -336,7 +342,8 @@ impl InferCtxChirho {
     ) {
         let kind_chirho = match &image_chirho {
             TyChirho::VarChirho(variable_chirho) => self
-                .elaboration_variable_kinds_chirho
+                .elaboration_state_chirho
+                .variable_kinds_chirho
                 .get(variable_chirho)
                 .and_then(|record_chirho| record_chirho.kind_chirho.clone()),
             _ => None,
@@ -347,6 +354,7 @@ impl InferCtxChirho {
             crate::subst_chirho::SubstitutionImageChirho {
                 image_chirho,
                 kind_chirho,
+                source_chirho: None,
             },
         );
     }
@@ -357,9 +365,27 @@ impl InferCtxChirho {
         variable_chirho: TyVarChirho,
         image_chirho: crate::subst_chirho::SubstitutionImageChirho,
     ) {
-        let previous_name_chirho = self
-            .scoped_tyvars_chirho
-            .insert(name_chirho.clone(), variable_chirho);
+        self.install_type_pattern_binding_chirho(Some(name_chirho), variable_chirho, image_chirho);
+    }
+
+    pub(super) fn install_anonymous_type_pattern_image_chirho(
+        &mut self,
+        variable_chirho: TyVarChirho,
+        image_chirho: crate::subst_chirho::SubstitutionImageChirho,
+    ) {
+        self.install_type_pattern_binding_chirho(None, variable_chirho, image_chirho);
+    }
+
+    fn install_type_pattern_binding_chirho(
+        &mut self,
+        name_chirho: Option<String>,
+        variable_chirho: TyVarChirho,
+        image_chirho: crate::subst_chirho::SubstitutionImageChirho,
+    ) {
+        let previous_name_chirho = name_chirho.as_ref().and_then(|name_chirho| {
+            self.scoped_tyvars_chirho
+                .insert(name_chirho.clone(), variable_chirho)
+        });
         let previous_image_chirho = self
             .skolem_bindings_chirho
             .lookup_image_chirho(&variable_chirho)
@@ -368,7 +394,7 @@ impl InferCtxChirho {
             .insert_image_chirho(variable_chirho, image_chirho);
         self.type_pattern_alias_undo_chirho
             .push(TypePatternAliasUndoChirho {
-                name_chirho: name_chirho.clone(),
+                name_chirho,
                 variable_chirho,
                 previous_name_chirho,
                 previous_image_chirho,

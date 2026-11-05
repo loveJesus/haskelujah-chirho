@@ -7,7 +7,399 @@ use super::*;
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 
+pub(crate) struct ArgumentElaborationContextChirho<'scope_chirho> {
+    pub state_chirho: &'scope_chirho mut ElaborationStateChirho,
+    pub registry_chirho: &'scope_chirho mut TypeFamilyEnvChirho,
+    pub type_scope_chirho: &'scope_chirho TypeConstructorScopeChirho,
+    pub family_scope_chirho: &'scope_chirho TypeFamilyScopeChirho,
+    pub promotion_scope_chirho: &'scope_chirho PromotionScopeChirho,
+    pub scoped_variables_chirho: &'scope_chirho HashMap<String, TyVarChirho>,
+    pub images_chirho: &'scope_chirho crate::subst_chirho::SubstChirho,
+    pub refinements_chirho: &'scope_chirho crate::env_chirho::TyEnvChirho,
+}
+
+/// Resume the original checked solver after ordinary inference recognizes a
+/// required binder. Ownership, catalogue and resource allowance are not reset.
+pub(crate) fn elaborate_required_argument_chirho(
+    expression_chirho: &ExprChirho,
+    expected_kind_chirho: &TyChirho,
+    context_chirho: ArgumentElaborationContextChirho<'_>,
+) -> Result<(TyChirho, crate::subst_chirho::SubstChirho), ElaborationErrorChirho> {
+    let span_chirho = expression_chirho.span_chirho();
+    context_chirho.state_chirho.owner_id_chirho(span_chirho)?;
+    let policy_chirho = context_chirho
+        .state_chirho
+        .source_policy_chirho
+        .clone()
+        .ok_or_else(|| {
+            TypeElaboratorChirho::error_chirho(
+                "required argument lost its producer options",
+                span_chirho,
+            )
+        })?;
+    context_chirho
+        .state_chirho
+        .begin_inference_links_chirho(span_chirho)?;
+    let state_chirho = std::mem::replace(
+        context_chirho.state_chirho,
+        ElaborationStateChirho::unowned_chirho(),
+    );
+    let mut elaborator_chirho = TypeElaboratorChirho {
+        state_chirho,
+        registry_chirho: ElaborationCatalogueChirho::BorrowedChirho(context_chirho.registry_chirho),
+        type_scope_chirho: context_chirho.type_scope_chirho,
+        family_scope_chirho: context_chirho.family_scope_chirho,
+        promotion_scope_chirho: context_chirho.promotion_scope_chirho,
+        builtin_classes_chirho: &policy_chirho.builtin_classes_chirho,
+        star_is_type_chirho: policy_chirho.star_is_type_chirho,
+        poly_kinds_chirho: policy_chirho.poly_kinds_chirho,
+        cusks_chirho: policy_chirho.cusks_chirho,
+        unlifted_newtypes_chirho: policy_chirho.unlifted_newtypes_chirho,
+        scoped_type_variables_chirho: policy_chirho.scoped_type_variables_chirho,
+        signature_variables_chirho: HashMap::new(),
+        signature_undo_chirho: Vec::new(),
+        type_depth_chirho: 0,
+        rechecking_chirho: false,
+        variables_chirho: HashMap::new(),
+        scope_undo_chirho: Vec::new(),
+        declaration_variables_chirho: HashMap::new(),
+        current_declaration_chirho: None,
+        declaration_contracts_chirho: HashMap::new(),
+        lexical_sources_chirho: HashMap::new(),
+        lexical_images_chirho: Some(context_chirho.images_chirho),
+        lexical_refinements_chirho: Some(context_chirho.refinements_chirho),
+        strict_argument_chirho: true,
+    };
+    let result_chirho = (|| {
+        for (name_chirho, variable_chirho) in context_chirho.scoped_variables_chirho {
+            let record_chirho = elaborator_chirho
+                .state_chirho
+                .variable_kinds_chirho
+                .get(variable_chirho);
+            let kind_chirho = context_chirho
+                .images_chirho
+                .lookup_image_chirho(variable_chirho)
+                .and_then(|image_chirho| image_chirho.kind_chirho.as_ref())
+                .or_else(|| {
+                    record_chirho.and_then(|record_chirho| record_chirho.kind_chirho.as_ref())
+                })
+                .cloned()
+                .ok_or_else(|| {
+                    TypeElaboratorChirho::error_chirho(
+                        "lexical required argument has no checked kind",
+                        span_chirho,
+                    )
+                })?;
+            let source_chirho = context_chirho
+                .images_chirho
+                .lookup_image_chirho(variable_chirho)
+                .and_then(|image_chirho| image_chirho.source_chirho.clone())
+                .or_else(|| {
+                    record_chirho.and_then(|record_chirho| record_chirho.source_chirho.clone())
+                });
+            let name_chirho = elaborator_chirho
+                .state_chirho
+                .name_chirho(name_chirho, span_chirho)?;
+            let kind_chirho = elaborator_chirho
+                .state_chirho
+                .copy_chirho(&kind_chirho, span_chirho)?;
+            elaborator_chirho.bind_variable_chirho(
+                name_chirho,
+                *variable_chirho,
+                kind_chirho,
+                span_chirho,
+            )?;
+            if let Some(source_chirho) = source_chirho {
+                elaborator_chirho
+                    .state_chirho
+                    .charge_chirho(1, 1, span_chirho)?;
+                if let Some(previous_chirho) = elaborator_chirho
+                    .lexical_sources_chirho
+                    .insert(source_chirho, *variable_chirho)
+                    && previous_chirho != *variable_chirho
+                {
+                    return Err(TypeElaboratorChirho::error_chirho(
+                        "ambiguous lexical source-variable correspondence",
+                        span_chirho,
+                    ));
+                }
+            }
+        }
+        let mut syntax_chirho =
+            elaborator_chirho.required_argument_syntax_chirho(expression_chirho, 0)?;
+        let expected_kind_chirho =
+            elaborator_chirho.normalize_lexical_term_chirho(expected_kind_chirho, span_chirho)?;
+        let typed_chirho = elaborator_chirho
+            .infer_type_at_kind_chirho(&mut syntax_chirho, &expected_kind_chirho)?;
+        elaborator_chirho
+            .state_chirho
+            .resolve_chirho(&typed_chirho.term_chirho, span_chirho)
+    })();
+    let links_chirho = elaborator_chirho
+        .state_chirho
+        .finish_inference_links_chirho(span_chirho);
+    *context_chirho.state_chirho = elaborator_chirho.state_chirho;
+    result_chirho
+        .and_then(|term_chirho| links_chirho.map(|links_chirho| (term_chirho, links_chirho)))
+}
+
 impl TypeElaboratorChirho<'_> {
+    pub(super) fn normalize_lexical_term_chirho(
+        &mut self,
+        term_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<TyChirho, ElaborationErrorChirho> {
+        let Some(images_chirho) = self.lexical_images_chirho else {
+            return self.state_chirho.copy_chirho(term_chirho, span_chirho);
+        };
+        let mut term_chirho = images_chirho
+            .apply_bounded_chirho(term_chirho, &mut |work_chirho, output_chirho| {
+                self.state_chirho
+                    .charge_chirho(work_chirho, output_chirho, span_chirho)
+                    .ok()
+            })
+            .ok_or_else(|| {
+                self.state_chirho.resource_failure_chirho(
+                    "required argument kind substitution bound exhausted",
+                    span_chirho,
+                )
+            })?;
+        let Some(refinements_chirho) = self
+            .lexical_refinements_chirho
+            .filter(|env_chirho| env_chirho.has_refinements_chirho())
+        else {
+            return Ok(term_chirho);
+        };
+        for _ in 0..128 {
+            let next_chirho = crate::skolem_chirho::rewrite_borrowed_skolems_bounded_chirho(
+                &term_chirho,
+                &mut |name_chirho| refinements_chirho.lookup_refinement_chirho(name_chirho),
+                &mut |work_chirho, output_chirho| {
+                    self.state_chirho
+                        .charge_chirho(work_chirho, output_chirho, span_chirho)
+                        .ok()
+                },
+            )
+            .map_err(|_| {
+                self.state_chirho.resource_failure_chirho(
+                    "required argument refinement bound exhausted",
+                    span_chirho,
+                )
+            })?;
+            if next_chirho == term_chirho {
+                return Ok(next_chirho);
+            }
+            term_chirho = next_chirho;
+        }
+        Err(self.state_chirho.resource_failure_chirho(
+            "required argument refinement iterations exhausted",
+            span_chirho,
+        ))
+    }
+
+    /// Keep term-namespace resolution while projecting the syntactically
+    /// ambiguous required argument into the common type/kind vocabulary.
+    fn required_argument_syntax_chirho(
+        &mut self,
+        expression_chirho: &ExprChirho,
+        depth_chirho: usize,
+    ) -> Result<TypeChirho, ElaborationErrorChirho> {
+        use haskelujah_ast_chirho::lit_chirho::LitChirho;
+        use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+        let span_chirho = expression_chirho.span_chirho();
+        self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+        if depth_chirho >= 128 {
+            return Err(self.state_chirho.resource_failure_chirho(
+                "required argument syntax depth bound exhausted",
+                span_chirho,
+            ));
+        }
+        Ok(match expression_chirho {
+            ExprChirho::VarChirho(name_chirho)
+                if name_chirho.text_chirho() == "_" && name_chirho.qualifier_chirho().is_none() =>
+            {
+                TypeChirho::WildcardChirho { span_chirho }
+            }
+            ExprChirho::VarChirho(name_chirho) => {
+                let variable_chirho = if name_chirho.type_variable_chirho().is_some() {
+                    self.check_variable_owner_chirho(name_chirho)?
+                        .ok_or_else(|| {
+                            Self::error_chirho(
+                                "required argument has no owned type variable",
+                                span_chirho,
+                            )
+                        })?
+                } else {
+                    if name_chirho.qualifier_chirho().is_some() {
+                        return Err(Self::error_chirho(
+                            "qualified term variable is not a lexical type binder",
+                            span_chirho,
+                        ));
+                    }
+                    self.variables_chirho
+                        .get(name_chirho.text_chirho())
+                        .map(|(variable_chirho, _)| *variable_chirho)
+                        .ok_or_else(|| {
+                            Self::error_chirho(
+                                "term variable cannot be used as a required type argument",
+                                span_chirho,
+                            )
+                        })?
+                };
+                if self
+                    .variables_chirho
+                    .get(name_chirho.text_chirho())
+                    .map(|(active_chirho, _)| *active_chirho)
+                    != Some(variable_chirho)
+                {
+                    return Err(Self::error_chirho(
+                        "required argument type variable is outside its lexical scope",
+                        span_chirho,
+                    ));
+                }
+                let mut name_chirho = self.state_chirho.copy_name_chirho(name_chirho)?;
+                self.stamp_variable_chirho(&mut name_chirho, variable_chirho)?;
+                TypeChirho::VarChirho(name_chirho)
+            }
+            ExprChirho::ConChirho(name_chirho) => {
+                let mut name_chirho = self.state_chirho.copy_name_chirho(name_chirho)?;
+                let resolution_chirho = name_chirho
+                    .promotion_chirho()
+                    .cloned()
+                    .unwrap_or_else(|| self.promotion_scope_chirho.quoted_chirho(&name_chirho));
+                if !haskelujah_ast_chirho::promotion_chirho::is_unknown_promoted_key_chirho(
+                    resolution_chirho.key_chirho().as_str_chirho(),
+                ) {
+                    name_chirho.set_promotion_chirho(resolution_chirho);
+                    TypeChirho::PromotedConChirho {
+                        name_chirho,
+                        span_chirho,
+                    }
+                } else {
+                    TypeChirho::ConChirho(name_chirho)
+                }
+            }
+            ExprChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => TypeChirho::AppChirho {
+                fun_chirho: Box::new(
+                    self.required_argument_syntax_chirho(fun_chirho, depth_chirho + 1)?,
+                ),
+                arg_chirho: Box::new(
+                    self.required_argument_syntax_chirho(arg_chirho, depth_chirho + 1)?,
+                ),
+                span_chirho,
+            },
+            ExprChirho::ParenChirho { inner_chirho, .. } => TypeChirho::ParenChirho {
+                inner_chirho: Box::new(
+                    self.required_argument_syntax_chirho(inner_chirho, depth_chirho + 1)?,
+                ),
+                span_chirho,
+            },
+            ExprChirho::AnnChirho {
+                expr_chirho,
+                ty_chirho,
+                ..
+            } => TypeChirho::KindAnnotationChirho {
+                ty_chirho: Box::new(
+                    self.required_argument_syntax_chirho(expr_chirho, depth_chirho + 1)?,
+                ),
+                kind_chirho: Box::new(self.state_chirho.copy_syntax_chirho(ty_chirho)?),
+                span_chirho,
+            },
+            ExprChirho::ListChirho {
+                elements_chirho, ..
+            } => {
+                self.state_chirho.charge_chirho(
+                    elements_chirho.len(),
+                    elements_chirho.len(),
+                    span_chirho,
+                )?;
+                TypeChirho::PromotedListChirho {
+                    elements_chirho: elements_chirho
+                        .iter()
+                        .map(|element_chirho| {
+                            self.required_argument_syntax_chirho(element_chirho, depth_chirho + 1)
+                        })
+                        .collect::<Result<_, _>>()?,
+                    span_chirho,
+                }
+            }
+            ExprChirho::TupleChirho {
+                elements_chirho, ..
+            } => {
+                if elements_chirho.len() == 1 || elements_chirho.len() > 64 {
+                    return Err(Self::error_chirho(
+                        "unsupported required tuple arity",
+                        span_chirho,
+                    ));
+                }
+                self.state_chirho.charge_chirho(
+                    elements_chirho.len().saturating_mul(4).saturating_add(2),
+                    elements_chirho.len().saturating_mul(4).saturating_add(2),
+                    span_chirho,
+                )?;
+                let text_chirho =
+                    format!("({})", ",".repeat(elements_chirho.len().saturating_sub(1)));
+                let mut head_chirho = TypeChirho::PromotedConChirho {
+                    name_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                        text_chirho,
+                        span_chirho,
+                    )),
+                    span_chirho,
+                };
+                for element_chirho in elements_chirho {
+                    head_chirho = TypeChirho::AppChirho {
+                        fun_chirho: Box::new(head_chirho),
+                        arg_chirho: Box::new(
+                            self.required_argument_syntax_chirho(element_chirho, depth_chirho + 1)?,
+                        ),
+                        span_chirho,
+                    };
+                }
+                head_chirho
+            }
+            ExprChirho::LitChirho(literal_chirho) => {
+                let value_chirho = match literal_chirho {
+                    LitChirho::IntChirho(value_chirho, ..) => {
+                        self.state_chirho.charge_chirho(32, 32, span_chirho)?;
+                        value_chirho.to_string()
+                    }
+                    LitChirho::StringChirho(value_chirho, ..) => {
+                        self.state_chirho.charge_chirho(
+                            value_chirho.len().saturating_add(2),
+                            value_chirho.len().saturating_add(2),
+                            span_chirho,
+                        )?;
+                        format!("\"{value_chirho}\"")
+                    }
+                    LitChirho::CharChirho(value_chirho, ..) => {
+                        self.state_chirho.charge_chirho(6, 6, span_chirho)?;
+                        format!("'{value_chirho}'")
+                    }
+                    _ => {
+                        return Err(Self::error_chirho(
+                            "unsupported required type literal",
+                            span_chirho,
+                        ));
+                    }
+                };
+                TypeChirho::LitChirho {
+                    value_chirho,
+                    span_chirho,
+                }
+            }
+            _ => {
+                return Err(Self::error_chirho(
+                    "expression is not a required type argument",
+                    span_chirho,
+                ));
+            }
+        })
+    }
+
     pub(super) fn elaborate_constructor_type_application_chirho(
         &mut self,
         expression_chirho: &mut ExprChirho,
@@ -243,7 +635,7 @@ impl TypeElaboratorChirho<'_> {
                         .state_chirho
                         .fresh_chirho(Some(kind_chirho), span_chirho)?
                 };
-                this_chirho.stamp_variable_chirho(name_chirho, variable_chirho);
+                this_chirho.stamp_variable_chirho(name_chirho, variable_chirho)?;
                 let name_chirho = this_chirho
                     .state_chirho
                     .name_chirho(name_chirho.text_chirho(), span_chirho)?;

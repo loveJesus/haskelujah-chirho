@@ -24,15 +24,30 @@ impl InferCtxChirho {
         name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
         variables_chirho: &mut HashMap<String, TyVarChirho>,
     ) -> TyVarChirho {
+        // Opening a checked required binder can freshen its consumer ID. The
+        // existing lexical image carries the exact producer correspondence;
+        // an equal spelling without that proof cannot rekey a stamped name.
+        if let (Some(source_chirho), Some(variable_chirho)) = (
+            name_chirho.type_variable_chirho(),
+            variables_chirho.get(name_chirho.text_chirho()),
+        ) && self
+            .skolem_bindings_chirho
+            .lookup_image_chirho(variable_chirho)
+            .and_then(|image_chirho| image_chirho.source_chirho.as_ref())
+            == Some(source_chirho)
+        {
+            return *variable_chirho;
+        }
         use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
         match name_chirho.type_variable_chirho() {
             Some(ScopedTypeVariableIdChirho::InferenceChirho {
                 owner_chirho,
                 variable_chirho,
-            }) if Some(*owner_chirho) == self.elaboration_owner_chirho
-                && variable_chirho.0 < self.next_var_chirho
+            }) if Some(*owner_chirho) == self.elaboration_state_chirho.owner_chirho
+                && variable_chirho.0 < self.elaboration_state_chirho.next_variable_chirho
                 && self
-                    .elaboration_variable_kinds_chirho
+                    .elaboration_state_chirho
+                    .variable_kinds_chirho
                     .contains_key(variable_chirho) =>
             {
                 variables_chirho.insert(name_chirho.text_chirho().to_owned(), *variable_chirho);
@@ -71,8 +86,9 @@ impl InferCtxChirho {
                     // Only the published head telescope is implicitly opened.
                     // A local forall occurrence needs its lexical binder action.
                     if top_chirho {
-                        let variable_chirho = TyVarChirho(self.next_var_chirho);
-                        self.next_var_chirho += 1;
+                        let variable_chirho =
+                            TyVarChirho(self.elaboration_state_chirho.next_variable_chirho);
+                        self.elaboration_state_chirho.next_variable_chirho += 1;
                         variables_chirho.insert(key_chirho, variable_chirho);
                         return variable_chirho;
                     }
@@ -84,8 +100,9 @@ impl InferCtxChirho {
                 if let Some(variable_chirho) = variables_chirho.get(name_chirho.text_chirho()) {
                     return *variable_chirho;
                 }
-                let variable_chirho = TyVarChirho(self.next_var_chirho);
-                self.next_var_chirho += 1;
+                let variable_chirho =
+                    TyVarChirho(self.elaboration_state_chirho.next_variable_chirho);
+                self.elaboration_state_chirho.next_variable_chirho += 1;
                 variables_chirho.insert(name_chirho.text_chirho().to_owned(), variable_chirho);
                 variable_chirho
             }
@@ -98,8 +115,8 @@ impl InferCtxChirho {
         variables_chirho: &mut HashMap<String, TyVarChirho>,
     ) -> TyVarChirho {
         if name_chirho.type_variable_chirho().is_none() {
-            let variable_chirho = TyVarChirho(self.next_var_chirho);
-            self.next_var_chirho += 1;
+            let variable_chirho = TyVarChirho(self.elaboration_state_chirho.next_variable_chirho);
+            self.elaboration_state_chirho.next_variable_chirho += 1;
             return variable_chirho;
         }
         use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
@@ -127,8 +144,8 @@ impl InferCtxChirho {
             if !proven_chirho {
                 return self.invalid_surface_variable_chirho(name_chirho);
             }
-            let variable_chirho = TyVarChirho(self.next_var_chirho);
-            self.next_var_chirho += 1;
+            let variable_chirho = TyVarChirho(self.elaboration_state_chirho.next_variable_chirho);
+            self.elaboration_state_chirho.next_variable_chirho += 1;
             return variable_chirho;
         }
         let previous_chirho = variables_chirho.get(name_chirho.text_chirho()).copied();
@@ -152,8 +169,8 @@ impl InferCtxChirho {
                 name_chirho.span_chirho(),
             ),
         );
-        let variable_chirho = TyVarChirho(self.next_var_chirho);
-        self.next_var_chirho += 1;
+        let variable_chirho = TyVarChirho(self.elaboration_state_chirho.next_variable_chirho);
+        self.elaboration_state_chirho.next_variable_chirho += 1;
         variable_chirho
     }
 
@@ -205,7 +222,8 @@ impl InferCtxChirho {
                         TyChirho::VarChirho(variable_chirho),
                     );
                     if let Some(actual_kind_chirho) = self
-                        .elaboration_variable_kinds_chirho
+                        .elaboration_state_chirho
+                        .variable_kinds_chirho
                         .get(&variable_chirho)
                         .and_then(|record_chirho| record_chirho.kind_chirho.as_deref())
                         && let Some(typed_binder_chirho) =
@@ -227,8 +245,9 @@ impl InferCtxChirho {
                 {
                     argument_chirho.clone()
                 } else {
-                    let variable_chirho = TyVarChirho(self.next_var_chirho);
-                    self.next_var_chirho += 1;
+                    let variable_chirho =
+                        TyVarChirho(self.elaboration_state_chirho.next_variable_chirho);
+                    self.elaboration_state_chirho.next_variable_chirho += 1;
                     let argument_chirho = TyChirho::VarChirho(variable_chirho);
                     mapping_chirho
                         .insert_chirho(binder_chirho.variable_chirho, argument_chirho.clone());
@@ -299,7 +318,8 @@ impl InferCtxChirho {
                 self.tyvar_source_names_chirho
                     .entry(tv_chirho)
                     .or_insert(text_chirho);
-                self.elaboration_substitution_chirho
+                self.elaboration_state_chirho
+                    .substitution_chirho
                     .apply_ty_chirho(&TyChirho::VarChirho(tv_chirho))
             }
             TypeChirho::ConChirho(name_chirho) => {
@@ -584,15 +604,17 @@ impl InferCtxChirho {
             ScopedTypeVariableIdChirho::InferenceChirho {
                 owner_chirho,
                 variable_chirho,
-            } if Some(*owner_chirho) == self.elaboration_owner_chirho
-                && variable_chirho.0 < self.next_var_chirho =>
+            } if Some(*owner_chirho) == self.elaboration_state_chirho.owner_chirho
+                && variable_chirho.0 < self.elaboration_state_chirho.next_variable_chirho =>
             {
                 let kind_chirho = self
-                    .elaboration_variable_kinds_chirho
+                    .elaboration_state_chirho
+                    .variable_kinds_chirho
                     .get(variable_chirho)?
                     .kind_chirho
                     .as_ref()?;
-                self.elaboration_substitution_chirho
+                self.elaboration_state_chirho
+                    .substitution_chirho
                     .resolve_owned_bounded_chirho(kind_chirho, &mut charge_chirho)
             }
             ScopedTypeVariableIdChirho::QuantifiedChirho {
@@ -653,7 +675,7 @@ impl InferCtxChirho {
                 }
                 mapping_chirho.apply_freshened_bounded_chirho(
                     kind_chirho,
-                    &mut self.next_var_chirho,
+                    &mut self.elaboration_state_chirho.next_variable_chirho,
                     &mut charge_chirho,
                 )
             }

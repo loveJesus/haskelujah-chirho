@@ -27,7 +27,7 @@ impl InferCtxChirho {
         lhs_chirho: &[TypeChirho],
         rhs_chirho: &TypeChirho,
     ) -> Option<(Vec<TyChirho>, TyChirho, Vec<String>)> {
-        self.elaboration_owner_chirho?;
+        self.elaboration_state_chirho.owner_chirho?;
         let previous_chirho = self.definition_type_conversion_chirho;
         self.definition_type_conversion_chirho = true;
         let mut variables_chirho = HashMap::new();

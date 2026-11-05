@@ -883,6 +883,7 @@ impl InferCtxChirho {
         // instance bodies the same expected-type guidance that top-level
         // signature-annotated wrappers already receive.
         self.check_instance_methods_against_class_chirho(module_chirho);
+        self.check_class_default_methods_chirho(module_chirho);
 
         // Deferred equalities whose stuck side has been solved by now are
         // decided here; one still stuck against a closed type is reported,

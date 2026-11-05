@@ -89,8 +89,8 @@ impl TypeElaboratorChirho<'_> {
                 matches_chirho,
                 ..
             } => {
-                self.signature_scope_chirho(name_chirho)?;
-                self.matches_chirho(matches_chirho)?;
+                let required_chirho = self.signature_scope_chirho(name_chirho)?;
+                self.matches_with_required_chirho(matches_chirho, &required_chirho)?;
             }
             DeclChirho::PatBindChirho {
                 pat_chirho,
@@ -112,7 +112,16 @@ impl TypeElaboratorChirho<'_> {
                 }
                 for method_chirho in methods_chirho {
                     if let Some(matches_chirho) = &mut method_chirho.default_chirho {
-                        self.matches_chirho(matches_chirho)?;
+                        self.scoped_chirho(|this_chirho| {
+                            this_chirho.store_checked_signature_scope_chirho(
+                                &method_chirho.name_chirho,
+                                &method_chirho.ty_chirho,
+                            )?;
+                            let required_chirho =
+                                this_chirho.signature_scope_chirho(&method_chirho.name_chirho)?;
+                            this_chirho
+                                .matches_with_required_chirho(matches_chirho, &required_chirho)
+                        })?;
                     }
                 }
             }
@@ -252,8 +261,8 @@ impl TypeElaboratorChirho<'_> {
                     matches_chirho,
                     ..
                 } => {
-                    this_chirho.signature_scope_chirho(name_chirho)?;
-                    this_chirho.matches_chirho(matches_chirho)
+                    let required_chirho = this_chirho.signature_scope_chirho(name_chirho)?;
+                    this_chirho.matches_with_required_chirho(matches_chirho, &required_chirho)
                 }
                 LocalBindChirho::PatBindChirho {
                     pat_chirho,
@@ -274,7 +283,16 @@ impl TypeElaboratorChirho<'_> {
         ty_chirho: &mut haskelujah_ast_chirho::ty_chirho::TypeChirho,
     ) -> Result<(), ElaborationErrorChirho> {
         self.scoped_chirho(|this_chirho| this_chirho.check_type_chirho(ty_chirho))?;
-        if !self.scoped_type_variables_chirho {
+        self.store_checked_signature_scope_chirho(name_chirho, ty_chirho)
+    }
+
+    fn store_checked_signature_scope_chirho(
+        &mut self,
+        name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
+        ty_chirho: &TypeChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        let required_chirho = self.checked_required_signature_chirho(ty_chirho)?;
+        if !self.scoped_type_variables_chirho && required_chirho.is_empty() {
             return Ok(());
         }
         let variables_chirho =
@@ -285,9 +303,13 @@ impl TypeElaboratorChirho<'_> {
         let undo_key_chirho = self
             .state_chirho
             .name_chirho(&key_chirho, name_chirho.span_chirho())?;
-        let previous_chirho = self
-            .signature_variables_chirho
-            .insert(key_chirho, variables_chirho);
+        let previous_chirho = self.signature_variables_chirho.insert(
+            key_chirho,
+            ValueSignatureScopeChirho {
+                variables_chirho,
+                required_chirho,
+            },
+        );
         self.signature_undo_chirho
             .push((undo_key_chirho, previous_chirho));
         Ok(())
@@ -327,17 +349,70 @@ impl TypeElaboratorChirho<'_> {
         Ok(variables_chirho)
     }
 
+    fn checked_required_signature_chirho(
+        &mut self,
+        mut syntax_chirho: &TypeChirho,
+    ) -> Result<crate::ty_chirho::QuantifiedVariablesChirho, ElaborationErrorChirho> {
+        let mut records_chirho = Vec::new();
+        loop {
+            let span_chirho = syntax_chirho.span_chirho();
+            self.state_chirho.charge_chirho(1, 0, span_chirho)?;
+            match syntax_chirho {
+                TypeChirho::RequiredForallChirho {
+                    vars_chirho,
+                    body_chirho,
+                    ..
+                } => {
+                    self.state_chirho.charge_chirho(
+                        vars_chirho.len(),
+                        vars_chirho.len(),
+                        span_chirho,
+                    )?;
+                    for binder_chirho in vars_chirho {
+                        let variable_chirho = self
+                            .check_variable_owner_chirho(&binder_chirho.name_chirho)?
+                            .ok_or_else(|| {
+                                Self::error_chirho(
+                                    "required binder has no checked owner",
+                                    span_chirho,
+                                )
+                            })?;
+                        let kind_chirho = self
+                            .state_chirho
+                            .variable_kind_chirho(variable_chirho, span_chirho)?;
+                        records_chirho.push(crate::ty_chirho::QuantifiedVariableChirho {
+                            variable_chirho,
+                            kind_chirho: Some(Arc::new(kind_chirho)),
+                            source_chirho: binder_chirho
+                                .name_chirho
+                                .type_variable_chirho()
+                                .cloned(),
+                            specificity_chirho: Some(binder_chirho.specificity_chirho),
+                        });
+                    }
+                    syntax_chirho = body_chirho;
+                }
+                TypeChirho::ForallChirho { body_chirho, .. }
+                | TypeChirho::QualChirho { body_chirho, .. } => syntax_chirho = body_chirho,
+                TypeChirho::ParenChirho { inner_chirho, .. } => syntax_chirho = inner_chirho,
+                _ => break,
+            }
+        }
+        Ok(crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(records_chirho))
+    }
+
     fn signature_scope_chirho(
         &mut self,
         name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
-    ) -> Result<(), ElaborationErrorChirho> {
+    ) -> Result<crate::ty_chirho::QuantifiedVariablesChirho, ElaborationErrorChirho> {
         let count_chirho = self
             .signature_variables_chirho
             .get(name_chirho.text_chirho())
-            .map_or(0, Vec::len);
+            .map_or(0, |scope_chirho| scope_chirho.variables_chirho.len());
         for index_chirho in 0..count_chirho {
-            let (text_chirho, variable_chirho, kind_chirho) =
-                &self.signature_variables_chirho[name_chirho.text_chirho()][index_chirho];
+            let (text_chirho, variable_chirho, kind_chirho) = &self.signature_variables_chirho
+                [name_chirho.text_chirho()]
+            .variables_chirho[index_chirho];
             let text_chirho = self
                 .state_chirho
                 .name_chirho(text_chirho, name_chirho.span_chirho())?;
@@ -352,21 +427,82 @@ impl TypeElaboratorChirho<'_> {
                 name_chirho.span_chirho(),
             )?;
         }
-        Ok(())
+        Ok(self
+            .signature_variables_chirho
+            .get(name_chirho.text_chirho())
+            .map(|scope_chirho| scope_chirho.required_chirho.clone())
+            .unwrap_or_default())
     }
 
-    fn matches_chirho(
+    fn matches_with_required_chirho(
         &mut self,
         matches_chirho: &mut [MatchArmChirho],
+        required_chirho: &crate::ty_chirho::QuantifiedVariablesChirho,
     ) -> Result<(), ElaborationErrorChirho> {
         for arm_chirho in matches_chirho {
-            self.scoped_chirho(|this_chirho| {
-                for pat_chirho in &mut arm_chirho.pats_chirho {
+            let rigid_chirho = self
+                .state_chirho
+                .open_rigid_scope_chirho(required_chirho, arm_chirho.span_chirho)?;
+            let result_chirho = self.scoped_chirho(|this_chirho| {
+                if arm_chirho.pats_chirho.len() < required_chirho.len() {
+                    return Err(Self::error_chirho(
+                        "function equation omits a required type binder",
+                        arm_chirho.span_chirho,
+                    ));
+                }
+                for (pattern_chirho, record_chirho) in arm_chirho
+                    .pats_chirho
+                    .iter_mut()
+                    .zip(required_chirho.records_chirho())
+                {
+                    let mut binder_chirho = pattern_chirho;
+                    while let PatChirho::ParenChirho { inner_chirho, .. } = binder_chirho {
+                        binder_chirho = inner_chirho;
+                    }
+                    match binder_chirho {
+                        PatChirho::VarChirho(name_chirho) => {
+                            let span_chirho = name_chirho.span_chirho();
+                            let kind_chirho =
+                                record_chirho.kind_chirho.as_ref().ok_or_else(|| {
+                                    Self::error_chirho(
+                                        "required pattern binder lost its checked kind",
+                                        span_chirho,
+                                    )
+                                })?;
+                            let kind_chirho = this_chirho
+                                .state_chirho
+                                .copy_chirho(kind_chirho, span_chirho)?;
+                            let spelling_chirho = this_chirho
+                                .state_chirho
+                                .name_chirho(name_chirho.text_chirho(), span_chirho)?;
+                            this_chirho.bind_variable_chirho(
+                                spelling_chirho,
+                                record_chirho.variable_chirho,
+                                kind_chirho,
+                                span_chirho,
+                            )?;
+                            this_chirho.stamp_variable_chirho(
+                                name_chirho,
+                                record_chirho.variable_chirho,
+                            )?;
+                        }
+                        PatChirho::WildcardChirho(_) => {}
+                        _ => {
+                            return Err(Self::error_chirho(
+                                "unsupported required type-binder pattern",
+                                binder_chirho.span_chirho(),
+                            ));
+                        }
+                    }
+                }
+                for pat_chirho in &mut arm_chirho.pats_chirho[required_chirho.len()..] {
                     this_chirho.pattern_chirho(pat_chirho)?;
                 }
                 this_chirho.local_binds_chirho(&mut arm_chirho.where_binds_chirho)?;
                 this_chirho.rhs_chirho(&mut arm_chirho.rhs_chirho)
-            })?;
+            });
+            self.state_chirho.close_rigid_scope_chirho(rigid_chirho);
+            result_chirho?;
         }
         Ok(())
     }
@@ -613,7 +749,7 @@ impl TypeElaboratorChirho<'_> {
                     let variable_chirho = this_chirho
                         .state_chirho
                         .fresh_chirho(Some(stored_chirho), *span_chirho)?;
-                    this_chirho.stamp_variable_chirho(binder_chirho, variable_chirho);
+                    this_chirho.stamp_variable_chirho(binder_chirho, variable_chirho)?;
                     let name_chirho = this_chirho
                         .state_chirho
                         .name_chirho(binder_chirho.text_chirho(), *span_chirho)?;

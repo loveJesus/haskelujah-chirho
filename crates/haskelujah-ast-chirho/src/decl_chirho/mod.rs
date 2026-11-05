@@ -25,7 +25,8 @@ pub use gadt_constructor_chirho::{
 pub use gadt_projection_chirho::{
     GadtProjectionBudgetChirho, GadtProjectionErrorChirho, GadtProjectionLimitChirho,
     GadtProjectionLimitsChirho, check_constructor_projection_chirho,
-    check_declaration_projection_chirho, check_module_projection_chirho, check_projection_chirho,
+    check_declaration_projection_chirho, check_module_projection_chirho,
+    check_name_projection_chirho, check_projection_chirho,
     check_record_accessors_projection_chirho, check_type_projection_chirho,
 };
 

@@ -14,6 +14,56 @@ use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use std::collections::HashMap;
 
 impl InferCtxChirho {
+    /// Defaults are checked at their abstract class telescope, even when no
+    /// instance supplies an overriding method. This uses ordinary givens only.
+    pub(super) fn check_class_default_methods_chirho(
+        &mut self,
+        module_chirho: &haskelujah_ast_chirho::module_chirho::ModuleChirho,
+    ) {
+        for declaration_chirho in &module_chirho.decls_chirho {
+            let DeclChirho::ClassDeclChirho {
+                name_chirho,
+                methods_chirho,
+                ..
+            } = declaration_chirho
+            else {
+                continue;
+            };
+            let Some(class_chirho) = self
+                .class_env_chirho
+                .classes_chirho()
+                .get_chirho(name_chirho.text_chirho())
+                .cloned()
+            else {
+                continue;
+            };
+            for method_chirho in methods_chirho {
+                let (Some(matches_chirho), Some(scheme_chirho)) = (
+                    &method_chirho.default_chirho,
+                    class_chirho
+                        .methods_chirho
+                        .get(method_chirho.name_chirho.text_chirho()),
+                ) else {
+                    continue;
+                };
+                let saved_scope_chirho = self.scoped_tyvars_chirho.clone();
+                let ((solution_chirho, _), public_chirho) = self.with_rigid_signature_chirho(
+                    scheme_chirho,
+                    method_chirho.span_chirho,
+                    |context_chirho, expected_chirho| {
+                        context_chirho.infer_matches_against_expected_chirho(
+                            matches_chirho,
+                            method_chirho.span_chirho,
+                            expected_chirho,
+                        )
+                    },
+                );
+                self.publish_signature_solution_chirho(solution_chirho, &public_chirho);
+                self.scoped_tyvars_chirho = saved_scope_chirho;
+            }
+        }
+    }
+
     /// Process a class declaration from the AST and register it in the class env.
     pub(super) fn process_class_decl_chirho(&mut self, decl_chirho: &DeclChirho) {
         if let DeclChirho::ClassDeclChirho {
@@ -77,7 +127,7 @@ impl InferCtxChirho {
                     };
                     let kind_chirho = mapping_chirho.apply_freshened_bounded_chirho(
                         &binder_chirho.kind_chirho,
-                        &mut self.next_var_chirho,
+                        &mut self.elaboration_state_chirho.next_variable_chirho,
                         &mut |work_chirho, output_chirho| {
                             budget_chirho.node_chirho(output_chirho)?;
                             budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
@@ -122,8 +172,9 @@ impl InferCtxChirho {
                 })
                 .collect::<Vec<_>>();
             let class_tv_chirho = visible_vars_chirho.first().copied().unwrap_or_else(|| {
-                let variable_chirho = TyVarChirho(self.next_var_chirho);
-                self.next_var_chirho += 1;
+                let variable_chirho =
+                    TyVarChirho(self.elaboration_state_chirho.next_variable_chirho);
+                self.elaboration_state_chirho.next_variable_chirho += 1;
                 variable_chirho
             });
             let extra_vars_chirho = visible_vars_chirho.into_iter().skip(1).collect::<Vec<_>>();

@@ -84,6 +84,16 @@ impl Default for GadtProjectionBudgetChirho {
 }
 
 impl GadtProjectionBudgetChirho {
+    /// A caller may lend its remaining allowance to this common borrowed walk
+    /// and charge the exact debit before cloning the checked syntax.
+    pub fn remaining_limits_chirho(&self) -> GadtProjectionLimitsChirho {
+        GadtProjectionLimitsChirho {
+            work_chirho: self.work_chirho,
+            output_chirho: self.output_chirho,
+            depth_chirho: self.depth_chirho,
+        }
+    }
+
     /// Share the same latched allowance with transport-generated names and
     /// typed terms, before allocating their new output.
     pub fn reserve_transport_chirho(
@@ -163,6 +173,21 @@ pub fn check_type_projection_chirho(
     checked_chirho(ty_chirho.span_chirho(), budget_chirho, |budget_chirho| {
         walk_chirho(
             ProjectionNodeChirho::TypeChirho(ty_chirho),
+            1,
+            1,
+            1,
+            budget_chirho,
+        )
+    })
+}
+
+pub fn check_name_projection_chirho(
+    name_chirho: &NameChirho,
+    budget_chirho: &mut GadtProjectionBudgetChirho,
+) -> Result<(), GadtProjectionErrorChirho> {
+    checked_chirho(name_chirho.span_chirho(), budget_chirho, |budget_chirho| {
+        walk_chirho(
+            ProjectionNodeChirho::NameChirho(name_chirho),
             1,
             1,
             1,

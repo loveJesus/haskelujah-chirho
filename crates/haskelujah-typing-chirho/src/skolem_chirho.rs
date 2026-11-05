@@ -50,15 +50,17 @@ pub fn skolem_display_name_chirho(name_chirho: &str) -> &str {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SkolemResourceExhaustedChirho;
 
-struct SkolemBudgetChirho {
+struct SkolemBudgetChirho<'charge_chirho> {
     work_chirho: usize,
     output_chirho: usize,
+    external_chirho: Option<&'charge_chirho mut dyn FnMut(usize, usize) -> Option<()>>,
 }
-impl SkolemBudgetChirho {
+impl SkolemBudgetChirho<'_> {
     fn new_chirho() -> Self {
         Self {
             work_chirho: 10_000_000,
             output_chirho: 16_384,
+            external_chirho: None,
         }
     }
     fn charge_chirho(
@@ -66,6 +68,9 @@ impl SkolemBudgetChirho {
         work_chirho: usize,
         output_chirho: usize,
     ) -> Result<(), SkolemResourceExhaustedChirho> {
+        if let Some(external_chirho) = &mut self.external_chirho {
+            external_chirho(work_chirho, output_chirho).ok_or(SkolemResourceExhaustedChirho)?;
+        }
         self.work_chirho = self
             .work_chirho
             .checked_sub(work_chirho)
@@ -142,9 +147,23 @@ fn visit_terms_chirho(
     Ok(())
 }
 
-fn rewrite_with_budget_chirho(
+enum SkolemImageChirho<'image_chirho> {
+    OwnedChirho(TyChirho),
+    BorrowedChirho(&'image_chirho TyChirho),
+}
+
+impl SkolemImageChirho<'_> {
+    fn term_chirho(&self) -> &TyChirho {
+        match self {
+            Self::OwnedChirho(term_chirho) => term_chirho,
+            Self::BorrowedChirho(term_chirho) => term_chirho,
+        }
+    }
+}
+
+fn rewrite_with_budget_chirho<'image_chirho>(
     ty_chirho: &TyChirho,
-    rewrite_chirho: &mut impl FnMut(&str) -> Option<TyChirho>,
+    rewrite_chirho: &mut impl FnMut(&str) -> Option<SkolemImageChirho<'image_chirho>>,
     budget_chirho: &mut SkolemBudgetChirho,
     depth_chirho: usize,
 ) -> Result<TyChirho, SkolemResourceExhaustedChirho> {
@@ -157,9 +176,12 @@ fn rewrite_with_budget_chirho(
             budget_chirho.charge_chirho(name_chirho.len(), 0)?;
             if let Some(image_chirho) = rewrite_chirho(name_chirho) {
                 SubstChirho::empty_chirho()
-                    .apply_bounded_chirho(&image_chirho, &mut |work_chirho, output_chirho| {
-                        budget_chirho.charge_chirho(work_chirho, output_chirho).ok()
-                    })
+                    .apply_bounded_chirho(
+                        image_chirho.term_chirho(),
+                        &mut |work_chirho, output_chirho| {
+                            budget_chirho.charge_chirho(work_chirho, output_chirho).ok()
+                        },
+                    )
                     .ok_or(SkolemResourceExhaustedChirho)?
             } else {
                 budget_chirho.charge_chirho(name_chirho.len(), name_chirho.len())?;
@@ -306,8 +328,25 @@ pub fn rewrite_skolems_chirho(
 ) -> Result<TyChirho, SkolemResourceExhaustedChirho> {
     rewrite_with_budget_chirho(
         ty_chirho,
-        rewrite_chirho,
+        &mut |name_chirho| rewrite_chirho(name_chirho).map(SkolemImageChirho::OwnedChirho),
         &mut SkolemBudgetChirho::new_chirho(),
+        0,
+    )
+}
+
+/// Reuse the same full-kind writer with borrowed scoped evidence and the
+/// original module allowance. No evidence image is cloned before charging.
+pub(crate) fn rewrite_borrowed_skolems_bounded_chirho<'image_chirho>(
+    ty_chirho: &TyChirho,
+    rewrite_chirho: &mut impl FnMut(&str) -> Option<&'image_chirho TyChirho>,
+    charge_chirho: &mut dyn FnMut(usize, usize) -> Option<()>,
+) -> Result<TyChirho, SkolemResourceExhaustedChirho> {
+    let mut budget_chirho = SkolemBudgetChirho::new_chirho();
+    budget_chirho.external_chirho = Some(charge_chirho);
+    rewrite_with_budget_chirho(
+        ty_chirho,
+        &mut |name_chirho| rewrite_chirho(name_chirho).map(SkolemImageChirho::BorrowedChirho),
+        &mut budget_chirho,
         0,
     )
 }
@@ -362,14 +401,18 @@ pub fn open_skolems_chirho(
         ty_chirho,
         &mut |name_chirho| {
             if let Some(variable_chirho) = opened_chirho.get(name_chirho) {
-                return Some(TyChirho::VarChirho(*variable_chirho));
+                return Some(SkolemImageChirho::OwnedChirho(TyChirho::VarChirho(
+                    *variable_chirho,
+                )));
             }
             while attempts_chirho > 0 {
                 attempts_chirho -= 1;
                 let variable_chirho = fresh_chirho();
                 if reserved_chirho.insert(variable_chirho) {
                     opened_chirho.insert(name_chirho.to_owned(), variable_chirho);
-                    return Some(TyChirho::VarChirho(variable_chirho));
+                    return Some(SkolemImageChirho::OwnedChirho(TyChirho::VarChirho(
+                        variable_chirho,
+                    )));
                 }
             }
             failed_chirho = true;

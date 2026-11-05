@@ -92,3 +92,188 @@ fn imported_nested_quantifier_is_consumed_before_implicit_instantiation_chirho()
         false,
     );
 }
+
+#[test]
+fn required_arguments_check_the_unused_binders_full_kind_chirho() {
+    check_chirho("required-chirho", "RequiredHigherKindPositiveChirho", true);
+    check_chirho("required-chirho", "RequiredHigherKindWrongChirho", false);
+}
+
+#[test]
+fn required_dependent_prefix_checks_the_later_kind_chirho() {
+    check_chirho(
+        "required-chirho/scope-chirho",
+        "RequiredDependentPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/scope-chirho",
+        "RequiredDependentWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn required_equation_patterns_keep_their_actual_type_scope_chirho() {
+    check_chirho(
+        "required-chirho/scope-chirho",
+        "RequiredLexicalPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/scope-chirho",
+        "RequiredLexicalWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn required_names_keep_term_namespace_and_refuse_ordinary_values_chirho() {
+    check_chirho(
+        "required-chirho/scope-chirho",
+        "RequiredHomonymPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/scope-chirho",
+        "RequiredHomonymWrongChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/scope-chirho",
+        "RequiredTermVariableWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn required_wildcards_lists_and_tuples_keep_their_meaning_chirho() {
+    check_chirho(
+        "required-chirho/scope-chirho",
+        "RequiredWildcardPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/scope-chirho",
+        "RequiredListPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/scope-chirho",
+        "RequiredListWrongChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/scope-chirho",
+        "RequiredTuplePositiveChirho",
+        true,
+    );
+}
+
+#[test]
+fn required_equation_scopes_restore_between_arms_and_declarations_chirho() {
+    check_chirho(
+        "required-chirho/restoration-chirho",
+        "RequiredEquationsPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/restoration-chirho",
+        "RequiredScopeLeakWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn required_default_methods_use_the_checked_method_telescope_chirho() {
+    check_chirho(
+        "required-chirho/restoration-chirho",
+        "RequiredMethodPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/restoration-chirho",
+        "RequiredMethodWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn required_kind_refinements_need_the_actual_pattern_evidence_chirho() {
+    check_chirho(
+        "required-chirho/restoration-chirho",
+        "RequiredGivenKindPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/restoration-chirho",
+        "RequiredUngivenKindWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn required_kind_errors_stay_fatal_under_real_deferral_options_chirho() {
+    check_chirho(
+        "required-chirho/deferral-chirho",
+        "RequiredDeferredPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/deferral-chirho",
+        "RequiredDeferredWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn required_contexts_and_invisible_prefixes_stay_signed_chirho() {
+    check_chirho(
+        "required-chirho/prefix-chirho",
+        "RequiredQualPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/prefix-chirho",
+        "RequiredQualWrongChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/prefix-chirho",
+        "RequiredInvisiblePositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/prefix-chirho",
+        "RequiredInvisibleWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn required_kind_variables_are_universal_in_equations_chirho() {
+    check_chirho(
+        "required-chirho/prefix-chirho",
+        "RequiredUniversalKindPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/prefix-chirho",
+        "RequiredUniversalKindWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn required_universals_do_not_capture_outer_metas_chirho() {
+    check_chirho(
+        "required-chirho/prefix-chirho",
+        "RequiredCapturePositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/prefix-chirho",
+        "RequiredCaptureWrongChirho",
+        false,
+    );
+}

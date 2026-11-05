@@ -118,22 +118,32 @@ impl TypeElaboratorChirho<'_> {
         &self,
         name_chirho: &mut NameChirho,
         variable_chirho: TyVarChirho,
-    ) {
+    ) -> Result<(), ElaborationErrorChirho> {
         name_chirho.set_type_variable_chirho(Some(ScopedTypeVariableIdChirho::InferenceChirho {
-            owner_chirho: self.state_chirho.owner_chirho,
+            owner_chirho: self
+                .state_chirho
+                .owner_id_chirho(name_chirho.span_chirho())?,
             variable_chirho,
         }));
+        Ok(())
     }
 
     pub(super) fn check_variable_owner_chirho(
         &self,
         name_chirho: &NameChirho,
     ) -> Result<Option<TyVarChirho>, ElaborationErrorChirho> {
+        if let Some(source_chirho) = name_chirho.type_variable_chirho()
+            && let Some(variable_chirho) = self.lexical_sources_chirho.get(source_chirho)
+        {
+            return Ok(Some(*variable_chirho));
+        }
         match name_chirho.type_variable_chirho() {
             Some(ScopedTypeVariableIdChirho::InferenceChirho {
                 owner_chirho,
                 variable_chirho,
-            }) if *owner_chirho == self.state_chirho.owner_chirho => Ok(Some(*variable_chirho)),
+            }) if Some(*owner_chirho) == self.state_chirho.owner_chirho => {
+                Ok(Some(*variable_chirho))
+            }
             Some(ScopedTypeVariableIdChirho::InferenceChirho { .. }) => Err(Self::error_chirho(
                 "foreign unquantified kind/type variable reached module elaboration",
                 name_chirho.span_chirho(),
@@ -180,7 +190,7 @@ impl TypeElaboratorChirho<'_> {
                     format!("_kind{}Chirho", variable_chirho.0),
                     span_chirho,
                 ));
-                self.stamp_variable_chirho(&mut name_chirho, variable_chirho);
+                self.stamp_variable_chirho(&mut name_chirho, variable_chirho)?;
                 TypeChirho::VarChirho(name_chirho)
             }
             TyChirho::ConChirho(key_chirho) => {

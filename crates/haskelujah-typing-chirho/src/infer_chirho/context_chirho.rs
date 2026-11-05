@@ -19,6 +19,7 @@ use std::collections::{HashMap, HashSet};
 impl InferCtxChirho {
     pub(super) fn has_non_deferrable_failure_chirho(&self) -> bool {
         self.non_deferrable_diagnostics_chirho.has_errors_chirho()
+            || self.elaboration_state_chirho.failure_chirho().is_some()
             || self.type_normalization_exhausted_chirho.get()
             || self.class_env_chirho.registry_error_chirho().is_some()
     }
@@ -381,11 +382,9 @@ impl InferCtxChirho {
             non_deferrable_diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             type_normalization_exhausted_chirho: std::cell::Cell::new(false),
             type_validity_license_chirho: None,
-            next_var_chirho: 0,
             definition_type_conversion_chirho: false,
-            elaboration_owner_chirho: None,
-            elaboration_substitution_chirho: SubstChirho::empty_chirho(),
-            elaboration_variable_kinds_chirho: HashMap::new(),
+            elaboration_state_chirho:
+                crate::kind_chirho::elaboration_chirho::ElaborationStateChirho::unowned_chirho(),
             env_chirho,
             class_env_chirho,
             deferred_preds_chirho: Vec::new(),
@@ -634,14 +633,22 @@ impl InferCtxChirho {
         &mut self,
         state_chirho: crate::kind_chirho::elaboration_chirho::ElaborationStateChirho,
     ) {
-        self.elaboration_owner_chirho = Some(state_chirho.owner_chirho);
-        self.next_var_chirho = state_chirho.next_variable_chirho;
-        self.elaboration_substitution_chirho = state_chirho.substitution_chirho;
-        self.elaboration_variable_kinds_chirho = state_chirho.variable_kinds_chirho;
+        self.elaboration_state_chirho = state_chirho;
     }
 
     /// Consume the context and return the final result.
     pub fn finish_chirho(mut self) -> InferResultChirho {
+        if let Some(error_chirho) = self.elaboration_state_chirho.failure_chirho() {
+            let diagnostic_chirho = error_chirho.clone().into_diagnostic_chirho();
+            if !self
+                .non_deferrable_diagnostics_chirho
+                .diagnostics_chirho()
+                .contains(&diagnostic_chirho)
+            {
+                self.non_deferrable_diagnostics_chirho
+                    .push_chirho(diagnostic_chirho);
+            }
+        }
         if self.type_normalization_exhausted_chirho.get() {
             self.non_deferrable_diagnostics_chirho.push_chirho(
                 DiagnosticChirho::error_with_code_chirho(

@@ -39,6 +39,18 @@ impl TypeElaboratorChirho<'_> {
         }
         arguments_chirho.reverse();
         let Some(scheme_chirho) = self.scheme_chirho(&mut head_chirho)? else {
+            if self.strict_argument_chirho
+                && matches!(
+                    head_chirho,
+                    TypeChirho::ConChirho(_) | TypeChirho::PromotedConChirho { .. }
+                )
+            {
+                *syntax_chirho = head_chirho;
+                return Err(Self::error_chirho(
+                    "required type argument has no checked declaration telescope",
+                    span_chirho,
+                ));
+            }
             // No kind/nominal authority is manufactured for a generic stub.
             // Such a head is an explicit unsupported boundary of this vertical.
             if matches!(

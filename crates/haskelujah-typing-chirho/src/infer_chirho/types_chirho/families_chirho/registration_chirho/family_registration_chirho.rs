@@ -496,7 +496,7 @@ impl InferCtxChirho {
                 );
             }
         }
-        if self.elaboration_owner_chirho.is_some() {
+        if self.elaboration_state_chirho.owner_chirho.is_some() {
             if let Some((lhs_chirho, rhs_chirho, _)) =
                 self.checked_family_terms_chirho(&lhs_chirho, &rhs_chirho)
             {
@@ -739,7 +739,7 @@ impl InferCtxChirho {
                     } else {
                         let parameters_chirho =
                             collect_free_type_vars_from_ast_chirho(&lhs_ast_chirho);
-                        if self.elaboration_owner_chirho.is_some() {
+                        if self.elaboration_state_chirho.owner_chirho.is_some() {
                             match self.checked_family_terms_chirho(&lhs_ast_chirho, &rhs_ast_chirho)
                             {
                                 Some(terms_chirho) => terms_chirho,

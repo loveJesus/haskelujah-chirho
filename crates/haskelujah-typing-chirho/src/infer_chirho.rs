@@ -434,14 +434,9 @@ pub struct InferCtxChirho {
     type_normalization_exhausted_chirho: std::cell::Cell<bool>,
     type_validity_license_chirho: Option<crate::validity_chirho::LicenseChirho>,
     definition_type_conversion_chirho: bool,
-    elaboration_owner_chirho: Option<
-        haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ElaborationOwnerChirho,
-    >,
-    elaboration_substitution_chirho: SubstChirho,
-    elaboration_variable_kinds_chirho:
-        HashMap<TyVarChirho, crate::ty_chirho::QuantifiedVariableChirho>,
-    /// Fresh type variable counter.
-    next_var_chirho: u32,
+    /// The original common solver, including its owner, supply and allowance,
+    /// continues through term inference. Legacy-only contexts remain unowned.
+    elaboration_state_chirho: crate::kind_chirho::elaboration_chirho::ElaborationStateChirho,
     /// Type environment (scoped).
     env_chirho: TyEnvChirho,
     /// Class environment (typeclasses and instances).
@@ -843,6 +838,9 @@ fn infer_module_with_elaboration_state_chirho(
     }
     if let Some(state_chirho) = state_chirho {
         ctx_chirho.adopt_elaboration_state_chirho(state_chirho);
+    }
+    if ctx_chirho.has_non_deferrable_failure_chirho() {
+        return ctx_chirho.finish_chirho();
     }
     ctx_chirho.set_imported_type_name_preferences_chirho(
         safe_unqualified_imported_type_names_chirho,

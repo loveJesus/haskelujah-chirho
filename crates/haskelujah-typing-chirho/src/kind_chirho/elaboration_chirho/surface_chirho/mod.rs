@@ -109,13 +109,54 @@ impl TypeElaboratorChirho<'_> {
                     if let Some(variable_chirho) = self.check_variable_owner_chirho(name_chirho)? {
                         (
                             variable_chirho,
-                            self.state_chirho
-                                .variable_kind_chirho(variable_chirho, span_chirho)?,
+                            if let Some(image_chirho) =
+                                self.lexical_images_chirho.and_then(|images_chirho| {
+                                    images_chirho.lookup_image_chirho(&variable_chirho)
+                                })
+                            {
+                                let kind_chirho =
+                                    image_chirho.kind_chirho.as_ref().ok_or_else(|| {
+                                        Self::error_chirho(
+                                            "lexical type image has no checked kind",
+                                            span_chirho,
+                                        )
+                                    })?;
+                                self.normalize_lexical_term_chirho(kind_chirho, span_chirho)?
+                            } else {
+                                self.state_chirho
+                                    .variable_kind_chirho(variable_chirho, span_chirho)?
+                            },
                         )
                     } else {
+                        if self.strict_argument_chirho
+                            && !self
+                                .variables_chirho
+                                .contains_key(name_chirho.text_chirho())
+                        {
+                            return Err(Self::error_chirho(
+                                "required type argument has no lexical type-variable binding",
+                                span_chirho,
+                            ));
+                        }
                         self.variable_chirho(name_chirho.text_chirho(), span_chirho)?
                     };
-                self.stamp_variable_chirho(name_chirho, variable_chirho);
+                self.stamp_variable_chirho(name_chirho, variable_chirho)?;
+                if let Some(image_chirho) = self
+                    .lexical_images_chirho
+                    .and_then(|images_chirho| images_chirho.lookup_image_chirho(&variable_chirho))
+                {
+                    let kind_chirho = image_chirho.kind_chirho.as_ref().ok_or_else(|| {
+                        Self::error_chirho("lexical type image has no checked kind", span_chirho)
+                    })?;
+                    return Ok(ElaboratedTypeChirho {
+                        term_chirho: self.normalize_lexical_term_chirho(
+                            &image_chirho.image_chirho,
+                            span_chirho,
+                        )?,
+                        kind_chirho: self
+                            .normalize_lexical_term_chirho(kind_chirho, span_chirho)?,
+                    });
+                }
                 Ok(ElaboratedTypeChirho {
                     term_chirho: TyChirho::VarChirho(variable_chirho),
                     kind_chirho,
@@ -366,7 +407,7 @@ impl TypeElaboratorChirho<'_> {
                 true,
                 span_chirho,
             )?;
-            self.stamp_variable_chirho(&mut binder_chirho.name_chirho, variable_chirho);
+            self.stamp_variable_chirho(&mut binder_chirho.name_chirho, variable_chirho)?;
             let name_chirho = self
                 .state_chirho
                 .name_chirho(binder_chirho.text_chirho(), span_chirho)?;
@@ -520,7 +561,7 @@ impl TypeElaboratorChirho<'_> {
         }
         if scheme_chirho
             .owner_chirho
-            .is_some_and(|owner_chirho| owner_chirho != self.state_chirho.owner_chirho)
+            .is_some_and(|owner_chirho| Some(owner_chirho) != self.state_chirho.owner_chirho)
         {
             return Err(Self::error_chirho(
                 "foreign declaration contains unquantified kind variables",

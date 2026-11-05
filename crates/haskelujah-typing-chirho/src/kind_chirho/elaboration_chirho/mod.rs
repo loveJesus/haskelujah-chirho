@@ -17,6 +17,9 @@ mod state_chirho;
 mod surface_chirho;
 mod transport_chirho;
 mod value_applications_chirho;
+pub(crate) use value_applications_chirho::{
+    ArgumentElaborationContextChirho, elaborate_required_argument_chirho,
+};
 mod values_chirho;
 pub use state_chirho::{ElaborationErrorChirho, ElaborationStateChirho};
 
@@ -50,6 +53,11 @@ pub struct ElaborationResultChirho {
 
 type SourceVariablesChirho = Vec<(String, TyVarChirho, TyChirho)>;
 
+struct ValueSignatureScopeChirho {
+    variables_chirho: SourceVariablesChirho,
+    required_chirho: crate::ty_chirho::QuantifiedVariablesChirho,
+}
+
 #[derive(Default)]
 struct DeclarationVariablesChirho {
     constructor_result_origin_chirho: Option<constructors_chirho::ConstructorResultOriginChirho>,
@@ -60,9 +68,48 @@ struct DeclarationVariablesChirho {
     constructor_inferred_chirho: std::collections::HashSet<TyVarChirho>,
 }
 
+/// The module owns its staged catalogue; a late argument borrows the SAME
+/// catalogue. Lazy positive compiler producers need no whole-catalogue clone.
+enum ElaborationCatalogueChirho<'scope_chirho> {
+    OwnedChirho(Box<TypeFamilyEnvChirho>),
+    BorrowedChirho(&'scope_chirho mut TypeFamilyEnvChirho),
+}
+
+impl std::ops::Deref for ElaborationCatalogueChirho<'_> {
+    type Target = TypeFamilyEnvChirho;
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::OwnedChirho(catalogue_chirho) => catalogue_chirho,
+            Self::BorrowedChirho(catalogue_chirho) => catalogue_chirho,
+        }
+    }
+}
+
+impl std::ops::DerefMut for ElaborationCatalogueChirho<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            Self::OwnedChirho(catalogue_chirho) => catalogue_chirho,
+            Self::BorrowedChirho(catalogue_chirho) => catalogue_chirho,
+        }
+    }
+}
+
+impl ElaborationCatalogueChirho<'_> {
+    fn into_owned_chirho(self) -> Result<TypeFamilyEnvChirho, ElaborationErrorChirho> {
+        match self {
+            Self::OwnedChirho(catalogue_chirho) => Ok(*catalogue_chirho),
+            Self::BorrowedChirho(_) => Err(ElaborationErrorChirho {
+                message_chirho: "late argument attempted to publish an owned module catalogue"
+                    .into(),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }),
+        }
+    }
+}
+
 struct TypeElaboratorChirho<'scope_chirho> {
     state_chirho: ElaborationStateChirho,
-    registry_chirho: TypeFamilyEnvChirho,
+    registry_chirho: ElaborationCatalogueChirho<'scope_chirho>,
     type_scope_chirho: &'scope_chirho TypeConstructorScopeChirho,
     family_scope_chirho: &'scope_chirho TypeFamilyScopeChirho,
     promotion_scope_chirho: &'scope_chirho PromotionScopeChirho,
@@ -72,8 +119,8 @@ struct TypeElaboratorChirho<'scope_chirho> {
     cusks_chirho: bool,
     unlifted_newtypes_chirho: bool,
     scoped_type_variables_chirho: bool,
-    signature_variables_chirho: HashMap<String, SourceVariablesChirho>,
-    signature_undo_chirho: Vec<(String, Option<SourceVariablesChirho>)>,
+    signature_variables_chirho: HashMap<String, ValueSignatureScopeChirho>,
+    signature_undo_chirho: Vec<(String, Option<ValueSignatureScopeChirho>)>,
     type_depth_chirho: usize,
     rechecking_chirho: bool,
     variables_chirho: HashMap<String, (TyVarChirho, TyChirho)>,
@@ -81,6 +128,13 @@ struct TypeElaboratorChirho<'scope_chirho> {
     declaration_variables_chirho: HashMap<Arc<str>, DeclarationVariablesChirho>,
     current_declaration_chirho: Option<Arc<str>>,
     declaration_contracts_chirho: HashMap<Arc<str>, Arc<DeclarationSchemeChirho>>,
+    lexical_sources_chirho: HashMap<
+        haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho,
+        TyVarChirho,
+    >,
+    lexical_images_chirho: Option<&'scope_chirho crate::subst_chirho::SubstChirho>,
+    lexical_refinements_chirho: Option<&'scope_chirho crate::env_chirho::TyEnvChirho>,
+    strict_argument_chirho: bool,
 }
 
 #[derive(Debug)]
@@ -306,7 +360,7 @@ fn elaborate_module_under_policy_chirho(
     }
     Ok(ElaborationResultChirho {
         state_chirho: elaborator_chirho.state_chirho,
-        registry_chirho: elaborator_chirho.registry_chirho,
+        registry_chirho: elaborator_chirho.registry_chirho.into_owned_chirho()?,
     })
 }
 
@@ -337,13 +391,15 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
                 module_chirho.span_chirho,
             )?;
         }
-        Ok(Self {
-            state_chirho,
-            registry_chirho: imports_chirho.registry_chirho.clone(),
-            type_scope_chirho: imports_chirho.type_scope_chirho,
-            family_scope_chirho: imports_chirho.family_scope_chirho,
-            promotion_scope_chirho: imports_chirho.promotion_scope_chirho,
-            builtin_classes_chirho: imports_chirho.builtin_classes_chirho,
+        for (spelling_chirho, _) in imports_chirho.builtin_classes_chirho.iter_chirho() {
+            state_chirho.charge_chirho(
+                spelling_chirho.len().saturating_add(1),
+                spelling_chirho.len().saturating_add(1),
+                module_chirho.span_chirho,
+            )?;
+        }
+        let policy_chirho = Arc::new(state_chirho::ElaborationPolicyChirho {
+            builtin_classes_chirho: Arc::new(imports_chirho.builtin_classes_chirho.clone()),
             star_is_type_chirho:
                 haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(
                     module_chirho,
@@ -374,6 +430,22 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
                     "ScopedTypeVariables",
                     false,
                 ),
+        });
+        state_chirho.source_policy_chirho = Some(policy_chirho.clone());
+        Ok(Self {
+            state_chirho,
+            registry_chirho: ElaborationCatalogueChirho::OwnedChirho(Box::new(
+                imports_chirho.registry_chirho.clone(),
+            )),
+            type_scope_chirho: imports_chirho.type_scope_chirho,
+            family_scope_chirho: imports_chirho.family_scope_chirho,
+            promotion_scope_chirho: imports_chirho.promotion_scope_chirho,
+            builtin_classes_chirho: imports_chirho.builtin_classes_chirho,
+            star_is_type_chirho: policy_chirho.star_is_type_chirho,
+            poly_kinds_chirho: policy_chirho.poly_kinds_chirho,
+            cusks_chirho: policy_chirho.cusks_chirho,
+            unlifted_newtypes_chirho: policy_chirho.unlifted_newtypes_chirho,
+            scoped_type_variables_chirho: policy_chirho.scoped_type_variables_chirho,
             signature_variables_chirho: HashMap::new(),
             signature_undo_chirho: Vec::new(),
             type_depth_chirho: 0,
@@ -383,6 +455,10 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
             declaration_variables_chirho: HashMap::new(),
             current_declaration_chirho: None,
             declaration_contracts_chirho: HashMap::new(),
+            lexical_sources_chirho: HashMap::new(),
+            lexical_images_chirho: None,
+            lexical_refinements_chirho: None,
+            strict_argument_chirho: false,
         })
     }
 }

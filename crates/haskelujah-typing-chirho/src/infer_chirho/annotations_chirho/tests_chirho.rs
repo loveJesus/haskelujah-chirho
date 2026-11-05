@@ -7,6 +7,68 @@ use crate::ty_chirho::TyVarChirho;
 use std::collections::HashSet;
 
 #[test]
+fn required_substitution_avoids_capture_in_the_remaining_full_telescope_chirho() {
+    use crate::ty_chirho::{QuantifiedVariableChirho, QuantifiedVariablesChirho};
+    use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let consumed_chirho = TyVarChirho(200);
+    let external_chirho = TyVarChirho(201);
+    context_chirho
+        .scoped_tyvars_chirho
+        .insert("externalChirho".into(), external_chirho);
+    let remaining_chirho = QuantifiedVariableChirho {
+        variable_chirho: external_chirho,
+        kind_chirho: Some(std::sync::Arc::new(TyChirho::VarChirho(consumed_chirho))),
+        source_chirho: None,
+        specificity_chirho: None,
+    };
+    let function_chirho = TyChirho::RequiredForallChirho {
+        vars_chirho: vec![consumed_chirho].into(),
+        body_chirho: Box::new(TyChirho::ForallChirho {
+            vars_chirho: QuantifiedVariablesChirho::from_records_chirho(vec![remaining_chirho]),
+            body_chirho: Box::new(TyChirho::TupleChirho(vec![
+                TyChirho::VarChirho(consumed_chirho),
+                TyChirho::VarChirho(external_chirho),
+            ])),
+        }),
+    };
+    let (_, result_chirho) = context_chirho
+        .infer_required_type_application_chirho(
+            &function_chirho,
+            &ExprChirho::VarChirho(NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                "externalChirho",
+                SpanChirho::DUMMY_CHIRHO,
+            ))),
+            SpanChirho::DUMMY_CHIRHO,
+        )
+        .unwrap();
+    let TyChirho::ForallChirho {
+        vars_chirho,
+        body_chirho,
+    } = result_chirho
+    else {
+        panic!("remaining quantifier was erased");
+    };
+    assert_ne!(vars_chirho[0], external_chirho);
+    assert_eq!(
+        vars_chirho.record_chirho(0).unwrap().kind_chirho.as_deref(),
+        Some(&TyChirho::VarChirho(external_chirho))
+    );
+    assert_eq!(
+        *body_chirho,
+        TyChirho::TupleChirho(vec![
+            TyChirho::VarChirho(external_chirho),
+            TyChirho::VarChirho(vars_chirho[0])
+        ])
+    );
+    assert!(
+        !context_chirho
+            .non_deferrable_diagnostics_chirho
+            .has_errors_chirho()
+    );
+}
+
+#[test]
 fn annotation_escape_follows_committed_chains_and_qualified_contexts_chirho() {
     let mut context_chirho = InferCtxChirho::new_chirho();
     let skolem_chirho = "ownedRigidChirho".to_owned();
@@ -184,7 +246,7 @@ fn signature_equality_exports_safe_public_image_before_evidence_leaves_chirho() 
 #[test]
 fn checked_annotation_above_import_placeholder_range_retains_its_type_chirho() {
     let mut context_chirho = InferCtxChirho::new_chirho();
-    context_chirho.next_var_chirho = 9000;
+    context_chirho.elaboration_state_chirho.next_variable_chirho = 9000;
     let name_chirho = super::super::test_support_chirho::dummy_name_chirho;
     let span_chirho = SpanChirho::DUMMY_CHIRHO;
     let expression_chirho = ExprChirho::TypeAppChirho {

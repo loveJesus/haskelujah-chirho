@@ -202,12 +202,14 @@ impl InferCtxChirho {
                 self.apply_subst_all_chirho(&s1_chirho);
                 let fun_ty_chirho = s1_chirho.apply_ty_chirho(&fun_ty_chirho);
 
-                if let Some(required_arg_ty_chirho) =
-                    self.expr_to_required_type_arg_chirho(arg_chirho)
-                    && let Some(result_ty_chirho) =
-                        self.apply_required_type_arg_chirho(&fun_ty_chirho, required_arg_ty_chirho)
+                if let Some((links_chirho, result_ty_chirho)) = self
+                    .infer_required_type_application_chirho(
+                        &fun_ty_chirho,
+                        arg_chirho,
+                        *span_chirho,
+                    )
                 {
-                    return (s1_chirho, result_ty_chirho);
+                    return (links_chirho.compose_chirho(&s1_chirho), result_ty_chirho);
                 }
 
                 if let ExprChirho::LamChirho {

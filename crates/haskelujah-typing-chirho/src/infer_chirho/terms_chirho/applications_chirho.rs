@@ -513,7 +513,7 @@ impl InferCtxChirho {
                 self.ast_type_to_ty_chirho(argument_chirho, &mut variables_chirho)
             })
             .collect();
-        let start_chirho = self.next_var_chirho;
+        let start_chirho = self.elaboration_state_chirho.next_variable_chirho;
         let instantiated_chirho = if explicit_chirho.is_empty() {
             Some(self.instantiate_scheme_parts_chirho(&scheme_chirho))
         } else {
@@ -528,11 +528,13 @@ impl InferCtxChirho {
             return Ok(None);
         };
         budget_chirho
-            .work_chirho((self.next_var_chirho - start_chirho) as usize)
+            .work_chirho(
+                (self.elaboration_state_chirho.next_variable_chirho - start_chirho) as usize,
+            )
             .ok_or(())?;
-        look_chirho
-            .variables_chirho
-            .extend((start_chirho..self.next_var_chirho).map(TyVarChirho));
+        look_chirho.variables_chirho.extend(
+            (start_chirho..self.elaboration_state_chirho.next_variable_chirho).map(TyVarChirho),
+        );
         let mut prepared_arguments_chirho = Vec::new();
         for argument_chirho in arguments_chirho {
             let (opened_chirho, additional_chirho) =
@@ -636,16 +638,17 @@ impl InferCtxChirho {
                     body_chirho,
                 } => {
                     budget_chirho.work_chirho(vars_chirho.len()).ok_or(())?;
-                    let start_chirho = self.next_var_chirho;
+                    let start_chirho = self.elaboration_state_chirho.next_variable_chirho;
                     let (opened_chirho, additional_chirho) =
                         self.instantiate_scheme_parts_chirho(&SchemeChirho {
                             vars_chirho,
                             preds_chirho: Vec::new(),
                             ty_chirho: *body_chirho,
                         });
-                    look_chirho
-                        .variables_chirho
-                        .extend((start_chirho..self.next_var_chirho).map(TyVarChirho));
+                    look_chirho.variables_chirho.extend(
+                        (start_chirho..self.elaboration_state_chirho.next_variable_chirho)
+                            .map(TyVarChirho),
+                    );
                     predicates_chirho.extend(additional_chirho);
                     current_chirho = opened_chirho;
                 }

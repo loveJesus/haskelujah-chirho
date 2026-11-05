@@ -9,6 +9,8 @@ use haskelujah_span_chirho::SpanChirho;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+mod continuation_chirho;
+
 static NEXT_ELABORATION_OWNER_CHIRHO: AtomicU64 = AtomicU64::new(1);
 pub const TYPE_UNIVERSE_KEY_CHIRHO: &str = "%universe:type";
 pub const CONSTRAINT_UNIVERSE_KEY_CHIRHO: &str = "%universe:constraint";
@@ -46,20 +48,82 @@ struct KindScopeGuardChirho {
     protected_chirho: HashSet<TyVarChirho>,
 }
 
+/// Immutable authority from the actual module/options and naming handoff.
+/// Late required arguments reuse it; a legacy context has no such authority.
+#[derive(Debug)]
+pub(crate) struct ElaborationPolicyChirho {
+    pub star_is_type_chirho: bool,
+    pub poly_kinds_chirho: bool,
+    pub cusks_chirho: bool,
+    pub unlifted_newtypes_chirho: bool,
+    pub scoped_type_variables_chirho: bool,
+    pub builtin_classes_chirho:
+        std::sync::Arc<haskelujah_ast_chirho::name_chirho::BuiltinClassScopeChirho>,
+}
+
 #[derive(Debug)]
 pub struct ElaborationStateChirho {
-    pub owner_chirho: ElaborationOwnerChirho,
+    /// Only the real module elaborator mints an owner. An ordinary legacy
+    /// inference context has none and cannot stamp a positive source proof.
+    pub owner_chirho: Option<ElaborationOwnerChirho>,
     pub next_variable_chirho: u32,
     pub substitution_chirho: SubstChirho,
     pub variable_kinds_chirho: HashMap<TyVarChirho, crate::ty_chirho::QuantifiedVariableChirho>,
+    pub(crate) source_policy_chirho: Option<std::sync::Arc<ElaborationPolicyChirho>>,
     rigid_variables_chirho: HashSet<TyVarChirho>,
     kind_scope_guards_chirho: Vec<KindScopeGuardChirho>,
     work_left_chirho: usize,
     output_left_chirho: usize,
     error_chirho: Option<ElaborationErrorChirho>,
+    inference_links_chirho: Option<Vec<TyVarChirho>>,
 }
 
 impl ElaborationStateChirho {
+    /// The original module allowance and its terminal failure survive every
+    /// continuation, including a consumer that needs no further kind work.
+    pub(crate) fn failure_chirho(&self) -> Option<&ElaborationErrorChirho> {
+        self.error_chirho.as_ref()
+    }
+
+    pub(super) fn resource_failure_chirho(
+        &mut self,
+        message_chirho: &str,
+        span_chirho: SpanChirho,
+    ) -> ElaborationErrorChirho {
+        self.error_chirho
+            .get_or_insert_with(|| ElaborationErrorChirho {
+                message_chirho: message_chirho.to_owned(),
+                span_chirho,
+            })
+            .clone()
+    }
+
+    pub(super) fn owner_id_chirho(
+        &self,
+        span_chirho: SpanChirho,
+    ) -> Result<ElaborationOwnerChirho, ElaborationErrorChirho> {
+        self.owner_chirho.ok_or_else(|| ElaborationErrorChirho {
+            message_chirho: "unowned inference state cannot mint a source kind variable".into(),
+            span_chirho,
+        })
+    }
+
+    pub(crate) fn unowned_chirho() -> Self {
+        Self {
+            owner_chirho: None,
+            next_variable_chirho: 0,
+            substitution_chirho: SubstChirho::empty_chirho(),
+            variable_kinds_chirho: HashMap::new(),
+            source_policy_chirho: None,
+            rigid_variables_chirho: HashSet::new(),
+            kind_scope_guards_chirho: Vec::new(),
+            work_left_chirho: 1 << 25,
+            output_left_chirho: 1 << 24,
+            error_chirho: None,
+            inference_links_chirho: None,
+        }
+    }
+
     pub fn new_chirho() -> Result<Self, ElaborationErrorChirho> {
         let owner_chirho = NEXT_ELABORATION_OWNER_CHIRHO
             .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |next_chirho| {
@@ -69,17 +133,9 @@ impl ElaborationStateChirho {
                 message_chirho: "kind elaboration owner supply exhausted".to_owned(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             })?;
-        Ok(Self {
-            owner_chirho: ElaborationOwnerChirho(owner_chirho),
-            next_variable_chirho: 0,
-            substitution_chirho: SubstChirho::empty_chirho(),
-            variable_kinds_chirho: HashMap::new(),
-            rigid_variables_chirho: HashSet::new(),
-            kind_scope_guards_chirho: Vec::new(),
-            work_left_chirho: 1 << 25,
-            output_left_chirho: 1 << 24,
-            error_chirho: None,
-        })
+        let mut state_chirho = Self::unowned_chirho();
+        state_chirho.owner_chirho = Some(ElaborationOwnerChirho(owner_chirho));
+        Ok(state_chirho)
     }
 
     /// Witnessed source variables keep their specificity when unification
@@ -92,6 +148,10 @@ impl ElaborationStateChirho {
         span_chirho: SpanChirho,
     ) -> Result<(), ElaborationErrorChirho> {
         self.charge_chirho(1, 1, span_chirho)?;
+        let owner_chirho = self.owner_chirho.ok_or_else(|| ElaborationErrorChirho {
+            message_chirho: "unowned inference state cannot mint a source kind variable".into(),
+            span_chirho,
+        })?;
         let record_chirho = self
             .variable_kinds_chirho
             .entry(variable_chirho)
@@ -99,7 +159,7 @@ impl ElaborationStateChirho {
                 crate::ty_chirho::QuantifiedVariableChirho::unknown_chirho(variable_chirho)
             });
         record_chirho.source_chirho.get_or_insert(haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::InferenceChirho {
-                owner_chirho: self.owner_chirho, variable_chirho });
+                owner_chirho, variable_chirho });
         if explicit_chirho || record_chirho.specificity_chirho.is_none() {
             record_chirho.specificity_chirho = Some(specificity_chirho);
         }
@@ -195,13 +255,9 @@ impl ElaborationStateChirho {
     ) -> Result<TyVarChirho, ElaborationErrorChirho> {
         self.charge_chirho(1, 1, span_chirho)?;
         let variable_chirho = TyVarChirho(self.next_variable_chirho);
-        self.next_variable_chirho =
-            self.next_variable_chirho
-                .checked_add(1)
-                .ok_or_else(|| ElaborationErrorChirho {
-                    message_chirho: "kind/type variable supply exhausted".to_owned(),
-                    span_chirho,
-                })?;
+        self.next_variable_chirho = self.next_variable_chirho.checked_add(1).ok_or_else(|| {
+            self.resource_failure_chirho("kind/type variable supply exhausted", span_chirho)
+        })?;
         if let Some(kind_chirho) = kind_chirho {
             self.set_variable_kind_chirho(variable_chirho, kind_chirho);
         }
@@ -228,11 +284,9 @@ impl ElaborationStateChirho {
         ty_chirho: &TyChirho,
         span_chirho: SpanChirho,
     ) -> Result<TyChirho, ElaborationErrorChirho> {
-        let weight_chirho =
-            borrowed_weight_chirho(ty_chirho, 0).ok_or_else(|| ElaborationErrorChirho {
-                message_chirho: "kind/type term size bound exhausted".to_owned(),
-                span_chirho,
-            })?;
+        let weight_chirho = borrowed_weight_chirho(ty_chirho, 0).ok_or_else(|| {
+            self.resource_failure_chirho("kind/type term size bound exhausted", span_chirho)
+        })?;
         self.charge_chirho(weight_chirho, weight_chirho, span_chirho)?;
         Ok(ty_chirho.clone())
     }
@@ -406,10 +460,9 @@ impl ElaborationStateChirho {
     ) -> Result<TyChirho, ElaborationErrorChirho> {
         self.charge_chirho(1, 1, span_chirho)?;
         if depth_chirho > 128 {
-            return Err(ElaborationErrorChirho {
-                message_chirho: "kind elaboration depth bound exhausted".to_owned(),
-                span_chirho,
-            });
+            return Err(
+                self.resource_failure_chirho("kind elaboration depth bound exhausted", span_chirho)
+            );
         }
         Ok(match ty_chirho {
             TyChirho::QualChirho {
@@ -463,10 +516,10 @@ impl ElaborationStateChirho {
                     }
                     Some(None) => None,
                     None => {
-                        return Err(ElaborationErrorChirho {
-                            message_chirho: "kind substitution size bound exhausted".to_owned(),
+                        return Err(self.resource_failure_chirho(
+                            "kind substitution size bound exhausted",
                             span_chirho,
-                        });
+                        ));
                     }
                 };
                 let result_chirho = if let Some(image_chirho) = image_chirho {
@@ -640,8 +693,11 @@ impl ElaborationStateChirho {
                         span_chirho,
                     )?;
                     self.link_source_variable_chirho(right_chirho, left_chirho, span_chirho)?;
-                    self.substitution_chirho
-                        .insert_chirho(right_chirho, TyChirho::VarChirho(left_chirho));
+                    self.record_link_chirho(
+                        right_chirho,
+                        TyChirho::VarChirho(left_chirho),
+                        span_chirho,
+                    )?;
                 }
                 (TyChirho::VarChirho(variable_chirho), ty_chirho)
                 | (ty_chirho, TyChirho::VarChirho(variable_chirho)) => {
@@ -662,8 +718,7 @@ impl ElaborationStateChirho {
                             span_chirho,
                         )?;
                     }
-                    self.substitution_chirho
-                        .insert_chirho(variable_chirho, ty_chirho);
+                    self.record_link_chirho(variable_chirho, ty_chirho, span_chirho)?;
                 }
                 (
                     TyChirho::AppChirho(left_fun_chirho, left_arg_chirho),
@@ -860,3 +915,6 @@ fn borrowed_weight_chirho(ty_chirho: &TyChirho, depth_chirho: usize) -> Option<u
 fn occurs_chirho(variable_chirho: TyVarChirho, ty_chirho: &TyChirho) -> bool {
     ty_chirho.free_vars_chirho().contains(&variable_chirho)
 }
+
+#[cfg(test)]
+mod tests_chirho;

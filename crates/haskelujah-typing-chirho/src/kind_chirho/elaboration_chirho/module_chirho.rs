@@ -202,7 +202,7 @@ impl TypeElaboratorChirho<'_> {
                 .ok_or_else(|| {
                     Self::error_chirho("missing declaration kind contract", span_chirho)
                 })?;
-            if scheme_chirho.owner_chirho != Some(self.state_chirho.owner_chirho) {
+            if scheme_chirho.owner_chirho != self.state_chirho.owner_chirho {
                 return Err(Self::error_chirho(
                     "standalone kind contract cannot restage a published telescope",
                     span_chirho,

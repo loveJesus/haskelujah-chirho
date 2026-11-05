@@ -9,6 +9,33 @@ use super::*;
 use haskelujah_ast_chirho::promotion_chirho::is_unknown_promoted_key_chirho;
 
 impl InferCtxChirho {
+    /// The actual universal record authorizes rigidity. Its optional kind and
+    /// source proof travel in the same existing substitution entry.
+    pub(super) fn fresh_rigid_quantifier_image_chirho(
+        &mut self,
+        record_chirho: &crate::ty_chirho::QuantifiedVariableChirho,
+        prefix_chirho: &SubstChirho,
+        budget_chirho: &mut super::equality_normalization_chirho::EqualityBudgetChirho,
+    ) -> Option<crate::subst_chirho::SubstitutionImageChirho> {
+        let kind_chirho =
+            self.instantiate_quantifier_kind_chirho(record_chirho, prefix_chirho, budget_chirho)?;
+        let base_chirho = self
+            .tyvar_source_names_chirho
+            .get(&record_chirho.variable_chirho)
+            .map(String::as_str)
+            .filter(|name_chirho| !name_chirho.is_empty())
+            .unwrap_or("aChirho");
+        budget_chirho.node_chirho(base_chirho.len().checked_add(16)?)?;
+        let image_chirho =
+            TyChirho::ForallVarChirho(skolem_name_chirho(base_chirho, self.next_skolem_chirho));
+        self.next_skolem_chirho = self.next_skolem_chirho.checked_add(1)?;
+        Some(crate::subst_chirho::SubstitutionImageChirho {
+            image_chirho,
+            kind_chirho,
+            source_chirho: record_chirho.source_chirho.clone(),
+        })
+    }
+
     pub(super) fn type_contains_skolem_chirho(&self, term_chirho: &TyChirho) -> bool {
         match crate::skolem_chirho::contains_skolem_chirho(term_chirho) {
             Ok(found_chirho) => found_chirho,
@@ -39,7 +66,24 @@ impl InferCtxChirho {
             super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
         for record_chirho in scheme_chirho.vars_chirho.records_chirho() {
             let var_chirho = &record_chirho.variable_chirho;
-            let Some(kind_chirho) = self.instantiate_quantifier_kind_chirho(
+            if budget_chirho.node_chirho(1).is_none() {
+                self.type_normalization_exhausted_chirho.set(true);
+                return (self.fresh_var_chirho(), Vec::new());
+            }
+            if let Some(existing_chirho) = self.skolem_bindings_chirho.lookup_chirho(var_chirho) {
+                let Some(existing_chirho) =
+                    super::equality_normalization_chirho::copy_term_with_budget_chirho(
+                        existing_chirho,
+                        &mut budget_chirho,
+                    )
+                else {
+                    self.type_normalization_exhausted_chirho.set(true);
+                    return (self.fresh_var_chirho(), Vec::new());
+                };
+                instantiation_chirho.insert_chirho(*var_chirho, existing_chirho);
+                continue;
+            }
+            let Some(image_chirho) = self.fresh_rigid_quantifier_image_chirho(
                 record_chirho,
                 &instantiation_chirho,
                 &mut budget_chirho,
@@ -47,59 +91,20 @@ impl InferCtxChirho {
                 self.type_normalization_exhausted_chirho.set(true);
                 return (self.fresh_var_chirho(), Vec::new());
             };
-            if let Some(existing_chirho) = self.skolem_bindings_chirho.lookup_chirho(var_chirho) {
-                instantiation_chirho.insert_chirho(*var_chirho, existing_chirho.clone());
-                continue;
-            }
-            // Universality comes from the checked quantifier, including one
-            // introduced by a synonym. A display spelling grants no authority.
-            let base_chirho = self
-                .tyvar_source_names_chirho
-                .get(var_chirho)
-                .filter(|name_chirho| !name_chirho.is_empty())
-                .cloned()
-                .unwrap_or_else(|| "aChirho".to_owned());
-            let skolem_chirho = TyChirho::ForallVarChirho(skolem_name_chirho(
-                &base_chirho,
-                self.next_skolem_chirho,
-            ));
-            self.next_skolem_chirho += 1;
-            instantiation_chirho.insert_chirho(*var_chirho, skolem_chirho.clone());
-            self.skolem_bindings_chirho.insert_image_chirho(
-                *var_chirho,
-                crate::subst_chirho::SubstitutionImageChirho {
-                    image_chirho: skolem_chirho,
-                    kind_chirho,
-                },
-            );
+            instantiation_chirho.insert_chirho(*var_chirho, image_chirho.image_chirho.clone());
+            self.skolem_bindings_chirho
+                .insert_image_chirho(*var_chirho, image_chirho);
         }
-        let givens_chirho: Vec<PredChirho> = scheme_chirho
-            .preds_chirho
-            .iter()
-            .map(|pred_chirho| {
-                PredChirho::from_proof_chirho(
-                    pred_chirho.class_identity_chirho().clone(),
-                    crate::class_chirho::PredPartsChirho {
-                        kind_tys_chirho: pred_chirho
-                            .kind_tys_chirho
-                            .iter()
-                            .map(|kind_chirho| instantiation_chirho.apply_ty_chirho(kind_chirho))
-                            .collect(),
-                        class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                        ty_chirho: instantiation_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                        extra_tys_chirho: pred_chirho
-                            .extra_tys_chirho
-                            .iter()
-                            .map(|ty_chirho| instantiation_chirho.apply_ty_chirho(ty_chirho))
-                            .collect(),
-                    },
-                )
-            })
-            .collect();
-        self.expose_qualified_parts_chirho(
-            instantiation_chirho.apply_ty_chirho(&scheme_chirho.ty_chirho),
-            givens_chirho,
-        )
+        let Some((body_chirho, givens_chirho)) = self.instantiate_scheme_terms_chirho(
+            scheme_chirho,
+            &scheme_chirho.ty_chirho,
+            &instantiation_chirho,
+            &mut budget_chirho,
+        ) else {
+            self.type_normalization_exhausted_chirho.set(true);
+            return (self.fresh_var_chirho(), Vec::new());
+        };
+        self.expose_qualified_parts_chirho(body_chirho, givens_chirho)
     }
 
     /// Meet a constructor result or structural pattern shape with the known
@@ -256,7 +261,7 @@ impl InferCtxChirho {
             return None;
         }
         let mut opened_chirho = HashMap::new();
-        let mut next_var_chirho = self.next_var_chirho;
+        let mut next_var_chirho = self.elaboration_state_chirho.next_variable_chirho;
         let mut budget_chirho =
             super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
         for term_chirho in [&left_norm_chirho, &right_norm_chirho] {
@@ -287,7 +292,7 @@ impl InferCtxChirho {
             open_skolems_chirho(&left_norm_chirho, &mut opened_chirho, &mut fresh_chirho);
         let opened_right_chirho =
             open_skolems_chirho(&right_norm_chirho, &mut opened_chirho, &mut fresh_chirho);
-        self.next_var_chirho = next_var_chirho;
+        self.elaboration_state_chirho.next_variable_chirho = next_var_chirho;
         let (Ok(opened_left_chirho), Ok(opened_right_chirho)) =
             (opened_left_chirho, opened_right_chirho)
         else {

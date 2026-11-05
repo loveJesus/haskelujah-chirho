@@ -33,7 +33,7 @@ impl InferCtxChirho {
         };
         let mapped_chirho = prefix_chirho.apply_freshened_bounded_chirho(
             kind_chirho,
-            &mut self.next_var_chirho,
+            &mut self.elaboration_state_chirho.next_variable_chirho,
             &mut charge_chirho,
         )?;
         let mapped_chirho = self
@@ -50,7 +50,7 @@ impl InferCtxChirho {
         if let (TyChirho::VarChirho(variable_chirho), Some(kind_chirho)) =
             (image_chirho, kind_chirho)
         {
-            self.elaboration_variable_kinds_chirho.insert(
+            self.elaboration_state_chirho.variable_kinds_chirho.insert(
                 *variable_chirho,
                 QuantifiedVariableChirho {
                     variable_chirho: *variable_chirho,
@@ -71,13 +71,30 @@ impl InferCtxChirho {
         prefix_chirho: &SubstChirho,
         budget_chirho: &mut EqualityBudgetChirho,
     ) -> Option<(TyChirho, Vec<crate::class_chirho::PredChirho>)> {
-        budget_chirho.node_chirho(scheme_chirho.preds_chirho.len())?;
-        for predicate_chirho in &scheme_chirho.preds_chirho {
+        self.instantiate_predicate_terms_chirho(
+            &scheme_chirho.preds_chirho,
+            body_chirho,
+            prefix_chirho,
+            budget_chirho,
+        )
+    }
+
+    pub(super) fn instantiate_predicate_terms_chirho<
+        PredicateChirho: crate::ty_chirho::PredicateRecordChirho,
+    >(
+        &mut self,
+        source_chirho: &[PredicateChirho],
+        body_chirho: &TyChirho,
+        prefix_chirho: &SubstChirho,
+        budget_chirho: &mut EqualityBudgetChirho,
+    ) -> Option<(TyChirho, Vec<crate::class_chirho::PredChirho>)> {
+        budget_chirho.node_chirho(source_chirho.len())?;
+        for predicate_chirho in source_chirho {
             let width_chirho = predicate_chirho
-                .kind_tys_chirho
-                .len()
-                .checked_add(predicate_chirho.extra_tys_chirho.len())?
-                .checked_add(predicate_chirho.class_name_chirho.len())?;
+                .terms_chirho()
+                .iter_chirho()
+                .count()
+                .checked_add(predicate_chirho.class_name_chirho().len())?;
             budget_chirho.node_chirho(width_chirho)?;
         }
         let mut charge_chirho = |work_chirho: usize, output_chirho: usize| {
@@ -87,28 +104,24 @@ impl InferCtxChirho {
         let mut map_chirho = |term_chirho: &TyChirho| {
             prefix_chirho.apply_scheme_term_bounded_chirho(
                 term_chirho,
-                &mut self.next_var_chirho,
+                &mut self.elaboration_state_chirho.next_variable_chirho,
                 &mut charge_chirho,
             )
         };
         let body_chirho = map_chirho(body_chirho)?;
         let mut predicates_chirho = Vec::new();
-        for predicate_chirho in &scheme_chirho.preds_chirho {
+        for predicate_chirho in source_chirho {
+            let mapped_chirho = predicate_chirho
+                .terms_chirho()
+                .try_mapped_chirho(|term_chirho| map_chirho(term_chirho).ok_or(()))
+                .ok()?;
             predicates_chirho.push(crate::class_chirho::PredChirho::from_proof_chirho(
                 predicate_chirho.class_identity_chirho().clone(),
                 crate::class_chirho::PredPartsChirho {
-                    kind_tys_chirho: predicate_chirho
-                        .kind_tys_chirho
-                        .iter()
-                        .map(&mut map_chirho)
-                        .collect::<Option<_>>()?,
-                    class_name_chirho: predicate_chirho.class_name_chirho.clone(),
-                    ty_chirho: map_chirho(&predicate_chirho.ty_chirho)?,
-                    extra_tys_chirho: predicate_chirho
-                        .extra_tys_chirho
-                        .iter()
-                        .map(&mut map_chirho)
-                        .collect::<Option<_>>()?,
+                    kind_tys_chirho: mapped_chirho.kind_tys_chirho,
+                    class_name_chirho: predicate_chirho.class_name_chirho().to_owned(),
+                    ty_chirho: mapped_chirho.ty_chirho,
+                    extra_tys_chirho: mapped_chirho.extra_tys_chirho,
                 },
             ));
         }
@@ -190,7 +203,8 @@ impl InferCtxChirho {
                     (*record_chirho).clone()
                 } else {
                     let mut record_chirho = self
-                        .elaboration_variable_kinds_chirho
+                        .elaboration_state_chirho
+                        .variable_kinds_chirho
                         .get(&variable_chirho)
                         .cloned()
                         .unwrap_or_else(|| {
@@ -206,7 +220,8 @@ impl InferCtxChirho {
                             specificity_chirho
                         } else if (record_chirho.source_chirho.is_some()
                             || !self
-                                .elaboration_variable_kinds_chirho
+                                .elaboration_state_chirho
+                                .variable_kinds_chirho
                                 .contains_key(&variable_chirho))
                             && initial_chirho.contains(&variable_chirho)
                         {
@@ -217,7 +232,8 @@ impl InferCtxChirho {
                     );
                     if let Some(kind_chirho) = &record_chirho.kind_chirho {
                         record_chirho.kind_chirho = Some(Arc::new(
-                            self.elaboration_substitution_chirho
+                            self.elaboration_state_chirho
+                                .substitution_chirho
                                 .resolve_owned_bounded_chirho(kind_chirho, &mut charge_chirho)?,
                         ));
                     }

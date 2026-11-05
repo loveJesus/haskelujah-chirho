@@ -21,6 +21,9 @@ use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 pub(crate) struct SubstitutionImageChirho {
     pub image_chirho: TyChirho,
     pub kind_chirho: Option<std::sync::Arc<TyChirho>>,
+    pub source_chirho: Option<
+        haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho,
+    >,
 }
 
 /// A substitution: a finite mapping from type variables to types.
@@ -45,6 +48,7 @@ impl SubstChirho {
             SubstitutionImageChirho {
                 image_chirho: ty_chirho,
                 kind_chirho: None,
+                source_chirho: None,
             },
         );
         Self { map_chirho }
@@ -64,6 +68,7 @@ impl SubstChirho {
             SubstitutionImageChirho {
                 image_chirho: ty_chirho,
                 kind_chirho: None,
+                source_chirho: None,
             },
         );
     }
@@ -123,6 +128,7 @@ impl SubstChirho {
                         .kind_chirho
                         .as_ref()
                         .map(|kind_chirho| std::sync::Arc::new(self.apply_ty_chirho(kind_chirho))),
+                    source_chirho: ty_chirho.source_chirho.clone(),
                 },
             );
         }

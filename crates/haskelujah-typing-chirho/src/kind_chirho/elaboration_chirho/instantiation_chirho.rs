@@ -473,7 +473,7 @@ impl TypeElaboratorChirho<'_> {
                         span_chirho,
                     )
                 })?;
-            records_chirho.push(crate::ty_chirho::QuantifiedVariableChirho { variable_chirho: *variable_chirho, kind_chirho: Some(Arc::new(kind_chirho)), source_chirho: Some(haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::InferenceChirho { owner_chirho: self.state_chirho.owner_chirho, variable_chirho: *variable_chirho }), specificity_chirho: Some(specificity_chirho) });
+            records_chirho.push(crate::ty_chirho::QuantifiedVariableChirho { variable_chirho: *variable_chirho, kind_chirho: Some(Arc::new(kind_chirho)), source_chirho: Some(haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::InferenceChirho { owner_chirho: self.state_chirho.owner_id_chirho(span_chirho)?, variable_chirho: *variable_chirho }), specificity_chirho: Some(specificity_chirho) });
         }
         Ok(crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(records_chirho))
     }
