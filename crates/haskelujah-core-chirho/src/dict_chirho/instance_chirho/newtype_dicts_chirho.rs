@@ -5,7 +5,8 @@
 //! A newtype instance takes its representation type's method rows only when the newtype's
 //! own declarations route that class through the newtype strategy, as the deriving pass
 //! records in `NewtypeInfoChirho`. A written instance with a context, or one that merely
-//! has a newtype head, keeps its own methods, and no row the module wrote is replaced.
+//! has a newtype head, keeps its own methods. Every method of a GND instance is the
+//! representation's, its class defaults included, as GHC coerces each one (G3, D2).
 //! Core erases these newtypes' constructors (`simplify_chirho/newtype_erasure_chirho.rs`),
 //! so a representation row receives the field itself on every backend.
 //! workflow: language-features-chirho/deriving-strategies-chirho
@@ -76,7 +77,9 @@ impl DictPassCtxChirho {
     /// A newtype instance whose class the newtype's own declarations route through the
     /// newtype strategy (`Num Int => Num Age`) gets, for each class method, a
     /// `$prim_Class_method_NewtypeKey` alias of the representation type's row, then its
-    /// dictionary. A row the module wrote is never replaced.
+    /// dictionary. The deriving pass writes a GND instance with no method, and typing refuses
+    /// a second instance for its head (GHC-59692), so a newtype row that has a body is the
+    /// class default the desugarer filled in: it becomes the representation's row in place.
     /// workflow: language-features-chirho/deriving-strategies-chirho
     pub fn generate_gnd_dicts_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
         // Collect the instances whose class the newtype's own declarations route
@@ -121,13 +124,6 @@ impl DictPassCtxChirho {
                     "$prim_{}_{}_{}",
                     class_name_chirho, method_name_chirho, type_key_chirho
                 );
-                // A row the module wrote keeps its body.
-                if self
-                    .body_backed_names_chirho
-                    .contains_key(&newtype_prim_chirho)
-                {
-                    continue;
-                }
                 let underlying_prim_chirho = format!(
                     "$prim_{}_{}_{}",
                     class_name_chirho, method_name_chirho, underlying_key_chirho
@@ -140,6 +136,16 @@ impl DictPassCtxChirho {
                     &underlying_prim_chirho,
                     None,
                 );
+                // A class default the desugarer filled in becomes the representation's row.
+                if let Some(default_row_chirho) = self
+                    .body_backed_names_chirho
+                    .get(&newtype_prim_chirho)
+                    .copied()
+                {
+                    self.gnd_default_rows_chirho
+                        .insert(default_row_chirho, underlying_id_chirho);
+                    continue;
+                }
                 let alias_binder_chirho = self.fresh_binder_chirho(
                     &newtype_prim_chirho,
                     TyChirho::VarChirho(TyVarChirho(self.next_id_chirho)),

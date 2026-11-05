@@ -174,6 +174,10 @@ pub struct DictPassCtxChirho {
     /// classes it derives with the newtype strategy. Used for GND (row 694):
     /// `"Age"` → `MkAge`, `Int`, `["Num"]`.
     newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
+    /// A GND newtype's rows the desugarer filled from class defaults, each with the
+    /// representation row it becomes (row 694): the module's binding keeps its id, so every
+    /// reference to it takes the representation's method, as GHC coerces every method.
+    gnd_default_rows_chirho: HashMap<CoreIdChirho, CoreIdChirho>,
     /// Number of type parameters per class. 1 for single-parameter classes
     /// (Eq, Ord, ...), >1 for MPTCs (e.g., Addable a b has 2).
     class_param_count_chirho: HashMap<String, usize>,
@@ -248,6 +252,7 @@ impl DictPassCtxChirho {
             super_selectors_chirho: HashMap::new(),
             conditional_dicts_chirho: HashMap::new(),
             newtype_info_chirho: HashMap::new(),
+            gnd_default_rows_chirho: HashMap::new(),
             class_param_count_chirho: HashMap::new(),
             method_arities_chirho: HashMap::new(),
             local_shadow_ids_chirho: RefCell::new(HashSet::new()),

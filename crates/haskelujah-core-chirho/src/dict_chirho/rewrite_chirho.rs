@@ -476,6 +476,20 @@ impl DictPassCtxChirho {
             self.written_orderings_resolved_chirho(&module_chirho.bindings_chirho);
         let mut bindings_chirho = Vec::new();
         for binding_chirho in resolved_bindings_chirho.iter() {
+            // A GND newtype's default-filled row takes its representation's row (row 694).
+            // workflow: language-features-chirho/deriving-strategies-chirho
+            if let Some(representation_row_chirho) = self
+                .gnd_default_rows_chirho
+                .get(&binding_chirho.binder_chirho.id_chirho)
+            {
+                bindings_chirho.push(CoreBindingChirho {
+                    binder_chirho: binding_chirho.binder_chirho.clone(),
+                    rhs_chirho: CoreExprChirho::VarChirho(*representation_row_chirho),
+                    is_rec_chirho: false,
+                    inline_chirho: InlineAnnotationChirho::NoneChirho,
+                });
+                continue;
+            }
             let name_chirho = &binding_chirho.binder_chirho.name_chirho;
 
             // Look up the type scheme for this binding
