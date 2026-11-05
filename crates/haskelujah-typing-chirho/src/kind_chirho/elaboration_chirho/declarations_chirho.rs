@@ -90,6 +90,8 @@ impl TypeElaboratorChirho<'_> {
                 Some(stored_kind_chirho),
                 binder_chirho.name_chirho.span_chirho(),
             )?;
+            self.state_chirho
+                .mark_universal_chirho(variable_chirho, binder_chirho.name_chirho.span_chirho())?;
             self.stamp_variable_chirho(&mut binder_chirho.name_chirho, variable_chirho)?;
             let text_chirho = self.state_chirho.name_chirho(
                 binder_chirho.text_chirho(),
@@ -298,12 +300,7 @@ impl TypeElaboratorChirho<'_> {
             )?;
             self.stamp_variable_chirho(&mut binder_chirho.name_chirho, variable_chirho)?;
             if let Some(kind_chirho) = &mut binder_chirho.kind_annotation_chirho {
-                let annotation_chirho = self.infer_type_chirho(kind_chirho)?;
-                self.unify_kinds_chirho(
-                    &annotation_chirho.kind_chirho,
-                    &ElaborationStateChirho::type_universe_chirho(),
-                    kind_chirho.span_chirho(),
-                )?;
+                let annotation_chirho = self.infer_kind_syntax_chirho(kind_chirho)?;
                 self.unify_kinds_chirho(
                     &expected_kind_chirho,
                     &annotation_chirho.term_chirho,

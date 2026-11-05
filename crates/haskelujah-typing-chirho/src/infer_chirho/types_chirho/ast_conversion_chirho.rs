@@ -546,6 +546,13 @@ impl InferCtxChirho {
         use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
         let variable_chirho =
             self.surface_binder_variable_chirho(&binder_chirho.name_chirho, variables_chirho);
+        if let Err(error_chirho) = self
+            .elaboration_state_chirho
+            .mark_universal_chirho(variable_chirho, binder_chirho.name_chirho.span_chirho())
+        {
+            self.non_deferrable_diagnostics_chirho
+                .push_chirho(error_chirho.into_diagnostic_chirho());
+        }
         let kind_chirho = self.surface_quantifier_kind_chirho(
             &binder_chirho.name_chirho,
             variables_chirho,

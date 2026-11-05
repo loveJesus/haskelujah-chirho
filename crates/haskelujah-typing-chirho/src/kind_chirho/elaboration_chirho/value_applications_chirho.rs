@@ -130,6 +130,7 @@ fn with_argument_elaborator_chirho<ResultChirho>(
     );
     let mut elaborator_chirho = TypeElaboratorChirho {
         standalone_kind_scope_chirho: false,
+        checking_kind_chirho: false,
         state_chirho,
         registry_chirho: ElaborationCatalogueChirho::BorrowedChirho(context_chirho.registry_chirho),
         type_scope_chirho: context_chirho.type_scope_chirho,
@@ -718,6 +719,9 @@ impl TypeElaboratorChirho<'_> {
                         .state_chirho
                         .fresh_chirho(Some(kind_chirho), span_chirho)?
                 };
+                this_chirho
+                    .state_chirho
+                    .mark_universal_chirho(variable_chirho, span_chirho)?;
                 this_chirho.stamp_variable_chirho(name_chirho, variable_chirho)?;
                 let name_chirho = this_chirho
                     .state_chirho

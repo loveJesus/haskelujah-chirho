@@ -883,6 +883,9 @@ impl TypeElaboratorChirho<'_> {
                     let variable_chirho = this_chirho
                         .state_chirho
                         .fresh_chirho(Some(stored_chirho), *span_chirho)?;
+                    this_chirho
+                        .state_chirho
+                        .mark_universal_chirho(variable_chirho, *span_chirho)?;
                     this_chirho.stamp_variable_chirho(binder_chirho, variable_chirho)?;
                     let name_chirho = this_chirho
                         .state_chirho

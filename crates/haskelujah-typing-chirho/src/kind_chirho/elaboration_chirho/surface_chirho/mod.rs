@@ -5,6 +5,7 @@
 
 use super::*;
 
+mod checking_chirho;
 mod prefix_chirho;
 mod spine_chirho;
 use crate::subst_chirho::SubstChirho;
@@ -52,7 +53,7 @@ impl TypeElaboratorChirho<'_> {
             }
             syntax_chirho = inner_chirho;
         }
-        let mut result_chirho = match syntax_chirho {
+        let result_chirho = match syntax_chirho {
             TypeChirho::TupleChirho {
                 elements_chirho, ..
             } if elements_chirho.is_empty()
@@ -66,9 +67,7 @@ impl TypeElaboratorChirho<'_> {
             }
             _ => self.infer_type_chirho(syntax_chirho)?,
         };
-        self.instantiate_invisible_kind_chirho(syntax_chirho, &mut result_chirho, span_chirho)?;
-        self.unify_kinds_chirho(&result_chirho.kind_chirho, &expected_chirho, span_chirho)?;
-        Ok(result_chirho)
+        self.check_inferred_kind_chirho(syntax_chirho, result_chirho, &expected_chirho)
     }
 
     pub(super) fn infer_type_chirho(
@@ -163,12 +162,7 @@ impl TypeElaboratorChirho<'_> {
                 kind_chirho,
                 ..
             } => {
-                let annotation_chirho = self.infer_type_chirho(kind_chirho)?;
-                self.unify_kinds_chirho(
-                    &annotation_chirho.kind_chirho,
-                    &ElaborationStateChirho::type_universe_chirho(),
-                    span_chirho,
-                )?;
+                let annotation_chirho = self.infer_kind_syntax_chirho(kind_chirho)?;
                 let elaborated_chirho =
                     self.infer_type_at_kind_chirho(ty_chirho, &annotation_chirho.term_chirho)?;
                 Ok(elaborated_chirho)
@@ -409,6 +403,8 @@ impl TypeElaboratorChirho<'_> {
                 true,
                 span_chirho,
             )?;
+            self.state_chirho
+                .mark_universal_chirho(variable_chirho, span_chirho)?;
             self.stamp_variable_chirho(&mut binder_chirho.name_chirho, variable_chirho)?;
             let name_chirho = self
                 .state_chirho
@@ -613,7 +609,7 @@ impl TypeElaboratorChirho<'_> {
             let variable_chirho = *variable_chirho;
             let stored_kind_chirho = self.state_chirho.copy_chirho(&kind_chirho, span_chirho)?;
             self.state_chirho
-                .set_variable_kind_chirho(variable_chirho, stored_kind_chirho);
+                .set_fresh_variable_kind_chirho(variable_chirho, stored_kind_chirho);
             binders_chirho.push(DeclarationBinderChirho {
                 variable_chirho,
                 kind_chirho,

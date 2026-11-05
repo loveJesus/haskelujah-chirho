@@ -71,6 +71,9 @@ impl TypeElaboratorChirho<'_> {
                             let variable_chirho = this_chirho
                                 .state_chirho
                                 .fresh_chirho(Some(kind_chirho), span_chirho)?;
+                            this_chirho
+                                .state_chirho
+                                .mark_universal_chirho(variable_chirho, span_chirho)?;
                             let text_chirho = this_chirho
                                 .state_chirho
                                 .name_chirho(name_chirho.text_chirho(), span_chirho)?;

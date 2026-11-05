@@ -10,6 +10,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 mod continuation_chirho;
+mod variables_chirho;
+pub use variables_chirho::{ElaborationVariableBindingChirho, ElaborationVariableChirho};
 
 static NEXT_ELABORATION_OWNER_CHIRHO: AtomicU64 = AtomicU64::new(1);
 pub const TYPE_UNIVERSE_KEY_CHIRHO: &str = "%universe:type";
@@ -71,7 +73,7 @@ pub struct ElaborationStateChirho {
     pub owner_chirho: Option<ElaborationOwnerChirho>,
     pub next_variable_chirho: u32,
     pub substitution_chirho: SubstChirho,
-    pub variable_kinds_chirho: HashMap<TyVarChirho, crate::ty_chirho::QuantifiedVariableChirho>,
+    pub variable_kinds_chirho: HashMap<TyVarChirho, ElaborationVariableChirho>,
     pub(crate) source_policy_chirho: Option<std::sync::Arc<ElaborationPolicyChirho>>,
     rigid_variables_chirho: HashSet<TyVarChirho>,
     kind_scope_guards_chirho: Vec<KindScopeGuardChirho>,
@@ -166,9 +168,7 @@ impl ElaborationStateChirho {
         let record_chirho = self
             .variable_kinds_chirho
             .entry(variable_chirho)
-            .or_insert_with(|| {
-                crate::ty_chirho::QuantifiedVariableChirho::unknown_chirho(variable_chirho)
-            });
+            .or_insert_with(|| ElaborationVariableChirho::unknown_chirho(variable_chirho));
         record_chirho.source_chirho.get_or_insert(haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::InferenceChirho {
                 owner_chirho, variable_chirho });
         if explicit_chirho || record_chirho.specificity_chirho.is_none() {
@@ -192,6 +192,7 @@ impl ElaborationStateChirho {
         target_chirho: TyVarChirho,
         span_chirho: SpanChirho,
     ) -> Result<(), ElaborationErrorChirho> {
+        self.link_variable_binding_chirho(source_chirho, target_chirho, span_chirho)?;
         if let Some(specificity_chirho) = self.source_specificity_chirho(source_chirho) {
             let source_origin_chirho = self
                 .variable_kinds_chirho
@@ -271,7 +272,7 @@ impl ElaborationStateChirho {
             self.resource_failure_chirho("kind/type variable supply exhausted", span_chirho)
         })?;
         if let Some(kind_chirho) = kind_chirho {
-            self.set_variable_kind_chirho(variable_chirho, kind_chirho);
+            self.set_fresh_variable_kind_chirho(variable_chirho, kind_chirho);
         }
         Ok(variable_chirho)
     }
@@ -283,9 +284,7 @@ impl ElaborationStateChirho {
     ) {
         self.variable_kinds_chirho
             .entry(variable_chirho)
-            .or_insert_with(|| {
-                crate::ty_chirho::QuantifiedVariableChirho::unknown_chirho(variable_chirho)
-            })
+            .or_insert_with(|| ElaborationVariableChirho::unknown_chirho(variable_chirho))
             .kind_chirho = Some(std::sync::Arc::new(kind_chirho));
     }
 

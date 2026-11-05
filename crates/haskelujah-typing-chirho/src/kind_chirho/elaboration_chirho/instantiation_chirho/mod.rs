@@ -255,6 +255,7 @@ impl ElaborationStateChirho {
                             ));
                         }
                         let renamed_chirho = self.fresh_chirho(None, span_chirho)?;
+                        self.mark_universal_chirho(renamed_chirho, span_chirho)?;
                         let stored_kind_chirho = if let Some(kind_chirho) = kind_chirho {
                             let copied_chirho = self.copy_chirho(&kind_chirho, span_chirho)?;
                             self.set_variable_kind_chirho(renamed_chirho, kind_chirho);

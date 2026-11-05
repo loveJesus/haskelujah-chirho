@@ -50,15 +50,24 @@ impl InferCtxChirho {
         if let (TyChirho::VarChirho(variable_chirho), Some(kind_chirho)) =
             (image_chirho, kind_chirho)
         {
-            self.elaboration_state_chirho.variable_kinds_chirho.insert(
-                *variable_chirho,
-                QuantifiedVariableChirho {
-                    variable_chirho: *variable_chirho,
-                    kind_chirho: Some(kind_chirho.clone()),
-                    source_chirho: None,
-                    specificity_chirho: None,
-                },
-            );
+            self.elaboration_state_chirho
+                .variable_kinds_chirho
+                .entry(*variable_chirho)
+                .and_modify(|record_chirho| {
+                    record_chirho
+                        .kind_chirho
+                        .get_or_insert_with(|| kind_chirho.clone());
+                })
+                .or_insert_with(|| {
+                    crate::kind_chirho::elaboration_chirho::ElaborationVariableChirho::meta_chirho(
+                        QuantifiedVariableChirho {
+                            variable_chirho: *variable_chirho,
+                            kind_chirho: Some(kind_chirho.clone()),
+                            source_chirho: None,
+                            specificity_chirho: None,
+                        },
+                    )
+                });
         }
     }
 
@@ -206,7 +215,7 @@ impl InferCtxChirho {
                         .elaboration_state_chirho
                         .variable_kinds_chirho
                         .get(&variable_chirho)
-                        .cloned()
+                        .map(|record_chirho| record_chirho.quantifier_chirho.clone())
                         .unwrap_or_else(|| {
                             QuantifiedVariableChirho::unknown_chirho(variable_chirho)
                         });

@@ -22,7 +22,10 @@ pub(crate) use value_applications_chirho::{
     elaborate_body_type_chirho, elaborate_required_argument_chirho,
 };
 mod values_chirho;
-pub use state_chirho::{ElaborationErrorChirho, ElaborationStateChirho};
+pub use state_chirho::{
+    ElaborationErrorChirho, ElaborationStateChirho, ElaborationVariableBindingChirho,
+    ElaborationVariableChirho,
+};
 
 use crate::infer_chirho::{TypeFamilyEnvChirho, TypeFamilyScopeChirho};
 use crate::ty_chirho::declarations_chirho::{
@@ -136,6 +139,7 @@ struct TypeElaboratorChirho<'scope_chirho> {
         Option<crate::infer_chirho::EqualityNormalizationViewChirho<'scope_chirho>>,
     strict_argument_chirho: bool,
     standalone_kind_scope_chirho: bool,
+    checking_kind_chirho: bool,
 }
 
 #[derive(Debug)]
@@ -216,7 +220,7 @@ impl TypeElaboratorChirho<'_> {
             .state_chirho
             .variable_kinds_chirho
             .get(&variable_chirho)
-            .cloned()
+            .map(|record_chirho| record_chirho.quantifier_chirho.clone())
             .unwrap_or_else(|| {
                 crate::ty_chirho::QuantifiedVariableChirho::unknown_chirho(variable_chirho)
             });
@@ -291,6 +295,8 @@ impl TypeElaboratorChirho<'_> {
         let variable_chirho = self
             .state_chirho
             .fresh_chirho(Some(stored_kind_chirho), span_chirho)?;
+        self.state_chirho
+            .mark_universal_chirho(variable_chirho, span_chirho)?;
         self.state_chirho.note_source_variable_chirho(
             variable_chirho,
             haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho,
@@ -484,6 +490,7 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
             lexical_equality_chirho: None,
             strict_argument_chirho: false,
             standalone_kind_scope_chirho: false,
+            checking_kind_chirho: false,
         })
     }
 }

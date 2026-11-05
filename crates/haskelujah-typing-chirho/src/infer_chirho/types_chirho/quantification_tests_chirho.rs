@@ -36,14 +36,14 @@ fn committed_kind_solutions_are_not_generalized_again_chirho() {
         .variable_kinds_chirho
         .insert(
             TyVarChirho(0),
-            known_chirho(0, TyChirho::ConChirho("Type".into())),
+            known_chirho(0, TyChirho::ConChirho("Type".into())).into(),
         );
     context_chirho
         .elaboration_state_chirho
         .variable_kinds_chirho
         .insert(
             TyVarChirho(1),
-            known_chirho(1, TyChirho::VarChirho(TyVarChirho(0))),
+            known_chirho(1, TyChirho::VarChirho(TyVarChirho(0))).into(),
         );
     context_chirho.apply_subst_all_chirho(&SubstChirho::singleton_chirho(
         TyVarChirho(0),
@@ -73,7 +73,7 @@ fn hidden_kind_dependencies_precede_specified_source_binders_chirho() {
         .variable_kinds_chirho
         .insert(
             TyVarChirho(0),
-            known_chirho(0, TyChirho::ConChirho("Type".into())),
+            known_chirho(0, TyChirho::ConChirho("Type".into())).into(),
         );
     let mut first_chirho = known_chirho(1, TyChirho::VarChirho(TyVarChirho(0)));
     first_chirho.specificity_chirho = Some(TyVarSpecificityChirho::SpecifiedChirho);

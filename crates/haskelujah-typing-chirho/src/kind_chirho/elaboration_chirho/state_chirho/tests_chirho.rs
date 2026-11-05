@@ -403,3 +403,122 @@ fn representation_normalization_exhaustion_stays_terminal_chirho() {
         error_chirho
     );
 }
+
+#[test]
+fn binding_role_requires_a_live_producer_and_survives_variable_links_chirho() {
+    let span_chirho = SpanChirho::DUMMY_CHIRHO;
+    let mut state_chirho = ElaborationStateChirho::new_chirho().unwrap();
+    let unknown_chirho = state_chirho.fresh_chirho(None, span_chirho).unwrap();
+    state_chirho
+        .note_source_variable_chirho(
+            unknown_chirho,
+            haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho,
+            true,
+            span_chirho,
+        )
+        .unwrap();
+    state_chirho.set_variable_kind_chirho(
+        unknown_chirho,
+        ElaborationStateChirho::type_universe_chirho(),
+    );
+    assert_eq!(
+        state_chirho.variable_binding_chirho(unknown_chirho),
+        ElaborationVariableBindingChirho::UnknownChirho
+    );
+    let meta_chirho = state_chirho
+        .fresh_chirho(
+            Some(ElaborationStateChirho::type_universe_chirho()),
+            span_chirho,
+        )
+        .unwrap();
+    assert_eq!(
+        state_chirho.variable_binding_chirho(meta_chirho),
+        ElaborationVariableBindingChirho::MetaChirho
+    );
+    let universal_chirho = state_chirho
+        .fresh_chirho(
+            Some(ElaborationStateChirho::type_universe_chirho()),
+            span_chirho,
+        )
+        .unwrap();
+    state_chirho
+        .mark_universal_chirho(universal_chirho, span_chirho)
+        .unwrap();
+    // No source specificity on either variable: the barrier still follows the
+    // actual representative selected by the ordinary unifier.
+    state_chirho
+        .unify_chirho(
+            &TyChirho::VarChirho(universal_chirho),
+            &TyChirho::VarChirho(meta_chirho),
+            span_chirho,
+        )
+        .unwrap();
+    let TyChirho::VarChirho(root_chirho) = state_chirho
+        .resolve_chirho(&TyChirho::VarChirho(universal_chirho), span_chirho)
+        .unwrap()
+    else {
+        panic!("variable link must retain a variable representative")
+    };
+    assert_eq!(
+        state_chirho.variable_binding_chirho(root_chirho),
+        ElaborationVariableBindingChirho::UniversalChirho
+    );
+    let fresh_chirho = state_chirho
+        .fresh_chirho(
+            Some(ElaborationStateChirho::type_universe_chirho()),
+            span_chirho,
+        )
+        .unwrap();
+    state_chirho
+        .unify_chirho(
+            &TyChirho::VarChirho(unknown_chirho),
+            &TyChirho::VarChirho(fresh_chirho),
+            span_chirho,
+        )
+        .unwrap();
+    let TyChirho::VarChirho(root_chirho) = state_chirho
+        .resolve_chirho(&TyChirho::VarChirho(unknown_chirho), span_chirho)
+        .unwrap()
+    else {
+        panic!("unknown link must retain a variable representative")
+    };
+    assert_eq!(
+        state_chirho.variable_binding_chirho(root_chirho),
+        ElaborationVariableBindingChirho::UnknownChirho
+    );
+}
+
+#[test]
+fn universal_binding_status_does_not_replace_scoped_rigidity_chirho() {
+    let span_chirho = SpanChirho::DUMMY_CHIRHO;
+    let mut state_chirho = ElaborationStateChirho::new_chirho().unwrap();
+    let universal_chirho = state_chirho
+        .fresh_chirho(
+            Some(ElaborationStateChirho::type_universe_chirho()),
+            span_chirho,
+        )
+        .unwrap();
+    state_chirho
+        .mark_universal_chirho(universal_chirho, span_chirho)
+        .unwrap();
+    let mark_chirho = state_chirho
+        .open_rigid_scope_chirho(&[universal_chirho], span_chirho)
+        .unwrap();
+    assert!(
+        state_chirho
+            .unify_chirho(
+                &TyChirho::VarChirho(universal_chirho),
+                &ElaborationStateChirho::constraint_universe_chirho(),
+                span_chirho
+            )
+            .is_err()
+    );
+    state_chirho.close_rigid_scope_chirho(mark_chirho);
+    state_chirho
+        .unify_chirho(
+            &TyChirho::VarChirho(universal_chirho),
+            &ElaborationStateChirho::constraint_universe_chirho(),
+            span_chirho,
+        )
+        .expect("temporary scope restoration leaves evidence-based solving available");
+}

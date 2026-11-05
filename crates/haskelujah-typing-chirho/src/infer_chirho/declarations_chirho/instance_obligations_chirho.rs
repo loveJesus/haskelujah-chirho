@@ -939,6 +939,15 @@ impl InferCtxChirho {
                 };
                 let mut record_chirho = actual_chirho.clone();
                 record_chirho.kind_chirho = Some(std::sync::Arc::new(kind_chirho));
+                let record_chirho =
+                    crate::kind_chirho::elaboration_chirho::ElaborationVariableChirho {
+                        quantifier_chirho: record_chirho,
+                        binding_chirho: if keep_quantifiers_chirho {
+                            crate::kind_chirho::elaboration_chirho::ElaborationVariableBindingChirho::UniversalChirho
+                        } else {
+                            crate::kind_chirho::elaboration_chirho::ElaborationVariableBindingChirho::MetaChirho
+                        },
+                    };
                 self.elaboration_state_chirho
                     .variable_kinds_chirho
                     .insert(actual_chirho.variable_chirho, record_chirho);

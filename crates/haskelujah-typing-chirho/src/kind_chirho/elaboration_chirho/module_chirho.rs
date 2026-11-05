@@ -132,11 +132,9 @@ impl TypeElaboratorChirho<'_> {
         &mut self,
         syntax_chirho: &mut TypeChirho,
     ) -> Result<TyChirho, ElaborationErrorChirho> {
-        let typed_chirho = self.infer_type_chirho(syntax_chirho)?;
-        self.unify_kinds_chirho(
-            &typed_chirho.kind_chirho,
+        let typed_chirho = self.infer_type_at_kind_chirho(
+            syntax_chirho,
             &ElaborationStateChirho::type_universe_chirho(),
-            syntax_chirho.span_chirho(),
         )?;
         Ok(typed_chirho.term_chirho)
     }
@@ -191,7 +189,7 @@ impl TypeElaboratorChirho<'_> {
     ) -> Result<(), ElaborationErrorChirho> {
         let expected_chirho = self.result_kind_chirho(key_chirho, span_chirho)?;
         if let Some(result_chirho) = result_chirho {
-            let annotation_chirho = self.check_type_chirho(result_chirho)?;
+            let annotation_chirho = self.infer_kind_syntax_chirho(result_chirho)?.term_chirho;
             self.state_chirho
                 .unify_chirho(&expected_chirho, &annotation_chirho, span_chirho)?;
         }
@@ -213,7 +211,9 @@ impl TypeElaboratorChirho<'_> {
             let mut signature_chirho = self.scoped_chirho(|this_chirho| {
                 let previous_chirho =
                     std::mem::replace(&mut this_chirho.standalone_kind_scope_chirho, true);
-                let result_chirho = this_chirho.check_type_chirho(signature_chirho);
+                let result_chirho = this_chirho
+                    .infer_kind_syntax_chirho(signature_chirho)
+                    .map(|typed_chirho| typed_chirho.term_chirho);
                 this_chirho.standalone_kind_scope_chirho = previous_chirho;
                 result_chirho
             })?;
