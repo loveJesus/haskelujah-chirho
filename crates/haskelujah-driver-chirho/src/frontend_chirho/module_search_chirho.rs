@@ -26,6 +26,7 @@ pub(crate) struct DiscoveredSourceModuleChirho {
     pub(crate) module_chirho: ModuleChirho,
     pub(crate) path_chirho: PathBuf,
     pub(crate) interface_error_chirho: Option<DiscoveredInterfaceErrorChirho>,
+    pub(crate) syntax_error_chirho: Option<haskelujah_diagnostics_chirho::DiagnosticBundleChirho>,
 }
 pub(crate) type DiscoveredSourceModulesChirho = BTreeMap<String, DiscoveredSourceModuleChirho>;
 
@@ -155,6 +156,12 @@ pub(crate) fn scan_sibling_modules_with_sources_chirho(
             let parser_chirho =
                 ParserChirho::new_chirho(&sibling_source_chirho, sibling_fid_chirho);
             let green_chirho = parser_chirho.parse_chirho();
+            let syntax_error_chirho =
+                haskelujah_parser_chirho::cst_parser_chirho::check_cst_syntax_chirho(
+                    &green_chirho,
+                    sibling_fid_chirho,
+                )
+                .err();
             let sibling_module_chirho = lower_module_chirho(&green_chirho, sibling_fid_chirho);
             if !sibling_path_matches_declared_module_chirho(
                 &path_chirho,
@@ -162,21 +169,25 @@ pub(crate) fn scan_sibling_modules_with_sources_chirho(
             ) {
                 return None;
             }
-            let iface_chirho =
-                build_iface_with_imports_chirho(&sibling_module_chirho, ifaces_chirho);
-            Some((iface_chirho, sibling_module_chirho))
+            let iface_chirho = syntax_error_chirho
+                .is_none()
+                .then(|| build_iface_with_imports_chirho(&sibling_module_chirho, ifaces_chirho));
+            Some((iface_chirho, sibling_module_chirho, syntax_error_chirho))
         }));
-        if let Ok(Some((iface_chirho, mut module_chirho))) = iface_result_chirho {
+        if let Ok(Some((iface_chirho, mut module_chirho, syntax_error_chirho))) =
+            iface_result_chirho
+        {
             crate::inject_prelude_import_chirho(&mut module_chirho);
             let (iface_chirho, interface_error_chirho) = match iface_chirho {
-                Ok(iface_chirho) => (Some(iface_chirho), None),
-                Err(error_chirho) => (
+                Some(Ok(iface_chirho)) => (Some(iface_chirho), None),
+                Some(Err(error_chirho)) => (
                     None,
                     Some(discovered_interface_error_chirho(
                         error_chirho,
                         source_map_chirho,
                     )),
                 ),
+                None => (None, None),
             };
             modules_chirho.insert(
                 module_chirho.name_chirho.full_name_chirho(),
@@ -184,6 +195,7 @@ pub(crate) fn scan_sibling_modules_with_sources_chirho(
                     module_chirho,
                     path_chirho: path_chirho.clone(),
                     interface_error_chirho,
+                    syntax_error_chirho,
                 },
             );
             if let Some(iface_chirho) = iface_chirho {
@@ -433,25 +445,34 @@ fn scan_hierarchical_modules_bounded_chirho(
         let iface_result_chirho = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             let parser_chirho = ParserChirho::new_chirho(&source_chirho, file_id_chirho);
             let green_chirho = parser_chirho.parse_chirho();
+            let syntax_error_chirho =
+                haskelujah_parser_chirho::cst_parser_chirho::check_cst_syntax_chirho(
+                    &green_chirho,
+                    file_id_chirho,
+                )
+                .err();
             let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
             if module_chirho.name_chirho.full_name_chirho() != expected_module_name_chirho {
                 return None;
             }
-            let iface_chirho = build_iface_with_imports_chirho(&module_chirho, ifaces_chirho);
-            Some((iface_chirho, module_chirho))
+            let iface_chirho = syntax_error_chirho
+                .is_none()
+                .then(|| build_iface_with_imports_chirho(&module_chirho, ifaces_chirho));
+            Some((iface_chirho, module_chirho, syntax_error_chirho))
         }));
         match iface_result_chirho {
-            Ok(Some((iface_chirho, mut module_chirho))) => {
+            Ok(Some((iface_chirho, mut module_chirho, syntax_error_chirho))) => {
                 crate::inject_prelude_import_chirho(&mut module_chirho);
                 let (iface_chirho, interface_error_chirho) = match iface_chirho {
-                    Ok(iface_chirho) => (Some(iface_chirho), None),
-                    Err(error_chirho) => (
+                    Some(Ok(iface_chirho)) => (Some(iface_chirho), None),
+                    Some(Err(error_chirho)) => (
                         None,
                         Some(discovered_interface_error_chirho(
                             error_chirho,
                             source_map_chirho,
                         )),
                     ),
+                    None => (None, None),
                 };
                 walk_chirho.modules_chirho.insert(
                     module_chirho.name_chirho.full_name_chirho(),
@@ -459,6 +480,7 @@ fn scan_hierarchical_modules_bounded_chirho(
                         module_chirho,
                         path_chirho: path_chirho.clone(),
                         interface_error_chirho,
+                        syntax_error_chirho,
                     },
                 );
                 if let Some(iface_chirho) = iface_chirho {

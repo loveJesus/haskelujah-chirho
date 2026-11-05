@@ -593,7 +593,7 @@ pub fn compile_modules_incremental_chirho(
         );
         let file_id_chirho = source_file_chirho.file_id_chirho();
         let parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
-        let green_chirho = parser_chirho.parse_chirho();
+        let green_chirho = parser_chirho.parse_checked_chirho()?;
         let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
 
         let module_name_chirho = module_chirho.name_chirho.text_chirho().to_string();

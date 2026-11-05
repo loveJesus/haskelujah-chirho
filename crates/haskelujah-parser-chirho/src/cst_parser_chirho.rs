@@ -98,6 +98,21 @@ impl<'src> ParserChirho<'src> {
         }
     }
 
+    /// Parse a compilation input without lowering recovered syntax errors.
+    /// The lossless CST entry point remains available to editors and tooling.
+    pub fn parse_checked_chirho(
+        self,
+    ) -> Result<Arc<GreenNodeChirho>, haskelujah_diagnostics_chirho::DiagnosticBundleChirho> {
+        let file_id_chirho = self
+            .tokens_chirho
+            .first()
+            .map(|token_chirho| token_chirho.span_chirho.file_id_chirho())
+            .unwrap_or(FileIdChirho::SYNTHETIC_CHIRHO);
+        let root_chirho = self.parse_chirho();
+        check_cst_syntax_chirho(&root_chirho, file_id_chirho)?;
+        Ok(root_chirho)
+    }
+
     /// Parse the entire source file and return the root green node.
     pub fn parse_chirho(mut self) -> Arc<GreenNodeChirho> {
         self.builder_chirho
@@ -137,6 +152,48 @@ pub fn parse_to_cst_chirho(
     let parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
     parser_chirho.parse_chirho()
 }
+
+/// An error node is a typed parser refusal, never an ordinary type error.
+/// Traverse the immutable parser output iteratively, with memory bounded by
+/// that tree; compilation stops at the first error, preserving source offsets.
+pub fn check_cst_syntax_chirho(
+    root_chirho: &GreenNodeChirho,
+    file_id_chirho: FileIdChirho,
+) -> Result<(), haskelujah_diagnostics_chirho::DiagnosticBundleChirho> {
+    use haskelujah_span_chirho::{ByteOffsetChirho, SpanChirho};
+    use haskelujah_syntax_chirho::green_chirho::GreenElementChirho;
+    let mut pending_chirho = vec![(root_chirho, 0usize)];
+    while let Some((node_chirho, start_chirho)) = pending_chirho.pop() {
+        if node_chirho.kind_chirho() == SyntaxKindChirho::ErrorNodeChirho {
+            return Err(
+                haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                    haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(2),
+                    "invalid source syntax",
+                    SpanChirho::new_chirho(
+                        file_id_chirho,
+                        ByteOffsetChirho::from_usize_chirho(start_chirho),
+                        ByteOffsetChirho::from_usize_chirho(
+                            start_chirho + node_chirho.text_len_chirho(),
+                        ),
+                    ),
+                )
+                .into(),
+            );
+        }
+        let mut end_chirho = start_chirho + node_chirho.text_len_chirho();
+        for element_chirho in node_chirho.children_chirho().iter().rev() {
+            end_chirho -= element_chirho.text_len_chirho();
+            if let GreenElementChirho::NodeChirho(child_chirho) = element_chirho {
+                pending_chirho.push((child_chirho.as_ref(), end_chirho));
+            }
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+#[path = "cst_parser_chirho/tests_chirho/checked_syntax_tests_chirho.rs"]
+mod checked_syntax_tests_chirho;
 
 #[cfg(test)]
 #[path = "cst_parser_chirho/tests_chirho/parser_tests_chirho.rs"]

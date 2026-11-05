@@ -328,6 +328,15 @@ pub(crate) fn register_discovered_type_families_chirho(
             continue;
         }
         if let Some(source_chirho) = context_chirho.modules_chirho.get(name_chirho)
+            && let Some(failure_chirho) = &source_chirho.syntax_error_chirho
+        {
+            return Err(source_bundle_diagnostics_chirho(
+                failure_chirho.clone(),
+                &source_chirho.module_chirho,
+                &diagnostics_chirho,
+            ));
+        }
+        if let Some(source_chirho) = context_chirho.modules_chirho.get(name_chirho)
             && let Some(failure_chirho) = &source_chirho.interface_error_chirho
         {
             return Err(discovered_signature_diagnostics_chirho(

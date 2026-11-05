@@ -90,7 +90,7 @@ pub(crate) fn run_frontend_under_deferral_chirho(
 
     // Phase 1: CST parse (lex + layout + recursive-descent)
     let parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
-    let green_chirho = parser_chirho.parse_chirho();
+    let green_chirho = parser_chirho.parse_checked_chirho()?;
 
     // Phase 2: CST → AST lowering
     let mut module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);

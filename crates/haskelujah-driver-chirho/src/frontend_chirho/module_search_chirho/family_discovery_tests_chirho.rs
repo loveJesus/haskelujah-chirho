@@ -150,6 +150,7 @@ fn discovery_with_boots_chirho(
                 module_chirho,
                 path_chirho,
                 interface_error_chirho: None,
+                syntax_error_chirho: None,
             },
         );
     }
@@ -293,6 +294,7 @@ fn failed_registration_leaves_registry_and_interfaces_unchanged_chirho() {
             module_chirho: bad_chirho,
             path_chirho: std::path::PathBuf::new(),
             interface_error_chirho: None,
+            syntax_error_chirho: None,
         },
     );
     let mut ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
@@ -445,4 +447,72 @@ fn discovery_checks_path_authority_before_building_a_constructor_interface_chirh
             .iter()
             .any(|iface_chirho| iface_chirho.name_chirho == "BadChirho")
     );
+}
+
+#[test]
+fn discovered_syntax_errors_are_reached_only_and_never_published_chirho() {
+    let scratch_chirho = SourceScratchChirho::new_chirho();
+    let origin_path_chirho = scratch_chirho.0.join("OriginChirho.hs");
+    let checked_path_chirho = scratch_chirho.0.join("CheckedChirho.hs");
+    std::fs::write(
+        &origin_path_chirho,
+        "module OriginChirho where\nJust valueChirho -> valueChirho\n",
+    )
+    .expect("write malformed source");
+    for hierarchical_chirho in [false, true] {
+        let mut source_map_chirho = haskelujah_span_chirho::SourceMapChirho::new_chirho();
+        let mut ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+        let mut sources_chirho = DiscoveredSourceModulesChirho::new();
+        if hierarchical_chirho {
+            super::super::scan_hierarchical_modules_with_sources_chirho(
+                &scratch_chirho.0,
+                &scratch_chirho.0,
+                &mut source_map_chirho,
+                &mut ifaces_chirho,
+                "CheckedChirho.hs",
+                &mut sources_chirho,
+            );
+        } else {
+            super::super::scan_sibling_modules_with_sources_chirho(
+                &scratch_chirho.0,
+                &mut source_map_chirho,
+                &mut ifaces_chirho,
+                "CheckedChirho.hs",
+                &mut sources_chirho,
+            );
+        }
+        assert!(sources_chirho["OriginChirho"].syntax_error_chirho.is_some());
+        assert!(
+            !ifaces_chirho
+                .iter()
+                .any(|iface_chirho| iface_chirho.name_chirho == "OriginChirho")
+        );
+    }
+    for import_chirho in ["", "import OriginChirho ()\n"] {
+        std::fs::write(&checked_path_chirho, format!("{{-# OPTIONS_GHC -fdefer-type-errors #-}}\nmodule CheckedChirho where\n{import_chirho}valueChirho :: Int\nvalueChirho = 0\n")).expect("write importer");
+        let result_chirho = crate::check_source_path_chirho(
+            &checked_path_chirho,
+            crate::ExecutionModeChirho::BatchChirho,
+        );
+        if import_chirho.is_empty() {
+            result_chirho.expect("unreached malformed sibling is not authoritative");
+        } else {
+            let diagnostics_chirho =
+                result_chirho.expect_err("reached malformed producer remains fatal");
+            assert!(
+                diagnostics_chirho
+                    .diagnostics_chirho()
+                    .iter()
+                    .any(|diagnostic_chirho| diagnostic_chirho
+                        .to_string()
+                        .contains("error[E0002]")
+                        && diagnostic_chirho.labels_chirho.is_empty()
+                        && diagnostic_chirho
+                            .notes_chirho
+                            .iter()
+                            .any(|note_chirho| note_chirho
+                                .contains(origin_path_chirho.to_str().expect("source path"))))
+            );
+        }
+    }
 }

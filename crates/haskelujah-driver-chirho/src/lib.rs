@@ -431,7 +431,7 @@ fn check_source_file_with_search_path_chirho(
     }
 
     let discovery_parser_chirho = ParserChirho::new_chirho(&source_chirho, file_id_chirho);
-    let discovery_green_chirho = discovery_parser_chirho.parse_chirho();
+    let discovery_green_chirho = discovery_parser_chirho.parse_checked_chirho()?;
     let mut discovery_module_chirho = lower_module_chirho(&discovery_green_chirho, file_id_chirho);
     inject_prelude_import_chirho(&mut discovery_module_chirho);
     register_discovered_type_families_chirho(
@@ -931,7 +931,7 @@ fn compile_source_with_search_context_chirho(
     }
 
     let discovery_parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
-    let discovery_green_chirho = discovery_parser_chirho.parse_chirho();
+    let discovery_green_chirho = discovery_parser_chirho.parse_checked_chirho()?;
     let mut discovery_module_chirho = lower_module_chirho(&discovery_green_chirho, file_id_chirho);
     inject_prelude_import_chirho(&mut discovery_module_chirho);
     register_discovered_type_families_chirho(

@@ -685,7 +685,10 @@ impl ParserChirho<'_> {
                 self.eat_trivia_chirho();
                 if self.pos_chirho == before_chirho {
                     if !self.at_eof_chirho() {
+                        self.builder_chirho
+                            .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
                         self.bump_chirho();
+                        self.builder_chirho.finish_node_chirho();
                     } else {
                         break;
                     }
