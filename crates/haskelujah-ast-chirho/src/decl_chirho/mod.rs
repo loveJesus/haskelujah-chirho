@@ -395,12 +395,24 @@ pub enum DeclChirho {
         /// Span covering the whole foreign declaration.
         span_chirho: SpanChirho,
     },
+    /// A pattern synonym's written signature. The nested forall and qualified
+    /// type retain the distinction between required and provided constraints.
+    PatSynSigDeclChirho {
+        /// Constructor-like names sharing this signature.
+        names_chirho: Vec<NameChirho>,
+        /// Complete written signature, including both contexts.
+        ty_chirho: TypeChirho,
+        /// Span covering the signature declaration.
+        span_chirho: SpanChirho,
+    },
     /// Pattern synonym declaration.
     PatSynDeclChirho {
         /// Pattern synonym name being introduced.
         name_chirho: NameChirho,
         /// Pattern variables bound by this synonym.
         args_chirho: Vec<NameChirho>,
+        /// Whether the arguments were written as record selector fields.
+        record_chirho: bool,
         /// Directionality (unidirectional, implicitly/explicitly bidirectional).
         dir_chirho: PatSynDirChirho,
         /// The pattern this synonym expands to in pattern position.
@@ -634,6 +646,7 @@ impl DeclChirho {
             | Self::FixityDeclChirho { span_chirho, .. }
             | Self::DefaultDeclChirho { span_chirho, .. }
             | Self::ForeignDeclChirho { span_chirho, .. }
+            | Self::PatSynSigDeclChirho { span_chirho, .. }
             | Self::PatSynDeclChirho { span_chirho, .. }
             | Self::TypeFamilyDeclChirho { span_chirho, .. }
             | Self::TypeFamilyInstanceDeclChirho { span_chirho, .. }

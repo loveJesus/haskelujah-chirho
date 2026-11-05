@@ -581,6 +581,7 @@ fn a_module_that_can_bundle_pattern_synonyms_marks_nothing_chirho() {
                 name_chirho: name_chirho("SynonymChirho"),
                 args_chirho: vec![],
                 dir_chirho: PatSynDirChirho::ImplBidirChirho,
+                record_chirho: false,
                 pat_chirho: PatChirho::WildcardChirho(SpanChirho::DUMMY_CHIRHO),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },

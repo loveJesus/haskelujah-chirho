@@ -13,6 +13,111 @@ use super::lower_module_chirho;
 use super::test_support_chirho::parse_and_lower_chirho;
 
 #[test]
+fn pattern_signature_retains_both_contexts_and_quantifier_groups_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "module MChirho where\npattern PChirho, QChirho :: forall {k_chirho} (f_chirho :: k_chirho -> Type). () => forall (a_chirho :: k_chirho). Eq a_chirho => Proxy (f_chirho a_chirho)\n",
+    );
+    let [
+        DeclChirho::PatSynSigDeclChirho {
+            names_chirho,
+            ty_chirho,
+            ..
+        },
+    ] = module_chirho.decls_chirho.as_slice()
+    else {
+        panic!("pattern signature must retain its role");
+    };
+    assert_eq!(
+        names_chirho
+            .iter()
+            .map(|name_chirho| name_chirho.text_chirho())
+            .collect::<Vec<_>>(),
+        ["PChirho", "QChirho"]
+    );
+    let TypeChirho::ForallChirho {
+        vars_chirho,
+        body_chirho,
+        ..
+    } = ty_chirho
+    else {
+        panic!("outer forall");
+    };
+    assert_eq!(vars_chirho.len(), 2);
+    assert!(vars_chirho[0].kind_annotation_chirho.is_none());
+    assert!(vars_chirho[1].kind_annotation_chirho.is_some());
+    let TypeChirho::QualChirho {
+        context_chirho,
+        body_chirho,
+        ..
+    } = &**body_chirho
+    else {
+        panic!("required context");
+    };
+    assert!(context_chirho.is_empty());
+    let TypeChirho::ForallChirho {
+        vars_chirho,
+        body_chirho,
+        ..
+    } = &**body_chirho
+    else {
+        panic!("existential forall");
+    };
+    assert_eq!(vars_chirho[0].text_chirho(), "a_chirho");
+    let TypeChirho::QualChirho { context_chirho, .. } = &**body_chirho else {
+        panic!("provided context");
+    };
+    assert_eq!(context_chirho.len(), 1);
+}
+
+#[test]
+fn record_pattern_synonym_preserves_field_order_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "module MChirho where\npattern PairChirho {second_chirho, first_chirho} = (first_chirho, second_chirho)\n",
+    );
+    let [
+        DeclChirho::PatSynDeclChirho {
+            args_chirho,
+            record_chirho,
+            ..
+        },
+    ] = module_chirho.decls_chirho.as_slice()
+    else {
+        panic!("pattern binding");
+    };
+    assert!(*record_chirho);
+    assert_eq!(
+        args_chirho
+            .iter()
+            .map(|name_chirho| name_chirho.text_chirho())
+            .collect::<Vec<_>>(),
+        ["second_chirho", "first_chirho"]
+    );
+}
+
+#[test]
+fn incomplete_pattern_declarations_remain_syntax_errors_chirho() {
+    for declaration_chirho in [
+        "pattern PChirho ::",
+        "pattern PChirho =",
+        "pattern PChirho <-",
+        "pattern PChirho {a_chirho,} = a_chirho",
+        "pattern PChirho {a_chirho = b_chirho} = b_chirho",
+        "pattern PChirho {a_chirho = a_chirho",
+    ] {
+        let source_chirho = format!("module MChirho where\n{declaration_chirho}\n");
+        assert!(
+            crate::cst_parser_chirho::ParserChirho::new_chirho(
+                &source_chirho,
+                FileIdChirho::SYNTHETIC_CHIRHO
+            )
+            .parse_checked_chirho()
+            .is_err(),
+            "{declaration_chirho}"
+        );
+    }
+}
+
+#[test]
 fn lower_infix_expr_with_lambda_rhs_chirho() {
     let module_chirho = parse_and_lower_chirho(
         "module M where\nonEChirho action1Chirho action2Chirho = action1Chirho `catchEChirho` \\eChirho -> action2Chirho >> throwEChirho eChirho\n",

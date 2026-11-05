@@ -1159,6 +1159,14 @@ fn walk_chirho(
             }
             ProjectionNodeChirho::DeclarationChirho(declaration_chirho) => match declaration_chirho
             {
+                DeclChirho::PatSynSigDeclChirho {
+                    names_chirho,
+                    ty_chirho,
+                    ..
+                } => {
+                    push_chirho(ProjectionNodeChirho::NamesChirho(names_chirho))?;
+                    push_chirho(ProjectionNodeChirho::TypeChirho(ty_chirho))?;
+                }
                 DeclChirho::TypeSigChirho {
                     name_chirho,
                     ty_chirho,

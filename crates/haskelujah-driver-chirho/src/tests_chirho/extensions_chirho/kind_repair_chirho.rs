@@ -739,3 +739,84 @@ valueChirho = let { innerChirho = 1 :: Int }
 "####).err().expect("structural syntax remains fatal under deferral");
     assert!(error_chirho.contains("error[E0002]"), "{error_chirho}");
 }
+
+#[test]
+fn pattern_syntax_corpus_t11524_chirho() {
+    frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/syntax_chirho/T11524.hs"
+    ))
+    .expect("fresh GHC-positive exact corpus source checks");
+}
+
+#[test]
+fn pattern_syntax_corpus_t18005_chirho() {
+    frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/syntax_chirho/T18005.hs"
+    ))
+    .expect("fresh GHC-positive exact corpus source checks");
+}
+
+#[test]
+fn pattern_syntax_corpus_t21501_chirho() {
+    frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/syntax_chirho/T21501.hs"
+    ))
+    .expect("fresh GHC-positive exact corpus source checks");
+}
+
+#[test]
+fn pattern_syntax_corpus_t7169_chirho() {
+    frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/syntax_chirho/T7169.hs"
+    ))
+    .expect("fresh GHC-positive exact corpus source checks");
+}
+
+#[test]
+fn pattern_signature_patternnoscopedchirho_chirho() {
+    frontend_chirho(r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE PatternSynonyms, ViewPatterns, ExplicitForAll, KindSignatures, PolyKinds, TypeApplications #-}
+module PatternNoScopedChirho where
+import Data.Kind (Type)
+import Data.Proxy (Proxy(..))
+pattern PChirho :: forall (f_chirho :: Type -> Type). Proxy f_chirho
+pattern PChirho <- (id @(Proxy f_chirho) -> Proxy)
+"#).expect("fresh GHC pattern-signature scoped positive checks");
+}
+
+#[test]
+fn pattern_signature_patternscopedchirho_chirho() {
+    frontend_chirho(r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE PatternSynonyms, ViewPatterns, ExplicitForAll, KindSignatures, PolyKinds, TypeApplications, ScopedTypeVariables #-}
+module PatternScopedChirho where
+import Data.Kind (Type)
+import Data.Proxy (Proxy(..))
+pattern PChirho :: forall (f_chirho :: Type -> Type). Proxy f_chirho
+pattern PChirho <- (id @(Proxy f_chirho) -> Proxy)
+"#).expect("fresh GHC pattern-signature scoped positive checks");
+}
+
+#[test]
+fn pattern_signature_patternabstractionscopedchirho_chirho() {
+    frontend_chirho(r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE PatternSynonyms, ViewPatterns, ExplicitForAll, KindSignatures, PolyKinds, TypeApplications, TypeAbstractions #-}
+module PatternAbstractionScopedChirho where
+import Data.Kind (Type)
+import Data.Proxy (Proxy(..))
+pattern PChirho :: forall (f_chirho :: Type -> Type). Proxy f_chirho
+pattern PChirho <- (id @(Proxy f_chirho) -> Proxy)
+"#).expect("fresh GHC pattern-signature scoped positive checks");
+}
+
+#[test]
+fn pattern_signature_patternwrongkindchirho_chirho() {
+    let error_chirho = frontend_chirho(r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE PatternSynonyms, ViewPatterns, ExplicitForAll, KindSignatures, PolyKinds, TypeApplications, ScopedTypeVariables #-}
+module PatternWrongKindChirho where
+import Data.Kind (Type)
+import Data.Proxy (Proxy(..))
+pattern PChirho :: forall (f_chirho :: Type -> Type). Proxy f_chirho
+pattern PChirho <- (id @(Proxy @Type f_chirho) -> Proxy)
+"#).err().expect("fresh GHC wrong-kind negative rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}

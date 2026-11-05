@@ -17,13 +17,34 @@ impl TypeElaboratorChirho<'_> {
         module_chirho: &mut ModuleChirho,
     ) -> Result<(), ElaborationErrorChirho> {
         for declaration_chirho in &mut module_chirho.decls_chirho {
-            if let DeclChirho::TypeSigChirho {
-                name_chirho,
-                ty_chirho,
-                ..
-            } = declaration_chirho
-            {
-                self.value_signature_chirho(name_chirho, ty_chirho)?;
+            match declaration_chirho {
+                DeclChirho::TypeSigChirho {
+                    name_chirho,
+                    ty_chirho,
+                    ..
+                } => {
+                    self.value_signature_chirho(name_chirho, ty_chirho)?;
+                }
+                DeclChirho::PatSynSigDeclChirho {
+                    names_chirho,
+                    ty_chirho,
+                    ..
+                } => {
+                    let checked_chirho =
+                        self.scoped_chirho(|this_chirho| this_chirho.check_type_chirho(ty_chirho))?;
+                    for name_chirho in names_chirho {
+                        let checked_chirho = self
+                            .state_chirho
+                            .copy_chirho(&checked_chirho, name_chirho.span_chirho())?;
+                        self.store_checked_signature_scope_chirho(
+                            name_chirho,
+                            ty_chirho,
+                            checked_chirho,
+                            true,
+                        )?;
+                    }
+                }
+                _ => {}
             }
         }
         Ok(())
@@ -80,7 +101,7 @@ impl TypeElaboratorChirho<'_> {
         self.state_chirho
             .charge_chirho(1, 0, declaration_chirho.span_chirho())?;
         match declaration_chirho {
-            DeclChirho::TypeSigChirho { .. } => {}
+            DeclChirho::TypeSigChirho { .. } | DeclChirho::PatSynSigDeclChirho { .. } => {}
             DeclChirho::ForeignDeclChirho { ty_chirho, .. } => {
                 self.check_type_chirho(ty_chirho)?;
             }
@@ -126,6 +147,7 @@ impl TypeElaboratorChirho<'_> {
                                 &method_chirho.name_chirho,
                                 &method_chirho.ty_chirho,
                                 checked_chirho,
+                                false,
                             )?;
                             for name_chirho in &hidden_chirho {
                                 this_chirho
@@ -234,10 +256,12 @@ impl TypeElaboratorChirho<'_> {
                 }
             }
             DeclChirho::PatSynDeclChirho {
+                name_chirho,
                 pat_chirho,
                 dir_chirho,
                 ..
             } => {
+                self.signature_scope_chirho(name_chirho)?;
                 self.pattern_chirho(pat_chirho)?;
                 if let PatSynDirChirho::ExplBidirChirho {
                     builder_binds_chirho,
@@ -344,7 +368,7 @@ impl TypeElaboratorChirho<'_> {
     ) -> Result<(), ElaborationErrorChirho> {
         let checked_chirho =
             self.scoped_chirho(|this_chirho| this_chirho.check_type_chirho(ty_chirho))?;
-        self.store_checked_signature_scope_chirho(name_chirho, ty_chirho, checked_chirho)
+        self.store_checked_signature_scope_chirho(name_chirho, ty_chirho, checked_chirho, false)
     }
 
     fn store_checked_signature_scope_chirho(
@@ -352,11 +376,15 @@ impl TypeElaboratorChirho<'_> {
         name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
         ty_chirho: &TypeChirho,
         checked_chirho: TyChirho,
+        pattern_chirho: bool,
     ) -> Result<(), ElaborationErrorChirho> {
         self.state_chirho
             .charge_chirho(1, 1, name_chirho.span_chirho())?;
-        let variables_chirho =
-            self.checked_signature_scope_chirho(ty_chirho, name_chirho.span_chirho())?;
+        let variables_chirho = self.checked_signature_scope_chirho(
+            ty_chirho,
+            name_chirho.span_chirho(),
+            pattern_chirho,
+        )?;
         let key_chirho = self
             .state_chirho
             .name_chirho(name_chirho.text_chirho(), name_chirho.span_chirho())?;
@@ -381,14 +409,27 @@ impl TypeElaboratorChirho<'_> {
         &mut self,
         ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirho,
         span_chirho: SpanChirho,
+        pattern_chirho: bool,
     ) -> Result<SourceVariablesChirho, ElaborationErrorChirho> {
-        if !self.scoped_type_variables_chirho {
+        if !pattern_chirho && !self.scoped_type_variables_chirho {
             return Ok(Vec::new());
         }
         let mut variables_chirho = Vec::new();
-        if let haskelujah_ast_chirho::ty_chirho::TypeChirho::ForallChirho { vars_chirho, .. } =
-            ty_chirho
-        {
+        let mut spine_chirho = ty_chirho;
+        loop {
+            self.state_chirho.charge_chirho(1, 0, span_chirho)?;
+            let TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            } = spine_chirho
+            else {
+                if pattern_chirho && let TypeChirho::QualChirho { body_chirho, .. } = spine_chirho {
+                    spine_chirho = body_chirho;
+                    continue;
+                }
+                break;
+            };
             for binder_chirho in vars_chirho {
                 let variable_chirho = self
                     .check_variable_owner_chirho(&binder_chirho.name_chirho)?
@@ -405,6 +446,10 @@ impl TypeElaboratorChirho<'_> {
                     kind_chirho,
                 ));
             }
+            if !pattern_chirho {
+                break;
+            }
+            spine_chirho = body_chirho;
         }
         Ok(variables_chirho)
     }
@@ -787,8 +832,11 @@ impl TypeElaboratorChirho<'_> {
                         this_chirho.scoped_chirho(|this_chirho| {
                             this_chirho.check_type_chirho(ty_chirho)
                         })?;
-                        let variables_chirho = this_chirho
-                            .checked_signature_scope_chirho(ty_chirho, ty_chirho.span_chirho())?;
+                        let variables_chirho = this_chirho.checked_signature_scope_chirho(
+                            ty_chirho,
+                            ty_chirho.span_chirho(),
+                            false,
+                        )?;
                         for (name_chirho, variable_chirho, kind_chirho) in variables_chirho {
                             this_chirho.bind_variable_chirho(
                                 name_chirho,

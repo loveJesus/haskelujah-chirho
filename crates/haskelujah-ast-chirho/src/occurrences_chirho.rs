@@ -195,6 +195,7 @@ pub fn visit_decl_walk_chirho(decl_chirho: &mut DeclChirho, walk_chirho: &mut Wa
         }
         // Declarations that hold types, names and kinds but no expression.
         DeclChirho::TypeSigChirho { .. }
+        | DeclChirho::PatSynSigDeclChirho { .. }
         | DeclChirho::DataDeclChirho { .. }
         | DeclChirho::NewtypeDeclChirho { .. }
         | DeclChirho::TypeAliasDeclChirho { .. }

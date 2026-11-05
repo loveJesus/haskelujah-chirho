@@ -437,11 +437,49 @@ impl ParserChirho<'_> {
         self.bump_chirho(); // "pattern" (VarId)
         self.eat_trivia_chirho();
 
-        // Pattern synonym name (ConId)
-        if self.at_chirho(RawTokenKindChirho::ConIdChirho) {
-            self.bump_chirho();
-        }
+        self.expect_chirho(RawTokenKindChirho::ConIdChirho);
         self.eat_trivia_chirho();
+
+        // A signature is a declaration of its own, not a body-less binding.
+        // Keep its whole type so required/provided contexts remain nested.
+        if self.at_chirho(RawTokenKindChirho::ColonColonChirho)
+            || self.at_chirho(RawTokenKindChirho::CommaChirho)
+        {
+            while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+                self.expect_chirho(RawTokenKindChirho::ConIdChirho);
+                self.eat_trivia_chirho();
+            }
+            self.expect_chirho(RawTokenKindChirho::ColonColonChirho);
+            self.eat_trivia_chirho();
+            let start_chirho = self.pos_chirho;
+            self.parse_type_chirho();
+            if start_chirho == self.pos_chirho {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                self.builder_chirho.finish_node_chirho();
+            }
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
+        if self.at_chirho(RawTokenKindChirho::LeftBraceChirho) {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+            if !self.at_chirho(RawTokenKindChirho::RightBraceChirho) {
+                self.expect_chirho(RawTokenKindChirho::VarIdChirho);
+                self.eat_trivia_chirho();
+                while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                    self.expect_chirho(RawTokenKindChirho::VarIdChirho);
+                    self.eat_trivia_chirho();
+                }
+            }
+            self.expect_chirho(RawTokenKindChirho::RightBraceChirho);
+            self.eat_trivia_chirho();
+        }
 
         // Pattern variables (VarIds before = or <-)
         while self.at_chirho(RawTokenKindChirho::VarIdChirho) && !self.at_varid_text_chirho("where")
@@ -450,20 +488,30 @@ impl ParserChirho<'_> {
             self.eat_trivia_chirho();
         }
 
+        let body_start_chirho;
         // Direction: = (implicitly bidirectional) or <- (unidirectional/explicitly bidirectional)
         if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
             self.bump_chirho(); // =
             self.eat_trivia_chirho();
+            body_start_chirho = self.pos_chirho;
             self.parse_pat_chirho();
         } else if self.at_chirho(RawTokenKindChirho::LeftArrowChirho) {
             self.bump_chirho(); // <-
             self.eat_trivia_chirho();
+            body_start_chirho = self.pos_chirho;
             self.parse_pat_chirho();
             // Check for explicitly bidirectional where clause
             self.eat_trivia_chirho();
             if self.at_chirho(RawTokenKindChirho::WhereChirho) {
                 self.parse_where_block_chirho();
             }
+        } else {
+            body_start_chirho = self.pos_chirho;
+        }
+        if body_start_chirho == self.pos_chirho {
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+            self.builder_chirho.finish_node_chirho();
         }
 
         self.builder_chirho.finish_node_chirho();

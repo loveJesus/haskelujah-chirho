@@ -751,6 +751,7 @@ pub(crate) fn collect_all_definitions_chirho(
                 }
             }
             DeclChirho::TypeSigChirho { .. }
+            | DeclChirho::PatSynSigDeclChirho { .. }
             | DeclChirho::InstanceDeclChirho { .. }
             | DeclChirho::FixityDeclChirho { .. }
             | DeclChirho::DefaultDeclChirho { .. }

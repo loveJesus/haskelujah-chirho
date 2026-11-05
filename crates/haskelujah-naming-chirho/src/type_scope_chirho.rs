@@ -144,6 +144,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
     fn walk_decl_chirho(&mut self, decl_chirho: &DeclChirho) {
         match decl_chirho {
             DeclChirho::TypeSigChirho { ty_chirho, .. }
+            | DeclChirho::PatSynSigDeclChirho { ty_chirho, .. }
             | DeclChirho::ForeignDeclChirho { ty_chirho, .. } => {
                 self.walk_signature_type_chirho(ty_chirho);
             }

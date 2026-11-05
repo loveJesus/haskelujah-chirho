@@ -43,7 +43,10 @@ pub(super) fn declaration_module_chirho(
                 | DeclChirho::ClassDeclChirho { .. }
                 | DeclChirho::InstanceDeclChirho { .. }
         ) || signature_headers_chirho
-            && matches!(declaration_chirho, DeclChirho::TypeSigChirho { .. }))
+            && matches!(
+                declaration_chirho,
+                DeclChirho::TypeSigChirho { .. } | DeclChirho::PatSynSigDeclChirho { .. }
+            ))
         {
             continue;
         }
