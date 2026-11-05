@@ -43,6 +43,21 @@ pub(super) struct EqualityEvidenceSnapshotChirho {
 }
 
 impl EqualityEvidenceSnapshotChirho {
+    /// Only the newly checked written context is attached to this ancestry.
+    /// Intervening pattern evidence remains on the live solver's other head.
+    pub(super) fn with_rewrites_chirho(&self, rewrites_chirho: Vec<(TyChirho, TyChirho)>) -> Self {
+        Self {
+            head_chirho: if rewrites_chirho.is_empty() {
+                self.head_chirho.clone()
+            } else {
+                Some(Arc::new(EqualityEvidenceChirho {
+                    parent_chirho: self.head_chirho.clone(),
+                    rewrites_chirho,
+                }))
+            },
+        }
+    }
+
     pub(super) fn view_chirho(&self) -> EqualityEvidenceViewChirho<'_> {
         EqualityEvidenceViewChirho {
             head_chirho: self.head_chirho.as_deref(),

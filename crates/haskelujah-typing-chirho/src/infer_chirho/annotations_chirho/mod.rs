@@ -12,6 +12,7 @@ use haskelujah_span_chirho::SpanChirho;
 
 mod ambiguity_chirho;
 mod body_types_chirho;
+pub(super) use body_types_chirho::ValueParameterScopeChirho;
 mod escape_chirho;
 #[cfg(test)]
 mod tests_chirho;
@@ -63,8 +64,34 @@ impl InferCtxChirho {
         span_chirho: SpanChirho,
         check_chirho: impl FnOnce(&mut Self, &TyChirho) -> ResultChirho,
     ) -> (ResultChirho, SubstChirho) {
+        self.with_rigid_signature_at_parameter_entry_chirho(
+            scheme_chirho,
+            span_chirho,
+            None,
+            |context_chirho, expected_chirho, _entry_chirho| {
+                check_chirho(context_chirho, expected_chirho)
+            },
+        )
+    }
+
+    /// A mixed function spine uses the same actual rigid images and written
+    /// predicates, while its fixedness view excludes earlier own patterns.
+    pub(super) fn with_rigid_signature_at_parameter_entry_chirho<ResultChirho>(
+        &mut self,
+        scheme_chirho: &SchemeChirho,
+        span_chirho: SpanChirho,
+        entry_chirho: Option<&ValueParameterScopeChirho>,
+        check_chirho: impl FnOnce(
+            &mut Self,
+            &TyChirho,
+            Option<&ValueParameterScopeChirho>,
+        ) -> ResultChirho,
+    ) -> (ResultChirho, SubstChirho) {
         let saved_skolems_chirho = self.skolem_bindings_chirho.clone();
         let (expected_chirho, givens_chirho) = self.skolemize_scheme_parts_chirho(scheme_chirho);
+        let parameter_entry_chirho = entry_chirho.and_then(|entry_chirho| {
+            self.extend_value_parameter_scope_chirho(entry_chirho, &givens_chirho, span_chirho)
+        });
         let local_skolems_chirho: std::collections::HashSet<String> = scheme_chirho
             .vars_chirho
             .iter()
@@ -90,7 +117,13 @@ impl InferCtxChirho {
         let result_chirho = self.with_signature_givens_and_finish_chirho(
             givens_chirho,
             &expected_chirho,
-            |context_chirho| check_chirho(context_chirho, &expected_chirho),
+            |context_chirho| {
+                check_chirho(
+                    context_chirho,
+                    &expected_chirho,
+                    parameter_entry_chirho.as_ref(),
+                )
+            },
             |context_chirho| {
                 if let Some(captured_chirho) = captured_chirho {
                     public_chirho = context_chirho.check_annotation_escape_chirho(

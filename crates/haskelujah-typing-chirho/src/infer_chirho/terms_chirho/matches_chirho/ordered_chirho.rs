@@ -8,6 +8,14 @@ use super::body_chirho::BodyOrderChirho;
 use super::*;
 use haskelujah_ast_chirho::expr_chirho::LocalBindChirho;
 
+#[derive(Clone, Copy)]
+struct OrderedPatternSiteChirho<'scope_chirho> {
+    where_chirho: &'scope_chirho [LocalBindChirho],
+    span_chirho: SpanChirho,
+    parameter_scope_chirho:
+        Option<&'scope_chirho super::super::annotations_chirho::ValueParameterScopeChirho>,
+}
+
 impl InferCtxChirho {
     pub(super) fn has_required_spine_chirho(&self, mut term_chirho: &TyChirho) -> bool {
         for _ in 0..128 {
@@ -54,6 +62,7 @@ impl InferCtxChirho {
             self.type_normalization_exhausted_chirho.set(true);
             return SubstChirho::empty_chirho();
         };
+        let parameter_scope_chirho = self.value_parameter_scope_chirho();
         self.check_ordered_parameter_entry_chirho(
             patterns_chirho.len(),
             entry_chirho,
@@ -63,7 +72,11 @@ impl InferCtxChirho {
         );
         self.ordered_pattern_cursor_chirho(
             patterns_chirho,
-            (where_chirho, span_chirho),
+            OrderedPatternSiteChirho {
+                where_chirho,
+                span_chirho,
+                parameter_scope_chirho: parameter_scope_chirho.as_ref(),
+            },
             copied_chirho,
             body_chirho,
             &mut budget_chirho,
@@ -162,16 +175,44 @@ impl InferCtxChirho {
         }
     }
 
+    fn with_ordered_signature_chirho(
+        &mut self,
+        scheme_chirho: &SchemeChirho,
+        site_chirho: OrderedPatternSiteChirho<'_>,
+        check_chirho: impl FnOnce(&mut Self, &TyChirho, OrderedPatternSiteChirho<'_>) -> SubstChirho,
+    ) -> (SubstChirho, SubstChirho) {
+        self.with_rigid_signature_at_parameter_entry_chirho(
+            scheme_chirho,
+            site_chirho.span_chirho,
+            site_chirho.parameter_scope_chirho,
+            |context_chirho, opened_chirho, parameter_scope_chirho| {
+                if site_chirho.parameter_scope_chirho.is_some() && parameter_scope_chirho.is_none()
+                {
+                    return SubstChirho::empty_chirho();
+                }
+                check_chirho(
+                    context_chirho,
+                    opened_chirho,
+                    OrderedPatternSiteChirho {
+                        parameter_scope_chirho,
+                        ..site_chirho
+                    },
+                )
+            },
+        )
+    }
+
     fn ordered_pattern_cursor_chirho(
         &mut self,
         patterns_chirho: &[PatChirho],
-        site_chirho: (&[LocalBindChirho], SpanChirho),
+        site_chirho: OrderedPatternSiteChirho<'_>,
         current_chirho: TyChirho,
         body_chirho: &mut impl FnMut(&mut Self, &TyChirho) -> (SubstChirho, TyChirho),
         budget_chirho: &mut super::super::equality_normalization_chirho::EqualityBudgetChirho,
         depth_chirho: usize,
     ) -> SubstChirho {
-        let (where_chirho, span_chirho) = site_chirho;
+        let where_chirho = site_chirho.where_chirho;
+        let span_chirho = site_chirho.span_chirho;
         if depth_chirho >= 128 || budget_chirho.work_chirho(1).is_none() {
             self.type_normalization_exhausted_chirho.set(true);
             return SubstChirho::empty_chirho();
@@ -196,12 +237,12 @@ impl InferCtxChirho {
                     preds_chirho: Vec::new(),
                     ty_chirho: *next_chirho,
                 };
-                let (checked_chirho, public_chirho) = self.with_rigid_signature_chirho(&scheme_chirho, span_chirho, |context_chirho, opened_chirho| {
+                let (checked_chirho, public_chirho) = self.with_ordered_signature_chirho(&scheme_chirho, site_chirho, |context_chirho, opened_chirho, site_chirho| {
                     let Some(opened_chirho) = super::super::equality_normalization_chirho::copy_term_with_budget_chirho(opened_chirho, budget_chirho) else {
                         context_chirho.type_normalization_exhausted_chirho.set(true);
                         return SubstChirho::empty_chirho();
                     };
-                    context_chirho.ordered_pattern_cursor_chirho(patterns_chirho, (where_chirho, span_chirho), opened_chirho, body_chirho, budget_chirho, depth_chirho + 1)
+                    context_chirho.ordered_pattern_cursor_chirho(patterns_chirho, site_chirho, opened_chirho, body_chirho, budget_chirho, depth_chirho + 1)
                 });
                 self.publish_signature_solution_chirho(checked_chirho, &public_chirho)
             }
@@ -215,6 +256,19 @@ impl InferCtxChirho {
                 };
                 let (next_chirho, givens_chirho) =
                     self.expose_qualified_parts_chirho(qualified_chirho, Vec::new());
+                let parameter_scope_chirho = match site_chirho.parameter_scope_chirho {
+                    Some(entry_chirho) => {
+                        let Some(extended_chirho) = self.extend_value_parameter_scope_chirho(
+                            entry_chirho,
+                            &givens_chirho,
+                            span_chirho,
+                        ) else {
+                            return SubstChirho::empty_chirho();
+                        };
+                        Some(extended_chirho)
+                    }
+                    None => None,
+                };
                 self.with_signature_givens_chirho(givens_chirho, &next_chirho, |context_chirho| {
                     let Some(copied_chirho) =
                         super::super::equality_normalization_chirho::copy_term_with_budget_chirho(
@@ -227,7 +281,10 @@ impl InferCtxChirho {
                     };
                     context_chirho.ordered_pattern_cursor_chirho(
                         patterns_chirho,
-                        (where_chirho, span_chirho),
+                        OrderedPatternSiteChirho {
+                            parameter_scope_chirho: parameter_scope_chirho.as_ref(),
+                            ..site_chirho
+                        },
                         copied_chirho,
                         body_chirho,
                         budget_chirho,
@@ -264,7 +321,7 @@ impl InferCtxChirho {
                     preds_chirho: Vec::new(),
                     ty_chirho: next_chirho,
                 };
-                let (checked_chirho, public_chirho) = self.with_rigid_signature_chirho(&scheme_chirho, span_chirho, |context_chirho, opened_chirho| {
+                let (checked_chirho, public_chirho) = self.with_ordered_signature_chirho(&scheme_chirho, site_chirho, |context_chirho, opened_chirho, site_chirho| {
                     let Some(image_chirho) = context_chirho.skolem_bindings_chirho.lookup_image_chirho(&record_chirho.variable_chirho) else {
                         context_chirho.non_deferrable_diagnostics_chirho.push_chirho(
                             crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
@@ -312,7 +369,7 @@ impl InferCtxChirho {
                         }
                     }
                     let result_chirho = if let Some(copied_chirho) = super::super::equality_normalization_chirho::copy_term_with_budget_chirho(opened_chirho, budget_chirho) {
-                        context_chirho.ordered_pattern_cursor_chirho(&patterns_chirho[1..], (where_chirho, span_chirho), copied_chirho, body_chirho, budget_chirho, depth_chirho + 1)
+                        context_chirho.ordered_pattern_cursor_chirho(&patterns_chirho[1..], site_chirho, copied_chirho, body_chirho, budget_chirho, depth_chirho + 1)
                     } else { context_chirho.type_normalization_exhausted_chirho.set(true); SubstChirho::empty_chirho() };
                     context_chirho.restore_type_pattern_aliases_chirho(mark_chirho);
                     result_chirho
@@ -322,7 +379,6 @@ impl InferCtxChirho {
             TyChirho::FunChirho(parameter_chirho, next_chirho, _) => {
                 self.env_chirho.push_scope_chirho();
                 let frame_chirho = self.begin_pattern_implication_chirho();
-                let parameter_scope_chirho = self.value_parameter_scope_chirho();
                 let first_chirho = self.bind_pat_chirho(&patterns_chirho[0], &parameter_chirho);
                 self.apply_subst_all_chirho(&first_chirho);
                 let next_chirho = first_chirho.apply_scheme_term_bounded_chirho(
@@ -342,14 +398,14 @@ impl InferCtxChirho {
                         );
                     let child_chirho = self.ordered_pattern_cursor_chirho(
                         &patterns_chirho[1..],
-                        (where_chirho, span_chirho),
+                        site_chirho,
                         next_chirho,
                         body_chirho,
                         budget_chirho,
                         depth_chirho + 1,
                     );
                     self.check_solved_value_parameters_chirho(
-                        parameter_scope_chirho.as_ref(),
+                        site_chirho.parameter_scope_chirho,
                         std::slice::from_ref(parameter_chirho.as_ref()),
                         span_chirho,
                     );

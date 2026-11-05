@@ -116,3 +116,38 @@ flowchart TD
   added to the scoped type-variable environment of the equation body.
 - Template Haskell reification currently maps required and invisible foralls to the existing
   `ForallTChirho` representation because the TH type AST does not yet encode binder visibility.
+
+## Checked mixed-spine parameter scope
+
+The ordinary kind-engine continuation uses the existing checked declaration catalogue and
+retained module state. This path is implemented on the isolated row 688 branch; its focused
+checks do not establish whole-engine preservation or authorize a main landing.
+
+```mermaid
+flowchart TD
+    checked_spine_chirho[Checked mixed required and value spine] --> entry_chirho[Retain refinement prefix and shared evidence head before own patterns]
+    entry_chirho --> cursor_chirho[Consume the actual spine in written order]
+    cursor_chirho --> universal_chirho[Open actual rich universal images]
+    universal_chirho --> written_chirho[Normalize original opened written equalities through retained entry evidence]
+    written_chirho --> extend_chirho[Attach only newly admitted rules to the retained ancestry]
+    extend_chirho --> cursor_chirho
+    cursor_chirho --> pattern_chirho[Match a value pattern under the live implication]
+    pattern_chirho --> next_chirho[Continue with the retained parameter entry]
+    next_chirho --> solved_chirho[Check final ordinary solutions before leaving actual binder scopes]
+    solved_chirho --> fixedness_chirho[Read checked full kinds using entry evidence and current lexical images]
+    pattern_chirho --> lambda_entry_chirho[Nested lambda captures its own entry inside the enclosing implication]
+    lambda_entry_chirho --> fixedness_chirho
+    written_chirho --> failure_chirho[Resource or expired-scope failure remains non-deferrable]
+    fixedness_chirho --> failure_chirho
+```
+
+- A later parameter cannot acquire fixedness from an earlier pattern in the same parameter
+  list. The cursor retains one entry ancestry instead of recapturing each live pattern scope.
+- Written constraints after a value slot remain available to their own later slots. They
+  extend the retained ancestry before the live solver installs them. Copying an already
+  normalized live rule would incorrectly import earlier pattern premises.
+- New rule payloads are bounded by the original state allowance. Inherited evidence shares
+  its existing immutable parent chain; scope restoration never restores spent resources.
+- A nested lambda has a distinct parameter list and may use evidence from its enclosing
+  implication. Ordinary type mismatches retain the existing deferral category; resource
+  and scope failures do not acquire that category.

@@ -712,3 +712,38 @@ fn representation_parameter_class_function_fixedboxedfunctionmethod_chirho() {
         "fresh GHC-positive function-valued class method keeps its concrete unlifted result arrow",
     );
 }
+
+#[test]
+fn mixed_parameter_own_pattern_preserves_the_lifted_wildcard_mismatch_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/parameters_chirho/mixed_slots_chirho/LateMixedOwnPatternChirho",
+    )
+    .expect_err("fresh GHC18872 rejects the lifted partial-signature wildcard");
+    assert!(error_chirho.contains("error[E0200]"), "{error_chirho}");
+}
+
+#[test]
+fn mixed_parameter_reversed_pattern_preserves_the_lifted_wildcard_mismatch_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/parameters_chirho/mixed_slots_chirho/LateMixedReversedPatternChirho",
+    )
+    .expect_err("fresh GHC18872 rejects the reversed lifted wildcard parameter");
+    assert!(error_chirho.contains("error[E0200]"), "{error_chirho}");
+}
+
+#[test]
+fn mixed_parameter_later_written_context_authorizes_its_actual_value_slot_chirho() {
+    representation_field_fixture_chirho(
+        "forall_chirho/parameters_chirho/mixed_slots_chirho/LateMixedWrittenContextChirho",
+    )
+    .expect("fresh GHC-positive later written equality fixes its actual parameter representation");
+}
+
+#[test]
+fn mixed_parameter_context_keeps_the_original_wildcard_type_mismatch_chirho() {
+    let error_chirho = representation_field_fixture_chirho(
+        "forall_chirho/parameters_chirho/mixed_slots_chirho/LateMixedContextLeakChirho",
+    )
+    .expect_err("fresh GHC18872 preserves the original partial-signature mismatch");
+    assert!(error_chirho.contains("error[E0200]"), "{error_chirho}");
+}

@@ -81,6 +81,32 @@ pub(crate) fn elaborate_value_parameters_chirho(
     })
 }
 
+/// Written contexts extend a retained parameter entry using their actual
+/// opened terms. Live pattern rewrites must not normalize these premises.
+pub(crate) fn normalize_value_parameter_equalities_chirho(
+    equalities_chirho: &[(&TyChirho, &TyChirho)],
+    span_chirho: SpanChirho,
+    context_chirho: ArgumentElaborationContextChirho<'_>,
+) -> Result<(Vec<(TyChirho, TyChirho)>, crate::subst_chirho::SubstChirho), ElaborationErrorChirho> {
+    with_argument_elaborator_chirho(context_chirho, span_chirho, false, |elaborator_chirho| {
+        elaborator_chirho.state_chirho.charge_chirho(
+            equalities_chirho.len(),
+            equalities_chirho.len(),
+            span_chirho,
+        )?;
+        equalities_chirho
+            .iter()
+            .map(|(left_chirho, right_chirho)| {
+                Ok((
+                    elaborator_chirho.normalize_value_kind_term_chirho(left_chirho, span_chirho)?,
+                    elaborator_chirho
+                        .normalize_value_kind_term_chirho(right_chirho, span_chirho)?,
+                ))
+            })
+            .collect()
+    })
+}
+
 /// Recheck actual body syntax after its pattern/signature givens are in scope.
 /// The returned syntax retains the same ownership and full hidden applications.
 pub(crate) fn elaborate_body_type_chirho(

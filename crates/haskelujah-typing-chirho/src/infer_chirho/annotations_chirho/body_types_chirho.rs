@@ -7,8 +7,12 @@ use super::*;
 use crate::kind_chirho::elaboration_chirho::{
     ArgumentElaborationContextChirho, CheckedBodyTypeChirho, ElaborationErrorChirho,
     elaborate_body_pattern_type_chirho, elaborate_body_type_chirho,
-    elaborate_value_parameters_chirho,
+    elaborate_value_parameters_chirho, normalize_value_parameter_equalities_chirho,
 };
+
+#[cfg(test)]
+#[path = "body_scope_tests_chirho.rs"]
+mod scope_tests_chirho;
 
 pub(in crate::infer_chirho) struct ValueParameterScopeChirho {
     refinements_chirho: crate::env_chirho::RefinementMarkChirho,
@@ -16,6 +20,66 @@ pub(in crate::infer_chirho) struct ValueParameterScopeChirho {
 }
 
 impl InferCtxChirho {
+    /// Keep the original refinement prefix and add only actual written
+    /// equalities normalized through the previously admitted entry evidence.
+    pub(in crate::infer_chirho) fn extend_value_parameter_scope_chirho(
+        &mut self,
+        entry_chirho: &ValueParameterScopeChirho,
+        predicates_chirho: &[crate::class_chirho::PredChirho],
+        span_chirho: SpanChirho,
+    ) -> Option<ValueParameterScopeChirho> {
+        if let Err(error_chirho) = self.elaboration_state_chirho.charge_chirho(
+            predicates_chirho.len(),
+            predicates_chirho.len(),
+            span_chirho,
+        ) {
+            self.record_body_kind_error_chirho(error_chirho);
+            return None;
+        }
+        let equalities_chirho: Vec<_> = predicates_chirho
+            .iter()
+            .filter(|predicate_chirho| predicate_chirho.class_name_chirho == "~")
+            .filter_map(|predicate_chirho| {
+                predicate_chirho
+                    .extra_tys_chirho
+                    .first()
+                    .map(|right_chirho| (&predicate_chirho.ty_chirho, right_chirho))
+            })
+            .collect();
+        let normalized_chirho = self.check_body_syntax_at_scope_chirho(
+            span_chirho,
+            Some(entry_chirho),
+            |context_chirho| {
+                normalize_value_parameter_equalities_chirho(
+                    &equalities_chirho,
+                    span_chirho,
+                    context_chirho,
+                )
+            },
+        )?;
+        let rules_chirho: Vec<_> = normalized_chirho
+            .into_iter()
+            .filter_map(|(left_chirho, right_chirho)| {
+                self.given_equality_rule_chirho(left_chirho, right_chirho)
+            })
+            .collect();
+        let allocation_chirho = usize::from(!rules_chirho.is_empty());
+        if let Err(error_chirho) = self.elaboration_state_chirho.charge_chirho(
+            allocation_chirho,
+            allocation_chirho,
+            span_chirho,
+        ) {
+            self.record_body_kind_error_chirho(error_chirho);
+            return None;
+        }
+        Some(ValueParameterScopeChirho {
+            refinements_chirho: entry_chirho.refinements_chirho,
+            evidence_chirho: entry_chirho
+                .evidence_chirho
+                .with_rewrites_chirho(rules_chirho),
+        })
+    }
+
     pub(in crate::infer_chirho) fn value_parameter_scope_chirho(
         &self,
     ) -> Option<ValueParameterScopeChirho> {
