@@ -48,8 +48,8 @@ impl InferCtxChirho {
     }
 
     fn new_with_registration_limit_chirho(limit_chirho: usize) -> Self {
-        let mut class_env_chirho = ClassEnvChirho::with_registration_limit_chirho(limit_chirho);
-        class_env_chirho.seed_standard_chirho();
+        let class_env_chirho =
+            ClassEnvChirho::standard_with_registration_limit_chirho(limit_chirho);
         Self::new_with_class_env_chirho(class_env_chirho, true)
     }
 

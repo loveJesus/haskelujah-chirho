@@ -5,6 +5,89 @@
 use super::*;
 
 impl ElaborationStateChirho {
+    pub(crate) fn lend_equality_budget_chirho(
+        &mut self,
+        span_chirho: SpanChirho,
+    ) -> Result<crate::infer_chirho::EqualityBudgetChirho, ElaborationErrorChirho> {
+        self.charge_chirho(0, 0, span_chirho)?;
+        Ok(crate::infer_chirho::EqualityBudgetChirho::limited_chirho(
+            self.work_left_chirho,
+            self.output_left_chirho,
+        ))
+    }
+
+    pub(crate) fn settle_equality_budget_chirho(
+        &mut self,
+        initial_chirho: (usize, usize),
+        budget_chirho: &crate::infer_chirho::EqualityBudgetChirho,
+        exhausted_chirho: bool,
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        let remaining_chirho = budget_chirho.remaining_chirho();
+        self.charge_chirho(
+            initial_chirho.0 - remaining_chirho.0,
+            initial_chirho.1 - remaining_chirho.1,
+            span_chirho,
+        )?;
+        if exhausted_chirho {
+            return Err(self.resource_failure_chirho(
+                "source signature equality probe bound exhausted",
+                span_chirho,
+            ));
+        }
+        Ok(())
+    }
+
+    /// Lend only the original remaining allowance. Even a failed normalization
+    /// is charged before the state returns to its ordinary inference owner.
+    pub(in crate::kind_chirho::elaboration_chirho) fn normalize_equality_pair_chirho(
+        &mut self,
+        view_chirho: crate::infer_chirho::EqualityNormalizationViewChirho<'_>,
+        catalogue_chirho: &crate::infer_chirho::TypeFamilyEnvChirho,
+        left_chirho: &TyChirho,
+        right_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<(TyChirho, TyChirho), ElaborationErrorChirho> {
+        self.charge_chirho(0, 0, span_chirho)?;
+        let mut budget_chirho = crate::infer_chirho::EqualityBudgetChirho::limited_chirho(
+            self.work_left_chirho,
+            self.output_left_chirho,
+        );
+        let initial_chirho = budget_chirho.remaining_chirho();
+        let result_chirho = (|| {
+            let left_chirho = view_chirho.normalize_chirho(
+                catalogue_chirho,
+                self.owner_chirho.is_some(),
+                self.next_variable_chirho,
+                left_chirho,
+                &mut budget_chirho,
+            )?;
+            let right_chirho = view_chirho.normalize_chirho(
+                catalogue_chirho,
+                self.owner_chirho.is_some(),
+                self.next_variable_chirho,
+                right_chirho,
+                &mut budget_chirho,
+            )?;
+            Ok::<_, crate::infer_chirho::EqualityNormalizationExhaustedChirho>((
+                left_chirho,
+                right_chirho,
+            ))
+        })();
+        let remaining_chirho = budget_chirho.remaining_chirho();
+        self.charge_chirho(
+            initial_chirho.0 - remaining_chirho.0,
+            initial_chirho.1 - remaining_chirho.1,
+            span_chirho,
+        )?;
+        result_chirho.map_err(|_| {
+            self.resource_failure_chirho(
+                "scoped kind equality normalization bound exhausted",
+                span_chirho,
+            )
+        })
+    }
+
     pub(in crate::kind_chirho::elaboration_chirho) fn begin_inference_links_chirho(
         &mut self,
         span_chirho: SpanChirho,
@@ -12,6 +95,7 @@ impl ElaborationStateChirho {
         self.charge_chirho(0, 0, span_chirho)?;
         if self.inference_links_chirho.is_some() {
             return Err(ElaborationErrorChirho {
+                mismatch_chirho: None,
                 message_chirho: "nested argument solver handoff".into(),
                 span_chirho,
             });
@@ -45,6 +129,7 @@ impl ElaborationStateChirho {
             self.inference_links_chirho
                 .take()
                 .ok_or_else(|| ElaborationErrorChirho {
+                    mismatch_chirho: None,
                     message_chirho: "argument solver handoff lost its link trail".into(),
                     span_chirho,
                 })?;
@@ -86,6 +171,7 @@ impl ElaborationStateChirho {
         )?;
         result_chirho.map_err(|failure_chirho| {
             let error_chirho = ElaborationErrorChirho {
+                mismatch_chirho: None,
                 message_chirho: format!("kind syntax projection bound exhausted: {failure_chirho}"),
                 span_chirho,
             };

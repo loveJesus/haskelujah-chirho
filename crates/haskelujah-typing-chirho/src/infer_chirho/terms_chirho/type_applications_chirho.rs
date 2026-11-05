@@ -167,14 +167,10 @@ impl InferCtxChirho {
             let fresh_chirho = self.fresh_var_chirho();
             return Some((SubstChirho::empty_chirho(), fresh_chirho));
         }
-        let explicit_kinds_chirho: Vec<_> = type_args_ast_chirho
-            .iter()
-            .map(|argument_chirho| self.checked_type_argument_kind_chirho(argument_chirho))
-            .collect();
-        let explicit_tys_chirho: Vec<TyChirho> = type_args_ast_chirho
+        let (explicit_tys_chirho, explicit_kinds_chirho): (Vec<_>, Vec<_>) = type_args_ast_chirho
             .into_iter()
-            .map(|ty_chirho| self.ast_type_to_ty_in_scope_chirho(ty_chirho))
-            .collect();
+            .map(|argument_chirho| self.check_body_type_argument_chirho(argument_chirho))
+            .unzip();
         let Some((instantiated_ty_chirho, instantiated_preds_chirho)) = self
             .instantiate_scheme_parts_with_visible_type_args_chirho(
                 &scheme_chirho,
@@ -271,10 +267,12 @@ impl InferCtxChirho {
             let TypeChirho::KindAnnotationChirho { kind_chirho, .. } = argument_chirho else {
                 return None;
             };
-            let actual_kind_chirho = self.ast_type_to_ty_in_scope_chirho(kind_chirho);
+            let (actual_chirho, actual_kind_chirho) =
+                self.check_body_type_argument_chirho(argument_chirho);
+            let actual_kind_chirho = actual_kind_chirho
+                .unwrap_or_else(|| self.ast_type_to_ty_in_scope_chirho(kind_chirho));
             let expected_kind_chirho = solver_chirho
                 .apply_ty_chirho(&parameters_chirho.apply_ty_chirho(&binder_chirho.kind_chirho));
-            let actual_chirho = self.ast_type_to_ty_in_scope_chirho(argument_chirho);
             let expected_chirho = solver_chirho
                 .apply_ty_chirho(parameters_chirho.lookup_chirho(&binder_chirho.variable_chirho)?);
             for (left_chirho, right_chirho) in [
@@ -393,6 +391,7 @@ impl InferCtxChirho {
         let result_chirho = (|| {
             let record_chirho = vars_chirho.record_chirho(0).ok_or_else(|| {
                 crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
+                    mismatch_chirho: None,
                     message_chirho: "required application has an empty binder group".into(),
                     span_chirho,
                 }
@@ -401,6 +400,7 @@ impl InferCtxChirho {
                 if self.elaboration_state_chirho.owner_chirho.is_some() {
                     let kind_chirho = record_chirho.kind_chirho.as_ref().ok_or_else(|| {
                         crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
+                            mismatch_chirho: None,
                             message_chirho: "required binder has no checked kind".into(),
                             span_chirho,
                         }
@@ -417,6 +417,7 @@ impl InferCtxChirho {
                     else {
                         return Err(
                             crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
+                                mismatch_chirho: None,
                                 message_chirho: "required argument lost its checked import scope"
                                     .into(),
                                 span_chirho,
@@ -435,6 +436,17 @@ impl InferCtxChirho {
                             scoped_variables_chirho: &self.scoped_tyvars_chirho,
                             images_chirho: &self.skolem_bindings_chirho,
                             refinements_chirho: &self.env_chirho,
+                            equality_chirho: super::EqualityNormalizationViewChirho {
+                                substitutions_chirho: &self.equality_substitutions_chirho,
+                                legacy_synonyms_chirho: &self.type_synonyms_chirho,
+                                type_scope_chirho: Some(&type_scope_chirho),
+                                family_scope_chirho: Some(&family_scope_chirho),
+                                family_module_chirho: &self.family_module_name_chirho,
+                                promotion_present_chirho: true,
+                                evidence_chirho: self.equality_scopes_chirho
+                                    [self.active_equality_scope_chirho]
+                                    .evidence_view_chirho(),
+                            },
                         },
                     )?
                 } else {
@@ -444,6 +456,7 @@ impl InferCtxChirho {
                         self.expr_to_required_type_arg_chirho(argument_chirho)
                             .ok_or_else(|| {
                                 crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
+                                    mismatch_chirho: None,
                                     message_chirho: "expression is not a required type argument"
                                         .into(),
                                     span_chirho,
@@ -466,6 +479,7 @@ impl InferCtxChirho {
                 )
                 .ok_or_else(
                     || crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
+                        mismatch_chirho: None,
                         message_chirho: "required function substitution resource bound exhausted"
                             .into(),
                         span_chirho,
@@ -475,6 +489,7 @@ impl InferCtxChirho {
                 .apply_required_type_arg_chirho(&function_chirho, argument_chirho)
                 .ok_or_else(
                     || crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
+                        mismatch_chirho: None,
                         message_chirho: "required argument substitution resource bound exhausted"
                             .into(),
                         span_chirho,
@@ -489,8 +504,7 @@ impl InferCtxChirho {
         })();
         Some(result_chirho.unwrap_or_else(
             |error_chirho: crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho| {
-                self.non_deferrable_diagnostics_chirho
-                    .push_chirho(error_chirho.into_diagnostic_chirho());
+                self.record_body_kind_error_chirho(error_chirho);
                 (SubstChirho::empty_chirho(), self.fresh_var_chirho())
             },
         ))

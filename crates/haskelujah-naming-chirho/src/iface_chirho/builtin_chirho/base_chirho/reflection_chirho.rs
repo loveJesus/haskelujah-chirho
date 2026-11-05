@@ -14,7 +14,10 @@ use haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho;
 pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
     // Data.Kind — Type, Constraint
     {
-        let mut exports_chirho = IfaceExportsChirho::default();
+        let mut exports_chirho = IfaceExportsChirho {
+            unary_variable_instance_heads_covered_chirho: true,
+            ..IfaceExportsChirho::default()
+        };
         for constructor_chirho in &[
             CompilerTypeConstructorChirho::TypeUniverseChirho,
             CompilerTypeConstructorChirho::ConstraintUniverseChirho,
@@ -30,7 +33,10 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
 
     // Data.Proxy
     {
-        let mut exports_chirho = IfaceExportsChirho::default();
+        let mut exports_chirho = IfaceExportsChirho {
+            unary_variable_instance_heads_covered_chirho: true,
+            ..IfaceExportsChirho::default()
+        };
         let (k_chirho, v_chirho) =
             mk_data_type_chirho(CompilerTypeConstructorChirho::ProxyChirho, &["Proxy"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -462,7 +468,10 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
 
     // Data.Proxy
     {
-        let mut exports_chirho = IfaceExportsChirho::default();
+        let mut exports_chirho = IfaceExportsChirho {
+            unary_variable_instance_heads_covered_chirho: true,
+            ..IfaceExportsChirho::default()
+        };
         let (k_chirho, v_chirho) =
             mk_data_type_chirho(CompilerTypeConstructorChirho::ProxyChirho, &["Proxy"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
@@ -639,7 +648,10 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
 
     // Data.Kind
     {
-        let mut exports_chirho = IfaceExportsChirho::default();
+        let mut exports_chirho = IfaceExportsChirho {
+            unary_variable_instance_heads_covered_chirho: true,
+            ..IfaceExportsChirho::default()
+        };
         for constructor_chirho in [
             CompilerTypeConstructorChirho::TypeUniverseChirho,
             CompilerTypeConstructorChirho::ConstraintUniverseChirho,

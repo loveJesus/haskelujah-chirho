@@ -228,6 +228,7 @@ impl LowerCtxChirho {
             vec![]
         };
         DeclChirho::TypeFamilyDeclChirho {
+            injectivity_chirho: Some(saw_injectivity_chirho),
             name_chirho,
             type_vars_chirho,
             result_kind_chirho,
@@ -325,6 +326,7 @@ impl LowerCtxChirho {
         let mut saw_where_chirho = false;
         let mut saw_double_colon_chirho = false;
         let mut saw_injectivity_result_chirho = false;
+        let mut saw_injectivity_chirho = false;
         let mut skip_visible_binder_chirho = false;
 
         let mut idx_chirho = 0;
@@ -351,6 +353,11 @@ impl LowerCtxChirho {
                             // those names are additional family parameters.
                             saw_injectivity_result_chirho = true;
                         }
+                    } else if kind_chirho == TokenKindChirho::PipeChirho
+                        && saw_injectivity_result_chirho
+                        && !saw_where_chirho
+                    {
+                        saw_injectivity_chirho = true;
                     } else if saw_family_chirho
                         && !saw_where_chirho
                         && !saw_double_colon_chirho
@@ -418,6 +425,7 @@ impl LowerCtxChirho {
         }
 
         DeclChirho::TypeFamilyDeclChirho {
+            injectivity_chirho: Some(saw_injectivity_chirho),
             name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
             type_vars_chirho,
             result_kind_chirho,

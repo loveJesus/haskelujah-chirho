@@ -55,6 +55,7 @@ pub(crate) fn partition_class_members_chirho(
                 }
                 if associated_kind_sig_spans_chirho.contains(&span_chirho) {
                     associated_types_chirho.push(AssocTypeFamilyChirho {
+                        injectivity_chirho: None,
                         default_arguments_chirho: None,
                         name_chirho,
                         data_family_chirho: false,
@@ -79,6 +80,7 @@ pub(crate) fn partition_class_members_chirho(
                 });
             }
             DeclChirho::TypeFamilyDeclChirho {
+                injectivity_chirho,
                 name_chirho,
                 type_vars_chirho,
                 data_family_chirho,
@@ -119,6 +121,7 @@ pub(crate) fn partition_class_members_chirho(
                     .as_ref()
                     .map(|_| type_vars_chirho.clone());
                 associated_types_chirho.push(AssocTypeFamilyChirho {
+                    injectivity_chirho,
                     default_arguments_chirho,
                     name_chirho,
                     data_family_chirho,
@@ -148,6 +151,7 @@ pub(crate) fn partition_class_members_chirho(
                 let default_binders_chirho = (!bodiless_chirho).then(|| type_vars_chirho.clone());
                 let default_rhs_chirho = (!bodiless_chirho).then_some(rhs_chirho);
                 associated_types_chirho.push(AssocTypeFamilyChirho {
+                    injectivity_chirho: None,
                     default_arguments_chirho: None,
                     name_chirho,
                     data_family_chirho: false,
@@ -167,7 +171,8 @@ pub(crate) fn partition_class_members_chirho(
                 ..
             } => {
                 associated_types_chirho.push(AssocTypeFamilyChirho {
-            default_arguments_chirho: None,
+            injectivity_chirho: None,
+                default_arguments_chirho: None,
                     name_chirho,
                     data_family_chirho: true,
                     type_vars_chirho,

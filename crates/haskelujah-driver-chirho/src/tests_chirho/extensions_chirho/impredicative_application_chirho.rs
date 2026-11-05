@@ -10,11 +10,13 @@ fn check_chirho(group_chirho: &str, name_chirho: &str, accepts_chirho: bool) {
     let result_chirho =
         crate::check_source_path_chirho(path_chirho, crate::ExecutionModeChirho::BatchChirho);
     if accepts_chirho {
-        result_chirho.unwrap_or_else(|diagnostics_chirho| panic!("{diagnostics_chirho:?}"));
+        result_chirho.unwrap_or_else(|diagnostics_chirho| {
+            panic!("GHC accepts {name_chirho}: {diagnostics_chirho:?}")
+        });
     } else {
         let diagnostics_chirho = result_chirho
             .err()
-            .expect("GHC rejects this implicit instantiation");
+            .unwrap_or_else(|| panic!("GHC rejects {name_chirho}"));
         assert!(
             diagnostics_chirho
                 .diagnostics_chirho()
@@ -326,6 +328,251 @@ fn cold_imported_synonym_retains_required_binder_correspondence_chirho() {
     check_chirho(
         "required-chirho/aliases-chirho/cold-chirho",
         "RequiredImportedAliasWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn mixed_value_and_required_slots_follow_the_checked_spine_chirho() {
+    for name_chirho in [
+        "MixedRequired",
+        "MixedInvisible",
+        "MixedContext",
+        "MixedDependent",
+    ] {
+        check_chirho(
+            "required-chirho/body-scopes-chirho/mixed-chirho",
+            &format!("{name_chirho}PositiveChirho"),
+            true,
+        );
+        check_chirho(
+            "required-chirho/body-scopes-chirho/mixed-chirho",
+            &format!("{name_chirho}WrongChirho"),
+            false,
+        );
+    }
+}
+
+#[test]
+fn equations_can_return_an_unconsumed_required_signature_chirho() {
+    for name_chirho in ["LeadingRequiredEta", "MixedRequiredEta"] {
+        check_chirho(
+            "required-chirho/body-scopes-chirho/eta-chirho",
+            &format!("{name_chirho}PositiveChirho"),
+            true,
+        );
+        check_chirho(
+            "required-chirho/body-scopes-chirho/eta-chirho",
+            &format!("{name_chirho}WrongChirho"),
+            false,
+        );
+    }
+}
+
+#[test]
+fn body_prefix_chirho() {
+    check_chirho(
+        "required-chirho/body-scopes-chirho/prefix-chirho",
+        "InvisibleDirectPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/prefix-chirho",
+        "InvisibleDirectWrongChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/prefix-chirho",
+        "InvisibleDirectGivenPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/prefix-chirho",
+        "InvisibleDirectUngivenWrongChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/prefix-chirho",
+        "InvisibleAliasPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/prefix-chirho",
+        "InvisibleAliasWrongChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/prefix-chirho",
+        "InvisibleAliasGivenPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/prefix-chirho",
+        "InvisibleAliasUngivenWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn body_deferral_chirho() {
+    check_chirho(
+        "required-chirho/body-scopes-chirho/deferral-chirho",
+        "InvisibleDeferredPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/deferral-chirho",
+        "InvisibleDeferredWrongChirho",
+        true,
+    );
+}
+
+#[test]
+fn body_evidence_chirho() {
+    check_chirho(
+        "required-chirho/body-scopes-chirho/evidence-chirho",
+        "InvisibleBranchPositiveChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/evidence-chirho",
+        "InvisibleBranchWrongChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/evidence-chirho",
+        "FamilyKindGivenPositiveChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/evidence-chirho",
+        "FamilyKindGivenWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn body_distinctions_chirho() {
+    check_chirho(
+        "required-chirho/body-scopes-chirho/distinctions-chirho",
+        "InvisibleBranchStandalonePositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/distinctions-chirho",
+        "FamilyKindAllowedGivenPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/distinctions-chirho",
+        "InvisibleBranchStandaloneWrongChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/distinctions-chirho",
+        "FamilyKindAllowedGivenWrongChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/distinctions-chirho",
+        "StructuralBodyKindWrongChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/distinctions-chirho",
+        "StructuralBodyKindDeferredWrongChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/distinctions-chirho",
+        "ScopedRequiredKindWrongChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/distinctions-chirho",
+        "ScopedRequiredKindDeferredChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/distinctions-chirho",
+        "ImplicitKindRequiredPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/distinctions-chirho",
+        "ImplicitKindRequiredWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn source_equality_signatures_require_determination_chirho() {
+    check_chirho(
+        "required-chirho/body-scopes-chirho/ambiguity-heads-chirho",
+        "DeterminedFamilyKindGivenChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/ambiguity-heads-chirho",
+        "ConstantFamilyKindGivenChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/ambiguity-heads-chirho",
+        "PlainEqualityGivenChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/ambiguity-heads-chirho",
+        "NoninjectiveResultGivenChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/ambiguity-heads-chirho",
+        "FundepDeterminedEqualityChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/ambiguity-heads-chirho",
+        "EmptyImportRigidConstraintWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn source_signature_probe_assigns_whole_family_terms_without_inversion_chirho() {
+    check_chirho(
+        "required-chirho/body-scopes-chirho/whole-meta-chirho",
+        "WholeFamilyMetaPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/whole-meta-chirho",
+        "WholeFamilyMetaAmbiguousChirho",
+        false,
+    );
+}
+
+#[test]
+fn source_signature_probe_preserves_family_dependency_authority_chirho() {
+    check_chirho(
+        "required-chirho/body-scopes-chirho/dependencies-chirho",
+        "InjectiveFamilyDeterminedChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/dependencies-chirho",
+        "NoninjectiveFamilyAmbiguousChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/dependencies-chirho",
+        "CyclicFamilyGivenChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/body-scopes-chirho/dependencies-chirho",
+        "InconsistentFamilyGivenChirho",
         false,
     );
 }

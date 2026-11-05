@@ -537,6 +537,32 @@ fn injectivity_annotation_does_not_inflate_family_arity_chirho() {
         .expect("operator family should survive lowering");
 
     assert_eq!(parameter_names_chirho, ["valueChirho", "dimensionChirho"]);
+    let dependency_facts_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|declaration_chirho| match declaration_chirho {
+            DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                injectivity_chirho,
+                ..
+            } => Some((name_chirho.text_chirho(), *injectivity_chirho)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        dependency_facts_chirho,
+        [("DimChirho", Some(false)), ("OfDimChirho", Some(true))]
+    );
+}
+
+#[test]
+fn a_named_family_result_does_not_invent_an_injectivity_annotation_chirho() {
+    let module_chirho = lower_source_chirho(
+        "{-# LANGUAGE TypeFamilies, TypeFamilyDependencies #-}\nmodule NamedResultChirho where\ntype family NamedChirho valueChirho = resultChirho\n",
+    );
+    assert!(
+        matches!(module_chirho.decls_chirho.first(), Some(DeclChirho::TypeFamilyDeclChirho { injectivity_chirho: Some(false), type_vars_chirho, .. }) if type_vars_chirho.len() == 1)
+    );
 }
 
 #[test]

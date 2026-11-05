@@ -268,8 +268,18 @@ pub(crate) fn run_frontend_under_deferral_chirho(
         collect_safe_unqualified_imported_type_names_chirho(&module_chirho, ifaces_chirho);
     let preferred_qualified_type_names_chirho =
         collect_preferred_qualified_type_names_chirho(&module_chirho, ifaces_chirho);
+    let mut unary_variable_instance_heads_covered_chirho = true;
     for import_chirho in &module_chirho.imports_chirho {
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
+        unary_variable_instance_heads_covered_chirho &= ifaces_chirho
+            .iter()
+            .rev()
+            .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
+            .is_some_and(|iface_chirho| {
+                iface_chirho
+                    .exports_chirho
+                    .unary_variable_instance_heads_covered_chirho
+            });
         if let Some(iface_chirho) = ifaces_chirho
             .iter()
             .rev()
@@ -472,6 +482,7 @@ pub(crate) fn run_frontend_under_deferral_chirho(
         haskelujah_typing_chirho::infer_chirho::infer_elaborated_module_chirho(
             &module_chirho,
             InferenceImportContextChirho {
+                unary_variable_instance_heads_covered_chirho,
                 imported_types_chirho: &merged_imported_types_chirho,
                 imported_type_synonyms_chirho: &merged_imported_type_synonyms_chirho,
                 imported_type_families_chirho: &merged_imported_type_families_chirho,

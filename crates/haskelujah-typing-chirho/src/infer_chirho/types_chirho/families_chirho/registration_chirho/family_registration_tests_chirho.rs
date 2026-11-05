@@ -52,6 +52,7 @@ fn family_decl_chirho(
     equations_chirho: Vec<TypeFamilyEquationChirho>,
 ) -> DeclChirho {
     DeclChirho::TypeFamilyDeclChirho {
+        injectivity_chirho: None,
         name_chirho: dummy_name_chirho(name_chirho),
         type_vars_chirho: parameters_chirho
             .iter()
@@ -431,6 +432,7 @@ fn nonempty_compiler_seed_is_generative_until_a_source_collision_chirho() {
 fn associated_header_and_default_supply_one_catalogue_declaration_chirho() {
     let associated_chirho =
         |default_chirho: bool| haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+            injectivity_chirho: None,
             default_arguments_chirho: None,
             name_chirho: dummy_name_chirho("RepChirho"),
             result_kind_chirho: None,
@@ -488,6 +490,7 @@ fn data_family_heads_are_generative_but_type_family_heads_remain_opaque_chirho()
     // The same syntax built with TYPE families supplies no such evidence.
     for data_family_chirho in [false, true] {
         let header_chirho = |name_chirho| DeclChirho::TypeFamilyDeclChirho {
+            injectivity_chirho: None,
             name_chirho: dummy_name_chirho(name_chirho),
             type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],
             result_kind_chirho: None,
@@ -534,6 +537,7 @@ fn data_family_heads_are_generative_but_type_family_heads_remain_opaque_chirho()
 fn source_d1_data_family_shadows_the_bare_generic_alias_only_chirho() {
     // Literal names are essential: T17067 collides with the compiler's D1 alias.
     let header_chirho = |name_chirho, data_family_chirho| DeclChirho::TypeFamilyDeclChirho {
+        injectivity_chirho: None,
         name_chirho: dummy_name_chirho(name_chirho),
         type_vars_chirho: if name_chirho == "D2" {
             vec![]
@@ -722,6 +726,7 @@ fn source_class_valued_associated_rhs_reduces_and_reapplies_extra_arguments_chir
         nominal_class_chirho(
             "E",
             vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+                injectivity_chirho: None,
                 default_arguments_chirho: None,
                 name_chirho: dummy_name_chirho("C"),
                 result_kind_chirho: None,

@@ -1095,8 +1095,7 @@ impl InferCtxChirho {
                     .unwrap_or_else(|| self.infer_expr_chirho(inner_expr_chirho));
                 let inferred_chirho =
                     self.expose_qualified_wanteds_chirho(inferred_chirho, *span_chirho);
-                let kind_chirho = self.checked_type_argument_kind_chirho(ty_chirho);
-                let target_chirho = self.ast_type_to_ty_in_scope_chirho(ty_chirho);
+                let (target_chirho, kind_chirho) = self.check_body_type_argument_chirho(ty_chirho);
                 let inferred_sub_chirho = s1_chirho.apply_ty_chirho(&inferred_chirho);
                 if let Some(result_chirho) = self.apply_visible_type_arg_chirho(
                     &inferred_sub_chirho,

@@ -156,6 +156,7 @@ fn class_assoc_type_family_default_applies_per_instance_chirho() {
         type_vars_chirho: vec![dummy_name_chirho("f").into()],
         methods_chirho: vec![],
         associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+            injectivity_chirho: None,
             default_arguments_chirho: None,
             name_chirho: dummy_name_chirho("Rep"),
             result_kind_chirho: None,
@@ -219,6 +220,7 @@ fn instance_assoc_type_family_override_beats_class_default_chirho() {
         type_vars_chirho: vec![dummy_name_chirho("f").into()],
         methods_chirho: vec![],
         associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+            injectivity_chirho: None,
             default_arguments_chirho: None,
             name_chirho: dummy_name_chirho("Rep"),
             result_kind_chirho: None,
@@ -739,6 +741,7 @@ fn written_associated_rows_and_defaults_keep_nested_family_identity_chirho() {
             methods_chirho: vec![],
             associated_tfs_chirho: vec![
                 haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+                    injectivity_chirho: None,
                     default_arguments_chirho: None,
                     name_chirho: dummy_name_chirho("RepChirho"),
                     result_kind_chirho: None,
@@ -813,6 +816,7 @@ fn rhs_shape_module_chirho(rhs_chirho: TypeChirho) -> ModuleChirho {
         exports_chirho: None,
         imports_chirho: vec![],
         decls_chirho: vec![DeclChirho::TypeFamilyDeclChirho {
+            injectivity_chirho: None,
             name_chirho: dummy_name_chirho("HeldRhsChirho"),
             type_vars_chirho: vec![dummy_name_chirho("aChirho").into()],
             result_kind_chirho: None,

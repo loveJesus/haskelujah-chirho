@@ -364,12 +364,26 @@ impl InferCtxChirho {
             return false;
         }
         let class_name_chirho = pred_chirho.class_name_chirho.as_str();
-        if !self
-            .fully_known_class_names_chirho
-            .contains(class_name_chirho)
-            || Self::MAGIC_CLASSES_CHIRHO.contains(&class_name_chirho)
+        if Self::MAGIC_CLASSES_CHIRHO.contains(&class_name_chirho)
             || class_name_chirho.starts_with('?')
         {
+            return false;
+        }
+        let covered_chirho = self
+            .fully_known_class_names_chirho
+            .contains(class_name_chirho)
+            || (pred_chirho.extra_tys_chirho.is_empty()
+                && self
+                    .class_env_chirho
+                    .covers_compiler_unary_variable_head_chirho(
+                        pred_chirho.class_identity_chirho(),
+                        class_name_chirho,
+                    )
+                && matches!(
+                    self.normalize_ty_chirho(&pred_chirho.ty_chirho),
+                    TyChirho::ForallVarChirho(_)
+                ));
+        if !covered_chirho {
             return false;
         }
         let args_chirho: Vec<TyChirho> = std::iter::once(&pred_chirho.ty_chirho)

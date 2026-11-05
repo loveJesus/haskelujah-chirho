@@ -173,6 +173,7 @@ fn synonym_chirho(synonym_text_chirho: &str, rhs_chirho: TypeChirho) -> DeclChir
 /// `type family BothChirho a :: Constraint`.
 fn constraint_family_chirho() -> DeclChirho {
     DeclChirho::TypeFamilyDeclChirho {
+        injectivity_chirho: None,
         name_chirho: name_chirho("BothChirho"),
         type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("a"))],
         result_kind_chirho: Some(con_chirho("Constraint")),

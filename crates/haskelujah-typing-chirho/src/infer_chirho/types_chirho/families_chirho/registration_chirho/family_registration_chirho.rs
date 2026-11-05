@@ -192,26 +192,12 @@ impl InferCtxChirho {
     }
 
     pub(super) fn family_name_key_chirho(&self, name_chirho: &str) -> Option<String> {
-        if is_type_family_key_chirho(name_chirho) {
-            return Some(name_chirho.to_owned());
-        }
-        let legacy_chirho;
-        let scope_chirho = match self.family_scope_chirho.as_deref() {
-            Some(scope_chirho) => scope_chirho,
-            None => {
-                legacy_chirho = legacy_family_scope_chirho(&self.type_families_chirho);
-                &legacy_chirho
-            }
-        };
-        match scope_chirho.resolve_chirho(name_chirho, &self.type_families_chirho) {
-            TypeFamilyScopeResolutionChirho::UniqueChirho(key_chirho) => {
-                Some(key_chirho.to_owned())
-            }
-            TypeFamilyScopeResolutionChirho::AmbiguousChirho(_) => Some(
-                unresolved_family_key_chirho(&self.family_module_name_chirho, name_chirho),
-            ),
-            TypeFamilyScopeResolutionChirho::MissingChirho => None,
-        }
+        family_name_key_in_scope_chirho(
+            self.family_scope_chirho.as_deref(),
+            &self.type_families_chirho,
+            &self.family_module_name_chirho,
+            name_chirho,
+        )
     }
 
     pub(super) fn is_registered_family_chirho(&self, name_chirho: &str) -> bool {
@@ -951,4 +937,30 @@ fn predeclared_family_arities_chirho(
         }
     }
     arities_chirho
+}
+
+pub(super) fn family_name_key_in_scope_chirho(
+    family_scope_chirho: Option<&TypeFamilyScopeChirho>,
+    catalogue_chirho: &crate::infer_chirho::TypeFamilyEnvChirho,
+    module_chirho: &str,
+    name_chirho: &str,
+) -> Option<String> {
+    if is_type_family_key_chirho(name_chirho) {
+        return Some(name_chirho.to_owned());
+    }
+    let legacy_chirho;
+    let scope_chirho = match family_scope_chirho {
+        Some(scope_chirho) => scope_chirho,
+        None => {
+            legacy_chirho = legacy_family_scope_chirho(catalogue_chirho);
+            &legacy_chirho
+        }
+    };
+    match scope_chirho.resolve_chirho(name_chirho, catalogue_chirho) {
+        TypeFamilyScopeResolutionChirho::UniqueChirho(key_chirho) => Some(key_chirho.to_owned()),
+        TypeFamilyScopeResolutionChirho::AmbiguousChirho(_) => {
+            Some(unresolved_family_key_chirho(module_chirho, name_chirho))
+        }
+        TypeFamilyScopeResolutionChirho::MissingChirho => None,
+    }
 }

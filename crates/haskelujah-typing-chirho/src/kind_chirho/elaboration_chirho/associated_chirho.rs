@@ -236,6 +236,7 @@ impl TypeElaboratorChirho<'_> {
                     &mut family_chirho.name_chirho,
                     &mut family_chirho.type_vars_chirho,
                     false,
+                    family_chirho.injectivity_chirho,
                 )?;
                 let key_chirho = this_chirho.local_key_chirho(&family_chirho.name_chirho)?;
                 let header_chirho = this_chirho
@@ -314,7 +315,7 @@ impl TypeElaboratorChirho<'_> {
                             class_variable_chirho,
                             family_chirho.span_chirho,
                         )?;
-                        self.state_chirho.unify_chirho(
+                        self.unify_kinds_chirho(
                             &family_kind_chirho,
                             &class_kind_chirho,
                             family_chirho.span_chirho,
@@ -328,7 +329,7 @@ impl TypeElaboratorChirho<'_> {
                     if family_chirho.result_kind_chirho.is_none() {
                         let result_chirho = this_chirho
                             .result_kind_chirho(&key_chirho, family_chirho.span_chirho)?;
-                        this_chirho.state_chirho.unify_chirho(
+                        this_chirho.unify_kinds_chirho(
                             &result_chirho,
                             &ElaborationStateChirho::type_universe_chirho(),
                             family_chirho.span_chirho,

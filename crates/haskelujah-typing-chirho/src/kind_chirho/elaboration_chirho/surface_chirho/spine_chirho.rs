@@ -180,12 +180,12 @@ impl TypeElaboratorChirho<'_> {
                         argument_chirho.span_chirho(),
                     ));
                 }
-                self.state_chirho.unify_chirho(
+                self.unify_kinds_chirho(
                     &elaborated_argument_chirho.kind_chirho,
                     &binder_chirho.kind_chirho,
                     argument_chirho.span_chirho(),
                 )?;
-                self.state_chirho.unify_chirho(
+                self.unify_kinds_chirho(
                     &TyChirho::VarChirho(binder_chirho.variable_chirho),
                     &elaborated_argument_chirho.term_chirho,
                     argument_chirho.span_chirho(),
@@ -214,7 +214,7 @@ impl TypeElaboratorChirho<'_> {
                     self.state_chirho
                         .copy_chirho(&next_kind_chirho, span_chirho)?,
                 );
-                self.state_chirho.unify_chirho(
+                self.unify_kinds_chirho(
                     &result_kind_chirho,
                     &expected_kind_chirho,
                     argument_chirho.span_chirho(),

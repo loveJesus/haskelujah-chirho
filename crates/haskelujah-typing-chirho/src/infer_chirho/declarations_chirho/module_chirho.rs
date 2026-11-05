@@ -171,6 +171,7 @@ impl InferCtxChirho {
                 ..
             } = decl_chirho
             {
+                self.check_source_signature_ambiguity_chirho(ty_chirho);
                 type_sigs_chirho.insert(
                     canonical_value_name_text_chirho(name_chirho.text_chirho()),
                     ty_chirho.clone(),

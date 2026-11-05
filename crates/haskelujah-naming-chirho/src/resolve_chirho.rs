@@ -944,6 +944,7 @@ mod tests_chirho {
         ModuleIfaceChirho {
             name_chirho: "Lib".to_string(),
             exports_chirho: crate::iface_chirho::IfaceExportsChirho {
+                unary_variable_instance_heads_covered_chirho: false,
                 values_chirho,
                 types_chirho,
                 associated_types_chirho: std::collections::HashMap::new(),
@@ -1376,6 +1377,7 @@ mod tests_chirho {
         let older_iface_chirho = ModuleIfaceChirho {
             name_chirho: "Lib".to_string(),
             exports_chirho: crate::iface_chirho::IfaceExportsChirho {
+                unary_variable_instance_heads_covered_chirho: false,
                 values_chirho: [(
                     "oldOnly".to_string(),
                     IfaceValueChirho {
@@ -1397,6 +1399,7 @@ mod tests_chirho {
         let newer_iface_chirho = ModuleIfaceChirho {
             name_chirho: "Lib".to_string(),
             exports_chirho: crate::iface_chirho::IfaceExportsChirho {
+                unary_variable_instance_heads_covered_chirho: false,
                 values_chirho: [(
                     "newOnly".to_string(),
                     IfaceValueChirho {

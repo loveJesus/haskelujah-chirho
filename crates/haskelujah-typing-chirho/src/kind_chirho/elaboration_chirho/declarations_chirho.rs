@@ -17,35 +17,42 @@ impl TypeElaboratorChirho<'_> {
     ) -> Result<(), ElaborationErrorChirho> {
         self.seed_headers_chirho(module_chirho.span_chirho)?;
         for declaration_chirho in &mut module_chirho.decls_chirho {
-            let (name_chirho, binders_chirho, result_constraint_chirho) = match declaration_chirho {
-                DeclChirho::DataDeclChirho {
-                    name_chirho,
-                    type_vars_chirho,
-                    ..
-                }
-                | DeclChirho::NewtypeDeclChirho {
-                    name_chirho,
-                    type_vars_chirho,
-                    ..
-                }
-                | DeclChirho::TypeAliasDeclChirho {
-                    name_chirho,
-                    type_vars_chirho,
-                    ..
-                }
-                | DeclChirho::TypeFamilyDeclChirho {
-                    name_chirho,
-                    type_vars_chirho,
-                    ..
-                } => (name_chirho, type_vars_chirho, false),
-                DeclChirho::ClassDeclChirho {
-                    name_chirho,
-                    type_vars_chirho,
-                    ..
-                } => (name_chirho, type_vars_chirho, true),
-                _ => continue,
-            };
-            self.predeclare_header_chirho(name_chirho, binders_chirho, result_constraint_chirho)?;
+            let (name_chirho, binders_chirho, result_constraint_chirho, injectivity_chirho) =
+                match declaration_chirho {
+                    DeclChirho::DataDeclChirho {
+                        name_chirho,
+                        type_vars_chirho,
+                        ..
+                    }
+                    | DeclChirho::NewtypeDeclChirho {
+                        name_chirho,
+                        type_vars_chirho,
+                        ..
+                    }
+                    | DeclChirho::TypeAliasDeclChirho {
+                        name_chirho,
+                        type_vars_chirho,
+                        ..
+                    } => (name_chirho, type_vars_chirho, false, None),
+                    DeclChirho::TypeFamilyDeclChirho {
+                        injectivity_chirho,
+                        name_chirho,
+                        type_vars_chirho,
+                        ..
+                    } => (name_chirho, type_vars_chirho, false, *injectivity_chirho),
+                    DeclChirho::ClassDeclChirho {
+                        name_chirho,
+                        type_vars_chirho,
+                        ..
+                    } => (name_chirho, type_vars_chirho, true, None),
+                    _ => continue,
+                };
+            self.predeclare_header_chirho(
+                name_chirho,
+                binders_chirho,
+                result_constraint_chirho,
+                injectivity_chirho,
+            )?;
         }
         for declaration_chirho in &mut module_chirho.decls_chirho {
             if let DeclChirho::ClassDeclChirho {
@@ -65,6 +72,7 @@ impl TypeElaboratorChirho<'_> {
         name_chirho: &mut haskelujah_ast_chirho::name_chirho::NameChirho,
         binders_chirho: &mut [AstTyVarChirho],
         result_constraint_chirho: bool,
+        injectivity_chirho: Option<bool>,
     ) -> Result<(), ElaborationErrorChirho> {
         let Some(proof_chirho) = self.declaration_chirho(name_chirho)? else {
             return Ok(());
@@ -130,7 +138,8 @@ impl TypeElaboratorChirho<'_> {
             })
             .count();
         let scheme_chirho = DeclarationSchemeChirho {
-            association_chirho: crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
+            injectivity_chirho,
+                association_chirho: crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
             source_variables_chirho: binders_chirho.iter().enumerate().zip(telescope_chirho.iter()).map(|((index_chirho, binder_chirho), typed_chirho)| crate::ty_chirho::declarations_chirho::SourceDeclarationVariableChirho {
                 header_index_chirho: index_chirho as u32,
                 source_chirho: haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::QuantifiedChirho { declaration_chirho: key_chirho.clone(), index_chirho: typed_chirho.variable_chirho.0 },
@@ -256,12 +265,12 @@ impl TypeElaboratorChirho<'_> {
             self.stamp_variable_chirho(&mut binder_chirho.name_chirho, variable_chirho)?;
             if let Some(kind_chirho) = &mut binder_chirho.kind_annotation_chirho {
                 let annotation_chirho = self.infer_type_chirho(kind_chirho)?;
-                self.state_chirho.unify_chirho(
+                self.unify_kinds_chirho(
                     &annotation_chirho.kind_chirho,
                     &ElaborationStateChirho::type_universe_chirho(),
                     kind_chirho.span_chirho(),
                 )?;
-                self.state_chirho.unify_chirho(
+                self.unify_kinds_chirho(
                     &expected_kind_chirho,
                     &annotation_chirho.term_chirho,
                     kind_chirho.span_chirho(),
@@ -373,7 +382,7 @@ impl TypeElaboratorChirho<'_> {
                     span_chirho,
                 )?;
                 for variable_chirho in defaultable_chirho {
-                    self.state_chirho.unify_chirho(
+                    self.unify_kinds_chirho(
                         &TyChirho::VarChirho(variable_chirho),
                         &ElaborationStateChirho::type_universe_chirho(),
                         span_chirho,
@@ -492,6 +501,7 @@ impl TypeElaboratorChirho<'_> {
             associations_chirho
                 .push((key_chirho.clone(), scheme_chirho.association_chirho.clone()));
             let exported_chirho = DeclarationSchemeChirho {
+                injectivity_chirho: scheme_chirho.injectivity_chirho,
                 association_chirho:
                     crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
                 source_variables_chirho,

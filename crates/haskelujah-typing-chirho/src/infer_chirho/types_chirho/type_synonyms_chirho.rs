@@ -194,28 +194,12 @@ impl InferCtxChirho {
         &self,
         name_chirho: &str,
     ) -> Option<&(Vec<String>, TyChirho)> {
-        if is_type_family_key_chirho(name_chirho)
-            || is_promoted_key_chirho(name_chirho)
-            || self
-                .type_families_chirho
-                .declaration_schemes_chirho()
-                .get_chirho(name_chirho)
-                .is_some()
-            || self
-                .type_constructor_scope_chirho
-                .as_ref()
-                .and_then(|scope_chirho| scope_chirho.declaration_chirho(name_chirho))
-                .is_some()
-        {
-            return None;
-        }
-        self.type_synonyms_chirho.get(name_chirho).or_else(|| {
-            name_chirho
-                .rsplit_once('.')
-                .and_then(|(_prefix_chirho, bare_name_chirho)| {
-                    self.type_synonyms_chirho.get(bare_name_chirho)
-                })
-        })
+        lookup_type_synonym_in_scope_chirho(
+            &self.type_synonyms_chirho,
+            &self.type_families_chirho,
+            self.type_constructor_scope_chirho.as_deref(),
+            name_chirho,
+        )
     }
 
     fn expand_syn_chirho(&self, ty_chirho: &TyChirho, depth_chirho: usize) -> TyChirho {
@@ -636,4 +620,29 @@ pub(super) fn map_ty_chirho(k_chirho: TyChirho, v_chirho: TyChirho) -> TyChirho 
         )),
         Box::new(v_chirho),
     )
+}
+
+pub(super) fn lookup_type_synonym_in_scope_chirho<'scope_chirho>(
+    synonyms_chirho: &'scope_chirho HashMap<String, (Vec<String>, TyChirho)>,
+    catalogue_chirho: &super::TypeFamilyEnvChirho,
+    type_scope_chirho: Option<&haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>,
+    name_chirho: &str,
+) -> Option<&'scope_chirho (Vec<String>, TyChirho)> {
+    if is_type_family_key_chirho(name_chirho)
+        || is_promoted_key_chirho(name_chirho)
+        || catalogue_chirho
+            .declaration_schemes_chirho()
+            .get_chirho(name_chirho)
+            .is_some()
+        || type_scope_chirho
+            .and_then(|scope_chirho| scope_chirho.declaration_chirho(name_chirho))
+            .is_some()
+    {
+        return None;
+    }
+    synonyms_chirho.get(name_chirho).or_else(|| {
+        name_chirho
+            .rsplit_once('.')
+            .and_then(|(_prefix_chirho, bare_name_chirho)| synonyms_chirho.get(bare_name_chirho))
+    })
 }

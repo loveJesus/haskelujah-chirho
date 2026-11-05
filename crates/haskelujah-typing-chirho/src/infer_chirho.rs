@@ -71,8 +71,11 @@ mod signature_conversion_chirho;
 mod deferred_predicates_chirho;
 #[path = "infer_chirho/solving_chirho/equalities_chirho.rs"]
 mod equalities_chirho;
-#[path = "infer_chirho/solving_chirho/equality_normalization_chirho.rs"]
+#[path = "infer_chirho/solving_chirho/equality_normalization_chirho/mod.rs"]
 mod equality_normalization_chirho;
+pub(crate) use equality_normalization_chirho::{
+    EqualityBudgetChirho, EqualityNormalizationExhaustedChirho, EqualityNormalizationViewChirho,
+};
 #[cfg(test)]
 #[path = "infer_chirho/solving_chirho/equality_normalization_tests_chirho.rs"]
 mod equality_normalization_tests_chirho;
@@ -112,7 +115,7 @@ mod expected_chirho;
 mod expressions_chirho;
 #[path = "infer_chirho/terms_chirho/guards_chirho.rs"]
 mod guards_chirho;
-#[path = "infer_chirho/terms_chirho/matches_chirho.rs"]
+#[path = "infer_chirho/terms_chirho/matches_chirho/mod.rs"]
 mod matches_chirho;
 #[path = "infer_chirho/terms_chirho/pattern_bindings_chirho.rs"]
 mod pattern_bindings_chirho;
@@ -760,6 +763,7 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     infer_module_with_import_context_chirho(
         module_chirho,
         InferenceImportContextChirho {
+            unary_variable_instance_heads_covered_chirho: false,
             imported_types_chirho,
             imported_type_synonyms_chirho,
             imported_type_families_chirho,
@@ -779,6 +783,8 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
 /// call, with the module's own promoted-constructor scope from naming.
 /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
 pub struct InferenceImportContextChirho<'imports_chirho> {
+    /// Meet of the actual selected interface producers, independent of name lists.
+    pub unary_variable_instance_heads_covered_chirho: bool,
     pub imported_types_chirho: &'imports_chirho HashMap<String, SchemeChirho>,
     pub imported_type_synonyms_chirho: &'imports_chirho HashMap<String, (Vec<String>, TypeChirho)>,
     pub imported_type_families_chirho: &'imports_chirho TypeFamilyEnvChirho,
@@ -819,6 +825,7 @@ fn infer_module_with_elaboration_state_chirho(
     state_chirho: Option<crate::kind_chirho::elaboration_chirho::ElaborationStateChirho>,
 ) -> InferResultChirho {
     let InferenceImportContextChirho {
+        unary_variable_instance_heads_covered_chirho,
         imported_types_chirho,
         imported_type_synonyms_chirho,
         imported_type_families_chirho,
@@ -833,6 +840,11 @@ fn infer_module_with_elaboration_state_chirho(
     } = context_chirho;
     let mut ctx_chirho =
         InferCtxChirho::new_with_imported_class_env_chirho(imported_class_env_chirho);
+    ctx_chirho
+        .class_env_chirho
+        .restrict_unary_variable_instance_coverage_chirho(
+            unary_variable_instance_heads_covered_chirho,
+        );
     if ctx_chirho.has_non_deferrable_failure_chirho() {
         return ctx_chirho.finish_chirho();
     }

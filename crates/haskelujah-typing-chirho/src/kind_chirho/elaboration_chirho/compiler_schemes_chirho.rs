@@ -57,6 +57,7 @@ impl TypeElaboratorChirho<'_> {
         self.registry_chirho
             .declaration_schemes_mut_chirho()
             .insert_chirho(DeclarationSchemeChirho {
+                injectivity_chirho: None,
                 association_chirho:
                     crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
                 identity_chirho: key_chirho,
@@ -156,6 +157,7 @@ impl TypeElaboratorChirho<'_> {
         self.registry_chirho
             .declaration_schemes_mut_chirho()
             .insert_chirho(DeclarationSchemeChirho {
+                injectivity_chirho: None,
                 association_chirho:
                     crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
                 identity_chirho,
@@ -247,6 +249,7 @@ impl TypeElaboratorChirho<'_> {
         self.registry_chirho
             .declaration_schemes_mut_chirho()
             .insert_chirho(DeclarationSchemeChirho {
+                injectivity_chirho: None,
                 association_chirho:
                     crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
                 source_variables_chirho: Vec::new(),
@@ -409,6 +412,7 @@ impl TypeElaboratorChirho<'_> {
         self.registry_chirho
             .declaration_schemes_mut_chirho()
             .insert_chirho(DeclarationSchemeChirho {
+                injectivity_chirho: None,
                 association_chirho:
                     crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
                 source_variables_chirho: Vec::new(),

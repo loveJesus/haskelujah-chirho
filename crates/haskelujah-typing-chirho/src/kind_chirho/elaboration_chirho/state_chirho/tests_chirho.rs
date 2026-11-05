@@ -76,6 +76,15 @@ fn argument_chirho(
             ElaborationStateChirho::type_universe_chirho(),
         ),
         ArgumentElaborationContextChirho {
+            equality_chirho: crate::infer_chirho::EqualityNormalizationViewChirho {
+                substitutions_chirho: &SubstChirho::empty_chirho(),
+                legacy_synonyms_chirho: &HashMap::new(),
+                type_scope_chirho: Some(scope_chirho),
+                family_scope_chirho: Some(&TypeFamilyScopeChirho::default()),
+                family_module_chirho: "MainChirho",
+                promotion_present_chirho: false,
+                evidence_chirho: Default::default(),
+            },
             state_chirho: &mut checked_chirho.state_chirho,
             registry_chirho: &mut checked_chirho.registry_chirho,
             type_scope_chirho: scope_chirho,
@@ -129,6 +138,7 @@ fn adopted_latched_failure_is_fatal_without_another_argument_chirho() {
     let result_chirho = crate::infer_chirho::infer_elaborated_module_chirho(
         &module_chirho,
         crate::infer_chirho::InferenceImportContextChirho {
+            unary_variable_instance_heads_covered_chirho: false,
             imported_types_chirho: &HashMap::new(),
             imported_type_synonyms_chirho: &HashMap::new(),
             imported_type_families_chirho: &checked_chirho.registry_chirho,
@@ -231,6 +241,15 @@ fn qualified_term_homonym_cannot_acquire_a_lexical_type_proof_chirho() {
             &ExprChirho::VarChirho(NameChirho::RawChirho(name_chirho)),
             &ElaborationStateChirho::type_universe_chirho(),
             ArgumentElaborationContextChirho {
+                equality_chirho: crate::infer_chirho::EqualityNormalizationViewChirho {
+                    substitutions_chirho: &SubstChirho::empty_chirho(),
+                    legacy_synonyms_chirho: &HashMap::new(),
+                    type_scope_chirho: Some(&scope_chirho),
+                    family_scope_chirho: Some(&TypeFamilyScopeChirho::default()),
+                    family_module_chirho: "MainChirho",
+                    promotion_present_chirho: false,
+                    evidence_chirho: Default::default(),
+                },
                 state_chirho: &mut checked_chirho.state_chirho,
                 registry_chirho: &mut checked_chirho.registry_chirho,
                 type_scope_chirho: &scope_chirho,

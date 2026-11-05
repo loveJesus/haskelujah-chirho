@@ -162,40 +162,48 @@ impl InferCtxChirho {
             }
         }
         for (lhs_chirho, rhs_chirho) in equalities_chirho {
-            let lhs_norm_chirho = self.normalize_ty_chirho(&lhs_chirho);
-            let rhs_norm_chirho = self.normalize_ty_chirho(&rhs_chirho);
-            if lhs_norm_chirho == rhs_norm_chirho {
-                continue;
-            }
-            let lhs_rigid_chirho = matches!(&lhs_norm_chirho, TyChirho::ForallVarChirho(_))
-                || self.ty_is_family_app_chirho(&lhs_norm_chirho);
-            let rhs_rigid_chirho = matches!(&rhs_norm_chirho, TyChirho::ForallVarChirho(_))
-                || self.ty_is_family_app_chirho(&rhs_norm_chirho);
-            // A rule whose right side contains its own left side
-            // (`b ~ Maybe (Foo b)`) would rewrite forever; such a given is
-            // consistent but is not usable as a rewrite.
-            let rule_chirho = if lhs_rigid_chirho
-                && !ty_contains_subterm_chirho(&rhs_norm_chirho, &lhs_norm_chirho)
-            {
-                Some((lhs_norm_chirho, rhs_norm_chirho))
-            } else if rhs_rigid_chirho
-                && !ty_contains_subterm_chirho(&lhs_norm_chirho, &rhs_norm_chirho)
-            {
-                Some((rhs_norm_chirho, lhs_norm_chirho))
-            } else if !lhs_rigid_chirho
-                && !rhs_rigid_chirho
-                && !lhs_norm_chirho.contains_var_chirho()
-                && !rhs_norm_chirho.contains_var_chirho()
-            {
-                // Two closed types that differ (`Int ~ Bool`): an insoluble
-                // given; the body is typed under the stated equality.
-                Some((lhs_norm_chirho, rhs_norm_chirho))
-            } else {
-                None
-            };
-            if let Some(rule_chirho) = rule_chirho {
+            if let Some(rule_chirho) = self.given_equality_rule_chirho(
+                self.normalize_ty_chirho(&lhs_chirho),
+                self.normalize_ty_chirho(&rhs_chirho),
+            ) {
                 self.given_rewrites_chirho.push(rule_chirho);
             }
+        }
+    }
+
+    /// The same orientation is used by live givens and an isolated source
+    /// signature probe; a probe never installs rules into the live solver.
+    pub(super) fn given_equality_rule_chirho(
+        &self,
+        lhs_norm_chirho: TyChirho,
+        rhs_norm_chirho: TyChirho,
+    ) -> Option<(TyChirho, TyChirho)> {
+        if lhs_norm_chirho == rhs_norm_chirho {
+            return None;
+        }
+        let lhs_rigid_chirho = matches!(&lhs_norm_chirho, TyChirho::ForallVarChirho(_))
+            || self.ty_is_family_app_chirho(&lhs_norm_chirho);
+        let rhs_rigid_chirho = matches!(&rhs_norm_chirho, TyChirho::ForallVarChirho(_))
+            || self.ty_is_family_app_chirho(&rhs_norm_chirho);
+        // A rule whose right side contains its own left side
+        // (`b ~ Maybe (Foo b)`) would rewrite forever; such a given is
+        // consistent but is not usable as a rewrite.
+        if lhs_rigid_chirho && !ty_contains_subterm_chirho(&rhs_norm_chirho, &lhs_norm_chirho) {
+            Some((lhs_norm_chirho, rhs_norm_chirho))
+        } else if rhs_rigid_chirho
+            && !ty_contains_subterm_chirho(&lhs_norm_chirho, &rhs_norm_chirho)
+        {
+            Some((rhs_norm_chirho, lhs_norm_chirho))
+        } else if !lhs_rigid_chirho
+            && !rhs_rigid_chirho
+            && !lhs_norm_chirho.contains_var_chirho()
+            && !rhs_norm_chirho.contains_var_chirho()
+        {
+            // Two closed types that differ (`Int ~ Bool`): an insoluble
+            // given; the body is typed under the stated equality.
+            Some((lhs_norm_chirho, rhs_norm_chirho))
+        } else {
+            None
         }
     }
 

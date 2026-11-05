@@ -51,6 +51,7 @@ fn class_with_default_chirho(
                 .collect(),
             methods_chirho: vec![],
             associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+                injectivity_chirho: None,
                 default_arguments_chirho: None,
                 name_chirho: name_chirho("FamilyChirho"),
                 result_kind_chirho: None,

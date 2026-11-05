@@ -31,6 +31,20 @@ struct EqualityEvidenceChirho {
     rewrites_chirho: Vec<(TyChirho, TyChirho)>,
 }
 
+#[derive(Clone, Copy, Default)]
+pub(crate) struct EqualityEvidenceViewChirho<'view_chirho> {
+    head_chirho: Option<&'view_chirho EqualityEvidenceChirho>,
+}
+
+impl<'view_chirho> EqualityEvidenceViewChirho<'view_chirho> {
+    pub(crate) fn iter_chirho(self) -> impl Iterator<Item = &'view_chirho [(TyChirho, TyChirho)]> {
+        std::iter::successors(self.head_chirho, |node_chirho| {
+            node_chirho.parent_chirho.as_deref()
+        })
+        .map(|node_chirho| node_chirho.rewrites_chirho.as_slice())
+    }
+}
+
 #[derive(Debug)]
 pub(super) struct EqualityScopeChirho {
     parent_chirho: Option<usize>,
@@ -41,6 +55,12 @@ pub(super) struct EqualityScopeChirho {
 }
 
 impl EqualityScopeChirho {
+    pub(super) fn evidence_view_chirho(&self) -> EqualityEvidenceViewChirho<'_> {
+        EqualityEvidenceViewChirho {
+            head_chirho: self.evidence_chirho.as_deref(),
+        }
+    }
+
     pub(super) fn root_chirho() -> Self {
         Self {
             parent_chirho: None,

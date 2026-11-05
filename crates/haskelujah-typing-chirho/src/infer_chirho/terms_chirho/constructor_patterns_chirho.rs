@@ -422,6 +422,12 @@ impl InferCtxChirho {
             self.type_normalization_exhausted_chirho.set(true);
             return SubstChirho::empty_chirho();
         }
+        let checked_pattern_chirho = self.check_body_type_chirho(pattern_chirho, false);
+        let pattern_chirho = checked_pattern_chirho
+            .as_ref()
+            .map_or(pattern_chirho, |checked_chirho| {
+                &checked_chirho.syntax_chirho
+            });
         self.bind_prepared_constructor_type_pattern_chirho(
             pattern_chirho,
             expected_chirho,

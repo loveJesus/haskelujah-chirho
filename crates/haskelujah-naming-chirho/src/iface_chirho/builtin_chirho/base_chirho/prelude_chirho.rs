@@ -238,7 +238,10 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
 
     // Prelude — the implicit import every Haskell module gets
     {
-        let mut exports_chirho = IfaceExportsChirho::default();
+        let mut exports_chirho = IfaceExportsChirho {
+            unary_variable_instance_heads_covered_chirho: true,
+            ..IfaceExportsChirho::default()
+        };
         // Core types
         for (type_name_chirho, cons_chirho) in &[
             (

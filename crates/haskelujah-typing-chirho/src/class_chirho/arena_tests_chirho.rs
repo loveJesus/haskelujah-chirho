@@ -330,3 +330,58 @@ fn seeds_before_their_class_declaration_stay_unsupported_without_retroactive_upg
         );
     }
 }
+
+#[test]
+fn unary_head_coverage_requires_the_actual_seed_and_survives_snapshots_chirho() {
+    let proof_chirho = PredicateClassProofChirho::ProvenChirho(
+        PredicateClassIdentityChirho::CompilerChirho(CompilerClassChirho::EqChirho),
+    );
+    let seed_chirho = ClassEnvChirho::standard_with_registration_limit_chirho(
+        ClassEnvChirho::DEFAULT_REGISTRATION_LIMIT_CHIRHO,
+    );
+    assert!(seed_chirho.covers_compiler_unary_variable_head_chirho(&proof_chirho, "Eq"));
+    for snapshot_chirho in [
+        seed_chirho.try_snapshot_chirho().unwrap(),
+        seed_chirho.try_import_snapshot_chirho().unwrap(),
+    ] {
+        assert!(snapshot_chirho.covers_compiler_unary_variable_head_chirho(&proof_chirho, "Eq"));
+    }
+    let mut unknown_chirho = ClassEnvChirho::new_chirho();
+    unknown_chirho.seed_standard_chirho();
+    assert!(!unknown_chirho.covers_compiler_unary_variable_head_chirho(&proof_chirho, "Eq"));
+    let mut restricted_chirho = seed_chirho.try_snapshot_chirho().unwrap();
+    restricted_chirho.restrict_unary_variable_instance_coverage_chirho(false);
+    restricted_chirho.restrict_unary_variable_instance_coverage_chirho(true);
+    assert!(!restricted_chirho.covers_compiler_unary_variable_head_chirho(&proof_chirho, "Eq"));
+    assert!(
+        !restricted_chirho
+            .try_import_snapshot_chirho()
+            .unwrap()
+            .covers_compiler_unary_variable_head_chirho(&proof_chirho, "Eq")
+    );
+}
+
+#[test]
+fn unary_head_coverage_cannot_refute_an_unknown_or_shadowed_record_chirho() {
+    let mut seed_chirho = ClassEnvChirho::standard_with_registration_limit_chirho(
+        ClassEnvChirho::DEFAULT_REGISTRATION_LIMIT_CHIRHO,
+    );
+    let proof_chirho = PredicateClassProofChirho::ProvenChirho(
+        PredicateClassIdentityChirho::CompilerChirho(CompilerClassChirho::EqChirho),
+    );
+    for reason_chirho in [
+        haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::MissingUnitChirho,
+        haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::ResourceChirho(
+            haskelujah_ast_chirho::name_chirho::PredicateMetadataRefusalChirho::WorkChirho {
+                limit_chirho: 1,
+            },
+        ),
+    ] {
+        assert!(!seed_chirho.covers_compiler_unary_variable_head_chirho(
+            &PredicateClassProofChirho::UnknownChirho(reason_chirho),
+            "Eq"
+        ));
+    }
+    seed_chirho.add_class_chirho(class_chirho("Eq"));
+    assert!(!seed_chirho.covers_compiler_unary_variable_head_chirho(&proof_chirho, "Eq"));
+}

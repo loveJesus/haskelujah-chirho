@@ -287,7 +287,8 @@ impl TypeElaboratorChirho<'_> {
                 self.registry_chirho
                     .declaration_schemes_mut_chirho()
                     .stage_chirho(DeclarationSchemeChirho {
-            association_chirho: crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
+            injectivity_chirho: None,
+                association_chirho: crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
                         identity_chirho: key_chirho.clone(),
                         owner_chirho: self.state_chirho.owner_chirho,
                         declaration_chirho: None,

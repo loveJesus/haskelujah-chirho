@@ -197,6 +197,7 @@ fn a_class_associated_family_is_in_the_type_namespace_chirho() {
         type_vars_chirho: Vec::new(),
         methods_chirho: Vec::new(),
         associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+            injectivity_chirho: None,
             default_arguments_chirho: None,
             name_chirho: name_chirho("FamChirho"),
             result_kind_chirho: None,

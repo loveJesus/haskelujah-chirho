@@ -17,6 +17,9 @@ pub const CONSTRAINT_UNIVERSE_KEY_CHIRHO: &str = "%universe:constraint";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ElaborationErrorChirho {
+    /// Only a real unification mismatch owns these complete resolved terms.
+    /// Structural, ownership and resource failures never acquire this payload.
+    pub(crate) mismatch_chirho: Option<std::sync::Arc<(TyChirho, TyChirho)>>,
     pub message_chirho: String,
     pub span_chirho: SpanChirho,
 }
@@ -76,6 +79,9 @@ pub struct ElaborationStateChirho {
     output_left_chirho: usize,
     error_chirho: Option<ElaborationErrorChirho>,
     inference_links_chirho: Option<Vec<TyVarChirho>>,
+    /// An early body pass stamps syntax but cannot specialize its universals.
+    /// Its scoped obligations are checked later under the real term evidence.
+    pub(super) body_scope_chirho: bool,
 }
 
 impl ElaborationStateChirho {
@@ -92,6 +98,7 @@ impl ElaborationStateChirho {
     ) -> ElaborationErrorChirho {
         self.error_chirho
             .get_or_insert_with(|| ElaborationErrorChirho {
+                mismatch_chirho: None,
                 message_chirho: message_chirho.to_owned(),
                 span_chirho,
             })
@@ -103,6 +110,7 @@ impl ElaborationStateChirho {
         span_chirho: SpanChirho,
     ) -> Result<ElaborationOwnerChirho, ElaborationErrorChirho> {
         self.owner_chirho.ok_or_else(|| ElaborationErrorChirho {
+            mismatch_chirho: None,
             message_chirho: "unowned inference state cannot mint a source kind variable".into(),
             span_chirho,
         })
@@ -121,6 +129,7 @@ impl ElaborationStateChirho {
             output_left_chirho: 1 << 24,
             error_chirho: None,
             inference_links_chirho: None,
+            body_scope_chirho: false,
         }
     }
 
@@ -130,6 +139,7 @@ impl ElaborationStateChirho {
                 next_chirho.checked_add(1)
             })
             .map_err(|_| ElaborationErrorChirho {
+                mismatch_chirho: None,
                 message_chirho: "kind elaboration owner supply exhausted".to_owned(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             })?;
@@ -149,6 +159,7 @@ impl ElaborationStateChirho {
     ) -> Result<(), ElaborationErrorChirho> {
         self.charge_chirho(1, 1, span_chirho)?;
         let owner_chirho = self.owner_chirho.ok_or_else(|| ElaborationErrorChirho {
+            mismatch_chirho: None,
             message_chirho: "unowned inference state cannot mint a source kind variable".into(),
             span_chirho,
         })?;
@@ -226,6 +237,7 @@ impl ElaborationStateChirho {
             }
             None => {
                 let error_chirho = ElaborationErrorChirho {
+                    mismatch_chirho: None,
                     message_chirho: "kind elaboration work or output bound exhausted".to_owned(),
                     span_chirho,
                 };
@@ -302,6 +314,7 @@ impl ElaborationStateChirho {
             .and_then(|record_chirho| record_chirho.kind_chirho.as_ref())
             .and_then(|kind_chirho| borrowed_weight_chirho(kind_chirho, 0))
             .ok_or_else(|| ElaborationErrorChirho {
+                mismatch_chirho: None,
                 message_chirho: "scoped variable has no bounded producer kind".to_owned(),
                 span_chirho,
             })?;
@@ -377,6 +390,7 @@ impl ElaborationStateChirho {
         let mark_chirho = self.kind_scope_guards_chirho.len();
         if mark_chirho >= 128 {
             return Err(ElaborationErrorChirho {
+                mismatch_chirho: None,
                 message_chirho: "universal kind scope depth bound exhausted".to_owned(),
                 span_chirho,
             });
@@ -417,6 +431,7 @@ impl ElaborationStateChirho {
                     .any(|variable_chirho| guard_chirho.variables_chirho.contains(variable_chirho))
                 {
                     return Err(ElaborationErrorChirho {
+                        mismatch_chirho: None,
                         message_chirho:
                             "kind mismatch: a universal binder escaped into an enclosing kind"
                                 .to_owned(),
@@ -499,6 +514,7 @@ impl ElaborationStateChirho {
                 }
                 if !active_chirho.insert(*variable_chirho) {
                     return Err(ElaborationErrorChirho {
+                        mismatch_chirho: None,
                         message_chirho: "cyclic kind substitution".to_owned(),
                         span_chirho,
                     });
@@ -702,10 +718,15 @@ impl ElaborationStateChirho {
                 (TyChirho::VarChirho(variable_chirho), ty_chirho)
                 | (ty_chirho, TyChirho::VarChirho(variable_chirho)) => {
                     if self.rigid_variables_chirho.contains(&variable_chirho) {
-                        return Err(ElaborationErrorChirho { message_chirho: "kind mismatch: an explicitly polymorphic kind cannot be specialized".to_owned(), span_chirho });
+                        if self.body_scope_chirho {
+                            continue;
+                        }
+                        return Err(ElaborationErrorChirho { mismatch_chirho: Some(std::sync::Arc::new((TyChirho::VarChirho(variable_chirho), ty_chirho))),
+                    message_chirho: "kind mismatch: an explicitly polymorphic kind cannot be specialized".to_owned(), span_chirho });
                     }
                     if occurs_chirho(variable_chirho, &ty_chirho) {
                         return Err(ElaborationErrorChirho {
+                            mismatch_chirho: None,
                             message_chirho: "infinite kind in declaration telescope".to_owned(),
                             span_chirho,
                         });
@@ -822,6 +843,7 @@ impl ElaborationStateChirho {
                             .any(|variable_chirho| left_vars_chirho.contains(variable_chirho))
                         {
                             return Err(ElaborationErrorChirho {
+                                mismatch_chirho: None,
                                 message_chirho:
                                     "kind mismatch: a universal binder escaped its quantifier"
                                         .to_owned(),
@@ -841,6 +863,10 @@ impl ElaborationStateChirho {
                 }
                 (left_chirho, right_chirho) => {
                     return Err(ElaborationErrorChirho {
+                        mismatch_chirho: Some(std::sync::Arc::new((
+                            self.copy_chirho(&left_chirho, span_chirho)?,
+                            self.copy_chirho(&right_chirho, span_chirho)?,
+                        ))),
                         message_chirho: format!(
                             "kind mismatch: expected `{left_chirho}`, found `{right_chirho}`"
                         ),

@@ -18,7 +18,8 @@ mod surface_chirho;
 mod transport_chirho;
 mod value_applications_chirho;
 pub(crate) use value_applications_chirho::{
-    ArgumentElaborationContextChirho, elaborate_required_argument_chirho,
+    ArgumentElaborationContextChirho, CheckedBodyTypeChirho, elaborate_body_type_chirho,
+    elaborate_required_argument_chirho,
 };
 mod values_chirho;
 pub use state_chirho::{ElaborationErrorChirho, ElaborationStateChirho};
@@ -55,7 +56,7 @@ type SourceVariablesChirho = Vec<(String, TyVarChirho, TyChirho)>;
 
 struct ValueSignatureScopeChirho {
     variables_chirho: SourceVariablesChirho,
-    required_chirho: crate::ty_chirho::QuantifiedVariablesChirho,
+    checked_chirho: Arc<TyChirho>,
 }
 
 #[derive(Default)]
@@ -99,6 +100,7 @@ impl ElaborationCatalogueChirho<'_> {
         match self {
             Self::OwnedChirho(catalogue_chirho) => Ok(*catalogue_chirho),
             Self::BorrowedChirho(_) => Err(ElaborationErrorChirho {
+                mismatch_chirho: None,
                 message_chirho: "late argument attempted to publish an owned module catalogue"
                     .into(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -130,6 +132,8 @@ struct TypeElaboratorChirho<'scope_chirho> {
     declaration_contracts_chirho: HashMap<Arc<str>, Arc<DeclarationSchemeChirho>>,
     lexical_images_chirho: Option<&'scope_chirho crate::subst_chirho::SubstChirho>,
     lexical_refinements_chirho: Option<&'scope_chirho crate::env_chirho::TyEnvChirho>,
+    lexical_equality_chirho:
+        Option<crate::infer_chirho::EqualityNormalizationViewChirho<'scope_chirho>>,
     strict_argument_chirho: bool,
 }
 
@@ -184,6 +188,7 @@ impl TypeElaboratorChirho<'_> {
         span_chirho: SpanChirho,
     ) -> ElaborationErrorChirho {
         ElaborationErrorChirho {
+            mismatch_chirho: None,
             message_chirho: message_chirho.into(),
             span_chirho,
         }
@@ -475,6 +480,7 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
             declaration_contracts_chirho: HashMap::new(),
             lexical_images_chirho: None,
             lexical_refinements_chirho: None,
+            lexical_equality_chirho: None,
             strict_argument_chirho: false,
         })
     }

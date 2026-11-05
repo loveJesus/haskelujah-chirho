@@ -325,6 +325,13 @@ impl InferCtxChirho {
                 ty_chirho: annotation_chirho,
                 span_chirho,
             } => {
+                let checked_annotation_chirho =
+                    self.check_body_type_chirho(annotation_chirho, true);
+                let annotation_chirho = checked_annotation_chirho
+                    .as_ref()
+                    .map_or(annotation_chirho, |checked_chirho| {
+                        &checked_chirho.syntax_chirho
+                    });
                 if self.checking_binding_pattern_annotations_chirho {
                     if !self.scoped_type_variables_chirho {
                         self.diagnostics_chirho.push_chirho(

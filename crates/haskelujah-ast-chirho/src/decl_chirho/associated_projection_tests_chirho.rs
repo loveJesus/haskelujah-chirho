@@ -27,6 +27,7 @@ fn associated_default_arguments_are_measured_before_class_projection_chirho() {
             type_vars_chirho: vec![],
             methods_chirho: vec![],
             associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+                injectivity_chirho: None,
                 name_chirho: name_chirho("FChirho"),
                 type_vars_chirho: vec![],
                 result_kind_chirho: None,

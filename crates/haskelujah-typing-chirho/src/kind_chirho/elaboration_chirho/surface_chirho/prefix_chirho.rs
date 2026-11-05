@@ -478,12 +478,12 @@ impl TypeElaboratorChirho<'_> {
                     span_chirho,
                 ));
             }
-            self.state_chirho.unify_chirho(
+            self.unify_kinds_chirho(
                 &elaborated_chirho.kind_chirho,
                 &binder_chirho.kind_chirho,
                 span_chirho,
             )?;
-            self.state_chirho.unify_chirho(
+            self.unify_kinds_chirho(
                 &TyChirho::VarChirho(binder_chirho.variable_chirho),
                 &elaborated_chirho.term_chirho,
                 span_chirho,
@@ -499,11 +499,7 @@ impl TypeElaboratorChirho<'_> {
                 self.state_chirho
                     .copy_chirho(&next_kind_chirho, span_chirho)?,
             );
-            self.state_chirho.unify_chirho(
-                &prefix_chirho.kind_chirho,
-                &expected_chirho,
-                span_chirho,
-            )?;
+            self.unify_kinds_chirho(&prefix_chirho.kind_chirho, &expected_chirho, span_chirho)?;
             prefix_chirho.kind_chirho = next_kind_chirho;
         }
         let previous_chirho = std::mem::replace(term_chirho, TyChirho::TupleChirho(Vec::new()));

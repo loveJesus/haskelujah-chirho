@@ -257,9 +257,18 @@ impl InferCtxChirho {
                 ..
             } = bind_chirho
             {
+                let checked_chirho = self.check_body_type_chirho(ty_chirho, true);
+                self.check_source_signature_ambiguity_chirho(
+                    checked_chirho
+                        .as_ref()
+                        .map_or(ty_chirho, |checked_chirho| &checked_chirho.syntax_chirho),
+                );
                 local_sigs_chirho.insert(
                     canonical_value_name_text_chirho(name_chirho.text_chirho()),
-                    ty_chirho.clone(),
+                    checked_chirho.map_or_else(
+                        || ty_chirho.clone(),
+                        |checked_chirho| checked_chirho.syntax_chirho,
+                    ),
                 );
             }
         }

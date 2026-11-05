@@ -15,6 +15,7 @@ pub(crate) struct ArgumentElaborationContextChirho<'scope_chirho> {
     pub promotion_scope_chirho: &'scope_chirho PromotionScopeChirho,
     pub scoped_variables_chirho: &'scope_chirho HashMap<String, TyVarChirho>,
     pub images_chirho: &'scope_chirho crate::subst_chirho::SubstChirho,
+    pub equality_chirho: crate::infer_chirho::EqualityNormalizationViewChirho<'scope_chirho>,
     pub refinements_chirho: &'scope_chirho crate::env_chirho::TyEnvChirho,
 }
 
@@ -26,6 +27,65 @@ pub(crate) fn elaborate_required_argument_chirho(
     context_chirho: ArgumentElaborationContextChirho<'_>,
 ) -> Result<(TyChirho, crate::subst_chirho::SubstChirho), ElaborationErrorChirho> {
     let span_chirho = expression_chirho.span_chirho();
+    with_argument_elaborator_chirho(context_chirho, span_chirho, true, |elaborator_chirho| {
+        let mut syntax_chirho =
+            elaborator_chirho.required_argument_syntax_chirho(expression_chirho, 0)?;
+        let expected_kind_chirho =
+            elaborator_chirho.normalize_lexical_term_chirho(expected_kind_chirho, span_chirho)?;
+        let typed_chirho = elaborator_chirho
+            .infer_type_at_kind_chirho(&mut syntax_chirho, &expected_kind_chirho)?;
+        elaborator_chirho
+            .state_chirho
+            .resolve_chirho(&typed_chirho.term_chirho, span_chirho)
+    })
+}
+
+pub(crate) struct CheckedBodyTypeChirho {
+    pub syntax_chirho: TypeChirho,
+    pub term_chirho: TyChirho,
+    pub kind_chirho: TyChirho,
+}
+
+/// Recheck actual body syntax after its pattern/signature givens are in scope.
+/// The returned syntax retains the same ownership and full hidden applications.
+pub(crate) fn elaborate_body_type_chirho(
+    syntax_chirho: &TypeChirho,
+    value_kind_chirho: bool,
+    context_chirho: ArgumentElaborationContextChirho<'_>,
+) -> Result<(CheckedBodyTypeChirho, crate::subst_chirho::SubstChirho), ElaborationErrorChirho> {
+    let span_chirho = syntax_chirho.span_chirho();
+    with_argument_elaborator_chirho(context_chirho, span_chirho, false, |elaborator_chirho| {
+        let mut syntax_chirho = elaborator_chirho
+            .state_chirho
+            .copy_syntax_chirho(syntax_chirho)?;
+        let typed_chirho = if value_kind_chirho {
+            elaborator_chirho.infer_type_at_kind_chirho(
+                &mut syntax_chirho,
+                &ElaborationStateChirho::type_universe_chirho(),
+            )?
+        } else {
+            elaborator_chirho.infer_type_chirho(&mut syntax_chirho)?
+        };
+        Ok(CheckedBodyTypeChirho {
+            syntax_chirho,
+            term_chirho: elaborator_chirho
+                .state_chirho
+                .resolve_chirho(&typed_chirho.term_chirho, span_chirho)?,
+            kind_chirho: elaborator_chirho
+                .state_chirho
+                .resolve_chirho(&typed_chirho.kind_chirho, span_chirho)?,
+        })
+    })
+}
+
+fn with_argument_elaborator_chirho<ResultChirho>(
+    context_chirho: ArgumentElaborationContextChirho<'_>,
+    span_chirho: SpanChirho,
+    strict_argument_chirho: bool,
+    check_chirho: impl FnOnce(
+        &mut TypeElaboratorChirho<'_>,
+    ) -> Result<ResultChirho, ElaborationErrorChirho>,
+) -> Result<(ResultChirho, crate::subst_chirho::SubstChirho), ElaborationErrorChirho> {
     context_chirho.state_chirho.owner_id_chirho(span_chirho)?;
     let policy_chirho = context_chirho
         .state_chirho
@@ -67,7 +127,8 @@ pub(crate) fn elaborate_required_argument_chirho(
         declaration_contracts_chirho: HashMap::new(),
         lexical_images_chirho: Some(context_chirho.images_chirho),
         lexical_refinements_chirho: Some(context_chirho.refinements_chirho),
-        strict_argument_chirho: true,
+        lexical_equality_chirho: Some(context_chirho.equality_chirho),
+        strict_argument_chirho,
     };
     let result_chirho = (|| {
         for (name_chirho, variable_chirho) in context_chirho.scoped_variables_chirho {
@@ -102,15 +163,7 @@ pub(crate) fn elaborate_required_argument_chirho(
                 span_chirho,
             )?;
         }
-        let mut syntax_chirho =
-            elaborator_chirho.required_argument_syntax_chirho(expression_chirho, 0)?;
-        let expected_kind_chirho =
-            elaborator_chirho.normalize_lexical_term_chirho(expected_kind_chirho, span_chirho)?;
-        let typed_chirho = elaborator_chirho
-            .infer_type_at_kind_chirho(&mut syntax_chirho, &expected_kind_chirho)?;
-        elaborator_chirho
-            .state_chirho
-            .resolve_chirho(&typed_chirho.term_chirho, span_chirho)
+        check_chirho(&mut elaborator_chirho)
     })();
     let links_chirho = elaborator_chirho
         .state_chirho
@@ -121,6 +174,34 @@ pub(crate) fn elaborate_required_argument_chirho(
 }
 
 impl TypeElaboratorChirho<'_> {
+    pub(super) fn unify_kinds_chirho(
+        &mut self,
+        left_chirho: &TyChirho,
+        right_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        if self.lexical_images_chirho.is_none() {
+            return self
+                .state_chirho
+                .unify_chirho(left_chirho, right_chirho, span_chirho);
+        }
+        let left_chirho = self.normalize_lexical_term_chirho(left_chirho, span_chirho)?;
+        let right_chirho = self.normalize_lexical_term_chirho(right_chirho, span_chirho)?;
+        let (left_chirho, right_chirho) = if let Some(view_chirho) = self.lexical_equality_chirho {
+            self.state_chirho.normalize_equality_pair_chirho(
+                view_chirho,
+                &self.registry_chirho,
+                &left_chirho,
+                &right_chirho,
+                span_chirho,
+            )?
+        } else {
+            (left_chirho, right_chirho)
+        };
+        self.state_chirho
+            .unify_chirho(&left_chirho, &right_chirho, span_chirho)
+    }
+
     pub(super) fn normalize_lexical_term_chirho(
         &mut self,
         term_chirho: &TyChirho,
@@ -129,8 +210,9 @@ impl TypeElaboratorChirho<'_> {
         let Some(images_chirho) = self.lexical_images_chirho else {
             return self.state_chirho.copy_chirho(term_chirho, span_chirho);
         };
+        let resolved_chirho = self.state_chirho.resolve_chirho(term_chirho, span_chirho)?;
         let mut term_chirho = images_chirho
-            .apply_bounded_chirho(term_chirho, &mut |work_chirho, output_chirho| {
+            .apply_bounded_chirho(&resolved_chirho, &mut |work_chirho, output_chirho| {
                 self.state_chirho
                     .charge_chirho(work_chirho, output_chirho, span_chirho)
                     .ok()
@@ -434,12 +516,12 @@ impl TypeElaboratorChirho<'_> {
                 ));
             };
             let typed_chirho = self.infer_type_chirho(argument_chirho)?;
-            self.state_chirho.unify_chirho(
+            self.unify_kinds_chirho(
                 &typed_chirho.kind_chirho,
                 &binder_chirho.kind_chirho,
                 argument_chirho.span_chirho(),
             )?;
-            self.state_chirho.unify_chirho(
+            self.unify_kinds_chirho(
                 &TyChirho::VarChirho(binder_chirho.variable_chirho),
                 &typed_chirho.term_chirho,
                 argument_chirho.span_chirho(),
@@ -551,7 +633,7 @@ impl TypeElaboratorChirho<'_> {
             let argument_term_chirho =
                 self.bind_pattern_type_argument_chirho(argument_chirho, &kind_chirho)?;
             if let Some(binder_chirho) = expected_chirho {
-                self.state_chirho.unify_chirho(
+                self.unify_kinds_chirho(
                     &TyChirho::VarChirho(binder_chirho.variable_chirho),
                     &argument_term_chirho,
                     argument_chirho.span_chirho(),
@@ -579,12 +661,12 @@ impl TypeElaboratorChirho<'_> {
             } => {
                 let annotation_chirho = this_chirho
                     .scoped_chirho(|this_chirho| this_chirho.infer_type_chirho(kind_chirho))?;
-                this_chirho.state_chirho.unify_chirho(
+                this_chirho.unify_kinds_chirho(
                     &annotation_chirho.kind_chirho,
                     &ElaborationStateChirho::type_universe_chirho(),
                     span_chirho,
                 )?;
-                this_chirho.state_chirho.unify_chirho(
+                this_chirho.unify_kinds_chirho(
                     &annotation_chirho.term_chirho,
                     expected_chirho,
                     span_chirho,
@@ -598,11 +680,7 @@ impl TypeElaboratorChirho<'_> {
                     let kind_chirho = this_chirho
                         .state_chirho
                         .variable_kind_chirho(variable_chirho, span_chirho)?;
-                    this_chirho.state_chirho.unify_chirho(
-                        &kind_chirho,
-                        expected_chirho,
-                        span_chirho,
-                    )?;
+                    this_chirho.unify_kinds_chirho(&kind_chirho, expected_chirho, span_chirho)?;
                     variable_chirho
                 } else {
                     let kind_chirho = this_chirho

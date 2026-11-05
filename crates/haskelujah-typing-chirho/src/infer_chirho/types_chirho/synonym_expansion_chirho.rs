@@ -3,8 +3,8 @@
 //! Capture-avoiding synonym instantiation with one work/output allowance.
 //! The catalogue supplies the complete telescope; names supply no authority.
 
-use super::InferCtxChirho;
 use super::equality_normalization_chirho::EqualityBudgetChirho;
+use super::equality_normalization_chirho::NormalizationContextChirho;
 use crate::ty_chirho::{TyChirho, TyVarChirho};
 
 #[derive(Default)]
@@ -14,7 +14,7 @@ struct SynonymBindingsChirho {
 }
 
 struct SynonymExpansionChirho<'context_chirho, 'budget_chirho> {
-    context_chirho: &'context_chirho InferCtxChirho,
+    context_chirho: &'context_chirho dyn NormalizationContextChirho,
     budget_chirho: &'budget_chirho mut EqualityBudgetChirho,
     next_bound_chirho: u32,
 }
@@ -163,7 +163,7 @@ impl SynonymExpansionChirho<'_, '_> {
             // A checked head can never fall back to a spelling synonym.
             if let Some(scheme_chirho) = self
                 .context_chirho
-                .type_families_chirho
+                .catalogue_chirho()
                 .declaration_schemes_chirho()
                 .get_chirho(name_chirho)
                 && scheme_chirho.owner_chirho.is_none()
@@ -482,14 +482,14 @@ impl SynonymExpansionChirho<'_, '_> {
 }
 
 pub(super) fn expand_synonyms_with_budget_chirho(
-    context_chirho: &InferCtxChirho,
+    context_chirho: &dyn NormalizationContextChirho,
     ty_chirho: &TyChirho,
     budget_chirho: &mut EqualityBudgetChirho,
 ) -> Option<TyChirho> {
     let mut expansion_chirho = SynonymExpansionChirho {
         context_chirho,
         budget_chirho,
-        next_bound_chirho: context_chirho.elaboration_state_chirho.next_variable_chirho,
+        next_bound_chirho: context_chirho.variable_floor_chirho(),
     };
     expansion_chirho.reserve_variables_chirho(ty_chirho)?;
     expansion_chirho.walk_chirho(

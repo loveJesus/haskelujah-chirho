@@ -167,6 +167,7 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+            injectivity_chirho: None,
             default_arguments_chirho: None,
             name_chirho: dummy_name_chirho("Rep"),
             result_kind_chirho: None,
@@ -325,6 +326,7 @@ fn infer_proxy_index_instance_method_reduces_rep_to_unit_chirho() {
                 }],
                 associated_tfs_chirho: vec![
                     haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+                        injectivity_chirho: None,
                         default_arguments_chirho: None,
                         name_chirho: dummy_name_chirho("Rep"),
                         result_kind_chirho: None,
@@ -484,6 +486,7 @@ fn infer_tabulate_application_after_tuple_projection_keeps_component_functor_chi
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+            injectivity_chirho: None,
             default_arguments_chirho: None,
             name_chirho: dummy_name_chirho("Rep"),
             result_kind_chirho: None,

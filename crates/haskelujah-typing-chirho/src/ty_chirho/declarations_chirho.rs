@@ -65,6 +65,9 @@ pub struct AssociatedDefaultEquationChirho {
 /// A nullary family returning an arrow has zero required reduction arguments.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeclarationSchemeChirho {
+    /// Parser-produced absence/presence of family dependencies. Unknown/stub
+    /// metadata never acquires annotation absence by a key or constructor spelling.
+    pub injectivity_chirho: Option<bool>,
     pub association_chirho: DeclarationAssociationChirho,
     pub identity_chirho: Arc<str>,
     /// A provisional local header may mention this solver's unquantified

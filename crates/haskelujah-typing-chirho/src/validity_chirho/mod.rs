@@ -102,6 +102,7 @@ const UNRESOLVED_CONSTRAINT_MARKER_CHIRHO: &str = "?";
 pub(crate) struct LicenseChirho {
     /// `RankNTypes` (or a spelling/edition that implies it) is on.
     rank_n_chirho: bool,
+    allow_ambiguous_chirho: bool,
     /// `ImpredicativeTypes` is on.
     impredicative_chirho: bool,
     /// `QuantifiedConstraints` is on.
@@ -113,6 +114,10 @@ pub(crate) struct LicenseChirho {
 }
 
 impl LicenseChirho {
+    pub(crate) fn allow_ambiguous_enabled_chirho(self) -> bool {
+        self.allow_ambiguous_chirho
+    }
+
     pub(crate) fn impredicative_enabled_chirho(self) -> bool {
         self.impredicative_chirho
     }
@@ -122,6 +127,7 @@ impl LicenseChirho {
         // spelling of `RankNTypes` and still widely used in real source.
         let impredicative_chirho = extension_enabled_chirho(module_chirho, "ImpredicativeTypes");
         Self {
+            allow_ambiguous_chirho: extension_enabled_chirho(module_chirho, "AllowAmbiguousTypes"),
             rank_n_chirho: impredicative_chirho
             || extension_enabled_chirho(module_chirho, "RankNTypes")
             || extension_enabled_chirho(module_chirho, "Rank2Types")

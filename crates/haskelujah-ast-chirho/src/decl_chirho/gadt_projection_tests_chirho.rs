@@ -635,6 +635,7 @@ fn family_equation_chirho() -> TypeFamilyEquationChirho {
 
 fn family_chirho(equations_chirho: Vec<TypeFamilyEquationChirho>) -> DeclChirho {
     DeclChirho::TypeFamilyDeclChirho {
+        injectivity_chirho: None,
         name_chirho: name_chirho("FChirho"),
         type_vars_chirho: vec![],
         result_kind_chirho: None,
@@ -715,6 +716,7 @@ fn hidden_family_and_instance_prefixes_and_written_kinds_are_precharged_chirho()
             type_vars_chirho: vec![],
             methods_chirho: vec![],
             associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+                injectivity_chirho: None,
                 default_arguments_chirho: None,
                 name_chirho: name_chirho("FChirho"),
                 type_vars_chirho: if component_chirho == 0 {

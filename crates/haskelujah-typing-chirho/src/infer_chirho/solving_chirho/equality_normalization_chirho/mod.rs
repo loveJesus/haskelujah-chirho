@@ -4,17 +4,28 @@
 //! Every clone, substitution, expansion and evidence comparison is charged.
 
 use super::*;
+mod context_chirho;
+pub(crate) use context_chirho::{EqualityNormalizationViewChirho, NormalizationContextChirho};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) struct EqualityNormalizationExhaustedChirho;
+pub(crate) struct EqualityNormalizationExhaustedChirho;
 
-pub(super) struct EqualityBudgetChirho {
+pub(crate) struct EqualityBudgetChirho {
     work_chirho: usize,
     output_chirho: usize,
 }
 
 impl EqualityBudgetChirho {
-    pub(super) fn new_chirho() -> Self {
+    pub(crate) fn limited_chirho(work_chirho: usize, output_chirho: usize) -> Self {
+        Self {
+            work_chirho: work_chirho.min(10_000_000),
+            output_chirho: output_chirho.min(16_384),
+        }
+    }
+    pub(crate) fn remaining_chirho(&self) -> (usize, usize) {
+        (self.work_chirho, self.output_chirho)
+    }
+    pub(crate) fn new_chirho() -> Self {
         Self {
             work_chirho: 10_000_000,
             output_chirho: 16_384,
@@ -154,7 +165,7 @@ pub(super) fn equal_chirho(
 
 #[derive(Clone, Copy)]
 struct EqualityTransformPolicyChirho<'source_chirho> {
-    ctx_chirho: &'source_chirho InferCtxChirho,
+    ctx_chirho: &'source_chirho dyn NormalizationContextChirho,
     rewrites_chirho: &'source_chirho [(TyChirho, TyChirho)],
     expand_chirho: bool,
     resolve_meta_chirho: bool,
@@ -243,7 +254,7 @@ fn transform_chirho<'source_chirho>(
         && let TyChirho::VarChirho(var_chirho) = ty_chirho
         && !bound_chirho.contains(var_chirho)
         && let Some(image_chirho) = ctx_chirho
-            .equality_substitutions_chirho
+            .equality_substitutions_chirho()
             .lookup_chirho(var_chirho)
         && !matches!(image_chirho, TyChirho::VarChirho(other_chirho) if other_chirho == var_chirho)
     {
@@ -263,9 +274,9 @@ fn transform_chirho<'source_chirho>(
     }
     if expand_chirho
         && named_chirho.is_none()
-        && (ctx_chirho.elaboration_state_chirho.owner_chirho.is_some()
+        && (ctx_chirho.owner_present_chirho()
             || !ctx_chirho
-                .type_families_chirho
+                .catalogue_chirho()
                 .declaration_schemes_chirho()
                 .is_empty_chirho())
     {
@@ -590,7 +601,7 @@ pub(super) fn rewrite_givens_with_budget_chirho(
 }
 
 pub(super) fn normalize_owned_equality_chirho<'evidence_chirho>(
-    ctx_chirho: &InferCtxChirho,
+    ctx_chirho: &dyn NormalizationContextChirho,
     ty_chirho: &TyChirho,
     evidence_chirho: impl Iterator<Item = &'evidence_chirho [(TyChirho, TyChirho)]>,
 ) -> Result<TyChirho, EqualityNormalizationExhaustedChirho> {
@@ -603,7 +614,7 @@ pub(super) fn normalize_owned_equality_chirho<'evidence_chirho>(
 }
 
 pub(super) fn normalize_owned_equality_with_budget_chirho<'evidence_chirho>(
-    ctx_chirho: &InferCtxChirho,
+    ctx_chirho: &dyn NormalizationContextChirho,
     ty_chirho: &TyChirho,
     evidence_chirho: impl Iterator<Item = &'evidence_chirho [(TyChirho, TyChirho)]>,
     budget_chirho: &mut EqualityBudgetChirho,

@@ -10,6 +10,8 @@ use haskelujah_ast_chirho::expr_chirho::ExprChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
 
+mod ambiguity_chirho;
+mod body_types_chirho;
 mod escape_chirho;
 #[cfg(test)]
 mod tests_chirho;
@@ -23,6 +25,13 @@ impl InferCtxChirho {
         annotation_chirho: &TypeChirho,
         span_chirho: SpanChirho,
     ) -> (SubstChirho, SchemeChirho) {
+        let checked_annotation_chirho = self.check_body_type_chirho(annotation_chirho, true);
+        let annotation_chirho = checked_annotation_chirho
+            .as_ref()
+            .map_or(annotation_chirho, |checked_chirho| {
+                &checked_chirho.syntax_chirho
+            });
+        self.check_source_signature_ambiguity_chirho(annotation_chirho);
         let (scheme_chirho, variables_chirho) =
             self.ast_type_to_scheme_with_var_map_chirho(annotation_chirho);
         let saved_scope_chirho = self.scoped_tyvars_chirho.clone();

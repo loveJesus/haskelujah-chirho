@@ -126,6 +126,7 @@ fn type_family_decl_result_kind_guides_later_applications_chirho() {
     let t_var_chirho = TyVarChirho::plain_chirho(mk_name_chirho("t"));
     let mut module_chirho = mk_module_chirho(vec![
         DeclChirho::TypeFamilyDeclChirho {
+            injectivity_chirho: None,
             name_chirho: mk_name_chirho("TrivialFamily"),
             type_vars_chirho: vec![t_var_chirho.clone()],
             result_kind_chirho: Some(TypeChirho::ConChirho(mk_name_chirho("Type"))),
@@ -169,6 +170,7 @@ fn type_family_decl_result_kind_guides_later_applications_chirho() {
 fn polykinds_unannotated_type_family_result_stays_flexible_chirho() {
     let mut module_chirho = mk_module_chirho(vec![
         DeclChirho::TypeFamilyDeclChirho {
+            injectivity_chirho: None,
             name_chirho: mk_name_chirho("FamilyChirho"),
             type_vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],
             result_kind_chirho: None,

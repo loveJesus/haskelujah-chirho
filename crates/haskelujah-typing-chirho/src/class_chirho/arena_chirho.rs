@@ -86,6 +86,7 @@ pub struct ClassEnvChirho {
     class_identities_chirho: HashMap<PredicateClassIdentityChirho, ClassIdentityEntryChirho>,
     instance_identities_chirho: HashMap<PredicateClassIdentityChirho, Vec<InstanceRecordIdChirho>>,
     next_seed_instance_chirho: usize,
+    unary_variable_instance_heads_covered_chirho: bool,
     registration_work_chirho: Arc<ModuleRegistrationBudgetChirho>,
 }
 
@@ -157,6 +158,8 @@ impl ClassEnvChirho {
             class_identities_chirho,
             instance_identities_chirho,
             next_seed_instance_chirho: self.next_seed_instance_chirho,
+            unary_variable_instance_heads_covered_chirho: self
+                .unary_variable_instance_heads_covered_chirho,
             registration_work_chirho: Arc::clone(&self.registration_work_chirho),
         })
     }
@@ -203,6 +206,50 @@ impl ClassEnvChirho {
         Self::default()
     }
 
+    /// Only this fresh standard producer certifies its own instance-head set.
+    /// Seeding an arbitrary existing environment does not grant this fact.
+    pub(crate) fn standard_with_registration_limit_chirho(limit_chirho: usize) -> Self {
+        let mut environment_chirho = Self::with_registration_limit_chirho(limit_chirho);
+        environment_chirho.seed_standard_chirho();
+        environment_chirho.unary_variable_instance_heads_covered_chirho =
+            environment_chirho.registry_error_chirho().is_none();
+        environment_chirho
+    }
+
+    pub(crate) fn restrict_unary_variable_instance_coverage_chirho(
+        &mut self,
+        covered_chirho: bool,
+    ) {
+        self.unary_variable_instance_heads_covered_chirho &= covered_chirho;
+    }
+
+    /// A source homonym/ambiguous/unknown record cannot borrow a compiler seed's
+    /// coverage. This read-only certificate never chooses a runtime instance.
+    pub(crate) fn covers_compiler_unary_variable_head_chirho(
+        &self,
+        proof_chirho: &PredicateClassProofChirho,
+        name_chirho: &str,
+    ) -> bool {
+        if !self.unary_variable_instance_heads_covered_chirho {
+            return false;
+        }
+        let PredicateClassProofChirho::ProvenChirho(PredicateClassIdentityChirho::CompilerChirho(
+            identity_chirho,
+        )) = proof_chirho
+        else {
+            return false;
+        };
+        match (
+            self.compiler_class_record_chirho(*identity_chirho),
+            self.classes_chirho().get_chirho(name_chirho),
+        ) {
+            (Some(producer_chirho), Some(active_chirho)) => {
+                Arc::ptr_eq(producer_chirho, active_chirho)
+            }
+            _ => false,
+        }
+    }
+
     /// A resource policy for actual module admission, never a global fault switch.
     pub fn with_registration_limit_chirho(limit_chirho: usize) -> Self {
         Self {
@@ -216,6 +263,7 @@ impl ClassEnvChirho {
             class_identities_chirho: HashMap::new(),
             instance_identities_chirho: HashMap::new(),
             next_seed_instance_chirho: 0,
+            unary_variable_instance_heads_covered_chirho: false,
             registration_work_chirho: Arc::new(ModuleRegistrationBudgetChirho::new_chirho(
                 limit_chirho,
             )),

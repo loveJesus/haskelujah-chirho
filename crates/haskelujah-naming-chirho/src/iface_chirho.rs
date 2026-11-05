@@ -110,6 +110,10 @@ pub struct IfaceExportsChirho {
     pub complete_member_types_chirho: HashSet<String>,
     /// Where this interface came from; source unless proven builtin (row 608).
     pub origin_chirho: IfaceOriginChirho,
+    /// This producer introduces no unary bare-variable instance heads absent
+    /// from the standard class environment. Structured heads are NOT covered.
+    /// Unknown/source/stub interfaces have no certificate.
+    pub unary_variable_instance_heads_covered_chirho: bool,
 }
 
 /// A compiled module's public interface.
@@ -731,6 +735,11 @@ pub fn merge_module_ifaces_chirho(
     for module_chirho in modules_chirho {
         if let Some(&idx_chirho) = index_chirho.get(&module_chirho.name_chirho) {
             let existing_chirho = &mut deduped_chirho[idx_chirho];
+            existing_chirho
+                .exports_chirho
+                .unary_variable_instance_heads_covered_chirho &= module_chirho
+                .exports_chirho
+                .unary_variable_instance_heads_covered_chirho;
             // A merge stays builtin only when both copies are (row 608).
             // workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
             if module_chirho.exports_chirho.origin_chirho != IfaceOriginChirho::BuiltinChirho {

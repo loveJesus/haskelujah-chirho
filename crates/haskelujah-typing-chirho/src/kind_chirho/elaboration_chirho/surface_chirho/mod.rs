@@ -67,11 +67,7 @@ impl TypeElaboratorChirho<'_> {
             _ => self.infer_type_chirho(syntax_chirho)?,
         };
         self.instantiate_invisible_kind_chirho(syntax_chirho, &mut result_chirho, span_chirho)?;
-        self.state_chirho.unify_chirho(
-            &result_chirho.kind_chirho,
-            &expected_chirho,
-            span_chirho,
-        )?;
+        self.unify_kinds_chirho(&result_chirho.kind_chirho, &expected_chirho, span_chirho)?;
         Ok(result_chirho)
     }
 
@@ -168,7 +164,7 @@ impl TypeElaboratorChirho<'_> {
                 ..
             } => {
                 let annotation_chirho = self.infer_type_chirho(kind_chirho)?;
-                self.state_chirho.unify_chirho(
+                self.unify_kinds_chirho(
                     &annotation_chirho.kind_chirho,
                     &ElaborationStateChirho::type_universe_chirho(),
                     span_chirho,
@@ -186,12 +182,12 @@ impl TypeElaboratorChirho<'_> {
             } => {
                 let argument_chirho = self.infer_type_chirho(arg_chirho)?;
                 let result_chirho = self.infer_type_chirho(result_chirho)?;
-                self.state_chirho.unify_chirho(
+                self.unify_kinds_chirho(
                     &argument_chirho.kind_chirho,
                     &ElaborationStateChirho::type_universe_chirho(),
                     span_chirho,
                 )?;
-                self.state_chirho.unify_chirho(
+                self.unify_kinds_chirho(
                     &result_chirho.kind_chirho,
                     &ElaborationStateChirho::type_universe_chirho(),
                     span_chirho,
@@ -225,7 +221,7 @@ impl TypeElaboratorChirho<'_> {
                 for element_chirho in elements_chirho {
                     let element_chirho = self.infer_type_chirho(element_chirho)?;
                     if let Some(expected_chirho) = &tuple_kind_chirho {
-                        self.state_chirho.unify_chirho(
+                        self.unify_kinds_chirho(
                             &element_chirho.kind_chirho,
                             expected_chirho,
                             span_chirho,
@@ -242,7 +238,7 @@ impl TypeElaboratorChirho<'_> {
                     ElaborationStateChirho::type_universe_chirho()
                 };
                 if kind_chirho != ElaborationStateChirho::constraint_universe_chirho() {
-                    self.state_chirho.unify_chirho(
+                    self.unify_kinds_chirho(
                         &kind_chirho,
                         &ElaborationStateChirho::type_universe_chirho(),
                         span_chirho,
@@ -255,7 +251,7 @@ impl TypeElaboratorChirho<'_> {
             }
             TypeChirho::ListChirho { element_chirho, .. } => {
                 let element_chirho = self.infer_type_chirho(element_chirho)?;
-                self.state_chirho.unify_chirho(
+                self.unify_kinds_chirho(
                     &element_chirho.kind_chirho,
                     &ElaborationStateChirho::type_universe_chirho(),
                     span_chirho,
@@ -281,7 +277,7 @@ impl TypeElaboratorChirho<'_> {
                     context_terms_chirho.push(self.infer_constraint_chirho(constraint_chirho)?);
                 }
                 let body_chirho = self.infer_type_chirho(body_chirho)?;
-                self.state_chirho.unify_chirho(
+                self.unify_kinds_chirho(
                     &body_chirho.kind_chirho,
                     &ElaborationStateChirho::type_universe_chirho(),
                     span_chirho,
@@ -675,11 +671,7 @@ impl TypeElaboratorChirho<'_> {
         let mut values_chirho = Vec::with_capacity(elements_chirho.len());
         for element_chirho in elements_chirho {
             let value_chirho = self.infer_type_chirho(element_chirho)?;
-            self.state_chirho.unify_chirho(
-                &value_chirho.kind_chirho,
-                &element_kind_chirho,
-                span_chirho,
-            )?;
+            self.unify_kinds_chirho(&value_chirho.kind_chirho, &element_kind_chirho, span_chirho)?;
             values_chirho.push(value_chirho.term_chirho);
         }
         let mut term_chirho = TyChirho::AppChirho(
@@ -738,7 +730,7 @@ impl TypeElaboratorChirho<'_> {
                     };
                 }
                 let typed_chirho = self.infer_type_chirho(&mut syntax_chirho)?;
-                self.state_chirho.unify_chirho(
+                self.unify_kinds_chirho(
                     &typed_chirho.kind_chirho,
                     &ElaborationStateChirho::constraint_universe_chirho(),
                     span_chirho,
@@ -820,12 +812,12 @@ impl TypeElaboratorChirho<'_> {
             } => {
                 let term_chirho = self.infer_constraint_chirho(constraint_chirho)?;
                 let kind_chirho = self.infer_type_chirho(kind_chirho)?;
-                self.state_chirho.unify_chirho(
+                self.unify_kinds_chirho(
                     &kind_chirho.kind_chirho,
                     &ElaborationStateChirho::type_universe_chirho(),
                     *span_chirho,
                 )?;
-                self.state_chirho.unify_chirho(
+                self.unify_kinds_chirho(
                     &kind_chirho.term_chirho,
                     &ElaborationStateChirho::constraint_universe_chirho(),
                     *span_chirho,

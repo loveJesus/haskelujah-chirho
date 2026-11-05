@@ -8,6 +8,7 @@ use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::{
 
 fn header_chirho(identity_chirho: &str) -> DeclarationSchemeChirho {
     DeclarationSchemeChirho {
+        injectivity_chirho: None,
         association_chirho:
             crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
         identity_chirho: Arc::from(identity_chirho),

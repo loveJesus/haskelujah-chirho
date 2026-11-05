@@ -4,6 +4,7 @@
 //! modules and interfaces, and the supplier guard over the real builtin interfaces.
 
 use super::*;
+use crate::iface_chirho::merge_module_ifaces_chirho;
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::module_chirho::{
     ExportMembersChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho,
@@ -333,6 +334,63 @@ fn the_table_names_each_class_once_at_a_known_parameter_kind_chirho() {
             entry_chirho.class_chirho.parameter_arities_chirho == TYPE_PARAMETER_CHIRHO
                 || entry_chirho.class_chirho.parameter_arities_chirho
                     == CONSTRUCTOR_PARAMETER_CHIRHO
+        );
+    }
+}
+
+#[test]
+fn instance_head_coverage_is_a_producer_fact_not_a_builtin_origin_chirho() {
+    let interfaces_chirho = builtin_module_ifaces_chirho();
+    for name_chirho in ["Prelude", "Data.Kind", "Data.Proxy"] {
+        let producer_chirho = interfaces_chirho
+            .iter()
+            .find(|interface_chirho| interface_chirho.name_chirho == name_chirho)
+            .unwrap();
+        assert!(
+            producer_chirho
+                .exports_chirho
+                .unary_variable_instance_heads_covered_chirho
+        );
+        let unknown_chirho = ModuleIfaceChirho {
+            name_chirho: name_chirho.into(),
+            exports_chirho: IfaceExportsChirho {
+                origin_chirho: IfaceOriginChirho::BuiltinChirho,
+                ..IfaceExportsChirho::default()
+            },
+        };
+        for copies_chirho in [
+            vec![producer_chirho.clone(), unknown_chirho.clone()],
+            vec![unknown_chirho.clone(), producer_chirho.clone()],
+        ] {
+            let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
+            assert!(
+                !merged_chirho[0]
+                    .exports_chirho
+                    .unary_variable_instance_heads_covered_chirho
+            );
+        }
+    }
+}
+
+#[test]
+fn source_interface_copies_cannot_acquire_instance_coverage_by_merge_order_chirho() {
+    let producer_chirho = builtin_module_ifaces_chirho()
+        .into_iter()
+        .find(|interface_chirho| interface_chirho.name_chirho == "Data.Proxy")
+        .unwrap();
+    let source_chirho = ModuleIfaceChirho {
+        name_chirho: producer_chirho.name_chirho.clone(),
+        exports_chirho: IfaceExportsChirho::default(),
+    };
+    for copies_chirho in [
+        vec![producer_chirho.clone(), source_chirho.clone()],
+        vec![source_chirho.clone(), producer_chirho.clone()],
+    ] {
+        let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
+        assert!(
+            !merged_chirho[0]
+                .exports_chirho
+                .unary_variable_instance_heads_covered_chirho
         );
     }
 }

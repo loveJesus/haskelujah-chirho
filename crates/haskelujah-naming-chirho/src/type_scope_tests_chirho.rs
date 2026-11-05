@@ -132,6 +132,7 @@ fn resolver_binds_local_associated_family_in_type_namespace_chirho() {
             type_vars_chirho: vec![tyvar_chirho("aChirho")],
             methods_chirho: vec![],
             associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+                injectivity_chirho: None,
                 default_arguments_chirho: None,
                 name_chirho: name_chirho("FamilyChirho"),
                 result_kind_chirho: None,
@@ -237,6 +238,7 @@ fn associated_family_default_requires_a_declared_variable_chirho() {
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         methods_chirho: vec![],
         associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+            injectivity_chirho: None,
             default_arguments_chirho: None,
             name_chirho: name_chirho("FamilyChirho"),
             result_kind_chirho: None,
@@ -263,6 +265,7 @@ fn associated_family_default_uses_its_equation_binders_chirho() {
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         methods_chirho: vec![],
         associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+            injectivity_chirho: None,
             default_arguments_chirho: None,
             name_chirho: name_chirho("FamilyChirho"),
             result_kind_chirho: None,
@@ -459,6 +462,7 @@ fn synonym_rhs_requires_lexically_bound_type_variables_chirho() {
 #[test]
 fn family_result_kind_resolves_type_namespace_names_chirho() {
     let decl_chirho = DeclChirho::TypeFamilyDeclChirho {
+        injectivity_chirho: None,
         name_chirho: name_chirho("FamilyChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         result_kind_chirho: Some(TypeChirho::FunChirho {

@@ -131,7 +131,7 @@ impl TypeElaboratorChirho<'_> {
         syntax_chirho: &mut TypeChirho,
     ) -> Result<TyChirho, ElaborationErrorChirho> {
         let typed_chirho = self.infer_type_chirho(syntax_chirho)?;
-        self.state_chirho.unify_chirho(
+        self.unify_kinds_chirho(
             &typed_chirho.kind_chirho,
             &ElaborationStateChirho::type_universe_chirho(),
             syntax_chirho.span_chirho(),
@@ -593,11 +593,7 @@ impl TypeElaboratorChirho<'_> {
                 self.check_binder_annotations_chirho(type_vars_chirho)?;
                 let typed_chirho = self.infer_type_chirho(rhs_chirho)?;
                 let expected_chirho = self.result_kind_chirho(key_chirho, span_chirho)?;
-                self.state_chirho.unify_chirho(
-                    &expected_chirho,
-                    &typed_chirho.kind_chirho,
-                    span_chirho,
-                )?;
+                self.unify_kinds_chirho(&expected_chirho, &typed_chirho.kind_chirho, span_chirho)?;
                 let mut scheme_chirho = self
                     .registry_chirho
                     .declaration_schemes_chirho()
@@ -624,7 +620,7 @@ impl TypeElaboratorChirho<'_> {
                     && standalone_kind_chirho.is_none()
                 {
                     let expected_chirho = self.result_kind_chirho(key_chirho, span_chirho)?;
-                    self.state_chirho.unify_chirho(
+                    self.unify_kinds_chirho(
                         &expected_chirho,
                         &ElaborationStateChirho::type_universe_chirho(),
                         span_chirho,
@@ -703,7 +699,7 @@ impl TypeElaboratorChirho<'_> {
         }
         if signature_chirho.is_none() {
             let result_chirho = self.result_kind_chirho(key_chirho, span_chirho)?;
-            self.state_chirho.unify_chirho(
+            self.unify_kinds_chirho(
                 &result_chirho,
                 &ElaborationStateChirho::type_universe_chirho(),
                 span_chirho,

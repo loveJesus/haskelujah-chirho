@@ -36,27 +36,13 @@ impl InferCtxChirho {
         steps_chirho: usize,
         nodes_chirho: usize,
     ) -> Option<TyChirho> {
-        let key_chirho = self.family_name_key_chirho(name_chirho)?;
-        let definition_chirho = self.type_families_chirho.definition_chirho(&key_chirho)?;
-        match definition_chirho.reduction_chirho() {
-            TypeFamilyReductionChirho::IntrinsicChirho(intrinsic_chirho) => {
-                reduce_builtin_type_family_application_chirho(
-                    intrinsic_chirho,
-                    arguments_chirho,
-                    self.promotion_scope_chirho.is_some(),
-                )
-            }
-            _ => reduce_family_with_limits_chirho(
-                definition_chirho,
-                arguments_chirho,
-                &|name_chirho| family_head_role_chirho(&self.type_families_chirho, name_chirho),
-                FamilyReductionLimitsChirho {
-                    steps_chirho,
-                    nodes_chirho,
-                    depth_chirho: 128,
-                },
-            ),
-        }
+        reduce_family_in_context_chirho(
+            self,
+            name_chirho,
+            arguments_chirho,
+            steps_chirho,
+            nodes_chirho,
+        )
     }
 
     /// One budget covers the complete normalization tree, including nested redexes.
@@ -80,126 +66,13 @@ impl InferCtxChirho {
         work_chirho: &mut usize,
         output_chirho: &mut usize,
     ) -> Option<TyChirho> {
-        if depth_chirho > 128 {
-            return None;
-        }
-        *work_chirho = work_chirho.checked_sub(1)?;
-        *output_chirho = output_chirho.checked_sub(1)?;
-        let child_chirho = depth_chirho.checked_add(1)?;
-        match ty_chirho {
-            TyChirho::ConChirho(name_chirho) => {
-                *work_chirho = work_chirho.checked_sub(name_chirho.len())?;
-                *output_chirho = output_chirho.checked_sub(name_chirho.len())?;
-                if self.is_registered_family_chirho(name_chirho) {
-                    *work_chirho = work_chirho.checked_sub(100_000)?;
-                    if let Some(reduced_chirho) = self.reduce_family_with_budget_chirho(
-                        name_chirho,
-                        &[],
-                        100_000,
-                        *output_chirho,
-                    ) {
-                        return self.reduce_families_bounded_chirho(
-                            &reduced_chirho,
-                            child_chirho,
-                            work_chirho,
-                            output_chirho,
-                        );
-                    }
-                }
-                Some(TyChirho::ConChirho(name_chirho.clone()))
-            }
-            TyChirho::AppChirho(_, _) => {
-                let mut head_chirho = ty_chirho;
-                let mut arguments_chirho = Vec::new();
-                while let TyChirho::AppChirho(function_chirho, argument_chirho) = head_chirho {
-                    *work_chirho = work_chirho.checked_sub(1)?;
-                    if depth_chirho.checked_add(arguments_chirho.len())? > 128 {
-                        return None;
-                    }
-                    arguments_chirho.push(argument_chirho.as_ref());
-                    head_chirho = function_chirho;
-                }
-                arguments_chirho.reverse();
-                let head_depth_chirho = depth_chirho.checked_add(arguments_chirho.len())?;
-                if head_depth_chirho > 128 {
-                    return None;
-                }
-                let mut reduced_arguments_chirho = Vec::new();
-                for (index_chirho, argument_chirho) in arguments_chirho.into_iter().enumerate() {
-                    reduced_arguments_chirho.push(self.reduce_families_bounded_chirho(
-                        argument_chirho,
-                        head_depth_chirho - index_chirho,
-                        work_chirho,
-                        output_chirho,
-                    )?);
-                }
-                if let TyChirho::ConChirho(name_chirho) = head_chirho
-                    && self.is_registered_family_chirho(name_chirho)
-                {
-                    *work_chirho = work_chirho.checked_sub(100_000)?;
-                    if let Some(reduced_chirho) = self.reduce_family_with_budget_chirho(
-                        name_chirho,
-                        &reduced_arguments_chirho,
-                        100_000,
-                        *output_chirho,
-                    ) {
-                        return self.reduce_families_bounded_chirho(
-                            &reduced_chirho,
-                            child_chirho,
-                            work_chirho,
-                            output_chirho,
-                        );
-                    }
-                }
-                let mut rebuilt_chirho =
-                    clone_stuck_type_chirho(head_chirho, head_depth_chirho, output_chirho)?;
-                for argument_chirho in reduced_arguments_chirho {
-                    *output_chirho = output_chirho.checked_sub(1)?;
-                    rebuilt_chirho =
-                        TyChirho::AppChirho(Box::new(rebuilt_chirho), Box::new(argument_chirho));
-                }
-                Some(rebuilt_chirho)
-            }
-            TyChirho::FunChirho(argument_chirho, result_chirho, multiplicity_chirho) => {
-                Some(TyChirho::FunChirho(
-                    Box::new(self.reduce_families_bounded_chirho(
-                        argument_chirho,
-                        child_chirho,
-                        work_chirho,
-                        output_chirho,
-                    )?),
-                    Box::new(self.reduce_families_bounded_chirho(
-                        result_chirho,
-                        child_chirho,
-                        work_chirho,
-                        output_chirho,
-                    )?),
-                    *multiplicity_chirho,
-                ))
-            }
-            TyChirho::ListChirho(element_chirho) => Some(TyChirho::ListChirho(Box::new(
-                self.reduce_families_bounded_chirho(
-                    element_chirho,
-                    child_chirho,
-                    work_chirho,
-                    output_chirho,
-                )?,
-            ))),
-            TyChirho::TupleChirho(elements_chirho) => Some(TyChirho::TupleChirho(
-                elements_chirho
-                    .iter()
-                    .map(|element_chirho| {
-                        self.reduce_families_bounded_chirho(
-                            element_chirho,
-                            child_chirho,
-                            work_chirho,
-                            output_chirho,
-                        )
-                    })
-                    .collect::<Option<Vec<_>>>()?,
-            )),
-            _ => clone_stuck_type_chirho(ty_chirho, depth_chirho, output_chirho),
-        }
+        reduce_families_with_context_chirho(
+            self,
+            ty_chirho,
+            depth_chirho,
+            work_chirho,
+            output_chirho,
+        )
     }
 }
 
@@ -619,5 +492,183 @@ pub(super) fn substitute_type_vars_chirho(
                 .collect(),
         ),
         _ => ty_chirho.clone(),
+    }
+}
+
+fn reduce_family_in_context_chirho(
+    context_chirho: &dyn super::equality_normalization_chirho::NormalizationContextChirho,
+    name_chirho: &str,
+    arguments_chirho: &[TyChirho],
+    steps_chirho: usize,
+    nodes_chirho: usize,
+) -> Option<TyChirho> {
+    let key_chirho = context_chirho.family_name_key_chirho(name_chirho)?;
+    let definition_chirho = context_chirho
+        .catalogue_chirho()
+        .definition_chirho(&key_chirho)?;
+    match definition_chirho.reduction_chirho() {
+        TypeFamilyReductionChirho::IntrinsicChirho(intrinsic_chirho) => {
+            reduce_builtin_type_family_application_chirho(
+                intrinsic_chirho,
+                arguments_chirho,
+                context_chirho.promotion_present_chirho(),
+            )
+        }
+        _ => reduce_family_with_limits_chirho(
+            definition_chirho,
+            arguments_chirho,
+            &|name_chirho| family_head_role_chirho(context_chirho.catalogue_chirho(), name_chirho),
+            FamilyReductionLimitsChirho {
+                steps_chirho,
+                nodes_chirho,
+                depth_chirho: 128,
+            },
+        ),
+    }
+}
+
+pub(super) fn reduce_families_with_context_chirho(
+    context_chirho: &dyn super::equality_normalization_chirho::NormalizationContextChirho,
+    ty_chirho: &TyChirho,
+    depth_chirho: usize,
+    work_chirho: &mut usize,
+    output_chirho: &mut usize,
+) -> Option<TyChirho> {
+    if depth_chirho > 128 {
+        return None;
+    }
+    *work_chirho = work_chirho.checked_sub(1)?;
+    *output_chirho = output_chirho.checked_sub(1)?;
+    let child_chirho = depth_chirho.checked_add(1)?;
+    match ty_chirho {
+        TyChirho::ConChirho(name_chirho) => {
+            *work_chirho = work_chirho.checked_sub(name_chirho.len())?;
+            *output_chirho = output_chirho.checked_sub(name_chirho.len())?;
+            if context_chirho
+                .family_name_key_chirho(name_chirho)
+                .is_some_and(|key_chirho| {
+                    context_chirho
+                        .catalogue_chirho()
+                        .definition_chirho(&key_chirho)
+                        .is_some()
+                })
+            {
+                *work_chirho = work_chirho.checked_sub(100_000)?;
+                if let Some(reduced_chirho) = reduce_family_in_context_chirho(
+                    context_chirho,
+                    name_chirho,
+                    &[],
+                    100_000,
+                    *output_chirho,
+                ) {
+                    return context_chirho.reduce_families_bounded_chirho(
+                        &reduced_chirho,
+                        child_chirho,
+                        work_chirho,
+                        output_chirho,
+                    );
+                }
+            }
+            Some(TyChirho::ConChirho(name_chirho.clone()))
+        }
+        TyChirho::AppChirho(_, _) => {
+            let mut head_chirho = ty_chirho;
+            let mut arguments_chirho = Vec::new();
+            while let TyChirho::AppChirho(function_chirho, argument_chirho) = head_chirho {
+                *work_chirho = work_chirho.checked_sub(1)?;
+                if depth_chirho.checked_add(arguments_chirho.len())? > 128 {
+                    return None;
+                }
+                arguments_chirho.push(argument_chirho.as_ref());
+                head_chirho = function_chirho;
+            }
+            arguments_chirho.reverse();
+            let head_depth_chirho = depth_chirho.checked_add(arguments_chirho.len())?;
+            if head_depth_chirho > 128 {
+                return None;
+            }
+            let mut reduced_arguments_chirho = Vec::new();
+            for (index_chirho, argument_chirho) in arguments_chirho.into_iter().enumerate() {
+                reduced_arguments_chirho.push(context_chirho.reduce_families_bounded_chirho(
+                    argument_chirho,
+                    head_depth_chirho - index_chirho,
+                    work_chirho,
+                    output_chirho,
+                )?);
+            }
+            if let TyChirho::ConChirho(name_chirho) = head_chirho
+                && context_chirho
+                    .family_name_key_chirho(name_chirho)
+                    .is_some_and(|key_chirho| {
+                        context_chirho
+                            .catalogue_chirho()
+                            .definition_chirho(&key_chirho)
+                            .is_some()
+                    })
+            {
+                *work_chirho = work_chirho.checked_sub(100_000)?;
+                if let Some(reduced_chirho) = reduce_family_in_context_chirho(
+                    context_chirho,
+                    name_chirho,
+                    &reduced_arguments_chirho,
+                    100_000,
+                    *output_chirho,
+                ) {
+                    return context_chirho.reduce_families_bounded_chirho(
+                        &reduced_chirho,
+                        child_chirho,
+                        work_chirho,
+                        output_chirho,
+                    );
+                }
+            }
+            let mut rebuilt_chirho =
+                clone_stuck_type_chirho(head_chirho, head_depth_chirho, output_chirho)?;
+            for argument_chirho in reduced_arguments_chirho {
+                *output_chirho = output_chirho.checked_sub(1)?;
+                rebuilt_chirho =
+                    TyChirho::AppChirho(Box::new(rebuilt_chirho), Box::new(argument_chirho));
+            }
+            Some(rebuilt_chirho)
+        }
+        TyChirho::FunChirho(argument_chirho, result_chirho, multiplicity_chirho) => {
+            Some(TyChirho::FunChirho(
+                Box::new(context_chirho.reduce_families_bounded_chirho(
+                    argument_chirho,
+                    child_chirho,
+                    work_chirho,
+                    output_chirho,
+                )?),
+                Box::new(context_chirho.reduce_families_bounded_chirho(
+                    result_chirho,
+                    child_chirho,
+                    work_chirho,
+                    output_chirho,
+                )?),
+                *multiplicity_chirho,
+            ))
+        }
+        TyChirho::ListChirho(element_chirho) => Some(TyChirho::ListChirho(Box::new(
+            context_chirho.reduce_families_bounded_chirho(
+                element_chirho,
+                child_chirho,
+                work_chirho,
+                output_chirho,
+            )?,
+        ))),
+        TyChirho::TupleChirho(elements_chirho) => Some(TyChirho::TupleChirho(
+            elements_chirho
+                .iter()
+                .map(|element_chirho| {
+                    context_chirho.reduce_families_bounded_chirho(
+                        element_chirho,
+                        child_chirho,
+                        work_chirho,
+                        output_chirho,
+                    )
+                })
+                .collect::<Option<Vec<_>>>()?,
+        )),
+        _ => clone_stuck_type_chirho(ty_chirho, depth_chirho, output_chirho),
     }
 }

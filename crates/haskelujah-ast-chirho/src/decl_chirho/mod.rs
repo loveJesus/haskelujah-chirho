@@ -290,6 +290,9 @@ pub enum DeclChirho {
     /// Open: `type family F a :: *`
     /// Closed: `type family F a where { F Int = Bool; ... }`
     TypeFamilyDeclChirho {
+        /// None is unknown; Some(false) proves this parsed header has no
+        /// injectivity annotation. Some(true) retains a dependency boundary.
+        injectivity_chirho: Option<bool>,
         /// Family name being declared.
         name_chirho: NameChirho,
         /// Family parameters introduced by the declaration.
@@ -550,6 +553,8 @@ pub struct ClassMethodChirho {
 /// `type FamilyName a :: *` or `type FamilyName a` (with optional default).
 #[derive(Debug, Clone, PartialEq)]
 pub struct AssocTypeFamilyChirho {
+    /// The same source-header injectivity fact; defaults cannot invent it.
+    pub injectivity_chirho: Option<bool>,
     /// Name of the associated type family.
     pub name_chirho: NameChirho,
     /// Complete written family telescope, including hidden binders and kinds.
