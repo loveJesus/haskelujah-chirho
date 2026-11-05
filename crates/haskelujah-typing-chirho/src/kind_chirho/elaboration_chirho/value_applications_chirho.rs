@@ -65,7 +65,6 @@ pub(crate) fn elaborate_required_argument_chirho(
         declaration_variables_chirho: HashMap::new(),
         current_declaration_chirho: None,
         declaration_contracts_chirho: HashMap::new(),
-        lexical_sources_chirho: HashMap::new(),
         lexical_images_chirho: Some(context_chirho.images_chirho),
         lexical_refinements_chirho: Some(context_chirho.refinements_chirho),
         strict_argument_chirho: true,
@@ -90,13 +89,6 @@ pub(crate) fn elaborate_required_argument_chirho(
                         span_chirho,
                     )
                 })?;
-            let source_chirho = context_chirho
-                .images_chirho
-                .lookup_image_chirho(variable_chirho)
-                .and_then(|image_chirho| image_chirho.source_chirho.clone())
-                .or_else(|| {
-                    record_chirho.and_then(|record_chirho| record_chirho.source_chirho.clone())
-                });
             let name_chirho = elaborator_chirho
                 .state_chirho
                 .name_chirho(name_chirho, span_chirho)?;
@@ -109,21 +101,6 @@ pub(crate) fn elaborate_required_argument_chirho(
                 kind_chirho,
                 span_chirho,
             )?;
-            if let Some(source_chirho) = source_chirho {
-                elaborator_chirho
-                    .state_chirho
-                    .charge_chirho(1, 1, span_chirho)?;
-                if let Some(previous_chirho) = elaborator_chirho
-                    .lexical_sources_chirho
-                    .insert(source_chirho, *variable_chirho)
-                    && previous_chirho != *variable_chirho
-                {
-                    return Err(TypeElaboratorChirho::error_chirho(
-                        "ambiguous lexical source-variable correspondence",
-                        span_chirho,
-                    ));
-                }
-            }
         }
         let mut syntax_chirho =
             elaborator_chirho.required_argument_syntax_chirho(expression_chirho, 0)?;
@@ -238,7 +215,7 @@ impl TypeElaboratorChirho<'_> {
                     }
                     self.variables_chirho
                         .get(name_chirho.text_chirho())
-                        .map(|(variable_chirho, _)| *variable_chirho)
+                        .map(|record_chirho| record_chirho.variable_chirho)
                         .ok_or_else(|| {
                             Self::error_chirho(
                                 "term variable cannot be used as a required type argument",
@@ -249,7 +226,7 @@ impl TypeElaboratorChirho<'_> {
                 if self
                     .variables_chirho
                     .get(name_chirho.text_chirho())
-                    .map(|(active_chirho, _)| *active_chirho)
+                    .map(|record_chirho| record_chirho.variable_chirho)
                     != Some(variable_chirho)
                 {
                     return Err(Self::error_chirho(

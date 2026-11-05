@@ -119,12 +119,26 @@ impl TypeElaboratorChirho<'_> {
         name_chirho: &mut NameChirho,
         variable_chirho: TyVarChirho,
     ) -> Result<(), ElaborationErrorChirho> {
-        name_chirho.set_type_variable_chirho(Some(ScopedTypeVariableIdChirho::InferenceChirho {
-            owner_chirho: self
-                .state_chirho
-                .owner_id_chirho(name_chirho.span_chirho())?,
-            variable_chirho,
-        }));
+        let owner_chirho = self
+            .state_chirho
+            .owner_id_chirho(name_chirho.span_chirho())?;
+        let lexical_chirho = self
+            .variables_chirho
+            .get(name_chirho.text_chirho())
+            .filter(|record_chirho| record_chirho.variable_chirho == variable_chirho);
+        let source_chirho = self
+            .lexical_images_chirho
+            .and_then(|images_chirho| images_chirho.lookup_image_chirho(&variable_chirho))
+            .and_then(|image_chirho| image_chirho.source_chirho.as_ref())
+            .or_else(|| {
+                lexical_chirho.and_then(|record_chirho| record_chirho.source_chirho.as_ref())
+            });
+        name_chirho.set_type_variable_chirho(Some(source_chirho.cloned().unwrap_or(
+            ScopedTypeVariableIdChirho::InferenceChirho {
+                owner_chirho,
+                variable_chirho,
+            },
+        )));
         Ok(())
     }
 
@@ -132,10 +146,22 @@ impl TypeElaboratorChirho<'_> {
         &self,
         name_chirho: &NameChirho,
     ) -> Result<Option<TyVarChirho>, ElaborationErrorChirho> {
-        if let Some(source_chirho) = name_chirho.type_variable_chirho()
-            && let Some(variable_chirho) = self.lexical_sources_chirho.get(source_chirho)
+        // A source origin can occur in two nested instantiations of one
+        // synonym. Select the actual lexical binding first, then demand its
+        // exact checked proof; an origin-only map conflates those binders.
+        if name_chirho.qualifier_chirho().is_none()
+            && let Some(source_chirho) = name_chirho.type_variable_chirho()
+            && let Some(record_chirho) = self.variables_chirho.get(name_chirho.text_chirho())
+            && self
+                .lexical_images_chirho
+                .and_then(|images_chirho| {
+                    images_chirho.lookup_image_chirho(&record_chirho.variable_chirho)
+                })
+                .and_then(|image_chirho| image_chirho.source_chirho.as_ref())
+                .or(record_chirho.source_chirho.as_ref())
+                == Some(source_chirho)
         {
-            return Ok(Some(*variable_chirho));
+            return Ok(Some(record_chirho.variable_chirho));
         }
         match name_chirho.type_variable_chirho() {
             Some(ScopedTypeVariableIdChirho::InferenceChirho {

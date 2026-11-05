@@ -229,7 +229,7 @@ impl TypeElaboratorChirho<'_> {
                         this_chirho
                             .variables_chirho
                             .get(binder_chirho.text_chirho())
-                            .map(|(variable_chirho, _)| *variable_chirho)
+                            .map(|record_chirho| record_chirho.variable_chirho)
                     })
                     .collect::<Vec<_>>();
                 this_chirho.predeclare_header_chirho(

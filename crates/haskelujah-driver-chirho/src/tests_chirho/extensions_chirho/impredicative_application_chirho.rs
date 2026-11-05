@@ -277,3 +277,55 @@ fn required_universals_do_not_capture_outer_metas_chirho() {
         false,
     );
 }
+
+#[test]
+fn checked_synonyms_supply_the_actual_required_binder_scope_chirho() {
+    check_chirho(
+        "required-chirho/aliases-chirho",
+        "RequiredAliasPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/aliases-chirho",
+        "RequiredAliasWrongChirho",
+        false,
+    );
+    check_chirho(
+        "required-chirho/aliases-chirho",
+        "RequiredDefaultAliasPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/aliases-chirho",
+        "RequiredDefaultAliasWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn repeated_synonym_origins_do_not_conflate_nested_required_binders_chirho() {
+    check_chirho(
+        "required-chirho/aliases-chirho/nested-chirho",
+        "RequiredAliasNestedPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/aliases-chirho/nested-chirho",
+        "RequiredAliasNestedWrongChirho",
+        false,
+    );
+}
+
+#[test]
+fn cold_imported_synonym_retains_required_binder_correspondence_chirho() {
+    check_chirho(
+        "required-chirho/aliases-chirho/cold-chirho",
+        "RequiredImportedAliasPositiveChirho",
+        true,
+    );
+    check_chirho(
+        "required-chirho/aliases-chirho/cold-chirho",
+        "RequiredImportedAliasWrongChirho",
+        false,
+    );
+}

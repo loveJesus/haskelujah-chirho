@@ -123,15 +123,11 @@ struct TypeElaboratorChirho<'scope_chirho> {
     signature_undo_chirho: Vec<(String, Option<ValueSignatureScopeChirho>)>,
     type_depth_chirho: usize,
     rechecking_chirho: bool,
-    variables_chirho: HashMap<String, (TyVarChirho, TyChirho)>,
-    scope_undo_chirho: Vec<(String, Option<(TyVarChirho, TyChirho)>)>,
+    variables_chirho: HashMap<String, crate::ty_chirho::QuantifiedVariableChirho>,
+    scope_undo_chirho: Vec<(String, Option<crate::ty_chirho::QuantifiedVariableChirho>)>,
     declaration_variables_chirho: HashMap<Arc<str>, DeclarationVariablesChirho>,
     current_declaration_chirho: Option<Arc<str>>,
     declaration_contracts_chirho: HashMap<Arc<str>, Arc<DeclarationSchemeChirho>>,
-    lexical_sources_chirho: HashMap<
-        haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho,
-        TyVarChirho,
-    >,
     lexical_images_chirho: Option<&'scope_chirho crate::subst_chirho::SubstChirho>,
     lexical_refinements_chirho: Option<&'scope_chirho crate::env_chirho::TyEnvChirho>,
     strict_argument_chirho: bool,
@@ -164,21 +160,21 @@ impl TypeElaboratorChirho<'_> {
             if previous_chirho.is_some() || seen_chirho.contains(name_chirho) {
                 continue;
             }
-            let Some((variable_chirho, kind_chirho)) = self.variables_chirho.get(name_chirho)
-            else {
+            let Some(record_chirho) = self.variables_chirho.get(name_chirho) else {
                 continue;
             };
-            if bound_chirho.contains(variable_chirho) {
+            if bound_chirho.contains(&record_chirho.variable_chirho) {
                 continue;
             }
             let name_chirho = self.state_chirho.name_chirho(name_chirho, span_chirho)?;
-            let kind_chirho = self.state_chirho.copy_chirho(kind_chirho, span_chirho)?;
+            self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+            let record_chirho = record_chirho.clone();
             seen_chirho.insert(name_chirho.clone());
-            retained_chirho.push((name_chirho, *variable_chirho, kind_chirho));
+            retained_chirho.push((name_chirho, record_chirho));
         }
         self.close_scope_chirho(mark_chirho);
-        for (name_chirho, variable_chirho, kind_chirho) in retained_chirho {
-            self.bind_variable_chirho(name_chirho, variable_chirho, kind_chirho, span_chirho)?;
+        for (name_chirho, record_chirho) in retained_chirho {
+            self.bind_lexical_record_chirho(name_chirho, record_chirho, span_chirho)?;
         }
         Ok(())
     }
@@ -210,11 +206,30 @@ impl TypeElaboratorChirho<'_> {
         kind_chirho: TyChirho,
         span_chirho: SpanChirho,
     ) -> Result<(), ElaborationErrorChirho> {
+        let mut record_chirho = self
+            .state_chirho
+            .variable_kinds_chirho
+            .get(&variable_chirho)
+            .cloned()
+            .unwrap_or_else(|| {
+                crate::ty_chirho::QuantifiedVariableChirho::unknown_chirho(variable_chirho)
+            });
+        record_chirho.kind_chirho = Some(Arc::new(kind_chirho));
+        self.bind_lexical_record_chirho(name_chirho, record_chirho, span_chirho)
+    }
+
+    /// The lexical view holds the SAME checked binder vocabulary. Its source
+    /// correspondence is restored with its name; solver meta ownership stays
+    /// local and is never replaced by a synonym's producer origin.
+    fn bind_lexical_record_chirho(
+        &mut self,
+        name_chirho: String,
+        record_chirho: crate::ty_chirho::QuantifiedVariableChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
         let undo_name_chirho = self.state_chirho.name_chirho(&name_chirho, span_chirho)?;
         self.state_chirho.charge_chirho(1, 1, span_chirho)?;
-        let previous_chirho = self
-            .variables_chirho
-            .insert(name_chirho, (variable_chirho, kind_chirho));
+        let previous_chirho = self.variables_chirho.insert(name_chirho, record_chirho);
         self.scope_undo_chirho
             .push((undo_name_chirho, previous_chirho));
         Ok(())
@@ -249,8 +264,11 @@ impl TypeElaboratorChirho<'_> {
         name_chirho: &str,
         span_chirho: SpanChirho,
     ) -> Result<(TyVarChirho, TyChirho), ElaborationErrorChirho> {
-        if let Some((variable_chirho, kind_chirho)) = self.variables_chirho.get(name_chirho) {
-            let variable_chirho = *variable_chirho;
+        if let Some(record_chirho) = self.variables_chirho.get(name_chirho) {
+            let variable_chirho = record_chirho.variable_chirho;
+            let kind_chirho = record_chirho.kind_chirho.as_ref().ok_or_else(|| {
+                Self::error_chirho("lexical binder lost its checked kind", span_chirho)
+            })?;
             self.state_chirho.note_source_variable_chirho(
                 variable_chirho,
                 haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho,
@@ -455,7 +473,6 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
             declaration_variables_chirho: HashMap::new(),
             current_declaration_chirho: None,
             declaration_contracts_chirho: HashMap::new(),
-            lexical_sources_chirho: HashMap::new(),
             lexical_images_chirho: None,
             lexical_refinements_chirho: None,
             strict_argument_chirho: false,
