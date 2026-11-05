@@ -12,7 +12,8 @@ use haskelujah_ast_chirho::promotion_chirho::{
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::iface_chirho::{
-    IfaceExportsChirho, IfaceTypeChirho, IfaceValueChirho, builtin_module_ifaces_chirho,
+    IfaceExportsChirho, IfaceOriginChirho, IfaceTypeChirho, IfaceValueChirho,
+    builtin_module_ifaces_chirho,
 };
 
 fn name_chirho(text_chirho: &str) -> NameChirho {
@@ -515,15 +516,13 @@ fn builtin_homonyms_and_source_forwarders_prove_nothing_chirho() {
 }
 
 #[test]
-fn every_trusted_parent_is_listed_by_exactly_its_named_providers_chirho() {
-    // A parent that names its providers is listed, with constructors, by those builtin
-    // interfaces and no others, and every listing of a table parent has the table's
-    // constructors. A future builtin homonym fails here instead of sharing base's identity.
+fn every_trusted_parent_requires_its_complete_retained_declaration_chirho() {
+    // Every constructor listing remains complete. Admission additionally requires
+    // the exact positive parent declaration; a module/provider spelling is not proof.
     let builtins_chirho = builtin_module_ifaces_chirho();
     for entry_chirho in BUILTIN_PROMOTED_PARENTS_CHIRHO {
         let expected_chirho: std::collections::BTreeSet<&str> =
             entry_chirho.constructors_chirho.iter().copied().collect();
-        let mut listing_chirho: Vec<&str> = Vec::new();
         for iface_chirho in &builtins_chirho {
             let Some(ty_chirho) = iface_chirho
                 .exports_chirho
@@ -545,17 +544,58 @@ fn every_trusted_parent_is_listed_by_exactly_its_named_providers_chirho() {
                 "{} lists {}",
                 iface_chirho.name_chirho, entry_chirho.parent_chirho
             );
-            listing_chirho.push(iface_chirho.name_chirho.as_str());
-        }
-        if let Some(providers_chirho) = entry_chirho.providers_chirho {
-            listing_chirho.sort_unstable();
-            let mut named_chirho = providers_chirho.to_vec();
-            named_chirho.sort_unstable();
-            assert_eq!(
-                listing_chirho, named_chirho,
-                "{}",
-                entry_chirho.parent_chirho
-            );
+            let proven_chirho = ty_chirho.declaration_chirho.as_ref()
+                == Some(&TypeConstructorDeclarationChirho::compiler_data_chirho(
+                    entry_chirho.declaration_chirho,
+                ));
+            for constructor_chirho in entry_chirho.constructors_chirho {
+                assert_eq!(
+                    trusted_builtin_parent_chirho(
+                        iface_chirho,
+                        entry_chirho.parent_chirho,
+                        constructor_chirho
+                    )
+                    .is_some(),
+                    proven_chirho,
+                    "{}:{}:{}",
+                    iface_chirho.name_chirho,
+                    entry_chirho.parent_chirho,
+                    constructor_chirho
+                );
+            }
         }
     }
+}
+
+#[test]
+fn forwarded_representation_constructor_retains_only_actual_parent_proof_chirho() {
+    let mut forwarded_chirho = builtin_module_ifaces_chirho()
+        .into_iter()
+        .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Exts")
+        .expect("actual builtin producer");
+    forwarded_chirho.name_chirho = "ForwarderChirho".to_owned();
+    forwarded_chirho.exposure_chirho = Some(crate::iface_chirho::IfaceExposureChirho::HomeChirho);
+    forwarded_chirho.exports_chirho.origin_chirho = IfaceOriginChirho::SourceChirho;
+    let module_chirho = module_chirho(
+        vec![],
+        vec![import_chirho("ForwarderChirho", Some("RChirho"), true)],
+    );
+    let scope_chirho = build_promotion_scope_chirho(&module_chirho, &[forwarded_chirho.clone()]);
+    assert_eq!(
+        scope_chirho.quoted_chirho(&qualified_chirho("RChirho", "IntRep")),
+        PromotionResolutionChirho::ResolvedChirho(PromotedKeyChirho::builtin_chirho(
+            BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
+            "IntRep"
+        ))
+    );
+    forwarded_chirho
+        .exports_chirho
+        .types_chirho
+        .get_mut("RuntimeRep")
+        .expect("parent")
+        .declaration_chirho = None;
+    let missing_chirho = build_promotion_scope_chirho(&module_chirho, &[forwarded_chirho]);
+    assert!(is_unknown_chirho(
+        &missing_chirho.quoted_chirho(&qualified_chirho("RChirho", "IntRep"))
+    ));
 }

@@ -16,11 +16,13 @@ use crate::promotion_chirho::PromotionResolutionChirho;
 use crate::provenance_chirho::OriginIdChirho;
 
 mod predicate_identity_chirho;
+mod representation_chirho;
 pub use predicate_identity_chirho::{
     ClassIdentityUnknownChirho, CompilerClassChirho, CompilerClassEvidenceChirho,
     InstanceDeclarationOriginChirho, InstanceIdentityChirho, PredicateClassIdentityChirho,
     PredicateClassProofChirho, PredicateMetadataRefusalChirho, SourceUnitIdentityChirho,
 };
+pub use representation_chirho::CompilerRepresentationChirho;
 
 /// A name as written in source code, before resolution.
 ///
@@ -409,6 +411,7 @@ pub enum TypeConstructorRoleChirho {
 /// producer. Generic builtin interface entries do not acquire one by spelling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CompilerTypeConstructorChirho {
+    RepresentationChirho(CompilerRepresentationChirho),
     ClassChirho(CompilerClassChirho),
     EqualityChirho(bool),
     NatChirho,
@@ -435,6 +438,9 @@ pub enum CompilerTypeConstructorChirho {
 impl CompilerTypeConstructorChirho {
     pub fn name_chirho(self) -> &'static str {
         match self {
+            Self::RepresentationChirho(representation_chirho) => {
+                representation_chirho.name_chirho()
+            }
             Self::ClassChirho(class_chirho) => class_chirho.legacy_name_chirho(),
             Self::EqualityChirho(false) => "~",
             Self::EqualityChirho(true) => "~~",
@@ -574,6 +580,9 @@ impl TypeConstructorDeclarationChirho {
     pub fn type_key_chirho(&self) -> String {
         match &self.identity_chirho {
             TypeConstructorIdentityChirho::CompilerChirho(
+                CompilerTypeConstructorChirho::RepresentationChirho(representation_chirho),
+            ) => representation_chirho.type_key_chirho().to_owned(),
+            TypeConstructorIdentityChirho::CompilerChirho(
                 CompilerTypeConstructorChirho::TypeUniverseChirho,
             ) => "%universe:type".to_owned(),
             TypeConstructorIdentityChirho::CompilerChirho(
@@ -622,6 +631,9 @@ impl TypeConstructorDeclarationChirho {
         Self {
             identity_chirho: TypeConstructorIdentityChirho::CompilerChirho(constructor_chirho),
             role_chirho: match constructor_chirho {
+                CompilerTypeConstructorChirho::RepresentationChirho(representation_chirho) => {
+                    representation_chirho.role_chirho()
+                }
                 CompilerTypeConstructorChirho::ClassChirho(_) => {
                     TypeConstructorRoleChirho::ClassChirho
                 }

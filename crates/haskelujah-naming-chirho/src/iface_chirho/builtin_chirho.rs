@@ -17,7 +17,7 @@ mod platform_chirho;
 mod tests_chirho;
 
 use haskelujah_ast_chirho::name_chirho::{
-    CompilerTypeConstructorChirho, TypeConstructorDeclarationChirho,
+    CompilerRepresentationChirho, CompilerTypeConstructorChirho, TypeConstructorDeclarationChirho,
 };
 use haskelujah_span_chirho::SpanChirho;
 
@@ -198,6 +198,27 @@ fn mk_data_type_chirho(
         constructor_chirho,
     ));
     (name_chirho, ty_chirho)
+}
+
+/// Called only by the actual primitive/re-export producers. An existing opaque
+/// entry elsewhere is never upgraded by its module or public type spelling.
+fn seed_representation_exports_chirho(
+    exports_chirho: &mut super::IfaceExportsChirho,
+    representations_chirho: &[CompilerRepresentationChirho],
+) {
+    for representation_chirho in representations_chirho {
+        let (key_chirho, ty_chirho) = mk_data_type_chirho(
+            CompilerTypeConstructorChirho::RepresentationChirho(*representation_chirho),
+            representation_chirho.constructors_chirho(),
+        );
+        exports_chirho.types_chirho.insert(key_chirho, ty_chirho);
+        for name_chirho in representation_chirho.constructors_chirho() {
+            let (key_chirho, value_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho
+                .values_chirho
+                .insert(key_chirho, value_chirho);
+        }
+    }
 }
 
 /// An actual interface can export another public name for the same compiler

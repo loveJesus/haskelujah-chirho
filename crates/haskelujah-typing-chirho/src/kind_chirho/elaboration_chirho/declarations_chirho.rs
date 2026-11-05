@@ -157,7 +157,7 @@ impl TypeElaboratorChirho<'_> {
             local_binders_chirho: std::sync::Arc::from([]),
             visible_arity_chirho,
             reduction_arity_chirho: binders_chirho.len(),
-            promoted_chirho: false,
+            promoted_chirho: None,
             held_chirho: false,
         };
         self.state_chirho
@@ -192,6 +192,14 @@ impl TypeElaboratorChirho<'_> {
     ) -> Result<(), ElaborationErrorChirho> {
         // A canonical compiler declaration may exist without a public source
         // alias. Lookup still requires the naming/grammar producer's identity.
+        for representation_chirho in
+            haskelujah_ast_chirho::name_chirho::CompilerRepresentationChirho::ALL_CHIRHO
+        {
+            self.seed_compiler_header_chirho(
+                CompilerTypeConstructorChirho::RepresentationChirho(representation_chirho),
+                span_chirho,
+            )?;
+        }
         for constructor_chirho in [
             CompilerTypeConstructorChirho::TypeUniverseChirho,
             CompilerTypeConstructorChirho::ConstraintUniverseChirho,
@@ -329,7 +337,7 @@ impl TypeElaboratorChirho<'_> {
             }
             let mut binders_chirho = Vec::new();
             let mut quantified_chirho = std::collections::BTreeSet::new();
-            let result_kind_chirho = if scheme_chirho.promoted_chirho {
+            let result_kind_chirho = if scheme_chirho.promoted_chirho.is_some() {
                 self.publish_constructor_result_chirho(
                     key_chirho,
                     &scheme_chirho.result_kind_chirho,
@@ -385,7 +393,7 @@ impl TypeElaboratorChirho<'_> {
                 // A promoted constructor's field/result terms mention ordinary
                 // type universals too. Only their producer-recorded inferred
                 // KIND dependencies default; the universals remain quantified.
-                let defaultable_chirho = if scheme_chirho.promoted_chirho {
+                let defaultable_chirho = if scheme_chirho.promoted_chirho.is_some() {
                     quantified_chirho
                         .iter()
                         .filter(|variable_chirho| {
@@ -526,6 +534,13 @@ impl TypeElaboratorChirho<'_> {
             )?;
             associations_chirho
                 .push((key_chirho.clone(), scheme_chirho.association_chirho.clone()));
+            if let Some(promoted_chirho) = &scheme_chirho.promoted_chirho {
+                self.state_chirho.charge_chirho(
+                    promoted_chirho.as_str_chirho().len() + 1,
+                    promoted_chirho.as_str_chirho().len() + 1,
+                    span_chirho,
+                )?;
+            }
             let exported_chirho = DeclarationSchemeChirho {
                 injectivity_chirho: scheme_chirho.injectivity_chirho,
                 association_chirho:
@@ -542,7 +557,7 @@ impl TypeElaboratorChirho<'_> {
                 local_binders_chirho,
                 visible_arity_chirho: scheme_chirho.visible_arity_chirho,
                 reduction_arity_chirho,
-                promoted_chirho: scheme_chirho.promoted_chirho,
+                promoted_chirho: scheme_chirho.promoted_chirho.clone(),
                 held_chirho: scheme_chirho.held_chirho,
             };
             self.declaration_variables_chirho

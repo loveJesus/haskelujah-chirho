@@ -515,7 +515,9 @@ impl TypeElaboratorChirho<'_> {
             .registry_chirho
             .declaration_schemes_chirho()
             .get_chirho(&key_chirho)
-            .filter(|scheme_chirho| scheme_chirho.promoted_chirho && !scheme_chirho.held_chirho)
+            .filter(|scheme_chirho| {
+                scheme_chirho.promoted_chirho.is_some() && !scheme_chirho.held_chirho
+            })
             .cloned()
         else {
             return Ok(false);
@@ -582,17 +584,18 @@ impl TypeElaboratorChirho<'_> {
             return Ok(());
         }
         let span_chirho = constructor_chirho.span_chirho();
-        let scheme_chirho = if let Some(key_chirho) =
-            self.constructor_key_chirho(constructor_chirho)?
-        {
-            self.registry_chirho
-                .declaration_schemes_chirho()
-                .get_chirho(&key_chirho)
-                .filter(|scheme_chirho| scheme_chirho.promoted_chirho && !scheme_chirho.held_chirho)
-                .cloned()
-        } else {
-            None
-        };
+        let scheme_chirho =
+            if let Some(key_chirho) = self.constructor_key_chirho(constructor_chirho)? {
+                self.registry_chirho
+                    .declaration_schemes_chirho()
+                    .get_chirho(&key_chirho)
+                    .filter(|scheme_chirho| {
+                        scheme_chirho.promoted_chirho.is_some() && !scheme_chirho.held_chirho
+                    })
+                    .cloned()
+            } else {
+                None
+            };
         let binders_chirho = if let Some(scheme_chirho) = &scheme_chirho {
             Some(
                 self.instantiate_header_chirho(scheme_chirho, span_chirho)?

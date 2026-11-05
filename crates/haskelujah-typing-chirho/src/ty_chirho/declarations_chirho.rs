@@ -94,7 +94,8 @@ pub struct DeclarationSchemeChirho {
         Option<Arc<super::declaration_syntax_chirho::PublishedSynonymSyntaxChirho>>,
     pub visible_arity_chirho: usize,
     pub reduction_arity_chirho: usize,
-    pub promoted_chirho: bool,
+    /// The producer's typed promotion witness, retained with its full telescope.
+    pub promoted_chirho: Option<haskelujah_ast_chirho::promotion_chirho::PromotedKeyChirho>,
     /// An unresolved producer is never a nominal/kind proof.
     pub held_chirho: bool,
 }
@@ -380,6 +381,16 @@ fn validate_published_chirho(scheme_chirho: &DeclarationSchemeChirho) -> Result<
     }
     // Validate bounded lexical structure before recursive free-variable helpers.
     super::declaration_syntax_chirho::validate_declaration_scopes_chirho(scheme_chirho)?;
+    if let Some(promoted_chirho) = &scheme_chirho.promoted_chirho
+        && (promoted_chirho.as_str_chirho() != scheme_chirho.identity_chirho.as_ref()
+            || haskelujah_ast_chirho::promotion_chirho::is_unknown_promoted_key_chirho(
+                promoted_chirho.as_str_chirho(),
+            ))
+    {
+        return Err(
+            "a declaration promotion witness does not name its checked identity".to_owned(),
+        );
+    }
     let mut bound_chirho = std::collections::HashSet::new();
     for binder_chirho in &scheme_chirho.binders_chirho {
         if binder_chirho

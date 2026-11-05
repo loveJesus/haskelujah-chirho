@@ -170,6 +170,18 @@ impl TypeElaboratorChirho<'_> {
         &mut self,
         name_chirho: &NameChirho,
     ) -> Result<Option<Arc<str>>, ElaborationErrorChirho> {
+        Ok(self
+            .constructor_promotion_chirho(name_chirho)?
+            .map(|key_chirho| Arc::from(key_chirho.as_str_chirho())))
+    }
+
+    fn constructor_promotion_chirho(
+        &mut self,
+        name_chirho: &NameChirho,
+    ) -> Result<
+        Option<haskelujah_ast_chirho::promotion_chirho::PromotedKeyChirho>,
+        ElaborationErrorChirho,
+    > {
         let resolution_chirho = self.promotion_scope_chirho.quoted_chirho(name_chirho);
         let key_chirho = resolution_chirho.key_chirho().as_str_chirho();
         if haskelujah_ast_chirho::promotion_chirho::is_unknown_promoted_key_chirho(key_chirho) {
@@ -180,7 +192,10 @@ impl TypeElaboratorChirho<'_> {
             key_chirho.len() + 1,
             name_chirho.span_chirho(),
         )?;
-        Ok(Some(Arc::from(key_chirho)))
+        Ok(Some(match resolution_chirho {
+            haskelujah_ast_chirho::promotion_chirho::PromotionResolutionChirho::ResolvedChirho(key_chirho)
+            | haskelujah_ast_chirho::promotion_chirho::PromotionResolutionChirho::UnresolvedChirho(key_chirho) => key_chirho,
+        }))
     }
 
     pub(super) fn predeclare_constructors_chirho(
@@ -243,9 +258,11 @@ impl TypeElaboratorChirho<'_> {
                         signature_chirho.positional_fields_chirho().count(),
                     ),
                 };
-                let Some(key_chirho) = self.constructor_key_chirho(name_chirho)? else {
+                let Some(promoted_key_chirho) = self.constructor_promotion_chirho(name_chirho)?
+                else {
                     continue;
                 };
+                let key_chirho: Arc<str> = Arc::from(promoted_key_chirho.as_str_chirho());
                 let span_chirho = name_chirho.span_chirho();
                 self.state_chirho.charge_chirho(
                     parent_chirho.binders_chirho.len() + count_chirho,
@@ -301,7 +318,7 @@ impl TypeElaboratorChirho<'_> {
                         synonym_rhs_chirho: None,
                         synonym_syntax_chirho: None,
                         local_binders_chirho: std::sync::Arc::from([]),
-                        promoted_chirho: true,
+                        promoted_chirho: Some(promoted_key_chirho),
                         held_chirho: false,
                     });
                 let written_signature_chirho = if let ConDeclChirho::GadtChirho {

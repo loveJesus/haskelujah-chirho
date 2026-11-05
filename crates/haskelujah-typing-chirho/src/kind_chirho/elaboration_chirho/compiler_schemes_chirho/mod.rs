@@ -4,6 +4,9 @@
 //! cannot be declared by a module; ordinary names require the naming proof.
 
 use super::*;
+mod representation_chirho;
+#[cfg(test)]
+mod tests_chirho;
 use haskelujah_ast_chirho::name_chirho::{
     CompilerTypeConstructorChirho, TypeConstructorDeclarationChirho, TypeConstructorRoleChirho,
 };
@@ -72,7 +75,7 @@ impl TypeElaboratorChirho<'_> {
                 synonym_rhs_chirho: None,
                 synonym_syntax_chirho: None,
                 local_binders_chirho: std::sync::Arc::from([]),
-                promoted_chirho: false,
+                promoted_chirho: None,
                 held_chirho: false,
             })
             .map_err(|message_chirho| Self::error_chirho(message_chirho, span_chirho))
@@ -174,7 +177,7 @@ impl TypeElaboratorChirho<'_> {
                 synonym_rhs_chirho: None,
                 synonym_syntax_chirho: None,
                 local_binders_chirho: std::sync::Arc::from([]),
-                promoted_chirho: false,
+                promoted_chirho: None,
                 held_chirho: false,
             })
             .map_err(|message_chirho| Self::error_chirho(message_chirho, span_chirho))
@@ -185,6 +188,11 @@ impl TypeElaboratorChirho<'_> {
         constructor_chirho: CompilerTypeConstructorChirho,
         span_chirho: SpanChirho,
     ) -> Result<(), ElaborationErrorChirho> {
+        if let CompilerTypeConstructorChirho::RepresentationChirho(representation_chirho) =
+            constructor_chirho
+        {
+            return self.seed_representation_header_chirho(representation_chirho, span_chirho);
+        }
         if let CompilerTypeConstructorChirho::ClassChirho(class_chirho) = constructor_chirho {
             return self.seed_class_header_chirho(class_chirho, span_chirho);
         }
@@ -264,7 +272,7 @@ impl TypeElaboratorChirho<'_> {
                 synonym_rhs_chirho: None,
                 synonym_syntax_chirho: None,
                 local_binders_chirho: std::sync::Arc::from([]),
-                promoted_chirho: false,
+                promoted_chirho: None,
                 held_chirho: false,
             })
             .map_err(|message_chirho| Self::error_chirho(message_chirho, span_chirho))?;
@@ -326,9 +334,8 @@ impl TypeElaboratorChirho<'_> {
             module_chirho.len() + name_chirho.len() + 128,
             span_chirho,
         )?;
-        let identity_chirho: Arc<str> = Arc::from(
-            PromotedKeyChirho::builtin_chirho(module_chirho, name_chirho).as_str_chirho(),
-        );
+        let promoted_key_chirho = PromotedKeyChirho::builtin_chirho(module_chirho, name_chirho);
+        let identity_chirho: Arc<str> = Arc::from(promoted_key_chirho.as_str_chirho());
         if self
             .registry_chirho
             .declaration_schemes_chirho()
@@ -427,7 +434,7 @@ impl TypeElaboratorChirho<'_> {
                 synonym_syntax_chirho: None,
                 local_binders_chirho: std::sync::Arc::from([]),
                 visible_arity_chirho,
-                promoted_chirho: true,
+                promoted_chirho: Some(promoted_key_chirho),
                 held_chirho: false,
             })
             .map_err(|message_chirho| Self::error_chirho(message_chirho, span_chirho))

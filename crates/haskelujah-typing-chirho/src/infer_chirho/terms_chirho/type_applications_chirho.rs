@@ -231,7 +231,7 @@ impl InferCtxChirho {
             .get_chirho(resolution_chirho.key_chirho().as_str_chirho())
             .filter(|header_chirho| {
                 header_chirho.owner_chirho.is_none()
-                    && header_chirho.promoted_chirho
+                    && header_chirho.promoted_chirho.is_some()
                     && !header_chirho.held_chirho
             })?
             .clone();

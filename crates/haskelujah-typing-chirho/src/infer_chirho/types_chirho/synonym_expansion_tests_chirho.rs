@@ -97,7 +97,7 @@ fn alias_chirho(
             local_binders_chirho: std::sync::Arc::from(local_binders_chirho),
             visible_arity_chirho: 1,
             reduction_arity_chirho: 1,
-            promoted_chirho: false,
+            promoted_chirho: None,
             held_chirho: false,
         })
         .expect("fixture uses a closed, checked telescope");

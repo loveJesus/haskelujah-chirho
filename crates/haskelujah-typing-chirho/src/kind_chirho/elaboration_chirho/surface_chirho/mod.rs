@@ -662,6 +662,12 @@ impl TypeElaboratorChirho<'_> {
             unreachable!()
         };
         let span_chirho = *span_chirho;
+        if elements_chirho.len() >= 128 {
+            return Err(self.state_chirho.resource_failure_chirho(
+                "promoted list spine depth bound exhausted",
+                span_chirho,
+            ));
+        }
         let element_kind_chirho = self.fresh_kind_chirho(span_chirho)?;
         self.state_chirho.charge_chirho(
             elements_chirho.len(),
@@ -669,10 +675,60 @@ impl TypeElaboratorChirho<'_> {
             span_chirho,
         )?;
         let mut values_chirho = Vec::with_capacity(elements_chirho.len());
-        for element_chirho in elements_chirho {
+        for element_chirho in elements_chirho.iter_mut() {
             let value_chirho = self.infer_type_chirho(element_chirho)?;
             self.unify_kinds_chirho(&value_chirho.kind_chirho, &element_kind_chirho, span_chirho)?;
             values_chirho.push(value_chirho.term_chirho);
+        }
+        // Project only the positive grammar producers' checked prefixes. Keep
+        // every already-checked source element, including forall/context/origin
+        // metadata, rather than reifying elements from erased Ty terms.
+        let nil_key_chirho =
+            haskelujah_ast_chirho::promotion_chirho::PromotedKeyChirho::builtin_nil_chirho();
+        let cons_key_chirho =
+            haskelujah_ast_chirho::promotion_chirho::PromotedKeyChirho::builtin_cons_chirho();
+        let nil_prefix_chirho = TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho(
+                nil_key_chirho.as_str_chirho().to_owned(),
+            )),
+            Box::new(
+                self.state_chirho
+                    .copy_chirho(&element_kind_chirho, span_chirho)?,
+            ),
+        );
+        let mut projected_chirho = self.surface_chirho(&nil_prefix_chirho, span_chirho)?;
+        self.state_chirho.charge_chirho(
+            elements_chirho.len(),
+            elements_chirho.len(),
+            span_chirho,
+        )?;
+        let mut prefixes_chirho = Vec::with_capacity(elements_chirho.len());
+        for _ in 0..elements_chirho.len() {
+            let prefix_chirho = TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho(
+                    cons_key_chirho.as_str_chirho().to_owned(),
+                )),
+                Box::new(
+                    self.state_chirho
+                        .copy_chirho(&element_kind_chirho, span_chirho)?,
+                ),
+            );
+            prefixes_chirho.push(self.surface_chirho(&prefix_chirho, span_chirho)?);
+        }
+        for (element_chirho, prefix_chirho) in std::mem::take(elements_chirho)
+            .into_iter()
+            .zip(prefixes_chirho)
+            .rev()
+        {
+            projected_chirho = TypeChirho::AppChirho {
+                fun_chirho: Box::new(TypeChirho::AppChirho {
+                    fun_chirho: Box::new(prefix_chirho),
+                    arg_chirho: Box::new(element_chirho),
+                    span_chirho,
+                }),
+                arg_chirho: Box::new(projected_chirho),
+                span_chirho,
+            };
         }
         let mut term_chirho = TyChirho::AppChirho(
             Box::new(TyChirho::ConChirho(
@@ -688,6 +744,7 @@ impl TypeElaboratorChirho<'_> {
         for value_chirho in values_chirho.into_iter().rev() {
             term_chirho=TyChirho::AppChirho(Box::new(TyChirho::AppChirho(Box::new(TyChirho::AppChirho(Box::new(TyChirho::ConChirho(haskelujah_ast_chirho::promotion_chirho::PromotedKeyChirho::builtin_cons_chirho().as_str_chirho().to_owned())),Box::new(self.state_chirho.copy_chirho(&element_kind_chirho,span_chirho)?))),Box::new(value_chirho))),Box::new(term_chirho));
         }
+        *syntax_chirho = projected_chirho;
         Ok(ElaboratedTypeChirho {
             term_chirho,
             kind_chirho: TyChirho::ListChirho(Box::new(

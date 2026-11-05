@@ -293,7 +293,7 @@ pub(super) fn family_head_role_chirho(
     {
         if scheme_chirho.owner_chirho.is_none()
             && !scheme_chirho.held_chirho
-            && scheme_chirho.promoted_chirho
+            && scheme_chirho.promoted_chirho.is_some()
             && is_promoted_key_chirho(name_chirho)
             && !is_unknown_promoted_key_chirho(name_chirho)
         {

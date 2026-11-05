@@ -23,8 +23,32 @@ fn header_chirho(identity_chirho: &str) -> DeclarationSchemeChirho {
         local_binders_chirho: std::sync::Arc::from([]),
         visible_arity_chirho: 0,
         reduction_arity_chirho: 0,
-        promoted_chirho: false,
+        promoted_chirho: None,
         held_chirho: false,
+    }
+}
+
+#[test]
+fn promotion_witness_must_name_the_same_published_declaration_chirho() {
+    use haskelujah_ast_chirho::promotion_chirho::PromotedKeyChirho;
+    let mut target_chirho = DeclarationSchemesChirho::default();
+    target_chirho
+        .insert_chirho(header_chirho("existingChirho"))
+        .unwrap();
+    for key_chirho in [
+        PromotedKeyChirho::builtin_nil_chirho(),
+        PromotedKeyChirho::unknown_chirho("", "UnknownChirho"),
+    ] {
+        let mut invalid_chirho = header_chirho("differentChirho");
+        invalid_chirho.promoted_chirho = Some(key_chirho);
+        assert!(
+            target_chirho
+                .insert_chirho(invalid_chirho)
+                .unwrap_err()
+                .contains("promotion witness")
+        );
+        assert!(target_chirho.get_chirho("differentChirho").is_none());
+        assert!(target_chirho.get_chirho("existingChirho").is_some());
     }
 }
 

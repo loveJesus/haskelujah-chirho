@@ -820,3 +820,124 @@ pattern PChirho <- (id @(Proxy @Type f_chirho) -> Proxy)
 "#).err().expect("fresh GHC wrong-kind negative rejects");
     assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
 }
+
+#[test]
+fn representation_producer_typedrepheaderchirho_chirho() {
+    frontend_chirho(r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, EmptyDataDecls #-}
+module TypedRepHeaderChirho where
+import GHC.Exts
+data PChirho (a_chirho :: TYPE 'IntRep) = PChirho
+"#).expect("fresh GHC-positive representation producer checks");
+}
+
+#[test]
+fn representation_producer_boxedrepwrongchirho_chirho() {
+    let error_chirho = frontend_chirho(r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, EmptyDataDecls #-}
+module BoxedRepWrongChirho where
+import GHC.Exts
+data PChirho (a_chirho :: TYPE ('BoxedRep 'True)) = PChirho
+"#).err().expect("fresh GHC-negative representation misuse rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_producer_vecrepheaderchirho_chirho() {
+    frontend_chirho(r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, EmptyDataDecls #-}
+module VecRepHeaderChirho where
+import GHC.Exts
+data PChirho (a_chirho :: TYPE ('VecRep 'Vec4 'Int32ElemRep)) = PChirho
+"#).expect("fresh GHC-positive representation producer checks");
+}
+
+#[test]
+fn representation_producer_vecrepwrongchirho_chirho() {
+    let error_chirho = frontend_chirho(r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, EmptyDataDecls #-}
+module VecRepWrongChirho where
+import GHC.Exts
+data PChirho (a_chirho :: TYPE ('VecRep 'Vec4 'Lifted)) = PChirho
+"#).err().expect("fresh GHC-negative representation misuse rejects");
+    assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_producer_qualifiedrepheaderchirho_chirho() {
+    frontend_chirho(r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, EmptyDataDecls #-}
+module QualifiedRepHeaderChirho where
+import qualified GHC.Types as RChirho
+data PChirho (a_chirho :: RChirho.TYPE 'RChirho.IntRep) = PChirho
+"#).expect("fresh GHC-positive representation producer checks");
+}
+
+#[test]
+fn representation_producer_sourcerephomonymchirho_chirho() {
+    frontend_chirho(r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, EmptyDataDecls #-}
+module SourceRepHomonymChirho where
+data RuntimeRep = RepChirho
+data TYPE (r_chirho :: RuntimeRep)
+data PChirho (a_chirho :: TYPE 'RepChirho) = PChirho
+"#).expect("fresh GHC-positive representation producer checks");
+}
+
+#[test]
+fn representation_producer_zerobitaliaschirho_chirho() {
+    frontend_chirho(r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, EmptyDataDecls #-}
+module ZeroBitAliasChirho where
+import GHC.Exts
+import Data.Proxy
+valueChirho :: Proxy ZeroBitRep -> Proxy ('TupleRep ('[] :: [RuntimeRep]))
+valueChirho = id
+"#).expect("fresh GHC-positive representation producer checks");
+}
+
+#[test]
+fn representation_producer_zerobitaliaswrongchirho_chirho() {
+    let error_chirho = frontend_chirho(r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, EmptyDataDecls #-}
+module ZeroBitAliasWrongChirho where
+import GHC.Exts
+import Data.Proxy
+valueChirho :: Proxy ZeroBitRep -> Proxy ('TupleRep '['IntRep])
+valueChirho = id
+"#).err().expect("fresh GHC58481 unspaced syntax failure rejects");
+    assert!(error_chirho.contains("error[E0002]"), "{error_chirho}");
+}
+
+#[test]
+fn representation_producer_zerobitaliasspacedwrongchirho_chirho() {
+    let error_chirho = frontend_chirho(r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, EmptyDataDecls #-}
+module ZeroBitAliasSpacedWrongChirho where
+import GHC.Exts
+import Data.Proxy
+valueChirho :: Proxy ZeroBitRep -> Proxy ('TupleRep '[ 'IntRep ])
+valueChirho = id
+"#).err().expect("fresh GHC type mismatch rejects");
+    assert!(
+        !error_chirho.contains("error[E0002]"),
+        "valid syntax reaches the solver: {error_chirho}"
+    );
+    assert!(
+        error_chirho.contains("error[E0200]") || error_chirho.contains("error[E0205]"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
+fn representation_producer_onerepaliaschirho_chirho() {
+    frontend_chirho(r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE DataKinds, PolyKinds, KindSignatures, EmptyDataDecls #-}
+module OneRepAliasChirho where
+import GHC.Exts
+import Data.Proxy
+type OneRepChirho = 'TupleRep '[ 'IntRep ]
+valueChirho :: Proxy OneRepChirho -> Proxy ('TupleRep '[ 'IntRep ])
+valueChirho = id
+"#).expect("fresh GHC-positive nonempty promoted alias checks");
+}

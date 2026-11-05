@@ -5,6 +5,70 @@
 use crate::iface_chirho::*;
 
 #[test]
+fn representation_producers_keep_exact_roles_after_duplicate_merge_chirho() {
+    use haskelujah_ast_chirho::name_chirho::{
+        CompilerRepresentationChirho, CompilerTypeConstructorChirho,
+        TypeConstructorDeclarationChirho,
+    };
+    let builtins_chirho = builtin_module_ifaces_chirho();
+    for module_chirho in ["GHC.Types", "GHC.Exts"] {
+        let iface_chirho = builtins_chirho
+            .iter()
+            .find(|iface_chirho| iface_chirho.name_chirho == module_chirho)
+            .expect("real producer");
+        for representation_chirho in CompilerRepresentationChirho::ALL_CHIRHO {
+            let ty_chirho = iface_chirho
+                .exports_chirho
+                .types_chirho
+                .get(representation_chirho.name_chirho())
+                .expect("representation export");
+            let proof_chirho = TypeConstructorDeclarationChirho::compiler_data_chirho(
+                CompilerTypeConstructorChirho::RepresentationChirho(representation_chirho),
+            );
+            assert_eq!(
+                ty_chirho.declaration_chirho.as_ref(),
+                Some(&proof_chirho),
+                "{module_chirho}:{}",
+                representation_chirho.name_chirho()
+            );
+            assert_eq!(
+                ty_chirho.constructors_chirho,
+                representation_chirho.constructors_chirho()
+            );
+            assert_ne!(
+                proof_chirho.type_key_chirho(),
+                representation_chirho.name_chirho()
+            );
+        }
+    }
+    let prim_chirho = builtins_chirho
+        .iter()
+        .find(|iface_chirho| iface_chirho.name_chirho == "GHC.Prim")
+        .expect("primitive producer");
+    for representation_chirho in [
+        CompilerRepresentationChirho::RuntimeTypeChirho,
+        CompilerRepresentationChirho::RuntimeConstraintChirho,
+    ] {
+        assert_eq!(
+            prim_chirho.exports_chirho.types_chirho[representation_chirho.name_chirho()]
+                .declaration_chirho
+                .as_ref(),
+            Some(&TypeConstructorDeclarationChirho::compiler_data_chirho(
+                CompilerTypeConstructorChirho::RepresentationChirho(representation_chirho)
+            ))
+        );
+    }
+    for opaque_chirho in ["RuntimeRep", "LiftedRep", "UnliftedRep"] {
+        assert!(
+            prim_chirho.exports_chirho.types_chirho[opaque_chirho]
+                .declaration_chirho
+                .is_none(),
+            "historical opaque placeholder {opaque_chirho} is not a producer"
+        );
+    }
+}
+
+#[test]
 fn builtin_ghc_typelits_exports_symbol_predicates_chirho() {
     let ifaces_chirho = builtin_module_ifaces_chirho();
     let ghc_typelits_chirho = ifaces_chirho

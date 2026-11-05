@@ -6,8 +6,8 @@
 //! constructor it names. Proof comes only from an interface's constructor membership and
 //! its recorded defining module, kept through re-exports, or from this module's own data
 //! and newtype declarations. A function, field or pattern synonym is not a constructor.
-//! A builtin key also needs a trusted builtin interface and a parent in the compiler's
-//! fixed table, so a source module spelling `True` gains nothing. A spelling bound to two
+//! A builtin key also needs the parent's positive compiler declaration, retained
+//! through forwarding interfaces, so a source module spelling `True` gains nothing. A spelling bound to two
 //! different constructors, or proven by nothing, is Unknown. The type-namespace spellings
 //! are kept too, because an unquoted name the type namespace has is the type.
 //! workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
@@ -18,7 +18,7 @@ use std::collections::{HashMap, HashSet};
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{
-    CompilerTypeConstructorChirho, TypeConstructorIdentityChirho,
+    CompilerRepresentationChirho, CompilerTypeConstructorChirho, TypeConstructorDeclarationChirho,
 };
 use haskelujah_ast_chirho::promotion_chirho::{
     BUILTIN_CONSTRUCTOR_MODULE_CHIRHO, PromotedKeyChirho, PromotionResolutionChirho,
@@ -26,7 +26,7 @@ use haskelujah_ast_chirho::promotion_chirho::{
 };
 
 use crate::env_chirho::NamespaceChirho;
-use crate::iface_chirho::{IfaceOriginChirho, ModuleIfaceChirho};
+use crate::iface_chirho::ModuleIfaceChirho;
 use crate::resolve_chirho::compute_imported_names_chirho;
 use crate::type_exports_chirho::{LEVITY_CONSTRUCTORS_CHIRHO, RUNTIME_REP_CONSTRUCTORS_CHIRHO};
 
@@ -39,11 +39,8 @@ struct BuiltinParentChirho {
     module_chirho: &'static str,
     /// Its constructors.
     constructors_chirho: &'static [&'static str],
-    /// The builtin interfaces trusted to provide it. `None` is any builtin interface, the
-    /// Bool and Ordering rule since 686b. Every later entry names its providers exactly,
-    /// so a builtin homonym anywhere else stays unproven.
-    providers_chirho: Option<&'static [&'static str]>,
-    declaration_chirho: Option<CompilerTypeConstructorChirho>,
+    /// The positive compiler declaration required at every import/forwarder.
+    declaration_chirho: CompilerTypeConstructorChirho,
 }
 
 /// The constructors the compiler itself defines: the only constructors a builtin
@@ -53,52 +50,65 @@ struct BuiltinParentChirho {
 const BUILTIN_PROMOTED_PARENTS_CHIRHO: &[BuiltinParentChirho] = &[
     BuiltinParentChirho {
         parent_chirho: "Bool",
-        declaration_chirho: Some(CompilerTypeConstructorChirho::BoolChirho),
+        declaration_chirho: CompilerTypeConstructorChirho::BoolChirho,
         module_chirho: BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
         constructors_chirho: &["False", "True"],
-        providers_chirho: None,
     },
     BuiltinParentChirho {
         parent_chirho: "Ordering",
-        declaration_chirho: Some(CompilerTypeConstructorChirho::OrderingChirho),
+        declaration_chirho: CompilerTypeConstructorChirho::OrderingChirho,
         module_chirho: BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
         constructors_chirho: &["LT", "EQ", "GT"],
-        providers_chirho: None,
     },
     BuiltinParentChirho {
         parent_chirho: "Maybe",
-        declaration_chirho: Some(CompilerTypeConstructorChirho::MaybeChirho),
+        declaration_chirho: CompilerTypeConstructorChirho::MaybeChirho,
         module_chirho: "GHC.Maybe",
         constructors_chirho: &["Nothing", "Just"],
-        providers_chirho: Some(&["Prelude", "Data.Maybe"]),
     },
     BuiltinParentChirho {
         parent_chirho: "Either",
-        declaration_chirho: Some(CompilerTypeConstructorChirho::EitherChirho),
+        declaration_chirho: CompilerTypeConstructorChirho::EitherChirho,
         module_chirho: "Data.Either",
         constructors_chirho: &["Left", "Right"],
-        providers_chirho: Some(&["Prelude", "Data.Either"]),
     },
     BuiltinParentChirho {
         parent_chirho: "Proxy",
-        declaration_chirho: Some(CompilerTypeConstructorChirho::ProxyChirho),
+        declaration_chirho: CompilerTypeConstructorChirho::ProxyChirho,
         module_chirho: "Data.Proxy",
         constructors_chirho: &["Proxy"],
-        providers_chirho: Some(&["Data.Proxy", "Data.Data", "Data.Typeable"]),
+    },
+    BuiltinParentChirho {
+        parent_chirho: "VecCount",
+        declaration_chirho: CompilerTypeConstructorChirho::RepresentationChirho(
+            CompilerRepresentationChirho::VecCountChirho,
+        ),
+        module_chirho: BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
+        constructors_chirho: CompilerRepresentationChirho::VecCountChirho.constructors_chirho(),
+    },
+    BuiltinParentChirho {
+        parent_chirho: "VecElem",
+        declaration_chirho: CompilerTypeConstructorChirho::RepresentationChirho(
+            CompilerRepresentationChirho::VecElemChirho,
+        ),
+        module_chirho: BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
+        constructors_chirho: CompilerRepresentationChirho::VecElemChirho.constructors_chirho(),
     },
     BuiltinParentChirho {
         parent_chirho: "Levity",
-        declaration_chirho: None,
+        declaration_chirho: CompilerTypeConstructorChirho::RepresentationChirho(
+            CompilerRepresentationChirho::LevityChirho,
+        ),
         module_chirho: BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
         constructors_chirho: LEVITY_CONSTRUCTORS_CHIRHO,
-        providers_chirho: Some(&["GHC.Exts"]),
     },
     BuiltinParentChirho {
         parent_chirho: "RuntimeRep",
-        declaration_chirho: None,
+        declaration_chirho: CompilerTypeConstructorChirho::RepresentationChirho(
+            CompilerRepresentationChirho::RuntimeRepChirho,
+        ),
         module_chirho: BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
         constructors_chirho: RUNTIME_REP_CONSTRUCTORS_CHIRHO,
-        providers_chirho: Some(&["GHC.Exts"]),
     },
 ];
 
@@ -204,8 +214,8 @@ fn imported_constructor_chirho(
     {
         PromotedKeyChirho::builtin_chirho(builtin_chirho.module_chirho, name_chirho)
     } else {
-        // A stub interface, a source forwarder, an untrusted provider, or a builtin
-        // constructor outside the compiler's table.
+        // An interface without retained producer proof, or a constructor
+        // outside that proven parent's compiler declaration.
         return Some(PromotionResolutionChirho::UnresolvedChirho(
             PromotedKeyChirho::unknown_chirho("", name_chirho),
         ));
@@ -213,40 +223,28 @@ fn imported_constructor_chirho(
     Some(PromotionResolutionChirho::ResolvedChirho(key_chirho))
 }
 
-/// The table entry that trusts `iface_chirho` to give `constructor_chirho` of
-/// `parent_chirho` the compiler's identity: a builtin interface, a parent in the table that
-/// has the constructor and, where the entry names its providers, one of them.
+/// Retained declaration proof, not a caller module/provider spelling, admits
+/// builtin constructor keys through aliases and source forwarding interfaces.
 fn trusted_builtin_parent_chirho(
     iface_chirho: &ModuleIfaceChirho,
     parent_chirho: &str,
     constructor_chirho: &str,
 ) -> Option<&'static BuiltinParentChirho> {
-    if iface_chirho.exports_chirho.origin_chirho != IfaceOriginChirho::BuiltinChirho {
-        return None;
-    }
+    let declaration_chirho = iface_chirho
+        .exports_chirho
+        .types_chirho
+        .get(parent_chirho)?
+        .declaration_chirho
+        .as_ref()?;
     BUILTIN_PROMOTED_PARENTS_CHIRHO.iter().find(|entry_chirho| {
         entry_chirho.parent_chirho == parent_chirho
-            && entry_chirho
-                .declaration_chirho
-                .is_none_or(|expected_chirho| {
-                    iface_chirho
-                        .exports_chirho
-                        .types_chirho
-                        .get(parent_chirho)
-                        .and_then(|parent_chirho| parent_chirho.declaration_chirho.as_ref())
-                        .is_some_and(|declaration_chirho| {
-                            declaration_chirho.identity_chirho
-                                == TypeConstructorIdentityChirho::CompilerChirho(expected_chirho)
-                        })
-                })
+            && *declaration_chirho
+                == TypeConstructorDeclarationChirho::compiler_data_chirho(
+                    entry_chirho.declaration_chirho,
+                )
             && entry_chirho
                 .constructors_chirho
                 .contains(&constructor_chirho)
-            && entry_chirho
-                .providers_chirho
-                .is_none_or(|providers_chirho| {
-                    providers_chirho.contains(&iface_chirho.name_chirho.as_str())
-                })
     })
 }
 

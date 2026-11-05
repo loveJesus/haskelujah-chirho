@@ -10,7 +10,65 @@ use haskelujah_ast_chirho::name_chirho::{
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
 
+/// Both live and canonical projections use the same checked telescope slots.
+fn projected_application_chirho(
+    function_chirho: TypeChirho,
+    argument_chirho: TypeChirho,
+    schema_chirho: Option<&DeclarationSchemeChirho>,
+    index_chirho: usize,
+    span_chirho: SpanChirho,
+) -> TypeChirho {
+    if schema_chirho
+        .and_then(|schema_chirho| schema_chirho.binders_chirho.get(index_chirho))
+        .is_some_and(|binder_chirho| {
+            binder_chirho.visibility_chirho != TelescopeVisibilityChirho::RequiredChirho
+        })
+    {
+        TypeChirho::KindApplicationChirho {
+            fun_chirho: Box::new(function_chirho),
+            arg_chirho: Box::new(argument_chirho),
+            written_chirho: false,
+            span_chirho,
+        }
+    } else {
+        TypeChirho::AppChirho {
+            fun_chirho: Box::new(function_chirho),
+            arg_chirho: Box::new(argument_chirho),
+            span_chirho,
+        }
+    }
+}
+
 impl TypeElaboratorChirho<'_> {
+    fn projection_schema_chirho(
+        &self,
+        key_chirho: &str,
+        span_chirho: SpanChirho,
+    ) -> Result<Option<Arc<DeclarationSchemeChirho>>, ElaborationErrorChirho> {
+        let schema_chirho = self
+            .registry_chirho
+            .declaration_schemes_chirho()
+            .get_chirho(key_chirho)
+            .cloned();
+        if let Some(schema_chirho) = &schema_chirho {
+            if schema_chirho.held_chirho {
+                return Err(Self::error_chirho(
+                    "cannot project an unresolved declaration",
+                    span_chirho,
+                ));
+            }
+            if schema_chirho.owner_chirho.is_some()
+                && schema_chirho.owner_chirho != self.state_chirho.owner_chirho
+            {
+                return Err(Self::error_chirho(
+                    "cannot project a foreign declaration owner",
+                    span_chirho,
+                ));
+            }
+        }
+        Ok(schema_chirho)
+    }
+
     pub(super) fn copy_name_chirho(
         &mut self,
         name_chirho: &NameChirho,
@@ -191,7 +249,7 @@ impl TypeElaboratorChirho<'_> {
     ) -> Result<TypeChirho, ElaborationErrorChirho> {
         self.state_chirho.charge_chirho(1, 1, span_chirho)?;
         if self.type_depth_chirho >= 128 {
-            return Err(Self::error_chirho(
+            return Err(self.state_chirho.resource_failure_chirho(
                 "kind syntax projection depth bound exhausted",
                 span_chirho,
             ));
@@ -239,11 +297,27 @@ impl TypeElaboratorChirho<'_> {
                         ),
                     ));
                 }
-                if let Some(scheme_chirho) = self
-                    .registry_chirho
-                    .declaration_schemes_chirho()
-                    .get_chirho(&key_chirho)
+                if let Some(scheme_chirho) =
+                    self.projection_schema_chirho(&key_chirho, span_chirho)?
                 {
+                    if let Some(promoted_chirho) = &scheme_chirho.promoted_chirho {
+                        if scheme_chirho.held_chirho {
+                            return Err(Self::error_chirho(
+                                "cannot project an unresolved promoted declaration",
+                                span_chirho,
+                            ));
+                        }
+                        self.state_chirho.charge_chirho(
+                            promoted_chirho.as_str_chirho().len() + 1,
+                            promoted_chirho.as_str_chirho().len() + 1,
+                            span_chirho,
+                        )?;
+                        name_chirho.set_promotion_chirho(haskelujah_ast_chirho::promotion_chirho::PromotionResolutionChirho::ResolvedChirho(promoted_chirho.clone()));
+                        return Ok(TypeChirho::PromotedConChirho {
+                            name_chirho,
+                            span_chirho,
+                        });
+                    }
                     if let Some(declaration_chirho) = &scheme_chirho.declaration_chirho {
                         let bytes_chirho = match &declaration_chirho.identity_chirho {
                             TypeConstructorIdentityChirho::SourceChirho {
@@ -273,11 +347,43 @@ impl TypeElaboratorChirho<'_> {
                 }
                 TypeChirho::ConChirho(name_chirho)
             }
-            TyChirho::AppChirho(fun_chirho, arg_chirho) => TypeChirho::AppChirho {
-                fun_chirho: Box::new(self.surface_chirho(&fun_chirho, span_chirho)?),
-                arg_chirho: Box::new(self.surface_chirho(&arg_chirho, span_chirho)?),
-                span_chirho,
-            },
+            TyChirho::AppChirho(_, _) => {
+                let mut head_chirho = &term_chirho;
+                let mut arguments_chirho = Vec::new();
+                while let TyChirho::AppChirho(function_chirho, argument_chirho) = head_chirho {
+                    self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+                    if self
+                        .type_depth_chirho
+                        .saturating_add(arguments_chirho.len())
+                        >= 128
+                    {
+                        return Err(self.state_chirho.resource_failure_chirho(
+                            "kind syntax spine depth bound exhausted",
+                            span_chirho,
+                        ));
+                    }
+                    arguments_chirho.push(argument_chirho.as_ref());
+                    head_chirho = function_chirho;
+                }
+                arguments_chirho.reverse();
+                let schema_chirho = if let TyChirho::ConChirho(key_chirho) = head_chirho {
+                    self.projection_schema_chirho(key_chirho, span_chirho)?
+                } else {
+                    None
+                };
+                let mut result_chirho = self.surface_chirho(head_chirho, span_chirho)?;
+                for (index_chirho, argument_chirho) in arguments_chirho.into_iter().enumerate() {
+                    let argument_chirho = self.surface_chirho(argument_chirho, span_chirho)?;
+                    result_chirho = projected_application_chirho(
+                        result_chirho,
+                        argument_chirho,
+                        schema_chirho.as_deref(),
+                        index_chirho,
+                        span_chirho,
+                    );
+                }
+                result_chirho
+            }
             TyChirho::FunChirho(arg_chirho, result_chirho, mult_chirho) => TypeChirho::FunChirho {
                 arg_chirho: Box::new(self.surface_chirho(&arg_chirho, span_chirho)?),
                 mult_chirho: Some(match mult_chirho {
@@ -380,7 +486,7 @@ impl TypeElaboratorChirho<'_> {
     ) -> Result<TypeChirho, ElaborationErrorChirho> {
         self.state_chirho.charge_chirho(1, 1, span_chirho)?;
         if depth_chirho > 128 {
-            return Err(Self::error_chirho(
+            return Err(self.state_chirho.resource_failure_chirho(
                 "canonical syntax projection depth bound exhausted",
                 span_chirho,
             ));
@@ -413,7 +519,7 @@ impl TypeElaboratorChirho<'_> {
                 while let TyChirho::AppChirho(function_chirho, argument_chirho) = head_chirho {
                     self.state_chirho.charge_chirho(1, 1, span_chirho)?;
                     if depth_chirho.saturating_add(arguments_chirho.len()) >= 128 {
-                        return Err(Self::error_chirho(
+                        return Err(self.state_chirho.resource_failure_chirho(
                             "canonical syntax spine depth bound exhausted",
                             span_chirho,
                         ));
@@ -423,10 +529,7 @@ impl TypeElaboratorChirho<'_> {
                 }
                 arguments_chirho.reverse();
                 let schema_chirho = if let TyChirho::ConChirho(key_chirho) = head_chirho {
-                    self.registry_chirho
-                        .declaration_schemes_chirho()
-                        .get_chirho(key_chirho)
-                        .cloned()
+                    self.projection_schema_chirho(key_chirho, span_chirho)?
                 } else {
                     None
                 };
@@ -445,27 +548,13 @@ impl TypeElaboratorChirho<'_> {
                         span_chirho,
                         depth_chirho + arguments_chirho.len() - index_chirho,
                     )?);
-                    let hidden_chirho = schema_chirho
-                        .as_ref()
-                        .and_then(|schema_chirho| schema_chirho.binders_chirho.get(index_chirho))
-                        .is_some_and(|binder_chirho| {
-                            binder_chirho.visibility_chirho
-                                != TelescopeVisibilityChirho::RequiredChirho
-                        });
-                    result_chirho = if hidden_chirho {
-                        TypeChirho::KindApplicationChirho {
-                            fun_chirho: Box::new(result_chirho),
-                            arg_chirho: argument_chirho,
-                            written_chirho: false,
-                            span_chirho,
-                        }
-                    } else {
-                        TypeChirho::AppChirho {
-                            fun_chirho: Box::new(result_chirho),
-                            arg_chirho: argument_chirho,
-                            span_chirho,
-                        }
-                    };
+                    result_chirho = projected_application_chirho(
+                        result_chirho,
+                        *argument_chirho,
+                        schema_chirho.as_deref(),
+                        index_chirho,
+                        span_chirho,
+                    );
                 }
                 result_chirho
             }

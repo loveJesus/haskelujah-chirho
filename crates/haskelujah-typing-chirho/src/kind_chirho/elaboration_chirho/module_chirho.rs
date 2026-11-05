@@ -471,7 +471,7 @@ impl TypeElaboratorChirho<'_> {
                     self.registry_chirho
                         .declaration_schemes_chirho()
                         .get_chirho(key_chirho)
-                        .is_some_and(|scheme_chirho| scheme_chirho.promoted_chirho)
+                        .is_some_and(|scheme_chirho| scheme_chirho.promoted_chirho.is_some())
                 });
             self.finish_catalogue_chirho(&headers_chirho, module_chirho.span_chirho)?;
             // Transparent dependencies must carry their nested binder kinds

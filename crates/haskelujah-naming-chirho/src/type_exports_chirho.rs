@@ -13,7 +13,7 @@ use std::collections::{HashMap, HashSet};
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
 use haskelujah_ast_chirho::module_chirho::{ExportMembersChirho, ModuleChirho};
 use haskelujah_ast_chirho::name_chirho::{
-    TypeConstructorDeclarationChirho, TypeConstructorRoleChirho,
+    CompilerRepresentationChirho, TypeConstructorDeclarationChirho, TypeConstructorRoleChirho,
 };
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_span_chirho::SpanChirho;
@@ -22,41 +22,16 @@ use crate::iface_chirho::{
     IfaceExportsChirho, IfaceTypeChirho, IfaceValueChirho, ModuleIfaceChirho,
 };
 
-pub(crate) const RUNTIME_REP_CONSTRUCTORS_CHIRHO: &[&str] = &[
-    "BoxedRep",
-    "IntRep",
-    "Int8Rep",
-    "Int16Rep",
-    "Int32Rep",
-    "Int64Rep",
-    "WordRep",
-    "Word8Rep",
-    "Word16Rep",
-    "Word32Rep",
-    "Word64Rep",
-    "AddrRep",
-    "FloatRep",
-    "DoubleRep",
-    "TupleRep",
-    "SumRep",
-    "VecRep",
-];
+pub(crate) const RUNTIME_REP_CONSTRUCTORS_CHIRHO: &[&str] =
+    CompilerRepresentationChirho::RuntimeRepChirho.constructors_chirho();
+pub(crate) const LEVITY_CONSTRUCTORS_CHIRHO: &[&str] =
+    CompilerRepresentationChirho::LevityChirho.constructors_chirho();
 
-pub(crate) const LEVITY_CONSTRUCTORS_CHIRHO: &[&str] = &["Lifted", "Unlifted"];
 const MULTIPLICITY_CONSTRUCTORS_CHIRHO: &[&str] = &["One", "Many"];
-const VEC_COUNT_CONSTRUCTORS_CHIRHO: &[&str] = &["Vec2", "Vec4", "Vec8", "Vec16", "Vec32", "Vec64"];
-const VEC_ELEM_CONSTRUCTORS_CHIRHO: &[&str] = &[
-    "Int8ElemRep",
-    "Int16ElemRep",
-    "Int32ElemRep",
-    "Int64ElemRep",
-    "Word8ElemRep",
-    "Word16ElemRep",
-    "Word32ElemRep",
-    "Word64ElemRep",
-    "FloatElemRep",
-    "DoubleElemRep",
-];
+const VEC_COUNT_CONSTRUCTORS_CHIRHO: &[&str] =
+    CompilerRepresentationChirho::VecCountChirho.constructors_chirho();
+const VEC_ELEM_CONSTRUCTORS_CHIRHO: &[&str] =
+    CompilerRepresentationChirho::VecElemChirho.constructors_chirho();
 const ERROR_MESSAGE_CONSTRUCTORS_CHIRHO: &[&str] = &["Text", "ShowType", ":<>:", ":$$:"];
 
 /// Normalize a value/operator spelling used by source imports and interfaces.
