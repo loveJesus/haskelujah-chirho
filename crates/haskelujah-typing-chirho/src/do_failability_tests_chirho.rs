@@ -45,6 +45,7 @@ fn data_decl_chirho(type_chirho: &str, cons_chirho: &[(&str, usize)]) -> DeclChi
                     })
                     .collect(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
             })
             .collect(),
         deriving_chirho: vec![],

@@ -25,6 +25,11 @@ mod bracketed_exprs_chirho;
 mod class_tests_chirho;
 #[path = "lower_chirho/classes_chirho/classes_chirho.rs"]
 mod classes_chirho;
+#[cfg(test)]
+#[path = "lower_chirho/data_types_chirho/con_prefix_tests_chirho.rs"]
+mod con_prefix_tests_chirho;
+#[path = "lower_chirho/data_types_chirho/con_prefixes_chirho.rs"]
+mod con_prefixes_chirho;
 mod context_chirho;
 #[cfg(test)]
 #[path = "lower_chirho/declarations_chirho/context_tests_chirho.rs"]

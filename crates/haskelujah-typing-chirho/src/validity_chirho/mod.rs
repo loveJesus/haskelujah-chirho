@@ -969,6 +969,7 @@ mod tests_chirho {
             name_chirho: mk_name_chirho("Con"),
             fields_chirho: vec![(StrictnessChirho::LazyChirho, mk_poly_id_chirho())],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
         }
     }
 
@@ -1038,6 +1039,7 @@ mod tests_chirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 }],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
             }],
             deriving_chirho: vec![],
             kind_sig_chirho: None,
@@ -1131,6 +1133,7 @@ mod tests_chirho {
                 name_chirho: mk_name_chirho("MkN"),
                 fields_chirho: vec![(StrictnessChirho::LazyChirho, mk_con_chirho("Int#"))],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
             },
             deriving_chirho: vec![],
             kind_sig_chirho: None,

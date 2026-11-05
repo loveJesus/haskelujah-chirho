@@ -1,6 +1,6 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 //! Row 694 GND method coercibility and representation dictionaries on the interpreter,
-//! against root's fresh GHC 9.14.1 references (#31784, #31789, #31797, #31798). Each source is
+//! against root's fresh GHC 9.14.1 references (#31784, #31789, #31797, #31798, #31817). Each source is
 //! byte for byte the reference's, with the sha256 its plan pins. Where Haskelujah matches GHC
 //! the test asserts GHC's output or refusal; where it names an Unsupported gap the test
 //! asserts that refusal and its comment says what GHC does.
@@ -93,6 +93,39 @@ fn gnd_r2_nominal_family_hold_chirho() {
     assert_refused_chirho(
         "NominalFamilyHoldChirho.hs",
         NOMINAL_FAMILY_HOLD_CHIRHO,
+        &["E0209", "whose parameter is nominal"],
+    );
+}
+
+/// H1: GHC 9.14.1 refuses it, GHC-18872: the equality context makes `HoldChirho`'s parameter
+/// nominal (#31811, measured #31817). sha256 dbe48f44aebc40899c0852d953ebb625989979a70f153ca7e518b5f87fbf32d3.
+const CONSTRUCTOR_CONTEXT_ROLE_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+-- gpt #31809, 02db58e5. GHC 9.14.1 prediction (UNEXECUTED): REJECT. The equality context
+-- makes HoldChirho's parameter nominal, so GND cannot coerce wrapChirho (GHC-18872, as R1/R2).
+-- 02db58e5 code reading: ACCEPT, prints 8. H98 lowering drops `forall . (aChirho ~ Int) =>`,
+-- role inference then reads aChirho as phantom, and the method proof and alias succeed.
+-- No-context twin: root's measured R3 (RepresentationalHoldChirho), which prints 8.
+{-# LANGUAGE DerivingStrategies, GeneralizedNewtypeDeriving, GADTs, ExistentialQuantification #-}
+data HoldChirho aChirho = forall . (aChirho ~ Int) => HoldChirho Int
+
+class WrapChirho aChirho where
+  wrapChirho :: aChirho -> HoldChirho aChirho
+
+instance WrapChirho Int where
+  wrapChirho valueChirho = HoldChirho (valueChirho + 1)
+
+newtype AgeChirho = AgeChirho Int deriving newtype WrapChirho
+
+main :: IO ()
+main = case wrapChirho (AgeChirho 7) of
+  HoldChirho countChirho -> print countChirho
+"#;
+
+#[test]
+fn gnd_h1_constructor_context_role_chirho() {
+    assert_refused_chirho(
+        "ConstructorContextRoleChirho.hs",
+        CONSTRUCTOR_CONTEXT_ROLE_CHIRHO,
         &["E0209", "whose parameter is nominal"],
     );
 }

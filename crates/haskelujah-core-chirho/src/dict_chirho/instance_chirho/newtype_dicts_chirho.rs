@@ -18,16 +18,25 @@
 //! module wrote beside a GND derivation is never replaced, and an instance whose methods
 //! cannot be built is reported as unsupported, never aliased.
 //!
+//! A GND instance is `C rep => C N`, so the module rows the desugarer filled for it take that
+//! context's dictionaries first, as every caller passes them (`context_leading_rows_chirho`);
+//! a replaced default row keeps those leading parameters and ignores them. The dictionary's
+//! fields are the representation's methods themselves.
+//!
 //! Core erases these newtypes' constructors (`simplify_chirho/newtype_erasure_chirho.rs`),
 //! so a representation's method receives the field itself on every backend.
 //! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+
+use std::collections::HashSet;
 
 use haskelujah_typing_chirho::GndCoercionProofChirho;
 use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
 use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
 use super::super::{DictLayoutChirho, DictPassCtxChirho};
-use crate::expr_chirho::{CoreBindingChirho, CoreExprChirho, CoreIdChirho, InlineAnnotationChirho};
+use crate::expr_chirho::{
+    BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, InlineAnnotationChirho,
+};
 
 /// What the dictionary pass knows about one newtype declaration.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -117,6 +126,7 @@ impl DictPassCtxChirho {
     /// progress; what is left, and what no row or dictionary serves, is unsupported.
     /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub fn generate_gnd_dicts_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
+        self.gnd_parametric_chirho = self.parametric_gnd_instances_chirho(class_env_chirho);
         let mut pending_chirho = self.gnd_pairs_chirho(class_env_chirho);
         while !pending_chirho.is_empty() {
             let before_chirho = pending_chirho.len();
@@ -143,6 +153,33 @@ impl DictPassCtxChirho {
             }
             pending_chirho = waiting_chirho;
         }
+    }
+
+    /// Each (class, newtype) whose GND instance applies the newtype to type variables: its head
+    /// is no newtype's name, so no pair below builds its dictionary.
+    fn parametric_gnd_instances_chirho(
+        &self,
+        class_env_chirho: &ClassEnvChirho,
+    ) -> HashSet<(String, String)> {
+        let mut parametric_chirho = HashSet::new();
+        for (class_name_chirho, instances_chirho) in &class_env_chirho.instances_chirho {
+            for inst_chirho in instances_chirho {
+                let mut head_chirho = &inst_chirho.head_ty_chirho;
+                let mut applied_chirho = false;
+                while let TyChirho::AppChirho(function_chirho, _) = head_chirho {
+                    head_chirho = function_chirho.as_ref();
+                    applied_chirho = true;
+                }
+                if let TyChirho::ConChirho(newtype_chirho) = head_chirho
+                    && applied_chirho
+                    && self
+                        .takes_representation_dictionary_chirho(class_name_chirho, newtype_chirho)
+                {
+                    parametric_chirho.insert((class_name_chirho.clone(), newtype_chirho.clone()));
+                }
+            }
+        }
+        parametric_chirho
     }
 
     /// Every GND instance the class environment holds, in (class, newtype) order.
@@ -253,7 +290,12 @@ impl DictPassCtxChirho {
             pair_chirho.class_chirho
         );
         if let Some(row_chirho) = self.real_row_id_chirho(&row_name_chirho) {
-            return Ok(Some(CoreExprChirho::VarChirho(row_chirho)));
+            // A row whose instance has a context is reached with that context's dictionaries,
+            // as `proof_row_chirho` gives them, once they exist.
+            if !self.context_leading_rows_chirho.contains_key(&row_chirho) {
+                return Ok(Some(CoreExprChirho::VarChirho(row_chirho)));
+            }
+            return Ok(self.proof_row_chirho(&row_name_chirho));
         }
         let dictionary_key_chirho = (
             pair_chirho.class_chirho.clone(),
@@ -380,7 +422,7 @@ impl DictPassCtxChirho {
     }
 
     /// Bind each of the newtype's rows to the representation's method, in place for a
-    /// default row, then the newtype's dictionary.
+    /// default row, then the newtype's dictionary, whose fields are those methods.
     fn build_gnd_dict_chirho(
         &mut self,
         pair_chirho: &GndPairChirho,
@@ -389,8 +431,10 @@ impl DictPassCtxChirho {
         let class_name_chirho = &pair_chirho.class_chirho;
         let type_key_chirho = &pair_chirho.type_key_chirho;
         let layout_chirho = &pair_chirho.layout_chirho;
-        for ((method_name_chirho, _), method_chirho) in
-            layout_chirho.method_slots_chirho.iter().zip(methods_chirho)
+        for ((method_name_chirho, _), method_chirho) in layout_chirho
+            .method_slots_chirho
+            .iter()
+            .zip(methods_chirho.iter().cloned())
         {
             let newtype_row_chirho =
                 format!("$prim_{class_name_chirho}_{method_name_chirho}_{type_key_chirho}");
@@ -440,13 +484,9 @@ impl DictPassCtxChirho {
             field_args_chirho.push(CoreExprChirho::VarChirho(super_id_chirho));
         }
 
-        // Method fields: the newtype's rows bound above.
-        for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
-            let prim_name_chirho =
-                format!("$prim_{class_name_chirho}_{method_name_chirho}_{type_key_chirho}");
-            let prim_id_chirho = self.resolve_or_fresh_id_chirho(&prim_name_chirho);
-            field_args_chirho.push(CoreExprChirho::VarChirho(prim_id_chirho));
-        }
+        // Method fields: the representation's methods, which the rows bound above hold. A
+        // default row takes leading context dictionaries; a field is reached without them.
+        field_args_chirho.extend(methods_chirho);
 
         let dict_id_chirho = dict_binder_chirho.id_chirho;
         self.generated_bindings_chirho.push(CoreBindingChirho {
@@ -462,5 +502,48 @@ impl DictPassCtxChirho {
             (class_name_chirho.clone(), type_key_chirho.clone()),
             dict_id_chirho,
         );
+    }
+
+    /// A GND newtype's default-filled row as the representation's method, behind one ignored
+    /// parameter per dictionary of its instance's context (`C rep`), which every caller of a
+    /// context-leading row passes first. `None` for any other row.
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+    pub(in crate::dict_chirho) fn gnd_default_row_chirho(
+        &mut self,
+        binding_chirho: &CoreBindingChirho,
+    ) -> Option<CoreBindingChirho> {
+        let row_id_chirho = binding_chirho.binder_chirho.id_chirho;
+        let mut rhs_chirho = self.gnd_default_rows_chirho.get(&row_id_chirho)?.clone();
+        let context_classes_chirho: Vec<String> = self
+            .context_leading_rows_chirho
+            .get(&row_id_chirho)
+            .map(|context_chirho| {
+                context_chirho
+                    .iter()
+                    .map(|predicate_chirho| predicate_chirho.class_name_chirho.clone())
+                    .collect()
+            })
+            .unwrap_or_default();
+        let mut ty_chirho = binding_chirho.binder_chirho.ty_chirho.clone();
+        for class_chirho in context_classes_chirho.iter().rev() {
+            let dictionary_binder_chirho = self.fresh_binder_chirho(
+                &format!("$d{class_chirho}"),
+                TyChirho::ConChirho(format!("$Dict_{class_chirho}")),
+            );
+            ty_chirho = TyChirho::fun_chirho(dictionary_binder_chirho.ty_chirho.clone(), ty_chirho);
+            rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: dictionary_binder_chirho,
+                body_chirho: Box::new(rhs_chirho),
+            };
+        }
+        Some(CoreBindingChirho {
+            binder_chirho: BinderChirho {
+                ty_chirho,
+                ..binding_chirho.binder_chirho.clone()
+            },
+            rhs_chirho,
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        })
     }
 }

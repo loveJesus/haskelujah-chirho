@@ -97,6 +97,7 @@ fn ordinary_chirho(con_name_chirho: &str, field_count_chirho: usize) -> ConDeclC
             .map(|_| (StrictnessChirho::LazyChirho, con_ty_chirho("Int")))
             .collect(),
         span_chirho: SpanChirho::DUMMY_CHIRHO,
+        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
     }
 }
 
@@ -114,6 +115,7 @@ fn record_chirho(field_names_chirho: &[&str]) -> ConDeclChirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
+        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
     }
 }
 
@@ -353,6 +355,7 @@ fn annotated_chirho(
             .map(|&annotation_chirho| (annotation_chirho, con_ty_chirho("Int")))
             .collect(),
         span_chirho: SpanChirho::DUMMY_CHIRHO,
+        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
     }
 }
 
@@ -367,6 +370,7 @@ fn annotated_record_chirho(strictness_chirho: StrictnessChirho) -> ConDeclChirho
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
+        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
     }
 }
 

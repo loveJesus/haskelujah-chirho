@@ -67,6 +67,7 @@ fn int_constructor_chirho(name_text_chirho: &str) -> ConDeclChirho {
             TypeChirho::ConChirho(name_chirho("Int")),
         )],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
+        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
     }
 }
 

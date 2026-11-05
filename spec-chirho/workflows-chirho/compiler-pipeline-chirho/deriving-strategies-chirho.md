@@ -31,15 +31,18 @@ flowchart TD
     route_chirho --> inventory_chirho["newtype_strategy_classes_chirho: each newtype's newtype-routed classes"]
     stock_chirho --> metadata_chirho["Show and Enum metadata: only entries the same judgment names as stock Show or Enum"]
     inventory_chirho --> info_chirho["Driver build_newtype_info_chirho, with the module's real K01 scope: NewtypeInfoChirho.newtype_derived_classes_chirho"]
-    roles_annotation_chirho["Lowering role_annotations_chirho.rs: type role T r.. onto T's parameters"] --> roles_chirho["parameter_roles_chirho.rs: each local parameter's role, a least fixed point with annotations as floors"]
+    roles_annotation_chirho["Lowering role_annotations_chirho.rs: type role T r.. onto T's parameters"] --> roles_chirho["parameter_roles_chirho.rs: each local parameter's role (phantom < representational < Unknown < nominal), a least fixed point with annotations as floors"]
+    prefix_lower_chirho["Lowering con_prefixes_chirho.rs: an H98 constructor's forall binders and context onto ConPrefixChirho, or unread"] --> roles_chirho
     inventory_chirho --> proof_chirho["Typing gnd_coercion_chirho (after inference): every method's class parameter in a representational position, or GHC-18872 / a named Unsupported gap"]
     roles_chirho --> proof_chirho
     proof_chirho --> info_chirho
     info_chirho --> eligible_chirho["Dict pass newtype_dicts_chirho.rs takes_representation_dictionary_chirho: the declaration is the only proof"]
     gnd_chirho --> eligible_chirho
     eligible_chirho --> ground_skip_chirho["generate_instance_dicts_chirho skips it"]
-    eligible_chirho --> alias_chirho["generate_gnd_dicts_chirho, a worklist: with typing's proof, each method is the representation's real row, or its dictionary's field, building a conditional [E] dictionary once E's context exists; a desugar default row is replaced in place; a stub, a written row or an unbuildable dictionary is Unsupported"]
+    eligible_chirho --> alias_chirho["generate_gnd_dicts_chirho, a worklist: with typing's proof, each method is the representation's real row, or its dictionary's field, building a conditional [E] dictionary once E's context exists; a desugar default row is replaced in place behind its leading context dictionaries; the dictionary's fields are the methods; a stub, a written row or an unbuildable dictionary is Unsupported"]
     alias_chirho --> refuse_chirho["compile_backend: DictPassResultChirho.unsupported_chirho refuses the module"]
+    eligible_chirho --> parametric_chirho["parametric_gnd_instances_chirho: C (N a) has no dictionary here; a use that needs one is Unsupported"]
+    parametric_chirho --> refuse_chirho
     info_chirho --> erase_chirho["compile_backend_chirho: erase_newtype_constructors_chirho on those newtypes' constructors before simplification"]
     erase_chirho --> merge_chirho["Native merge: the union of every module's erased set, refusing a spelling another module declares as a constructor"]
     alias_chirho --> erase_chirho
@@ -76,10 +79,23 @@ flowchart TD
 - A newtype takes its representation's method rows only with a typed proof, per (newtype,
   class), that every method's class parameter stands where a coercion may change it: directly,
   under `->`, a list or a tuple, as an eta-reduced head, or under a local type's
-  representational parameter. A local nominal parameter is GHC-18872 (R1, R2 measured); a
-  position whose role the module cannot prove (another named constructor, a family, a type
-  variable's application, a constraint), an associated family (R5) or a multi-parameter class
-  is a named Unsupported gap. A method that never mentions the parameter proves (R4).
+  representational parameter. A local nominal parameter or a local type family's argument is
+  GHC-18872 (R1, R2 and the H98 equality context H1, measured); below a blocked position every
+  occurrence is blocked, phantom positions included, as GHC's `markNominal` does. A position
+  whose role the module cannot prove (an imported, qualified or synonym constructor, a GADT's
+  parameter, an unread constructor prefix, a type variable's application, a constraint), an
+  associated family (R5) or a multi-parameter class is a named Unsupported gap, never GHC's
+  code. A method that never mentions the parameter proves (R4).
+- Role authority is the local declaration a name binds: an unqualified name, or one qualified
+  by this module's own name (#31810). A constructor's existential binders are not parameters,
+  and every variable its context mentions is nominal (#31811). A prefix the lowering cannot
+  read (a kinded binder, a context outside plain type syntax, a variable the lowering would
+  lose) and a GADT record's signature are unread: every parameter is at least Unknown.
+- A GND instance is `C rep => C N`, so a desugar default row of it takes that context's
+  dictionaries first, as every caller passes them; its replacement keeps those leading
+  parameters (G3, D2, C1, C2). A GND instance over a parametric newtype (`C (N a)`, P1, P2)
+  gets no dictionary in this pass, and a use that needs one is refused when the module
+  compiles, never left to the runtime.
 - The alias loop requires typing's proof and never aliases a generated missing-method stub.
   A representation's method is its real row, or its dictionary's field; for a list
   representation whose class instance is conditional, the existing list machinery builds the
@@ -98,6 +114,11 @@ flowchart TD
   every module, and refuses by name a spelling another module also declares as a constructor.
 
 ## Residuals
+
+- A parametric GND dictionary (P1, P2) needs evidence keys that carry the applied type and a
+  builder over the context dictionaries; until then it is a compile-time Unsupported.
+- An H98 context written without `forall` (`data T a = Eq a => MkT a`) is not parsed as a
+  context; GADT signatures and roles of imported types are Unknown, not read.
 
 - A standalone `deriving via` keeps its existing route.
 - The newtype strategy for a class applied to arguments (W3) waits for a dictionary key that

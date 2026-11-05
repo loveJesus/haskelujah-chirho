@@ -1836,16 +1836,22 @@ mod tests_chirho {
                         name_chirho: var_name_chirho("Red"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                     ConDeclChirho::OrdinaryChirho {
                         name_chirho: var_name_chirho("Green"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                     ConDeclChirho::OrdinaryChirho {
                         name_chirho: var_name_chirho("Blue"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                 ],
                 deriving_chirho: unspecified_chirho(&["Eq", "Ord", "Show"]),
@@ -1883,6 +1889,7 @@ mod tests_chirho {
                         ),
                     ],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: unspecified_chirho(&["Eq", "Show"]),
                 kind_sig_chirho: None,
@@ -2059,6 +2066,7 @@ mod tests_chirho {
                     name_chirho: var_name_chirho("MkT"),
                     fields_chirho: vec![],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: unspecified_chirho(&["Functor"]),
                 kind_sig_chirho: None,
@@ -2111,6 +2119,7 @@ mod tests_chirho {
                         ),
                     ],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: unspecified_chirho(&["Eq"]),
                 kind_sig_chirho: None,
@@ -2167,6 +2176,7 @@ mod tests_chirho {
                         TypeChirho::ConChirho(var_name_chirho("Int")),
                     )],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 },
                 deriving_chirho: unspecified_chirho(&["Eq", "Show"]),
                 kind_sig_chirho: None,
@@ -2203,21 +2213,29 @@ mod tests_chirho {
                         name_chirho: var_name_chirho("North"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                     ConDeclChirho::OrdinaryChirho {
                         name_chirho: var_name_chirho("South"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                     ConDeclChirho::OrdinaryChirho {
                         name_chirho: var_name_chirho("East"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                     ConDeclChirho::OrdinaryChirho {
                         name_chirho: var_name_chirho("West"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                 ],
                 deriving_chirho: unspecified_chirho(&["Enum", "Bounded"]),
@@ -2329,6 +2347,7 @@ mod tests_chirho {
                         TypeChirho::ConChirho(var_name_chirho("Int")),
                     )],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: unspecified_chirho(&["Enum"]),
                 kind_sig_chirho: None,
@@ -2361,6 +2380,7 @@ mod tests_chirho {
                     name_chirho: var_name_chirho("MkT"),
                     fields_chirho: vec![],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: unspecified_chirho(&["Enum"]),
                 kind_sig_chirho: None,
@@ -2398,11 +2418,15 @@ mod tests_chirho {
                         name_chirho: var_name_chirho("Red"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                     ConDeclChirho::OrdinaryChirho {
                         name_chirho: var_name_chirho("Green"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                 ],
                 deriving_chirho: unspecified_chirho(&["Read"]),
@@ -2463,6 +2487,7 @@ mod tests_chirho {
                         TypeChirho::VarChirho(var_name_chirho("a")),
                     )],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: unspecified_chirho(&["Read"]),
                 kind_sig_chirho: None,
@@ -2510,11 +2535,15 @@ mod tests_chirho {
                         name_chirho: var_name_chirho("F2"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                     ConDeclChirho::OrdinaryChirho {
                         name_chirho: var_name_chirho("T2"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                 ],
                 deriving_chirho: unspecified_chirho(&[
@@ -2571,6 +2600,7 @@ mod tests_chirho {
                         TypeChirho::ConChirho(var_name_chirho("Int")),
                     )],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 },
                 deriving_chirho: unspecified_chirho(&["Num"]),
                 kind_sig_chirho: None,
@@ -2651,6 +2681,7 @@ mod tests_chirho {
                         TypeChirho::ConChirho(var_name_chirho("Int")),
                     )],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 },
                 deriving_chirho: unspecified_chirho(&["Eq", "Show"]),
                 kind_sig_chirho: None,
@@ -2704,6 +2735,7 @@ mod tests_chirho {
                         },
                     )],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 },
                 deriving_chirho: unspecified_chirho(&["Functor"]),
                 kind_sig_chirho: None,
@@ -2752,6 +2784,7 @@ mod tests_chirho {
                         TypeChirho::VarChirho(var_name_chirho("a")),
                     )],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: unspecified_chirho(&["Functor"]),
                 kind_sig_chirho: None,
@@ -2795,6 +2828,7 @@ mod tests_chirho {
                     name_chirho: var_name_chirho("MkUnit"),
                     fields_chirho: vec![],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: unspecified_chirho(&["Functor"]),
                 kind_sig_chirho: None,
@@ -2836,6 +2870,7 @@ mod tests_chirho {
                         ),
                     ],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: unspecified_chirho(&["Foldable"]),
                 kind_sig_chirho: None,
@@ -2880,6 +2915,8 @@ mod tests_chirho {
                         name_chirho: var_name_chirho("Nothing2"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                     ConDeclChirho::OrdinaryChirho {
                         name_chirho: var_name_chirho("Just2"),
@@ -2888,6 +2925,8 @@ mod tests_chirho {
                             TypeChirho::VarChirho(var_name_chirho("a")),
                         )],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                 ],
                 deriving_chirho: unspecified_chirho(&["Traversable"]),
@@ -2957,16 +2996,22 @@ mod tests_chirho {
                         name_chirho: var_name_chirho("Red"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                     ConDeclChirho::OrdinaryChirho {
                         name_chirho: var_name_chirho("Green"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                     ConDeclChirho::OrdinaryChirho {
                         name_chirho: var_name_chirho("Blue"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                 ],
                 deriving_chirho: unspecified_chirho(&["Generic"]),
@@ -3035,6 +3080,7 @@ mod tests_chirho {
                         ),
                     ],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: unspecified_chirho(&["Generic"]),
                 kind_sig_chirho: None,
@@ -3101,6 +3147,7 @@ mod tests_chirho {
                     name_chirho: var_name_chirho("MkUnit"),
                     fields_chirho: vec![],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: unspecified_chirho(&["Generic"]),
                 kind_sig_chirho: None,
@@ -3147,6 +3194,7 @@ mod tests_chirho {
                         TypeChirho::VarChirho(var_name_chirho("a")),
                     )],
                     span_chirho: gen_span_chirho(),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 },
                 deriving_chirho: unspecified_chirho(&["Generic"]),
                 kind_sig_chirho: None,

@@ -13,8 +13,11 @@ use crate::name_chirho::NameChirho;
 use crate::pat_chirho::PatChirho;
 use crate::ty_chirho::{ConstraintChirho, TypeChirho};
 
+#[path = "decl_chirho/con_prefix_chirho.rs"]
+mod con_prefix_chirho;
 #[path = "decl_chirho/derived_class_chirho.rs"]
 mod derived_class_chirho;
+pub use con_prefix_chirho::ConPrefixChirho;
 pub use derived_class_chirho::{DerivedClassChirho, DerivingStrategyChirho};
 
 /// AST-level kind annotation (written in source code with KindSignatures).
@@ -418,6 +421,8 @@ pub enum ConDeclChirho {
         name_chirho: NameChirho,
         /// Positional constructor fields and their strictness.
         fields_chirho: Vec<(StrictnessChirho, TypeChirho)>,
+        /// The `forall vs. ctx =>` written before the name, if any (row 694).
+        prefix_chirho: ConPrefixChirho,
         /// Span covering the whole constructor declaration.
         span_chirho: SpanChirho,
     },
@@ -427,6 +432,9 @@ pub enum ConDeclChirho {
         name_chirho: NameChirho,
         /// Named record fields declared by the constructor.
         fields_chirho: Vec<FieldDeclChirho>,
+        /// The `forall vs. ctx =>` written before the name, if any; unread for a GADT
+        /// record, whose signature this shape does not hold (row 694).
+        prefix_chirho: ConPrefixChirho,
         /// Span covering the whole constructor declaration.
         span_chirho: SpanChirho,
     },

@@ -40,7 +40,7 @@ mod show_chirho;
 mod type_keys_chirho;
 
 use std::cell::{Cell, RefCell};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
@@ -75,8 +75,9 @@ pub struct DictPassResultChirho {
     pub names_chirho: HashMap<CoreIdChirho, String>,
     /// Dictionary layouts for each class.
     pub layouts_chirho: HashMap<String, DictLayoutChirho>,
-    /// Each GND instance whose representation's methods could not be built, said why: the
-    /// driver refuses the module rather than alias a missing method (row 694).
+    /// Each GND instance whose representation's methods could not be built, and each use of a
+    /// GND dictionary this pass cannot build, said why: the driver refuses the module rather
+    /// than alias a missing method or leave a missing dictionary to the runtime (row 694).
     pub unsupported_chirho: Vec<String>,
 }
 
@@ -185,6 +186,12 @@ pub struct DictPassCtxChirho {
     missing_method_ids_chirho: HashSet<CoreIdChirho>,
     /// Each GND instance whose representation's methods this pass cannot build, said why.
     gnd_unsupported_chirho: Vec<String>,
+    /// Each (class, newtype) whose GND instance applies the newtype to type variables
+    /// (`Show a => Show (BoxChirho a)`): this pass builds no dictionary for it (row 694, P1, P2).
+    gnd_parametric_chirho: HashSet<(String, String)>,
+    /// Each use that needed a parametric GND dictionary, said why: refused at compile time,
+    /// never left to fail when the program runs.
+    gnd_unbuilt_uses_chirho: RefCell<BTreeSet<String>>,
     /// Number of type parameters per class. 1 for single-parameter classes
     /// (Eq, Ord, ...), >1 for MPTCs (e.g., Addable a b has 2).
     class_param_count_chirho: HashMap<String, usize>,
@@ -262,6 +269,8 @@ impl DictPassCtxChirho {
             gnd_default_rows_chirho: HashMap::new(),
             missing_method_ids_chirho: HashSet::new(),
             gnd_unsupported_chirho: Vec::new(),
+            gnd_parametric_chirho: HashSet::new(),
+            gnd_unbuilt_uses_chirho: RefCell::new(BTreeSet::new()),
             class_param_count_chirho: HashMap::new(),
             method_arities_chirho: HashMap::new(),
             local_shadow_ids_chirho: RefCell::new(HashSet::new()),

@@ -693,6 +693,7 @@ fn th_con_to_ast_chirho(con_chirho: &ThConChirho) -> Option<ConDeclChirho> {
                     })
                     .collect(),
                 span_chirho: TH_SPAN_CHIRHO,
+                prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
             })
         }
         ThConChirho::RecCChirho(name_chirho, var_bang_types_chirho) => {
@@ -708,6 +709,7 @@ fn th_con_to_ast_chirho(con_chirho: &ThConChirho) -> Option<ConDeclChirho> {
                     })
                     .collect(),
                 span_chirho: TH_SPAN_CHIRHO,
+                prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
             })
         }
         ThConChirho::GadtCChirho(names_chirho, bang_types_chirho, ret_ty_chirho) => {

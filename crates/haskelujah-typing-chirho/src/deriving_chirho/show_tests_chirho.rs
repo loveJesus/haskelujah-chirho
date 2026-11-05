@@ -57,6 +57,7 @@ fn ordinary_chirho(name_chirho: &str, fields_chirho: Vec<TypeChirho>) -> ConDecl
             .map(|ty_chirho| (StrictnessChirho::LazyChirho, ty_chirho))
             .collect(),
         span_chirho: gen_span_chirho(),
+        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
     }
 }
 
@@ -166,6 +167,7 @@ fn record_labels_and_field_types_keep_declaration_order_chirho() {
                 field_chirho(&["zChirho"], maybe_pair_chirho),
             ],
             span_chirho: gen_span_chirho(),
+            prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
         }],
         &["Show"],
     )]));

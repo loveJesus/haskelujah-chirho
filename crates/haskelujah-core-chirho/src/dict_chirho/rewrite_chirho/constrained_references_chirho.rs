@@ -191,6 +191,18 @@ impl DictPassCtxChirho {
             }
             _ => class_name_chirho.to_string(),
         };
+        // A GND instance over a parametric newtype has no dictionary this pass can build, so a
+        // use that needs one is refused when the module compiles (row 694, P1, P2).
+        // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+        if let Some(key_chirho) = key_chirho
+            && self
+                .gnd_parametric_chirho
+                .contains(&(class_name_chirho.to_string(), key_chirho.to_string()))
+        {
+            self.gnd_unbuilt_uses_chirho.borrow_mut().insert(format!(
+                "deriving {class_name_chirho} for {key_chirho} through the newtype strategy: `{callee_chirho}` needs its dictionary at an application of the newtype to a type, which this pass cannot build yet"
+            ));
+        }
         CoreExprChirho::PrimOpChirho {
             name_chirho: "error".to_string(),
             args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(

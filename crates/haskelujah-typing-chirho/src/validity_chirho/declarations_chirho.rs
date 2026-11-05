@@ -206,6 +206,7 @@ fn check_newtype_constructor_chirho(
             name_chirho,
             fields_chirho,
             span_chirho,
+            ..
         } => (
             name_chirho,
             fields_chirho.len(),
@@ -218,6 +219,7 @@ fn check_newtype_constructor_chirho(
             name_chirho,
             fields_chirho,
             span_chirho,
+            ..
         } => (
             name_chirho,
             fields_chirho
@@ -291,6 +293,7 @@ fn check_lazy_annotations_chirho(
                 name_chirho,
                 fields_chirho,
                 span_chirho,
+                ..
             } => (
                 name_chirho,
                 fields_chirho.iter().any(|(strictness_chirho, _ty_chirho)| {
@@ -302,6 +305,7 @@ fn check_lazy_annotations_chirho(
                 name_chirho,
                 fields_chirho,
                 span_chirho,
+                ..
             } => (
                 name_chirho,
                 fields_chirho.iter().any(|field_chirho| {

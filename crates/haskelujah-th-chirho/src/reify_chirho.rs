@@ -481,6 +481,7 @@ mod tests_chirho {
                     },
                 ],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
             }],
             deriving_chirho: vec![DerivedClassChirho::unspecified_chirho(mk_name_chirho(
                 "Show",

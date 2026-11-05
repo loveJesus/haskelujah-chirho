@@ -26,6 +26,7 @@ fn constructor_chirho(name_chirho: &str, fields_chirho: usize) -> ConDeclChirho 
             })
             .collect(),
         span_chirho: gen_span_chirho(),
+        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
     }
 }
 

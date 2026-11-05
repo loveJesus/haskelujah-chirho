@@ -9,13 +9,19 @@
 //! eta-reduced class such as Functor), or as an argument a local type's representational
 //! parameter takes. Anywhere else it is blocked:
 //!
-//! - under a local type's nominal parameter, which GHC refuses (GHC-18872, R1 and R2);
-//! - under any other named constructor, a family or a synonym, whose roles this module cannot
-//!   prove, as an argument of a type variable's application, or in a constraint. Haskelujah
-//!   refuses these until a proven role table exists; GHC accepts some of them.
+//! - under a local type's nominal parameter or a local type family's argument, which GHC
+//!   refuses (GHC-18872: R1, R2, and the constructor context of `ConstructorContextRoleChirho`);
+//! - under a local parameter whose role is Unknown, any other named constructor (an import, a
+//!   qualified name, a synonym), as an argument of a type variable's application, or in a
+//!   constraint. Haskelujah refuses these as named gaps until their roles are proven; GHC
+//!   accepts some of them.
 //!
-//! A method that never mentions the class parameter needs no coercion of it (R4).
+//! Below a blocked position every occurrence is blocked, phantom positions included, as GHC
+//! makes every variable below a nominal argument nominal; the outermost position names the
+//! refusal. A method that never mentions the class parameter needs no coercion of it (R4).
 //! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+
+use std::collections::HashSet;
 
 use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 
@@ -26,18 +32,21 @@ use super::parameter_roles_chirho::{ParameterRoleChirho, ParameterRolesChirho};
 pub(crate) struct BlockedPositionChirho {
     /// What the class parameter stands under, as a diagnostic names it.
     pub(crate) under_chirho: String,
-    /// Whether the module proves the position nominal: a local type's nominal parameter.
+    /// Whether the module proves the position nominal: a local type's nominal parameter or a
+    /// local type family's argument.
     pub(crate) proven_nominal_chirho: bool,
 }
 
 /// The first position in `scheme_chirho` where class `class_name_chirho`'s parameter
 /// `class_var_chirho` cannot change representation; `None` when every occurrence can.
+/// `families_chirho` holds the local type families, whose arguments are nominal.
 /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub(crate) fn blocked_method_position_chirho(
     scheme_chirho: &SchemeChirho,
     class_name_chirho: &str,
     class_var_chirho: TyVarChirho,
     roles_chirho: &ParameterRolesChirho,
+    families_chirho: &HashSet<String>,
 ) -> Option<BlockedPositionChirho> {
     let class_var_ty_chirho = TyChirho::VarChirho(class_var_chirho);
     for predicate_chirho in &scheme_chirho.preds_chirho {
@@ -61,6 +70,7 @@ pub(crate) fn blocked_method_position_chirho(
     let walker_chirho = MethodWalkChirho {
         class_var_chirho,
         roles_chirho,
+        families_chirho,
     };
     walker_chirho.walk_chirho(&scheme_chirho.ty_chirho, None)
 }
@@ -69,6 +79,7 @@ pub(crate) fn blocked_method_position_chirho(
 struct MethodWalkChirho<'a> {
     class_var_chirho: TyVarChirho,
     roles_chirho: &'a ParameterRolesChirho,
+    families_chirho: &'a HashSet<String>,
 }
 
 impl MethodWalkChirho<'_> {
@@ -79,34 +90,46 @@ impl MethodWalkChirho<'_> {
         ty_chirho: &TyChirho,
         blocked_chirho: Option<&BlockedPositionChirho>,
     ) -> Option<BlockedPositionChirho> {
+        if let Some(blocked_chirho) = blocked_chirho {
+            return mentions_var_chirho(ty_chirho, self.class_var_chirho)
+                .then(|| blocked_chirho.clone());
+        }
         match ty_chirho {
-            TyChirho::VarChirho(var_chirho) if *var_chirho == self.class_var_chirho => {
-                blocked_chirho.cloned()
-            }
             TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => None,
             TyChirho::FunChirho(argument_chirho, result_chirho, _) => self
-                .walk_chirho(argument_chirho, blocked_chirho)
-                .or_else(|| self.walk_chirho(result_chirho, blocked_chirho)),
+                .walk_chirho(argument_chirho, None)
+                .or_else(|| self.walk_chirho(result_chirho, None)),
             TyChirho::TupleChirho(elements_chirho) => elements_chirho
                 .iter()
-                .find_map(|element_chirho| self.walk_chirho(element_chirho, blocked_chirho)),
-            TyChirho::ListChirho(element_chirho) => {
-                self.walk_chirho(element_chirho, blocked_chirho)
-            }
+                .find_map(|element_chirho| self.walk_chirho(element_chirho, None)),
+            TyChirho::ListChirho(element_chirho) => self.walk_chirho(element_chirho, None),
             TyChirho::ForallChirho { body_chirho, .. }
             | TyChirho::RequiredForallChirho { body_chirho, .. } => {
-                self.walk_chirho(body_chirho, blocked_chirho)
+                self.walk_chirho(body_chirho, None)
             }
-            TyChirho::AppChirho(..) => self.walk_application_chirho(ty_chirho, blocked_chirho),
+            TyChirho::AppChirho(..) => self.walk_application_chirho(ty_chirho),
         }
     }
 
-    /// An application: its arguments take the roles its head gives them.
-    fn walk_application_chirho(
+    /// The role argument `index_chirho` of `constructor_chirho` has: its local declaration's,
+    /// nominal for a local type family's, `None` when the module proves none.
+    fn argument_role_chirho(
         &self,
-        ty_chirho: &TyChirho,
-        blocked_chirho: Option<&BlockedPositionChirho>,
-    ) -> Option<BlockedPositionChirho> {
+        constructor_chirho: &str,
+        index_chirho: usize,
+    ) -> Option<ParameterRoleChirho> {
+        match self.roles_chirho.get(constructor_chirho) {
+            Some(roles_chirho) => roles_chirho.get(index_chirho).copied(),
+            None => self
+                .families_chirho
+                .contains(constructor_chirho)
+                .then_some(ParameterRoleChirho::NOMINAL_CHIRHO),
+        }
+    }
+
+    /// An application at a position a coercion reaches: its arguments take the roles its head
+    /// gives them.
+    fn walk_application_chirho(&self, ty_chirho: &TyChirho) -> Option<BlockedPositionChirho> {
         let mut arguments_chirho = Vec::new();
         let mut head_chirho = ty_chirho;
         while let TyChirho::AppChirho(function_chirho, argument_chirho) = head_chirho {
@@ -115,34 +138,25 @@ impl MethodWalkChirho<'_> {
         }
         arguments_chirho.reverse();
         match head_chirho {
-            TyChirho::ConChirho(constructor_chirho) => {
-                let local_roles_chirho = self.roles_chirho.get(constructor_chirho);
-                arguments_chirho
-                    .iter()
-                    .enumerate()
-                    .find_map(|(index_chirho, argument_chirho)| {
-                        let role_chirho = local_roles_chirho
-                            .and_then(|roles_chirho| roles_chirho.get(index_chirho))
-                            .copied();
-                        match role_chirho {
-                            Some(role_chirho) if role_chirho.is_phantom_chirho() => None,
-                            Some(ParameterRoleChirho::REPRESENTATIONAL_CHIRHO) => {
-                                self.walk_chirho(argument_chirho, blocked_chirho)
-                            }
-                            known_chirho => {
-                                let here_chirho = BlockedPositionChirho {
-                                    under_chirho: format!("`{constructor_chirho}`"),
-                                    proven_nominal_chirho: known_chirho
-                                        .is_some_and(ParameterRoleChirho::is_nominal_chirho),
-                                };
-                                self.walk_chirho(
-                                    argument_chirho,
-                                    Some(blocked_chirho.unwrap_or(&here_chirho)),
-                                )
-                            }
+            TyChirho::ConChirho(constructor_chirho) => arguments_chirho
+                .iter()
+                .enumerate()
+                .find_map(|(index_chirho, argument_chirho)| {
+                    match self.argument_role_chirho(constructor_chirho, index_chirho) {
+                        Some(role_chirho) if role_chirho.is_phantom_chirho() => None,
+                        Some(ParameterRoleChirho::REPRESENTATIONAL_CHIRHO) => {
+                            self.walk_chirho(argument_chirho, None)
                         }
-                    })
-            }
+                        known_chirho => {
+                            let here_chirho = BlockedPositionChirho {
+                                under_chirho: format!("`{constructor_chirho}`"),
+                                proven_nominal_chirho: known_chirho
+                                    .is_some_and(ParameterRoleChirho::is_nominal_chirho),
+                            };
+                            self.walk_chirho(argument_chirho, Some(&here_chirho))
+                        }
+                    }
+                }),
             head_chirho => {
                 let applies_class_var_chirho = matches!(
                     head_chirho,
@@ -156,12 +170,9 @@ impl MethodWalkChirho<'_> {
                     },
                     proven_nominal_chirho: false,
                 };
-                self.walk_chirho(head_chirho, blocked_chirho).or_else(|| {
+                self.walk_chirho(head_chirho, None).or_else(|| {
                     arguments_chirho.iter().find_map(|argument_chirho| {
-                        self.walk_chirho(
-                            argument_chirho,
-                            Some(blocked_chirho.unwrap_or(&here_chirho)),
-                        )
+                        self.walk_chirho(argument_chirho, Some(&here_chirho))
                     })
                 })
             }

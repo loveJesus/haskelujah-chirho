@@ -13,11 +13,14 @@
 //! inference result carries it, the driver gives it to `NewtypeInfoChirho`, and the alias loop
 //! requires it. An instance with no proof is refused here, before any alias exists:
 //!
-//! - a method whose class parameter stands under a local type's nominal parameter is GHC's
-//!   refusal, GHC-18872 (R1, R2);
+//! - a method whose class parameter stands under a local type's nominal parameter or a local
+//!   type family's argument is GHC's refusal, GHC-18872 (R1, R2, and the equality context of
+//!   root's measured `ConstructorContextRoleChirho`);
 //! - a class with an associated family, until GND forwards `type F N = F rep` (R5's valid twin
 //!   prints 8 in GHC; the original needs UndecidableInstances, GHC-22979), a multi-parameter
-//!   class, and a position whose role the module cannot prove are named Unsupported gaps.
+//!   class, and a position whose role the module cannot prove (an imported or qualified
+//!   constructor, a synonym, a GADT's parameter, an unread constructor prefix) are named
+//!   Unsupported gaps, never GHC's code.
 //!
 //! A method that never mentions the class parameter needs no proof of it (R4).
 //! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
@@ -28,7 +31,7 @@ mod parameter_roles_chirho;
 #[cfg(test)]
 mod gnd_coercion_tests_chirho;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
@@ -44,6 +47,7 @@ use crate::validity_chirho::declarations_chirho::{
 use method_roles_chirho::blocked_method_position_chirho;
 pub use parameter_roles_chirho::{
     ParameterRoleChirho, ParameterRolesChirho, local_parameter_roles_chirho,
+    local_type_families_chirho,
 };
 
 /// A typing proof that every method of one class has one representation at one newtype and
@@ -91,6 +95,7 @@ pub fn prove_gnd_coercions_chirho(
         return Ok(Vec::new());
     }
     let roles_chirho = local_parameter_roles_chirho(module_chirho);
+    let families_chirho = local_type_families_chirho(module_chirho);
     let associated_chirho = associated_families_chirho(module_chirho);
     let mut proofs_chirho = Vec::new();
     let mut errors_chirho = Vec::new();
@@ -98,7 +103,10 @@ pub fn prove_gnd_coercions_chirho(
         match prove_request_chirho(
             request_chirho,
             class_env_chirho,
-            &roles_chirho,
+            &RoleAuthorityChirho {
+                roles_chirho: &roles_chirho,
+                families_chirho: &families_chirho,
+            },
             &associated_chirho,
         ) {
             Ok(proof_chirho) => proofs_chirho.push(proof_chirho),
@@ -133,11 +141,18 @@ fn associated_families_chirho(module_chirho: &ModuleChirho) -> HashMap<String, S
         .collect()
 }
 
+/// What the module's own declarations prove about roles: its data and newtype parameters'
+/// roles and its type families, whose arguments are nominal.
+struct RoleAuthorityChirho<'a> {
+    roles_chirho: &'a ParameterRolesChirho,
+    families_chirho: &'a HashSet<String>,
+}
+
 /// The proof for one requested instance, or the refusal at its class.
 fn prove_request_chirho(
     request_chirho: &GndRequestChirho,
     class_env_chirho: &ClassEnvChirho,
-    roles_chirho: &ParameterRolesChirho,
+    authority_chirho: &RoleAuthorityChirho<'_>,
     associated_chirho: &HashMap<String, String>,
 ) -> Result<GndCoercionProofChirho, DeclarationErrorChirho> {
     let class_text_chirho = request_chirho.class_chirho.text_chirho();
@@ -173,7 +188,8 @@ fn prove_request_chirho(
             scheme_chirho,
             class_text_chirho,
             class_decl_chirho.var_chirho,
-            roles_chirho,
+            authority_chirho.roles_chirho,
+            authority_chirho.families_chirho,
         ) else {
             continue;
         };
@@ -189,7 +205,7 @@ fn prove_request_chirho(
             });
         }
         return Err(unsupported_chirho(format!(
-            "Haskelujah cannot prove the method `{method_chirho}` coercible, because the class parameter stands under {}",
+            "Haskelujah cannot prove the method `{method_chirho}` coercible, because the class parameter stands under {}, whose role this module does not prove",
             blocked_chirho.under_chirho
         )));
     }
