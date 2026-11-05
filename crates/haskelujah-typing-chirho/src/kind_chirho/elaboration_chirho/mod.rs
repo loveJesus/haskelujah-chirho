@@ -19,7 +19,7 @@ mod transport_chirho;
 mod value_applications_chirho;
 pub(crate) use value_applications_chirho::{
     ArgumentElaborationContextChirho, CheckedBodyTypeChirho, elaborate_body_type_chirho,
-    elaborate_required_argument_chirho,
+    elaborate_required_argument_chirho, elaborate_body_pattern_type_chirho,
 };
 mod values_chirho;
 pub use state_chirho::{ElaborationErrorChirho, ElaborationStateChirho};

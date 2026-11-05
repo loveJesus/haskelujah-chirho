@@ -418,17 +418,24 @@ impl InferCtxChirho {
                             binder_chirho.source_chirho.as_ref() == Some(source_chirho)
                         })
                         .and_then(|binder_chirho| {
-                            instantiation_chirho.lookup_chirho(&binder_chirho.variable_chirho)
+                            instantiation_chirho.lookup_image_chirho(&binder_chirho.variable_chirho)
                         });
                     let Some(image_chirho) = selected_chirho else {
                         self.non_deferrable_diagnostics_chirho.push_chirho(DiagnosticChirho::error_with_code_chirho(
                             ErrorCodeChirho::error_chirho(300), "checked constructor type pattern lost its scheme binder correspondence", argument_chirho.ty_chirho.span_chirho()));
                         continue;
                     };
-                    let expected_chirho = subst_chirho.apply_ty_chirho(image_chirho);
+                    let Some(expected_chirho) = self.specialize_type_pattern_image_chirho(
+                        image_chirho,
+                        &subst_chirho,
+                        span_chirho,
+                    ) else {
+                        continue;
+                    };
                     let matched_chirho = self.bind_constructor_type_pattern_chirho(
                         &argument_chirho.ty_chirho,
-                        &expected_chirho,
+                        &expected_chirho.image_chirho,
+                        expected_chirho.kind_chirho.as_deref(),
                         span_chirho,
                     );
                     self.apply_subst_all_chirho(&matched_chirho);

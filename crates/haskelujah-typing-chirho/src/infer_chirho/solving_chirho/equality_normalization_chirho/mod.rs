@@ -619,6 +619,18 @@ pub(super) fn normalize_owned_equality_with_budget_chirho<'evidence_chirho>(
     evidence_chirho: impl Iterator<Item = &'evidence_chirho [(TyChirho, TyChirho)]>,
     budget_chirho: &mut EqualityBudgetChirho,
 ) -> Result<TyChirho, EqualityNormalizationExhaustedChirho> {
+    let rewrites_chirho =
+        prepare_owned_equality_rewrites_chirho(ctx_chirho, evidence_chirho, budget_chirho)?;
+    normalize_prepared_owned_equality_chirho(ctx_chirho, ty_chirho, &rewrites_chirho, budget_chirho)
+}
+
+/// Prepare immutable premises once when a scratch solver checks several goals
+/// under the same original evidence and substitution snapshot.
+pub(super) fn prepare_owned_equality_rewrites_chirho<'evidence_chirho>(
+    ctx_chirho: &dyn NormalizationContextChirho,
+    evidence_chirho: impl Iterator<Item = &'evidence_chirho [(TyChirho, TyChirho)]>,
+    budget_chirho: &mut EqualityBudgetChirho,
+) -> Result<Vec<(TyChirho, TyChirho)>, EqualityNormalizationExhaustedChirho> {
     let mut chunks_chirho = Vec::new();
     for chunk_chirho in evidence_chirho {
         budget_chirho
@@ -664,11 +676,17 @@ pub(super) fn normalize_owned_equality_with_budget_chirho<'evidence_chirho>(
         }
         chunks_chirho.push(copied_chirho);
     }
-    let rewrites_chirho = chunks_chirho
-        .into_iter()
-        .rev()
-        .flatten()
-        .collect::<Vec<_>>();
+    Ok(chunks_chirho.into_iter().rev().flatten().collect())
+}
+
+/// Use the same normalization algorithm with already prepared immutable
+/// premises. The caller must preserve their substitution/evidence snapshot.
+pub(super) fn normalize_prepared_owned_equality_chirho(
+    ctx_chirho: &dyn NormalizationContextChirho,
+    ty_chirho: &TyChirho,
+    rewrites_chirho: &[(TyChirho, TyChirho)],
+    budget_chirho: &mut EqualityBudgetChirho,
+) -> Result<TyChirho, EqualityNormalizationExhaustedChirho> {
     let mut current_chirho = transform_chirho(
         EqualityTransformPolicyChirho {
             ctx_chirho,
@@ -687,7 +705,7 @@ pub(super) fn normalize_owned_equality_with_budget_chirho<'evidence_chirho>(
         let transformed_chirho = transform_chirho(
             EqualityTransformPolicyChirho {
                 ctx_chirho,
-                rewrites_chirho: &rewrites_chirho,
+                rewrites_chirho,
                 expand_chirho: true,
                 resolve_meta_chirho: true,
             },

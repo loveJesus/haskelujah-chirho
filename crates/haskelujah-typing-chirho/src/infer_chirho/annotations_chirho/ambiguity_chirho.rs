@@ -7,8 +7,10 @@
 
 use super::super::equality_normalization_chirho::{
     EqualityBudgetChirho, copy_term_with_budget_chirho, equal_chirho,
+    substitute_meta_with_budget_chirho,
 };
 use super::*;
+use crate::TyVarChirho;
 
 #[derive(Clone, Copy)]
 struct SignatureProbeEvidenceChirho<'evidence_chirho> {
@@ -234,18 +236,62 @@ impl InferCtxChirho {
                 rules_chirho.push(rule_chirho);
             }
         }
+        for (left_chirho, right_chirho) in &given_pairs_chirho {
+            for term_chirho in [left_chirho, right_chirho] {
+                let free_chirho = SubstChirho::free_variables_bounded_chirho(
+                    term_chirho,
+                    &mut |work_chirho, output_chirho| {
+                        budget_chirho.node_chirho(output_chirho)?;
+                        budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+                    },
+                )?;
+                if free_chirho.iter().any(|variable_chirho| {
+                    (floor_chirho..ceiling_chirho).contains(&variable_chirho.0)
+                }) {
+                    return Some(SignatureDeterminationChirho::UnsupportedChirho);
+                }
+            }
+        }
+        let rules_chirho =
+            super::super::equality_normalization_chirho::prepare_owned_equality_rewrites_chirho(
+                self,
+                std::iter::once(rules_chirho.as_slice()).chain(
+                    self.equality_scopes_chirho[self.active_equality_scope_chirho]
+                        .evidence_view_chirho()
+                        .iter_chirho(),
+                ),
+                budget_chirho,
+            )
+            .ok()?;
+        // Scratch substitutions only bind the new wanted range; they cannot
+        // change these rigid/captured premises. Normalize them once, too.
+        for (left_chirho, right_chirho) in &mut given_pairs_chirho {
+            *left_chirho = self.normalize_prepared_signature_probe_chirho(
+                left_chirho,
+                &empty_chirho,
+                &rules_chirho,
+                budget_chirho,
+            )?;
+            *right_chirho = self.normalize_prepared_signature_probe_chirho(
+                right_chirho,
+                &empty_chirho,
+                &rules_chirho,
+                budget_chirho,
+            )?;
+        }
         budget_chirho.node_chirho(
             rules_chirho
                 .len()
                 .saturating_add(wanteds_chirho.len())
                 .saturating_add(1),
         )?;
-        let mut pending_chirho = vec![(wanted_body_chirho, given_body_chirho, 0usize)];
+        let mut pending_chirho = vec![(wanted_body_chirho, given_body_chirho, 0usize, true)];
         for wanted_chirho in wanteds_chirho {
             pending_chirho.push((
                 wanted_chirho.ty_chirho,
                 wanted_chirho.extra_tys_chirho.into_iter().next()?,
                 0,
+                false,
             ));
         }
         self.solve_signature_probe_chirho(
@@ -378,30 +424,151 @@ impl InferCtxChirho {
         .ok()
     }
 
+    fn normalize_prepared_signature_probe_chirho(
+        &self,
+        term_chirho: &TyChirho,
+        substitution_chirho: &SubstChirho,
+        rules_chirho: &[(TyChirho, TyChirho)],
+        budget_chirho: &mut EqualityBudgetChirho,
+    ) -> Option<TyChirho> {
+        let term_chirho = substitution_chirho.resolve_owned_bounded_chirho(
+            term_chirho,
+            &mut |work_chirho, output_chirho| {
+                budget_chirho.node_chirho(output_chirho)?;
+                budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+            },
+        )?;
+        super::super::equality_normalization_chirho::normalize_prepared_owned_equality_chirho(
+            self,
+            &term_chirho,
+            rules_chirho,
+            budget_chirho,
+        )
+        .ok()
+    }
+
+    /// Improve only from complete outstanding body equalities. Normalize the
+    /// unassigned image first; no guessed substitution is used to select it.
+    /// The proposed assignment must then prove the original context equality
+    /// under actual givens alone. Body obligations retain their original check.
+    fn improve_signature_probe_by_body_chirho(
+        &self,
+        variable_chirho: TyVarChirho,
+        wanted_chirho: (&TyChirho, &TyChirho),
+        substitution_chirho: &SubstChirho,
+        rules_chirho: &[(TyChirho, TyChirho)],
+        support_chirho: &[(TyChirho, TyChirho)],
+        budget_chirho: &mut EqualityBudgetChirho,
+    ) -> Option<Option<TyChirho>> {
+        let (left_chirho, right_chirho) = wanted_chirho;
+        if support_chirho.is_empty() {
+            return Some(None);
+        }
+        let image_chirho = if matches!(left_chirho, TyChirho::VarChirho(actual_chirho) if *actual_chirho == variable_chirho)
+        {
+            right_chirho
+        } else {
+            left_chirho
+        };
+        budget_chirho.node_chirho(rules_chirho.len().saturating_add(support_chirho.len()))?;
+        let mut combined_chirho = Vec::new();
+        for (left_chirho, right_chirho) in rules_chirho {
+            combined_chirho.push((
+                copy_term_with_budget_chirho(left_chirho, budget_chirho)?,
+                copy_term_with_budget_chirho(right_chirho, budget_chirho)?,
+            ));
+        }
+        for (left_chirho, right_chirho) in support_chirho {
+            let left_chirho = self.normalize_prepared_signature_probe_chirho(
+                left_chirho,
+                substitution_chirho,
+                rules_chirho,
+                budget_chirho,
+            )?;
+            let right_chirho = self.normalize_prepared_signature_probe_chirho(
+                right_chirho,
+                substitution_chirho,
+                rules_chirho,
+                budget_chirho,
+            )?;
+            if let Some(rule_chirho) = self.given_equality_rule_chirho(left_chirho, right_chirho) {
+                combined_chirho.push(rule_chirho);
+            }
+        }
+        let candidate_chirho = self.normalize_prepared_signature_probe_chirho(
+            image_chirho,
+            substitution_chirho,
+            &combined_chirho,
+            budget_chirho,
+        )?;
+        let free_chirho = SubstChirho::free_variables_bounded_chirho(
+            &candidate_chirho,
+            &mut |work_chirho, output_chirho| {
+                budget_chirho.node_chirho(output_chirho)?;
+                budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+            },
+        )?;
+        if free_chirho.contains(&variable_chirho) {
+            return Some(None);
+        }
+        let left_chirho = substitute_meta_with_budget_chirho(
+            left_chirho,
+            variable_chirho,
+            &candidate_chirho,
+            budget_chirho,
+        )?;
+        let right_chirho = substitute_meta_with_budget_chirho(
+            right_chirho,
+            variable_chirho,
+            &candidate_chirho,
+            budget_chirho,
+        )?;
+        let left_chirho = self.normalize_prepared_signature_probe_chirho(
+            &left_chirho,
+            substitution_chirho,
+            rules_chirho,
+            budget_chirho,
+        )?;
+        let right_chirho = self.normalize_prepared_signature_probe_chirho(
+            &right_chirho,
+            substitution_chirho,
+            rules_chirho,
+            budget_chirho,
+        )?;
+        if equal_chirho(&left_chirho, &right_chirho, budget_chirho)? {
+            Some(Some(candidate_chirho))
+        } else {
+            Some(None)
+        }
+    }
+
     fn solve_signature_probe_chirho(
         &self,
-        mut pending_chirho: Vec<(TyChirho, TyChirho, usize)>,
+        mut pending_chirho: Vec<(TyChirho, TyChirho, usize, bool)>,
         evidence_chirho: SignatureProbeEvidenceChirho<'_>,
         fresh_chirho: std::ops::Range<u32>,
         budget_chirho: &mut EqualityBudgetChirho,
         span_chirho: SpanChirho,
     ) -> Option<SignatureDeterminationChirho> {
         let mut substitution_chirho = SubstChirho::empty_chirho();
-        for _ in 0..128 {
+        let mut body_support_chirho = Vec::new();
+        for _round_chirho in 0..128 {
             let mut deferred_chirho = Vec::new();
             let mut progressed_chirho = false;
-            while let Some((left_chirho, right_chirho, depth_chirho)) = pending_chirho.pop() {
+            while let Some((left_chirho, right_chirho, depth_chirho, body_chirho)) =
+                pending_chirho.pop()
+            {
                 budget_chirho.work_chirho(1)?;
                 if depth_chirho >= 128 {
                     return None;
                 }
-                let left_chirho = self.normalize_signature_probe_chirho(
+                let left_chirho = self.normalize_prepared_signature_probe_chirho(
                     &left_chirho,
                     &substitution_chirho,
                     evidence_chirho.rules_chirho,
                     budget_chirho,
                 )?;
-                let right_chirho = self.normalize_signature_probe_chirho(
+                let right_chirho = self.normalize_prepared_signature_probe_chirho(
                     &right_chirho,
                     &substitution_chirho,
                     evidence_chirho.rules_chirho,
@@ -413,22 +580,10 @@ impl InferCtxChirho {
                 }
                 let mut entailed_chirho = false;
                 for (given_left_chirho, given_right_chirho) in evidence_chirho.givens_chirho {
-                    let given_left_chirho = self.normalize_signature_probe_chirho(
-                        given_left_chirho,
-                        &substitution_chirho,
-                        evidence_chirho.rules_chirho,
-                        budget_chirho,
-                    )?;
-                    let given_right_chirho = self.normalize_signature_probe_chirho(
-                        given_right_chirho,
-                        &substitution_chirho,
-                        evidence_chirho.rules_chirho,
-                        budget_chirho,
-                    )?;
-                    if (equal_chirho(&left_chirho, &given_left_chirho, budget_chirho)?
-                        && equal_chirho(&right_chirho, &given_right_chirho, budget_chirho)?)
-                        || (equal_chirho(&left_chirho, &given_right_chirho, budget_chirho)?
-                            && equal_chirho(&right_chirho, &given_left_chirho, budget_chirho)?)
+                    if (equal_chirho(&left_chirho, given_left_chirho, budget_chirho)?
+                        && equal_chirho(&right_chirho, given_right_chirho, budget_chirho)?)
+                        || (equal_chirho(&left_chirho, given_right_chirho, budget_chirho)?
+                            && equal_chirho(&right_chirho, given_left_chirho, budget_chirho)?)
                     {
                         entailed_chirho = true;
                         break;
@@ -476,8 +631,30 @@ impl InferCtxChirho {
                         Err(crate::unify_chirho::UnifyErrorChirho::OccursCheckChirho {
                             ..
                         }) if self.ty_mentions_family_chirho(image_chirho) => {
+                            if !body_chirho
+                                && let Some(image_chirho) = self
+                                    .improve_signature_probe_by_body_chirho(
+                                        variable_chirho,
+                                        (&left_chirho, &right_chirho),
+                                        &substitution_chirho,
+                                        evidence_chirho.rules_chirho,
+                                        &body_support_chirho,
+                                        budget_chirho,
+                                    )?
+                            {
+                                match crate::unify_chirho::unify_chirho(&TyChirho::VarChirho(variable_chirho), &image_chirho, span_chirho) {
+                                    Ok(_) => { substitution_chirho.insert_chirho(variable_chirho, image_chirho); progressed_chirho = true; continue; }
+                                    Err(crate::unify_chirho::UnifyErrorChirho::ResourceExhaustedChirho { .. }) => return None,
+                                    Err(_) => {}
+                                }
+                            }
                             budget_chirho.node_chirho(1)?;
-                            deferred_chirho.push((left_chirho, right_chirho, depth_chirho));
+                            deferred_chirho.push((
+                                left_chirho,
+                                right_chirho,
+                                depth_chirho,
+                                body_chirho,
+                            ));
                             continue;
                         }
                         Err(_) => {
@@ -493,7 +670,7 @@ impl InferCtxChirho {
                     || self.ty_is_family_app_chirho(&right_chirho)
                 {
                     budget_chirho.node_chirho(1)?;
-                    deferred_chirho.push((left_chirho, right_chirho, depth_chirho));
+                    deferred_chirho.push((left_chirho, right_chirho, depth_chirho, body_chirho));
                     continue;
                 }
                 budget_chirho.node_chirho(1)?;
@@ -506,11 +683,13 @@ impl InferCtxChirho {
                             *left_fun_chirho,
                             *right_fun_chirho,
                             depth_chirho + 1,
+                            body_chirho,
                         ));
                         pending_chirho.push((
                             *left_arg_chirho,
                             *right_arg_chirho,
                             depth_chirho + 1,
+                            body_chirho,
                         ));
                     }
                     (
@@ -525,15 +704,22 @@ impl InferCtxChirho {
                             *left_arg_chirho,
                             *right_arg_chirho,
                             depth_chirho + 1,
+                            body_chirho,
                         ));
                         pending_chirho.push((
                             *left_result_chirho,
                             *right_result_chirho,
                             depth_chirho + 1,
+                            body_chirho,
                         ));
                     }
                     (TyChirho::ListChirho(left_chirho), TyChirho::ListChirho(right_chirho)) => {
-                        pending_chirho.push((*left_chirho, *right_chirho, depth_chirho + 1))
+                        pending_chirho.push((
+                            *left_chirho,
+                            *right_chirho,
+                            depth_chirho + 1,
+                            body_chirho,
+                        ))
                     }
                     (TyChirho::TupleChirho(left_chirho), TyChirho::TupleChirho(right_chirho))
                         if left_chirho.len() == right_chirho.len() =>
@@ -541,7 +727,7 @@ impl InferCtxChirho {
                         budget_chirho.node_chirho(left_chirho.len())?;
                         pending_chirho.extend(left_chirho.into_iter().zip(right_chirho).map(
                             |(left_chirho, right_chirho)| {
-                                (left_chirho, right_chirho, depth_chirho + 1)
+                                (left_chirho, right_chirho, depth_chirho + 1, body_chirho)
                             },
                         ));
                     }
@@ -570,6 +756,32 @@ impl InferCtxChirho {
                 });
             }
             if !progressed_chirho {
+                if body_support_chirho.is_empty() {
+                    // These are still obligations, never new givens. They may
+                    // justify congruence while deriving a context improvement,
+                    // but must all close under the actual givens afterwards.
+                    for (left_chirho, right_chirho, _, body_chirho) in &deferred_chirho {
+                        if *body_chirho
+                            && (self.ty_is_family_app_chirho(left_chirho)
+                                || self.ty_is_family_app_chirho(right_chirho))
+                        {
+                            let left_chirho =
+                                copy_term_with_budget_chirho(left_chirho, budget_chirho)?;
+                            let right_chirho =
+                                copy_term_with_budget_chirho(right_chirho, budget_chirho)?;
+                            if let Some(rule_chirho) =
+                                self.given_equality_rule_chirho(left_chirho, right_chirho)
+                            {
+                                budget_chirho.node_chirho(1)?;
+                                body_support_chirho.push(rule_chirho);
+                            }
+                        }
+                    }
+                    if !body_support_chirho.is_empty() {
+                        pending_chirho = deferred_chirho;
+                        continue;
+                    }
+                }
                 return Some(SignatureDeterminationChirho::SupportedChirho {
                     determined_chirho: false,
                 });

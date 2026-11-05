@@ -30,10 +30,9 @@ impl ElaborationStateChirho {
             span_chirho,
         )?;
         if exhausted_chirho {
-            return Err(self.resource_failure_chirho(
-                "source signature equality probe bound exhausted",
-                span_chirho,
-            ));
+            return Err(
+                self.resource_failure_chirho("kind/type continuation bound exhausted", span_chirho)
+            );
         }
         Ok(())
     }

@@ -270,16 +270,16 @@ fn checked_annotation_above_import_placeholder_range_retains_its_type_chirho() {
 #[test]
 fn type_pattern_alias_shadow_restores_exact_previous_image_chirho() {
     let mut context_chirho = InferCtxChirho::new_chirho();
-    context_chirho.install_type_pattern_alias_chirho(
+    context_chirho.install_type_pattern_alias_image_chirho(
         "aChirho".into(),
         TyVarChirho(0),
-        TyChirho::int_chirho(),
+        crate::subst_chirho::SubstitutionImageChirho { image_chirho: TyChirho::int_chirho(), kind_chirho: Some(std::sync::Arc::new(crate::kind_chirho::elaboration_chirho::ElaborationStateChirho::type_universe_chirho())), source_chirho: None },
     );
     let mark_chirho = context_chirho.type_pattern_alias_undo_chirho.len();
-    context_chirho.install_type_pattern_alias_chirho(
+    context_chirho.install_type_pattern_alias_image_chirho(
         "aChirho".into(),
         TyVarChirho(1),
-        TyChirho::bool_chirho(),
+        crate::subst_chirho::SubstitutionImageChirho { image_chirho: TyChirho::bool_chirho(), kind_chirho: Some(std::sync::Arc::new(crate::kind_chirho::elaboration_chirho::ElaborationStateChirho::type_universe_chirho())), source_chirho: None },
     );
     let aliases_chirho = context_chirho.type_pattern_aliases_since_chirho(mark_chirho);
     context_chirho.restore_type_pattern_aliases_chirho(mark_chirho);
@@ -337,6 +337,7 @@ fn constructor_type_pattern_wrapper_depth_is_non_deferrable_chirho() {
     context_chirho.bind_constructor_type_pattern_chirho(
         &pattern_chirho,
         &TyChirho::int_chirho(),
+        None,
         span_chirho,
     );
     assert!(context_chirho.type_normalization_exhausted_chirho.get());
@@ -344,6 +345,42 @@ fn constructor_type_pattern_wrapper_depth_is_non_deferrable_chirho() {
     let result_chirho = context_chirho.finish_chirho();
     assert!(
         result_chirho
+            .non_deferrable_diagnostics_chirho
+            .has_errors_chirho()
+    );
+}
+
+#[test]
+fn constructor_prefix_resource_failure_remains_terminal_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let mut term_chirho = TyChirho::int_chirho();
+    for _index_chirho in 0..130 {
+        term_chirho = TyChirho::ForallChirho {
+            vars_chirho: Vec::new().into(),
+            body_chirho: Box::new(term_chirho),
+        };
+    }
+    context_chirho.instantiate_constructor_pattern_with_variables_chirho(
+        &SchemeChirho::mono_chirho(term_chirho),
+    );
+    assert!(
+        context_chirho
+            .elaboration_state_chirho
+            .failure_chirho()
+            .is_some()
+    );
+    context_chirho.instantiate_constructor_pattern_with_variables_chirho(
+        &SchemeChirho::mono_chirho(TyChirho::int_chirho()),
+    );
+    assert!(
+        context_chirho
+            .elaboration_state_chirho
+            .failure_chirho()
+            .is_some()
+    );
+    assert!(
+        context_chirho
+            .finish_chirho()
             .non_deferrable_diagnostics_chirho
             .has_errors_chirho()
     );

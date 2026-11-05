@@ -105,7 +105,7 @@ mod applications_chirho;
 mod bindings_chirho;
 #[path = "infer_chirho/terms_chirho/conditionals_chirho.rs"]
 mod conditionals_chirho;
-#[path = "infer_chirho/terms_chirho/constructor_patterns_chirho.rs"]
+#[path = "infer_chirho/terms_chirho/constructor_patterns_chirho/mod.rs"]
 mod constructor_patterns_chirho;
 #[path = "infer_chirho/terms_chirho/do_operations_chirho.rs"]
 mod do_operations_chirho;

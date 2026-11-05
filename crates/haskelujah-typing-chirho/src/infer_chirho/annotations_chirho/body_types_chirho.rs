@@ -6,7 +6,7 @@
 use super::*;
 use crate::kind_chirho::elaboration_chirho::{
     ArgumentElaborationContextChirho, CheckedBodyTypeChirho, ElaborationErrorChirho,
-    elaborate_body_type_chirho,
+    elaborate_body_pattern_type_chirho, elaborate_body_type_chirho,
 };
 
 impl InferCtxChirho {
@@ -92,6 +92,29 @@ impl InferCtxChirho {
         syntax_chirho: &TypeChirho,
         value_kind_chirho: bool,
     ) -> Option<CheckedBodyTypeChirho> {
+        self.check_body_syntax_chirho(syntax_chirho.span_chirho(), |context_chirho| {
+            elaborate_body_type_chirho(syntax_chirho, value_kind_chirho, context_chirho)
+        })
+    }
+
+    pub(in crate::infer_chirho) fn check_body_pattern_type_chirho(
+        &mut self,
+        syntax_chirho: &TypeChirho,
+        expected_kind_chirho: &TyChirho,
+    ) -> Option<CheckedBodyTypeChirho> {
+        self.check_body_syntax_chirho(syntax_chirho.span_chirho(), |context_chirho| {
+            elaborate_body_pattern_type_chirho(syntax_chirho, expected_kind_chirho, context_chirho)
+        })
+    }
+
+    fn check_body_syntax_chirho<ResultChirho>(
+        &mut self,
+        span_chirho: SpanChirho,
+        elaborate_chirho: impl FnOnce(
+            ArgumentElaborationContextChirho<'_>,
+        )
+            -> Result<(ResultChirho, SubstChirho), ElaborationErrorChirho>,
+    ) -> Option<ResultChirho> {
         self.elaboration_state_chirho.owner_chirho?;
         let (Some(type_scope_chirho), Some(family_scope_chirho), Some(promotion_scope_chirho)) = (
             self.type_constructor_scope_chirho.clone(),
@@ -101,34 +124,30 @@ impl InferCtxChirho {
             self.record_body_kind_error_chirho(ElaborationErrorChirho {
                 mismatch_chirho: None,
                 message_chirho: "body type lost its checked import scope".into(),
-                span_chirho: syntax_chirho.span_chirho(),
+                span_chirho,
             });
             return None;
         };
-        let result_chirho = elaborate_body_type_chirho(
-            syntax_chirho,
-            value_kind_chirho,
-            ArgumentElaborationContextChirho {
-                state_chirho: &mut self.elaboration_state_chirho,
-                registry_chirho: &mut self.type_families_chirho,
-                type_scope_chirho: &type_scope_chirho,
-                family_scope_chirho: &family_scope_chirho,
-                promotion_scope_chirho: &promotion_scope_chirho,
-                scoped_variables_chirho: &self.scoped_tyvars_chirho,
-                images_chirho: &self.skolem_bindings_chirho,
-                refinements_chirho: &self.env_chirho,
-                equality_chirho: super::super::EqualityNormalizationViewChirho {
-                    substitutions_chirho: &self.equality_substitutions_chirho,
-                    legacy_synonyms_chirho: &self.type_synonyms_chirho,
-                    type_scope_chirho: Some(&type_scope_chirho),
-                    family_scope_chirho: Some(&family_scope_chirho),
-                    family_module_chirho: &self.family_module_name_chirho,
-                    promotion_present_chirho: true,
-                    evidence_chirho: self.equality_scopes_chirho[self.active_equality_scope_chirho]
-                        .evidence_view_chirho(),
-                },
+        let result_chirho = elaborate_chirho(ArgumentElaborationContextChirho {
+            state_chirho: &mut self.elaboration_state_chirho,
+            registry_chirho: &mut self.type_families_chirho,
+            type_scope_chirho: &type_scope_chirho,
+            family_scope_chirho: &family_scope_chirho,
+            promotion_scope_chirho: &promotion_scope_chirho,
+            scoped_variables_chirho: &self.scoped_tyvars_chirho,
+            images_chirho: &self.skolem_bindings_chirho,
+            refinements_chirho: &self.env_chirho,
+            equality_chirho: super::super::EqualityNormalizationViewChirho {
+                substitutions_chirho: &self.equality_substitutions_chirho,
+                legacy_synonyms_chirho: &self.type_synonyms_chirho,
+                type_scope_chirho: Some(&type_scope_chirho),
+                family_scope_chirho: Some(&family_scope_chirho),
+                family_module_chirho: &self.family_module_name_chirho,
+                promotion_present_chirho: true,
+                evidence_chirho: self.equality_scopes_chirho[self.active_equality_scope_chirho]
+                    .evidence_view_chirho(),
             },
-        );
+        });
         match result_chirho {
             Ok((checked_chirho, links_chirho)) => {
                 self.apply_subst_all_chirho(&links_chirho);

@@ -78,6 +78,30 @@ pub(crate) fn elaborate_body_type_chirho(
     })
 }
 
+/// Constructor pattern wildcards are checked at the selected producer kind;
+/// an arbitrary type wildcard has no authority to acquire a universal kind.
+pub(crate) fn elaborate_body_pattern_type_chirho(
+    syntax_chirho: &TypeChirho,
+    expected_kind_chirho: &TyChirho,
+    context_chirho: ArgumentElaborationContextChirho<'_>,
+) -> Result<(CheckedBodyTypeChirho, crate::subst_chirho::SubstChirho), ElaborationErrorChirho> {
+    let span_chirho = syntax_chirho.span_chirho();
+    with_argument_elaborator_chirho(context_chirho, span_chirho, false, |elaborator_chirho| {
+        let mut syntax_chirho = elaborator_chirho
+            .state_chirho
+            .copy_syntax_chirho(syntax_chirho)?;
+        let term_chirho = elaborator_chirho
+            .bind_pattern_type_argument_chirho(&mut syntax_chirho, expected_kind_chirho)?;
+        Ok(CheckedBodyTypeChirho {
+            syntax_chirho,
+            term_chirho,
+            kind_chirho: elaborator_chirho
+                .state_chirho
+                .resolve_chirho(expected_kind_chirho, span_chirho)?,
+        })
+    })
+}
+
 fn with_argument_elaborator_chirho<ResultChirho>(
     context_chirho: ArgumentElaborationContextChirho<'_>,
     span_chirho: SpanChirho,

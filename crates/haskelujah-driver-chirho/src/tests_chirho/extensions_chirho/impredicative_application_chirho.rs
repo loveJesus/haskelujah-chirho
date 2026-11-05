@@ -576,3 +576,27 @@ fn source_signature_probe_preserves_family_dependency_authority_chirho() {
         false,
     );
 }
+
+#[test]
+fn source_signature_improvement_requires_complete_body_congruence_chirho() {
+    check_chirho(
+        "improvement-chirho",
+        "ImprovementAnchoredChoiceChirho",
+        true,
+    );
+    check_chirho("improvement-chirho", "ImprovementUnanchoredChirho", false);
+    check_chirho(
+        "improvement-chirho",
+        "ImprovementUnmatchedFamilyChirho",
+        false,
+    );
+}
+
+#[test]
+fn constructor_pattern_wildcard_cannot_override_its_universal_kind_chirho() {
+    check_chirho(
+        "improvement-chirho",
+        "ConstructorUniversalWildcardWrongChirho",
+        false,
+    );
+}

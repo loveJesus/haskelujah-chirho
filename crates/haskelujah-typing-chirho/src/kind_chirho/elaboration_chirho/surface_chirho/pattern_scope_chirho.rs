@@ -36,6 +36,36 @@ impl TypeElaboratorChirho<'_> {
                             variables_chirho.get(name_chirho.text_chirho())
                         {
                             *variable_chirho
+                        } else if let Some(images_chirho) = this_chirho.lexical_images_chirho {
+                            // The ordinary pattern handoff already prepared every
+                            // free binder. Reuse its checked lexical image, rather
+                            // than allocating a second owner for structured syntax.
+                            let variable_chirho = this_chirho
+                                .check_variable_owner_chirho(name_chirho)?
+                                .ok_or_else(|| {
+                                    Self::error_chirho(
+                                        "late type pattern has no checked binder",
+                                        span_chirho,
+                                    )
+                                })?;
+                            images_chirho
+                                .lookup_image_chirho(&variable_chirho)
+                                .filter(|image_chirho| {
+                                    image_chirho.kind_chirho.is_some()
+                                        && image_chirho.source_chirho.as_ref()
+                                            == name_chirho.type_variable_chirho()
+                                })
+                                .ok_or_else(|| {
+                                    Self::error_chirho(
+                                        "late type pattern lost its checked lexical image",
+                                        span_chirho,
+                                    )
+                                })?;
+                            let text_chirho = this_chirho
+                                .state_chirho
+                                .name_chirho(name_chirho.text_chirho(), span_chirho)?;
+                            variables_chirho.insert(text_chirho, variable_chirho);
+                            variable_chirho
                         } else {
                             let kind_chirho = this_chirho.fresh_kind_chirho(span_chirho)?;
                             let variable_chirho = this_chirho
