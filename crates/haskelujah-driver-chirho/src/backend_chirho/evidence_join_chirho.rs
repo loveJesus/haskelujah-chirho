@@ -397,14 +397,25 @@ pub(crate) fn join_occurrence_evidence_chirho(
                 .classes_chirho
                 .get(&record_chirho.class_name_chirho)
                 .is_some_and(|class_chirho| class_chirho.methods_chirho.contains_key(name_chirho));
-            let function_requires_class_chirho = infer_result_chirho
-                .env_chirho
-                .lookup_chirho(name_chirho)
-                .is_some_and(|scheme_chirho| {
-                    scheme_chirho.preds_chirho.iter().any(|pred_chirho| {
-                        pred_chirho.class_name_chirho == record_chirho.class_name_chirho
+            let entry_requires_class_chirho = |entry_chirho: &str| {
+                infer_result_chirho
+                    .env_chirho
+                    .lookup_chirho(entry_chirho)
+                    .is_some_and(|scheme_chirho| {
+                        scheme_chirho.preds_chirho.iter().any(|pred_chirho| {
+                            pred_chirho.class_name_chirho == record_chirho.class_name_chirho
+                        })
                     })
-                });
+            };
+            // The function's own scheme is the one its bare name binds, as before, or the
+            // qualified entry the checker resolved the use under: `P.print` keeps its Show
+            // proof beside a program's own `print :: String -> IO ()` (row 698). The entry
+            // is consulted, never trusted; a use without one is judged by its bare name.
+            let function_requires_class_chirho = entry_requires_class_chirho(name_chirho.as_str())
+                || record_chirho
+                    .resolved_entry_chirho
+                    .as_deref()
+                    .is_some_and(entry_requires_class_chirho);
             class_declares_reference_chirho || function_requires_class_chirho
         };
     let backed_key_chirho =

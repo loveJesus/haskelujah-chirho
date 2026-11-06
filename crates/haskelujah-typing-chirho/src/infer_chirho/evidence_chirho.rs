@@ -11,7 +11,9 @@ use super::*;
 /// One constrained reference's predicate, captured during inference and
 /// finalized into a `MethodOccurrenceRecordChirho` once the module is solved.
 /// The origin is the reference's identity; the span stays for diagnostics and
-/// for references that have no origin yet.
+/// for references that have no origin yet. The resolved entry is the qualified
+/// environment entry the reference's scheme came from, when it came from one
+/// (row 698).
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 #[derive(Debug, Clone)]
 pub(super) struct OccurrenceCaptureChirho {
@@ -21,6 +23,7 @@ pub(super) struct OccurrenceCaptureChirho {
     pub(super) ty_chirho: TyChirho,
     pub(super) span_chirho: SpanChirho,
     pub(super) origin_chirho: Option<OriginIdChirho>,
+    pub(super) resolved_entry_chirho: Option<String>,
 }
 
 /// One constrained reference's instantiated predicates, in scheme order.
@@ -174,6 +177,11 @@ impl InferCtxChirho {
     /// instantiated predicates in scheme order, and one occurrence capture per
     /// predicate under the per-name ordinal and the reference's origin. An
     /// occurrence with several predicates keeps all of them.
+    ///
+    /// A qualified reference also keeps the qualified entry its scheme was resolved
+    /// under (row 698). Every capture site resolves this same name through the keyed
+    /// lookup's wrapper, so asking the keyed lookup again names that very entry. An
+    /// unqualified reference has none, and the join judges it by its bare name as before.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn capture_occurrence_predicates_chirho(
         &mut self,
@@ -186,6 +194,15 @@ impl InferCtxChirho {
         let span_chirho = name_chirho.span_chirho();
         let origin_chirho = name_chirho.origin_chirho();
         self.capture_reference_evidence_chirho(span_chirho, origin_chirho, preds_chirho);
+        let resolved_entry_chirho = name_chirho
+            .qualifier_chirho()
+            .and_then(|_qualifier_chirho| {
+                self.lookup_value_scheme_keyed_chirho(
+                    &name_chirho.full_name_chirho(),
+                    name_chirho.text_chirho(),
+                )
+                .and_then(|(entry_chirho, _scheme_chirho)| entry_chirho)
+            });
         let counter_chirho = self
             .occurrence_counters_chirho
             .entry(name_chirho.text_chirho().to_string())
@@ -201,6 +218,7 @@ impl InferCtxChirho {
                     ty_chirho: pred_chirho.ty_chirho.clone(),
                     span_chirho,
                     origin_chirho,
+                    resolved_entry_chirho: resolved_entry_chirho.clone(),
                 });
         }
     }

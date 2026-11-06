@@ -543,6 +543,17 @@ flowchart TD
   positional path, and vacancy in the consumer map is not ownership of a proof.
 - An ambiguous or duplicated span identifies nothing and does not fall through to a positional
   assignment; its occurrence simply carries no evidence.
+- A record proves its occurrence only when it is authoritative, by either of two arms:
+  - Its class declares the method (`==` → Eq).
+  - Its class constrains the function's own scheme (`print :: Show a => ...`). That scheme is
+    the bare name's entry. A qualified use also has the qualified entry the checker resolved it
+    under: `MethodOccurrenceRecordChirho::resolved_entry_chirho`, from the keyed lookup behind
+    `lookup_value_scheme_with_qualified_suffix_fallback_chirho` (row 698).
+  - The entry is consulted, never trusted. A use without one is judged by its bare name, as before.
+  - Judged by the bare name alone, `mapM_ P.print xs` beside a program's own
+    `print :: String -> IO ()` lost its Show proof and printed `97 98` natively.
+  - Controls: `src/tests_chirho/evidence_chirho/occurrence_authority_chirho.rs`, the front-end pin
+    in `occurrence_records_chirho.rs`, and the capture test in `evidence_validity_tests_chirho.rs`.
 - The positional path exists only because the desugarer mints occurrences at several sites and
   only the variable-reference site records a span. Deleting it turns 19 driver tests red (all
   desugared shapes); restricting it to names whose occurrences all lack spans regresses a

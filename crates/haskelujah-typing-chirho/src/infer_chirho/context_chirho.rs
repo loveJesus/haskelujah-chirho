@@ -432,6 +432,7 @@ impl InferCtxChirho {
                      ty_chirho,
                      span_chirho,
                      origin_chirho,
+                     resolved_entry_chirho,
                  }| {
                     let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
                     let hinted_key_chirho = match &resolved_chirho {
@@ -473,6 +474,7 @@ impl InferCtxChirho {
                                 ty_key_chirho: key_chirho,
                                 span_chirho: *span_chirho,
                                 origin_chirho: *origin_chirho,
+                                resolved_entry_chirho: resolved_entry_chirho.clone(),
                             });
                         }
                         return None;
@@ -495,6 +497,7 @@ impl InferCtxChirho {
                             ty_key_chirho: key_chirho,
                             span_chirho: *span_chirho,
                             origin_chirho: *origin_chirho,
+                            resolved_entry_chirho: resolved_entry_chirho.clone(),
                         });
                     }
                     // A concrete type keys whole for Show, Ord and Eq, as their
@@ -518,6 +521,7 @@ impl InferCtxChirho {
                         ty_key_chirho: key_chirho,
                         span_chirho: *span_chirho,
                         origin_chirho: *origin_chirho,
+                        resolved_entry_chirho: resolved_entry_chirho.clone(),
                     })
                 },
             )

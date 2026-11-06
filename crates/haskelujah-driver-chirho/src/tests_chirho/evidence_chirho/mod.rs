@@ -5,6 +5,7 @@
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 mod do_operation_records_chirho;
+mod occurrence_authority_chirho;
 mod occurrence_join_chirho;
 mod occurrence_names_chirho;
 mod occurrence_producers_chirho;

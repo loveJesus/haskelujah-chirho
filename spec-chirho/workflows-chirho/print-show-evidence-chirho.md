@@ -12,7 +12,7 @@ flowchart TD
     source_chirho[Source: print value] --> infer_chirho[Type inference solves Show value_type]
     infer_chirho --> occurrence_chirho[Record print occurrence with full concrete Show key]
     occurrence_chirho --> join_chirho[Driver joins source-order occurrence id to evidence]
-    join_chirho --> validate_chirho{Show constrains print's own scheme?}
+    join_chirho --> validate_chirho{"Show constrains print's own scheme: the bare entry, or a qualified use's resolved entry (row 698)?"}
     validate_chirho -->|no| fallback_chirho[Preserve canonical print path]
     validate_chirho -->|"yes, applied at the binding's indexed own key $own:i (row 697)"| own_show_chirho["try_rewrite_own_show_print_chirho: putStrLn applied to $sel_Show_show of that parameter"]
     own_show_chirho --> core_show_chirho
@@ -88,6 +88,12 @@ flowchart TD
     applied-head hook never rebuilds it.
   - A bare own key, an indexed key whose parameter is not in scope, and the end-of-pass sweep
     (no dictionaries in scope) keep today's path.
+  - P3 is a qualified `P.print` beside a program's own `print :: String -> IO ()`. It lost its
+    proof in the join, not in the checker. The join judged the record by its bare name, which
+    named the program's `print`. Measured in `tmp-chirho/row698-gate-chirho/g02`:
+    `print Some([])`, `P.print Some(["Show"])`.
+  - The record now keeps the qualified entry its use resolved under, and the join consults that
+    entry. See "Method occurrences" in the dictionary-evidence workflow.
   - Controls: `occurrence_rows_tests_chirho.rs`, and P1-P3 in
     `tests/typing_integration_chirho/declarations_chirho/first_class_show_print_chirho.rs`
     (GHC-measured; every engine).
