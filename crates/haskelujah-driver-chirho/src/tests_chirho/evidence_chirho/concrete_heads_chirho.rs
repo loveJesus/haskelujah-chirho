@@ -561,6 +561,7 @@ fn identity_less_records_reach_only_the_names_they_reached_before_chirho() {
             class_chirho,
             key_chirho: "BoxChirho",
             applied_chirho: None,
+            capture_chirho: None,
             instances_chirho: Vec::new(),
             stamped_chirho: false,
             genuine_span_chirho,
