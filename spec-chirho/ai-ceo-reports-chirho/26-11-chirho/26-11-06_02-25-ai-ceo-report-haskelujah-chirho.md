@@ -34,4 +34,4 @@ Evidence roots:
 
 Local reviews: Claude32216 confirms698/699 facts and both quotations; Claude232215 supplies the corrected struct-field and fno-code scopes above; the kind writer confirms its reported scope with the outside-span precision correction above. Root owns the final prose.
 
-Transport: NOT SENT. One AICEO notification follows committing this reviewed report. Delivery, acknowledgment and portfolio fold remain separate.
+Transport: SENT once to AICEO/gpt_chirho through Metropoliluya daily-report-chirho at2026-11-06 02:57:46EST, DM3035, broker delivered=true. Sent report body sha2565b598f2ab33c9551f131b878d575213fb0579f05a361a3b8ee29fd6fb6178c98 at68448fa8; this footer records delivery afterward. No acknowledgment or portfolio fold is claimed.
