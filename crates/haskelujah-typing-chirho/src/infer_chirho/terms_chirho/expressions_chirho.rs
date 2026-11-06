@@ -17,12 +17,12 @@ use haskelujah_ast_chirho::name_chirho::CompilerClassChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
 
 impl InferCtxChirho {
-    /// The wanted a literal brings. Its translation names the compiler's own class whatever
-    /// is in scope (Report sections 3.2 and 6.4.1), so the predicate carries that proof, and
-    /// no `IsString` import is needed. Under RebindableSyntax the literal calls whatever
-    /// `fromInteger` is in scope, and under MagicHash it may be a primitive literal whose `#`
-    /// the AST erases. Either way the predicate stays legacy and unproven, a named support
-    /// boundary (row 692).
+    /// The wanted a literal or a prefix negation brings. Its translation names the compiler's
+    /// own class whatever is in scope (Report sections 3.2, 3.4 and 6.4.1), so the predicate
+    /// carries that proof, and no `IsString` import is needed. Under RebindableSyntax the
+    /// literal calls whatever `fromInteger` (and the negation whatever `negate`) is in scope,
+    /// and under MagicHash it may be a primitive literal whose `#` the AST erases. Either way
+    /// the predicate stays legacy and unproven, a named support boundary (row 692).
     /// workflow: language-features-chirho/fundep-generalization-chirho
     fn literal_predicate_chirho(
         &self,
@@ -757,12 +757,12 @@ impl InferCtxChirho {
                 span_chirho,
             } => {
                 let (s_chirho, expr_ty_chirho) = self.infer_expr_chirho(expr_chirho);
-                // negate :: Num a => a -> a
-                // Defer a Num constraint on the expression type
-                self.deferred_preds_chirho.push((
-                    PredChirho::new_chirho("Num", expr_ty_chirho.clone()),
-                    *span_chirho,
-                ));
+                // `-e` is the Prelude's `negate e` (Report section 3.4): the compiler's own Num,
+                // under the same safety flags as an ordinary literal (row 692).
+                let wanted_chirho =
+                    self.literal_predicate_chirho(CompilerClassChirho::NumChirho, &expr_ty_chirho);
+                self.deferred_preds_chirho
+                    .push((wanted_chirho, *span_chirho));
                 (s_chirho, expr_ty_chirho)
             }
 

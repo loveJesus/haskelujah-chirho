@@ -44,6 +44,7 @@
 //!   supplies, so its action does not run. That needs a typed entry instantiation carried to
 //!   the wrapper (`an_overloaded_entry_runs_at_its_instantiated_type_chirho`,
 //!   `an_unrestricted_entry_runs_at_its_instantiated_type_chirho`).
+//!
 //! workflow: language-features-chirho/fundep-generalization-chirho
 
 use haskelujah_driver::{FrontendOptionsChirho, compile_source_with_options_chirho};

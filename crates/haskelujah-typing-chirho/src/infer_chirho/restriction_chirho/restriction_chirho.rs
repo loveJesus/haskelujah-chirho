@@ -23,10 +23,10 @@
 //! 3. Anything else is an ambiguous type variable, and the program is refused.
 //!
 //! **Scope of the first brick:** top-level function-syntax and simple pattern bindings, in the
-//! SCC loop. Still open:
+//! SCC loop. The executable entry's obligation (Report section 5: `main` is `IO t`) is
+//! `entry_obligation_chirho`, asked for only by a caller with a program purpose. Still open:
 //! - Pattern bindings (always restricted) and nested bindings.
-//! - The executable entry's obligation (Report section 5: `main` is `IO t`). It needs an
-//!   explicit caller purpose, so a bare `main = return 5` stays ambiguous until then.
+//!
 //! workflow: language-features-chirho/fundep-generalization-chirho
 
 use std::collections::BTreeSet;
@@ -215,6 +215,7 @@ impl InferCtxChirho {
     /// - A quantified variable has already left with its scheme.
     /// - The variable supply only grows during a module's inference, so a variable from an
     ///   earlier group stays that group's own.
+    ///
     /// workflow: language-features-chirho/fundep-generalization-chirho
     pub(super) fn withhold_group_residuals_chirho(&mut self, first_chirho: TyVarChirho) {
         let residual_chirho: Vec<TyVarChirho> = self
