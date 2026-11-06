@@ -38,16 +38,23 @@
 //! - R2: `print` at a binding's own `Show` key reached the generic Int-only binding and
 //!   printed a Char as its code point. It now shows through that parameter's `show` (O2).
 //!
-//! Row 699 adds the Reader probes, RD1-RD4. A user instance of a class with a superclass, such
-//! as `Monad (ReaderChirho r)`, registers no dictionary under the constructor its use site
-//! carries: generic-head rule G6 refuses a class with superclasses, so the use site gets an
-//! explicit missing-dictionary error. RD1 and RD2 must print GHC's output on every engine, RD2
-//! through the instance's own callbacks and its superclass slots. GHC refuses RD3 and RD4,
+//! Row 699 adds the Reader probes, RD1-RD4. On the baseline, a user instance of a class with a
+//! superclass, such as `Monad (ReaderChirho r)`, registered no dictionary under the constructor
+//! its use site carries: generic-head rule G6 refused a class with superclasses, so the use site
+//! got an explicit missing-dictionary error. RD1 and RD2 must print GHC's output on every engine,
+//! RD2 through the instance's own callbacks and its superclass slots. GHC refuses RD3 and RD4,
 //! whose superclass dictionary cannot be built, and so must every engine, by name. Each Reader
 //! probe reports every engine's outcome, so one engine's failure hides no other.
+//!
+//! Row 699's repair serves a superclass slot by the instance its template matches, and gives the
+//! compiler's own Monad GHC's `>>` default. W1 runs that default at its own type and through a
+//! caller's dictionary, in effect order. W2 keeps the Reader's Functor and Applicative in another
+//! module. The dictionary pass cannot see them, so the head stays on the prior path, and the
+//! module is never refused for it. RD3 and RD4's refusal belongs to the checker's superclass
+//! obligations (GHC-39999), whose completeness gate knows when an instance universe is closed.
 //! workflow: monadic-dispatch-chirho
 
-use haskelujah_driver::compile_source_chirho;
+use haskelujah_driver::{compile_source_chirho, compile_source_with_search_path_chirho};
 use haskelujah_span_chirho::SourceMapChirho;
 
 use super::{as_ghc_everywhere_chirho, assert_prints_everywhere_chirho, every_engine_chirho};
@@ -118,6 +125,21 @@ const READER_MISSING_APPLICATIVE_CHIRHO: &str =
 /// Applicative (ReaderChirho r)`. Predicted GHC rejection: `Show r` for the superclass.
 const READER_CONTEXTUAL_APPLICATIVE_CHIRHO: &str =
     include_str!("monad_owned_dictionary_chirho/reader_contextual_applicative_chirho.hs");
+
+/// W1: `StateChirho` writes `>>=` alone. `>>` runs at its own type, through a `Monad m` caller,
+/// and in a `do` block, with the effects in order. Predicted from GHC's default
+/// `m >> k = m >>= \_ -> k`; the GHC reference is pinned, not yet executed.
+const STATE_OMITTED_THEN_CHIRHO: &str = include_str!(
+    "monad_owned_dictionary_chirho/written_monads_chirho/state_omitted_then_chirho.hs"
+);
+
+/// W2: another module, `ReaderBaseChirho`, holds the Reader's Functor and Applicative. Main
+/// writes the Monad and runs it. Predicted 7 under GHC, pinned, not yet executed.
+const READER_BASE_CHIRHO: &str =
+    include_str!("monad_owned_dictionary_chirho/written_monads_chirho/ReaderBaseChirho.hs");
+const READER_EXTERNAL_MAIN_CHIRHO: &str = include_str!(
+    "monad_owned_dictionary_chirho/written_monads_chirho/reader_external_main_chirho.hs"
+);
 
 #[test]
 fn an_io_chain_under_a_maybe_owner_stays_io_everywhere_chirho() {
@@ -246,5 +268,38 @@ fn a_reader_instance_whose_superclass_dictionary_cannot_be_built_is_refused_chir
             .iter()
             .all(|(_, refusal_chirho, _)| refusal_chirho.is_some()),
         "GHC refuses both; any file that compiled ran on every engine instead: {outcomes_chirho:?}"
+    );
+}
+
+#[test]
+fn a_monad_that_writes_only_bind_runs_ghcs_then_everywhere_chirho() {
+    assert_eq!(
+        every_engine_chirho("StateOmittedThenChirho.hs", STATE_OMITTED_THEN_CHIRHO),
+        as_ghc_everywhere_chirho("[1,2]\n[3,4,3]\n'z'\n[6,7]\n"),
+    );
+}
+
+#[test]
+fn a_monad_over_another_modules_applicative_is_never_refused_chirho() {
+    // NotBuiltHere (#32245): this Core input holds none of the rows behind the superclass
+    // dictionaries, so the Monad head is a named gap on the prior path, never a module refusal.
+    let dir_chirho = tempfile::tempdir().expect("a scratch directory");
+    std::fs::write(
+        dir_chirho.path().join("ReaderBaseChirho.hs"),
+        READER_BASE_CHIRHO,
+    )
+    .expect("the sibling module");
+    let compiled_chirho = compile_source_with_search_path_chirho(
+        READER_EXTERNAL_MAIN_CHIRHO,
+        &mut SourceMapChirho::new_chirho(),
+        "Main.hs",
+        dir_chirho.path(),
+    );
+    assert!(
+        compiled_chirho.is_ok(),
+        "GHC accepts the program: {:?}",
+        compiled_chirho
+            .err()
+            .map(|refusal_chirho| refusal_chirho.to_string())
     );
 }

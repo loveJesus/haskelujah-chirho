@@ -68,9 +68,13 @@ Every other use goes back to its canonical id:
 
 `return`, `pure` and `fail` keep their shared ids and their existing routes. A
 program's own or lexically bound `>>=` or `>>` resolves through scope and is never
-minted. The Reader gap is separate: a user instance of a class with a superclass
-registers no dictionary under the key its use site carries, so such a caller fails by
-that named missing dictionary.
+minted. The Reader gap was separate: a user instance of a class with a superclass
+registered no dictionary under the key its use site carries, so such a caller failed by
+that named missing dictionary. Since row 699 a one-parameter head is found under its
+constructor when every superclass template matches one context-free instance built here.
+The head's slots then hold those dictionaries, and the compiler's own Monad defaults
+`>>` from the instance's own `>>=`. Any other head keeps that named failure, never a
+module refusal (dictionary-evidence-chirho, Generic instance heads).
 
 The legacy unresolved-name fallback remains for cases with neither evidence nor a
 known body; it is not a claim of general polymorphic-monad compatibility. The old

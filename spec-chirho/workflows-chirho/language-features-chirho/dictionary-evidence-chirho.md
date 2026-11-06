@@ -348,7 +348,7 @@ flowchart LR
   - **Concrete extrema:** a `<=`-only instance's `max` and `min` answer through its own `<=`. Row 612 left concrete `max`, `min`, `maximum` and `minimum` on row 565's compare-backed helpers; row 627 moved them onto the method rows.
   - **Residuals, measured on main too:**
     - no `Ord` or `Eq` dictionary exists at `Maybe` or tuple keys, so `Ord a =>` code called there fails with `no instance dictionary for Ord Maybe`, where main's operators answered silently wrong;
-    - an Ord instance at a generic head is never generic (row 600's G6: Ord has a superclass), so `Ord a =>` code at `TagChirho Int` fails with `no instance dictionary for Ord TagChirho`, as `compare` there did on main;
+    - an Ord instance at a generic head is never generic (row 600's G6: Ord has a superclass), so `Ord a =>` code at `TagChirho Int` fails with `no instance dictionary for Ord TagChirho`, as `compare` there did on main. Row 699 lifts G6 when the head's `Eq` instance is a generic head built here; this residual has not been measured since;
     - Cranelift's `show` inside `Show a =>` code formats a non-immediate value as an integer, so `show (max x y)` there now fails with `no native Show instance for a boxed value`, as `show (head xs)` did on main;
     - `sort` at `[[Int]]`, at Double in the interpreter and at a derived enum on Cranelift, and `comparing` natively, unchanged.
   - Controls:
@@ -813,16 +813,19 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    inst_chirho[ground instance, no context] --> g1_chirho{G1, G2, G6: a class declared with one parameter and no superclass, one supplied head, no context}
+    inst_chirho[ground instance, no context] --> g1_chirho{G1, G2: a class declared with one parameter, one supplied head, no context}
     g1_chirho -- no --> typed_chirho[as before: typed key and name only]
     g1_chirho -- yes --> g3_chirho{G3: typed head T v1..vn, at least one argument, distinct variables}
     g3_chirho -- no --> typed_chirho
     g3_chirho -- yes --> g4_chirho{G4: the only instance this module sees with head T or a variable head}
     g4_chirho -- no --> typed_chirho
-    g4_chirho -- yes --> g5_chirho{G5: every method has a row the slot takes: the exact typed row, or the row under ONE written spelling T x1..xn of distinct variables}
+    g4_chirho -- yes --> g5_chirho{G5: every method has a row the slot takes: the exact typed row, or the row under ONE written spelling T x1..xn of distinct variables, or a default whose donor has one: an Eq method's counterpart, the compiler's own Monad's >>= for >>}
     g5_chirho -- no --> typed_chirho
-    g5_chirho -- yes --> dict_chirho["dictionary keeps its typed name and key, $fC(T t0)"]
-    dict_chirho --> slot_chirho["each slot: exact row for the typed key, then $prim_C_m_ + written spelling, then the Monoid fallback and the stub, as before"]
+    g5_chirho -- yes --> g6_chirho{"G6 (row 699): each superclass template at the whole head, S [T x] for class S [a] => C a, matched by ONE context-free instance that is itself a generic head built here, within 32 provider steps"}
+    g6_chirho -- "no: a named gap, own-key slots, no alias, nothing refused" --> typed_chirho
+    g6_chirho -- yes --> dict_chirho["dictionary keeps its typed name and key, $fC(T t0)"]
+    dict_chirho --> supers_chirho["each superclass slot: the matched instance's dictionary, $fS key, as pass 1 registered it"]
+    dict_chirho --> slot_chirho["each slot: exact row for the typed key, then $prim_C_m_ + written spelling, then the defaults, the Monoid fallback and the stub, as before"]
     dict_chirho --> alias_chirho["alias (C, T) in this pass's private registry, never over an existing key, never exported"]
     use_chirho[use site, evidence key T] --> selector_chirho[try_rewrite_method_var_chirho: no exact row, so the keyed selector finds the alias]
     alias_chirho --> selector_chirho
@@ -849,18 +852,39 @@ flowchart TD
 - Boundaries (gpt_chirho #27342, #27349, #27365, #27366). A row that needs a context never becomes
   an unconditional dictionary (G2, the eligibility filter as before). A specialized, contextual or
   catch-all head for the same constructor leaves the generic one unaliased (G4): a use site that
-  kept only the head never guesses among them. A class with a superclass is refused (G6): its
-  superclass slot is named by the instance's own key, and the class records superclass names
-  without their arguments, so `class S [a] => C a` would reach `S`'s instance for `T` where GHC
-  uses `S [T ..]`. The desugarer's key drops parentheses, so only an all-variable written argument
+  kept only the head never guesses among them. A class with a superclass was refused (G6) while
+  its superclass slot was named by the instance's own key: `class S [a] => C a` would reach `S`'s
+  instance for `T` where GHC uses `S [T ..]`. The desugarer's key drops parentheses, so only an all-variable written argument
   list is accepted, as a position-wise bijection with the typed variables. A second spelling is
   ambiguous and refuses; a method without a row the slot lookup takes would make a stub
   reachable and refuses (coverage and lookup read the same spellings, agy_chirho #27369). Still
   unsupported: full-key use sites (a ground `T Int` key never falls to `T`), multi-parameter heads,
-  lists and tuples, written synonyms, classes with superclasses (claude2_chirho #27367: typed
-  superclass keys already dangle across instances, since variables are freshened per instance),
-  and instances with a context, which have no dictionary at all yet (the conditional-instance
-  unit). Cross-module overlap and same-name controls run only once a multi-module frozen build can
+  lists and tuples, written synonyms, superclass templates G6 cannot serve, and instances with a
+  context, which have no dictionary at all yet (the conditional-instance unit).
+- Superclasses (row 699, gpt_chirho #32245, #32248). G6 reads each superclass template at the
+  instance's whole head (`superclass_at_head_chirho`, row 694's `superclass_preds_at_chirho`) and
+  matches it by head with row 694's matcher, now shared as `matching_instance_chirho`. The slot
+  takes the one context-free match that is itself a generic head built here, under that
+  instance's own typed key. Typed keys are freshened per instance, so the own-key name dangled
+  (claude2_chirho #27367); the matched key never does. The provider's own superclasses are
+  followed in turn, within a budget of 32 provider steps per query. UndecidableSuperClasses can
+  grow its templates without end, and an exhausted query proves nothing.
+- Every other template is a named gap: the head keeps its own-key slots and takes no alias, and
+  the dictionary pass refuses nothing. The gaps are no match, several matches, a match with a
+  context, an instance built elsewhere (its rows are not in this Core input), an instance whose
+  dictionary is its newtype representation's, and a spent budget. This pass cannot tell any of
+  them from GHC's GHC-39999. Interfaces carry no instances, so a sibling module's instance is
+  absent here. Overlap pragmas are not kept, and an overlapping head is lost before typing
+  (above). The compiler's catch-all `Typeable a` overlaps every derived `Typeable`. A derived
+  context constrains every parameter, a phantom one included. That refusal belongs to the
+  superclass obligations in
+  [instance-obligations-chirho](instance-obligations-chirho.md#superclass-obligations--written-measured-not-enabled),
+  whose completeness gate knows when a class's instance universe is closed.
+- The compiler's own Monad defaults `>>` to `\m k -> m >>= \_ -> k`, from this very instance's
+  body-backed `>>=` row (`instance_chirho/defaults_chirho/monad_defaults_chirho.rs`). The class
+  must have the compiler's seeded schema, the proof row 694's class authority compares. A
+  program's namesake, an absent `>>=` row and a stub never gain the default. Without it, G5 never
+  took a Monad head that writes only `>>=`. Cross-module overlap and same-name controls run only once a multi-module frozen build can
   exercise them. A user-class method used directly mints no occurrence evidence, so its use
   site never consults the alias; a constrained call or a standard method's occurrence does.
   G4 counts only instances that reach the class environment: a context-free instance whose

@@ -1,20 +1,24 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! The guards of a generic instance head: the class environment (G1-G4, G6),
-//! the typed spine (G3) and the written spelling (G5). Each refusal here is a
-//! shape where finding the dictionary under its constructor could answer for
-//! the wrong instance.
+//! The guards of a generic instance head: the class environment (G1-G4), the
+//! typed spine (G3), the written spelling (G5) and the superclass slots (G6,
+//! row 699). Each refusal here is a shape where finding the dictionary under
+//! its constructor could answer for the wrong instance.
 
+use std::cell::Cell;
 use std::collections::HashMap;
 
-use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho};
-use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
+use haskelujah_typing_chirho::class_chirho::{
+    ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredChirho,
+};
+use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
 
 use super::{
-    DictLayoutChirho, DictPassCtxChirho, distinct_variable_spine_chirho, generic_spine_chirho,
-    written_spine_chirho,
+    DictLayoutChirho, DictPassCtxChirho, DictionaryUnavailableChirho, GenericHeadChirho,
+    SUPERCLASS_STEPS_CHIRHO, distinct_variable_spine_chirho, generic_spine_chirho, head_key_chirho,
+    matching_instance_chirho, superclass_at_head_chirho, written_spine_chirho,
 };
-use crate::expr_chirho::CoreIdChirho;
+use crate::expr_chirho::{CoreExprChirho, CoreIdChirho};
 
 fn con_chirho(name_chirho: &str) -> TyChirho {
     TyChirho::ConChirho(name_chirho.to_string())
@@ -190,14 +194,15 @@ fn the_class_environment_admits_only_an_uncontested_one_parameter_head_chirho() 
         )),
         None
     );
-    // G6: a superclass slot would be named by the instance's own key.
+    // G6 is not the spine's: a class with superclasses is judged by `generic_head_chirho`,
+    // which requires every superclass slot to be served here (row 699).
     assert_eq!(
         first_spine_chirho(&class_env_chirho(
             &["EqChirho"],
             Vec::new(),
             vec![(box_chirho(), vec![])],
         )),
-        None
+        generic_chirho
     );
     // G4: a specialized head for the same constructor, or a variable head.
     assert_eq!(
@@ -426,4 +431,373 @@ fn only_the_list_head_may_omit_a_method_chirho() {
             )
             .is_none()
     );
+}
+
+/// A one-method class over the variable `var_chirho`, whose superclasses are the templates
+/// `supers_chirho` over that variable: each a class and the type it constrains.
+fn superclass_decl_chirho(
+    name_chirho: &str,
+    method_chirho: &str,
+    var_chirho: u32,
+    supers_chirho: Vec<(&str, TyChirho)>,
+) -> ClassDeclChirho {
+    let class_var_chirho = TyVarChirho(var_chirho);
+    ClassDeclChirho {
+        name_chirho: name_chirho.to_string(),
+        supers_chirho: supers_chirho
+            .iter()
+            .map(|(super_chirho, _)| super_chirho.to_string())
+            .collect(),
+        super_templates_chirho: supers_chirho
+            .into_iter()
+            .map(|(super_chirho, ty_chirho)| SchemePredChirho {
+                class_name_chirho: super_chirho.to_string(),
+                ty_chirho,
+                extra_tys_chirho: Vec::new(),
+            })
+            .collect(),
+        var_chirho: class_var_chirho,
+        methods_chirho: HashMap::from([(
+            method_chirho.to_string(),
+            SchemeChirho {
+                vars_chirho: vec![class_var_chirho],
+                preds_chirho: Vec::new(),
+                ty_chirho: TyChirho::fun_chirho(
+                    TyChirho::VarChirho(class_var_chirho),
+                    TyChirho::string_chirho(),
+                ),
+            },
+        )]),
+        extra_vars_chirho: Vec::new(),
+        fundeps_chirho: Vec::new(),
+        defaults_chirho: HashMap::new(),
+    }
+}
+
+/// A one-parameter instance of `class_chirho` at `head_chirho` under `context_chirho`.
+fn instance_of_chirho(
+    class_chirho: &str,
+    head_chirho: TyChirho,
+    context_chirho: Vec<PredChirho>,
+) -> InstDeclChirho {
+    InstDeclChirho {
+        class_name_chirho: class_chirho.to_string(),
+        head_ty_chirho: head_chirho,
+        extra_head_tys_chirho: Vec::new(),
+        context_chirho,
+    }
+}
+
+fn box_head_chirho(variable_chirho: u32) -> TyChirho {
+    app_chirho(con_chirho("BoxChirho"), var_chirho(variable_chirho))
+}
+
+/// `ListyChirho`, without superclasses, and `TagChirho`, whose one superclass is
+/// `ListyChirho <template_chirho>` over Tag's variable 100, with these instances.
+fn listy_tag_env_chirho(
+    template_chirho: TyChirho,
+    instances_chirho: Vec<InstDeclChirho>,
+) -> ClassEnvChirho {
+    let mut env_chirho = ClassEnvChirho::new_chirho();
+    env_chirho.add_class_chirho(superclass_decl_chirho(
+        "ListyChirho",
+        "describeChirho",
+        200,
+        Vec::new(),
+    ));
+    env_chirho.add_class_chirho(superclass_decl_chirho(
+        "TagChirho",
+        "tagChirho",
+        100,
+        vec![("ListyChirho", template_chirho)],
+    ));
+    for instance_chirho in instances_chirho {
+        env_chirho.add_instance_chirho(instance_chirho);
+    }
+    env_chirho
+}
+
+/// A pass over `env_chirho`'s layouts whose source holds exactly these rows.
+fn pass_over_chirho(env_chirho: &ClassEnvChirho, rows_chirho: &[(&str, u32)]) -> DictPassCtxChirho {
+    let mut pass_chirho = pass_with_rows_chirho(rows_chirho);
+    pass_chirho.build_layouts_chirho(env_chirho);
+    pass_chirho
+}
+
+/// The instance of `class_chirho` whose registry key is `key_chirho`.
+fn instance_at_chirho<'a>(
+    env_chirho: &'a ClassEnvChirho,
+    class_chirho: &str,
+    key_chirho: &str,
+) -> &'a InstDeclChirho {
+    env_chirho.instances_chirho[class_chirho]
+        .iter()
+        .find(|instance_chirho| {
+            head_key_chirho(
+                &instance_chirho.head_ty_chirho,
+                &instance_chirho.extra_head_tys_chirho,
+            ) == key_chirho
+        })
+        .unwrap_or_else(|| panic!("no instance {class_chirho} {key_chirho}"))
+}
+
+/// `generic_head_chirho` for the instance of `class_chirho` at `key_chirho`.
+fn head_at_chirho(
+    pass_chirho: &DictPassCtxChirho,
+    env_chirho: &ClassEnvChirho,
+    class_chirho: &str,
+    key_chirho: &str,
+) -> Option<GenericHeadChirho> {
+    pass_chirho.generic_head_chirho(
+        env_chirho,
+        class_chirho,
+        instance_at_chirho(env_chirho, class_chirho, key_chirho),
+        &pass_chirho.layouts_chirho[class_chirho],
+        key_chirho,
+    )
+}
+
+/// The binder and fields of the dictionary the pass generated as `name_chirho`.
+fn dictionary_chirho(
+    pass_chirho: &DictPassCtxChirho,
+    name_chirho: &str,
+) -> (CoreIdChirho, Vec<CoreExprChirho>) {
+    let binding_chirho = pass_chirho
+        .generated_bindings_chirho
+        .iter()
+        .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == name_chirho)
+        .unwrap_or_else(|| panic!("no dictionary {name_chirho}"));
+    let CoreExprChirho::ConAppChirho { args_chirho, .. } = &binding_chirho.rhs_chirho else {
+        panic!("{name_chirho} is not a dictionary");
+    };
+    (binding_chirho.binder_chirho.id_chirho, args_chirho.clone())
+}
+
+/// The dictionary a use site finds for `class_chirho` under the constructor `constructor_chirho`.
+fn alias_chirho(
+    pass_chirho: &DictPassCtxChirho,
+    class_chirho: &str,
+    constructor_chirho: &str,
+) -> Option<CoreIdChirho> {
+    pass_chirho
+        .instance_dicts_chirho
+        .get(&(class_chirho.to_string(), constructor_chirho.to_string()))
+        .copied()
+}
+
+#[test]
+fn a_transformed_superclass_slot_holds_the_dictionary_its_template_matches_chirho() {
+    // `class ListyChirho [a] => TagChirho a` (row 699, #32248): the slot of
+    // `TagChirho (BoxChirho x)` is `ListyChirho [BoxChirho x]`, which `ListyChirho [b]` serves,
+    // never `ListyChirho (BoxChirho x)`, the dictionary its own key names.
+    let env_chirho = listy_tag_env_chirho(
+        list_chirho(var_chirho(100)),
+        vec![
+            instance_of_chirho("ListyChirho", list_chirho(var_chirho(5)), Vec::new()),
+            instance_of_chirho("ListyChirho", box_head_chirho(0), Vec::new()),
+            instance_of_chirho("TagChirho", box_head_chirho(0), Vec::new()),
+        ],
+    );
+    let mut pass_chirho = pass_over_chirho(
+        &env_chirho,
+        &[
+            ("$prim_ListyChirho_describeChirho_[b]", 1),
+            ("$prim_ListyChirho_describeChirho_BoxChirho x", 2),
+            ("$prim_TagChirho_tagChirho_BoxChirho y", 3),
+        ],
+    );
+    let head_chirho = head_at_chirho(&pass_chirho, &env_chirho, "TagChirho", "(BoxChirho t0)")
+        .expect("a head whose superclass template is served here");
+    assert_eq!(
+        head_chirho.superclass_dictionaries_chirho,
+        vec![("ListyChirho".to_string(), "[t5]".to_string())]
+    );
+    pass_chirho.generate_instance_dicts_chirho(&env_chirho);
+    let (list_dictionary_chirho, _) = dictionary_chirho(&pass_chirho, "$fListyChirho[t5]");
+    let (own_key_dictionary_chirho, _) =
+        dictionary_chirho(&pass_chirho, "$fListyChirho(BoxChirho t0)");
+    let (tag_dictionary_chirho, tag_fields_chirho) =
+        dictionary_chirho(&pass_chirho, "$fTagChirho(BoxChirho t0)");
+    assert_ne!(list_dictionary_chirho, own_key_dictionary_chirho);
+    assert_eq!(
+        tag_fields_chirho,
+        vec![
+            CoreExprChirho::VarChirho(list_dictionary_chirho),
+            CoreExprChirho::VarChirho(CoreIdChirho(3)),
+        ]
+    );
+    assert_eq!(
+        alias_chirho(&pass_chirho, "TagChirho", "BoxChirho"),
+        Some(tag_dictionary_chirho)
+    );
+    assert!(pass_chirho.unsupported_dictionaries_chirho.is_empty());
+}
+
+/// How the one superclass template of `TagChirho (BoxChirho t0)` matches: the number of context
+/// goals its one match leaves, or why there is no one match.
+fn tag_template_match_chirho(
+    pass_chirho: &DictPassCtxChirho,
+    env_chirho: &ClassEnvChirho,
+) -> Result<usize, DictionaryUnavailableChirho> {
+    let template_chirho = superclass_at_head_chirho(
+        env_chirho,
+        instance_at_chirho(env_chirho, "TagChirho", "(BoxChirho t0)"),
+        &pass_chirho.layouts_chirho["TagChirho"],
+        0,
+    )
+    .expect("Tag's template instantiates at its head");
+    matching_instance_chirho(env_chirho, &template_chirho)
+        .map(|(_, _, goals_chirho)| goals_chirho.len())
+}
+
+#[test]
+fn an_unserved_superclass_slot_is_a_gap_without_alias_or_refusal_chirho() {
+    // Row 699, #32248: each head keeps its own-key slot as before, takes no alias, and is
+    // refused nothing here. This pass cannot tell any of these from GHC's GHC-39999, which
+    // belongs to the checker's instance obligations.
+    let tag_row_chirho = ("$prim_TagChirho_tagChirho_BoxChirho y", 3);
+    let box_row_chirho = ("$prim_ListyChirho_describeChirho_BoxChirho x", 2);
+    let cases_chirho = [
+        (
+            // `instance ListyChirho a => ListyChirho [a]` leaves `ListyChirho (BoxChirho x)`,
+            // which GHC discharges by the Box instance.
+            "contextual",
+            listy_tag_env_chirho(
+                list_chirho(var_chirho(100)),
+                vec![
+                    instance_of_chirho(
+                        "ListyChirho",
+                        list_chirho(var_chirho(5)),
+                        vec![PredChirho {
+                            class_name_chirho: "ListyChirho".to_string(),
+                            ty_chirho: var_chirho(5),
+                            extra_tys_chirho: Vec::new(),
+                        }],
+                    ),
+                    instance_of_chirho("ListyChirho", box_head_chirho(1), Vec::new()),
+                    instance_of_chirho("TagChirho", box_head_chirho(0), Vec::new()),
+                ],
+            ),
+            vec![
+                ("$prim_ListyChirho_describeChirho_[a]", 1),
+                box_row_chirho,
+                tag_row_chirho,
+            ],
+            Ok(1),
+        ),
+        (
+            // The one match is context-free, but its rows are another module's.
+            "built elsewhere",
+            listy_tag_env_chirho(
+                var_chirho(100),
+                vec![
+                    instance_of_chirho("ListyChirho", box_head_chirho(1), Vec::new()),
+                    instance_of_chirho("TagChirho", box_head_chirho(0), Vec::new()),
+                ],
+            ),
+            vec![tag_row_chirho],
+            Ok(0),
+        ),
+        (
+            // No instance in scope: GHC's error, or one no interface carries here.
+            "unmatched",
+            listy_tag_env_chirho(
+                var_chirho(100),
+                vec![instance_of_chirho(
+                    "TagChirho",
+                    box_head_chirho(0),
+                    Vec::new(),
+                )],
+            ),
+            vec![tag_row_chirho],
+            Err(DictionaryUnavailableChirho::NoMatchChirho(
+                "ListyChirho (BoxChirho t0)".to_string(),
+            )),
+        ),
+        (
+            // A catch-all beside the Box instance, as the compiler's `Typeable a` beside a
+            // derived one. Overlap pragmas are not kept, so two matches decide nothing.
+            "several",
+            listy_tag_env_chirho(
+                var_chirho(100),
+                vec![
+                    instance_of_chirho("ListyChirho", var_chirho(7), Vec::new()),
+                    instance_of_chirho("ListyChirho", box_head_chirho(1), Vec::new()),
+                    instance_of_chirho("TagChirho", box_head_chirho(0), Vec::new()),
+                ],
+            ),
+            vec![box_row_chirho, tag_row_chirho],
+            Err(DictionaryUnavailableChirho::SeveralChirho(
+                "ListyChirho (BoxChirho t0)".to_string(),
+            )),
+        ),
+    ];
+    for (case_chirho, env_chirho, rows_chirho, matched_chirho) in cases_chirho {
+        let mut pass_chirho = pass_over_chirho(&env_chirho, &rows_chirho);
+        assert_eq!(
+            tag_template_match_chirho(&pass_chirho, &env_chirho),
+            matched_chirho,
+            "{case_chirho}"
+        );
+        assert!(
+            head_at_chirho(&pass_chirho, &env_chirho, "TagChirho", "(BoxChirho t0)").is_none(),
+            "{case_chirho}"
+        );
+        pass_chirho.generate_instance_dicts_chirho(&env_chirho);
+        assert_eq!(
+            alias_chirho(&pass_chirho, "TagChirho", "BoxChirho"),
+            None,
+            "{case_chirho}"
+        );
+        assert!(
+            pass_chirho.unsupported_dictionaries_chirho.is_empty(),
+            "{case_chirho}"
+        );
+    }
+}
+
+#[test]
+fn a_superclass_cycle_ends_at_the_step_budget_as_a_gap_chirho() {
+    // UndecidableSuperClasses: `class CycleChirho [a] => CycleChirho a`. The slot of
+    // `CycleChirho [b]` is `CycleChirho [[b]]`, which `CycleChirho [b]` serves again, so only
+    // the step budget ends the query, and a spent query is a gap, never a proof (row 699).
+    let mut env_chirho = ClassEnvChirho::new_chirho();
+    env_chirho.add_class_chirho(superclass_decl_chirho(
+        "CycleChirho",
+        "cycleChirho",
+        300,
+        vec![("CycleChirho", list_chirho(var_chirho(300)))],
+    ));
+    env_chirho.add_instance_chirho(instance_of_chirho(
+        "CycleChirho",
+        list_chirho(var_chirho(5)),
+        Vec::new(),
+    ));
+    env_chirho.add_instance_chirho(instance_of_chirho(
+        "CycleChirho",
+        box_head_chirho(0),
+        Vec::new(),
+    ));
+    let pass_chirho = pass_over_chirho(
+        &env_chirho,
+        &[
+            ("$prim_CycleChirho_cycleChirho_[b]", 1),
+            ("$prim_CycleChirho_cycleChirho_BoxChirho x", 2),
+        ],
+    );
+    let budget_chirho = Cell::new(SUPERCLASS_STEPS_CHIRHO);
+    assert!(
+        pass_chirho
+            .generic_head_within_chirho(
+                &env_chirho,
+                "CycleChirho",
+                instance_at_chirho(&env_chirho, "CycleChirho", "(BoxChirho t0)"),
+                &pass_chirho.layouts_chirho["CycleChirho"],
+                "(BoxChirho t0)",
+                &budget_chirho,
+            )
+            .is_none()
+    );
+    assert_eq!(budget_chirho.get(), 0);
+    assert!(head_at_chirho(&pass_chirho, &env_chirho, "CycleChirho", "[t5]").is_none());
 }
