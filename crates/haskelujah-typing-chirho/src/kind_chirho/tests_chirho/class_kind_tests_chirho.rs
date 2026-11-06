@@ -128,6 +128,7 @@ fn local_tagged_decl_shadows_builtin_tagged_kind_chirho() {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 }],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
             },
             deriving_chirho: vec![],
             kind_sig_chirho: None,

@@ -28,6 +28,7 @@ pub use deriving_chirho::{DerivingResultChirho, apply_deriving_chirho, derive_in
 pub use exhaust_chirho::{
     ExhaustResultChirho, TypeConEnvChirho, check_module_exhaustiveness_chirho,
 };
+pub use infer_chirho::gnd_coercion_chirho::{GndCoercionProofChirho, prove_gnd_coercions_chirho};
 pub use infer_chirho::infer_module_chirho;
 pub use infer_chirho::infer_module_with_imports_chirho;
 pub use kind_chirho::{
@@ -38,6 +39,8 @@ pub use ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarC
 pub use validity_chirho::declarations_chirho::{
     DeclarationErrorChirho, check_module_declaration_validity_chirho,
     check_module_declaration_validity_diagnostics_chirho,
+    check_module_declaration_validity_with_builtins_chirho,
+    check_module_declaration_validity_with_builtins_diagnostics_chirho,
 };
 pub use validity_chirho::{
     ValidityErrorChirho, ValidityResultChirho, check_module_type_validity_chirho,

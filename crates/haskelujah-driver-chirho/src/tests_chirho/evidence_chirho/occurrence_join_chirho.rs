@@ -31,6 +31,7 @@ pub(super) fn record_chirho(
     span_chirho: SpanChirho,
 ) -> MethodOccurrenceRecordChirho {
     MethodOccurrenceRecordChirho {
+        applied_ty_chirho: None,
         name_chirho: name_chirho.to_string(),
         ordinal_chirho,
         class_name_chirho: "Show".to_string(),
@@ -59,6 +60,7 @@ pub(super) fn infer_result_chirho(
         ClassDeclChirho {
             name_chirho: "Show".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),
             methods_chirho,
             extra_vars_chirho: vec![],
@@ -80,6 +82,7 @@ pub(super) fn infer_result_chirho(
         literal_evidence_by_origin_chirho: HashMap::new(),
         reference_evidence_chirho: HashMap::new(),
         reference_evidence_by_origin_chirho: HashMap::new(),
+        gnd_coercion_proofs_chirho: Vec::new(),
     }
 }
 
@@ -106,7 +109,8 @@ fn a_record_consumed_by_span_is_never_reused_by_position_chirho() {
         &HashMap::new(),
         &spans_chirho,
         &HashMap::new(),
-    );
+    )
+    .evidence_chirho;
 
     assert_eq!(
         evidence_chirho
@@ -144,7 +148,8 @@ fn two_occurrences_sharing_one_span_are_refused_chirho() {
         &HashMap::new(),
         &spans_chirho,
         &HashMap::new(),
-    );
+    )
+    .evidence_chirho;
 
     assert!(
         evidence_chirho.is_empty(),
@@ -171,7 +176,8 @@ fn unspanned_occurrences_still_take_their_records_in_order_chirho() {
         &HashMap::new(),
         &HashMap::new(),
         &HashMap::new(),
-    );
+    )
+    .evidence_chirho;
 
     assert_eq!(evidence_chirho.len(), 2, "{evidence_chirho:?}");
 }
@@ -201,7 +207,8 @@ fn dummy_spans_are_not_an_identity_chirho() {
         &HashMap::new(),
         &spans_chirho,
         &HashMap::new(),
-    );
+    )
+    .evidence_chirho;
 
     assert_eq!(
         evidence_chirho.len(),
@@ -238,7 +245,8 @@ fn a_contested_genuine_span_is_refused_even_when_no_record_claims_it_chirho() {
         &HashMap::new(),
         &spans_chirho,
         &HashMap::new(),
-    );
+    )
+    .evidence_chirho;
 
     assert!(
         evidence_chirho.is_empty(),

@@ -45,8 +45,10 @@ fn a_range_solves_enum_for_its_endpoints_past_a_lexical_shadow_chirho() {
     assert_eq!(
         by_span_chirho.get(&span_chirho),
         Some(&vec![ReferenceEvidenceChirho {
+            applied_head_chirho: None,
             class_name_chirho: "Enum".to_string(),
             ty_key_chirho: Some("Char".to_string()),
+            applied_ty_chirho: None,
         }]),
     );
 }

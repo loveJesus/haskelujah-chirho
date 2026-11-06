@@ -500,6 +500,7 @@ impl LowerCtxChirho {
             self.lower_instance_head_types_chirho(head_tokens_chirho, span_chirho);
 
         DeclChirho::StandaloneDerivingDeclChirho {
+            strategy_chirho: self.standalone_deriving_strategy_chirho(&children_chirho),
             context_chirho,
             class_chirho: class_chirho.unwrap_or_else(|| {
                 NameChirho::RawChirho(RawNameChirho::unqualified_chirho("Unknown", span_chirho))

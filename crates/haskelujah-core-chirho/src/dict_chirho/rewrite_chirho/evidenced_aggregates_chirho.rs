@@ -51,13 +51,13 @@ impl DictPassCtxChirho {
         let evidence_chirho = self.reference_evidence_chirho.get(&id_chirho)?;
         let fractional_key_chirho = evidence_chirho
             .iter()
-            .find(|(class_chirho, _)| class_chirho == "Fractional")?
-            .1
+            .find(|proof_chirho| proof_chirho.class_name_chirho == "Fractional")?
+            .ty_key_chirho
             .as_deref();
         let integral_key_chirho = evidence_chirho
             .iter()
-            .find(|(class_chirho, _)| class_chirho == "Integral")?
-            .1
+            .find(|proof_chirho| proof_chirho.class_name_chirho == "Integral")?
+            .ty_key_chirho
             .as_deref();
         if fractional_key_chirho != Some("Double") || integral_key_chirho != Some("Int") {
             return None;

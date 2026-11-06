@@ -15,7 +15,9 @@ use std::collections::hash_map::Entry;
 
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::name_chirho::{BuiltinClassChirho, BuiltinClassScopeChirho};
+use haskelujah_ast_chirho::name_chirho::{
+    BuiltinClassChirho, BuiltinClassScopeChirho, CompilerClassChirho,
+};
 
 use super::{IfaceOriginChirho, ModuleIfaceChirho};
 use crate::env_chirho::NamespaceChirho;
@@ -31,23 +33,18 @@ struct BuiltinClassEntryChirho {
     providers_chirho: &'static [&'static str],
 }
 
-/// A parameter of kind `Type`.
-const TYPE_PARAMETER_CHIRHO: &[u8] = &[0];
-/// A parameter of kind `Type -> Type`.
-const CONSTRUCTOR_PARAMETER_CHIRHO: &[u8] = &[1];
-
 const fn entry_chirho(
+    identity_chirho: CompilerClassChirho,
     module_chirho: &'static str,
     name_chirho: &'static str,
-    parameter_arities_chirho: &'static [u8],
     witness_method_chirho: &'static str,
     providers_chirho: &'static [&'static str],
 ) -> BuiltinClassEntryChirho {
     BuiltinClassEntryChirho {
         class_chirho: BuiltinClassChirho {
+            identity_chirho,
             module_chirho,
             name_chirho,
-            parameter_arities_chirho,
         },
         witness_method_chirho,
         providers_chirho,
@@ -62,121 +59,149 @@ const fn entry_chirho(
 /// workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
 const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
     entry_chirho(
+        CompilerClassChirho::AlternativeChirho,
+        "Control.Applicative",
+        "Alternative",
+        "empty",
+        &["Control.Applicative"],
+    ),
+    entry_chirho(
+        CompilerClassChirho::MonadFixChirho,
+        "Control.Monad.Fix",
+        "MonadFix",
+        "mfix",
+        &["Control.Monad.Fix"],
+    ),
+    entry_chirho(
+        CompilerClassChirho::MonadIoChirho,
+        "Control.Monad.IO.Class",
+        "MonadIO",
+        "liftIO",
+        &["Control.Monad.IO.Class", "Control.Monad.Trans"],
+    ),
+    entry_chirho(
+        CompilerClassChirho::MonadTransChirho,
+        "Control.Monad.Trans.Class",
+        "MonadTrans",
+        "lift",
+        &["Control.Monad.Trans.Class", "Control.Monad.Trans"],
+    ),
+    entry_chirho(
+        CompilerClassChirho::EqChirho,
         "GHC.Classes",
         "Eq",
-        TYPE_PARAMETER_CHIRHO,
         "==",
         &["Prelude", "Data.Eq", "GHC.Classes"],
     ),
     entry_chirho(
+        CompilerClassChirho::OrdChirho,
         "GHC.Classes",
         "Ord",
-        TYPE_PARAMETER_CHIRHO,
         "compare",
         &["Prelude", "Data.Ord", "GHC.Classes"],
     ),
     entry_chirho(
+        CompilerClassChirho::ShowChirho,
         "GHC.Show",
         "Show",
-        TYPE_PARAMETER_CHIRHO,
         "show",
         &["Prelude", "Text.Show", "GHC.Show"],
     ),
     entry_chirho(
+        CompilerClassChirho::EnumChirho,
         "GHC.Enum",
         "Enum",
-        TYPE_PARAMETER_CHIRHO,
         "succ",
         &["Prelude", "GHC.Enum"],
     ),
     entry_chirho(
+        CompilerClassChirho::BoundedChirho,
         "GHC.Enum",
         "Bounded",
-        TYPE_PARAMETER_CHIRHO,
         "minBound",
         &["Prelude", "GHC.Enum"],
     ),
     entry_chirho(
+        CompilerClassChirho::NumChirho,
         "GHC.Num",
         "Num",
-        TYPE_PARAMETER_CHIRHO,
         "fromInteger",
         &["Prelude", "GHC.Num"],
     ),
     entry_chirho(
+        CompilerClassChirho::IntegralChirho,
         "GHC.Real",
         "Integral",
-        TYPE_PARAMETER_CHIRHO,
         "toInteger",
         &["Prelude", "GHC.Real"],
     ),
     entry_chirho(
+        CompilerClassChirho::FractionalChirho,
         "GHC.Real",
         "Fractional",
-        TYPE_PARAMETER_CHIRHO,
         "fromRational",
         &["Prelude", "GHC.Real"],
     ),
     entry_chirho(
+        CompilerClassChirho::FloatingChirho,
         "GHC.Float",
         "Floating",
-        TYPE_PARAMETER_CHIRHO,
         "pi",
         &["Prelude", "GHC.Float"],
     ),
     entry_chirho(
+        CompilerClassChirho::SemigroupChirho,
         "GHC.Base",
         "Semigroup",
-        TYPE_PARAMETER_CHIRHO,
         "<>",
         &["Prelude", "Data.Semigroup", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::MonoidChirho,
         "GHC.Base",
         "Monoid",
-        TYPE_PARAMETER_CHIRHO,
         "mempty",
         &["Prelude", "Data.Monoid", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::FunctorChirho,
         "GHC.Base",
         "Functor",
-        CONSTRUCTOR_PARAMETER_CHIRHO,
         "fmap",
         &["Prelude", "Data.Functor", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::ApplicativeChirho,
         "GHC.Base",
         "Applicative",
-        CONSTRUCTOR_PARAMETER_CHIRHO,
         "pure",
         &["Prelude", "Control.Applicative", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::MonadChirho,
         "GHC.Base",
         "Monad",
-        CONSTRUCTOR_PARAMETER_CHIRHO,
         ">>=",
         &["Prelude", "Control.Monad", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::MonadFailChirho,
         "Control.Monad.Fail",
         "MonadFail",
-        CONSTRUCTOR_PARAMETER_CHIRHO,
         "fail",
         &["Prelude", "Control.Monad", "Control.Monad.Fail"],
     ),
     entry_chirho(
+        CompilerClassChirho::FoldableChirho,
         "Data.Foldable",
         "Foldable",
-        CONSTRUCTOR_PARAMETER_CHIRHO,
         "foldr",
         &["Prelude", "Data.Foldable"],
     ),
     entry_chirho(
+        CompilerClassChirho::TraversableChirho,
         "Data.Traversable",
         "Traversable",
-        CONSTRUCTOR_PARAMETER_CHIRHO,
         "traverse",
         &["Prelude", "Data.Traversable"],
     ),

@@ -28,7 +28,8 @@ pub(super) struct OccurrenceCaptureChirho {
 pub(super) struct ReferenceCaptureChirho {
     pub(super) span_chirho: SpanChirho,
     pub(super) origin_chirho: Option<OriginIdChirho>,
-    pub(super) preds_chirho: Vec<(String, TyChirho)>,
+    /// Each predicate's class, first argument and extra arguments, in scheme order.
+    pub(super) preds_chirho: Vec<(String, TyChirho, Vec<TyChirho>)>,
 }
 
 /// A recursive reference sees the group's monomorphic assumption before its
@@ -100,6 +101,15 @@ pub fn is_own_dictionary_key_chirho(key_chirho: &str) -> bool {
 pub struct ReferenceEvidenceChirho {
     pub class_name_chirho: String,
     pub ty_key_chirho: Option<String>,
+    /// The predicate's resolved type when it is a ground application (`BoxChirho Int`), so a
+    /// conditional instance's factory can take its context's dictionaries at the actual
+    /// arguments (row 694); `None` otherwise (`applied_evidence_chirho.rs`).
+    pub applied_ty_chirho: Option<TyChirho>,
+    /// A multi-parameter predicate's complete head when every argument resolved ground, in
+    /// order (`[Int, TChirho Int]` for `AskChirho Int (TChirho Int)`): the arguments a written
+    /// instance or a conditional factory is found and instantiated at (row 694, #31909).
+    /// `None` for a one-parameter predicate, whose `applied_ty_chirho` serves.
+    pub applied_head_chirho: Option<Vec<TyChirho>>,
 }
 
 /// The solved instance of one overloaded literal.
@@ -140,6 +150,7 @@ impl InferCtxChirho {
                         (
                             pred_chirho.class_name_chirho.clone(),
                             pred_chirho.ty_chirho.clone(),
+                            pred_chirho.extra_tys_chirho.clone(),
                         )
                     })
                     .collect(),
@@ -227,6 +238,7 @@ impl InferCtxChirho {
                     (
                         pred_chirho.class_name_chirho.clone(),
                         pred_chirho.ty_chirho.clone(),
+                        pred_chirho.extra_tys_chirho.clone(),
                     )
                 })
                 .collect(),
@@ -398,18 +410,32 @@ impl InferCtxChirho {
         let mut by_origin_chirho: HashMap<OriginIdChirho, Vec<Vec<ReferenceEvidenceChirho>>> =
             HashMap::new();
         for capture_chirho in &self.reference_captures_chirho {
-            let records_chirho: Vec<ReferenceEvidenceChirho> = capture_chirho
-                .preds_chirho
-                .iter()
-                .map(|(class_name_chirho, ty_chirho)| ReferenceEvidenceChirho {
-                    class_name_chirho: class_name_chirho.clone(),
-                    ty_key_chirho: self.reference_key_chirho(
-                        class_name_chirho,
-                        &final_subst_chirho.apply_ty_chirho(ty_chirho),
-                        final_subst_chirho,
-                    ),
-                })
-                .collect();
+            let records_chirho: Vec<ReferenceEvidenceChirho> =
+                capture_chirho
+                    .preds_chirho
+                    .iter()
+                    .map(|(class_name_chirho, ty_chirho, extra_tys_chirho)| {
+                        let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
+                        let head_chirho: Vec<TyChirho> = std::iter::once(resolved_chirho.clone())
+                            .chain(extra_tys_chirho.iter().map(|extra_chirho| {
+                                final_subst_chirho.apply_ty_chirho(extra_chirho)
+                            }))
+                            .collect();
+                        ReferenceEvidenceChirho {
+                            applied_head_chirho:
+                                applied_evidence_chirho::applied_evidence_head_chirho(&head_chirho),
+                            class_name_chirho: class_name_chirho.clone(),
+                            ty_key_chirho: self.reference_key_chirho(
+                                class_name_chirho,
+                                &resolved_chirho,
+                                final_subst_chirho,
+                            ),
+                            applied_ty_chirho: applied_evidence_chirho::applied_evidence_ty_chirho(
+                                &resolved_chirho,
+                            ),
+                        }
+                    })
+                    .collect();
             match capture_chirho.origin_chirho {
                 Some(origin_chirho) => by_origin_chirho
                     .entry(origin_chirho)
@@ -423,8 +449,8 @@ impl InferCtxChirho {
             }
         }
         (
-            agreeing_chirho(by_span_chirho),
-            agreeing_chirho(by_origin_chirho),
+            applied_evidence_chirho::agreeing_references_chirho(by_span_chirho),
+            applied_evidence_chirho::agreeing_references_chirho(by_origin_chirho),
         )
     }
 

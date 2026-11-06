@@ -60,18 +60,35 @@ impl DictPassCtxChirho {
         self.lookup_dispatch_body_name_id_chirho(&format!("$prim_Show_show_{ty_key_chirho}"))
     }
 
+    /// The `show` a `print` occurrence's solved `Show` predicate names: its
+    /// `$prim_Show_show_<key>` row, else `show` through a conditional instance's factory
+    /// (row 694), never the generic `showInt#` fallback.
+    fn evidenced_print_show_function_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        match self.evidenced_print_show_chirho(head_id_chirho) {
+            Some(show_prim_id_chirho) => Some(CoreExprChirho::VarChirho(show_prim_id_chirho)),
+            None => {
+                self.print_show_through_factory_chirho(head_id_chirho, local_instance_dicts_chirho)
+            }
+        }
+    }
+
     /// An unapplied, evidenced `print`, as in `mapM_ print xs`: the same proof the
-    /// applied form consumes, as `$print_via_show_chirho $prim_Show_show_<key>`.
+    /// applied form consumes, as `$print_via_show_chirho <show>`.
     /// Workflow: `spec-chirho/workflows-chirho/print-show-evidence-chirho.md`.
     pub(super) fn evidenced_print_function_chirho(
         &self,
         id_chirho: CoreIdChirho,
     ) -> Option<CoreExprChirho> {
-        let show_prim_id_chirho = self.evidenced_print_show_chirho(id_chirho)?;
+        let show_function_chirho =
+            self.evidenced_print_show_function_chirho(id_chirho, &HashMap::new())?;
         let helper_id_chirho = self.lookup_body_backed_name_id_chirho(PRINT_VIA_SHOW_CHIRHO)?;
         Some(CoreExprChirho::AppChirho {
             fun_chirho: Box::new(CoreExprChirho::VarChirho(helper_id_chirho)),
-            arg_chirho: Box::new(CoreExprChirho::VarChirho(show_prim_id_chirho)),
+            arg_chirho: Box::new(show_function_chirho),
         })
     }
 
@@ -89,7 +106,8 @@ impl DictPassCtxChirho {
         local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
     ) -> Option<CoreExprChirho> {
-        let show_prim_id_chirho = self.evidenced_print_show_chirho(head_id_chirho)?;
+        let show_function_chirho =
+            self.evidenced_print_show_function_chirho(head_id_chirho, local_instance_dicts_chirho)?;
         let put_str_ln_id_chirho = self.lookup_compiler_owned_name_id_chirho("putStrLn")?;
         let rewritten_arg_chirho = self.rewrite_method_refs_with_locals_chirho(
             arg_chirho,
@@ -99,7 +117,7 @@ impl DictPassCtxChirho {
             local_instance_dicts_chirho,
         );
         let shown_arg_chirho = CoreExprChirho::AppChirho {
-            fun_chirho: Box::new(CoreExprChirho::VarChirho(show_prim_id_chirho)),
+            fun_chirho: Box::new(show_function_chirho),
             arg_chirho: Box::new(rewritten_arg_chirho),
         };
         Some(CoreExprChirho::AppChirho {

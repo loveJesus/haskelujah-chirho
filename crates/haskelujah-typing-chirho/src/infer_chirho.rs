@@ -27,6 +27,7 @@ use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, Er
 use haskelujah_span_chirho::SpanChirho;
 use std::collections::{HashMap, HashSet};
 
+mod applied_evidence_chirho;
 mod builtins_chirho;
 #[path = "infer_chirho/context_chirho.rs"]
 mod context_chirho;
@@ -36,6 +37,9 @@ mod evidence_chirho;
 mod class_instance_chirho;
 #[path = "infer_chirho/declarations_chirho/dependency_chirho.rs"]
 mod dependency_chirho;
+// GND method coercibility, beside the instance obligations (row 694).
+#[path = "infer_chirho/declarations_chirho/gnd_coercion_chirho/mod.rs"]
+pub mod gnd_coercion_chirho;
 #[path = "infer_chirho/declarations_chirho/instance_obligations_chirho.rs"]
 mod instance_obligations_chirho;
 #[path = "infer_chirho/declarations_chirho/instance_signatures_chirho.rs"]
@@ -310,6 +314,11 @@ pub struct InferResultChirho {
     /// holds generated references, whose placeholder span the span map skips.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub reference_evidence_by_origin_chirho: HashMap<OriginIdChirho, Vec<ReferenceEvidenceChirho>>,
+    /// One typed proof per GND instance that its methods have one representation at the
+    /// newtype and at its representation (row 694). The frontend fills it after inference;
+    /// the dictionary pass aliases a newtype's rows only with its proof.
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+    pub gnd_coercion_proofs_chirho: Vec<gnd_coercion_chirho::GndCoercionProofChirho>,
 }
 
 /// Evidence-threading P2: one concrete class-instantiation fact about one
@@ -324,6 +333,10 @@ pub struct InferResultChirho {
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 #[derive(Debug, Clone, PartialEq)]
 pub struct MethodOccurrenceRecordChirho {
+    /// The predicate's resolved type when it is a ground application (`BoxChirho Int`), so a
+    /// conditional instance's factory can serve the occurrence at its actual arguments
+    /// (row 694, M1); `None` otherwise.
+    pub applied_ty_chirho: Option<TyChirho>,
     pub name_chirho: String,
     pub ordinal_chirho: u32,
     pub class_name_chirho: String,

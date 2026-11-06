@@ -137,7 +137,12 @@ fn an_unqualified_trusted_provider_binds_its_bare_and_qualified_spellings_chirho
     let class_chirho = scope_chirho
         .class_chirho("Functor")
         .expect("Prelude's Functor is the builtin class");
-    assert_eq!(class_chirho.parameter_arities_chirho, &[1]);
+    assert_eq!(
+        class_chirho
+            .schema_chirho()
+            .single_parameter_eta_arity_chirho(),
+        Some(1)
+    );
     assert!(proven_chirho(&scope_chirho, "Prelude.Functor"));
     assert!(!proven_chirho(&scope_chirho, "Main.Functor"));
 }
@@ -328,9 +333,118 @@ fn the_table_names_each_class_once_at_a_known_parameter_kind_chirho() {
             entry_chirho.class_chirho.name_chirho
         );
         assert!(
-            entry_chirho.class_chirho.parameter_arities_chirho == TYPE_PARAMETER_CHIRHO
-                || entry_chirho.class_chirho.parameter_arities_chirho
-                    == CONSTRUCTOR_PARAMETER_CHIRHO
+            entry_chirho
+                .class_chirho
+                .schema_chirho()
+                .single_parameter_eta_arity_chirho()
+                .is_some()
         );
     }
+}
+
+#[test]
+fn selected_standard_class_proofs_survive_real_prelude_and_import_filters_chirho() {
+    let ifaces_chirho = builtin_module_ifaces_chirho();
+    for (provider_chirho, class_name_chirho, identity_chirho) in [
+        (
+            "Control.Applicative",
+            "Alternative",
+            CompilerClassChirho::AlternativeChirho,
+        ),
+        (
+            "Control.Monad.Fix",
+            "MonadFix",
+            CompilerClassChirho::MonadFixChirho,
+        ),
+        (
+            "Control.Monad.IO.Class",
+            "MonadIO",
+            CompilerClassChirho::MonadIoChirho,
+        ),
+        (
+            "Control.Monad.Trans.Class",
+            "MonadTrans",
+            CompilerClassChirho::MonadTransChirho,
+        ),
+    ] {
+        let qualified_chirho = build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![],
+                vec![
+                    import_chirho("Prelude", None, false),
+                    import_chirho(provider_chirho, Some("OwnedChirho"), true),
+                ],
+            ),
+            &ifaces_chirho,
+        );
+        assert_eq!(
+            qualified_chirho
+                .class_chirho(&format!("OwnedChirho.{class_name_chirho}"))
+                .map(|class_chirho| class_chirho.identity_chirho),
+            Some(identity_chirho)
+        );
+        let mut selected_chirho = import_chirho(provider_chirho, None, false);
+        selected_chirho.spec_chirho = Some(ImportSpecChirho {
+            hiding_chirho: false,
+            items_chirho: vec![ImportItemChirho::TyConChirho {
+                name_chirho: name_chirho(class_name_chirho),
+                members_chirho: ExportMembersChirho::NoneChirho,
+            }],
+        });
+        let selected_module_chirho = module_chirho(
+            vec![],
+            vec![
+                import_chirho("Prelude", None, false),
+                selected_chirho.clone(),
+            ],
+        );
+        let scope_chirho =
+            build_builtin_class_scope_chirho(&selected_module_chirho, &ifaces_chirho);
+        assert_eq!(
+            scope_chirho
+                .class_chirho(class_name_chirho)
+                .map(|class_chirho| class_chirho.identity_chirho),
+            Some(identity_chirho),
+            "selected {provider_chirho}.{class_name_chirho} beside real Prelude"
+        );
+        selected_chirho.spec_chirho.as_mut().unwrap().hiding_chirho = true;
+        let hidden_chirho = build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![],
+                vec![import_chirho("Prelude", None, false), selected_chirho],
+            ),
+            &ifaces_chirho,
+        );
+        assert!(!proven_chirho(&hidden_chirho, class_name_chirho));
+        let local_chirho = build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![class_decl_chirho(class_name_chirho)],
+                vec![import_chirho(provider_chirho, None, false)],
+            ),
+            &ifaces_chirho,
+        );
+        assert!(!proven_chirho(&local_chirho, class_name_chirho));
+        let mut incomplete_chirho = ifaces_chirho.clone();
+        incomplete_chirho
+            .iter_mut()
+            .find(|iface_chirho| iface_chirho.name_chirho == provider_chirho)
+            .unwrap()
+            .exports_chirho
+            .types_chirho
+            .get_mut(class_name_chirho)
+            .unwrap()
+            .methods_chirho
+            .clear();
+        let incomplete_scope_chirho =
+            build_builtin_class_scope_chirho(&selected_module_chirho, &incomplete_chirho);
+        assert!(!proven_chirho(&incomplete_scope_chirho, class_name_chirho));
+    }
+    let prelude_chirho = build_builtin_class_scope_chirho(
+        &module_chirho(
+            vec![],
+            vec![import_chirho("Prelude", Some("PChirho"), true)],
+        ),
+        &ifaces_chirho,
+    );
+    assert!(!proven_chirho(&prelude_chirho, "PChirho.Alternative"));
 }

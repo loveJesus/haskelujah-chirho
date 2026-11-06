@@ -734,15 +734,14 @@ impl InferCtxChirho {
         }
     }
 
-    /// Whether every given lets the checker reach its superclasses. A class's
-    /// superclasses are recorded by NAME, not with their arguments, so a
+    /// Whether every given lets the checker reach its superclasses. With a
     /// multi-parameter given whose class has superclasses (`Convert a b` under
-    /// `class Show a => Convert a b`) cannot be used for one: main rejects the
-    /// top-level form of that program too, although GHC accepts it. With such
-    /// a given the leftover-wanted verdict is withheld rather than judged
-    /// wrongly (agy_chirho A09). The repair is superclass argument
-    /// substitution in the class metadata, an isolated solver unit of its own
-    /// (gpt_chirho #27158), not an exception that ignores the extra arguments.
+    /// `class Show a => Convert a b`) the leftover-wanted verdict is withheld
+    /// rather than judged wrongly (agy_chirho A09). Classes now record each
+    /// superclass as a template over their own variables, and entailment reads
+    /// those (`pred_entailed_by_givens_chirho`, row 694, #31909); judging this
+    /// verdict with them is a separately measured step (gpt_chirho #27158),
+    /// not an exception that ignores the extra arguments.
     fn givens_reach_their_superclasses_chirho(&self, givens_chirho: &[PredChirho]) -> bool {
         givens_chirho.iter().all(|given_chirho| {
             given_chirho.extra_tys_chirho.is_empty()

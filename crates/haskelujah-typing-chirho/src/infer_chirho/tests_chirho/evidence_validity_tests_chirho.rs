@@ -81,6 +81,7 @@ fn occurrence_record_defaults_unresolved_standard_class_chirho() {
     assert_eq!(
         records_chirho,
         vec![MethodOccurrenceRecordChirho {
+            applied_ty_chirho: None,
             name_chirho: "+".to_string(),
             ordinal_chirho: 0,
             class_name_chirho: "Num".to_string(),

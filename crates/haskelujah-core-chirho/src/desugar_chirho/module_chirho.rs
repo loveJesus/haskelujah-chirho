@@ -89,6 +89,9 @@ impl DesugarCtxChirho {
         // Pass 0: Build map of class → (method_name → default MatchArms) from class declarations
         let mut class_defaults_chirho: HashMap<String, HashMap<String, Vec<MatchArmChirho>>> =
             HashMap::new();
+        // Every row an instance takes from its class's default, by name (row 694).
+        let mut default_method_rows_chirho: std::collections::HashSet<String> =
+            std::collections::HashSet::new();
         let mut class_method_names_chirho: HashMap<String, Vec<String>> = HashMap::new();
         for decl_chirho in &module_chirho.decls_chirho {
             if let DeclChirho::ClassDeclChirho {
@@ -424,6 +427,9 @@ impl DesugarCtxChirho {
                                     "$prim_{}_{}_{}",
                                     class_name_chirho, default_name_chirho, type_key_chirho
                                 );
+                                // A row the class default fills, never one the instance
+                                // wrote: GND may replace it (row 694).
+                                default_method_rows_chirho.insert(prim_name_chirho.clone());
                                 let binder_chirho =
                                     if let Some((pre_idx_chirho, _)) = pre_iter_chirho.peek() {
                                         if *pre_idx_chirho == idx_chirho {
@@ -704,6 +710,7 @@ impl DesugarCtxChirho {
             method_occurrence_spans_chirho: self.method_occurrence_spans_chirho.clone(),
             occurrence_provenance_chirho: self.occurrence_provenance_chirho.clone(),
             operator_occurrences_chirho: self.operator_occurrences_chirho.clone(),
+            default_method_rows_chirho,
         }
     }
 }

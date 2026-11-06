@@ -19,6 +19,7 @@ use haskelujah_ast_chirho::provenance_chirho::{
     OccurrenceRoleChirho, OriginIdChirho, ProvenanceChirho,
 };
 use haskelujah_core_chirho::CoreIdChirho;
+use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 use crate::InferResultChirho;
 
@@ -266,6 +267,18 @@ pub(crate) fn method_occurrence_names_chirho(module_chirho: &ModuleChirho) -> Ha
         .collect()
 }
 
+/// One record's proof for an occurrence, its class and type key, with the ground application
+/// its predicate resolved to, if any.
+type AppliedProofChirho = ((String, String), Option<TyChirho>);
+
+/// What the occurrence join proves: each occurrence's class and type key, and, where the
+/// checker recorded one, the ground application its predicate resolved to (row 694, M1).
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub(crate) struct OccurrenceJoinChirho {
+    pub(crate) evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    pub(crate) applied_tys_chirho: HashMap<CoreIdChirho, TyChirho>,
+}
+
 /// Join the checker's occurrence records to the desugarer's occurrence ids.
 ///
 /// First by provenance: a record carrying an origin belongs to the occurrence
@@ -281,6 +294,10 @@ pub(crate) fn method_occurrence_names_chirho(module_chirho: &ModuleChirho) -> Ha
 /// What remains positional serves only the population with no identity at all:
 /// occurrences with neither provenance nor a genuine span, and records with no
 /// origin, taken in order under a count guard.
+///
+/// Each occurrence also takes the ground application its proof's predicate resolved to,
+/// where the checker recorded one (row 694, M1): only from the very record that proves it,
+/// and from an origin's records only when every one proving that occurrence agrees.
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 pub(crate) fn join_occurrence_evidence_chirho(
     infer_result_chirho: &InferResultChirho,
@@ -297,7 +314,8 @@ pub(crate) fn join_occurrence_evidence_chirho(
         haskelujah_span_chirho::SpanChirho,
     >,
     occurrence_provenance_chirho: &HashMap<CoreIdChirho, ProvenanceChirho>,
-) -> std::collections::HashMap<haskelujah_core_chirho::CoreIdChirho, (String, String)> {
+) -> OccurrenceJoinChirho {
+    let mut applied_chirho: HashMap<CoreIdChirho, TyChirho> = HashMap::new();
     // Literal evidence joins by span, exactly: the checker solved this very
     // literal. It is inserted first so the per-name ordinal join below never
     // overrides it. The engine's body-backed rows are keyed "Int"; the checker
@@ -442,6 +460,8 @@ pub(crate) fn join_occurrence_evidence_chirho(
     }
     let mut proofs_by_occurrence_chirho: HashMap<CoreIdChirho, Vec<(String, String)>> =
         HashMap::new();
+    let mut applied_by_occurrence_chirho: HashMap<CoreIdChirho, Vec<AppliedProofChirho>> =
+        HashMap::new();
     for (record_index_chirho, record_chirho) in infer_result_chirho
         .method_occurrences_chirho
         .iter()
@@ -481,13 +501,33 @@ pub(crate) fn join_occurrence_evidence_chirho(
                     record_chirho.class_name_chirho.clone(),
                     backed_key_chirho(record_chirho),
                 ));
+            applied_by_occurrence_chirho
+                .entry(*occ_id_chirho)
+                .or_default()
+                .push((
+                    (
+                        record_chirho.class_name_chirho.clone(),
+                        backed_key_chirho(record_chirho),
+                    ),
+                    record_chirho.applied_ty_chirho.clone(),
+                ));
         }
     }
     for (occ_id_chirho, proofs_chirho) in &proofs_by_occurrence_chirho {
         if let Some(proof_chirho) = single_proof_chirho(proofs_chirho) {
-            evidence_chirho
+            let chosen_chirho = evidence_chirho
                 .entry(*occ_id_chirho)
-                .or_insert(proof_chirho);
+                .or_insert(proof_chirho)
+                .clone();
+            if let Some(applied_ty_chirho) = agreed_applied_ty_chirho(
+                applied_by_occurrence_chirho
+                    .get(occ_id_chirho)
+                    .map(Vec::as_slice)
+                    .unwrap_or(&[]),
+                &chosen_chirho,
+            ) {
+                applied_chirho.insert(*occ_id_chirho, applied_ty_chirho);
+            }
         }
     }
     // By span, for the occurrences without provenance, and only from records
@@ -527,12 +567,17 @@ pub(crate) fn join_occurrence_evidence_chirho(
         }
         consumed_records_chirho.insert(record_index_chirho);
         identified_occurrences_chirho.insert(*occ_id_chirho);
-        evidence_chirho.entry(*occ_id_chirho).or_insert_with(|| {
-            (
+        if let std::collections::hash_map::Entry::Vacant(vacant_chirho) =
+            evidence_chirho.entry(*occ_id_chirho)
+        {
+            vacant_chirho.insert((
                 record_chirho.class_name_chirho.clone(),
                 backed_key_chirho(record_chirho),
-            )
-        });
+            ));
+            if let Some(applied_ty_chirho) = &record_chirho.applied_ty_chirho {
+                applied_chirho.insert(*occ_id_chirho, applied_ty_chirho.clone());
+            }
+        }
     }
     // What remains of the old positional join, and the three boundaries it
     // respects. The desugarer mints method occurrences at several sites and only
@@ -607,15 +652,43 @@ pub(crate) fn join_occurrence_evidence_chirho(
             // The engine's body-backed instance rows are keyed "Int"; typing
             // defaults ambiguous numerics to "Integer" per the Report. Map
             // the evidence key onto the backed row at this boundary only.
-            evidence_chirho.entry(*occ_id_chirho).or_insert_with(|| {
-                (
+            if let std::collections::hash_map::Entry::Vacant(vacant_chirho) =
+                evidence_chirho.entry(*occ_id_chirho)
+            {
+                vacant_chirho.insert((
                     record_chirho.class_name_chirho.clone(),
                     backed_key_chirho(record_chirho),
-                )
-            });
+                ));
+                if let Some(applied_ty_chirho) = &record_chirho.applied_ty_chirho {
+                    applied_chirho.insert(*occ_id_chirho, applied_ty_chirho.clone());
+                }
+            }
         }
     }
-    evidence_chirho
+    OccurrenceJoinChirho {
+        evidence_chirho,
+        applied_tys_chirho: applied_chirho,
+    }
+}
+
+/// The applied type every record proving `chosen_chirho` for one occurrence agrees on; `None`
+/// when one carries none or two differ.
+fn agreed_applied_ty_chirho(
+    candidates_chirho: &[AppliedProofChirho],
+    chosen_chirho: &(String, String),
+) -> Option<TyChirho> {
+    let mut agreed_chirho: Option<&TyChirho> = None;
+    for (proof_chirho, applied_ty_chirho) in candidates_chirho {
+        if proof_chirho != chosen_chirho {
+            continue;
+        }
+        let applied_ty_chirho = applied_ty_chirho.as_ref()?;
+        match agreed_chirho {
+            Some(seen_chirho) if seen_chirho != applied_ty_chirho => return None,
+            _ => agreed_chirho = Some(applied_ty_chirho),
+        }
+    }
+    agreed_chirho.cloned()
 }
 
 /// Join the checker's per-predicate evidence for constrained references to the
@@ -627,7 +700,7 @@ pub(crate) fn join_reference_evidence_chirho(
     infer_result_chirho: &InferResultChirho,
     reference_occurrence_spans_chirho: &HashMap<CoreIdChirho, haskelujah_span_chirho::SpanChirho>,
     occurrence_provenance_chirho: &HashMap<CoreIdChirho, ProvenanceChirho>,
-) -> HashMap<CoreIdChirho, Vec<(String, Option<String>)>> {
+) -> HashMap<CoreIdChirho, Vec<haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho>> {
     reference_occurrence_spans_chirho
         .iter()
         .filter_map(|(occ_id_chirho, span_chirho)| {
@@ -658,7 +731,15 @@ pub(crate) fn join_reference_evidence_chirho(
                                 key_chirho.to_string()
                             }
                         });
-                        (record_chirho.class_name_chirho.clone(), key_chirho)
+                        // The applied type and a multi-parameter head ride along unchanged:
+                        // they are the checker's structure, which the dictionary pass
+                        // instantiates (row 694).
+                        haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
+                            applied_head_chirho: record_chirho.applied_head_chirho.clone(),
+                            class_name_chirho: record_chirho.class_name_chirho.clone(),
+                            ty_key_chirho: key_chirho,
+                            applied_ty_chirho: record_chirho.applied_ty_chirho.clone(),
+                        }
                     })
                     .collect(),
             ))
