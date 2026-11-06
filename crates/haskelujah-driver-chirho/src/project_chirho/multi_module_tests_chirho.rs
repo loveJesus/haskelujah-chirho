@@ -3,7 +3,8 @@
 //! The interpreter's multi-module merge carries each module's provenance with its ids (#32375):
 //! the same offset as the module's bodies, joined with the others, through the same final remap,
 //! and with the root's entry alone. The IO facade then tells a merged program's own top-level
-//! bindings from the rows the compiler generated, as it does in one module.
+//! bindings from the rows the compiler generated, as it does in one module. A builtin reference
+//! links only to a compiler body of its name, never to a program namesake (#32386).
 //! workflow: testing-chirho/execution-oracles-chirho
 
 use std::collections::BTreeSet;
@@ -14,6 +15,7 @@ use haskelujah_span_chirho::SourceMapChirho;
 use super::{
     compile_modules_chirho, eval_modules_with_machine_chirho, merge_interpreter_modules_chirho,
 };
+use crate::stg_lower_chirho::lower_and_run_outcome_chirho;
 
 /// A dependency with its own `seq` and `undefined`, and its own `main`: an entry candidate that
 /// must never become the program's.
@@ -28,6 +30,13 @@ const OWN_SPELLINGS_MODULE_CHIRHO: &str = "module OwnSpellingsChirho (seq, undef
 /// The root: the dependency's own `seq` and `undefined` beside the generated `force` and
 /// `deepseq`, whose Core bodies use `seq#`, which the interpreter has no primitive for.
 const OWN_SPELLINGS_MAIN_CHIRHO: &str = "module Main where\n\nimport Prelude hiding (seq, undefined)\nimport Control.DeepSeq (deepseq, force)\nimport OwnSpellingsChirho (seq, undefined)\n\nmain :: IO ()\nmain = do\n  print (seq 4 2)\n  print undefined\n  print (force (seq 1 7))\n  undefined `deepseq` putStrLn \"forced\"\n";
+
+/// A dependency with its own `undefined`, which the root never imports.
+const UNIMPORTED_UNDEFINED_MODULE_CHIRHO: &str = "module OwnUndefinedChirho (sevenChirho) where\n\nimport Prelude hiding (undefined)\n\nundefined :: Int\nundefined = 7\n\nsevenChirho :: Int\nsevenChirho = undefined\n";
+
+/// The root, whose `undefined` is the Prelude's: GHC prints 7, then fails with
+/// `Prelude.undefined`.
+const PRELUDE_UNDEFINED_MAIN_CHIRHO: &str = "module Main where\n\nimport OwnUndefinedChirho (sevenChirho)\n\nmain :: IO ()\nmain = do\n  print sevenChirho\n  print (undefined :: Int)\n";
 
 fn moved_chirho(id_chirho: CoreIdChirho, offset_chirho: u32) -> CoreIdChirho {
     CoreIdChirho(id_chirho.0 + offset_chirho)
@@ -218,8 +227,8 @@ fn the_merge_moves_each_record_with_its_bodies_and_keeps_the_roots_entry_chirho(
         assert!(!referenced_chirho.contains(&moved_chirho(*id_chirho, offsets_chirho[1]).0));
     }
 
-    // A builtin reference moves by its module's offset, or follows the remap to a definition of
-    // its own name.
+    // A builtin reference moves by its module's offset, or follows the remap to a compiler body
+    // of its own name, never to a program binding (#32386).
     for (input_chirho, offset_chirho) in inputs_chirho.iter().zip(&offsets_chirho) {
         for id_chirho in &input_chirho.provenance_chirho.builtin_references_chirho {
             let name_chirho = &input_chirho.names_chirho[id_chirho];
@@ -232,6 +241,9 @@ fn the_merge_moves_each_record_with_its_bodies_and_keeps_the_roots_entry_chirho(
                         &binding_chirho.binder_chirho.name_chirho == name_chirho
                             && record_chirho
                                 .builtin_references_chirho
+                                .contains(&binding_chirho.binder_chirho.id_chirho)
+                            && record_chirho
+                                .compiler_bindings_chirho
                                 .contains(&binding_chirho.binder_chirho.id_chirho)
                     }),
                 "the builtin reference {name_chirho} is kept"
@@ -254,4 +266,86 @@ fn a_merged_programs_own_spellings_keep_their_bodies_beside_generated_rows_chirh
     )
     .unwrap_or_else(|error_chirho| panic!("the merged program runs: {error_chirho}"));
     assert_eq!(machine_chirho.io_output_chirho, "42\n7\n17\nforced\n");
+}
+
+#[test]
+fn an_unimported_namesake_never_takes_a_builtin_reference_chirho() {
+    let results_chirho = compile_modules_chirho(
+        &[
+            ("OwnUndefinedChirho.hs", UNIMPORTED_UNDEFINED_MODULE_CHIRHO),
+            ("Main.hs", PRELUDE_UNDEFINED_MAIN_CHIRHO),
+        ],
+        &mut SourceMapChirho::new_chirho(),
+    )
+    .unwrap_or_else(|refusal_chirho| panic!("GHC accepts the program: {refusal_chirho:?}"));
+    let inputs_chirho: Vec<CoreModuleChirho> = results_chirho
+        .iter()
+        .map(|result_chirho| result_chirho.core_chirho.clone())
+        .collect();
+    let (merged_chirho, newtype_cons_chirho) =
+        merge_interpreter_modules_chirho(results_chirho).expect("the modules merge");
+    let offsets_chirho = landed_offsets_chirho(&inputs_chirho, &merged_chirho);
+    let [dependency_chirho, main_chirho] = inputs_chirho.as_slice() else {
+        panic!("two modules");
+    };
+    let record_chirho = &merged_chirho.provenance_chirho;
+
+    // The root's `undefined` is a builtin reference and keeps its own id. The dependency's
+    // namesake is the program's, and nothing links the root to it.
+    let builtin_chirho: Vec<CoreIdChirho> = main_chirho
+        .provenance_chirho
+        .builtin_references_chirho
+        .iter()
+        .filter(|id_chirho| {
+            main_chirho
+                .names_chirho
+                .get(id_chirho)
+                .is_some_and(|name_chirho| name_chirho == "undefined")
+        })
+        .map(|id_chirho| moved_chirho(*id_chirho, offsets_chirho[1]))
+        .collect();
+    assert!(
+        !builtin_chirho.is_empty(),
+        "the root's undefined is a builtin reference: {:?}",
+        main_chirho.provenance_chirho.builtin_references_chirho
+    );
+    let own_chirho = dependency_chirho
+        .bindings_chirho
+        .iter()
+        .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == "undefined")
+        .map(|binding_chirho| {
+            moved_chirho(binding_chirho.binder_chirho.id_chirho, offsets_chirho[0])
+        })
+        .expect("the dependency's own undefined");
+    assert!(!record_chirho.compiler_bindings_chirho.contains(&own_chirho));
+    assert!(
+        !record_chirho
+            .builtin_references_chirho
+            .contains(&own_chirho)
+    );
+    let mut root_referenced_chirho = BTreeSet::new();
+    for binding_chirho in &merged_chirho.bindings_chirho[dependency_chirho.bindings_chirho.len()..]
+    {
+        referenced_ids_chirho(&binding_chirho.rhs_chirho, &mut root_referenced_chirho);
+    }
+    assert!(
+        !root_referenced_chirho.contains(&own_chirho.0),
+        "the root never reaches the dependency's undefined"
+    );
+    for id_chirho in &builtin_chirho {
+        assert!(record_chirho.builtin_references_chirho.contains(id_chirho));
+        assert!(
+            root_referenced_chirho.contains(&id_chirho.0),
+            "the root keeps its builtin undefined"
+        );
+    }
+
+    // The run: the dependency's own value, then the Prelude's failure.
+    let outcome_chirho = lower_and_run_outcome_chirho(&merged_chirho, None, newtype_cons_chirho)
+        .expect("the program lowers");
+    assert_eq!(outcome_chirho.machine_chirho.io_output_chirho, "7\n");
+    let error_chirho = outcome_chirho
+        .result_chirho
+        .expect_err("the Prelude's undefined fails");
+    assert!(error_chirho.contains("Prelude.undefined"), "{error_chirho}");
 }

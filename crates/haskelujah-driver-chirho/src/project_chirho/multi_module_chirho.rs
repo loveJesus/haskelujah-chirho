@@ -466,10 +466,23 @@ pub(crate) fn merge_interpreter_modules_chirho(
     // Phase 2: Build canonical name → definition CoreId (first wins).
     let mut def_name_to_id_chirho: std::collections::HashMap<String, CoreIdChirho> =
         std::collections::HashMap::new();
+    // A builtin reference links only to the compiler's own body of its name, never to a
+    // program's binding that shares the spelling (#32386, as the native merge does for row 628).
+    let mut compiler_name_to_id_chirho: std::collections::HashMap<String, CoreIdChirho> =
+        std::collections::HashMap::new();
     for binding_chirho in &merged_bindings_chirho {
+        let binder_chirho = &binding_chirho.binder_chirho;
         def_name_to_id_chirho
-            .entry(binding_chirho.binder_chirho.name_chirho.clone())
-            .or_insert(binding_chirho.binder_chirho.id_chirho);
+            .entry(binder_chirho.name_chirho.clone())
+            .or_insert(binder_chirho.id_chirho);
+        if merged_provenance_chirho
+            .compiler_bindings_chirho
+            .contains(&binder_chirho.id_chirho)
+        {
+            compiler_name_to_id_chirho
+                .entry(binder_chirho.name_chirho.clone())
+                .or_insert(binder_chirho.id_chirho);
+        }
     }
 
     // Phase 3: Build remap table for cross-module references.
@@ -558,7 +571,15 @@ pub(crate) fn merge_interpreter_modules_chirho(
         {
             continue;
         }
-        if let Some(&def_id_chirho) = def_name_to_id_chirho.get(name_chirho)
+        let definitions_chirho = if merged_provenance_chirho
+            .builtin_references_chirho
+            .contains(id_chirho)
+        {
+            &compiler_name_to_id_chirho
+        } else {
+            &def_name_to_id_chirho
+        };
+        if let Some(&def_id_chirho) = definitions_chirho.get(name_chirho)
             && def_id_chirho != *id_chirho
         {
             remap_chirho.insert(*id_chirho, def_id_chirho);

@@ -175,17 +175,18 @@ The controls are:
   record, the imported cases, and a real import from its producer to both interpreter
   consumers;
 - `project_chirho/multi_module_tests_chirho.rs`: the merge's exact transport (offsets,
-  record, final remap, root entry) and a dependency's own `seq` and `undefined` beside the
-  generated `force` and `deepseq`;
+  record, final remap, root entry), a dependency's own `seq` and `undefined` beside the
+  generated `force` and `deepseq`, and an unimported namesake beside the root's Prelude
+  `undefined`, which still prints the dependency's 7 and then fails as the Prelude's does;
 - W3 and W4 on every engine (W4's GHC reference matches), and native symbol identity's B7,
   a program's own top-level `undefined`, now on the interpreter too.
 
-The merge still links a free reference by its spelling to the first definition of that
-name in any module (its Phase 3). The native merge links a builtin reference only to a
-compiler body of its name (row 628). A free `undefined`, `error` or `throw`, which no
-generated row binds, can therefore reach another module's own namesake. Before #32355 that
-namesake ran as the primitive; it now keeps its body. This is a named linking seam, not
-part of the transport.
+The merge's linker (its Phase 2 and 3) links a builtin reference, as the module's
+provenance records it, only to a compiler body of its name (#32386), as the native merge
+does (row 628). A program namesake in another module supplies no link, so a free
+`undefined`, `error` or `throw`, which no generated row binds, stays the builtin. An import
+links through the shared import linker, and every other reference keeps the prior route to
+the first definition of its name.
 
 Generated MaybeT helpers preserve the underlying monadic action. They accept the
 call-site Monad dictionary; pure is selected from its Applicative superclass,
