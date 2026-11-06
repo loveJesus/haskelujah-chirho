@@ -101,6 +101,14 @@ impl ProofCaseChirho {
     /// provenance. An unstamped one is offered to an occurrence without provenance, through the
     /// span they share or, with none, by position.
     fn joined_chirho(self) -> Option<(String, String)> {
+        self.joined_with_class_chirho(None)
+    }
+
+    /// A producer's explicit class declaration, when this case uses a non-seeded telescope.
+    fn joined_with_class_chirho(
+        self,
+        declaration_chirho: Option<ClassDeclChirho>,
+    ) -> Option<(String, String)> {
         let mut supply_chirho = OriginSupplyChirho::new_chirho();
         let origin_chirho = supply_chirho.fresh_chirho();
         let record_span_chirho = if self.genuine_span_chirho {
@@ -116,6 +124,11 @@ impl ProofCaseChirho {
             ..record_chirho(self.name_chirho, 0, self.key_chirho, record_span_chirho)
         }]);
         declare_seeded_classes_chirho(&mut infer_chirho);
+        if let Some(declaration_chirho) = declaration_chirho {
+            infer_chirho
+                .class_env_chirho
+                .add_class_chirho(declaration_chirho);
+        }
         for instance_chirho in self.instances_chirho {
             infer_chirho
                 .class_env_chirho
@@ -216,56 +229,78 @@ fn instance_chirho(
 
 #[test]
 fn a_complete_capture_matches_all_arguments_and_a_conflicting_capture_never_falls_back_chirho() {
-    let mut matching_instance_chirho = instance_chirho("Monad", "StateChirho", Vec::new());
+    // This custom class actually declares the capture's hidden kind and additional type binder.
+    // No compiler Monad identity or unsupported Monad telescope is invented by this fixture.
+    let declaration_chirho = ClassDeclChirho::legacy_chirho(ClassDeclPartsChirho {
+        kind_vars_chirho: vec![TyVarChirho(2)],
+        name_chirho: "CapturedChirho".to_string(),
+        supers_chirho: Vec::new(),
+        super_templates_chirho: Vec::new(),
+        var_chirho: TyVarChirho(0),
+        methods_chirho: HashMap::from([(
+            ">>".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::unit_chirho()),
+        )]),
+        extra_vars_chirho: vec![TyVarChirho(3)],
+        fundeps_chirho: Vec::new(),
+        defaults_chirho: HashMap::new(),
+    });
+    let mut matching_instance_chirho = instance_chirho("CapturedChirho", "StateChirho", Vec::new());
     matching_instance_chirho.kind_tys_chirho = vec![TyChirho::ConChirho("Type".to_string())];
     matching_instance_chirho.extra_head_tys_chirho = vec![TyChirho::bool_chirho()];
     let capture_chirho = PredChirho::legacy_chirho(PredPartsChirho {
         kind_tys_chirho: matching_instance_chirho.kind_tys_chirho.clone(),
-        class_name_chirho: "Monad".to_string(),
+        class_name_chirho: "CapturedChirho".to_string(),
         ty_chirho: applied_chirho("StateChirho"),
         extra_tys_chirho: matching_instance_chirho.extra_head_tys_chirho.clone(),
     });
     let complete_chirho = ProofCaseChirho {
+        class_chirho: "CapturedChirho",
         instances_chirho: vec![matching_instance_chirho],
         capture_chirho: Some(capture_chirho.clone()),
         ..ProofCaseChirho::then_chirho()
     };
     assert_eq!(
-        complete_chirho.joined_chirho(),
-        Some(("Monad".to_string(), "StateChirho".to_string()))
+        complete_chirho
+            .clone()
+            .joined_with_class_chirho(Some(declaration_chirho.clone())),
+        Some(("CapturedChirho".to_string(), "StateChirho".to_string()))
     );
     let mut wrong_class_chirho = capture_chirho.clone();
     wrong_class_chirho.class_name_chirho = "Functor".to_string();
     let mut wrong_application_chirho = capture_chirho.clone();
     wrong_application_chirho.ty_chirho = applied_chirho("ReaderChirho");
-    for capture_chirho in [wrong_class_chirho, wrong_application_chirho] {
-        assert_eq!(
-            ProofCaseChirho {
-                capture_chirho: Some(capture_chirho),
-                ..ProofCaseChirho::then_chirho()
-            }
-            .joined_chirho(),
-            None,
-            "a conflicting capture must not fall through to the legacy predicate"
-        );
-    }
     let mut wrong_prefix_chirho = capture_chirho.clone();
     wrong_prefix_chirho.kind_tys_chirho.clear();
     let mut wrong_extra_chirho = capture_chirho;
     wrong_extra_chirho.extra_tys_chirho[0] = TyChirho::int_chirho();
-    for capture_chirho in [wrong_prefix_chirho, wrong_extra_chirho] {
-        let mut matching_instance_chirho = instance_chirho("Monad", "StateChirho", Vec::new());
-        matching_instance_chirho.kind_tys_chirho = vec![TyChirho::ConChirho("Type".to_string())];
-        matching_instance_chirho.extra_head_tys_chirho = vec![TyChirho::bool_chirho()];
+    for capture_chirho in [
+        wrong_class_chirho,
+        wrong_application_chirho,
+        wrong_prefix_chirho,
+        wrong_extra_chirho,
+    ] {
         assert_eq!(
             ProofCaseChirho {
-                instances_chirho: vec![matching_instance_chirho],
                 capture_chirho: Some(capture_chirho),
-                ..ProofCaseChirho::then_chirho()
+                ..complete_chirho.clone()
             }
-            .joined_chirho(),
+            .joined_with_class_chirho(Some(declaration_chirho.clone())),
             None,
-            "the complete predicate's hidden and extra arguments must reach matching"
+            "a conflicting or incomplete capture must not fall through to a legacy predicate"
+        );
+    }
+    let mut missing_kind_binder_chirho = declaration_chirho.clone();
+    missing_kind_binder_chirho.kind_vars_chirho.clear();
+    let mut missing_extra_binder_chirho = declaration_chirho;
+    missing_extra_binder_chirho.extra_vars_chirho.clear();
+    for declaration_chirho in [missing_kind_binder_chirho, missing_extra_binder_chirho] {
+        assert_eq!(
+            complete_chirho
+                .clone()
+                .joined_with_class_chirho(Some(declaration_chirho)),
+            None,
+            "matching instance arguments cannot grant an undeclared class telescope"
         );
     }
 }

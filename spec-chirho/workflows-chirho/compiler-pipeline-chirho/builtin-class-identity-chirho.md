@@ -18,7 +18,7 @@ flowchart TD
     type_scope_chirho["same selected type-constructor scope, before deriving"] --> deriving_chirho
     deriving_chirho --> roles_chirho["GND: separate schema, role and method coercion checks"]
     roles_chirho --> core_chirho["existing dictionary factories and evidence consumers"]
-    scope_chirho --> dict_chirho["core: fresh per-module K01 proof, declared Monad >> default, exact supported schema and this instance's body-backed >>= donor (row 699)"]
+    scope_chirho --> dict_chirho["core: fresh BARE Monad K01 proof, declared >> default, exact supported schema and this instance's body-backed >>= donor (row 699, dictionary-evidence-chirho)"]
 ```
 
 ## Trust
@@ -52,6 +52,8 @@ The compiler schema also describes other positive class producers. Typeable and 
 ## Consumers
 
 The frontend builds the class and type-constructor scopes before deriving and reuses them afterward: deriving appends instances and introduces no class or type header. The ordinary engine selects the common schema through the positive compiler identity, materializes it into the existing declaration arena and transports the complete hidden prefix. The adapter uses the original elaboration allowance and latches resource exhaustion there. The live frontend does not run the old spelling-based kind pass as another authority.
+
+The dictionary pass receives a fresh per-module K01 scope. The seeded Monad's declared `>>` default requires the BARE `Monad` proof; a qualified proof alone never authorizes that bare entry. Its exact declared arms, supported schema and this instance's body-backed `>>=` donor remain separate checks in the [dictionary-evidence workflow](../language-features-chirho/dictionary-evidence-chirho.md).
 
 The reusable AST schema is independent of the ordinary engine. Declaration binder visibility/specificity are the same shared types. `closed_parameter_kind_chirho` returns a complete closed Type/arrow tree; `single_parameter_eta_arity_chirho` counts outer result arrows for one required parameter. Hidden, dependent, literal-kind and partial schemas refuse a lossy legacy hint. An eta count never reconstructs a kind, and MonadTrans's first domain stays `(Type -> Type)`.
 

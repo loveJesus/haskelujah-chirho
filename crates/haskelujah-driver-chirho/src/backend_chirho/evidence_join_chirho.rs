@@ -406,16 +406,16 @@ pub(crate) fn admits_concrete_head_proof_chirho(
     let Some(applied_chirho) = record_chirho.applied_ty_chirho.as_ref() else {
         return false;
     };
-    let declares_method_chirho = class_env_chirho
+    let Some(class_chirho) = class_env_chirho
         .classes_chirho()
         .get_chirho(&record_chirho.class_name_chirho)
-        .is_some_and(|class_chirho| {
-            class_chirho
-                .methods_chirho
-                .contains_key(&record_chirho.name_chirho)
-        });
+    else {
+        return false;
+    };
     if record_chirho.origin_chirho.is_none()
-        || !declares_method_chirho
+        || !class_chirho
+            .methods_chirho
+            .contains_key(&record_chirho.name_chirho)
         || application_head_chirho(applied_chirho) != Some(record_chirho.ty_key_chirho.as_str())
         || !declarations_chirho
             .data_types_chirho
@@ -430,7 +430,11 @@ pub(crate) fn admits_concrete_head_proof_chirho(
     let predicate_chirho = match &record_chirho.ground_pred_chirho {
         Some(predicate_chirho)
             if predicate_chirho.class_name_chirho == record_chirho.class_name_chirho
-                && predicate_chirho.ty_chirho == *applied_chirho =>
+                && predicate_chirho.ty_chirho == *applied_chirho
+                && predicate_chirho.kind_tys_chirho.len()
+                    == class_chirho.kind_vars_chirho.len()
+                && predicate_chirho.extra_tys_chirho.len()
+                    == class_chirho.extra_vars_chirho.len() =>
         {
             predicate_chirho
         }
