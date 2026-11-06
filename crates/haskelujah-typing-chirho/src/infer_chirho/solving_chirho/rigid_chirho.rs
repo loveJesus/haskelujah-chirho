@@ -527,24 +527,12 @@ impl InferCtxChirho {
         self.skolem_bindings_chirho.apply_ty_chirho(&ty_chirho)
     }
 
-    /// Check whether an AST type has an explicit `forall` at the top level.
-    /// ScopedTypeVariables is on under GHC2021 (the default edition) and off
-    /// under an explicit Haskell2010 / Haskell98, unless the module says
-    /// otherwise; TypeAbstractions implies it.
+    /// Read the same effective canonical flag published before kind elaboration.
     pub(super) fn scoped_type_variables_enabled_chirho(module_chirho: &ModuleChirho) -> bool {
-        let mut explicit_chirho: Option<bool> = None;
-        let mut pre_ghc2021_chirho = false;
-        for extension_chirho in &module_chirho.extensions_chirho {
-            match extension_chirho.as_str() {
-                "ScopedTypeVariables" | "PatternSignatures" | "TypeAbstractions" => {
-                    explicit_chirho = Some(true);
-                }
-                "NoScopedTypeVariables" | "NoPatternSignatures" => explicit_chirho = Some(false),
-                "Haskell2010" | "Haskell98" => pre_ghc2021_chirho = true,
-                "GHC2021" | "GHC2024" => pre_ghc2021_chirho = false,
-                _ => {}
-            }
-        }
-        explicit_chirho.unwrap_or(!pre_ghc2021_chirho)
+        haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(
+            module_chirho,
+            "ScopedTypeVariables",
+            false,
+        )
     }
 }

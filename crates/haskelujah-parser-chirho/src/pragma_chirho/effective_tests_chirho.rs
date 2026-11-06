@@ -153,3 +153,29 @@ fn publication_keeps_one_effective_state_for_presence_based_consumers_chirho() {
     let indentation_chirho = policy_chirho(&["-XHaskell98"], "");
     assert!(indentation_chirho.enabled_chirho("NondecreasingIndentation"));
 }
+
+#[test]
+fn ghc_aliases_share_the_canonical_state_and_implication_history_chirho() {
+    for (alias_chirho, canonical_chirho) in [
+        ("DoRec", "RecursiveDo"),
+        ("PatternSignatures", "ScopedTypeVariables"),
+        ("Rank2Types", "RankNTypes"),
+        ("PolymorphicComponents", "RankNTypes"),
+        ("RecordPuns", "NamedFieldPuns"),
+        ("GeneralisedNewtypeDeriving", "GeneralizedNewtypeDeriving"),
+    ] {
+        let on_chirho = format!("-X{alias_chirho}");
+        let off_chirho = format!("-XNo{alias_chirho}");
+        assert!(policy_chirho(&["-XHaskell2010", &on_chirho], "").enabled_chirho(canonical_chirho));
+        assert!(
+            !policy_chirho(&["-XGHC2024", &on_chirho, &off_chirho], "")
+                .enabled_chirho(canonical_chirho)
+        );
+    }
+    let scoped_chirho = policy_chirho(&[], "{-# LANGUAGE Haskell2010, PatternSignatures #-}");
+    assert!(scoped_chirho.enabled_chirho("ExplicitForAll"));
+    assert!(
+        !policy_chirho(&["-XHaskell2010", "-XTypeAbstractions"], "")
+            .enabled_chirho("ScopedTypeVariables")
+    );
+}

@@ -1028,7 +1028,7 @@ fn declaration_head_underscore_kind_variable_is_implicitly_bound_chirho() {
 }
 
 #[test]
-fn ordinary_constructor_free_variable_requires_existential_extension_chirho() {
+fn ordinary_constructor_free_variable_requires_written_existential_binding_chirho() {
     let decl_chirho = DeclChirho::DataDeclChirho {
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
@@ -1054,7 +1054,11 @@ fn ordinary_constructor_free_variable_requires_existential_extension_chirho() {
     without_chirho
         .extensions_chirho
         .push("ExistentialQuantification".to_string());
-    assert!(check_chirho(&without_chirho, &env_chirho).is_empty_chirho());
+    // GHC-76037: the extension enables explicit forall syntax, not an unwritten binder.
+    assert_eq!(
+        check_chirho(&without_chirho, &env_chirho).error_count_chirho(),
+        1
+    );
 }
 
 #[test]

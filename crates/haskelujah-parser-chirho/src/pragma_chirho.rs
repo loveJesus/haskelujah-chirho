@@ -17,7 +17,9 @@ use crate::lexer_chirho::{LexerChirho, RawTokenChirho, RawTokenKindChirho};
 use haskelujah_span_chirho::FileIdChirho;
 
 mod catalogue_chirho;
-use catalogue_chirho::{edition_flags_chirho, expand_written_extension_chirho};
+use catalogue_chirho::{
+    canonical_extension_chirho, edition_flags_chirho, expand_written_extension_chirho,
+};
 
 /// One resolved module extension payload, shared by pre-layout classification and lowering.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -99,6 +101,8 @@ pub fn pragma_extension_entries_from_inner_chirho(
 }
 
 fn extension_entries_chirho(name_chirho: &str) -> Vec<PragmaExtensionChirho> {
+    let canonical_chirho = canonical_extension_chirho(name_chirho);
+    let name_chirho = canonical_chirho.as_ref();
     if let Some((edition_chirho, flags_chirho)) = edition_flags_chirho(name_chirho) {
         flags_chirho
             .iter()

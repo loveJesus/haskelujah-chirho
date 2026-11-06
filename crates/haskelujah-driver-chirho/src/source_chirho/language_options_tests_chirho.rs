@@ -99,3 +99,36 @@ fn no_poly_kinds_refuses_bound_kind_variables_but_retains_concrete_kinds_chirho(
     let concrete_chirho = "{-# LANGUAGE NoPolyKinds, DataKinds, KindSignatures #-}\nmodule ConcreteKindOffChirho where\nimport GHC.TypeLits (Nat)\ndata ProxyChirho (n :: Nat) = ProxyChirho\n";
     assert!(check_chirho(concrete_chirho, &[]).is_ok());
 }
+
+#[test]
+fn standalone_kind_quantifiers_do_not_bind_h98_constructor_fields_chirho() {
+    let source_chirho = "{-# LANGUAGE KindSignatures, PolyKinds, StandaloneKindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\ntype AChirho :: forall kChirho. kChirho -> Type\ndata AChirho aChirho = AChirho (ProxyChirho kChirho)\ndata ProxyChirho aChirho = ProxyChirho\nmain :: IO ()\nmain = pure ()\n";
+    assert!(check_chirho(source_chirho, &[]).is_err());
+}
+
+#[test]
+fn existential_syntax_requires_written_binders_for_ordinary_and_record_fields_chirho() {
+    for field_chirho in ["BoxChirho b", "BoxChirho { fieldChirho :: b }"] {
+        let free_chirho = format!(
+            "{{-# LANGUAGE ExistentialQuantification #-}}\nmodule M where\ndata BoxChirho a = {field_chirho}\n"
+        );
+        assert!(check_chirho(&free_chirho, &[]).is_err());
+        let bound_chirho = format!(
+            "{{-# LANGUAGE ExistentialQuantification #-}}\nmodule M where\ndata BoxChirho a = forall b. {field_chirho}\n"
+        );
+        assert!(check_chirho(&bound_chirho, &[]).is_ok());
+    }
+}
+
+#[test]
+fn documented_aliases_control_layout_and_ordinary_scoped_variables_chirho() {
+    let recursive_chirho =
+        "module RecursiveCallerChirho where\nvalueChirho :: IO ()\nvalueChirho = mdo\n  pure ()\n";
+    assert!(check_chirho(recursive_chirho, &["-XDoRec"]).is_ok());
+    assert!(check_chirho(recursive_chirho, &["-XNoDoRec"]).is_err());
+    let alias_chirho = "{-# LANGUAGE Haskell2010, PatternSignatures #-}\nmodule PatternSignaturesAliasChirho where\nvalueChirho :: forall a. a -> a\nvalueChirho x = (x :: a)\n";
+    assert!(check_chirho(alias_chirho, &[]).is_ok());
+    let abstraction_chirho = "{-# LANGUAGE Haskell2010, TypeAbstractions, ExplicitForAll #-}\nmodule TypeAbstractionsDoesNotScopeChirho where\nvalueChirho :: forall a. a -> a\nvalueChirho x = (x :: a)\n";
+    assert!(check_chirho(abstraction_chirho, &[]).is_err());
+    assert!(check_chirho(abstraction_chirho, &["-XScopedTypeVariables"]).is_ok());
+}

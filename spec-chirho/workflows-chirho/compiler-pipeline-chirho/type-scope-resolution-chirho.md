@@ -62,7 +62,7 @@ flowchart TD
     walk_uses_chirho --> tyvar_use_chirho{Type-variable use?}
     tyvar_use_chirho --> explicit_scope_chirho[Track declaration and explicit forall binders]
     explicit_scope_chirho --> policy_chirho{Declaration policy}
-    policy_chirho -->|Signature without outer forall, existential or family scope| implicit_quantification_chirho[Preserve permitted implicit quantification]
+    policy_chirho -->|Signature without outer forall, explicit existential or family scope| implicit_quantification_chirho[Preserve permitted implicit quantification]
     policy_chirho -->|Type synonym or ordinary field| lexical_lookup_chirho{Lexically bound?}
     lexical_lookup_chirho -->|No| undefined_tyvar_chirho[Emit E0101 type-variable diagnostic]
     lexical_lookup_chirho -->|Yes| continue_chirho
@@ -100,6 +100,8 @@ Canonical interface maps are the authority for imported names. Type and value op
 Layout and lowering preserve scope before naming sees the AST. An explicit right brace first closes implicit contexts nested inside its matching explicit context, so the enclosing module regains its virtual declaration separator. Unsupported data/newtype-family instances are still representation blockers, but their scanner stops at their own layout boundary; it must never consume a following signature or declaration. Data and newtype GADT constructor blocks share one parser, while standalone kind signatures retain their complete flat child sequence for the common type reconstruction path.
 
 The kind/type layer uses the same faithful shape downstream: required foralls contribute the kind of their body; symbolic standalone kind operators preserve application order; imported closed Boolean families reduce only when their leading argument selects an equation and otherwise remain stuck.
+
+Ordinary and record constructor fields require lexically bound variables even when `ExistentialQuantification` is enabled by the default GHC2021 edition. That extension permits a written existential prefix; it does not invent one for `data T a = MkT b`. A standalone kind signature quantifies its own variables and does not bind those names in an H98 constructor body. Fresh GHC 9.14.1 controls retain bare ordinary/record negatives and explicit-forall positives; the original N05 source remains unchanged.
 
 Two deliberately narrow AST trust boundaries remain. The record-field branch covers `bug-record-field-forall-lowering-chirho.md`; ordinary and required-forall fields remain checked. The constructor-prefix branch covers `bug-existential-constructor-scope-dropped-chirho.md`; it requires a prefix constructor name whose source span begins after its enclosing constructor span, excludes infix constructors, and defers only that constructor's field-variable scope. Both branches should disappear when the AST can carry the source binders and contexts directly.
 

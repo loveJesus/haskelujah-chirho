@@ -120,6 +120,8 @@ pub(super) fn edition_flags_chirho(name_chirho: &str) -> Option<(&'static str, V
 /// Enabling recurses through a finite acyclic implication graph. Disabling changes only
 /// the named flag, preserving earlier implications, as GHC's `setExtensionFlag'` does.
 pub(super) fn expand_written_extension_chirho(name_chirho: &str, flags_chirho: &mut Vec<String>) {
+    let canonical_chirho = canonical_extension_chirho(name_chirho);
+    let name_chirho = canonical_chirho.as_ref();
     flags_chirho.push(name_chirho.to_string());
     let implied_chirho: &[&str] = match name_chirho {
         "RankNTypes"
@@ -155,5 +157,25 @@ pub(super) fn expand_written_extension_chirho(name_chirho: &str, flags_chirho: &
     };
     for flag_chirho in implied_chirho {
         expand_written_extension_chirho(flag_chirho, flags_chirho);
+    }
+}
+
+/// Documented GHC spellings share one canonical extension state, including No aliases.
+pub(super) fn canonical_extension_chirho(name_chirho: &str) -> std::borrow::Cow<'_, str> {
+    let (disabled_chirho, base_chirho) = name_chirho
+        .strip_prefix("No")
+        .map_or((false, name_chirho), |base_chirho| (true, base_chirho));
+    let canonical_chirho = match base_chirho {
+        "DoRec" => "RecursiveDo",
+        "PatternSignatures" => "ScopedTypeVariables",
+        "Rank2Types" | "PolymorphicComponents" => "RankNTypes",
+        "RecordPuns" => "NamedFieldPuns",
+        "GeneralisedNewtypeDeriving" => "GeneralizedNewtypeDeriving",
+        _ => return std::borrow::Cow::Borrowed(name_chirho),
+    };
+    if disabled_chirho {
+        std::borrow::Cow::Owned(format!("No{canonical_chirho}"))
+    } else {
+        std::borrow::Cow::Borrowed(canonical_chirho)
     }
 }

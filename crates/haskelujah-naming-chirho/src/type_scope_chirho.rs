@@ -60,7 +60,6 @@ struct TypeScopeWalkerChirho<'scope_chirho> {
     bound_tyvars_chirho: HashMap<String, usize>,
     reported_chirho: HashSet<(TypeScopeIssueChirho, String, SpanChirho)>,
     instance_associated_type_scope_chirho: HashMap<String, HashSet<String>>,
-    existential_quantification_chirho: bool,
     data_kinds_chirho: bool,
     star_is_type_chirho: bool,
     imported_constructor_inventory_may_be_incomplete_chirho: bool,
@@ -85,13 +84,6 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
             instance_associated_type_scope_chirho: collect_instance_associated_type_scope_chirho(
                 module_chirho,
                 available_modules_chirho,
-            ),
-            existential_quantification_chirho: extension_enabled_chirho(
-                module_chirho,
-                "ExistentialQuantification",
-            ) || extension_enabled_chirho(
-                module_chirho,
-                "GADTs",
             ),
             data_kinds_chirho: extension_enabled_chirho(module_chirho, "DataKinds")
                 || extension_enabled_chirho(module_chirho, "TypeInType"),
@@ -501,13 +493,14 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
     }
 
     fn walk_constructor_chirho(&mut self, constructor_chirho: &ConDeclChirho) {
-        let field_policy_chirho = if self.existential_quantification_chirho
-            || constructor_has_unrepresented_scope_prefix_chirho(constructor_chirho)
-        {
-            FreeTyVarPolicyChirho::ImplicitChirho
-        } else {
-            FreeTyVarPolicyChirho::RequireBoundChirho
-        };
+        // Enabling existential syntax does not implicitly bind a bare H98 field variable.
+        // Only the existing explicit-prefix lowering recovery admits unrepresented binders.
+        let field_policy_chirho =
+            if constructor_has_unrepresented_scope_prefix_chirho(constructor_chirho) {
+                FreeTyVarPolicyChirho::ImplicitChirho
+            } else {
+                FreeTyVarPolicyChirho::RequireBoundChirho
+            };
         match constructor_chirho {
             ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => {
                 for (_, field_ty_chirho) in fields_chirho {
