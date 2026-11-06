@@ -51,11 +51,31 @@ struct FrameChirho<'syntax_chirho> {
     )>,
 }
 
-#[derive(Hash, PartialEq, Eq)]
-struct VariableChirho {
+struct VariableChirho<'syntax_chirho> {
     source_chirho: ScopedTypeVariableIdChirho,
     // The frame is an actual lexical instantiation, not a source-name identity.
-    frame_chirho: usize,
+    // Retain it while a key exists, even when substitution returns to a caller.
+    frame_chirho: EnvironmentChirho<'syntax_chirho>,
+}
+
+impl PartialEq for VariableChirho<'_> {
+    fn eq(&self, other_chirho: &Self) -> bool {
+        self.source_chirho == other_chirho.source_chirho
+            && match (&self.frame_chirho, &other_chirho.frame_chirho) {
+                (Some(left_chirho), Some(right_chirho)) => Arc::ptr_eq(left_chirho, right_chirho),
+                (None, None) => true,
+                _ => false,
+            }
+    }
+}
+
+impl Eq for VariableChirho<'_> {}
+
+impl std::hash::Hash for VariableChirho<'_> {
+    fn hash<HChirho: std::hash::Hasher>(&self, state_chirho: &mut HChirho) {
+        std::hash::Hash::hash(&self.source_chirho, state_chirho);
+        std::hash::Hash::hash(&self.frame_chirho.as_ref().map(Arc::as_ptr), state_chirho);
+    }
 }
 
 enum PendingChirho<'syntax_chirho> {
@@ -174,7 +194,7 @@ impl<'syntax_chirho> CheckerChirho<'syntax_chirho, '_> {
         &mut self,
         name_chirho: &NameChirho,
         environment_chirho: &EnvironmentChirho<'syntax_chirho>,
-    ) -> Result<VariableChirho, ElaborationErrorChirho> {
+    ) -> Result<VariableChirho<'syntax_chirho>, ElaborationErrorChirho> {
         let source_chirho = name_chirho
             .type_variable_chirho()
             .ok_or_else(|| self.error_chirho("pattern result variable lost its checked owner"))?;
@@ -186,7 +206,7 @@ impl<'syntax_chirho> CheckerChirho<'syntax_chirho, '_> {
             }
             return Ok(VariableChirho {
                 source_chirho: source_chirho.clone(),
-                frame_chirho: Arc::as_ptr(&frame_chirho) as usize,
+                frame_chirho: Some(frame_chirho),
             });
         }
         match source_chirho {
@@ -195,7 +215,7 @@ impl<'syntax_chirho> CheckerChirho<'syntax_chirho, '_> {
             {
                 Ok(VariableChirho {
                     source_chirho: source_chirho.clone(),
-                    frame_chirho: 0,
+                    frame_chirho: None,
                 })
             }
             _ => Err(self.error_chirho("pattern result contains an unbound canonical variable")),
@@ -205,7 +225,7 @@ impl<'syntax_chirho> CheckerChirho<'syntax_chirho, '_> {
         &mut self,
         name_chirho: &NameChirho,
         environment_chirho: &EnvironmentChirho<'syntax_chirho>,
-        existentials_chirho: &HashSet<VariableChirho>,
+        existentials_chirho: &HashSet<VariableChirho<'syntax_chirho>>,
         pending_chirho: &mut Vec<PendingChirho<'syntax_chirho>>,
     ) -> Result<(), ElaborationErrorChirho> {
         let Some(source_chirho) = name_chirho.type_variable_chirho() else {
@@ -510,7 +530,7 @@ impl<'syntax_chirho> CheckerChirho<'syntax_chirho, '_> {
     fn scan_chirho(
         &mut self,
         result_chirho: ViewChirho<'syntax_chirho>,
-        existentials_chirho: &HashSet<VariableChirho>,
+        existentials_chirho: &HashSet<VariableChirho<'syntax_chirho>>,
     ) -> Result<(), ElaborationErrorChirho> {
         self.charge_chirho(1)?;
         let mut pending_chirho = vec![PendingChirho::TypeChirho(result_chirho)];

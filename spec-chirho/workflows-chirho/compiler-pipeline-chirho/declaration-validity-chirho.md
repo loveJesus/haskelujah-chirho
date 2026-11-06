@@ -30,6 +30,8 @@ A pattern synonym's existing checked signature scope also retains its written AS
 
 An applied arrow head needs the actual checked compiler function declaration and a nonopaque occurrence. Its spelling alone is insufficient, and an explicit opaque projection refuses even if a stale copied declaration proof remains on the occurrence. A grammar-owned `FunChirho` is already an arrow; the cursor consumes it directly.
 
+Each lexical variable key retains its actual frame while comparing that frame's identity. Substitution can return to an older caller and discard the current view; a key must still keep its frame alive so a later instantiation of the same published binder cannot acquire the same recycled address. Hashing and equality use the same lexical identity, and retaining the frame adds no new identifier or lookup registry. Existing frame/output charges and depth bounds remain unchanged.
+
 ```mermaid
 flowchart LR
     language_chirho["Real header, caller flags and post-CPP language state"] --> flags_chirho["One effective Module.extensions"]

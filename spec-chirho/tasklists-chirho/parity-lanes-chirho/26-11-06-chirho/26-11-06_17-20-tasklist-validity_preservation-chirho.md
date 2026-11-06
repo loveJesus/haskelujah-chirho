@@ -15,8 +15,13 @@ Owned row688 repair after fresh A9-versus-kind29 diagnostics. Main/DB/landing re
 - [x] Preserve failed GHC positive predictions: erased alias result rejects33973; untyped const-view input rejects91028. A distinct typed-view twin accepts. Do not call the failed sources repaired positives.
 - [x] Finish final-source typing832/source-options15 with identical five-file manifests after the review repairs. The direct function-head control accepts a checked arrow and refuses raw spelling or an opaque projection carrying stale proof. Final all-target Clippy has zero milestone intersections and250 outside-span diagnostics, not parent-attributed.
 - [x] Correct the ignored focused runner's source manifest to include staged changes (`git diff HEAD`) as well as untracked files. Preserve the earlier r5 execution as having an incomplete source-pin scope; final r6 receipts pin all five Rust files before/after.
+- [x] Commit/push the coherent pattern checkpoint3f2e2eb9 with outgoing secret scan0 and remote verification; its focused832/15 scope does not establish frozen preservation.
+- [x] Reproduce lexical-frame address reuse on old3f2 with the new distinct-instantiation control: one actual assertion failure, no timeout/source drift/owned leftovers. Restore the corrected source unconditionally and retain the negative receipt.
+- [x] Retain each keyed lexical frame's actual Arc so substitution back to a caller cannot make that key collide with a later instantiation. Corrected-source typing833 and source-options15 pass on identical two-file manifests; no new identity, registry or resource allowance.
+- [x] Finish recursive follow-up lint attribution: Cargo0, zero follow-up intersections,250 outside-span diagnostics and no unspanned diagnostics. This does not close full-feature lint debt.
+- [ ] Publish the frame-retention checkpoint and retain its exact before/after receipt closure.
 - [ ] Run frozen source replay appropriate to the changed consumers; the fresh A9/08 replay predates this validity fix.
-- [ ] Commit/push coherent source with outgoing secret scan and exact evidence handoff; retain unresolved pattern existential and broader predicate/inference losses explicitly.
+- [ ] Retain unresolved pattern matching and broader predicate/inference losses in the frozen handoff; no ordinary-preservation acceptance before that evidence.
 
 Placement: existing typing validity consumer plus existing driver language-options tests. No new registry, identity permission, inference/defaulting or runtime route. The upstream Haskell2010 literals retain their exact bytes. Datatype constructor prefixes and actual field types remain distinct AST producers.
 

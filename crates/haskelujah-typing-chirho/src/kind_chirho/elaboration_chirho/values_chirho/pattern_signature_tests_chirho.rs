@@ -90,6 +90,36 @@ fn lexical_mask_distinguishes_two_uses_of_one_published_binder_chirho() {
 }
 
 #[test]
+fn an_escaped_lexical_key_never_matches_a_later_instantiation_chirho() {
+    let catalogue_chirho = DeclarationSchemesChirho::default();
+    let mut state_chirho = ElaborationStateChirho::new_chirho().unwrap();
+    let name_chirho = parameter_chirho();
+    let binder_chirho = AstTyVarChirho::plain_chirho(name_chirho.clone());
+    let mut checker_chirho = CheckerChirho {
+        catalogue_chirho: &catalogue_chirho,
+        state_chirho: &mut state_chirho,
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let environment_chirho = checker_chirho
+        .mask_chirho(std::slice::from_ref(&binder_chirho), None)
+        .unwrap();
+    let old_chirho = HashSet::from([checker_chirho
+        .variable_chirho(&name_chirho, &environment_chirho)
+        .unwrap()]);
+    // A substitution may return to a caller that no longer needs this frame.
+    drop(environment_chirho);
+    for _ in 0..128 {
+        let next_chirho = checker_chirho
+            .mask_chirho(std::slice::from_ref(&binder_chirho), None)
+            .unwrap();
+        let variable_chirho = checker_chirho
+            .variable_chirho(&name_chirho, &next_chirho)
+            .unwrap();
+        assert!(!old_chirho.contains(&variable_chirho));
+    }
+}
+
+#[test]
 fn constraint_heads_and_multiplicities_scan_the_checked_image_chirho() {
     let catalogue_chirho = DeclarationSchemesChirho::default();
     let mut state_chirho = ElaborationStateChirho::new_chirho().unwrap();
