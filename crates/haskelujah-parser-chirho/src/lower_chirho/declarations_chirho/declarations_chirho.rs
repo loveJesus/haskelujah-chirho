@@ -169,6 +169,8 @@ impl LowerCtxChirho {
             .collect()
     }
 
+    /// Keep the complete kind after the declaration delimiter, including inner
+    /// binder annotations. Workflow: language-features-chirho/declaration-kinds-chirho.
     pub(super) fn lower_standalone_kind_sig_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
@@ -188,7 +190,9 @@ impl LowerCtxChirho {
                         && tok_chirho.kind_chirho() == TokenKindChirho::TypeKeywordChirho
                     {
                         saw_type_keyword_chirho = true;
-                    } else if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho {
+                    } else if !saw_double_colon_chirho
+                        && tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho
+                    {
                         saw_double_colon_chirho = true;
                     } else if saw_double_colon_chirho {
                         type_children_chirho.push(child_chirho);

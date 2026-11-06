@@ -234,8 +234,17 @@ impl TypeElaboratorChirho<'_> {
                     | TyChirho::RequiredForallChirho {
                         vars_chirho,
                         body_chirho,
-                    } if index_chirho < scheme_chirho.binders_chirho.len() || index_chirho == 0 => {
+                    } if index_chirho < scheme_chirho.binders_chirho.len()
+                        || (!required_chirho && index_chirho == 0) =>
+                    {
+                        // Required quantifiers after the written header belong
+                        // to the result, including a suffix of this same group.
+                        let mut consumed_chirho = 0;
                         for variable_chirho in vars_chirho.iter().copied() {
+                            if required_chirho && index_chirho == scheme_chirho.binders_chirho.len()
+                            {
+                                break;
+                            }
                             let kind_chirho = self
                                 .state_chirho
                                 .variable_kind_chirho(variable_chirho, span_chirho)?;
@@ -276,6 +285,21 @@ impl TypeElaboratorChirho<'_> {
                                 rigid_chirho.push(variable_chirho);
                                 binders_chirho.push(DeclarationBinderChirho { term_specificity_chirho: None, variable_chirho, kind_chirho, visibility_chirho: if self.state_chirho.source_specificity_chirho(variable_chirho) == Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho) { TelescopeVisibilityChirho::InferredChirho } else { TelescopeVisibilityChirho::SpecifiedChirho } });
                             }
+                            consumed_chirho += 1;
+                        }
+                        if consumed_chirho < vars_chirho.len() {
+                            let remaining_chirho = vars_chirho.len() - consumed_chirho;
+                            self.state_chirho.charge_chirho(
+                                remaining_chirho,
+                                remaining_chirho,
+                                span_chirho,
+                            )?;
+                            signature_chirho = TyChirho::RequiredForallChirho {
+                                vars_chirho: vars_chirho
+                                    .slice_chirho(consumed_chirho..vars_chirho.len()),
+                                body_chirho,
+                            };
+                            break;
                         }
                         signature_chirho = *body_chirho;
                     }

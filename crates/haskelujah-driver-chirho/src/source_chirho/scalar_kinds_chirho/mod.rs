@@ -62,6 +62,28 @@ fn original_newtype_record_rejects_different_primitive_representations_chirho() 
 }
 
 #[test]
+fn an_original_required_result_quantifier_stays_after_the_declaration_header_chirho() {
+    let path_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../ghc-tests-chirho/typecheck-chirho/should_compile/T18891.hs");
+    if let Err(error_chirho) =
+        crate::check_source_path_chirho(path_chirho, crate::ExecutionModeChirho::BatchChirho)
+    {
+        panic!("retained GHC-positive required result kind: {error_chirho}");
+    }
+}
+
+#[test]
+fn an_original_invisible_result_quantifier_cannot_refine_a_newtype_representation_chirho() {
+    let path_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../ghc-tests-chirho/typecheck-chirho/should_fail/T18891a.hs");
+    assert!(
+        crate::check_source_path_chirho(path_chirho, crate::ExecutionModeChirho::BatchChirho)
+            .is_err(),
+        "retained GHC89498: invisible result polymorphism cannot refine a newtype representation"
+    );
+}
+
+#[test]
 fn class_methods_consume_the_actual_checked_kind_beside_a_primitive_supplier_chirho() {
     if let Err(error_chirho) = check_chirho(include_str!("LocalClassMethodKindChirho.hs"), &[]) {
         panic!("fresh GHC-positive lifted source method: {error_chirho}");

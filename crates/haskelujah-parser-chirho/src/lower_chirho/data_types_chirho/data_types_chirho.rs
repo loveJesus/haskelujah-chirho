@@ -641,6 +641,7 @@ impl LowerCtxChirho {
                         saw_where_chirho = true;
                     } else if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho
                         && saw_newtype_chirho
+                        && !saw_double_colon_chirho
                         && !saw_equals_chirho
                         && !saw_where_chirho
                     {
