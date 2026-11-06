@@ -213,7 +213,9 @@ fn reader_callbacks_and_superclass_methods_take_the_written_instance_everywhere_
 
 #[test]
 fn a_reader_instance_whose_superclass_dictionary_cannot_be_built_is_refused_chirho() {
-    for (file_name_chirho, source_chirho) in [
+    // Both files are measured before the one assertion, so an accepted first file never hides
+    // the second file's outcome: its refusal, or every engine's run when it compiles.
+    let outcomes_chirho: Vec<_> = [
         (
             "ReaderMissingApplicativeChirho.hs",
             READER_MISSING_APPLICATIVE_CHIRHO,
@@ -222,16 +224,27 @@ fn a_reader_instance_whose_superclass_dictionary_cannot_be_built_is_refused_chir
             "ReaderContextualApplicativeChirho.hs",
             READER_CONTEXTUAL_APPLICATIVE_CHIRHO,
         ),
-    ] {
+    ]
+    .into_iter()
+    .map(|(file_name_chirho, source_chirho)| {
         let compiled_chirho = compile_source_chirho(
             source_chirho,
             &mut SourceMapChirho::new_chirho(),
             file_name_chirho,
         );
-        assert!(
-            compiled_chirho.is_err(),
-            "{file_name_chirho}: compiled, though GHC refuses it; every engine: {:?}",
-            every_engine_chirho(file_name_chirho, source_chirho)
-        );
-    }
+        let engines_chirho = compiled_chirho
+            .is_ok()
+            .then(|| every_engine_chirho(file_name_chirho, source_chirho));
+        let refusal_chirho = compiled_chirho
+            .err()
+            .map(|refusal_chirho| refusal_chirho.to_string());
+        (file_name_chirho, refusal_chirho, engines_chirho)
+    })
+    .collect();
+    assert!(
+        outcomes_chirho
+            .iter()
+            .all(|(_, refusal_chirho, _)| refusal_chirho.is_some()),
+        "GHC refuses both; any file that compiled ran on every engine instead: {outcomes_chirho:?}"
+    );
 }
