@@ -88,9 +88,9 @@ use dependency_packages_chirho::{
 };
 #[cfg(test)]
 use dependency_packages_chirho::{
-    collect_local_dependency_frontend_artifacts_chirho,
-    compile_module_sources_with_extra_ifaces_chirho, find_local_dependency_package_dir_chirho,
-    merge_local_dependency_package_index_chirho, scan_dependency_package_ifaces_chirho,
+    collect_local_dependency_frontend_artifacts_chirho, compile_module_sources_linked_chirho,
+    find_local_dependency_package_dir_chirho, merge_local_dependency_package_index_chirho,
+    scan_dependency_package_ifaces_chirho,
 };
 use family_exports_chirho::{
     build_family_aware_iface_chirho, build_type_family_scope_chirho,

@@ -7,10 +7,9 @@
 mod tests_chirho {
     use crate::{
         collect_frontend_artifacts_from_module_sources_chirho,
-        collect_local_dependency_frontend_artifacts_chirho,
-        compile_module_sources_with_extra_ifaces_chirho, compile_project_dir_chirho,
-        discover_hs_files_chirho, extract_imports_chirho, extract_module_name_chirho,
-        filter_seeded_imported_types_for_source_chirho,
+        collect_local_dependency_frontend_artifacts_chirho, compile_module_sources_linked_chirho,
+        compile_project_dir_chirho, discover_hs_files_chirho, extract_imports_chirho,
+        extract_module_name_chirho, filter_seeded_imported_types_for_source_chirho,
         filter_seeded_type_synonyms_for_source_chirho,
     };
     use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
@@ -379,13 +378,18 @@ mod tests_chirho {
             })
             .collect();
         let mut source_map_chirho = SourceMapChirho::new_chirho();
-        let compile_result_chirho = compile_module_sources_with_extra_ifaces_chirho(
+        let compile_result_chirho = compile_module_sources_linked_chirho(
             module_sources_chirho,
             &mut source_map_chirho,
-            vec![],
-            std::collections::HashMap::new(),
-            std::collections::HashMap::new(),
-            haskelujah_typing_chirho::infer_chirho::TypeFamilyEnvChirho::new_chirho(),
+            crate::FrontendSeedArtifactsChirho {
+                ifaces_chirho: vec![],
+                interface_sources_chirho: None,
+                imported_types_chirho: std::collections::HashMap::new(),
+                imported_type_synonyms_chirho: std::collections::HashMap::new(),
+                imported_type_families_chirho:
+                    haskelujah_typing_chirho::infer_chirho::TypeFamilyEnvChirho::new_chirho(),
+            },
+            &std::collections::HashSet::new(),
         );
 
         match compile_result_chirho {
@@ -419,13 +423,18 @@ mod tests_chirho {
             "module Main where\nimport GHC.Event\nmain = do\n  mgr <- getSystemTimerManager\n  key <- registerTimeout mgr 1000 (pure ())\n  unregisterTimeout mgr key\n".to_string(),
         )];
         let mut source_map_chirho = SourceMapChirho::new_chirho();
-        let compile_result_chirho = compile_module_sources_with_extra_ifaces_chirho(
+        let compile_result_chirho = compile_module_sources_linked_chirho(
             module_sources_chirho,
             &mut source_map_chirho,
-            vec![],
-            std::collections::HashMap::new(),
-            std::collections::HashMap::new(),
-            haskelujah_typing_chirho::infer_chirho::TypeFamilyEnvChirho::new_chirho(),
+            crate::FrontendSeedArtifactsChirho {
+                ifaces_chirho: vec![],
+                interface_sources_chirho: None,
+                imported_types_chirho: std::collections::HashMap::new(),
+                imported_type_synonyms_chirho: std::collections::HashMap::new(),
+                imported_type_families_chirho:
+                    haskelujah_typing_chirho::infer_chirho::TypeFamilyEnvChirho::new_chirho(),
+            },
+            &std::collections::HashSet::new(),
         );
 
         assert!(

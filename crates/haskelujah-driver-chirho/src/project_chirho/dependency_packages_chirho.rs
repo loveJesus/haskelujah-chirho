@@ -583,32 +583,6 @@ pub(crate) fn collect_frontend_artifacts_from_module_sources_chirho(
     .map(|compiled_chirho| compiled_chirho.artifacts_chirho)
 }
 
-/// Every module's Core, with only these sources as program modules.
-pub(crate) fn compile_module_sources_with_extra_ifaces_chirho(
-    module_sources_chirho: Vec<(String, String, String)>,
-    source_map_chirho: &mut SourceMapChirho,
-    extra_ifaces_chirho: Vec<ModuleIfaceChirho>,
-    initial_imported_types_chirho: std::collections::HashMap<
-        String,
-        haskelujah_typing_chirho::ty_chirho::SchemeChirho,
-    >,
-    initial_imported_type_synonyms_chirho: ImportedTypeSynonymsChirho,
-    initial_imported_type_families_chirho: ImportedTypeFamiliesChirho,
-) -> Result<ProjectCompileResultChirho, String> {
-    compile_module_sources_linked_chirho(
-        module_sources_chirho,
-        source_map_chirho,
-        FrontendSeedArtifactsChirho {
-            ifaces_chirho: extra_ifaces_chirho,
-            interface_sources_chirho: None,
-            imported_types_chirho: initial_imported_types_chirho,
-            imported_type_synonyms_chirho: initial_imported_type_synonyms_chirho,
-            imported_type_families_chirho: initial_imported_type_families_chirho,
-        },
-        &std::collections::HashSet::new(),
-    )
-}
-
 /// Every module's Core, compiled so references to `linked_modules_chirho` (dependency modules
 /// merged into the same executable) are program references (row 703).
 pub(crate) fn compile_module_sources_linked_chirho(

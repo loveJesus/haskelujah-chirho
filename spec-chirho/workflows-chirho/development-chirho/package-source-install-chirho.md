@@ -108,7 +108,10 @@ flowchart TD
 
 - `compile_module_sources_once_chirho` is the only SCC loop. Both
   `collect_frontend_artifacts_from_module_sources_chirho`, for seeds, and
-  `compile_module_sources_with_extra_ifaces_chirho`, for Core, are thin wrappers around it.
+  `compile_module_sources_linked_chirho`, for Core, are thin wrappers around it. The legacy
+  `compile_module_sources_with_extra_ifaces_chirho` adapter was removed once nothing outside the
+  tests called it. Its tests now call the linked wrapper with the same empty seed and no linked
+  modules.
 - Dependency results are collected once per build and shared by every executable. Each executable
   appends its own results and truncates them again, since compile results cannot be copied.
 - A dependency that fails to compile fails the build, because its body cannot be linked.

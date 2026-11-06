@@ -2079,13 +2079,17 @@ fn frontend_seed_batch_propagates_associated_type_families_between_modules_chirh
         ),
     ];
 
-    let result_chirho = crate::compile_module_sources_with_extra_ifaces_chirho(
+    let result_chirho = crate::compile_module_sources_linked_chirho(
         module_sources_chirho,
         &mut source_map_chirho,
-        vec![],
-        HashMap::new(),
-        crate::ImportedTypeSynonymsChirho::new(),
-        crate::ImportedTypeFamiliesChirho::new_chirho(),
+        crate::FrontendSeedArtifactsChirho {
+            ifaces_chirho: vec![],
+            interface_sources_chirho: None,
+            imported_types_chirho: HashMap::new(),
+            imported_type_synonyms_chirho: crate::ImportedTypeSynonymsChirho::new(),
+            imported_type_families_chirho: crate::ImportedTypeFamiliesChirho::new_chirho(),
+        },
+        &std::collections::HashSet::new(),
     );
 
     assert!(
