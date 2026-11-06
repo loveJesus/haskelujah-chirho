@@ -90,8 +90,6 @@ main = Map.findWithDefault 0 1 m
     }
 }
 
-// ── Additional list functions ───────────────────────────────────
-
 // ── Data.Map String-keyed ─────────────────────────────────────
 
 #[test]
@@ -352,8 +350,6 @@ fn eval_map_map_double_chirho() {
 
 // ── Data.Set end-to-end ─────────────────────────────────────────────
 
-// ── Data.Set end-to-end ─────────────────────────────────────────────
-
 #[test]
 fn eval_set_from_list_size_chirho() {
     // setSize (setFromList [3,1,2,1,3]) → 3
@@ -394,8 +390,6 @@ fn eval_set_union_size_chirho() {
         haskelujah_runtime_chirho::ValueChirho::IntChirho(4)
     );
 }
-
-// ── Data.Set primop-based end-to-end tests ──────────────────────────
 
 // ── Data.Set primop-based end-to-end tests ──────────────────────────
 
@@ -466,13 +460,6 @@ main = let s1 = setFromList [1,2]
             .expect("eval_set_union_new_chirho should evaluate");
     assert_eq!(result_chirho.1.io_output_chirho, "3\n");
 }
-
-// ── List recursion with accumulator ───────────────────────────────
-
-/// Test 5: myReverse using go accumulator helper in where-clause.
-/// sum (myReverse [1,2,3,4,5]) = 15
-/// Uses case-expression style for the where helper to avoid multi-equation
-/// where-function list-pattern limitations.
 
 // ── Data.Map additional operations ────────────────────────────────────
 
@@ -574,8 +561,6 @@ main = sum (Map.elems (Map.intersectionWith (+) m1 m2))
         haskelujah_runtime_chirho::ValueChirho::IntChirho(72)
     );
 }
-
-// ── Data.List: find ───────────────────────────────────────────────────
 
 // John 3:16 - For God so loved the world, that he gave his only begotten Son,
 // that whosoever believeth in him should not perish, but have everlasting life.

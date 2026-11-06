@@ -4,8 +4,6 @@
 
 use haskelujah_span_chirho::SourceMapChirho;
 
-// ── 3-tuple pattern matching ────────────────────────────────────────
-
 // ── Monad transformer infrastructure ──────────────────────────────────
 
 #[test]

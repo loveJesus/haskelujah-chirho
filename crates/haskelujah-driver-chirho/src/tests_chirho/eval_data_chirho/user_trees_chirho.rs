@@ -4,8 +4,6 @@
 
 use haskelujah_span_chirho::SourceMapChirho;
 
-// ── Deriving Ord end-to-end ─────────────────────────────────────────
-
 // ── BST / parameterized data type tests ────────────────────────────
 
 #[test]
@@ -79,8 +77,6 @@ main = sum (toList (insert 3 (insert 1 (insert 4 (insert 2 Leaf)))))
         haskelujah_runtime_chirho::ValueChirho::IntChirho(10)
     );
 }
-
-// ── Polymorphic elem/notElem/nub/isPrefixOf for Char ─────────────────
 
 // ── Data.Map (user-defined BST) end-to-end tests ──────────────────
 
@@ -338,8 +334,6 @@ main = dictSize (dInsert 5 50 (dInsert 4 40 (dInsert 3 30 (dInsert 2 20 (dInsert
     );
 }
 
-// ── Tuple pattern in function arguments ───────────────────────────
-
 // ── Complex user-defined data types ───────────────────────────────
 
 #[test]
@@ -406,8 +400,6 @@ main = depth (RNode 1 (RNode 2 (RLeaf 3) (RLeaf 4)) (RLeaf 5))
 
 // ── Higher-order functions with user data types ────────────────────
 
-// ── Higher-order functions with user data types ────────────────────
-
 #[test]
 fn eval_map_over_tree_chirho() {
     // Map a function over all values in a BST, sum result
@@ -437,8 +429,6 @@ main = sum (toList (mapTree (\x -> x * 2) (insert 3 (insert 1 (insert 2 Leaf))))
 
 // ── Accumulator pattern with user data type ───────────────────────
 
-// ── Accumulator pattern with user data type ───────────────────────
-
 #[test]
 fn eval_stack_push_pop_chirho() {
     // User-defined Stack data type with push/pop/peek
@@ -461,8 +451,6 @@ main = peek s + stackSize s
         haskelujah_runtime_chirho::ValueChirho::IntChirho(33)
     );
 }
-
-// ── tails / inits ─────────────────────────────────────────────────
 
 // ── Nested data types with pattern matching ────────────────────────
 

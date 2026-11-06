@@ -5,8 +5,6 @@
 use crate::eval_source_with_machine_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 
-// ── Literal pattern matching in function equations ──
-
 // ── Synthetic module imports ─────────────────────────────────────────
 
 #[test]

@@ -286,32 +286,29 @@ f = MkPoint{..}
             matches_chirho,
             ..
         } = decl_chirho
+            && name_chirho.text_chirho() == "f"
         {
-            if name_chirho.text_chirho() == "f" {
-                for m_chirho in matches_chirho {
-                    if let RhsChirho::UnguardedChirho(expr_chirho) = &m_chirho.rhs_chirho {
-                        if let ExprChirho::RecordConChirho {
-                            has_wildcard_chirho,
-                            ..
-                        } = expr_chirho
-                        {
-                            return *has_wildcard_chirho;
-                        }
-                    }
-                }
-            }
-        }
-        // Check PatBindChirho
-        if let DeclChirho::PatBindChirho { rhs_chirho, .. } = decl_chirho {
-            if let RhsChirho::UnguardedChirho(expr_chirho) = rhs_chirho {
-                if let ExprChirho::RecordConChirho {
+            for m_chirho in matches_chirho {
+                if let RhsChirho::UnguardedChirho(ExprChirho::RecordConChirho {
                     has_wildcard_chirho,
                     ..
-                } = expr_chirho
+                }) = &m_chirho.rhs_chirho
                 {
                     return *has_wildcard_chirho;
                 }
             }
+        }
+        // Check PatBindChirho
+        if let DeclChirho::PatBindChirho {
+            rhs_chirho:
+                RhsChirho::UnguardedChirho(ExprChirho::RecordConChirho {
+                    has_wildcard_chirho,
+                    ..
+                }),
+            ..
+        } = decl_chirho
+        {
+            return *has_wildcard_chirho;
         }
         false
     });

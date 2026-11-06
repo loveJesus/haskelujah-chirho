@@ -98,8 +98,6 @@ main = if MkAge 5 == MkAge 5 then 1 else 0
     }
 }
 
-// ── zipWith and unzip tests ──
-
 // ── ExistentialQuantification tests ──
 
 #[test]
