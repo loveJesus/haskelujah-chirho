@@ -385,3 +385,96 @@ fn cold_source_discovery_transports_the_actual_value_telescope_chirho() {
         );
     }
 }
+
+#[test]
+fn selected_builtin_keeps_its_module_specific_value_scheme_chirho() {
+    let ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    for source_chirho in [
+        include_str!(
+            "../../source_chirho/value_telescopes_chirho/reflection_chirho/ReflectionValueCorrectChirho.hs"
+        ),
+        include_str!(
+            "../../source_chirho/value_telescopes_chirho/reflection_chirho/TypeableProxyCorrectChirho.hs"
+        ),
+    ] {
+        crate::run_frontend_chirho(
+            source_chirho,
+            FileIdChirho::SYNTHETIC_CHIRHO,
+            &ifaces_chirho,
+            &HashMap::new(),
+        )
+        .expect("actual builtin keeps its module-specific value contract");
+    }
+    assert!(crate::run_frontend_chirho(
+        include_str!("../../source_chirho/value_telescopes_chirho/reflection_chirho/ReflectionValueWrongChirho.hs"),
+        FileIdChirho::SYNTHETIC_CHIRHO, &ifaces_chirho, &HashMap::new()).is_err(),
+        "module-specific TypeRep result parameter remains checked");
+}
+
+#[test]
+fn selected_source_cannot_borrow_a_qualified_compiler_value_seed_chirho() {
+    let mut ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    let source_chirho = "{-# LANGUAGE ExplicitForAll #-}\nmodule Type.Reflection (typeRep) where\ntypeRep :: forall aChirho. aChirho -> aChirho\ntypeRep xChirho = xChirho\n";
+    let checked_chirho = crate::run_frontend_chirho(
+        source_chirho,
+        FileIdChirho::SYNTHETIC_CHIRHO,
+        &ifaces_chirho,
+        &HashMap::new(),
+    )
+    .expect("actual source namesake producer");
+    let source_scheme_chirho = checked_chirho
+        .infer_result_chirho
+        .env_chirho
+        .lookup_chirho("typeRep")
+        .unwrap()
+        .clone();
+    let iface_chirho = haskelujah_naming_chirho::build_iface_with_imports_chirho(
+        &checked_chirho.module_chirho,
+        &ifaces_chirho,
+    )
+    .expect("actual source interface");
+    ifaces_chirho.retain(|iface_chirho| iface_chirho.name_chirho != "Type.Reflection");
+    ifaces_chirho.push(iface_chirho);
+    let caller_chirho = "module CallerChirho where\nimport qualified Type.Reflection as ReflectionChirho\nvalueChirho = ReflectionChirho.typeRep\n";
+    for known_chirho in [false, true] {
+        let types_chirho = if known_chirho {
+            HashMap::from([(
+                "Type.Reflection.typeRep".to_owned(),
+                source_scheme_chirho.clone(),
+            )])
+        } else {
+            HashMap::new()
+        };
+        let result_chirho = crate::run_frontend_chirho(
+            caller_chirho,
+            FileIdChirho::SYNTHETIC_CHIRHO,
+            &ifaces_chirho,
+            &types_chirho,
+        )
+        .expect("source binding is checked payload or ordinary Unknown");
+        let selected_chirho = result_chirho
+            .infer_result_chirho
+            .env_chirho
+            .lookup_chirho("ReflectionChirho.typeRep")
+            .unwrap();
+        if known_chirho {
+            assert!(matches!(selected_chirho.ty_chirho, TyChirho::FunChirho(..)));
+            assert_eq!(
+                selected_chirho.vars_chirho.records_chirho(),
+                source_scheme_chirho.vars_chirho.records_chirho()
+            );
+        } else {
+            assert!(
+                matches!(selected_chirho.ty_chirho, TyChirho::VarChirho(_)),
+                "source cannot select the compiler's qualified TypeRep result: {selected_chirho:?}"
+            );
+            assert!(
+                selected_chirho
+                    .vars_chirho
+                    .records_chirho()
+                    .iter()
+                    .all(|record_chirho| record_chirho.kind_chirho.is_none())
+            );
+        }
+    }
+}

@@ -445,7 +445,8 @@ pub(crate) fn run_frontend_under_policy_chirho(
                         .or_else(|| {
                             merged_imported_types_chirho
                                 .get(&module_qualified_name_chirho)
-                                .filter(|_| imported_types_chirho.contains_key(&module_qualified_name_chirho))
+                                .filter(|_| iface_chirho.exports_chirho.origin_chirho == haskelujah_naming_chirho::IfaceOriginChirho::BuiltinChirho
+                                    || imported_types_chirho.contains_key(&module_qualified_name_chirho))
                                 .or_else(|| {
                                     iface_chirho
                                         .exports_chirho
