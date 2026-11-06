@@ -374,7 +374,8 @@ fn a_qualified_print_beside_the_programs_own_print_keeps_its_own_show_proof_chir
             occurrence_chirho,
             ProvenanceChirho::new_chirho(*origin_chirho, OccurrenceRoleChirho::Reference),
         )]),
-    );
+    )
+    .evidence_chirho;
     assert_eq!(
         joined_chirho.get(&occurrence_chirho),
         Some(&("Show".to_string(), own_key_chirho.clone())),
