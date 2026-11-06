@@ -1,34 +1,34 @@
 # For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 # GHC should_fail — current fixed-protocol typecheck preservation measurement
-# completed: 2026-11-05 22:10 EST; root independently verifies every final row/source hash and all 5,115 candidate raw files across both axes.
-# source: d6da5b12a332cd2a6cddab4ff5998a97eb2527e4 (row 697 exact Monad/Show dictionary transport and aggregate-key normalization)
-# crates tree: 21b1f27393cadb9df9d9ac048dc86d6e37af066d
-# Main integration: 12fe0a15dc325853791c494853ce7ba3a9728976 (pushed); crates and Cargo inputs equal the measured candidate.
-# Local development validation and a release-profile build; no installed CLI update, published release or full-GHC completion is implied.
-# Frozen candidate CLI SHA-256: 04417ec01b0f2ed0ed3b36c47ddc75f1b9c9837f4b6e7b73067f57eb95f4f52a
-# Release: rc0,211.315s,zero warning/error diagnostics,one own-manifest non-fresh executable artifact,opt-level3.
-# Baseline: RETAINED typed-hole candidate b5f937afaf8406041d6bad539f558930ae4eac597030edd23376c80663fd3954, production tree5c8089f1,not rerun in this preservation unit.
-# Both candidate TSVs and source-hash inventories are BYTE-EQUAL to that retained baseline. There are ZERO verdict movers,not a new compatibility gain.
+# completed: 2026-11-06 01:58 EST; root verifies every source hash/final row and all 5,115 candidate raw files across both axes.
+# source: 8eeea74344240cbefe59b6355b7ad2b2f2599781 (row698 first-class own-Show print and actual qualified-entry proof authority)
+# crates tree: 3b3176b6fa9133f4b0207772f6e2046cc244140e
+# Main integration: 50f464aad0d15214fb68085e604cd9fd253892dc (pushed); compiler source, Cargo and toolchain bytes equal the measured candidate.
+# Local development/release-profile validation only; no installed CLI, public release or full-GHC completion claim.
+# Frozen candidate CLI SHA-256: 2cae67361fac33a740bd62b1480d0d0e6017cf61eacc4f6f58f5c44a525ccd75
+# Release: rc0,37.334s,zero warning/error diagnostics,one own-manifest non-fresh executable artifact,opt-level3.
+# Baseline: RETAINED row697 d6da5b12/04417ec0,production21b1f273; source-equal to the actual main parent,never re-run here.
+# Both verdict TSVs,source-hash inventories and raw manifests are BYTE-EQUAL to that retained baseline:ZERO movers,no new typecheck compatibility gain.
 # Source manifest SHA-256: 14adefd337f227e4dec10eed829fb59fe28ae855f34b34b39c543f5c7f69fedf
 # Candidate verdict-pass SHA-256: 5a72c051648fa1caf5d55e528fbc3307810b89af8e43325c58cb175f3a471d47
 # Candidate raw-manifest SHA-256: ced9a3a36be79d1dfed0b38f8168d165c143a06a273bcaa5ccd259a9809c3215
-# receipts: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/tmp-chirho/row697-root-landing-chirho/final-axes-d6-chirho
-# Root verification SHA-256: 3088f39bb5b16ee80df4f972535b250a3cafa5efa98aa7b894cb815fb385440b
-# One fresh complete candidate pass per axis: should_compile166.031s,should_fail42.914s. All rows are legal,unique,complete; zero kept resource failures.
-# Binary,corpus,standard-library,cache and runner/helper inputs are unchanged before/after; exact-token cleanup matches0 and signals no group.
-# Method: unchanged committed axis_pass/worker/classifier/sort scripts,four workers,15seconds/file with solitary60second retry.
-# FINAL ATTEMPTS ONLY. Initial inner retry count UNKNOWN: the pinned worker overwrites earlier attempts. No determinism rerun is claimed.
-# A daemon restart retained the completed parent/build receipts; neither was repeated. The second axis was refused BEFORE launch by the first window's budget and ran once in a fresh bounded window.
-# Final ACCEPT is rc0 without error[E; REJECT is rc1 with error[E. TIMEOUT/ABNORMAL/PANIC/UNCLASSIFIED would stay failures; none remains.
-# Scope: recursive ghc-tests-chirho/typecheck-chirho/should_fail,unchanged fixture membership and denominator.
+# receipts: /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-claude-monad-owned-dispatch-chirho/tmp-chirho/row698-gate-chirho/final-axes-8eeea743-chirho
+# Root verification SHA-256: eb43e69dd5dc7f6847dff1c95c108faa8ea94aaf2602c3973e208adef4d4c522
+# One fresh candidate pass per axis:should_compile88.967s,should_fail39.373s;all rows legal,unique,complete;zero kept resource failures.
+# Binary,corpus,stdlib,cache,runners/helpers and source inputs unchanged before/after;cleanup finds no owned process group.
+# Method:unchanged committed axis_pass/worker/classifier/sort scripts,four workers,15seconds/file plus solitary60second retry.
+# FINAL ATTEMPTS ONLY:inner retry count UNKNOWN because the worker overwrites earlier attempts.No determinism rerun is claimed.
+# Final ACCEPT is rc0 without error[E;REJECT is rc1 with error[E.TIMEOUT/ABNORMAL/PANIC/UNCLASSIFIED remain failures;none appears.
+# Scope:recursive ghc-tests-chirho/typecheck-chirho/should_fail;unchanged fixture membership and denominator.
 # DIRECTORY-LABEL axes omit all.T flags and are NOT full configured-GHC compatibility scores.
-# Row697 behavior: nine freshly GHC9.14.1-referenced IO programs match interpreter,LLVM and trueCranelift output; ownership and dictionary-key neighbors also pass.
-# Focused258outcomes:256ok and two existing numeric-entry assertion REDs reproduced at exact parent. Six full targets:216ok,one exact-parent numeric-entry RED,two expected ignored generators.
-# Workspace all-target check is warning-free; recursive changed-span Clippy has0hits. Outside-span lint debt remains,not suppressed or claimed repaired.
-# Numeric-entry API,Reader generic superclass key,bare-own superclass dispatch and first-class own-Show print remain explicit boundaries; no690constructor-packing activation.
-# Earlier row695 verdict movement/deferral attribution remains in spec-chirho/tasklists-chirho/parity-lanes-chirho/26-11-04-chirho/row695-mover-contracts-chirho.json.
-# Preserve its earlier GHC-configured/standalone distinction; this unit changes neither those contracts nor any test expectation.
-# Previous publication: 872b98ff:spec-chirho/ghc-should-fail-measurement-chirho.txt.
+# Row698 behavior:twelve GHC9.14.1-referenced programs match interpreter,LLVM and trueCranelift output,including qualified P.print beside a program-owned print.
+# Focused373runnable passes plus2exact pre-existing generator ignores;original focused protocol-stop retained with a separate complete-inventory supplement.
+# Six full runtime targets:219passes,2exact ignored generators and1existing numeric-entry assertion RED.
+# Numeric payload matches actual source-equal21b parent after ONLY heap-address/thread-id normalization;original unequal raw bytes retained;not repaired.
+# Workspace all-target check/release are warning-free;recursive changed-span Clippy has0branch findings.Inherited lint debt remains.
+# Numeric-entry API,Reader generic superclass key,bare-own/missing-index boundaries remain;no690packing or isolated688/694engine activation.
+# Earlier row695 configured/standalone contracts remain in row695-mover-contracts-chirho.json;test expectations and those contracts are unchanged.
+# Previous publication:50f464aa^:spec-chirho/ghc-should-fail-measurement-chirho.txt.
 #
 # RESULT: REJECT=276 RAW_ACCEPT=491 TOTAL=767
 # STABILITY: ONE FRESH CANDIDATE PASS; zero verdict movers against the retained main baseline.
