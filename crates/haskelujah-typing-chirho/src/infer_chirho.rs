@@ -802,6 +802,7 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
             unary_variable_instance_heads_covered_chirho: false,
             local_class_prefix_instances_complete_chirho: false,
             imported_types_chirho,
+            selected_imported_value_schemes_chirho: Vec::new(),
             imported_type_synonyms_chirho,
             imported_type_families_chirho,
             imported_class_env_chirho,
@@ -827,6 +828,9 @@ pub struct InferenceImportContextChirho<'imports_chirho> {
     /// completeness proof until their instance records are transported.
     pub local_class_prefix_instances_complete_chirho: bool,
     pub imported_types_chirho: &'imports_chirho HashMap<String, SchemeChirho>,
+    /// Actual import-selected spellings and their complete schemes, consumed once
+    /// after broad compatibility seeds. Unknown is a binding, not builtin authority.
+    pub selected_imported_value_schemes_chirho: Vec<(String, SchemeChirho)>,
     pub imported_type_synonyms_chirho: &'imports_chirho HashMap<String, (Vec<String>, TypeChirho)>,
     pub imported_type_families_chirho: &'imports_chirho TypeFamilyEnvChirho,
     pub imported_class_env_chirho: &'imports_chirho ClassEnvChirho,
@@ -869,6 +873,7 @@ fn infer_module_with_elaboration_state_chirho(
         unary_variable_instance_heads_covered_chirho,
         local_class_prefix_instances_complete_chirho,
         imported_types_chirho,
+        selected_imported_value_schemes_chirho,
         imported_type_synonyms_chirho,
         imported_type_families_chirho,
         imported_class_env_chirho,
@@ -965,6 +970,15 @@ fn infer_module_with_elaboration_state_chirho(
                 .env_chirho
                 .bind_chirho(name_chirho.clone(), scheme_chirho.clone());
         }
+    }
+    // Naming-selected bindings win over generic seeds even when their checked
+    // type payload is absent. Consume the full Scheme in the existing arena;
+    // no origin-only permission or second lookup state survives this handoff.
+    // Workflow: compiler-pipeline-chirho/builtin-type-environment-chirho.
+    for (name_chirho, scheme_chirho) in selected_imported_value_schemes_chirho {
+        ctx_chirho
+            .env_chirho
+            .bind_chirho(name_chirho, scheme_chirho);
     }
     let mut sorted_record_fields_chirho: Vec<_> =
         imported_record_field_names_chirho.iter().collect();

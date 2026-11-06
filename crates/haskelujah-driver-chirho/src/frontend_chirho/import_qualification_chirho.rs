@@ -7,32 +7,6 @@
 
 use super::*;
 
-fn is_placeholder_import_scheme_chirho(
-    scheme_chirho: &haskelujah_typing_chirho::SchemeChirho,
-) -> bool {
-    if !scheme_chirho.preds_chirho.is_empty() || scheme_chirho.vars_chirho.len() != 1 {
-        return false;
-    }
-    if scheme_chirho
-        .vars_chirho
-        .records_chirho()
-        .iter()
-        .any(|record_chirho| {
-            record_chirho.kind_chirho.is_some()
-                || record_chirho.source_chirho.is_some()
-                || record_chirho.specificity_chirho.is_some()
-        })
-    {
-        return false;
-    }
-    match &scheme_chirho.ty_chirho {
-        haskelujah_typing_chirho::TyChirho::VarChirho(var_chirho) => {
-            *var_chirho == scheme_chirho.vars_chirho[0] && var_chirho.0 >= 9000
-        }
-        _ => false,
-    }
-}
-
 /// The scheme a qualified import gives `name_chirho` when the interface it selected has no
 /// `module.name` key (row 608). Only an interface proven builtin reads the generated GHC agreement
 /// table. A source module's interface, whatever its name, and any interface of unknown origin
@@ -53,19 +27,6 @@ pub fn qualified_import_alias_scheme_chirho(
         name_chirho,
         builtins_chirho,
     )
-}
-
-pub(crate) fn should_override_imported_scheme_chirho(
-    existing_scheme_chirho: Option<&haskelujah_typing_chirho::SchemeChirho>,
-    new_scheme_chirho: &haskelujah_typing_chirho::SchemeChirho,
-) -> bool {
-    match existing_scheme_chirho {
-        None => true,
-        Some(existing_scheme_chirho) => {
-            is_placeholder_import_scheme_chirho(existing_scheme_chirho)
-                && !is_placeholder_import_scheme_chirho(new_scheme_chirho)
-        }
-    }
 }
 
 fn collect_local_type_names_chirho(

@@ -124,7 +124,7 @@ use import_qualification_chirho::qualify_imported_scheme_for_iface_chirho;
 use import_qualification_chirho::{
     ImportQualificationChirho, align_preferred_synonym_keys_chirho,
     collect_preferred_qualified_type_names_chirho,
-    collect_safe_unqualified_imported_type_names_chirho, should_override_imported_scheme_chirho,
+    collect_safe_unqualified_imported_type_names_chirho,
 };
 use linearity_chirho::check_module_linearity_chirho;
 use stdlib_seed_chirho::{FrontendSeedArtifactsChirho, merge_stdlib_frontend_artifacts_chirho};

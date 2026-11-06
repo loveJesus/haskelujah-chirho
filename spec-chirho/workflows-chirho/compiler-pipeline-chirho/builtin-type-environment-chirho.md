@@ -17,7 +17,10 @@ flowchart TD
     surface_chirho --> seeded_chirho[(Seeded TyEnvChirho)]
 
     seeded_chirho -- via builtin_value_schemes_chirho --> driver_chirho[Driver merges into imported value types with or_insert: an import wins]
-    driver_chirho --> imports_chirho[Phase 3.9: each imported name takes its Module.name scheme first]
+    driver_chirho --> imports_chirho[Phase 3.9: actual selected interface and import list choose each value]
+    imports_chirho --> selected_chirho[InferenceImportContext: exact spellings plus full Scheme, including Unknown]
+    selected_chirho --> consume_chirho[Consume selected bindings in TyEnv after generic import seeds]
+    consume_chirho --> shadow_chirho
     seeded_chirho -- via InferCtxChirho::new_chirho --> shadow_chirho[infer_module_chirho: collect_module_shadowed_names_chirho, then remove_chirho]
     shadow_chirho --> rebind_chirho[Phases 0b-2: foreign imports, classes, instances, data and newtype constructors bind]
     rebind_chirho --> groups_chirho[Phase 3: SCC binding groups]
@@ -45,6 +48,29 @@ flowchart TD
 - `collect_module_shadowed_names_chirho` gathers the module's top-level function, signature and pattern-bound names, its data and newtype constructors, and its record field names. `infer_module_chirho` removes all of them from the seeded environment before Phase 0, then the module's own declarations bind them.
 - Class methods are not removed. Phase 1a binds them over the seed.
 - The driver's copy goes the other way. It merges `builtin_value_schemes_chirho()` into the module's imported value types with `or_insert`, so an imported scheme wins over a builtin of the same name.
+
+## Checked value telescopes and selected imports, row 688
+
+The ordinary `id` seed carries its actual `Type` binder kind and `Specified` visibility in the existing quantifier-record arena. It supplies no fabricated source variable ID. Visible type application reads that binder through the ordinary scheme checker; source-local higher-kinded definitions keep their own checked binders.
+
+```mermaid
+flowchart TD
+    selected_iface_chirho[Actual selected interface plus computed import list] --> origin_chirho{Positive builtin origin?}
+    origin_chirho -- yes --> builtin_chirho[Existing qualified builtin agreement producer]
+    origin_chirho -- source or unknown --> source_chirho[Actual module or retained definer qualified input payload]
+    source_chirho -- absent --> unknown_chirho[Existing Unknown placeholder]
+    source_chirho -- present --> checked_chirho[Complete checked source Scheme]
+    builtin_chirho --> qualification_chirho[Same bounded import qualification]
+    checked_chirho --> qualification_chirho
+    unknown_chirho --> qualification_chirho
+    qualification_chirho --> bindings_chirho[Transient exact alias and admitted bare binding payloads]
+    bindings_chirho --> environment_chirho[Move into existing TyEnv after generic seeds]
+    environment_chirho --> local_chirho[Ordinary lexical removal and source rebinding]
+```
+
+`selected_imported_value_schemes_chirho` is consumed by the existing inference import boundary; it leaves no second lookup registry or origin-only permission state. Source/default-unknown interfaces cannot borrow a bare generic builtin seed. A selected opaque export binds its existing Unknown scheme over that seed rather than being masked or given an invented `Type` kind. Checked cold and reexported payloads use their existing module/definer-qualified keys, preserving complete quantifier kinds, predicates and metadata refusals through the same qualification budget. Legacy entry points without naming selection supply an empty payload and keep their previous precedence.
+
+The pre-edit GHC controls distinguish the actual builtin `id @Int` / invalid `id @Maybe` pair from a source `id` whose checked binder kind is `Type -> Type`. Synthetic opaque-interface controls establish absence of new metadata authority, not a GHC verdict for missing source units. The retained pre-structure product also accepts an unimported `id` under `NoImplicitPrelude`; this separate name-admission defect remains open. Typed/untyped quotation checking and full TH execution are separate consumer obligations.
 
 ## Module-scoped builtins
 

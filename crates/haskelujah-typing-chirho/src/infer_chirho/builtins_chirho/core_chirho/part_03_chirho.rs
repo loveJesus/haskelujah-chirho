@@ -217,7 +217,18 @@ pub(super) fn seed_part_03_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "id".to_string(),
         SchemeChirho {
-            vars_chirho: vec![id_var_chirho].into(),
+            vars_chirho: crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(vec![
+                crate::ty_chirho::QuantifiedVariableChirho {
+                    variable_chirho: id_var_chirho,
+                    kind_chirho: Some(std::sync::Arc::new(
+                        crate::kind_chirho::elaboration_chirho::ElaborationStateChirho::type_universe_chirho(),
+                    )),
+                    source_chirho: None,
+                    specificity_chirho: Some(
+                        haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho,
+                    ),
+                },
+            ]),
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(id_var_chirho),

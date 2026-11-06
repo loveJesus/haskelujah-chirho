@@ -145,3 +145,243 @@ fn checked_ast_qualification_keeps_constructor_and_lexical_variable_owners_chirh
     // Debug includes owner metadata, unlike Name's legacy syntax equality.
     assert_eq!(format!("{copied_chirho:?}"), format!("{original_chirho:?}"));
 }
+
+fn id_supplier_chirho() -> (
+    Vec<haskelujah_naming_chirho::ModuleIfaceChirho>,
+    SchemeChirho,
+) {
+    let source_chirho =
+        include_str!("../../source_chirho/value_telescopes_chirho/SourceIdSupplierChirho.hs");
+    let mut ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    let checked_chirho = crate::run_frontend_chirho(
+        source_chirho,
+        FileIdChirho::SYNTHETIC_CHIRHO,
+        &ifaces_chirho,
+        &HashMap::new(),
+    )
+    .expect("actual checked source supplier");
+    let scheme_chirho = checked_chirho
+        .infer_result_chirho
+        .env_chirho
+        .lookup_chirho("id")
+        .expect("source id scheme")
+        .clone();
+    let iface_chirho = haskelujah_naming_chirho::build_iface_with_imports_chirho(
+        &checked_chirho.module_chirho,
+        &ifaces_chirho,
+    )
+    .expect("actual source interface");
+    ifaces_chirho.retain(|iface_chirho| iface_chirho.name_chirho != "Data.Function");
+    ifaces_chirho.push(iface_chirho);
+    (ifaces_chirho, scheme_chirho)
+}
+
+#[test]
+fn selected_builtin_value_telescope_reaches_ordinary_type_application_chirho() {
+    let ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    let good_chirho =
+        include_str!("../../source_chirho/value_telescopes_chirho/QualifiedIdCorrectChirho.hs");
+    let bad_chirho =
+        include_str!("../../source_chirho/value_telescopes_chirho/QualifiedIdWrongChirho.hs");
+    crate::run_frontend_chirho(
+        good_chirho,
+        FileIdChirho::SYNTHETIC_CHIRHO,
+        &ifaces_chirho,
+        &HashMap::new(),
+    )
+    .expect("selected builtin id accepts Type argument");
+    assert!(
+        crate::run_frontend_chirho(
+            bad_chirho,
+            FileIdChirho::SYNTHETIC_CHIRHO,
+            &ifaces_chirho,
+            &HashMap::new()
+        )
+        .is_err(),
+        "selected builtin id must reject a Type -> Type argument"
+    );
+}
+
+#[test]
+fn selected_source_value_keeps_the_checked_cold_telescope_chirho() {
+    let (ifaces_chirho, scheme_chirho) = id_supplier_chirho();
+    let types_chirho = HashMap::from([("Data.Function.id".to_owned(), scheme_chirho)]);
+    for (good_chirho, bad_chirho) in [
+        (
+            include_str!(
+                "../../source_chirho/value_telescopes_chirho/QualifiedSourceIdCorrectChirho.hs"
+            ),
+            include_str!(
+                "../../source_chirho/value_telescopes_chirho/QualifiedSourceIdWrongChirho.hs"
+            ),
+        ),
+        (
+            include_str!(
+                "../../source_chirho/value_telescopes_chirho/BareSourceIdCorrectChirho.hs"
+            ),
+            include_str!("../../source_chirho/value_telescopes_chirho/BareSourceIdWrongChirho.hs"),
+        ),
+    ] {
+        crate::run_frontend_chirho(
+            good_chirho,
+            FileIdChirho::SYNTHETIC_CHIRHO,
+            &ifaces_chirho,
+            &types_chirho,
+        )
+        .expect("checked source higher-kind binder accepts Maybe");
+        assert!(
+            crate::run_frontend_chirho(
+                bad_chirho,
+                FileIdChirho::SYNTHETIC_CHIRHO,
+                &ifaces_chirho,
+                &types_chirho
+            )
+            .is_err(),
+            "source higher-kind binder must reject Int"
+        );
+    }
+}
+
+#[test]
+fn selected_missing_type_metadata_shadows_generic_seeds_without_new_kind_proof_chirho() {
+    let (mut ifaces_chirho, _scheme_chirho) = id_supplier_chirho();
+    for definer_known_chirho in [true, false] {
+        if !definer_known_chirho {
+            let iface_chirho = ifaces_chirho
+                .iter_mut()
+                .find(|iface_chirho| iface_chirho.name_chirho == "Data.Function")
+                .unwrap();
+            iface_chirho.exposure_chirho = None;
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .get_mut("id")
+                .unwrap()
+                .defining_module_chirho = None;
+        }
+        for (source_chirho, key_chirho) in [
+            (
+                include_str!(
+                    "../../source_chirho/value_telescopes_chirho/QualifiedSourceIdCorrectChirho.hs"
+                ),
+                "FunctionChirho.id",
+            ),
+            (
+                include_str!(
+                    "../../source_chirho/value_telescopes_chirho/BareSourceIdCorrectChirho.hs"
+                ),
+                "id",
+            ),
+        ] {
+            let unrelated_bare_types_chirho = HashMap::from([(
+                "id".to_owned(),
+                haskelujah_typing_chirho::infer_chirho::builtin_value_schemes_chirho()["id"]
+                    .clone(),
+            )]);
+            let result_chirho = crate::run_frontend_chirho(
+                source_chirho,
+                FileIdChirho::SYNTHETIC_CHIRHO,
+                &ifaces_chirho,
+                &unrelated_bare_types_chirho,
+            )
+            .expect("missing payload remains ordinary Unknown");
+            let selected_chirho = result_chirho
+                .infer_result_chirho
+                .env_chirho
+                .lookup_chirho(key_chirho)
+                .expect("actual selected spelling");
+            assert!(
+                matches!(selected_chirho.ty_chirho, TyChirho::VarChirho(_)),
+                "actual selected Unknown must not borrow the generic id function scheme: {selected_chirho:?}"
+            );
+            assert!(
+                selected_chirho
+                    .vars_chirho
+                    .records_chirho()
+                    .iter()
+                    .all(|record_chirho| record_chirho.kind_chirho.is_none()
+                        && record_chirho.source_chirho.is_none()
+                        && record_chirho.specificity_chirho.is_none())
+            );
+        }
+    }
+}
+
+#[test]
+fn selected_source_reexport_uses_its_actual_definer_telescope_chirho() {
+    let (mut ifaces_chirho, scheme_chirho) = id_supplier_chirho();
+    let parser_chirho = crate::ParserChirho::new_chirho(
+        "module ForwardChirho (id) where\nimport Data.Function (id)\n",
+        FileIdChirho::SYNTHETIC_CHIRHO,
+    );
+    let module_chirho = crate::lower_module_chirho(
+        &parser_chirho.parse_chirho(),
+        FileIdChirho::SYNTHETIC_CHIRHO,
+    );
+    let iface_chirho =
+        haskelujah_naming_chirho::build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho)
+            .expect("actual reexport");
+    assert_eq!(
+        iface_chirho.exports_chirho.values_chirho["id"]
+            .defining_module_chirho
+            .as_deref(),
+        Some("Data.Function")
+    );
+    ifaces_chirho.push(iface_chirho);
+    let types_chirho = HashMap::from([("Data.Function.id".to_owned(), scheme_chirho)]);
+    for (argument_chirho, accepted_chirho) in [("Maybe", true), ("Int", false)] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE TypeApplications #-}}\nmodule CallerChirho where\nimport Prelude hiding (id)\nimport qualified ForwardChirho as FunctionChirho\nvalueChirho = FunctionChirho.id @{argument_chirho}\n"
+        );
+        assert_eq!(
+            crate::run_frontend_chirho(
+                &source_chirho,
+                FileIdChirho::SYNTHETIC_CHIRHO,
+                &ifaces_chirho,
+                &types_chirho
+            )
+            .is_ok(),
+            accepted_chirho
+        );
+    }
+}
+
+#[test]
+fn local_higher_kind_id_keeps_its_own_lexical_telescope_chirho() {
+    super::ordinary_elaboration_chirho::frontend_chirho(include_str!(
+        "../../source_chirho/value_telescopes_chirho/LocalHigherKindIdChirho.hs"
+    ))
+    .expect("source local higher-kind id does not inherit builtin Type binder");
+}
+
+#[test]
+fn cold_source_discovery_transports_the_actual_value_telescope_chirho() {
+    let search_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("src/source_chirho/value_telescopes_chirho");
+    for (name_chirho, source_chirho, accepted_chirho) in [
+        (
+            "ColdSourceIdCorrectChirho.hs",
+            include_str!(
+                "../../source_chirho/value_telescopes_chirho/ColdSourceIdCorrectChirho.hs"
+            ),
+            true,
+        ),
+        (
+            "ColdSourceIdWrongChirho.hs",
+            include_str!("../../source_chirho/value_telescopes_chirho/ColdSourceIdWrongChirho.hs"),
+            false,
+        ),
+    ] {
+        let result_chirho = crate::compile_source_with_search_path_chirho(
+            source_chirho,
+            &mut haskelujah_span_chirho::SourceMapChirho::new_chirho(),
+            name_chirho,
+            &search_chirho,
+        );
+        assert_eq!(
+            result_chirho.is_ok(),
+            accepted_chirho,
+            "actual cold supplier kind contract for {name_chirho}"
+        );
+    }
+}

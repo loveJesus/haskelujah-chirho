@@ -273,6 +273,7 @@ pub(crate) fn run_frontend_under_policy_chirho(
         }
     }
     let mut unavailable_selectors_chirho = std::collections::HashSet::new();
+    let mut selected_imported_value_schemes_chirho = Vec::new();
     let mut merged_imported_record_field_names_chirho: std::collections::HashMap<
         String,
         Vec<String>,
@@ -444,6 +445,7 @@ pub(crate) fn run_frontend_under_policy_chirho(
                         .or_else(|| {
                             merged_imported_types_chirho
                                 .get(&module_qualified_name_chirho)
+                                .filter(|_| imported_types_chirho.contains_key(&module_qualified_name_chirho))
                                 .or_else(|| {
                                     iface_chirho
                                         .exports_chirho
@@ -453,12 +455,18 @@ pub(crate) fn run_frontend_under_policy_chirho(
                                             value_chirho.defining_module_chirho.as_ref()
                                         })
                                         .and_then(|producer_chirho| {
-                                            merged_imported_types_chirho
-                                                .get(&format!("{producer_chirho}.{name_chirho}"))
+                                            let key_chirho = format!("{producer_chirho}.{name_chirho}");
+                                            imported_types_chirho.contains_key(&key_chirho)
+                                                .then(|| merged_imported_types_chirho.get(&key_chirho))
+                                                .flatten()
                                         })
                                 })
                                 .or_else(|| {
-                                    (!import_chirho.qualified_chirho)
+                                    // Only the actual builtin interface may use the
+                                    // compatibility seed. Source/unknown exports
+                                    // require their checked qualified payload.
+                                    (!import_chirho.qualified_chirho
+                                        && iface_chirho.exports_chirho.origin_chirho == haskelujah_naming_chirho::IfaceOriginChirho::BuiltinChirho)
                                         .then(|| merged_imported_types_chirho.get(name_chirho))
                                         .flatten()
                                 })
@@ -487,22 +495,17 @@ pub(crate) fn run_frontend_under_policy_chirho(
                         // module can pin an unqualified name like `choice` or
                         // `pack` to the wrong specialized scheme in later
                         // modules that explicitly import a different source.
-                        merged_imported_types_chirho.insert(
+                        selected_imported_value_schemes_chirho.push((
                             qualification_chirho.key_chirho(name_chirho)?,
                             qualification_chirho.scheme_chirho(
                                 &in_scope_seed_scheme_chirho,
                                 trusted_builtin_seed_chirho,
                             )?,
-                        );
+                        ));
                     }
                     let qualified_name_chirho = format!("{qualifier_chirho}.{name_chirho}");
-                    if should_override_imported_scheme_chirho(
-                        merged_imported_types_chirho.get(&qualified_name_chirho),
-                        &in_scope_seed_scheme_chirho,
-                    ) {
-                        merged_imported_types_chirho
-                            .insert(qualified_name_chirho, in_scope_seed_scheme_chirho);
-                    }
+                    selected_imported_value_schemes_chirho
+                        .push((qualified_name_chirho, in_scope_seed_scheme_chirho));
                 }
             }
         }
@@ -527,6 +530,7 @@ pub(crate) fn run_frontend_under_policy_chirho(
                 unary_variable_instance_heads_covered_chirho,
                 local_class_prefix_instances_complete_chirho,
                 imported_types_chirho: &merged_imported_types_chirho,
+                selected_imported_value_schemes_chirho,
                 imported_type_synonyms_chirho: &merged_imported_type_synonyms_chirho,
                 imported_type_families_chirho: &merged_imported_type_families_chirho,
                 imported_class_env_chirho,
