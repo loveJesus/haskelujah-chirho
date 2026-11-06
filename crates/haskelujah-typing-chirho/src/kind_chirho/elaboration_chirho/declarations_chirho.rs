@@ -11,11 +11,39 @@ use haskelujah_ast_chirho::name_chirho::{
 };
 
 impl TypeElaboratorChirho<'_> {
+    pub(super) fn class_header_complete_chirho(
+        &mut self,
+        variables_chirho: &[AstTyVarChirho],
+        standalone_chirho: bool,
+        span_chirho: SpanChirho,
+    ) -> Result<bool, ElaborationErrorChirho> {
+        if standalone_chirho {
+            return Ok(true);
+        }
+        if !self.cusks_chirho {
+            return Ok(false);
+        }
+        self.state_chirho.charge_chirho(
+            variables_chirho.len(),
+            variables_chirho.len(),
+            span_chirho,
+        )?;
+        Ok(variables_chirho
+            .iter()
+            .all(|variable_chirho| variable_chirho.kind_annotation_chirho.is_some()))
+    }
+
     pub(super) fn predeclare_chirho(
         &mut self,
         module_chirho: &mut ModuleChirho,
     ) -> Result<(), ElaborationErrorChirho> {
         self.seed_headers_chirho(module_chirho.span_chirho)?;
+        let type_abstractions_chirho =
+            haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(
+                module_chirho,
+                "TypeAbstractions",
+                false,
+            );
         for declaration_chirho in &mut module_chirho.decls_chirho {
             let (name_chirho, binders_chirho, result_constraint_chirho, injectivity_chirho) =
                 match declaration_chirho {
@@ -43,8 +71,39 @@ impl TypeElaboratorChirho<'_> {
                     DeclChirho::ClassDeclChirho {
                         name_chirho,
                         type_vars_chirho,
+                        standalone_kind_chirho,
                         ..
-                    } => (name_chirho, type_vars_chirho, true, None),
+                    } => {
+                        // This still sees written binders, before inferred
+                        // catalogue parameters or canonical publication exist.
+                        self.state_chirho.charge_chirho(
+                            type_vars_chirho.len(),
+                            0,
+                            name_chirho.span_chirho(),
+                        )?;
+                        if type_vars_chirho
+                            .iter()
+                            .any(|variable_chirho| !variable_chirho.is_visible_chirho())
+                        {
+                            if !type_abstractions_chirho {
+                                return Err(Self::error_chirho(
+                                    "written invisible class binders require TypeAbstractions",
+                                    name_chirho.span_chirho(),
+                                ));
+                            }
+                            if !self.class_header_complete_chirho(
+                                type_vars_chirho,
+                                standalone_kind_chirho.is_some(),
+                                name_chirho.span_chirho(),
+                            )? {
+                                return Err(Self::error_chirho(
+                                    "written invisible class binders require a complete kind signature",
+                                    name_chirho.span_chirho(),
+                                ));
+                            }
+                        }
+                        (name_chirho, type_vars_chirho, true, None)
+                    }
                     _ => continue,
                 };
             self.predeclare_header_chirho(

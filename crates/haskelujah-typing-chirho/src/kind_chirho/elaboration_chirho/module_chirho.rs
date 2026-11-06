@@ -383,11 +383,18 @@ impl TypeElaboratorChirho<'_> {
             if let DeclChirho::ClassDeclChirho {
                 name_chirho,
                 type_vars_chirho,
-                standalone_kind_chirho: Some(signature_chirho),
+                standalone_kind_chirho,
                 ..
             } = declaration_chirho
             {
                 let span_chirho = name_chirho.span_chirho();
+                if !self.class_header_complete_chirho(
+                    type_vars_chirho,
+                    standalone_kind_chirho.is_some(),
+                    span_chirho,
+                )? {
+                    continue;
+                }
                 let key_chirho = self.local_key_chirho(name_chirho)?;
                 let previous_chirho = self.current_declaration_chirho.replace(key_chirho.clone());
                 let result_chirho = self.scoped_chirho(|this_chirho| {
@@ -396,7 +403,7 @@ impl TypeElaboratorChirho<'_> {
                     this_chirho.check_kind_contract_chirho(
                         &key_chirho,
                         None,
-                        Some(signature_chirho),
+                        standalone_kind_chirho.as_mut(),
                         span_chirho,
                     )?;
                     this_chirho

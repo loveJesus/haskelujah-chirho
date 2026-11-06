@@ -39,8 +39,9 @@ fn a_declared_single_parameter_class_adds_exactly_its_methods_chirho() {
 
 #[test]
 fn checked_hidden_kind_binders_do_not_become_visible_class_parameters_chirho() {
-    let source_chirho =
-        include_str!("../../source_chirho/full_kind_arity_chirho/ScopedClassVisibilityChirho.hs");
+    let source_chirho = include_str!(
+        "../../source_chirho/full_kind_arity_chirho/class_headers_chirho/ScopedClassVisibilityChirho.hs"
+    );
     let result_chirho = crate::typecheck_source_chirho(
         source_chirho,
         &mut crate::SourceMapChirho::new_chirho(),
