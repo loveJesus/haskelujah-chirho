@@ -231,7 +231,10 @@ pub(crate) fn scan_hierarchical_modules_chirho(
     skip_file_chirho: &str,
     parsed_chirho: &mut BTreeSet<String>,
 ) {
-    let mut bounds_chirho = ModuleSearchBoundsChirho::new_chirho();
+    let mut walk_chirho = ModuleWalkChirho {
+        bounds_chirho: ModuleSearchBoundsChirho::new_chirho(),
+        parsed_chirho,
+    };
     scan_hierarchical_modules_bounded_chirho(
         dir_chirho,
         root_dir_chirho,
@@ -239,9 +242,15 @@ pub(crate) fn scan_hierarchical_modules_chirho(
         ifaces_chirho,
         skip_file_chirho,
         0,
-        &mut bounds_chirho,
-        parsed_chirho,
+        &mut walk_chirho,
     );
+}
+
+/// One hierarchical walk's mutable state: a fresh budget for that walk, and the caller's
+/// parsed-module inventory, borrowed for it and kept across the caller's rounds (#32418).
+struct ModuleWalkChirho<'parsed_chirho> {
+    bounds_chirho: ModuleSearchBoundsChirho,
+    parsed_chirho: &'parsed_chirho mut BTreeSet<String>,
 }
 
 fn scan_hierarchical_modules_bounded_chirho(
@@ -251,8 +260,7 @@ fn scan_hierarchical_modules_bounded_chirho(
     ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
     skip_file_chirho: &str,
     depth_chirho: usize,
-    bounds_chirho: &mut ModuleSearchBoundsChirho,
-    parsed_chirho: &mut BTreeSet<String>,
+    walk_chirho: &mut ModuleWalkChirho<'_>,
 ) {
     let entries_chirho = match std::fs::read_dir(dir_chirho) {
         Ok(entries_chirho) => entries_chirho,
@@ -276,7 +284,7 @@ fn scan_hierarchical_modules_bounded_chirho(
         }
         if path_chirho.is_dir() {
             if depth_chirho >= MAX_MODULE_SEARCH_DEPTH_CHIRHO
-                || !bounds_chirho.may_enter_dir_chirho()
+                || !walk_chirho.bounds_chirho.may_enter_dir_chirho()
             {
                 continue;
             }
@@ -287,8 +295,7 @@ fn scan_hierarchical_modules_bounded_chirho(
                 ifaces_chirho,
                 skip_file_chirho,
                 depth_chirho + 1,
-                bounds_chirho,
-                parsed_chirho,
+                walk_chirho,
             );
             continue;
         }
@@ -327,7 +334,7 @@ fn scan_hierarchical_modules_bounded_chirho(
 
         // Parsing is the real cost of this search, so the budget is spent here
         // rather than per directory entry.
-        if !bounds_chirho.may_read_file_chirho() {
+        if !walk_chirho.bounds_chirho.may_read_file_chirho() {
             continue;
         }
         let Ok(source_chirho) = read_haskell_source_file_chirho(&path_chirho) else {
@@ -353,7 +360,9 @@ fn scan_hierarchical_modules_bounded_chirho(
         }));
         match iface_result_chirho {
             Ok(Some(iface_chirho)) => {
-                parsed_chirho.insert(iface_chirho.name_chirho.clone());
+                walk_chirho
+                    .parsed_chirho
+                    .insert(iface_chirho.name_chirho.clone());
                 admit_authoritative_iface_chirho(ifaces_chirho, iface_chirho);
             }
             Ok(None) => {}
