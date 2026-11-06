@@ -559,6 +559,19 @@ impl InferCtxChirho {
                 // and unify as we go. The bind pattern variable `x` gets the
                 // unwrapped type `a` from `m a`.
                 let m_chirho = self.fresh_var_chirho(); // the monad constructor
+                // Only a bind or a non-final expression makes the block monadic (Report
+                // section 3.14): `do {e}` is `e`, and lets then a final expression are
+                // `let decls in e`, whose type is the expression's own, with no `m a` and no
+                // Monad (row 692).
+                let monadic_chirho =
+                    stmts_chirho
+                        .iter()
+                        .enumerate()
+                        .any(|(idx_chirho, stmt_chirho)| match stmt_chirho {
+                            StmtChirho::BindChirho { .. } => true,
+                            StmtChirho::ExprChirho { .. } => idx_chirho + 1 < stmts_chirho.len(),
+                            StmtChirho::LetChirho { .. } => false,
+                        });
                 let mut subst_chirho = SubstChirho::empty_chirho();
                 let mut last_ty_chirho = TyChirho::unit_chirho();
                 let last_expected_chirho = self.do_last_expected_chirho.take();
@@ -590,7 +603,10 @@ impl InferCtxChirho {
                             subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                             self.apply_subst_all_chirho(&s_chirho);
 
-                            if is_last_chirho {
+                            if is_last_chirho && !monadic_chirho {
+                                // `do {e}` and `do {let decls; e}`: no monad at all.
+                                last_ty_chirho = ty_chirho;
+                            } else if is_last_chirho {
                                 // Last statement: its type IS the do-block type.
                                 // Unify with `m_chirho a` to extract the monad.
                                 let a_chirho = self.fresh_var_chirho();
