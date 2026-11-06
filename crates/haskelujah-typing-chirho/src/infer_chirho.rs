@@ -176,8 +176,16 @@ mod ast_conversion_tests_chirho;
 mod ast_types_chirho;
 #[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/checked_families_chirho.rs"]
 mod checked_families_chirho;
+pub(crate) use checked_families_chirho::{
+    CheckedFamilyAbstractionFailureChirho, CheckedFamilyTermsChirho,
+    abstract_checked_family_terms_with_budget_chirho,
+};
 #[path = "infer_chirho/types_chirho/families_chirho/closed_family_apartness_chirho.rs"]
 mod closed_family_apartness_chirho;
+pub(crate) use closed_family_apartness_chirho::{
+    FamilyHeadRoleChirho, FamilyUnificationLimitsChirho,
+    family_branches_compatible_with_budget_chirho,
+};
 #[cfg(test)]
 #[path = "infer_chirho/types_chirho/families_chirho/closed_family_apartness_tests_chirho.rs"]
 mod closed_family_apartness_tests_chirho;
@@ -195,6 +203,9 @@ mod family_reduction_chirho;
 mod family_reduction_tests_chirho;
 #[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/family_registration_chirho.rs"]
 mod family_registration_chirho;
+pub(crate) use family_registration_chirho::{
+    family_head_with_predeclared_chirho, held_equation_inputs_chirho,
+};
 #[cfg(test)]
 #[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/family_registration_tests_chirho.rs"]
 mod family_registration_tests_chirho;

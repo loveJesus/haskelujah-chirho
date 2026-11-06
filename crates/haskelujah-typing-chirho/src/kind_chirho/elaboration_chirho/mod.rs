@@ -64,8 +64,13 @@ struct ValueSignatureScopeChirho {
     checked_chirho: Arc<TyChirho>,
 }
 
+struct CheckedFamilyEquationChirho {
+    terms_chirho: Option<(Vec<TyChirho>, TyChirho)>,
+}
+
 #[derive(Default)]
 struct DeclarationVariablesChirho {
+    closed_family_equations_chirho: Option<Vec<CheckedFamilyEquationChirho>>,
     constructor_result_origin_chirho: Option<constructors_chirho::ConstructorResultOriginChirho>,
     written_signature_chirho: Option<haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho>,
     owned_result_kind_chirho: Option<TyChirho>,
@@ -124,6 +129,7 @@ struct TypeElaboratorChirho<'scope_chirho> {
     family_scope_chirho: &'scope_chirho TypeFamilyScopeChirho,
     promotion_scope_chirho: &'scope_chirho PromotionScopeChirho,
     builtin_classes_chirho: &'scope_chirho BuiltinClassScopeChirho,
+    normalization_module_chirho: Option<Arc<str>>,
     star_is_type_chirho: bool,
     poly_kinds_chirho: bool,
     cusks_chirho: bool,
@@ -475,7 +481,13 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
                 ),
         });
         state_chirho.source_policy_chirho = Some(policy_chirho.clone());
+        let normalization_module_chirho = Some(Arc::from(
+            state_chirho
+                .copy_name_chirho(&module_chirho.name_chirho)?
+                .full_name_chirho(),
+        ));
         Ok(Self {
+            normalization_module_chirho,
             state_chirho,
             registry_chirho: ElaborationCatalogueChirho::OwnedChirho(Box::new(
                 imports_chirho.registry_chirho.clone(),

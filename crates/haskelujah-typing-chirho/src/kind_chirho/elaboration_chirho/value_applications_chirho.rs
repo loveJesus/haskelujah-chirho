@@ -203,6 +203,7 @@ fn with_argument_elaborator_chirho<ResultChirho>(
         ElaborationStateChirho::unowned_chirho(),
     );
     let mut elaborator_chirho = TypeElaboratorChirho {
+        normalization_module_chirho: None,
         standalone_kind_scope_chirho: false,
         checking_kind_chirho: false,
         state_chirho,
@@ -282,24 +283,36 @@ impl TypeElaboratorChirho<'_> {
         right_chirho: &TyChirho,
         span_chirho: SpanChirho,
     ) -> Result<(), ElaborationErrorChirho> {
-        if self.lexical_images_chirho.is_none() {
-            return self
-                .state_chirho
-                .unify_chirho(left_chirho, right_chirho, span_chirho);
-        }
         let left_chirho = self.normalize_lexical_term_chirho(left_chirho, span_chirho)?;
         let right_chirho = self.normalize_lexical_term_chirho(right_chirho, span_chirho)?;
-        let (left_chirho, right_chirho) = if let Some(view_chirho) = self.lexical_equality_chirho {
-            self.state_chirho.normalize_equality_pair_chirho(
-                view_chirho,
-                &self.registry_chirho,
-                &left_chirho,
-                &right_chirho,
-                span_chirho,
-            )?
-        } else {
-            (left_chirho, right_chirho)
+        let identity_chirho = crate::subst_chirho::SubstChirho::empty_chirho();
+        let legacy_synonyms_chirho = HashMap::new();
+        let view_chirho = match self.lexical_equality_chirho {
+            Some(view_chirho) => view_chirho,
+            None => crate::infer_chirho::EqualityNormalizationViewChirho {
+                substitutions_chirho: &identity_chirho,
+                legacy_synonyms_chirho: &legacy_synonyms_chirho,
+                type_scope_chirho: Some(self.type_scope_chirho),
+                family_scope_chirho: Some(self.family_scope_chirho),
+                family_module_chirho: self.normalization_module_chirho.as_deref().ok_or_else(
+                    || {
+                        Self::error_chirho(
+                            "kind equality lost its source module context",
+                            span_chirho,
+                        )
+                    },
+                )?,
+                promotion_present_chirho: true,
+                evidence_chirho: Default::default(),
+            },
         };
+        let (left_chirho, right_chirho) = self.state_chirho.normalize_equality_pair_chirho(
+            view_chirho,
+            &self.registry_chirho,
+            &left_chirho,
+            &right_chirho,
+            span_chirho,
+        )?;
         self.state_chirho
             .unify_chirho(&left_chirho, &right_chirho, span_chirho)
     }

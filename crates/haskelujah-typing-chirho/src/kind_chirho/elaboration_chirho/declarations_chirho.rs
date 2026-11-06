@@ -236,6 +236,7 @@ impl TypeElaboratorChirho<'_> {
         self.declaration_variables_chirho.insert(
             key_chirho,
             DeclarationVariablesChirho {
+                closed_family_equations_chirho: None,
                 constructor_result_origin_chirho: None,
                 written_signature_chirho: None,
                 owned_result_kind_chirho: None,

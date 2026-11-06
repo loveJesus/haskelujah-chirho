@@ -5,6 +5,101 @@
 use super::*;
 
 impl ElaborationStateChirho {
+    pub(in crate::kind_chirho::elaboration_chirho) fn abstract_family_equation_chirho(
+        &mut self,
+        lhs_chirho: &[TyChirho],
+        rhs_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<Option<crate::infer_chirho::CheckedFamilyTermsChirho>, ElaborationErrorChirho> {
+        use crate::infer_chirho::{
+            CheckedFamilyAbstractionFailureChirho, abstract_checked_family_terms_with_budget_chirho,
+        };
+        self.owner_id_chirho(span_chirho)?;
+        let result_chirho = abstract_checked_family_terms_with_budget_chirho(
+            lhs_chirho,
+            rhs_chirho,
+            &HashMap::new(),
+            &mut |work_chirho, output_chirho, depth_chirho, _preflight_chirho| {
+                if depth_chirho > 128 {
+                    self.resource_failure_chirho(
+                        "checked family equation depth bound exhausted",
+                        span_chirho,
+                    );
+                    return Err(CheckedFamilyAbstractionFailureChirho::ResourceChirho);
+                }
+                self.charge_chirho(work_chirho, output_chirho, span_chirho)
+                    .map_err(|_| CheckedFamilyAbstractionFailureChirho::ResourceChirho)
+            },
+        );
+        match result_chirho {
+            Ok(terms_chirho) => Ok(Some(terms_chirho)),
+            Err(CheckedFamilyAbstractionFailureChirho::UnsupportedChirho) => Ok(None),
+            Err(CheckedFamilyAbstractionFailureChirho::UnboundChirho) => {
+                Err(ElaborationErrorChirho {
+                    mismatch_chirho: None,
+                    message_chirho:
+                        "checked family RHS captures a variable absent from its complete head"
+                            .into(),
+                    span_chirho,
+                })
+            }
+            Err(CheckedFamilyAbstractionFailureChirho::ResourceChirho) => {
+                Err(self.failure_chirho().cloned().unwrap_or_else(|| {
+                    self.resource_failure_chirho(
+                        "checked family abstraction bound exhausted",
+                        span_chirho,
+                    )
+                }))
+            }
+        }
+    }
+
+    pub(in crate::kind_chirho::elaboration_chirho) fn family_branches_compatible_chirho(
+        &mut self,
+        left_lhs_chirho: &[TyChirho],
+        left_rhs_chirho: &TyChirho,
+        right_lhs_chirho: &[TyChirho],
+        right_rhs_chirho: &TyChirho,
+        classify_chirho: &impl Fn(&str) -> crate::infer_chirho::FamilyHeadRoleChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<bool, ElaborationErrorChirho> {
+        use crate::infer_chirho::{
+            FamilyUnificationLimitsChirho, family_branches_compatible_with_budget_chirho,
+        };
+        let allowance_chirho = self
+            .lend_equality_budget_chirho(span_chirho)?
+            .remaining_chirho();
+        let mut limits_chirho = FamilyUnificationLimitsChirho::default();
+        let owner_work_limited_chirho = allowance_chirho.0 < limits_chirho.steps_chirho;
+        let owner_output_limited_chirho = allowance_chirho.1 < limits_chirho.nodes_chirho;
+        limits_chirho.steps_chirho = limits_chirho.steps_chirho.min(allowance_chirho.0);
+        limits_chirho.nodes_chirho = limits_chirho.nodes_chirho.min(allowance_chirho.1);
+        let initial_chirho = (limits_chirho.steps_chirho, limits_chirho.nodes_chirho);
+        let result_chirho = family_branches_compatible_with_budget_chirho(
+            left_lhs_chirho,
+            left_rhs_chirho,
+            right_lhs_chirho,
+            right_rhs_chirho,
+            classify_chirho,
+            &mut limits_chirho,
+        );
+        self.charge_chirho(
+            initial_chirho.0 - limits_chirho.steps_chirho,
+            initial_chirho.1 - limits_chirho.nodes_chirho,
+            span_chirho,
+        )?;
+        if result_chirho.as_ref().is_err_and(|exhaustion_chirho| {
+            (exhaustion_chirho.steps_chirho && owner_work_limited_chirho)
+                || (exhaustion_chirho.nodes_chirho && owner_output_limited_chirho)
+        }) {
+            return Err(self.resource_failure_chirho(
+                "checked family compatibility exhausted its original owner allowance",
+                span_chirho,
+            ));
+        }
+        Ok(result_chirho.unwrap_or(false))
+    }
+
     pub(crate) fn lend_equality_budget_chirho(
         &mut self,
         span_chirho: SpanChirho,

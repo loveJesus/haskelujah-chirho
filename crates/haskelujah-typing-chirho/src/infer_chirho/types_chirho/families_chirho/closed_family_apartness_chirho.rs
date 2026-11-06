@@ -13,7 +13,7 @@ use std::collections::{HashMap, VecDeque};
 
 /// Identity strings are opaque. Aliases must receive the same identity from the caller.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(super) enum GenerativeIdentityChirho {
+pub(crate) enum GenerativeIdentityChirho {
     NominalChirho(String),
     ListChirho,
     TupleChirho(usize),
@@ -21,7 +21,7 @@ pub(super) enum GenerativeIdentityChirho {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum FamilyHeadRoleChirho {
+pub(crate) enum FamilyHeadRoleChirho {
     GenerativeChirho {
         identity_chirho: GenerativeIdentityChirho,
     },
@@ -52,10 +52,10 @@ pub(super) enum FamilyPatternRelationChirho {
 
 /// All work, including canonicalization and chasing substitutions, consumes this budget.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct FamilyUnificationLimitsChirho {
-    pub(super) steps_chirho: usize,
-    pub(super) nodes_chirho: usize,
-    pub(super) depth_chirho: usize,
+pub(crate) struct FamilyUnificationLimitsChirho {
+    pub(crate) steps_chirho: usize,
+    pub(crate) nodes_chirho: usize,
+    pub(crate) depth_chirho: usize,
 }
 
 impl Default for FamilyUnificationLimitsChirho {
@@ -164,38 +164,63 @@ pub(super) fn family_branches_compatible_chirho(
     right_rhs_chirho: &TyChirho,
     classify_chirho: &impl Fn(&str) -> FamilyHeadRoleChirho,
 ) -> bool {
-    let mut kernel_chirho = ApartnessKernelChirho::new_chirho(
+    family_branches_compatible_with_budget_chirho(
+        left_lhs_chirho,
+        left_rhs_chirho,
+        right_lhs_chirho,
+        right_rhs_chirho,
         classify_chirho,
-        FamilyUnificationLimitsChirho::default(),
-    );
+        &mut FamilyUnificationLimitsChirho::default(),
+    )
+    .unwrap_or(false)
+}
+
+/// Return the consumed kernel allowance on every outcome. Existing legacy
+/// callers retain their default ceiling; checked declaration publication lends
+/// the remaining module allowance under those same operation ceilings.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct FamilyCompatibilityExhaustionChirho {
+    pub(crate) steps_chirho: bool,
+    pub(crate) nodes_chirho: bool,
+}
+
+pub(crate) fn family_branches_compatible_with_budget_chirho(
+    left_lhs_chirho: &[TyChirho],
+    left_rhs_chirho: &TyChirho,
+    right_lhs_chirho: &[TyChirho],
+    right_rhs_chirho: &TyChirho,
+    classify_chirho: &impl Fn(&str) -> FamilyHeadRoleChirho,
+    limits_chirho: &mut FamilyUnificationLimitsChirho,
+) -> Result<bool, FamilyCompatibilityExhaustionChirho> {
+    let mut kernel_chirho = ApartnessKernelChirho::new_chirho(classify_chirho, *limits_chirho);
     let mut left_context_chirho = kernel_chirho.context_chirho();
     let mut right_context_chirho = kernel_chirho.context_chirho();
-    match kernel_chirho.unify_inputs_chirho(
+    let result_chirho = (|| match kernel_chirho.unify_inputs_chirho(
         left_lhs_chirho,
         right_lhs_chirho,
         &mut left_context_chirho,
         &mut right_context_chirho,
-    ) {
-        Ok(FamilyUnificationChirho::SurelyApartChirho) => true,
-        Ok(FamilyUnificationChirho::UnifiableChirho)
-            if kernel_chirho.flattened_chirho.is_empty() =>
-        {
-            // Each RHS uses its own LHS's namespace, never a separately freshened namespace.
-            let compared_chirho = (|| {
-                let left_chirho =
-                    kernel_chirho.convert_chirho(left_rhs_chirho, &mut left_context_chirho, 0)?;
-                let right_chirho =
-                    kernel_chirho.convert_chirho(right_rhs_chirho, &mut right_context_chirho, 0)?;
-                let left_chirho = kernel_chirho.normalize_chirho(left_chirho, 0)?;
-                let right_chirho = kernel_chirho.normalize_chirho(right_chirho, 0)?;
-                let equal_chirho = kernel_chirho.equal_rhs_chirho(left_chirho, right_chirho, 0)?;
-                Ok::<bool, ()>(equal_chirho && !kernel_chirho.uncertain_chirho)
-            })();
-            compared_chirho.unwrap_or(false)
+    )? {
+        FamilyUnificationChirho::SurelyApartChirho => Ok(true),
+        FamilyUnificationChirho::UnifiableChirho if kernel_chirho.flattened_chirho.is_empty() => {
+            let left_chirho =
+                kernel_chirho.convert_chirho(left_rhs_chirho, &mut left_context_chirho, 0)?;
+            let right_chirho =
+                kernel_chirho.convert_chirho(right_rhs_chirho, &mut right_context_chirho, 0)?;
+            let left_chirho = kernel_chirho.normalize_chirho(left_chirho, 0)?;
+            let right_chirho = kernel_chirho.normalize_chirho(right_chirho, 0)?;
+            let equal_chirho = kernel_chirho.equal_rhs_chirho(left_chirho, right_chirho, 0)?;
+            Ok(equal_chirho && !kernel_chirho.uncertain_chirho)
         }
-        Ok(FamilyUnificationChirho::UnifiableChirho | FamilyUnificationChirho::UncertainChirho)
-        | Err(()) => false,
-    }
+        FamilyUnificationChirho::UnifiableChirho | FamilyUnificationChirho::UncertainChirho => {
+            Ok(false)
+        }
+    })();
+    limits_chirho.steps_chirho = kernel_chirho.limits_chirho.steps_chirho;
+    limits_chirho.nodes_chirho = limits_chirho
+        .nodes_chirho
+        .saturating_sub(kernel_chirho.nodes_chirho.len());
+    result_chirho.map_err(|()| kernel_chirho.exhaustion_chirho)
 }
 
 type NodeIdChirho = usize;
@@ -251,6 +276,7 @@ struct ApartnessKernelChirho<'classifier_chirho, ClassifyChirho> {
     next_variable_chirho: usize,
     next_scope_chirho: usize,
     uncertain_chirho: bool,
+    exhaustion_chirho: FamilyCompatibilityExhaustionChirho,
 }
 
 impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
@@ -272,6 +298,7 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
             next_variable_chirho: 0,
             next_scope_chirho: 0,
             uncertain_chirho: false,
+            exhaustion_chirho: FamilyCompatibilityExhaustionChirho::default(),
         }
     }
 
@@ -290,8 +317,17 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
         if depth_chirho > self.limits_chirho.depth_chirho {
             return Err(());
         }
-        self.limits_chirho.steps_chirho =
-            self.limits_chirho.steps_chirho.checked_sub(1).ok_or(())?;
+        self.spend_steps_chirho(1)?;
+        Ok(())
+    }
+
+    fn spend_steps_chirho(&mut self, amount_chirho: usize) -> Result<(), ()> {
+        let Some(remaining_chirho) = self.limits_chirho.steps_chirho.checked_sub(amount_chirho)
+        else {
+            self.exhaustion_chirho.steps_chirho = true;
+            return Err(());
+        };
+        self.limits_chirho.steps_chirho = remaining_chirho;
         Ok(())
     }
 
@@ -312,15 +348,12 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
                 .saturating_add(scopes_chirho.len()),
             _ => 0,
         };
-        self.limits_chirho.steps_chirho = self
-            .limits_chirho
-            .steps_chirho
-            .checked_sub(width_chirho)
-            .ok_or(())?;
+        self.spend_steps_chirho(width_chirho)?;
         if let Some(id_chirho) = self.interned_chirho.get(&node_chirho) {
             return Ok(*id_chirho);
         }
         if self.nodes_chirho.len() >= self.limits_chirho.nodes_chirho {
+            self.exhaustion_chirho.nodes_chirho = true;
             return Err(());
         }
         let id_chirho = self.nodes_chirho.len();

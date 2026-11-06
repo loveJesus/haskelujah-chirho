@@ -4,6 +4,7 @@
 //! canonical telescopes before their dependants. Workflow: declaration-kinds-chirho.
 
 use super::*;
+mod families_chirho;
 use haskelujah_ast_chirho::decl_chirho::{
     AssocTypeFamilyChirho, DataKindSigChirho, DeclChirho, TypeFamilyEquationChirho,
 };
@@ -77,12 +78,16 @@ impl TypeElaboratorChirho<'_> {
                     DeclChirho::TypeFamilyDeclChirho {
                         name_chirho,
                         equations_chirho,
+                        closed_chirho,
                         ..
                     } => {
                         let key_chirho = self.local_key_chirho(name_chirho)?;
-                        for equation_chirho in equations_chirho {
-                            self.elaborate_equation_chirho(equation_chirho, &key_chirho)?;
-                        }
+                        self.elaborate_family_equations_chirho(
+                            equations_chirho,
+                            &key_chirho,
+                            *closed_chirho,
+                            name_chirho.span_chirho(),
+                        )?;
                     }
                     DeclChirho::ClassDeclChirho {
                         name_chirho,
@@ -606,6 +611,7 @@ impl TypeElaboratorChirho<'_> {
             }
             self.finish_catalogue_chirho(&constructors_chirho, module_chirho.span_chirho)?;
             self.recheck_declaration_bodies_chirho(module_chirho, &group_chirho, &aliases_chirho)?;
+            self.publish_closed_families_chirho(module_chirho, &group_chirho)?;
             self.check_declaration_contracts_chirho(&keys_chirho, module_chirho.span_chirho)?;
             self.check_datatype_result_roles_chirho(&headers_chirho, module_chirho.span_chirho)?;
             self.queue_declaration_field_kinds_chirho(&headers_chirho, module_chirho.span_chirho)?;
@@ -715,9 +721,12 @@ impl TypeElaboratorChirho<'_> {
                     standalone_kind_chirho.as_mut(),
                     span_chirho,
                 )?;
-                for equation_chirho in equations_chirho {
-                    self.elaborate_equation_chirho(equation_chirho, key_chirho)?;
-                }
+                self.elaborate_family_equations_chirho(
+                    equations_chirho,
+                    key_chirho,
+                    *closed_chirho,
+                    span_chirho,
+                )?;
             }
             DeclChirho::ClassDeclChirho {
                 standalone_kind_chirho,
@@ -867,132 +876,5 @@ impl TypeElaboratorChirho<'_> {
             )?;
         }
         Ok(())
-    }
-
-    fn elaborate_equation_chirho(
-        &mut self,
-        equation_chirho: &mut TypeFamilyEquationChirho,
-        key_chirho: &str,
-    ) -> Result<(), ElaborationErrorChirho> {
-        if equation_chirho.is_held_chirho() {
-            return Ok(());
-        }
-        self.scoped_chirho(|this_chirho| {
-            // Equation variables have their own lexical owner, independent of the header.
-            let header_names_chirho = this_chirho
-                .declaration_variables_chirho
-                .get(key_chirho)
-                .map(|variables_chirho| {
-                    variables_chirho
-                        .written_chirho
-                        .iter()
-                        .map(|(name_chirho, _, _)| name_chirho.clone())
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default();
-            for name_chirho in header_names_chirho {
-                this_chirho.hide_variable_chirho(&name_chirho, equation_chirho.span_chirho)?;
-            }
-            if let Some(binders_chirho) = &mut equation_chirho.explicit_binders_chirho {
-                this_chirho.bind_forall_chirho(binders_chirho)?;
-            }
-            let head_chirho = equation_chirho.head_chirho.as_mut().ok_or_else(|| {
-                Self::error_chirho("family equation has no head", equation_chirho.span_chirho)
-            })?;
-            this_chirho
-                .elaborate_family_application_chirho(
-                    head_chirho,
-                    &mut equation_chirho.kind_args_chirho,
-                    &mut equation_chirho.lhs_types_chirho,
-                    &mut equation_chirho.rhs_chirho,
-                    equation_chirho.span_chirho,
-                )
-                .map(|_| ())
-        })
-    }
-
-    pub(super) fn elaborate_family_application_chirho(
-        &mut self,
-        head_chirho: &mut NameChirho,
-        hidden_chirho: &mut Vec<TypeChirho>,
-        visible_chirho: &mut Vec<TypeChirho>,
-        rhs_chirho: &mut TypeChirho,
-        span_chirho: SpanChirho,
-    ) -> Result<(Vec<TyChirho>, TyChirho), ElaborationErrorChirho> {
-        let mut constraint_chirho = ConstraintChirho::ClassChirho {
-            class_chirho: head_chirho.clone(),
-            kind_args_chirho: std::mem::take(hidden_chirho),
-            args_chirho: std::mem::take(visible_chirho),
-            span_chirho,
-        };
-        // Families return arbitrary kinds, so use the spine without imposing Constraint.
-        let ConstraintChirho::ClassChirho {
-            class_chirho,
-            kind_args_chirho,
-            args_chirho,
-            ..
-        } = &mut constraint_chirho
-        else {
-            unreachable!()
-        };
-        let mut syntax_chirho = TypeChirho::ConChirho(class_chirho.clone());
-        for argument_chirho in std::mem::take(kind_args_chirho) {
-            syntax_chirho = TypeChirho::KindApplicationChirho {
-                fun_chirho: Box::new(syntax_chirho),
-                arg_chirho: Box::new(argument_chirho),
-                written_chirho: !self.rechecking_chirho,
-                span_chirho,
-            };
-        }
-        for argument_chirho in std::mem::take(args_chirho) {
-            syntax_chirho = TypeChirho::AppChirho {
-                fun_chirho: Box::new(syntax_chirho),
-                arg_chirho: Box::new(argument_chirho),
-                span_chirho,
-            };
-        }
-        let left_chirho = self.infer_type_chirho(&mut syntax_chirho)?;
-        let right_chirho = self.infer_type_at_kind_chirho(rhs_chirho, &left_chirho.kind_chirho)?;
-        loop {
-            match syntax_chirho {
-                TypeChirho::AppChirho {
-                    fun_chirho,
-                    arg_chirho,
-                    ..
-                } => {
-                    visible_chirho.push(*arg_chirho);
-                    syntax_chirho = *fun_chirho;
-                }
-                TypeChirho::KindApplicationChirho {
-                    fun_chirho,
-                    arg_chirho,
-                    ..
-                } => {
-                    hidden_chirho.push(*arg_chirho);
-                    syntax_chirho = *fun_chirho;
-                }
-                TypeChirho::ConChirho(name_chirho) => {
-                    *head_chirho = name_chirho;
-                    break;
-                }
-                _ => {
-                    return Err(Self::error_chirho(
-                        "family application lost its checked head",
-                        span_chirho,
-                    ));
-                }
-            }
-        }
-        visible_chirho.reverse();
-        hidden_chirho.reverse();
-        let mut term_chirho = left_chirho.term_chirho;
-        let mut arguments_chirho = Vec::new();
-        while let TyChirho::AppChirho(fun_chirho, argument_chirho) = term_chirho {
-            self.state_chirho.charge_chirho(1, 1, span_chirho)?;
-            arguments_chirho.push(*argument_chirho);
-            term_chirho = *fun_chirho;
-        }
-        arguments_chirho.reverse();
-        Ok((arguments_chirho, right_chirho.term_chirho))
     }
 }

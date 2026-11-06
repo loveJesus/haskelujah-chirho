@@ -85,3 +85,104 @@ fn default_rhs_variables_require_a_checked_lhs_binder_chirho() {
     );
     assert!(context_chirho.has_non_deferrable_failure_chirho());
 }
+
+fn published_context_chirho() -> (
+    InferCtxChirho,
+    haskelujah_ast_chirho::name_chirho::NameChirho,
+) {
+    use crate::kind_chirho::elaboration_chirho::{
+        ElaborationImportsChirho, elaborate_declaration_module_chirho,
+    };
+    use haskelujah_ast_chirho::decl_chirho::{DeclChirho, TypeFamilyEquationChirho};
+    use haskelujah_ast_chirho::name_chirho::{
+        NameChirho, RawNameChirho, TypeConstructorDeclarationChirho, TypeConstructorRoleChirho,
+        TypeConstructorScopeChirho,
+    };
+    let span_chirho = SpanChirho::DUMMY_CHIRHO;
+    let name_chirho = |text_chirho: &str| {
+        NameChirho::RawChirho(RawNameChirho::unqualified_chirho(text_chirho, span_chirho))
+    };
+    let mut family_chirho = name_chirho("FamilyChirho");
+    let proof_chirho = TypeConstructorDeclarationChirho::source_chirho(
+        "Nested.PublicationChirho",
+        "FamilyChirho",
+        TypeConstructorRoleChirho::TypeFamilyChirho,
+    );
+    family_chirho.set_type_constructor_chirho(Some(proof_chirho.clone()));
+    let mut scope_chirho = TypeConstructorScopeChirho::default();
+    scope_chirho.bind_chirho("FamilyChirho".into(), Some(proof_chirho));
+    let mut module_chirho = ModuleChirho {
+        name_chirho: NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+            "Nested",
+            "PublicationChirho",
+            span_chirho,
+        )),
+        exports_chirho: None,
+        imports_chirho: vec![],
+        decls_chirho: vec![DeclChirho::TypeFamilyDeclChirho {
+            injectivity_chirho: None,
+            name_chirho: family_chirho.clone(),
+            type_vars_chirho: vec![name_chirho("aChirho").into()],
+            result_kind_chirho: None,
+            data_family_chirho: false,
+            standalone_kind_chirho: None,
+            closed_chirho: true,
+            equations_chirho: vec![TypeFamilyEquationChirho {
+                kind_args_chirho: vec![],
+                head_chirho: Some(family_chirho.clone()),
+                explicit_binders_chirho: None,
+                unwritten_binders_chirho: vec![],
+                lhs_types_chirho: vec![TypeChirho::VarChirho(name_chirho("aChirho"))],
+                rhs_chirho: TypeChirho::VarChirho(name_chirho("aChirho")),
+                malformed_chirho: false,
+                span_chirho,
+            }],
+            span_chirho,
+        }],
+        extensions_chirho: vec!["TypeFamilies".into()],
+        inline_pragmas_chirho: HashMap::new(),
+        specialize_pragmas_chirho: HashMap::new(),
+        foreign_exports_chirho: vec![],
+        deriving_via_chirho: vec![],
+        span_chirho,
+        origin_supply_chirho: Default::default(),
+    };
+    let checked_chirho = elaborate_declaration_module_chirho(
+        &mut module_chirho,
+        ElaborationImportsChirho {
+            registry_chirho: &TypeFamilyEnvChirho::default(),
+            type_scope_chirho: &scope_chirho,
+            family_scope_chirho: &Default::default(),
+            promotion_scope_chirho: &Default::default(),
+            builtin_classes_chirho: &Default::default(),
+        },
+        true,
+    )
+    .unwrap();
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    context_chirho.elaboration_state_chirho = checked_chirho.state_chirho;
+    context_chirho.type_families_chirho = checked_chirho.registry_chirho;
+    context_chirho.prepare_family_scope_chirho(&module_chirho, None);
+    (context_chirho, family_chirho)
+}
+
+#[test]
+fn checked_publication_reuse_requires_actual_owned_full_boundary_chirho() {
+    let (mut context_chirho, name_chirho) = published_context_chirho();
+    assert!(context_chirho.has_published_checked_closed_family_chirho(&name_chirho, 1, 1));
+    assert!(!context_chirho.has_published_checked_closed_family_chirho(&name_chirho, 0, 1));
+    assert!(!context_chirho.has_published_checked_closed_family_chirho(&name_chirho, 1, 0));
+    let mut raw_chirho = name_chirho.clone();
+    raw_chirho.set_type_constructor_chirho(None);
+    assert!(!context_chirho.has_published_checked_closed_family_chirho(&raw_chirho, 1, 1));
+    context_chirho.family_module_name_chirho = "OtherChirho".into();
+    assert!(!context_chirho.has_published_checked_closed_family_chirho(&name_chirho, 1, 1));
+}
+
+#[test]
+fn raw_legacy_context_cannot_reuse_checked_equations_by_spelling_chirho() {
+    let (mut context_chirho, name_chirho) = published_context_chirho();
+    context_chirho.elaboration_state_chirho =
+        crate::kind_chirho::elaboration_chirho::ElaborationStateChirho::unowned_chirho();
+    assert!(!context_chirho.has_published_checked_closed_family_chirho(&name_chirho, 1, 1));
+}

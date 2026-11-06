@@ -657,6 +657,13 @@ impl InferCtxChirho {
                 );
                 continue;
             }
+            if self.has_published_checked_closed_family_chirho(
+                name_chirho,
+                arity_chirho,
+                equations_chirho.len(),
+            ) {
+                continue;
+            }
             let id_chirho = TypeFamilyIdChirho::SourceChirho {
                 module_chirho: self.family_module_name_chirho.clone(),
                 name_chirho: name_chirho.text_chirho().to_owned(),
@@ -845,7 +852,7 @@ impl InferCtxChirho {
     }
 }
 
-fn held_equation_inputs_chirho(
+pub(crate) fn held_equation_inputs_chirho(
     arity_chirho: usize,
     equation_chirho: u32,
 ) -> (Vec<TyChirho>, TyChirho, Vec<String>) {
@@ -863,7 +870,7 @@ fn held_equation_inputs_chirho(
 }
 
 /// Predeclared exact family keys are opaque before their immutable bodies are installed.
-fn family_head_with_predeclared_chirho(
+pub(crate) fn family_head_with_predeclared_chirho(
     registry_chirho: &TypeFamilyRegistryChirho,
     predeclared_chirho: &HashMap<String, usize>,
     name_chirho: &str,

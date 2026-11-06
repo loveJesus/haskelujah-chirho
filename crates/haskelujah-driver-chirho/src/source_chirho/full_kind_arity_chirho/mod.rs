@@ -11,6 +11,7 @@ use haskelujah_span_chirho::FileIdChirho;
 use super::language_options_tests_chirho::check_chirho;
 
 mod class_headers_chirho;
+mod family_representations_chirho;
 mod quantifier_prefix_chirho;
 
 #[test]

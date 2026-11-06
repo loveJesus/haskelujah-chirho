@@ -987,3 +987,6 @@ fn occurs_chirho(variable_chirho: TyVarChirho, ty_chirho: &TyChirho) -> bool {
 
 #[cfg(test)]
 mod tests_chirho;
+
+#[cfg(test)]
+mod family_publication_tests_chirho;

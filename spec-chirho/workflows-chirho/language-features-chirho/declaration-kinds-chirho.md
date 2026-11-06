@@ -14,6 +14,9 @@ flowchart TD
   CursorChirho --> ResultChirho[Retain the remaining result kind and quantifier records]
   ResultChirho --> BodyChirho[Check each declaration SCC body and constructors]
   BodyChirho --> PublishChirho[Publish canonical full telescopes and checked dependencies]
+  PublishChirho --> FamilyChirho[Publish checked closed equations into the same catalogue]
+  FamilyChirho --> EqualityChirho[Normalize later kind equalities with the original allowance]
+  EqualityChirho --> BodyChirho
   PublishChirho --> ImportChirho[Reuse checked records through aliases and cold imports]
   PublishChirho --> ValuesChirho[Check signatures and value type applications]
   BodyChirho --> FailureChirho[Keep typed resource and invariant failures terminal]
@@ -30,6 +33,10 @@ Declaration-head `@a` binds a lexical variable without consuming a visible type 
 
 A family keeps its complete signature apart from its result kind. Checked full telescopes, including hidden arguments, reach registration, reduction, imports and exports. A family or ordinary constructor may return an arrow or quantified kind without adding declaration parameters. Unknown or unavailable metadata is not upgraded by spelling. Runtime kind erasure and dictionary selection remain separate consumers.
 
+Each completed declaration group publishes its checked closed-family equations into that same catalogue before later groups need their representation equalities. The producer retains the checked hidden and visible arguments, resolves their shared SCC variables, and abstracts one LHS binder namespace without introducing RHS-only variables. Held equations preserve their position and block later branches. Later ordinary registration reuses only the exact owned source proof, full reduction arity, defining module and checked closed definition; raw legacy contexts cannot claim that shortcut.
+
+Abstraction and branch compatibility spend the original elaboration state's work and output allowance on success and refusal. The compatibility kernel reports which actual guard exhausted its allowance, keeping an administrative depth/unsupported refusal conservative while a tightened original owner allowance stays terminal. Kind equality normalization uses that same catalogue and owner budget in both ordinary declaration checks and late scoped arguments. Recursive families do not acquire an early reduction proof inside an unchecked recursive-kind group.
+
 The real source controls pair T18891 with T18891a and exercise a required quantifier group that crosses the header/result boundary. The latter also checks the actual published telescope, residual kind and lexical dependency, alongside contradictory binder-kind and inferred-binder cases. These source tests establish their selected behavior only; frozen CLI, ordinary preservation and corpus acceptance require their own receipts.
 
-Still open in this vertical: remaining configured corpus disagreements, complete predicate-capture prefix transport and whole-row lint/structure obligations. A parsed header or a passing kind check does not imply runtime identity, constructor packing or full GHC compatibility.
+Still open in this vertical: remaining configured corpus disagreements, ordinary-preservation acceptance and whole-row lint/structure obligations. A parsed header or a passing kind check does not imply runtime identity, constructor packing or full GHC compatibility.
