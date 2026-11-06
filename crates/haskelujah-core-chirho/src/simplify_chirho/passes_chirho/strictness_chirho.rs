@@ -224,7 +224,7 @@ pub fn worker_wrapper_chirho(bindings_chirho: Vec<CoreBindingChirho>) -> Vec<Cor
             binder_chirho: binding_chirho.binder_chirho.clone(),
             rhs_chirho: wrapper_body_chirho,
             is_rec_chirho: false,
-            inline_chirho: binding_chirho.inline_chirho.clone(),
+            inline_chirho: binding_chirho.inline_chirho,
         };
 
         result_chirho.push(wrapper_binding_chirho);

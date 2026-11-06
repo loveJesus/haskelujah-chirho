@@ -105,7 +105,7 @@ fn cse_top_level_recursive_skipped_chirho() {
         },
         CoreBindingChirho {
             binder_chirho: mk_binder_chirho("y", 101),
-            rhs_chirho: rhs_chirho,
+            rhs_chirho,
             is_rec_chirho: false,
             inline_chirho: InlineAnnotationChirho::NoneChirho,
         },

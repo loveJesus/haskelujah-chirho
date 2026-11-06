@@ -329,20 +329,14 @@ pub(super) fn cse_expr_chirho(expr_chirho: &CoreExprChirho) -> CoreExprChirho {
             args_chirho,
         } => CoreExprChirho::PrimOpChirho {
             name_chirho: name_chirho.clone(),
-            args_chirho: args_chirho
-                .iter()
-                .map(|a_chirho| cse_expr_chirho(a_chirho))
-                .collect(),
+            args_chirho: args_chirho.iter().map(cse_expr_chirho).collect(),
         },
         CoreExprChirho::ConAppChirho {
             con_name_chirho,
             args_chirho,
         } => CoreExprChirho::ConAppChirho {
             con_name_chirho: con_name_chirho.clone(),
-            args_chirho: args_chirho
-                .iter()
-                .map(|a_chirho| cse_expr_chirho(a_chirho))
-                .collect(),
+            args_chirho: args_chirho.iter().map(cse_expr_chirho).collect(),
         },
         // Leaves — no transformation needed
         CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_) => expr_chirho.clone(),

@@ -50,8 +50,11 @@ fn spec_constr_finds_pattern_chirho() {
         ],
     };
 
-    let patterns_chirho =
-        find_call_patterns_chirho(&CoreIdChirho(100), &[xs_chirho.clone()], &body_chirho);
+    let patterns_chirho = find_call_patterns_chirho(
+        &CoreIdChirho(100),
+        std::slice::from_ref(&xs_chirho),
+        &body_chirho,
+    );
     assert_eq!(patterns_chirho.len(), 1);
     assert_eq!(patterns_chirho[0].arg_idx_chirho, 0);
     assert_eq!(patterns_chirho[0].con_name_chirho, "Cons");

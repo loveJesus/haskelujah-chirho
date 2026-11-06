@@ -191,28 +191,27 @@ fn find_patterns_in_expr_chirho(
     } = expr_chirho
     {
         // Check if scrutinee is one of our parameters
-        if let CoreExprChirho::VarChirho(scrut_id_chirho) = scrutinee_chirho.as_ref() {
-            if let Some(param_idx_chirho) = params_chirho
+        if let CoreExprChirho::VarChirho(scrut_id_chirho) = scrutinee_chirho.as_ref()
+            && let Some(param_idx_chirho) = params_chirho
                 .iter()
                 .position(|p_chirho| p_chirho.id_chirho == *scrut_id_chirho)
-            {
-                // Check each constructor alternative
-                for alt_chirho in alts_chirho {
-                    if let AltConChirho::DataConChirho(con_name_chirho) = &alt_chirho.con_chirho {
-                        // Check if there's a recursive call in this alt's RHS
-                        // where the argument at param_idx is one of the alt's binders
-                        if has_recursive_call_with_alt_binder_chirho(
-                            func_id_chirho,
-                            param_idx_chirho,
-                            &alt_chirho.binders_chirho,
-                            &alt_chirho.rhs_chirho,
-                        ) {
-                            patterns_chirho.push(CallPatternChirho {
-                                arg_idx_chirho: param_idx_chirho,
-                                con_name_chirho: con_name_chirho.clone(),
-                                field_binders_chirho: alt_chirho.binders_chirho.clone(),
-                            });
-                        }
+        {
+            // Check each constructor alternative
+            for alt_chirho in alts_chirho {
+                if let AltConChirho::DataConChirho(con_name_chirho) = &alt_chirho.con_chirho {
+                    // Check if there's a recursive call in this alt's RHS
+                    // where the argument at param_idx is one of the alt's binders
+                    if has_recursive_call_with_alt_binder_chirho(
+                        func_id_chirho,
+                        param_idx_chirho,
+                        &alt_chirho.binders_chirho,
+                        &alt_chirho.rhs_chirho,
+                    ) {
+                        patterns_chirho.push(CallPatternChirho {
+                            arg_idx_chirho: param_idx_chirho,
+                            con_name_chirho: con_name_chirho.clone(),
+                            field_binders_chirho: alt_chirho.binders_chirho.clone(),
+                        });
                     }
                 }
             }
@@ -291,17 +290,17 @@ fn has_recursive_call_with_alt_binder_chirho(
     collect_apps_chirho(expr_chirho, &mut apps_chirho);
 
     for (func_expr_chirho, args_chirho) in &apps_chirho {
-        if let CoreExprChirho::VarChirho(id_chirho) = func_expr_chirho {
-            if id_chirho == func_id_chirho && args_chirho.len() > param_idx_chirho {
-                // Check if the arg at param_idx is one of the alt binders
-                if let CoreExprChirho::VarChirho(arg_id_chirho) = &args_chirho[param_idx_chirho] {
-                    if alt_binders_chirho
-                        .iter()
-                        .any(|b_chirho| b_chirho.id_chirho == *arg_id_chirho)
-                    {
-                        return true;
-                    }
-                }
+        if let CoreExprChirho::VarChirho(id_chirho) = func_expr_chirho
+            && id_chirho == func_id_chirho
+            && args_chirho.len() > param_idx_chirho
+        {
+            // Check if the arg at param_idx is one of the alt binders
+            if let CoreExprChirho::VarChirho(arg_id_chirho) = &args_chirho[param_idx_chirho]
+                && alt_binders_chirho
+                    .iter()
+                    .any(|b_chirho| b_chirho.id_chirho == *arg_id_chirho)
+            {
+                return true;
             }
         }
     }
