@@ -901,8 +901,8 @@ flowchart TD
   was RED at ce9e9f65 and holds under this rule. Cross-module overlap and same-name controls run only once a multi-module frozen build can
   exercise them. A user-class method used directly mints no occurrence evidence, so its use
   site never consults the alias; a constrained call or a standard method's occurrence does,
-  and so does a `>>=`, `>>` or seeded `fmap` the checker proved at a concrete head this module
-  declares (row 699, B1 and B2, `monadic-dispatch-chirho`).
+  and so does a `>>=`, `>>`, seeded `fmap` or `pure` the checker proved at a concrete head this
+  module declares (row 699, B1, B2 and #32342, `monadic-dispatch-chirho`).
   G4 counts only instances that reach the class environment: a context-free instance whose
   head carries an overlap pragma is lost before typing today, and while it is, its generic
   rival must not be aliased (see the tasklist's blocker).

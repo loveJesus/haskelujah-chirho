@@ -15,7 +15,8 @@ use haskelujah_ast_chirho::provenance_chirho::OriginIdChirho;
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
 
-fn frontend_chirho(source_chirho: &str) -> crate::FrontendResultChirho {
+/// The real front end over `source_chirho`: the checked module and the checker's result.
+pub(super) fn frontend_chirho(source_chirho: &str) -> crate::FrontendResultChirho {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
         &mut source_map_chirho,
@@ -32,7 +33,7 @@ fn frontend_chirho(source_chirho: &str) -> crate::FrontendResultChirho {
 }
 
 /// Each occurrence in the checked module, by origin, with the text it names.
-fn occurrence_texts_chirho(
+pub(super) fn occurrence_texts_chirho(
     result_chirho: &mut crate::FrontendResultChirho,
 ) -> HashMap<OriginIdChirho, String> {
     let mut texts_chirho = HashMap::new();

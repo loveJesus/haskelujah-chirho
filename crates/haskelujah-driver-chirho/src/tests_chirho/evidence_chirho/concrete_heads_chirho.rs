@@ -1,11 +1,12 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! A concrete head the compiling module declares proves `>>=`, `>>` and `fmap` (row 699, B1
-//! and B2). The checker's proof, stamped with its use's origin, names the ground application
-//! its predicate resolved to. That application's head is one of this module's data or newtype
-//! declarations, and exactly one context-free instance of the class matches it. Every other
-//! record for these names proves nothing. An identity-less record never reaches them by span or
-//! by position, and a module whose own class declares `fmap` keeps that method's join.
+//! A concrete head the compiling module declares proves `>>=`, `>>`, `fmap` and `pure` (row 699,
+//! B1, B2 and #32342). The checker's proof, stamped with its use's origin, names the ground
+//! application its predicate resolved to. That application's head is one of this module's data or
+//! newtype declarations, and exactly one context-free instance of the class matches it. Every
+//! other record for these names proves nothing. An identity-less record never reaches them by span
+//! or by position. A module whose own class declares `fmap` keeps that method's join, and no own
+//! class gives `pure` one. W1's own `pure` and `>>` are checked through the real front end.
 //! workflow: monadic-dispatch-chirho
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
@@ -20,9 +21,10 @@ use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, InstDeclChirho, Pr
 use haskelujah_typing_chirho::infer_chirho::{InferResultChirho, MethodOccurrenceRecordChirho};
 use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
 
-use super::occurrence_join_chirho::{infer_result_chirho, record_chirho};
+use super::occurrence_join_chirho::{infer_result_chirho, record_chirho, span_chirho};
 use super::occurrence_producers_chirho::lower_chirho;
-use crate::evidence_join_chirho::ModuleDeclarationsChirho;
+use super::occurrence_records_chirho::{frontend_chirho, occurrence_texts_chirho};
+use crate::evidence_join_chirho::{ModuleDeclarationsChirho, admits_concrete_head_proof_chirho};
 use crate::join_occurrence_evidence_chirho;
 
 /// A module declaring both concrete heads below: one by a newtype, one by data.
@@ -34,7 +36,16 @@ const BARE_MODULE_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = print
 /// A module whose own class declares `fmap`, beside a head it declares.
 const OWN_FMAP_MODULE_CHIRHO: &str = "module Main where\nimport Prelude hiding (fmap)\nclass MapsChirho f where\n  fmap :: (a -> b) -> f a -> f b\nnewtype BoxChirho a = BoxChirho a\nmain :: IO ()\nmain = print (1 :: Int)\n";
 
+/// A module whose own class declares `pure`, beside a head it declares.
+const OWN_PURE_MODULE_CHIRHO: &str = "module Main where\nimport Prelude hiding (pure)\nclass PointedChirho f where\n  pure :: a -> f a\nnewtype BoxChirho a = BoxChirho a\nmain :: IO ()\nmain = print (1 :: Int)\n";
+
+/// W1's exact bytes, the program its every-engine test runs.
+const W1_SOURCE_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/monad_owned_dictionary_chirho/written_monads_chirho/state_omitted_then_chirho.hs"
+);
+
 /// One record for one occurrence, and everything the join reads about it.
+#[derive(Clone)]
 struct ProofCaseChirho {
     source_chirho: &'static str,
     name_chirho: &'static str,
@@ -44,6 +55,9 @@ struct ProofCaseChirho {
     instances_chirho: Vec<InstDeclChirho>,
     /// Whether the record carries the use's origin, and the occurrence that same provenance.
     stamped_chirho: bool,
+    /// Whether an unstamped record and its occurrence share one genuine span, the population the
+    /// span join serves; otherwise both have none, the population the positional path serves.
+    genuine_span_chirho: bool,
     /// A scheme the environment binds the name to, as a constrained function's would be.
     entry_chirho: Option<SchemeChirho>,
 }
@@ -60,26 +74,38 @@ impl ProofCaseChirho {
             applied_chirho: Some(applied_chirho("StateChirho")),
             instances_chirho: vec![instance_chirho("Monad", "StateChirho", Vec::new())],
             stamped_chirho: true,
+            genuine_span_chirho: false,
             entry_chirho: None,
         }
     }
 
+    /// `pure` used at `StateChirho [Int]` in the declaring module, with Applicative's one
+    /// context-free instance there, stamped with its origin.
+    fn pure_chirho() -> Self {
+        Self {
+            name_chirho: "pure",
+            class_chirho: "Applicative",
+            instances_chirho: vec![instance_chirho("Applicative", "StateChirho", Vec::new())],
+            ..Self::then_chirho()
+        }
+    }
+
     /// The proof the case's one occurrence takes. A stamped record joins its occurrence by
-    /// provenance. An unstamped one is offered to an occurrence with neither provenance nor a
-    /// span, the population the positional path serves.
+    /// provenance. An unstamped one is offered to an occurrence without provenance, through the
+    /// span they share or, with none, by position.
     fn joined_chirho(self) -> Option<(String, String)> {
         let mut supply_chirho = OriginSupplyChirho::new_chirho();
         let origin_chirho = supply_chirho.fresh_chirho();
+        let record_span_chirho = if self.genuine_span_chirho {
+            span_chirho(100, 104)
+        } else {
+            SpanChirho::DUMMY_CHIRHO
+        };
         let mut infer_chirho = infer_result_chirho(vec![MethodOccurrenceRecordChirho {
             applied_ty_chirho: self.applied_chirho,
             class_name_chirho: self.class_chirho.to_string(),
             origin_chirho: self.stamped_chirho.then_some(origin_chirho),
-            ..record_chirho(
-                self.name_chirho,
-                0,
-                self.key_chirho,
-                SpanChirho::DUMMY_CHIRHO,
-            )
+            ..record_chirho(self.name_chirho, 0, self.key_chirho, record_span_chirho)
         }]);
         declare_seeded_classes_chirho(&mut infer_chirho);
         for instance_chirho in self.instances_chirho {
@@ -104,6 +130,11 @@ impl ProofCaseChirho {
         } else {
             HashMap::new()
         };
+        let occurrence_spans_chirho = if self.genuine_span_chirho {
+            HashMap::from([(occurrence_chirho, record_span_chirho)])
+        } else {
+            HashMap::new()
+        };
         join_occurrence_evidence_chirho(
             &infer_chirho,
             &HashMap::from([(
@@ -111,7 +142,7 @@ impl ProofCaseChirho {
                 (self.name_chirho.to_string(), CoreIdChirho(1)),
             )]),
             &HashMap::new(),
-            &HashMap::new(),
+            &occurrence_spans_chirho,
             &provenance_chirho,
             &ModuleDeclarationsChirho::of_module_chirho(&lower_chirho(self.source_chirho)),
         )
@@ -120,11 +151,14 @@ impl ProofCaseChirho {
     }
 }
 
-/// The seeded classes' shapes the join reads: Functor declares `fmap`, Monad `>>=` and `>>`.
+/// The seeded classes' shapes the join reads: Functor declares `fmap`, Applicative `pure`, and
+/// Monad `>>=` and `>>`.
 fn declare_seeded_classes_chirho(infer_chirho: &mut InferResultChirho) {
-    for (class_chirho, methods_chirho) in
-        [("Functor", &["fmap"][..]), ("Monad", &[">>=", ">>"][..])]
-    {
+    for (class_chirho, methods_chirho) in [
+        ("Functor", &["fmap"][..]),
+        ("Applicative", &["pure"][..]),
+        ("Monad", &[">>=", ">>"][..]),
+    ] {
         infer_chirho.class_env_chirho.classes_chirho.insert(
             class_chirho.to_string(),
             ClassDeclChirho {
@@ -313,12 +347,9 @@ fn no_other_record_proves_a_concrete_head_chirho() {
     }
 }
 
-#[test]
-fn a_constrained_function_s_predicate_proves_no_method_at_a_concrete_head_chirho() {
-    // `>>` bound as a function constrained by Show: the record is authoritative through that
-    // scheme, yet Show declares no `>>`, so its predicate is no method's proof. The same record
-    // under Monad, which declares `>>`, is admitted.
-    let show_constrained_chirho = SchemeChirho {
+/// `Show a => a`, a constrained function's scheme, never a method's.
+fn show_constrained_scheme_chirho() -> SchemeChirho {
+    SchemeChirho {
         vars_chirho: vec![TyVarChirho(0)],
         preds_chirho: vec![SchemePredChirho {
             class_name_chirho: "Show".to_string(),
@@ -326,25 +357,106 @@ fn a_constrained_function_s_predicate_proves_no_method_at_a_concrete_head_chirho
             extra_tys_chirho: vec![],
         }],
         ty_chirho: TyChirho::VarChirho(TyVarChirho(0)),
-    };
+    }
+}
+
+#[test]
+fn a_constrained_function_s_predicate_proves_no_method_at_a_concrete_head_chirho() {
+    // `>>` and `pure` bound as functions constrained by Show: each record is authoritative
+    // through that scheme, yet Show declares neither, so its predicate is no method's proof. The
+    // same record under the class that declares the method is admitted.
+    for case_chirho in [
+        ProofCaseChirho::then_chirho(),
+        ProofCaseChirho::pure_chirho(),
+    ] {
+        let name_chirho = case_chirho.name_chirho;
+        let declared_chirho = Some((
+            case_chirho.class_chirho.to_string(),
+            "StateChirho".to_string(),
+        ));
+        assert_eq!(
+            ProofCaseChirho {
+                class_chirho: "Show",
+                instances_chirho: vec![instance_chirho("Show", "StateChirho", Vec::new())],
+                entry_chirho: Some(show_constrained_scheme_chirho()),
+                ..case_chirho.clone()
+            }
+            .joined_chirho(),
+            None,
+            "{name_chirho} under Show"
+        );
+        assert_eq!(
+            ProofCaseChirho {
+                entry_chirho: Some(show_constrained_scheme_chirho()),
+                ..case_chirho
+            }
+            .joined_chirho(),
+            declared_chirho,
+            "{name_chirho} under its own class"
+        );
+    }
+}
+
+#[test]
+fn pure_takes_its_proof_at_a_declared_concrete_head_only_chirho() {
+    // #32342: Applicative's declared `pure` at `StateChirho [Int]`, by B1 and B2's own rule.
     assert_eq!(
-        ProofCaseChirho {
-            class_chirho: "Show",
-            instances_chirho: vec![instance_chirho("Show", "StateChirho", Vec::new())],
-            entry_chirho: Some(show_constrained_chirho.clone()),
-            ..ProofCaseChirho::then_chirho()
-        }
-        .joined_chirho(),
-        None
+        ProofCaseChirho::pure_chirho().joined_chirho(),
+        Some(("Applicative".to_string(), "StateChirho".to_string()))
     );
-    assert_eq!(
-        ProofCaseChirho {
-            entry_chirho: Some(show_constrained_chirho),
-            ..ProofCaseChirho::then_chirho()
-        }
-        .joined_chirho(),
-        Some(("Monad".to_string(), "StateChirho".to_string()))
-    );
+    // An indexed own key, a builtin head, a head this module does not declare, a contextual
+    // instance, and a record without origin prove nothing for it.
+    let refused_chirho = [
+        (
+            "indexed own",
+            ProofCaseChirho {
+                key_chirho: "$own:0",
+                applied_chirho: None,
+                instances_chirho: Vec::new(),
+                ..ProofCaseChirho::pure_chirho()
+            },
+        ),
+        (
+            "builtin head",
+            ProofCaseChirho {
+                key_chirho: "Maybe",
+                applied_chirho: Some(applied_chirho("Maybe")),
+                instances_chirho: vec![instance_chirho("Applicative", "Maybe", Vec::new())],
+                ..ProofCaseChirho::pure_chirho()
+            },
+        ),
+        (
+            "undeclared head",
+            ProofCaseChirho {
+                source_chirho: BARE_MODULE_CHIRHO,
+                ..ProofCaseChirho::pure_chirho()
+            },
+        ),
+        (
+            "contextual",
+            ProofCaseChirho {
+                instances_chirho: vec![instance_chirho(
+                    "Applicative",
+                    "StateChirho",
+                    vec![PredChirho::new_chirho(
+                        "Show",
+                        TyChirho::VarChirho(TyVarChirho(1)),
+                    )],
+                )],
+                ..ProofCaseChirho::pure_chirho()
+            },
+        ),
+        (
+            "identity-less",
+            ProofCaseChirho {
+                stamped_chirho: false,
+                ..ProofCaseChirho::pure_chirho()
+            },
+        ),
+    ];
+    for (reason_chirho, case_chirho) in refused_chirho {
+        assert_eq!(case_chirho.joined_chirho(), None, "pure: {reason_chirho}");
+    }
 }
 
 #[test]
@@ -377,29 +489,128 @@ fn the_indexed_own_path_is_unchanged_and_never_serves_fmap_chirho() {
 
 #[test]
 fn identity_less_records_reach_only_the_names_they_reached_before_chirho() {
-    // The positional path still pairs an identity-less `show` with its identity-less record, so
-    // the control reaches that path. A seeded `fmap` is refused there, while a module's own
-    // class's `fmap` keeps the join it had.
-    let identity_less_chirho = |source_chirho, name_chirho, class_chirho| ProofCaseChirho {
-        source_chirho,
-        name_chirho,
-        class_chirho,
-        key_chirho: "BoxChirho",
-        applied_chirho: None,
-        instances_chirho: Vec::new(),
-        stamped_chirho: false,
-        entry_chirho: None,
+    // The span join and the positional path still pair an identity-less `show` with its
+    // identity-less record, so each control reaches its path. A seeded `fmap`, `>>`, and `pure`
+    // (even beside a module's own class named `pure`) are refused on both. A module's own class's
+    // `fmap` keeps the join it had.
+    for genuine_span_chirho in [false, true] {
+        let identity_less_chirho = |source_chirho, name_chirho, class_chirho| ProofCaseChirho {
+            source_chirho,
+            name_chirho,
+            class_chirho,
+            key_chirho: "BoxChirho",
+            applied_chirho: None,
+            instances_chirho: Vec::new(),
+            stamped_chirho: false,
+            genuine_span_chirho,
+            entry_chirho: None,
+        };
+        let path_chirho = if genuine_span_chirho {
+            "span"
+        } else {
+            "position"
+        };
+        for (source_chirho, name_chirho, class_chirho) in [
+            (BARE_MODULE_CHIRHO, "show", "Show"),
+            (OWN_FMAP_MODULE_CHIRHO, "fmap", "Functor"),
+        ] {
+            assert_eq!(
+                identity_less_chirho(source_chirho, name_chirho, class_chirho).joined_chirho(),
+                Some((class_chirho.to_string(), "BoxChirho".to_string())),
+                "{name_chirho} by {path_chirho}"
+            );
+        }
+        for (source_chirho, name_chirho, class_chirho) in [
+            (BARE_MODULE_CHIRHO, "fmap", "Functor"),
+            (BARE_MODULE_CHIRHO, ">>", "Monad"),
+            (BARE_MODULE_CHIRHO, "pure", "Applicative"),
+            (OWN_PURE_MODULE_CHIRHO, "pure", "Applicative"),
+        ] {
+            assert_eq!(
+                identity_less_chirho(source_chirho, name_chirho, class_chirho).joined_chirho(),
+                None,
+                "{name_chirho} by {path_chirho}"
+            );
+        }
+    }
+}
+
+#[test]
+fn the_checker_proves_w1s_pure_and_then_at_their_declared_concrete_head_chirho() {
+    // The real front end over W1's bytes, nothing built by hand. The `pure` of
+    // `logChirho 5 >> pure 'z'` carries the checker's Applicative proof at `StateChirho [Int]`,
+    // under the origin of an occurrence of `pure`. The concrete-head rule admits exactly that
+    // record against W1's own class environment and declarations. So it does the three `>>` used
+    // at that head, and none of main's IO statements.
+    let mut result_chirho = frontend_chirho(W1_SOURCE_CHIRHO);
+    let texts_chirho = occurrence_texts_chirho(&mut result_chirho);
+    let declarations_chirho =
+        ModuleDeclarationsChirho::of_module_chirho(&result_chirho.module_chirho);
+    let class_env_chirho = &result_chirho.infer_result_chirho.class_env_chirho;
+    let records_chirho = &result_chirho.infer_result_chirho.method_occurrences_chirho;
+    let state_ints_chirho = applied_chirho("StateChirho");
+    let admitted_chirho = |record_chirho: &MethodOccurrenceRecordChirho| {
+        admits_concrete_head_proof_chirho(record_chirho, &declarations_chirho, class_env_chirho)
     };
+    // W1 writes one `pure`: the one record whose origin is an occurrence of `pure` in W1 itself.
+    let pure_records_chirho: Vec<_> = records_chirho
+        .iter()
+        .filter(|record_chirho| {
+            record_chirho.name_chirho == "pure"
+                && record_chirho.origin_chirho.is_some_and(|origin_chirho| {
+                    texts_chirho.get(&origin_chirho).map(String::as_str) == Some("pure")
+                })
+        })
+        .collect();
+    let [pure_record_chirho] = pure_records_chirho.as_slice() else {
+        panic!("one proof for W1's one `pure`: {records_chirho:?}");
+    };
+    let pure_record_chirho: &MethodOccurrenceRecordChirho = pure_record_chirho;
     assert_eq!(
-        identity_less_chirho(BARE_MODULE_CHIRHO, "show", "Show").joined_chirho(),
-        Some(("Show".to_string(), "BoxChirho".to_string()))
+        (
+            pure_record_chirho.class_name_chirho.as_str(),
+            pure_record_chirho.ty_key_chirho.as_str(),
+            pure_record_chirho.applied_ty_chirho.as_ref(),
+        ),
+        ("Applicative", "StateChirho", Some(&state_ints_chirho)),
+        "{pure_record_chirho:?}"
     );
-    assert_eq!(
-        identity_less_chirho(BARE_MODULE_CHIRHO, "fmap", "Functor").joined_chirho(),
-        None
+    assert!(
+        admitted_chirho(pure_record_chirho),
+        "{pure_record_chirho:?}"
     );
-    assert_eq!(
-        identity_less_chirho(OWN_FMAP_MODULE_CHIRHO, "fmap", "Functor").joined_chirho(),
-        Some(("Functor".to_string(), "BoxChirho".to_string()))
+    let then_records_chirho: Vec<_> = records_chirho
+        .iter()
+        .filter(|record_chirho| {
+            record_chirho.name_chirho == ">>" && record_chirho.origin_chirho.is_some()
+        })
+        .collect();
+    // Lines 44 and 46, and `sixSevenChirho`'s statement, at `StateChirho [Int]`; main's three IO
+    // statements at `IO`.
+    let at_state_chirho: Vec<_> = then_records_chirho
+        .iter()
+        .copied()
+        .filter(|record_chirho| {
+            record_chirho.applied_ty_chirho.as_ref() == Some(&state_ints_chirho)
+        })
+        .collect();
+    assert_eq!(at_state_chirho.len(), 3, "{then_records_chirho:?}");
+    assert!(
+        at_state_chirho
+            .iter()
+            .all(|&record_chirho| admitted_chirho(record_chirho)),
+        "{at_state_chirho:?}"
+    );
+    let at_io_chirho: Vec<_> = then_records_chirho
+        .iter()
+        .copied()
+        .filter(|record_chirho| record_chirho.ty_key_chirho == "IO")
+        .collect();
+    assert_eq!(at_io_chirho.len(), 3, "{then_records_chirho:?}");
+    assert!(
+        at_io_chirho
+            .iter()
+            .all(|&record_chirho| !admitted_chirho(record_chirho)),
+        "{at_io_chirho:?}"
     );
 }

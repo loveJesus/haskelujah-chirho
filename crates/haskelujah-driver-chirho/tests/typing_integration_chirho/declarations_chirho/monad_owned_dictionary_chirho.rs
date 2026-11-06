@@ -53,11 +53,11 @@
 //! module is never refused for it. RD3 and RD4's refusal belongs to the checker's superclass
 //! obligations (GHC-39999), whose completeness gate knows when an instance universe is closed.
 //!
-//! Row 699's B1 and B2 (#32333): a `>>=`, `>>` or `fmap` used at a concrete head this module
-//! declares takes the checker's identity-stamped proof for that head to the dictionary the pass
-//! registered for it. RD2's top-level `fmap` and W1's direct `>>` reach their written instances
-//! that way. W3 runs such a `>>` beside `main`'s own `fmap`, `pure` and `return`, which keep
-//! their own bindings. W1's `pure 'z'` stays a named gap: `pure` keeps INV-001's route.
+//! Row 699's B1 and B2 (#32333), and `pure` (#32342): a `>>=`, `>>`, `fmap` or `pure` used at a
+//! concrete head this module declares takes the checker's identity-stamped proof for that head to
+//! the dictionary the pass registered for it. RD2's top-level `fmap`, and W1's direct `>>` and
+//! `pure 'z'`, reach their written instances that way. W3 runs such a `>>` beside `main`'s own
+//! `fmap`, `pure` and `return`, which keep their own bindings.
 //! workflow: monadic-dispatch-chirho
 
 use haskelujah_driver::{compile_source_chirho, compile_source_with_search_path_chirho};
@@ -150,8 +150,9 @@ const READER_EXTERNAL_MAIN_CHIRHO: &str = include_str!(
 
 /// W3 (sha256 78df2c43): `>>` at `TallyChirho Bool`, a concrete head this module declares, takes
 /// that head's registered dictionary and so GHC's `>>` default (row 699, B1). `main`'s own
-/// where-bound `fmap`, `pure` and `return` keep their own bindings. Predicted `3`, then
-/// `(200,1005,9)`; the GHC reference is pinned, not yet executed.
+/// where-bound `fmap`, `pure` and `return` keep their own bindings. GHC 9.14.1 printed `3`, then
+/// `(200,1005,9)` (#32345, `tmp-chirho/ghc-contract-refresh-chirho/reader-concrete-heads-r1-chirho`,
+/// summary df032931).
 const OWNED_METHOD_VALUES_CHIRHO: &str = include_str!(
     "monad_owned_dictionary_chirho/written_monads_chirho/owned_method_values_chirho.hs"
 );

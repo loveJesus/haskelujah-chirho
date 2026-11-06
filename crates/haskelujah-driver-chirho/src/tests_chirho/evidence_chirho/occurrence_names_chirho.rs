@@ -54,11 +54,11 @@ fn a_multi_parameter_class_and_the_inv_001_names_are_never_added_chirho() {
 fn imported_and_seeded_class_methods_keep_their_shared_id_chirho() {
     // A class imported from another module is not this module's to opt in, and
     // a seeded standard class's methods outside the standard set stay out, except
-    // `fmap`, minted for its concrete-head proof alone (row 699, below).
+    // `fmap` and `pure`, minted for their concrete-head proof alone (row 699, below).
     let names_chirho = method_occurrence_names_chirho(&lower_chirho(
         "module Main where\nimport NeedsChirho (NeedsChirho (..))\nmain :: IO ()\nmain = print (neededChirho [1 :: Int], fmap negate [1 :: Int], [1 :: Int] <> [2])\n",
     ));
-    for name_chirho in ["neededChirho", "<>", "toList", "traverse", "pure"] {
+    for name_chirho in ["neededChirho", "<>", "toList", "traverse"] {
         assert!(
             !names_chirho.contains(name_chirho),
             "{name_chirho} must keep its shared id"
@@ -75,8 +75,9 @@ fn imported_and_seeded_class_methods_keep_their_shared_id_chirho() {
 #[test]
 fn bind_and_then_are_minted_for_their_own_proof_and_the_other_inv_001_names_are_not_chirho() {
     // Row 697: each use of `>>=` and `>>` gets an occurrence id, so the checker's indexed own
-    // proof for that use reaches the dictionary pass; the join keeps no other proof for them.
-    // `return`, `pure` and `fail` keep their shared id (INV-001).
+    // proof for that use reaches the dictionary pass; the join keeps no other proof for them but
+    // a concrete head the module declares (row 699). `return` and `fail` keep their shared id
+    // (INV-001); `pure` is minted for its concrete-head proof alone (#32342, below).
     let names_chirho = method_occurrence_names_chirho(&lower_chirho(
         "module Main where\nmain :: IO ()\nmain = print (1 :: Int)\n",
     ));
@@ -84,7 +85,7 @@ fn bind_and_then_are_minted_for_their_own_proof_and_the_other_inv_001_names_are_
         names_chirho.contains(">>=") && names_chirho.contains(">>"),
         "{names_chirho:?}"
     );
-    for name_chirho in ["return", "pure", "fail"] {
+    for name_chirho in ["return", "fail"] {
         assert!(
             !names_chirho.contains(name_chirho),
             "{name_chirho} must keep its shared id"
@@ -116,6 +117,9 @@ fn bind_and_then_admit_only_an_indexed_own_monad_proof_chirho() {
         ("fmap", "Functor", "Maybe"),
         ("fmap", "Functor", "ReaderChirho"),
         ("fmap", "Functor", "$own:0"),
+        ("pure", "Applicative", "IO"),
+        ("pure", "Applicative", "StateChirho"),
+        ("pure", "Applicative", "$own:0"),
     ] {
         assert!(
             !admits_operator_proof_chirho(name_chirho, class_chirho, key_chirho),
@@ -148,6 +152,25 @@ fn fmap_is_minted_for_its_concrete_head_proof_alone_chirho() {
     ] {
         let names_chirho = method_occurrence_names_chirho(&lower_chirho(source_chirho));
         assert!(names_chirho.contains("fmap"), "{names_chirho:?}");
+    }
+}
+
+#[test]
+fn pure_is_minted_for_its_concrete_head_proof_alone_chirho() {
+    // #32342: each use of `pure` gets an occurrence id, so the checker's proof at a concrete head
+    // the module declares reaches the dictionary pass; the join refuses every other proof and the
+    // use keeps its canonical id. A module whose own class declares `pure` mints it the same way,
+    // never among its own methods (`concrete_heads_chirho`). `return` and `fail` stay unminted.
+    for source_chirho in [
+        "module Main where\nmain :: IO ()\nmain = print (1 :: Int)\n",
+        "module Main where\nimport Prelude hiding (pure)\nclass PointedChirho f where\n  pure :: a -> f a\nmain :: IO ()\nmain = print (1 :: Int)\n",
+    ] {
+        let names_chirho = method_occurrence_names_chirho(&lower_chirho(source_chirho));
+        assert!(names_chirho.contains("pure"), "{names_chirho:?}");
+        assert!(
+            !names_chirho.contains("return") && !names_chirho.contains("fail"),
+            "{names_chirho:?}"
+        );
     }
 }
 
