@@ -206,16 +206,16 @@ impl fmt::Display for TypeFamilyDefinitionContextChirho {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypeFamilyDefinitionErrorChirho {
     message_chirho: String,
-    context_chirho: Option<TypeFamilyDefinitionContextChirho>,
+    context_chirho: Option<Box<TypeFamilyDefinitionContextChirho>>,
 }
 
 impl TypeFamilyDefinitionErrorChirho {
     pub fn context_chirho(&self) -> Option<&TypeFamilyDefinitionContextChirho> {
-        self.context_chirho.as_ref()
+        self.context_chirho.as_deref()
     }
 
     fn with_context_chirho(mut self, context_chirho: TypeFamilyDefinitionContextChirho) -> Self {
-        self.context_chirho = Some(context_chirho);
+        self.context_chirho = Some(Box::new(context_chirho));
         self
     }
 }

@@ -17,10 +17,10 @@ use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(in crate::dict_chirho) enum GroundRefusalChirho {
     /// No instance head matches the goal.
-    UnresolvedChirho(PredChirho),
+    UnresolvedChirho(Box<PredChirho>),
     /// Several instance heads match. No overlap or origin authority is modeled, so none is
     /// chosen.
-    OverlapChirho(PredChirho, Vec<String>),
+    OverlapChirho(Box<PredChirho>, Vec<String>),
     /// The matched instance's rows are not declared in this module.
     RowsElsewhereChirho(String),
     /// The matched instance shares its declaration's place with another, so its rows are
@@ -34,14 +34,14 @@ pub(in crate::dict_chirho) enum GroundRefusalChirho {
     /// the evidence does not capture, so its rows could not tell its dictionaries apart.
     UnindexableContextChirho(String),
     /// A goal with extra class arguments: the superclasses' arguments are not recorded.
-    MultiParameterChirho(PredChirho),
+    MultiParameterChirho(Box<PredChirho>),
     /// The goal's class lays out no dictionary in this pass.
     NoLayoutChirho(String),
     /// A context obligation names a type constructor its goal does not, whose identity no
     /// producer proved.
     UnprovenConstructorChirho(String, String),
     /// A context obligation still holds a variable after the head match.
-    OpenObligationChirho(PredChirho),
+    OpenObligationChirho(Box<PredChirho>),
     /// A bound was reached: depth, dictionaries, visits, type work, goal weight or one
     /// candidate's copy weight.
     BudgetChirho(&'static str, usize),
@@ -130,13 +130,15 @@ pub(in crate::dict_chirho) fn select_ground_instance_chirho<'env_chirho>(
         }
     }
     let Some(selected_chirho) = selected_chirho else {
-        return Err(GroundRefusalChirho::UnresolvedChirho(goal_chirho.clone()));
+        return Err(GroundRefusalChirho::UnresolvedChirho(Box::new(
+            goal_chirho.clone(),
+        )));
     };
     if !others_chirho.is_empty() {
         let mut instances_chirho = vec![readable_instance_chirho(selected_chirho.0)];
         instances_chirho.extend(others_chirho);
         return Err(GroundRefusalChirho::OverlapChirho(
-            goal_chirho.clone(),
+            Box::new(goal_chirho.clone()),
             instances_chirho,
         ));
     }

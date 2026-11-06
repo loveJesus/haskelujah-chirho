@@ -222,14 +222,14 @@ impl DictPassCtxChirho {
     ) -> Result<usize, GroundRefusalChirho> {
         build_chirho.budget_chirho.visit_chirho(depth_chirho)?;
         if !pred_is_ground_chirho(goal_chirho) {
-            return Err(GroundRefusalChirho::OpenObligationChirho(
+            return Err(GroundRefusalChirho::OpenObligationChirho(Box::new(
                 goal_chirho.clone(),
-            ));
+            )));
         }
         if !goal_chirho.extra_tys_chirho.is_empty() {
-            return Err(GroundRefusalChirho::MultiParameterChirho(
+            return Err(GroundRefusalChirho::MultiParameterChirho(Box::new(
                 goal_chirho.clone(),
-            ));
+            )));
         }
         if !self
             .layouts_chirho

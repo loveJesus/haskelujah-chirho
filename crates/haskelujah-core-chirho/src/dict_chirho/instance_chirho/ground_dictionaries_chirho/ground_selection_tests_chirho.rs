@@ -82,7 +82,7 @@ fn a_goal_no_head_matches_is_refused_by_name_chirho() {
     let goal_chirho = PredChirho::new_chirho("KnownNatChirho", con_chirho("BoolChirho"));
     assert_eq!(
         select_chirho(&env_chirho, &goal_chirho).map(|_| ()),
-        Err(GroundRefusalChirho::UnresolvedChirho(goal_chirho))
+        Err(GroundRefusalChirho::UnresolvedChirho(Box::new(goal_chirho)))
     );
 }
 
