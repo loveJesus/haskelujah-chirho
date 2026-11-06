@@ -14,7 +14,6 @@ use haskelujah_span_chirho::SpanChirho;
 
 use crate::provenance_chirho::OriginIdChirho;
 
-#[path = "name_chirho/compiler_class_kind_chirho/mod.rs"]
 mod compiler_class_kind_chirho;
 pub use compiler_class_kind_chirho::{
     CompilerClassBinderChirho, CompilerClassChirho, CompilerClassGroundKindChirho,
