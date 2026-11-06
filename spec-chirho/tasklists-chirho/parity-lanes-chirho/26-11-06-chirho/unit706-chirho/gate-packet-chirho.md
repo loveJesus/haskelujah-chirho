@@ -11,10 +11,10 @@ Candidate worktree:
 After the scheduler records the exact candidate and grants the slot, its focused command is:
 
 ```sh
-cargo test -p haskelujah-driver --test native_entry_role_chirho -- --nocapture --test-threads=1
+cargo test --locked --offline -j 2 -p haskelujah-driver --test native_entry_role_chirho -- --nocapture --test-threads=1
 ```
 
-The package name is `haskelujah-driver`, not its suffixed directory name. The target contains six named tests and executes both LLVM and Cranelift independently; it compiles real source through the frontend, emits artifacts and uses each run's own RTS snapshot. It checks:
+The package name is `haskelujah-driver`, not its suffixed directory name. The nested RTS freshness build uses the same locked, offline, two-job policy: `cargo build --locked --offline -j 2 -p haskelujah-rts --quiet`. The target contains six named tests and executes both LLVM and Cranelift independently; it compiles real source through the frontend, emits artifacts and uses each run's own RTS snapshot. It checks:
 
 - Program `IO Int` returning 7: status 0, empty stdout.
 - Program printing 1 then returning 5: status 0, stdout `1\n`.
