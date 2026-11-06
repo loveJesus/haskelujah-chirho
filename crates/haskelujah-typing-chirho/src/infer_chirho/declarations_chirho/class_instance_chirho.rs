@@ -623,6 +623,46 @@ impl InferCtxChirho {
     }
 
     /// Process an instance declaration from the AST and register it.
+    /// The proof of the class record a source instance's written class name selects at its
+    /// registration (row 692), as that record carries it. A compiler proof stands only when
+    /// the selected record is the compiler record for that identity, so a program's own class
+    /// spelled like a compiler class keeps its own proof. No record selected stays the legacy
+    /// unknown. Nothing is resolved from the spelling beyond the selection registration makes.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    fn selected_class_proof_chirho(
+        &self,
+        class_name_chirho: &str,
+    ) -> haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho {
+        use haskelujah_ast_chirho::name_chirho::{
+            ClassIdentityUnknownChirho, PredicateClassIdentityChirho, PredicateClassProofChirho,
+        };
+        let Some(selected_chirho) = self
+            .class_env_chirho
+            .classes_chirho()
+            .get_chirho(class_name_chirho)
+        else {
+            return PredicateClassProofChirho::UnknownChirho(
+                ClassIdentityUnknownChirho::LegacyChirho,
+            );
+        };
+        match selected_chirho.class_identity_chirho() {
+            PredicateClassProofChirho::ProvenChirho(
+                PredicateClassIdentityChirho::CompilerChirho(identity_chirho),
+            ) if !self
+                .class_env_chirho
+                .compiler_class_record_chirho(*identity_chirho)
+                .is_some_and(|compiler_chirho| {
+                    std::sync::Arc::ptr_eq(compiler_chirho, selected_chirho)
+                }) =>
+            {
+                PredicateClassProofChirho::UnknownChirho(
+                    ClassIdentityUnknownChirho::UnsupportedChirho,
+                )
+            }
+            proof_chirho => proof_chirho.clone(),
+        }
+    }
+
     pub(super) fn process_instance_decl_chirho(&mut self, decl_chirho: &DeclChirho) {
         if let DeclChirho::InstanceDeclChirho {
             context_chirho,
@@ -692,8 +732,12 @@ impl InferCtxChirho {
                 .map(|t_chirho| self.expand_type_synonyms_chirho(&t_chirho))
                 .collect();
 
-            let instance_chirho =
-                InstDeclChirho::legacy_chirho(crate::class_chirho::InstDeclPartsChirho {
+            // The instance's class is the record its written name selects (row 692). That
+            // record's own proof is carried, and its instance identity stays the legacy unknown
+            // it was: no unit producer exists for a source instance.
+            let class_proof_chirho = self.selected_class_proof_chirho(&class_name_chirho);
+            let instance_chirho = InstDeclChirho::from_producer_chirho(
+                crate::class_chirho::InstDeclPartsChirho {
                     kind_tys_chirho: kind_tys_chirho
                         .iter()
                         .map(|kind_chirho| self.expand_type_synonyms_chirho(kind_chirho))
@@ -702,7 +746,12 @@ impl InferCtxChirho {
                     head_ty_chirho,
                     extra_head_tys_chirho,
                     context_chirho: inst_context_chirho,
-                });
+                },
+                class_proof_chirho,
+                haskelujah_ast_chirho::name_chirho::InstanceIdentityChirho::UnknownChirho(
+                    haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+                ),
+            );
             let instance_chirho = std::sync::Arc::new(instance_chirho);
             // workflow: language-features-chirho/instance-obligations-chirho
             self.local_instances_chirho
