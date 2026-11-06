@@ -7,15 +7,17 @@ Row 695. A typed hole is an error by default, as in GHC (GHC-88464). Three indep
 ```mermaid
 flowchart TD
     caller_chirho["caller options<br/>FrontendOptionsChirho"] --> policy_chirho
-    header_chirho["module header OPTIONS_GHC<br/>header_ghc_options_chirho, real pragma tokens<br/>source path: as written, then after CPP"] --> policy_chirho
-    policy_chirho["DeferralPolicyChirho::resolve_chirho<br/>caller first, then module, left to right"]
-    parse_chirho["parse, lower, splices, deriving"] --> resolve_chirho["name resolution"]
+    header_chirho["real header LANGUAGE and OPTIONS_GHC<br/>HeaderPragmasChirho<br/>source path: original, then post-CPP"] --> policy_chirho
+    policy_chirho["FrontendPolicyChirho<br/>caller first, then both real header views"]
+    policy_chirho --> extensions_chirho["EffectiveExtensionsChirho<br/>last edition baseline, explicit overrides<br/>one effective state per extension"]
+    extensions_chirho --> parse_chirho["configured parser before layout<br/>configured lower publishes Module.extensions<br/>splices and deriving"]
+    parse_chirho --> resolve_chirho["name resolution"]
     resolve_chirho -->|any error| stop_chirho["reject with the phase's bundle"]
     resolve_chirho --> kind_chirho["kind inference"]
     kind_chirho -->|any error| stop_chirho
     kind_chirho --> infer_chirho["type inference"]
     infer_chirho --> settle_chirho{"settle_inference_chirho<br/>is every error deferred?"}
-    policy_chirho --> settle_chirho
+    policy_chirho --> deferral_chirho["existing DeferralPolicyChirho categories"] --> settle_chirho
     settle_chirho -->|no| stop_chirho
     settle_chirho -->|yes: those errors become warnings| validity_chirho["source-type validity"]
     validity_chirho -->|any error| stop_chirho
@@ -34,6 +36,9 @@ flowchart TD
   - first as written, before preprocessing, so CPP cannot drop one of its options;
   - then after preprocessing, as GHC re-reads the pragmas once CPP has run, so an `OPTIONS_GHC` that CPP selects applies too.
 - Direct frontend callers read the header of the text they pass in.
+- Extension resolution uses GHC 9.14.1's default GHC2021 baseline. The last named language edition replaces that baseline; every explicitly enabled or disabled extension overrides it in written order, including flags written before the edition. Explicit enabling replays GHC's implication graph; the edition baseline does not take that closure. Thus GHC2021's implied `TypeOperators` leaves `ExplicitNamespaces` off, while an explicit `-XTypeOperators` enables it.
+- `EffectiveExtensionsChirho` supplies both contextual keyword classification before layout and the lowered module's extension field. Default parser/lower entry points use the same catalogue, including cold discovery. A caller's `-XCPP` controls the initial CPP decision; real `NoCPP`, comments, strings and late pragmas follow the same header authority.
+- `NoPolyKinds` refuses written kind variables and kind quantifiers. Already checked hidden kind arguments retain their producer-owned variable identities; disabling source syntax does not invalidate those checked records.
 - Option words follow GHC's `toArgs`:
   - A word that starts with `"` is a Haskell string literal, read without its quotes. Only `\"` and `\\` are decoded.
   - A quoted part inside a word keeps its quotes and may hold spaces.
@@ -71,11 +76,11 @@ E0211 to E0214 were separated from the deferrable E0202, E0204, E0205 and E0200,
 ## Boundaries
 
 - **Qualified out-of-scope names:** a qualified out-of-scope name (`Q.x`, name resolution's E0100) never defers. GHC defers such a variable under `-fdefer-out-of-scope-variables`, but E0100 also covers data constructors, which GHC never defers.
-- **CPP-selected options:** an `OPTIONS_GHC` that only a header `#if` selects is read from the preprocessed text alone. Whether CPP runs at all is still decided by the existing line heuristic.
+- **CPP-selected options:** a pragma that only a header `#if` selects is read from the preprocessed text alone. The initial real header and caller options decide whether CPP runs; the selected header then contributes to the final policy.
+- **Prepared file transport:** older file/project readers still return only preprocessed strings. Carrying the original-header policy through those existing file and batch containers remains required; the shared configured parser/lower API does not itself establish that every older file caller retains both views.
 - **Option word forms not modeled:**
   - the `["..."]` list form that GHC also reads;
   - Haskell escapes other than `\"` and `\\`.
-- **`-X` extensions:** the `-X` words of an `OPTIONS_GHC` pragma still split on whitespace, so a quoted `-X` word names no extension.
 - **Unreadable pragmas:** a malformed or unknown option does not reject the module as GHC does; it is simply not a switch.
 - **No runtime claim:** a deferred module compiles. Evaluating a deferred hole, unbound variable or type error does not raise GHC's deferred runtime error; it does whatever the existing lowering does.
 - **Callers without options:**
@@ -83,7 +88,12 @@ E0211 to E0214 were separated from the deferrable E0202, E0204, E0205 and E0200,
   - Warning-only flags such as `-fno-warn-typed-holes`, and `-Werror`, are not modeled.
 - **Corpus harness:** the directory-label corpus harness applies no `all.T` options. Should-compile hole tests whose `all.T` passes `-fdefer-typed-holes` or `-fdefer-type-errors` become nominal rejects there. That is a harness boundary, not compiler behavior.
 
+The shared edition tables and explicit implication graph follow [GHC 9.14.1 DynFlags](https://github.com/ghc/ghc/blob/ghc-9.14.1-release/compiler/GHC/Driver/DynFlags.hs#L1205) and [Flags](https://github.com/ghc/ghc/blob/ghc-9.14.1-release/compiler/GHC/Driver/Flags.hs#L274). Language changes replay explicit flags as described by [Session](https://github.com/ghc/ghc/blob/ghc-9.14.1-release/compiler/GHC/Driver/Session.hs#L2794).
+
 ## Controls
+
+- `pragma_chirho/effective_tests_chirho.rs`: default/selected editions, explicit override precedence, implication versus baseline distinction, real header boundaries, one published flag state and the shared pre-layout/lowering payload.
+- `source_chirho/language_options_tests_chirho.rs`: actual kind elaboration under caller modes, contextual layout, caller-enabled CPP, quoted/real headers, ordinary deferral categories, and bound/free versus concrete kinds under `NoPolyKinds`. The corresponding twelve fresh GHC controls preserve their pinned predictions and raw receipts.
 
 - `tests_chirho/extensions_chirho/deferral_flags_chirho.rs`: flag implications, both orders, caller-then-module precedence, unrelated options, header option words, quoted option words, and fake flags in comments, strings and misplaced pragmas.
 - `tests_chirho/extensions_chirho/typed_hole_policy_chirho.rs`: end-to-end checks on typed `main :: IO ()` programs:

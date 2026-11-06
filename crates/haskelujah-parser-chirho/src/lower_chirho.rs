@@ -175,7 +175,17 @@ pub fn lower_module_chirho(
     file_id_chirho: FileIdChirho,
 ) -> ModuleChirho {
     let mut ctx_chirho = LowerCtxChirho::new_chirho(file_id_chirho);
-    ctx_chirho.lower_source_file_chirho(root_chirho)
+    ctx_chirho.lower_source_file_chirho(root_chirho, None)
+}
+
+/// Lower with the already resolved policy used before layout, without rescanning pragmas.
+pub fn lower_module_with_extensions_chirho(
+    root_chirho: &Arc<GreenNodeChirho>,
+    file_id_chirho: FileIdChirho,
+    extensions_chirho: &crate::pragma_chirho::EffectiveExtensionsChirho,
+) -> ModuleChirho {
+    let mut ctx_chirho = LowerCtxChirho::new_chirho(file_id_chirho);
+    ctx_chirho.lower_source_file_chirho(root_chirho, Some(extensions_chirho))
 }
 
 // ---------------------------------------------------------------------------

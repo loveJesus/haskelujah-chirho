@@ -49,9 +49,7 @@ pub use pipeline_chirho::{
     FrontendImportsChirho, run_frontend_with_options_chirho,
     run_frontend_with_type_synonyms_families_and_class_env_chirho,
 };
-pub(crate) use pipeline_chirho::{
-    inject_prelude_import_chirho, run_frontend_under_deferral_chirho,
-};
+pub(crate) use pipeline_chirho::{inject_prelude_import_chirho, run_frontend_under_policy_chirho};
 #[path = "project_chirho/project_dir_chirho.rs"]
 mod project_dir_chirho;
 #[path = "native_link_chirho/rts_snapshot_chirho.rs"]
@@ -59,8 +57,11 @@ pub mod rts_snapshot_chirho;
 #[cfg(test)]
 #[path = "native_link_chirho/rts_snapshot_tests_chirho.rs"]
 mod rts_snapshot_tests_chirho;
+#[path = "frontend_chirho/source_options_chirho.rs"]
+mod source_options_chirho;
+pub(crate) use source_options_chirho::FrontendPolicyChirho;
 mod source_chirho;
-pub use source_chirho::typecheck_source_chirho;
+pub use source_chirho::{preprocess_cpp_chirho, typecheck_source_chirho};
 pub mod splice_chirho;
 #[path = "frontend_chirho/stdlib_seed_chirho.rs"]
 mod stdlib_seed_chirho;
@@ -112,7 +113,7 @@ use cpp_preprocess_chirho::{
     CPP_GLASGOW_HASKELL_VERSION_CHIRHO, cpp_include_dirs_chirho, decode_cpp_stdout_chirho,
     discover_cpp_min_version_macro_options_chirho, has_cpp_directive_residue_chirho,
     preprocess_cpp_source_chirho, preprocess_cpp_source_with_options_chirho,
-    source_uses_cpp_chirho, strip_cpp_directives_chirho,
+    strip_cpp_directives_chirho,
 };
 use hsc_preprocess_chirho::{
     lower_maybe_like_unboxed_sums_chirho, path_is_hsc_chirho,
@@ -540,29 +541,6 @@ pub fn frontend_warnings_with_options_chirho(
     )?;
 
     Ok(frontend_result_chirho.warnings_chirho)
-}
-
-/// Preprocess source code with CPP if `{-# LANGUAGE CPP #-}` is present.
-/// Shells out to the system C preprocessor, defining `__GLASGOW_HASKELL__`
-/// for compatibility with packages that conditionally compile for GHC versions.
-pub fn preprocess_cpp_chirho(source_chirho: &str) -> String {
-    if !source_uses_cpp_chirho(source_chirho) {
-        return lower_maybe_like_unboxed_sums_chirho(source_chirho);
-    }
-
-    match temporary_source_file_chirho(source_chirho, None, ".hs")
-        .and_then(|file_chirho| preprocess_cpp_source_chirho(file_chirho.path(), source_chirho))
-    {
-        Ok(processed_chirho) => {
-            let cleaned_chirho = if has_cpp_directive_residue_chirho(&processed_chirho) {
-                strip_cpp_directives_chirho(&processed_chirho)
-            } else {
-                processed_chirho
-            };
-            lower_maybe_like_unboxed_sums_chirho(&cleaned_chirho)
-        }
-        _ => lower_maybe_like_unboxed_sums_chirho(&strip_cpp_directives_chirho(source_chirho)),
-    }
 }
 
 /// Run the full compiler pipeline: lex → layout → CST parse → AST lower →

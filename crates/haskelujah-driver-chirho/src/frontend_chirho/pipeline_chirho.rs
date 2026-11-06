@@ -56,30 +56,28 @@ pub fn run_frontend_with_options_chirho(
     imports_chirho: FrontendImportsChirho<'_>,
     options_chirho: &FrontendOptionsChirho,
 ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
-    let deferral_chirho = DeferralPolicyChirho::resolve_chirho(
+    let policy_chirho = FrontendPolicyChirho::resolve_chirho(
         &options_chirho.ghc_options_chirho,
-        &haskelujah_parser_chirho::pragma_chirho::header_ghc_options_chirho(
-            source_chirho,
-            file_id_chirho,
-        ),
+        [
+            haskelujah_parser_chirho::pragma_chirho::header_pragmas_chirho(
+                source_chirho,
+                file_id_chirho,
+            ),
+        ],
     );
-    run_frontend_under_deferral_chirho(
-        source_chirho,
-        file_id_chirho,
-        imports_chirho,
-        deferral_chirho,
-    )
+    run_frontend_under_policy_chirho(source_chirho, file_id_chirho, imports_chirho, policy_chirho)
 }
 
 /// The frontend phases under a deferral policy the caller already resolved: the source path
 /// reads the module's header before CPP rewrites the text (row 695).
 /// workflow: compiler-pipeline-chirho/error-deferral-chirho
-pub(crate) fn run_frontend_under_deferral_chirho(
+pub(crate) fn run_frontend_under_policy_chirho(
     source_chirho: &str,
     file_id_chirho: haskelujah_span_chirho::FileIdChirho,
     imports_chirho: FrontendImportsChirho<'_>,
-    deferral_chirho: DeferralPolicyChirho,
+    policy_chirho: FrontendPolicyChirho,
 ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
+    let deferral_chirho = policy_chirho.deferral_chirho;
     let FrontendImportsChirho {
         ifaces_chirho,
         types_chirho: imported_types_chirho,
@@ -89,11 +87,20 @@ pub(crate) fn run_frontend_under_deferral_chirho(
     } = imports_chirho;
 
     // Phase 1: CST parse (lex + layout + recursive-descent)
-    let parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
+    let parser_chirho = ParserChirho::with_extensions_chirho(
+        source_chirho,
+        file_id_chirho,
+        &policy_chirho.extensions_chirho,
+    );
     let green_chirho = parser_chirho.parse_checked_chirho()?;
 
     // Phase 2: CST → AST lowering
-    let mut module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
+    let mut module_chirho =
+        haskelujah_parser_chirho::lower_chirho::lower_module_with_extensions_chirho(
+            &green_chirho,
+            file_id_chirho,
+            &policy_chirho.extensions_chirho,
+        );
 
     // Phase 2.1: Automatic Prelude import
     // Every Haskell module implicitly imports Prelude unless:

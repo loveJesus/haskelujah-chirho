@@ -5,18 +5,21 @@
 
 pub(crate) mod cpp_chirho;
 #[cfg(test)]
+mod language_options_tests_chirho;
+#[cfg(test)]
 mod tests_chirho;
 
 use super::{
-    DeferralPolicyChirho, DiagnosticBundleChirho, FrontendImportsChirho, FrontendOptionsChirho,
+    DiagnosticBundleChirho, FrontendImportsChirho, FrontendOptionsChirho, FrontendPolicyChirho,
     FrontendResultChirho, ImportedTypeSynonymsChirho, SourceFileChirho, SourceMapChirho,
-    merge_stdlib_frontend_artifacts_chirho, preprocess_cpp_chirho,
-    run_frontend_under_deferral_chirho, seed_builtin_type_families_chirho,
-    source_imports_stdlib_chirho,
+    has_cpp_directive_residue_chirho, lower_maybe_like_unboxed_sums_chirho,
+    merge_stdlib_frontend_artifacts_chirho, run_frontend_under_policy_chirho,
+    seed_builtin_type_families_chirho, source_imports_stdlib_chirho, strip_cpp_directives_chirho,
+    temporary_source_file_chirho,
 };
 use crate::family_frontend_diagnostics_chirho;
 use haskelujah_naming_chirho::ModuleIfaceChirho;
-use haskelujah_parser_chirho::pragma_chirho::header_ghc_options_chirho;
+use haskelujah_parser_chirho::pragma_chirho::header_pragmas_chirho;
 
 /// Preprocess, parse, resolve and typecheck source text, stopping before Core and
 /// code generation. Uses the same builtin/stdlib interfaces as full compilation.
@@ -59,13 +62,19 @@ pub(crate) fn typecheck_source_with_ifaces_and_options_chirho(
     // re-reads the pragmas once CPP has run, so an `OPTIONS_GHC` that CPP selects applies
     // too. The caller's options come before both (row 695).
     // workflow: compiler-pipeline-chirho/error-deferral-chirho
-    let mut module_options_chirho = header_ghc_options_chirho(
+    let original_header_chirho = header_pragmas_chirho(
         source_chirho,
         haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
     );
 
-    // Run CPP preprocessing if {-# LANGUAGE CPP #-} is present
-    let preprocessed_chirho = preprocess_cpp_chirho(source_chirho);
+    let initial_policy_chirho = FrontendPolicyChirho::resolve_chirho(
+        &options_chirho.ghc_options_chirho,
+        [original_header_chirho.clone()],
+    );
+    let preprocessed_chirho = preprocess_cpp_under_extensions_chirho(
+        source_chirho,
+        &initial_policy_chirho.extensions_chirho,
+    );
     let effective_source_chirho = &preprocessed_chirho;
 
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
@@ -74,13 +83,12 @@ pub(crate) fn typecheck_source_with_ifaces_and_options_chirho(
         effective_source_chirho,
     );
     let file_id_chirho = source_file_chirho.file_id_chirho();
-    module_options_chirho.extend(header_ghc_options_chirho(
-        effective_source_chirho,
-        file_id_chirho,
-    ));
-    let deferral_chirho = DeferralPolicyChirho::resolve_chirho(
+    let policy_chirho = FrontendPolicyChirho::resolve_chirho(
         &options_chirho.ghc_options_chirho,
-        &module_options_chirho,
+        [
+            original_header_chirho,
+            header_pragmas_chirho(effective_source_chirho, file_id_chirho),
+        ],
     );
 
     let mut builtin_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
@@ -106,7 +114,7 @@ pub(crate) fn typecheck_source_with_ifaces_and_options_chirho(
     // emptiness always took.
     let imported_class_env_chirho =
         haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho();
-    let frontend_chirho = run_frontend_under_deferral_chirho(
+    let frontend_chirho = run_frontend_under_policy_chirho(
         effective_source_chirho,
         file_id_chirho,
         FrontendImportsChirho {
@@ -116,7 +124,47 @@ pub(crate) fn typecheck_source_with_ifaces_and_options_chirho(
             type_families_chirho: &imported_type_families_chirho,
             class_env_chirho: &imported_class_env_chirho,
         },
-        deferral_chirho,
+        policy_chirho,
     )?;
     Ok((frontend_chirho, builtin_ifaces_chirho))
+}
+
+/// Preprocess source code with CPP if `{-# LANGUAGE CPP #-}` is present.
+/// Shells out to the system C preprocessor, defining `__GLASGOW_HASKELL__`
+/// for compatibility with packages that conditionally compile for GHC versions.
+pub fn preprocess_cpp_chirho(source_chirho: &str) -> String {
+    let extensions_chirho =
+        haskelujah_parser_chirho::pragma_chirho::EffectiveExtensionsChirho::from_source_chirho(
+            source_chirho,
+            haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
+        );
+    preprocess_cpp_under_extensions_chirho(source_chirho, &extensions_chirho)
+}
+
+fn preprocess_cpp_under_extensions_chirho(
+    source_chirho: &str,
+    extensions_chirho: &haskelujah_parser_chirho::pragma_chirho::EffectiveExtensionsChirho,
+) -> String {
+    if !extensions_chirho.enabled_chirho("CPP") {
+        return lower_maybe_like_unboxed_sums_chirho(source_chirho);
+    }
+
+    match temporary_source_file_chirho(source_chirho, None, ".hs").and_then(|file_chirho| {
+        super::cpp_preprocess_chirho::preprocess_cpp_source_under_extensions_chirho(
+            file_chirho.path(),
+            source_chirho,
+            &[],
+            extensions_chirho,
+        )
+    }) {
+        Ok(processed_chirho) => {
+            let cleaned_chirho = if has_cpp_directive_residue_chirho(&processed_chirho) {
+                strip_cpp_directives_chirho(&processed_chirho)
+            } else {
+                processed_chirho
+            };
+            lower_maybe_like_unboxed_sums_chirho(&cleaned_chirho)
+        }
+        _ => lower_maybe_like_unboxed_sums_chirho(&strip_cpp_directives_chirho(source_chirho)),
+    }
 }

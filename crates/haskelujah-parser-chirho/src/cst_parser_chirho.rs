@@ -56,7 +56,9 @@ mod types_chirho;
 
 use crate::layout_chirho::apply_layout_chirho;
 use crate::lexer_chirho::{LexerChirho, RawTokenChirho, RawTokenKindChirho};
-use crate::pragma_chirho::classify_contextual_keywords_chirho;
+use crate::pragma_chirho::{
+    EffectiveExtensionsChirho, classify_contextual_keywords_with_extensions_chirho,
+};
 use haskelujah_span_chirho::FileIdChirho;
 
 // ---------------------------------------------------------------------------
@@ -83,9 +85,24 @@ pub struct ParserChirho<'src> {
 impl<'src> ParserChirho<'src> {
     /// Create a parser from source text. Lexes and applies layout rule internally.
     pub fn new_chirho(source_chirho: &'src str, file_id_chirho: FileIdChirho) -> Self {
+        let extensions_chirho =
+            EffectiveExtensionsChirho::from_source_chirho(source_chirho, file_id_chirho);
+        Self::with_extensions_chirho(source_chirho, file_id_chirho, &extensions_chirho)
+    }
+
+    /// Parse under the same effective extensions that CST lowering will publish.
+    pub fn with_extensions_chirho(
+        source_chirho: &'src str,
+        file_id_chirho: FileIdChirho,
+        extensions_chirho: &EffectiveExtensionsChirho,
+    ) -> Self {
         let mut lexer_chirho = LexerChirho::new_chirho(source_chirho, file_id_chirho);
         let mut raw_chirho = lexer_chirho.lex_all_chirho();
-        classify_contextual_keywords_chirho(source_chirho, &mut raw_chirho);
+        classify_contextual_keywords_with_extensions_chirho(
+            source_chirho,
+            &mut raw_chirho,
+            extensions_chirho,
+        );
         let tokens_chirho = apply_layout_chirho(source_chirho, raw_chirho, file_id_chirho);
 
         Self {

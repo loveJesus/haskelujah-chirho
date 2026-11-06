@@ -92,6 +92,31 @@ impl TypeElaboratorChirho<'_> {
     ) -> Result<ElaboratedTypeChirho, ElaborationErrorChirho> {
         let span_chirho = syntax_chirho.span_chirho();
         self.state_chirho.charge_chirho(1, 1, span_chirho)?;
+        let written_kind_forall_chirho = if self.checking_kind_chirho && !self.poly_kinds_chirho {
+            match syntax_chirho {
+                TypeChirho::ForallChirho { vars_chirho, .. }
+                | TypeChirho::RequiredForallChirho { vars_chirho, .. } => {
+                    self.state_chirho.charge_chirho(
+                        vars_chirho.len(),
+                        vars_chirho.len(),
+                        span_chirho,
+                    )?;
+                    vars_chirho.is_empty()
+                        || vars_chirho.iter().any(|binder_chirho| {
+                            binder_chirho.name_chirho.type_variable_chirho().is_none()
+                        })
+                }
+                _ => false,
+            }
+        } else {
+            false
+        };
+        if written_kind_forall_chirho {
+            return Err(Self::error_chirho(
+                "written kind quantifiers require PolyKinds",
+                span_chirho,
+            ));
+        }
         let required_forall_chirho =
             matches!(syntax_chirho, TypeChirho::RequiredForallChirho { .. });
         match syntax_chirho {
@@ -100,41 +125,49 @@ impl TypeElaboratorChirho<'_> {
             | TypeChirho::AppChirho { .. }
             | TypeChirho::KindApplicationChirho { .. } => self.infer_spine_chirho(syntax_chirho),
             TypeChirho::VarChirho(name_chirho) => {
-                let (variable_chirho, kind_chirho) =
-                    if let Some(variable_chirho) = self.check_variable_owner_chirho(name_chirho)? {
-                        (
-                            variable_chirho,
-                            if let Some(image_chirho) =
-                                self.lexical_images_chirho.and_then(|images_chirho| {
-                                    images_chirho.lookup_image_chirho(&variable_chirho)
-                                })
-                            {
-                                let kind_chirho =
-                                    image_chirho.kind_chirho.as_ref().ok_or_else(|| {
-                                        Self::error_chirho(
-                                            "lexical type image has no checked kind",
-                                            span_chirho,
-                                        )
-                                    })?;
-                                self.normalize_lexical_term_chirho(kind_chirho, span_chirho)?
-                            } else {
-                                self.state_chirho
-                                    .variable_kind_chirho(variable_chirho, span_chirho)?
-                            },
-                        )
-                    } else {
-                        if self.strict_argument_chirho
-                            && !self
-                                .variables_chirho
-                                .contains_key(name_chirho.text_chirho())
+                let owned_chirho = self.check_variable_owner_chirho(name_chirho)?;
+                // A checked hidden argument reuses its producer-owned variable even when
+                // the caller disables source kind-variable syntax. Spelling proves nothing.
+                if self.checking_kind_chirho && !self.poly_kinds_chirho && owned_chirho.is_none() {
+                    return Err(Self::error_chirho(
+                        "written kind variables require PolyKinds",
+                        span_chirho,
+                    ));
+                }
+                let (variable_chirho, kind_chirho) = if let Some(variable_chirho) = owned_chirho {
+                    (
+                        variable_chirho,
+                        if let Some(image_chirho) =
+                            self.lexical_images_chirho.and_then(|images_chirho| {
+                                images_chirho.lookup_image_chirho(&variable_chirho)
+                            })
                         {
-                            return Err(Self::error_chirho(
-                                "required type argument has no lexical type-variable binding",
-                                span_chirho,
-                            ));
-                        }
-                        self.variable_chirho(name_chirho.text_chirho(), span_chirho)?
-                    };
+                            let kind_chirho =
+                                image_chirho.kind_chirho.as_ref().ok_or_else(|| {
+                                    Self::error_chirho(
+                                        "lexical type image has no checked kind",
+                                        span_chirho,
+                                    )
+                                })?;
+                            self.normalize_lexical_term_chirho(kind_chirho, span_chirho)?
+                        } else {
+                            self.state_chirho
+                                .variable_kind_chirho(variable_chirho, span_chirho)?
+                        },
+                    )
+                } else {
+                    if self.strict_argument_chirho
+                        && !self
+                            .variables_chirho
+                            .contains_key(name_chirho.text_chirho())
+                    {
+                        return Err(Self::error_chirho(
+                            "required type argument has no lexical type-variable binding",
+                            span_chirho,
+                        ));
+                    }
+                    self.variable_chirho(name_chirho.text_chirho(), span_chirho)?
+                };
                 self.stamp_variable_chirho(name_chirho, variable_chirho)?;
                 if let Some(image_chirho) = self
                     .lexical_images_chirho

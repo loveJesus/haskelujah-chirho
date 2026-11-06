@@ -20,7 +20,7 @@ use haskelujah_syntax_chirho::green_chirho::{
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
 use super::{ChildChirho, LowerCtxChirho};
-use crate::pragma_chirho::pragma_extensions_from_text_chirho;
+use crate::pragma_chirho::{module_extensions_chirho, pragma_extension_entries_from_text_chirho};
 
 impl LowerCtxChirho {
     pub(super) fn new_chirho(file_id_chirho: FileIdChirho) -> Self {
@@ -101,14 +101,18 @@ impl LowerCtxChirho {
     ) -> Vec<String> {
         let mut extensions_chirho = Vec::new();
         for child_chirho in node_chirho.children_chirho() {
+            if !is_trivia_element_chirho(child_chirho) {
+                break;
+            }
             if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho
                 && tok_chirho.kind_chirho() == TokenKindChirho::PragmaChirho
             {
-                extensions_chirho
-                    .extend(pragma_extensions_from_text_chirho(tok_chirho.text_chirho()));
+                extensions_chirho.extend(pragma_extension_entries_from_text_chirho(
+                    tok_chirho.text_chirho(),
+                ));
             }
         }
-        extensions_chirho
+        module_extensions_chirho(extensions_chirho)
     }
 
     /// Walk all pragma tokens and extract INLINE/NOINLINE/INLINABLE annotations.

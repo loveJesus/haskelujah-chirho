@@ -29,6 +29,7 @@ impl LowerCtxChirho {
     pub(super) fn lower_source_file_chirho(
         &mut self,
         root_chirho: &GreenNodeChirho,
+        effective_extensions_chirho: Option<&crate::pragma_chirho::EffectiveExtensionsChirho>,
     ) -> ModuleChirho {
         let start_chirho = self.offset_chirho;
         let children_chirho = self.semantic_children_chirho(root_chirho, start_chirho);
@@ -113,7 +114,9 @@ impl LowerCtxChirho {
 
         let end_chirho = start_chirho + root_chirho.text_len_chirho();
         // Extract LANGUAGE extensions from pragma tokens
-        let extensions_chirho = self.extract_pragma_extensions_chirho(root_chirho);
+        let extensions_chirho = effective_extensions_chirho
+            .map(|extensions_chirho| extensions_chirho.flags_chirho().to_vec())
+            .unwrap_or_else(|| self.extract_pragma_extensions_chirho(root_chirho));
         // Extract INLINE/NOINLINE/INLINABLE pragmas
         let inline_pragmas_chirho = self.extract_inline_pragmas_chirho(root_chirho);
         // Extract SPECIALIZE pragmas
