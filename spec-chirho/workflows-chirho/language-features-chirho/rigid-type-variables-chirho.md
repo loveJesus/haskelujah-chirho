@@ -81,10 +81,12 @@ flowchart TD
   searched on demand. It ends at the first match and expands only classes that can still reach
   the wanted class by name, a walk that visits each class once. A step bound and a type-size
   bound end every cycle UndecidableSuperClasses allows, the changing `class C [a] => C a`
-  included. A stopped search is unknown, never "not entailed", so the certainly-unsolvable
-  verdict stays unproved, as its sub-goal depth bound leaves it. Context reduction and the
-  fundep subclass guard keep the name walk `is_transitive_superclass_chirho` (T16414; controls
-  in `rigid_tyvars_chirho/superclass_cycles_chirho.rs` and
+  included. A stopped search is unknown, never "not entailed": the obligation stays, and a
+  ground wanted it leaves undecided is refused by name through the Unsupported packaging, never
+  accepted as proved and never reported as "no instance" (#31984; GHC 9.14.1 rejects that
+  program, U1, with GHC-39999 and accepts the first and second edges, P1 and P2). Context
+  reduction and the fundep subclass guard keep the name walk `is_transitive_superclass_chirho`
+  (T16414; controls in `rigid_tyvars_chirho/superclass_cycles_chirho.rs` and
   `class_chirho/superclass_search_tests_chirho.rs`).
 
 ## Record construction and update by field set (2026-09-07)

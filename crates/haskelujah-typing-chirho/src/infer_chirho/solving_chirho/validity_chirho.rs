@@ -9,6 +9,9 @@ use crate::class_chirho::{
     ClassEnvChirho, InstDeclChirho, PredChirho, SuperclassSearchExhaustedChirho,
 };
 use crate::ty_chirho::TyChirho;
+use crate::validity_chirho::declarations_chirho::{
+    DeclarationErrorChirho, UNSUPPORTED_SHAPE_CHIRHO, declaration_error_diagnostics_chirho,
+};
 use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
 
@@ -107,7 +110,9 @@ impl InferCtxChirho {
     /// concrete outer head that is not an unexpanded synonym or stuck type
     /// family, no known or derived instance could ever match those heads, and
     /// the in-scope givens do not entail it. GHC reports exactly these as
-    /// "No instance for ..." — accepting them silently is unsound.
+    /// "No instance for ..." — accepting them silently is unsound. The compiler itself reads
+    /// the three-way `ground_pred_verdict_chirho`; this is the tests' view of it.
+    #[cfg(test)]
     pub(super) fn is_certainly_unsolvable_pred_chirho(&self, pred_chirho: &PredChirho) -> bool {
         self.is_certainly_unsolvable_pred_depth_chirho(pred_chirho, 0)
     }
@@ -123,10 +128,18 @@ impl InferCtxChirho {
         pred_chirho: &PredChirho,
         span_chirho: SpanChirho,
     ) -> bool {
-        if !(Self::pred_fully_ground_chirho(pred_chirho)
-            && self.is_certainly_unsolvable_pred_chirho(pred_chirho))
-        {
+        if !Self::pred_fully_ground_chirho(pred_chirho) {
             return false;
+        }
+        match self.ground_pred_verdict_chirho(pred_chirho, 0) {
+            Some(Ok(false)) => {}
+            // Neither proved nor refuted: refused by name, never accepted as proved and never
+            // told "no instance" (row 694, #31984).
+            Some(Err(_)) => {
+                self.report_undecided_superclass_chirho(pred_chirho, span_chirho);
+                return true;
+            }
+            Some(Ok(true)) | None => return false,
         }
         let blamed_chirho = self.unsolvable_blame_pred_chirho(pred_chirho, 0);
         self.diagnostics_chirho
@@ -138,6 +151,28 @@ impl InferCtxChirho {
         true
     }
 
+    /// The named gap for a ground wanted whose givens' superclass search a bound stopped: it
+    /// is neither proved nor refuted, so the program is refused through the Unsupported
+    /// packaging (row 694, #31984).
+    /// workflow: language-features-chirho/rigid-type-variables-chirho
+    fn report_undecided_superclass_chirho(
+        &mut self,
+        pred_chirho: &PredChirho,
+        span_chirho: SpanChirho,
+    ) {
+        self.diagnostics_chirho
+            .extend_chirho(declaration_error_diagnostics_chirho(vec![
+                DeclarationErrorChirho {
+                    ghc_code_chirho: UNSUPPORTED_SHAPE_CHIRHO,
+                    message_chirho: format!(
+                        "Haskelujah stopped searching the givens' superclasses before deciding `{pred_chirho}`: it is neither proved nor refuted"
+                    ),
+                    span_chirho,
+                    related_span_chirho: None,
+                },
+            ]));
+    }
+
     /// How deep the sub-goals of matching instances are followed before the
     /// answer becomes "unproved" rather than "unsolvable".
     const UNSOLVABLE_SUB_GOAL_DEPTH_CHIRHO: usize = 8;
@@ -147,8 +182,24 @@ impl InferCtxChirho {
         pred_chirho: &PredChirho,
         depth_chirho: usize,
     ) -> bool {
+        matches!(
+            self.ground_pred_verdict_chirho(pred_chirho, depth_chirho),
+            Some(Ok(false))
+        )
+    }
+
+    /// The verdict on a ground wanted no instance can solve, from the givens: `Some(Ok(true))`
+    /// when they entail it, `Some(Ok(false))` when they certainly do not, and `Some(Err(..))`
+    /// when a superclass search a bound stopped left it undecided (row 694, #31972, #31984).
+    /// `None` when an instance, a family, a synonym or a depth bound keeps any verdict open.
+    /// workflow: language-features-chirho/rigid-type-variables-chirho
+    pub(super) fn ground_pred_verdict_chirho(
+        &self,
+        pred_chirho: &PredChirho,
+        depth_chirho: usize,
+    ) -> Option<Result<bool, SuperclassSearchExhaustedChirho>> {
         if !self.constraint_generation_faithful_chirho {
-            return false;
+            return None;
         }
         let class_name_chirho = pred_chirho.class_name_chirho.as_str();
         if class_name_chirho == "~"
@@ -159,7 +210,7 @@ impl InferCtxChirho {
             || class_name_chirho.starts_with('?')
             || !Self::pred_fully_ground_chirho(pred_chirho)
         {
-            return false;
+            return None;
         }
         let normalized_args_chirho: Vec<TyChirho> = std::iter::once(&pred_chirho.ty_chirho)
             .chain(pred_chirho.extra_tys_chirho.iter())
@@ -168,7 +219,7 @@ impl InferCtxChirho {
         let mut head_names_chirho = Vec::new();
         for arg_chirho in &normalized_args_chirho {
             match Self::ty_outer_head_name_chirho(arg_chirho) {
-                None => return false,
+                None => return None,
                 Some(head_chirho) => {
                     // Unexpanded synonyms and stuck families could still
                     // reduce to an instance-matching head; `#`-suffixed
@@ -179,7 +230,7 @@ impl InferCtxChirho {
                         || self.type_synonyms_chirho.contains_key(&head_chirho)
                         || head_chirho.ends_with('#')
                     {
-                        return false;
+                        return None;
                     }
                     head_names_chirho.push(head_chirho);
                 }
@@ -192,7 +243,7 @@ impl InferCtxChirho {
                 .derived_instance_heads_chirho
                 .contains(&(class_name_chirho.to_string(), "*".to_string()))
         {
-            return false;
+            return None;
         }
         let normalized_pred_chirho = PredChirho {
             class_name_chirho: pred_chirho.class_name_chirho.clone(),
@@ -221,7 +272,7 @@ impl InferCtxChirho {
                 // in "unproved".
                 // workflow: language-features-chirho/instance-obligations-chirho
                 if depth_chirho >= Self::UNSOLVABLE_SUB_GOAL_DEPTH_CHIRHO {
-                    return false;
+                    return None;
                 }
                 let every_candidate_fails_chirho = candidates_chirho.iter().all(|inst_chirho| {
                     match ClassEnvChirho::instance_sub_goals_chirho(
@@ -238,7 +289,7 @@ impl InferCtxChirho {
                     }
                 });
                 if !every_candidate_fails_chirho {
-                    return false;
+                    return None;
                 }
             }
         }
@@ -255,16 +306,16 @@ impl InferCtxChirho {
                     .collect(),
             })
             .collect();
-        // Certainly unsolvable only when both searches end with nothing left: a proof clears
-        // it, and a superclass search a bound stopped leaves it unproved, as the sub-goal
-        // depth bound does (row 694, #31972).
-        matches!(
-            self.givens_entail_chirho(pred_chirho, &self.given_preds_chirho),
-            Ok(false)
-        ) && matches!(
-            self.givens_entail_chirho(&normalized_pred_chirho, &normalized_givens_chirho),
-            Ok(false)
-        )
+        // A proof clears it, two complete negatives make it certain, and a superclass search
+        // a bound stopped leaves it undecided, never a negative (row 694, #31972, #31984).
+        let plain_chirho = self.givens_entail_chirho(pred_chirho, &self.given_preds_chirho);
+        let normalized_chirho =
+            self.givens_entail_chirho(&normalized_pred_chirho, &normalized_givens_chirho);
+        Some(match (plain_chirho, normalized_chirho) {
+            (Ok(true), _) | (_, Ok(true)) => Ok(true),
+            (Ok(false), Ok(false)) => Ok(false),
+            _ => Err(SuperclassSearchExhaustedChirho),
+        })
     }
 
     /// The predicate to NAME when one is certainly unsolvable: the sub-goal that

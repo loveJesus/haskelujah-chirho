@@ -323,15 +323,11 @@ impl InferCtxChirho {
                     .map(|t_chirho| final_subst_chirho.apply_ty_chirho(t_chirho))
                     .collect(),
             };
-            if self.is_certainly_unsolvable_pred_chirho(&fully_resolved_pred_chirho) {
-                let blamed_chirho =
-                    self.unsolvable_blame_pred_chirho(&fully_resolved_pred_chirho, 0);
-                self.diagnostics_chirho
-                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
-                        ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
-                        format!("no instance for `{blamed_chirho}`"),
-                        span_chirho,
-                    ));
+            // The final ground verdict, shared with generalization and instance methods: GHC's
+            // "No instance for", or the named gap of an undecided superclass search (#31984).
+            if self
+                .report_certainly_unsolvable_ground_chirho(&fully_resolved_pred_chirho, span_chirho)
+            {
                 continue;
             }
             // Skip constraints for classes with no instances in our env.
