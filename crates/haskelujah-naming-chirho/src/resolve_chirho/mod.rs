@@ -239,7 +239,7 @@ pub fn resolve_module_with_imports_chirho(
                 // local definitions.
                 let already_local_chirho = env_chirho
                     .lookup_value_chirho(name_chirho.text_chirho())
-                    .map_or(false, |info_chirho| !info_chirho.imported_chirho);
+                    .is_some_and(|info_chirho| !info_chirho.imported_chirho);
                 if !already_local_chirho {
                     bind_name_chirho(&mut env_chirho, name_chirho, NamespaceChirho::ValueChirho);
                 }
@@ -563,12 +563,8 @@ pub fn report_undefined_with_suggestions_chirho(
     if let Some(env_chirho) = env_chirho {
         let candidates_chirho = env_chirho.all_names_in_namespace_chirho(namespace_chirho);
         let max_dist_chirho = default_max_distance_chirho(name_chirho.len());
-        let suggestions_chirho = suggest_similar_names_chirho(
-            name_chirho,
-            candidates_chirho.into_iter(),
-            max_dist_chirho,
-            3,
-        );
+        let suggestions_chirho =
+            suggest_similar_names_chirho(name_chirho, candidates_chirho, max_dist_chirho, 3);
         if let Some(note_chirho) = format_did_you_mean_chirho(&suggestions_chirho) {
             diag_chirho = diag_chirho.with_note_chirho(note_chirho);
         }
