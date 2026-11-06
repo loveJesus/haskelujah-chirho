@@ -445,10 +445,8 @@ fn check_library_compiles_chirho(
         &module_files_chirho,
         &module_cpp_options_chirho,
         &mut source_map_chirho,
-        seeds_chirho.ifaces_chirho,
-        seeds_chirho.imported_types_chirho,
-        seeds_chirho.imported_type_synonyms_chirho,
-        seeds_chirho.imported_type_families_chirho,
+        seeds_chirho,
+        &std::collections::HashSet::new(),
     )
     .map_err(|error_chirho| format!("the library does not compile: {error_chirho}"))?;
     let compiled_count_chirho = compiled_chirho.module_results_chirho.len();

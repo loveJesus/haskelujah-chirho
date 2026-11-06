@@ -34,6 +34,8 @@ pub mod eval_prelude_chirho;
 pub mod eval_typeclass_chirho;
 pub mod evidence_chirho;
 pub mod extensions_chirho;
+#[path = "features_chirho/external_bodies_chirho.rs"]
+pub mod external_bodies_chirho;
 #[path = "features_chirho/install_chirho.rs"]
 pub mod install_chirho;
 #[path = "features_chirho/install_source_chirho.rs"]

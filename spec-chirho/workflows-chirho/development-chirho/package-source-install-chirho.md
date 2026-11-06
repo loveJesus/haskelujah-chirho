@@ -79,7 +79,6 @@ library's first source directory, where builds discover it too.
   direct or transitive dependency as its error.
 - `collect_package_deps_chirho` still keeps a library's bound and drops an executable's bound on
   the same package. Only the library collector conjoins every bound.
-- Builds link only the project's own module bodies (Unit B).
 
 ## Builtin versions (concrete missing metadata)
 
@@ -89,3 +88,28 @@ preprocessor defines are compatibility seeds (`base` 4.14.0, `template-haskell` 
 So install accepts a builtin dependency only with a trivial bound, and refuses every other bound
 explicitly. Accepting `base >=4.7 && <5`, as haskell-say needs, requires a declared capability
 version for `base`, decided and recorded by its owner. Install cannot infer one.
+
+## Linking dependency bodies (Unit B)
+
+`build_cabal_project_chirho` links the Core of every store dependency into each executable:
+
+```mermaid
+flowchart TD
+  build["build_cabal_project_chirho"] --> linked["collect_linked_dependency_artifacts_chirho: strict, one compile per package"]
+  linked --> once["compile_module_sources_once_chirho: typed seeds and Core from one SCC loop"]
+  once --> sink["DependencyCoreChirho per package, dependencies first"]
+  sink --> owners["dependency_module_owners_chirho: a module two packages define is refused"]
+  owners --> own["compile_module_files_with_frontend_seed_chirho: own modules, dependency modules as program modules"]
+  own --> clash{"own module defined by a dependency?"}
+  clash -- yes --> refuse["error: would mislink"]
+  clash -- no --> merge["merge_compile_results_core_chirho: dependency Core, then own Core"]
+  merge --> llvm["try_compile_core_to_llvm_executable_chirho"]
+```
+
+- `compile_module_sources_once_chirho` is the only SCC loop. Both
+  `collect_frontend_artifacts_from_module_sources_chirho`, for seeds, and
+  `compile_module_sources_with_extra_ifaces_chirho`, for Core, are thin wrappers around it.
+- Dependency results are collected once per build and shared by every executable. Each executable
+  appends its own results and truncates them again, since compile results cannot be copied.
+- A dependency that fails to compile fails the build, because its body cannot be linked.
+- `compile_cabal_project_chirho`, which compiles without linking, keeps the best-effort seeds.
