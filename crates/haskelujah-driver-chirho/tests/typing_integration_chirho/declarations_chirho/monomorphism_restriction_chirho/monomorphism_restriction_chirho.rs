@@ -141,6 +141,9 @@ const NO_RESTRICTION_PRINTING_ENTRY_CHIRHO: &str =
     include_str!("accepted_chirho/no_restriction_printing_entry_chirho.hs");
 /// `main :: Num a => IO a`: GHC instantiates and defaults it, then prints 1.
 const OVERLOADED_ENTRY_CHIRHO: &str = include_str!("accepted_chirho/overloaded_entry_chirho.hs");
+/// A restricted String binding leaves `Read a, Show a` on a variable its type never holds.
+const AMBIGUOUS_READ_SHOW_CHIRHO: &str =
+    include_str!("refused_chirho/ambiguous_read_show_chirho.hs");
 /// `main = 7` as a program: no IO action.
 const PURE_PROGRAM_ENTRY_CHIRHO: &str = include_str!("refused_chirho/pure_program_entry_chirho.hs");
 /// `main :: Int` as a program: the signature does not make it an action.
@@ -369,5 +372,14 @@ fn an_unrestricted_pure_program_entry_is_refused_chirho() {
         NO_RESTRICTION_PURE_ENTRY_CHIRHO,
         "no_restriction_pure_entry_chirho.hs",
         &["Num"],
+    );
+}
+
+#[test]
+fn a_restricted_groups_unconnected_wanteds_are_still_ambiguous_chirho() {
+    rejected_as_program_like_ghc_chirho(
+        AMBIGUOUS_READ_SHOW_CHIRHO,
+        "ambiguous_read_show_chirho.hs",
+        &["Read"],
     );
 }

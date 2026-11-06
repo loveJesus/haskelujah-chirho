@@ -190,6 +190,33 @@ fn mentions_chirho(predicate_chirho: &PredChirho, variable_chirho: TyVarChirho) 
 }
 
 impl InferCtxChirho {
+    /// The first type variable a declaration group's inference can create: every later one
+    /// is at or above it.
+    pub(super) fn group_variable_mark_chirho(&self) -> TyVarChirho {
+        TyVarChirho(self.elaboration_state_chirho.next_variable_chirho)
+    }
+
+    /// Rule 1 reaches every wanted a restricted group left behind, not only those its result
+    /// type mentions. `text = show (read "1")` leaves `Read a, Show a` on a variable that no
+    /// binding's type holds. Each variable created during the group's inference, at or above
+    /// `first_chirho` and still free in a residual wanted, stays monomorphic, so Rule 2
+    /// defaults or refuses it. A variable from an earlier group is that group's own.
+    /// workflow: language-features-chirho/fundep-generalization-chirho
+    pub(super) fn withhold_group_residuals_chirho(&mut self, first_chirho: TyVarChirho) {
+        let residual_chirho: Vec<TyVarChirho> = self
+            .deferred_preds_chirho
+            .iter()
+            .flat_map(|(predicate_chirho, _)| {
+                predicate_chirho
+                    .semantic_tys_chirho()
+                    .flat_map(TyChirho::free_vars_chirho)
+                    .collect::<Vec<_>>()
+            })
+            .filter(|variable_chirho| *variable_chirho >= first_chirho)
+            .collect();
+        self.restriction_chirho.withhold_chirho(residual_chirho);
+    }
+
     /// Rule 2 at the module's end, before the legacy defaults: each withheld variable's default
     /// or refusal. Returns the substitution it applied; a refused variable's wanteds were
     /// reported and leave the legacy path.

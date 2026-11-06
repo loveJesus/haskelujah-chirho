@@ -140,3 +140,37 @@ fn a_withheld_variable_follows_every_substitution_chirho() {
     state_chirho.follow_substitution_chirho(&fixed_chirho);
     assert!(state_chirho.withheld_chirho().is_empty());
 }
+
+#[test]
+fn a_restricted_group_withholds_only_the_residual_variables_it_created_chirho() {
+    let mut context_chirho = crate::infer_chirho::InferCtxChirho::new_chirho();
+    let earlier_chirho = context_chirho.fresh_var_chirho();
+    let mark_chirho = context_chirho.group_variable_mark_chirho();
+    let read_chirho = context_chirho.fresh_var_chirho();
+    // A later variable of the group that no wanted mentions.
+    let _unwanted_chirho = context_chirho.fresh_var_chirho();
+    for (class_chirho, ty_chirho) in [
+        (CompilerClassChirho::ReadChirho, read_chirho.clone()),
+        (CompilerClassChirho::ShowChirho, read_chirho.clone()),
+        (CompilerClassChirho::NumChirho, earlier_chirho.clone()),
+    ] {
+        context_chirho.deferred_preds_chirho.push((
+            crate::class_chirho::PredChirho::compiler_chirho(class_chirho, ty_chirho),
+            haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+        ));
+    }
+    context_chirho.withhold_group_residuals_chirho(mark_chirho);
+    let TyChirho::VarChirho(read_variable_chirho) = read_chirho else {
+        panic!("a fresh variable");
+    };
+    // Only the group's own residual variable: not an earlier group's, nor one with no wanted.
+    assert_eq!(
+        context_chirho
+            .restriction_chirho
+            .withheld_chirho()
+            .iter()
+            .copied()
+            .collect::<Vec<_>>(),
+        vec![read_variable_chirho]
+    );
+}

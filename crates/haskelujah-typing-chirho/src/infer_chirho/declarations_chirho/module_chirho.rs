@@ -650,6 +650,8 @@ impl InferCtxChirho {
                         type_sigs_chirho.contains_key(&fun_names_chirho[member_chirho]),
                     )
                 }));
+            // Every variable this group's inference creates is at or above this mark.
+            let group_first_variable_chirho = self.group_variable_mark_chirho();
             let mut equality_owners_chirho = Vec::new();
             // Infer each function body in the group
             let mut group_inferred_chirho: Vec<(usize, String, TyChirho, SpanChirho)> = Vec::new();
@@ -829,6 +831,11 @@ impl InferCtxChirho {
                 &equality_owners_chirho,
                 &inferred_equality_types_chirho,
             );
+            // Rule 1 reaches every wanted the restricted group left behind, not only those
+            // its result type mentions (row 692).
+            if group_restricted_chirho {
+                self.withhold_group_residuals_chirho(group_first_variable_chirho);
+            }
         }
 
         // Phase 3d: Handle top-level pattern bindings
