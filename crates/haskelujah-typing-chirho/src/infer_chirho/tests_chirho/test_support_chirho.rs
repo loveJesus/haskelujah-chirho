@@ -70,8 +70,7 @@ pub(super) fn unspanned_capture_chirho(
     evidence_chirho::OccurrenceCaptureChirho {
         name_chirho: name_chirho.to_string(),
         ordinal_chirho,
-        class_name_chirho: class_name_chirho.to_string(),
-        ty_chirho,
+        pred_chirho: PredChirho::new_chirho(class_name_chirho, ty_chirho),
         span_chirho: SpanChirho::DUMMY_CHIRHO,
         origin_chirho: None,
         instance_context_chirho: None,

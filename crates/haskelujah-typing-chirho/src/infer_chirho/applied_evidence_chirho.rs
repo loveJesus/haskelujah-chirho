@@ -81,6 +81,16 @@ pub(super) fn agreeing_references_chirho<KeyChirho: Hash + Eq>(
                         != record_chirho.ground_pred_chirho
                 }) {
                     record_chirho.ground_pred_chirho = None;
+                } else if let Some(predicate_chirho) = &mut record_chirho.ground_pred_chirho {
+                    for other_chirho in rest_chirho {
+                        if let Some(other_predicate_chirho) =
+                            &other_chirho[index_chirho].ground_pred_chirho
+                        {
+                            predicate_chirho.meet_class_identity_chirho(
+                                other_predicate_chirho.class_identity_chirho(),
+                            );
+                        }
+                    }
                 }
                 if rest_chirho.iter().any(|other_chirho| {
                     other_chirho[index_chirho].applied_ty_chirho != record_chirho.applied_ty_chirho

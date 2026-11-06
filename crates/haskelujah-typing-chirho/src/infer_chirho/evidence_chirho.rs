@@ -25,8 +25,7 @@ mod instance_context_chirho;
 pub(super) struct OccurrenceCaptureChirho {
     pub(super) name_chirho: String,
     pub(super) ordinal_chirho: u32,
-    pub(super) class_name_chirho: String,
-    pub(super) ty_chirho: TyChirho,
+    pub(super) pred_chirho: PredChirho,
     pub(super) span_chirho: SpanChirho,
     pub(super) origin_chirho: Option<OriginIdChirho>,
     pub(super) instance_context_chirho: Option<Arc<[PredChirho]>>,
@@ -38,8 +37,8 @@ pub(super) struct OccurrenceCaptureChirho {
 pub(super) struct ReferenceCaptureChirho {
     pub(super) span_chirho: SpanChirho,
     pub(super) origin_chirho: Option<OriginIdChirho>,
-    /// Each predicate's class, first argument and extra arguments, in scheme order.
-    pub(super) preds_chirho: Vec<(String, TyChirho, Vec<TyChirho>)>,
+    /// Complete checked predicates, including hidden kinds and proof state.
+    pub(super) preds_chirho: Vec<PredChirho>,
     pub(super) instance_context_chirho: Option<Arc<[PredChirho]>>,
 }
 
@@ -160,13 +159,7 @@ impl InferCtxChirho {
                 preds_chirho: scheme_chirho
                     .preds_chirho
                     .iter()
-                    .map(|pred_chirho| {
-                        (
-                            pred_chirho.class_name_chirho.clone(),
-                            pred_chirho.ty_chirho.clone(),
-                            pred_chirho.extra_tys_chirho.clone(),
-                        )
-                    })
+                    .map(PredChirho::from_scheme_chirho)
                     .collect(),
             });
         }
@@ -237,8 +230,7 @@ impl InferCtxChirho {
                 .push(OccurrenceCaptureChirho {
                     name_chirho: name_chirho.text_chirho().to_string(),
                     ordinal_chirho,
-                    class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                    ty_chirho: pred_chirho.ty_chirho.clone(),
+                    pred_chirho: pred_chirho.clone(),
                     span_chirho,
                     origin_chirho,
                     instance_context_chirho: self.active_instance_context_chirho.clone(),
@@ -264,16 +256,7 @@ impl InferCtxChirho {
             span_chirho,
             origin_chirho,
             instance_context_chirho: self.active_instance_context_chirho.clone(),
-            preds_chirho: preds_chirho
-                .iter()
-                .map(|pred_chirho| {
-                    (
-                        pred_chirho.class_name_chirho.clone(),
-                        pred_chirho.ty_chirho.clone(),
-                        pred_chirho.extra_tys_chirho.clone(),
-                    )
-                })
-                .collect(),
+            preds_chirho: preds_chirho.to_vec(),
         });
     }
 
@@ -445,27 +428,25 @@ impl InferCtxChirho {
             let records_chirho: Vec<ReferenceEvidenceChirho> = capture_chirho
                 .preds_chirho
                 .iter()
-                .map(|(class_name_chirho, ty_chirho, extra_tys_chirho)| {
-                    let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
-                    let extras_chirho: Vec<TyChirho> = extra_tys_chirho
-                        .iter()
-                        .map(|ty_chirho| final_subst_chirho.apply_ty_chirho(ty_chirho))
-                        .collect();
+                .map(|predicate_chirho| {
+                    let predicate_chirho = predicate_chirho
+                        .mapped_chirho(|ty_chirho| final_subst_chirho.apply_ty_chirho(ty_chirho));
+                    let class_name_chirho = &predicate_chirho.class_name_chirho;
+                    let resolved_chirho = &predicate_chirho.ty_chirho;
+                    let extras_chirho = &predicate_chirho.extra_tys_chirho;
                     let head_chirho: Vec<TyChirho> = std::iter::once(resolved_chirho.clone())
                         .chain(extras_chirho.iter().cloned())
                         .collect();
                     let ty_key_chirho = self
                         .instance_context_key_chirho(
-                            class_name_chirho,
-                            &resolved_chirho,
-                            &extras_chirho,
+                            &predicate_chirho,
                             capture_chirho.instance_context_chirho.as_deref(),
                             final_subst_chirho,
                         )
                         .or_else(|| {
                             self.reference_key_chirho(
                                 class_name_chirho,
-                                &resolved_chirho,
+                                resolved_chirho,
                                 final_subst_chirho,
                             )
                         });
@@ -478,17 +459,12 @@ impl InferCtxChirho {
                         ground_pred_chirho: if own_chirho {
                             None
                         } else {
-                            ground_pred_chirho(
-                                self,
-                                class_name_chirho,
-                                &resolved_chirho,
-                                &extras_chirho,
-                            )
+                            ground_pred_chirho(self, &predicate_chirho)
                         },
                         applied_ty_chirho: if own_chirho {
                             None
                         } else {
-                            applied_evidence_chirho::applied_evidence_ty_chirho(&resolved_chirho)
+                            applied_evidence_chirho::applied_evidence_ty_chirho(resolved_chirho)
                         },
                         applied_head_chirho: if own_chirho {
                             None
@@ -542,9 +518,7 @@ impl InferCtxChirho {
             let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
             let key_chirho = self
                 .instance_context_key_chirho(
-                    class_name_chirho,
-                    &resolved_chirho,
-                    &[],
+                    &PredChirho::new_chirho(class_name_chirho, resolved_chirho.clone()),
                     instance_context_chirho.as_deref(),
                     final_subst_chirho,
                 )

@@ -47,3 +47,27 @@ fn a_complete_kind_contract_does_not_enable_type_abstractions_chirho() {
         assert!(error_chirho.to_string().contains("error[E0300]"));
     }
 }
+
+#[test]
+fn a_checked_polykinded_method_uses_its_actual_instance_context_chirho() {
+    let frontend_chirho = check_chirho(include_str!("PolykindInstanceContextChirho.hs"), &[])
+        .unwrap_or_else(|error_chirho| {
+            panic!("fresh GHC-positive instance context: {error_chirho}")
+        });
+    let declaration_chirho = frontend_chirho
+        .infer_result_chirho
+        .class_env_chirho
+        .classes_chirho()
+        .get_chirho("DescribeChirho")
+        .expect("the actual source class is registered");
+    assert_eq!(declaration_chirho.kind_vars_chirho.len(), 1);
+    let records_chirho = frontend_chirho
+        .infer_result_chirho
+        .method_occurrences_chirho
+        .iter()
+        .filter(|record_chirho| record_chirho.name_chirho == "describeChirho")
+        .collect::<Vec<_>>();
+    assert_eq!(records_chirho.len(), 1);
+    assert_eq!(records_chirho[0].ty_key_chirho, "$own:0");
+    assert!(records_chirho[0].ground_pred_chirho.is_none());
+}

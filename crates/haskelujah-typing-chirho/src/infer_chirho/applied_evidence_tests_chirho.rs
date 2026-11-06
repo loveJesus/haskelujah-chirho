@@ -135,3 +135,63 @@ fn only_a_head_every_capture_resolved_alike_survives_chirho() {
     assert_eq!(agreed_chirho[&1], vec![head_record_chirho(bool_chirho)]);
     assert_eq!(agreed_chirho[&2][0].applied_head_chirho, None);
 }
+
+#[test]
+fn agreeing_predicate_shapes_meet_class_proof_in_both_orders_chirho() {
+    use crate::class_chirho::{PredChirho, PredPartsChirho};
+    use haskelujah_ast_chirho::name_chirho::CompilerClassChirho;
+    let proven_chirho = PredChirho::from_compiler_chirho(
+        CompilerClassChirho::EqChirho,
+        PredPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "Eq".to_string(),
+            ty_chirho: int_chirho(),
+            extra_tys_chirho: Vec::new(),
+        },
+    );
+    let unknown_chirho = PredChirho::new_chirho("Eq", int_chirho());
+    let record_chirho = |predicate_chirho: PredChirho| ReferenceEvidenceChirho {
+        class_name_chirho: "Eq".to_string(),
+        ty_key_chirho: Some("Int".to_string()),
+        applied_ty_chirho: None,
+        applied_head_chirho: None,
+        ground_pred_chirho: Some(predicate_chirho),
+    };
+    for predicates_chirho in [
+        [proven_chirho.clone(), unknown_chirho.clone()],
+        [unknown_chirho.clone(), proven_chirho.clone()],
+    ] {
+        let agreed_chirho = agreeing_references_chirho(HashMap::from([(
+            1_u32,
+            predicates_chirho
+                .into_iter()
+                .map(|predicate_chirho| vec![record_chirho(predicate_chirho)])
+                .collect(),
+        )]));
+        let record_chirho = &agreed_chirho[&1][0];
+        assert_eq!(record_chirho.ty_key_chirho.as_deref(), Some("Int"));
+        assert_eq!(
+            record_chirho
+                .ground_pred_chirho
+                .as_ref()
+                .unwrap()
+                .class_identity_chirho(),
+            unknown_chirho.class_identity_chirho()
+        );
+    }
+    let agreed_chirho = agreeing_references_chirho(HashMap::from([(
+        1_u32,
+        vec![
+            vec![record_chirho(proven_chirho.clone())],
+            vec![record_chirho(proven_chirho.clone())],
+        ],
+    )]));
+    assert_eq!(
+        agreed_chirho[&1][0]
+            .ground_pred_chirho
+            .as_ref()
+            .unwrap()
+            .class_identity_chirho(),
+        proven_chirho.class_identity_chirho()
+    );
+}

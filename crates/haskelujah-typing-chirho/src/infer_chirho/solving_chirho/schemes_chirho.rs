@@ -713,7 +713,15 @@ impl InferCtxChirho {
             *rhs_chirho = subst_chirho.apply_ty_chirho(rhs_chirho);
         }
         for capture_chirho in &mut self.occurrence_captures_chirho {
-            capture_chirho.ty_chirho = subst_chirho.apply_ty_chirho(&capture_chirho.ty_chirho);
+            capture_chirho.pred_chirho = capture_chirho
+                .pred_chirho
+                .mapped_chirho(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho));
+        }
+        for capture_chirho in &mut self.reference_captures_chirho {
+            for predicate_chirho in &mut capture_chirho.preds_chirho {
+                *predicate_chirho = predicate_chirho
+                    .mapped_chirho(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho));
+            }
         }
         if !self.occurrence_default_hints_chirho.is_empty() {
             let mut updated_hints_chirho = HashMap::new();

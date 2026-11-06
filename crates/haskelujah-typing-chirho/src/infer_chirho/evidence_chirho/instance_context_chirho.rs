@@ -13,22 +13,9 @@ fn predicate_chirho(
     pred_chirho: &PredChirho,
     subst_chirho: &SubstChirho,
 ) -> PredChirho {
-    PredChirho::from_proof_chirho(
-        pred_chirho.class_identity_chirho().clone(),
-        crate::class_chirho::PredPartsChirho {
-            kind_tys_chirho: Vec::new(),
-            class_name_chirho: pred_chirho.class_name_chirho.clone(),
-            ty_chirho: ctx_chirho
-                .normalize_ty_chirho(&subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho)),
-            extra_tys_chirho: pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .map(|ty_chirho| {
-                    ctx_chirho.normalize_ty_chirho(&subst_chirho.apply_ty_chirho(ty_chirho))
-                })
-                .collect(),
-        },
-    )
+    pred_chirho.mapped_chirho(|ty_chirho| {
+        ctx_chirho.normalize_ty_chirho(&subst_chirho.apply_ty_chirho(ty_chirho))
+    })
 }
 
 fn authoritative_rigid_type_chirho(ctx_chirho: &InferCtxChirho, ty_chirho: &TyChirho) -> bool {
@@ -104,9 +91,7 @@ impl InferCtxChirho {
     /// prove no index. In particular Eq a does not name an Ord a parameter.
     pub(in crate::infer_chirho) fn instance_context_key_chirho(
         &self,
-        class_chirho: &str,
-        ty_chirho: &TyChirho,
-        extras_chirho: &[TyChirho],
+        wanted_chirho: &PredChirho,
         context_chirho: Option<&[PredChirho]>,
         final_subst_chirho: &SubstChirho,
     ) -> Option<String> {
@@ -114,35 +99,28 @@ impl InferCtxChirho {
         let declaration_chirho = self
             .class_env_chirho
             .classes_chirho()
-            .get_chirho(class_chirho)?;
-        if declaration_chirho.extra_vars_chirho.len() != extras_chirho.len() {
+            .get_chirho(&wanted_chirho.class_name_chirho)?;
+        if declaration_chirho.extra_vars_chirho.len() != wanted_chirho.extra_tys_chirho.len()
+            || declaration_chirho.kind_vars_chirho.len() != wanted_chirho.kind_tys_chirho.len()
+        {
             return None;
         }
-        let wanted_chirho = predicate_chirho(
-            self,
-            &PredChirho::legacy_chirho(crate::class_chirho::PredPartsChirho {
-                kind_tys_chirho: Vec::new(),
-                class_name_chirho: class_chirho.to_owned(),
-                ty_chirho: ty_chirho.clone(),
-                extra_tys_chirho: extras_chirho.to_vec(),
-            }),
-            final_subst_chirho,
-        );
-        if !std::iter::once(&wanted_chirho.ty_chirho)
-            .chain(&wanted_chirho.extra_tys_chirho)
+        let wanted_chirho = predicate_chirho(self, wanted_chirho, final_subst_chirho);
+        if !wanted_chirho
+            .semantic_tys_chirho()
             .all(|ty_chirho| authoritative_rigid_type_chirho(self, ty_chirho))
         {
             return None;
         }
         let mut selected_chirho = None;
         for (index_chirho, given_chirho) in context_chirho.iter().enumerate() {
-            if given_chirho.class_name_chirho == class_chirho
-                && given_chirho.extra_tys_chirho.len() == extras_chirho.len()
+            if given_chirho.class_name_chirho == wanted_chirho.class_name_chirho
+                && given_chirho.extra_tys_chirho.len() == wanted_chirho.extra_tys_chirho.len()
+                && given_chirho.kind_tys_chirho.len() == wanted_chirho.kind_tys_chirho.len()
                 && predicate_chirho(self, given_chirho, final_subst_chirho) == wanted_chirho
+                && selected_chirho.replace(index_chirho).is_some()
             {
-                if selected_chirho.replace(index_chirho).is_some() {
-                    return None;
-                }
+                return None;
             }
         }
         selected_chirho.map(|index_chirho| own_dictionary_key_chirho(Some(index_chirho)))

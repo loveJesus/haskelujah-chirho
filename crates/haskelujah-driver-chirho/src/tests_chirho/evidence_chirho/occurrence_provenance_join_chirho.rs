@@ -483,3 +483,60 @@ fn two_generated_literals_at_one_span_each_take_their_own_evidence_chirho() {
         Some(&("Num".to_string(), "Int".to_string()))
     );
 }
+
+#[test]
+fn an_origin_meets_class_proofs_in_both_capture_orders_chirho() {
+    use haskelujah_ast_chirho::name_chirho::CompilerClassChirho;
+    use haskelujah_typing_chirho::class_chirho::{PredChirho, PredPartsChirho};
+    use haskelujah_typing_chirho::ty_chirho::TyChirho;
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    let origin_chirho = supply_chirho.fresh_chirho();
+    let unknown_chirho = PredChirho::new_chirho("Show", TyChirho::int_chirho());
+    let proven_chirho = PredChirho::from_compiler_chirho(
+        CompilerClassChirho::ShowChirho,
+        PredPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "Show".to_string(),
+            ty_chirho: TyChirho::int_chirho(),
+            extra_tys_chirho: Vec::new(),
+        },
+    );
+    for (predicates_chirho, expected_chirho) in [
+        (
+            [proven_chirho.clone(), unknown_chirho.clone()],
+            unknown_chirho.clone(),
+        ),
+        (
+            [unknown_chirho.clone(), proven_chirho.clone()],
+            unknown_chirho.clone(),
+        ),
+        (
+            [proven_chirho.clone(), proven_chirho.clone()],
+            proven_chirho.clone(),
+        ),
+    ] {
+        let records_chirho = predicates_chirho
+            .into_iter()
+            .map(|predicate_chirho| {
+                let mut record_chirho = identified_record_chirho("Int", Some(origin_chirho));
+                record_chirho.ground_pred_chirho = Some(predicate_chirho);
+                record_chirho
+            })
+            .collect();
+        let joined_chirho = crate::evidence_join_chirho::join_occurrence_proofs_chirho(
+            &infer_result_chirho(records_chirho),
+            &show_occurrences_chirho(&[10]),
+            &HashMap::new(),
+            &HashMap::new(),
+            &HashMap::from([(CoreIdChirho(10), reference_chirho(origin_chirho))]),
+        );
+        assert_eq!(joined_chirho[&CoreIdChirho(10)].ty_key_chirho, "Int");
+        let goals_chirho =
+            crate::evidence_join_chirho::occurrence_ground_goals_chirho(&joined_chirho);
+        assert_eq!(goals_chirho[&CoreIdChirho(10)].len(), 1);
+        assert_eq!(
+            goals_chirho[&CoreIdChirho(10)][0].class_identity_chirho(),
+            expected_chirho.class_identity_chirho()
+        );
+    }
+}

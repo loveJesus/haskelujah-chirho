@@ -36,6 +36,7 @@ flowchart TD
   were joined by a per-name ordinal until 2026-09-19. See "Method occurrences" below; the
   lesson is that an invariant in this document is not evidence about the code, and the join it
   describes has to be read.
+- Method and reference captures retain the complete checked `PredChirho`: hidden kind arguments, visible arguments, and class proof or Unknown state. `apply_subst_all_chirho` and finalization substitute every argument together. Instance-context matching compares that complete predicate at its original context index; a structural ground certificate requires the complete checked class arity and bounded authoritative closed arguments. Resource refusals publish no ground certificate. Structurally agreeing captures meet class proof state through the existing conservative identity operation; capture order cannot promote an Unknown peer. Legacy keys and runtime selection authority remain unchanged.
 - A multi-parameter predicate's reference record also carries its complete ground head
   (`applied_head_chirho`, row 694, #31909). The pass serves it before any first-argument key,
   from the one conditional-registry entry whose instance head matches (`head_dictionary_chirho`);

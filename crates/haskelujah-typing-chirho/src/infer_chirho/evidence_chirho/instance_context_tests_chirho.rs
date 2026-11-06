@@ -46,9 +46,7 @@ fn full_predicates_keep_two_contexts_of_one_class_distinct_chirho() {
     assert_eq!(
         ctx_chirho
             .instance_context_key_chirho(
-                "DescribeChirho",
-                &a_chirho,
-                &[],
+                &PredChirho::new_chirho("DescribeChirho", a_chirho.clone()),
                 Some(&predicates_chirho),
                 &SubstChirho::empty_chirho()
             )
@@ -58,14 +56,75 @@ fn full_predicates_keep_two_contexts_of_one_class_distinct_chirho() {
     assert_eq!(
         ctx_chirho
             .instance_context_key_chirho(
-                "DescribeChirho",
-                &b_chirho,
-                &[],
+                &PredChirho::new_chirho("DescribeChirho", b_chirho.clone()),
                 Some(&predicates_chirho),
                 &SubstChirho::empty_chirho()
             )
             .as_deref(),
         Some("$own:1")
+    );
+}
+
+#[test]
+fn hidden_kind_substitution_and_extra_arguments_select_the_actual_context_chirho() {
+    let mut ctx_chirho = context_chirho();
+    let mut declaration_chirho = ctx_chirho
+        .class_env_chirho
+        .classes_chirho()
+        .get_chirho("DescribeChirho")
+        .unwrap()
+        .as_ref()
+        .clone();
+    declaration_chirho.name_chirho = "PolyPairChirho".to_owned();
+    declaration_chirho.kind_vars_chirho = vec![TyVarChirho(10_010)];
+    declaration_chirho.extra_vars_chirho = vec![TyVarChirho(10_011)];
+    ctx_chirho
+        .class_env_chirho
+        .add_class_chirho(declaration_chirho);
+    let predicate_chirho = |kind_chirho, extra_chirho| {
+        PredChirho::legacy_chirho(crate::class_chirho::PredPartsChirho {
+            kind_tys_chirho: vec![kind_chirho],
+            class_name_chirho: "PolyPairChirho".to_owned(),
+            ty_chirho: skolem_chirho("a%1"),
+            extra_tys_chirho: vec![extra_chirho],
+        })
+    };
+    let context_chirho = vec![
+        predicate_chirho(TyChirho::int_chirho(), TyChirho::int_chirho()),
+        predicate_chirho(TyChirho::bool_chirho(), TyChirho::int_chirho()),
+    ];
+    let wanted_chirho =
+        predicate_chirho(TyChirho::VarChirho(TyVarChirho(4)), TyChirho::int_chirho());
+    let mut substitution_chirho = SubstChirho::empty_chirho();
+    assert!(
+        ctx_chirho
+            .instance_context_key_chirho(
+                &wanted_chirho,
+                Some(&context_chirho),
+                &substitution_chirho
+            )
+            .is_none()
+    );
+    substitution_chirho.insert_chirho(TyVarChirho(4), TyChirho::bool_chirho());
+    assert_eq!(
+        ctx_chirho
+            .instance_context_key_chirho(
+                &wanted_chirho,
+                Some(&context_chirho),
+                &substitution_chirho
+            )
+            .as_deref(),
+        Some("$own:1")
+    );
+    let wrong_extra_chirho = predicate_chirho(TyChirho::bool_chirho(), TyChirho::char_chirho());
+    assert!(
+        ctx_chirho
+            .instance_context_key_chirho(
+                &wrong_extra_chirho,
+                Some(&context_chirho),
+                &substitution_chirho
+            )
+            .is_none()
     );
 }
 
@@ -77,9 +136,7 @@ fn class_agreement_is_exact_and_duplicate_exact_contexts_are_ambiguous_chirho() 
     assert!(
         ctx_chirho
             .instance_context_key_chirho(
-                "Eq",
-                &a_chirho,
-                &[],
+                &PredChirho::new_chirho("Eq", a_chirho.clone()),
                 Some(&ord_chirho),
                 &SubstChirho::empty_chirho()
             )
@@ -89,9 +146,7 @@ fn class_agreement_is_exact_and_duplicate_exact_contexts_are_ambiguous_chirho() 
     assert!(
         ctx_chirho
             .instance_context_key_chirho(
-                "DescribeChirho",
-                &a_chirho,
-                &[],
+                &PredChirho::new_chirho("DescribeChirho", a_chirho.clone()),
                 Some(&duplicates_chirho),
                 &SubstChirho::empty_chirho()
             )
@@ -124,9 +179,7 @@ fn incomplete_mptc_goals_and_unresolved_metas_prove_no_index_chirho() {
     assert!(
         ctx_chirho
             .instance_context_key_chirho(
-                "PairChirho",
-                &a_chirho,
-                &[],
+                &PredChirho::new_chirho("PairChirho", a_chirho.clone()),
                 Some(&predicates_chirho),
                 &SubstChirho::empty_chirho()
             )
@@ -135,9 +188,7 @@ fn incomplete_mptc_goals_and_unresolved_metas_prove_no_index_chirho() {
     assert_eq!(
         ctx_chirho
             .instance_context_key_chirho(
-                "PairChirho",
-                &a_chirho,
-                &[b_chirho],
+                &PredChirho::new_multi_chirho("PairChirho", vec![a_chirho.clone(), b_chirho]),
                 Some(&predicates_chirho),
                 &SubstChirho::empty_chirho()
             )
@@ -152,9 +203,7 @@ fn incomplete_mptc_goals_and_unresolved_metas_prove_no_index_chirho() {
     assert!(
         ctx_chirho
             .instance_context_key_chirho(
-                "DescribeChirho",
-                &meta_chirho,
-                &[],
+                &PredChirho::new_chirho("DescribeChirho", meta_chirho.clone()),
                 Some(&unresolved_chirho),
                 &SubstChirho::empty_chirho()
             )
@@ -252,9 +301,7 @@ fn captures_match_after_final_substitution_and_context_restores_on_nesting_chirh
     assert_eq!(
         ctx_chirho
             .instance_context_key_chirho(
-                "DescribeChirho",
-                &TyChirho::VarChirho(TyVarChirho(4)),
-                &[],
+                &PredChirho::new_chirho("DescribeChirho", TyChirho::VarChirho(TyVarChirho(4))),
                 Some(&outer_chirho),
                 &subst_chirho
             )

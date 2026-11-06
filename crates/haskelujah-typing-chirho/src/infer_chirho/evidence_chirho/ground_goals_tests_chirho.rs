@@ -15,11 +15,158 @@ fn maybe_int_chirho() -> TyChirho {
 }
 
 #[test]
+fn captures_preserve_the_supplied_hidden_kind_prefix_chirho() {
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let mut declaration_chirho = ctx_chirho
+        .class_env_chirho
+        .classes_chirho()
+        .get_chirho("Eq")
+        .unwrap()
+        .as_ref()
+        .clone()
+        .without_identity_chirho();
+    declaration_chirho.name_chirho = "IndexedChirho".to_owned();
+    declaration_chirho.kind_vars_chirho = vec![TyVarChirho(10_001)];
+    ctx_chirho
+        .class_env_chirho
+        .add_class_chirho(declaration_chirho);
+    let predicate_chirho = PredChirho::legacy_chirho(crate::class_chirho::PredPartsChirho {
+        kind_tys_chirho: vec![TyChirho::int_chirho()],
+        class_name_chirho: "IndexedChirho".to_owned(),
+        ty_chirho: TyChirho::bool_chirho(),
+        extra_tys_chirho: Vec::new(),
+    });
+    let mut supply_chirho =
+        haskelujah_ast_chirho::provenance_chirho::OriginSupplyChirho::new_chirho();
+    let origin_chirho = supply_chirho.fresh_chirho();
+    ctx_chirho.capture_reference_evidence_chirho(
+        SpanChirho::DUMMY_CHIRHO,
+        Some(origin_chirho),
+        std::slice::from_ref(&predicate_chirho),
+    );
+    let (_, references_chirho) =
+        ctx_chirho.finalize_reference_evidence_chirho(&SubstChirho::empty_chirho());
+    assert_eq!(
+        references_chirho[&origin_chirho][0].ground_pred_chirho,
+        Some(predicate_chirho)
+    );
+}
+
+#[test]
+fn captures_preserve_existing_compiler_predicate_proof_chirho() {
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let predicate_chirho = PredChirho::from_compiler_chirho(
+        haskelujah_ast_chirho::name_chirho::CompilerClassChirho::EqChirho,
+        crate::class_chirho::PredPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "Eq".to_owned(),
+            ty_chirho: TyChirho::int_chirho(),
+            extra_tys_chirho: Vec::new(),
+        },
+    );
+    let mut supply_chirho =
+        haskelujah_ast_chirho::provenance_chirho::OriginSupplyChirho::new_chirho();
+    let origin_chirho = supply_chirho.fresh_chirho();
+    ctx_chirho.capture_reference_evidence_chirho(
+        SpanChirho::DUMMY_CHIRHO,
+        Some(origin_chirho),
+        std::slice::from_ref(&predicate_chirho),
+    );
+    let (_, references_chirho) =
+        ctx_chirho.finalize_reference_evidence_chirho(&SubstChirho::empty_chirho());
+    let finalized_chirho = references_chirho[&origin_chirho][0]
+        .ground_pred_chirho
+        .as_ref()
+        .expect("the closed captured predicate keeps its checked proof");
+    assert_eq!(
+        finalized_chirho.class_identity_chirho(),
+        predicate_chirho.class_identity_chirho()
+    );
+}
+
+#[test]
+fn metadata_exhaustion_never_becomes_a_structural_certificate_chirho() {
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let mut predicate_chirho = PredChirho::new_chirho("Eq", TyChirho::int_chirho());
+    predicate_chirho.refuse_metadata_chirho(
+        haskelujah_ast_chirho::name_chirho::PredicateMetadataRefusalChirho::WorkChirho {
+            limit_chirho: 0,
+        },
+    );
+    let mut supply_chirho =
+        haskelujah_ast_chirho::provenance_chirho::OriginSupplyChirho::new_chirho();
+    let origin_chirho = supply_chirho.fresh_chirho();
+    ctx_chirho.capture_reference_evidence_chirho(
+        SpanChirho::DUMMY_CHIRHO,
+        Some(origin_chirho),
+        std::slice::from_ref(&predicate_chirho),
+    );
+    assert_eq!(
+        ctx_chirho.reference_captures_chirho[0].preds_chirho[0].class_identity_chirho(),
+        predicate_chirho.class_identity_chirho()
+    );
+    let (_, references_chirho) =
+        ctx_chirho.finalize_reference_evidence_chirho(&SubstChirho::empty_chirho());
+    assert!(
+        references_chirho[&origin_chirho][0]
+            .ground_pred_chirho
+            .is_none()
+    );
+    assert_eq!(
+        references_chirho[&origin_chirho][0]
+            .ty_key_chirho
+            .as_deref(),
+        Some("Int")
+    );
+}
+
+#[test]
+fn substitution_maps_kind_only_and_extra_variables_in_both_capture_paths_chirho() {
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let predicate_chirho = PredChirho::legacy_chirho(crate::class_chirho::PredPartsChirho {
+        kind_tys_chirho: vec![TyChirho::VarChirho(TyVarChirho(41))],
+        class_name_chirho: "PolyPairChirho".to_owned(),
+        ty_chirho: TyChirho::int_chirho(),
+        extra_tys_chirho: vec![TyChirho::VarChirho(TyVarChirho(42))],
+    });
+    let mut supply_chirho =
+        haskelujah_ast_chirho::provenance_chirho::OriginSupplyChirho::new_chirho();
+    let name_chirho = haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
+        haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
+            "methodChirho",
+            SpanChirho::DUMMY_CHIRHO,
+        )
+        .with_origin_chirho(supply_chirho.fresh_chirho()),
+    );
+    ctx_chirho.capture_occurrence_predicates_chirho(
+        &name_chirho,
+        std::slice::from_ref(&predicate_chirho),
+    );
+    let mut substitution_chirho = SubstChirho::empty_chirho();
+    substitution_chirho.insert_chirho(TyVarChirho(41), TyChirho::bool_chirho());
+    substitution_chirho.insert_chirho(TyVarChirho(42), TyChirho::char_chirho());
+    ctx_chirho.apply_subst_all_chirho(&substitution_chirho);
+    let expected_chirho =
+        predicate_chirho.mapped_chirho(|ty_chirho| substitution_chirho.apply_ty_chirho(ty_chirho));
+    assert_eq!(
+        ctx_chirho.occurrence_captures_chirho[0].pred_chirho,
+        expected_chirho
+    );
+    assert_eq!(
+        ctx_chirho.reference_captures_chirho[0].preds_chirho[0],
+        expected_chirho
+    );
+}
+
+#[test]
 fn structural_goals_keep_the_full_closed_type_chirho() {
     let ctx_chirho = InferCtxChirho::new_chirho();
     let ty_chirho = TyChirho::ListChirho(Box::new(maybe_int_chirho()));
     assert_eq!(
-        ground_pred_chirho(&ctx_chirho, "Eq", &ty_chirho, &[]),
+        ground_pred_chirho(
+            &ctx_chirho,
+            &PredChirho::new_chirho("Eq", ty_chirho.clone())
+        ),
         Some(PredChirho::new_chirho("Eq", ty_chirho))
     );
 }
@@ -67,7 +214,11 @@ fn open_rigid_polymorphic_and_uncertain_heads_supply_no_ground_goal_chirho() {
         TyChirho::ConChirho("%family:unresolved:producer-chirho".to_owned()),
     ] {
         assert!(
-            ground_pred_chirho(&ctx_chirho, "Eq", &ty_chirho, &[]).is_none(),
+            ground_pred_chirho(
+                &ctx_chirho,
+                &PredChirho::new_chirho("Eq", ty_chirho.clone())
+            )
+            .is_none(),
             "{ty_chirho:?}"
         );
     }
@@ -92,11 +243,18 @@ fn family_results_normalize_but_stuck_applications_do_not_escape_chirho() {
         )
     };
     assert_eq!(
-        ground_pred_chirho(&ctx_chirho, "Eq", &app_chirho(TyChirho::int_chirho()), &[]),
+        ground_pred_chirho(
+            &ctx_chirho,
+            &PredChirho::new_chirho("Eq", app_chirho(TyChirho::int_chirho()))
+        ),
         Some(PredChirho::new_chirho("Eq", TyChirho::bool_chirho()))
     );
     assert!(
-        ground_pred_chirho(&ctx_chirho, "Eq", &app_chirho(TyChirho::char_chirho()), &[]).is_none()
+        ground_pred_chirho(
+            &ctx_chirho,
+            &PredChirho::new_chirho("Eq", app_chirho(TyChirho::char_chirho()))
+        )
+        .is_none()
     );
 }
 
@@ -116,13 +274,20 @@ fn mptc_goals_require_every_argument_and_capture_cannot_invent_extras_chirho() {
     ctx_chirho
         .class_env_chirho
         .add_class_chirho(declaration_chirho);
-    assert!(ground_pred_chirho(&ctx_chirho, "PairChirho", &TyChirho::int_chirho(), &[]).is_none());
+    assert!(
+        ground_pred_chirho(
+            &ctx_chirho,
+            &PredChirho::new_chirho("PairChirho", TyChirho::int_chirho())
+        )
+        .is_none()
+    );
     assert_eq!(
         ground_pred_chirho(
             &ctx_chirho,
-            "PairChirho",
-            &TyChirho::int_chirho(),
-            &[TyChirho::bool_chirho()]
+            &PredChirho::new_multi_chirho(
+                "PairChirho",
+                vec![TyChirho::int_chirho(), TyChirho::bool_chirho()]
+            )
         ),
         Some(PredChirho::new_multi_chirho(
             "PairChirho",
@@ -132,18 +297,17 @@ fn mptc_goals_require_every_argument_and_capture_cannot_invent_extras_chirho() {
     assert!(
         ground_pred_chirho(
             &ctx_chirho,
-            "PairChirho",
-            &TyChirho::int_chirho(),
-            &[TyChirho::VarChirho(TyVarChirho(1))]
+            &PredChirho::new_multi_chirho(
+                "PairChirho",
+                vec![TyChirho::int_chirho(), TyChirho::VarChirho(TyVarChirho(1))]
+            )
         )
         .is_none()
     );
     assert!(
         ground_pred_chirho(
             &ctx_chirho,
-            "UnknownClassChirho",
-            &TyChirho::int_chirho(),
-            &[]
+            &PredChirho::new_chirho("UnknownClassChirho", TyChirho::int_chirho())
         )
         .is_none()
     );
@@ -185,13 +349,25 @@ fn mptc_goals_require_every_argument_and_capture_cannot_invent_extras_chirho() {
 #[test]
 fn ambiguous_ordinary_constructor_names_cannot_authorize_new_dispatch_chirho() {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
-    assert!(ground_pred_chirho(&ctx_chirho, "Eq", &maybe_int_chirho(), &[]).is_some());
+    assert!(
+        ground_pred_chirho(
+            &ctx_chirho,
+            &PredChirho::new_chirho("Eq", maybe_int_chirho())
+        )
+        .is_some()
+    );
     ctx_chirho
         .type_families_chirho
         .constructor_origins_mut_chirho()
         .replace_source_module_chirho("OtherChirho", &[("Maybe".to_owned(), true)])
         .unwrap();
-    assert!(ground_pred_chirho(&ctx_chirho, "Eq", &maybe_int_chirho(), &[]).is_none());
+    assert!(
+        ground_pred_chirho(
+            &ctx_chirho,
+            &PredChirho::new_chirho("Eq", maybe_int_chirho())
+        )
+        .is_none()
+    );
 }
 
 #[test]

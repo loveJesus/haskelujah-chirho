@@ -509,18 +509,18 @@ impl InferCtxChirho {
                 |evidence_chirho::OccurrenceCaptureChirho {
                      name_chirho,
                      ordinal_chirho,
-                     class_name_chirho: class_chirho,
-                     ty_chirho,
+                     pred_chirho,
                      span_chirho,
                      origin_chirho,
                      instance_context_chirho,
                      resolved_entry_chirho,
                  }| {
-                    let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
+                    let resolved_predicate_chirho = pred_chirho
+                        .mapped_chirho(|ty_chirho| final_subst_chirho.apply_ty_chirho(ty_chirho));
+                    let class_chirho = &resolved_predicate_chirho.class_name_chirho;
+                    let resolved_chirho = &resolved_predicate_chirho.ty_chirho;
                     if let Some(key_chirho) = self.instance_context_key_chirho(
-                        class_chirho,
-                        &resolved_chirho,
-                        &[],
+                        &resolved_predicate_chirho,
                         instance_context_chirho.as_deref(),
                         final_subst_chirho,
                     ) {
@@ -536,7 +536,7 @@ impl InferCtxChirho {
                             origin_chirho: *origin_chirho,
                         });
                     }
-                    let hinted_key_chirho = match &resolved_chirho {
+                    let hinted_key_chirho = match resolved_chirho {
                         TyChirho::VarChirho(var_chirho) => self
                             .occurrence_default_hints_chirho
                             .get(var_chirho)
@@ -545,7 +545,7 @@ impl InferCtxChirho {
                     };
                     if hinted_key_chirho.is_none()
                         && matches!(
-                            &resolved_chirho,
+                            resolved_chirho,
                             TyChirho::VarChirho(var_chirho)
                                 if self.occurrence_generalized_vars_chirho.contains(var_chirho)
                         )
@@ -554,7 +554,7 @@ impl InferCtxChirho {
                         // top-level binding takes its final scheme's agreed index
                         // (workflow:
                         // language-features-chirho/dictionary-evidence-chirho).
-                        if let TyChirho::VarChirho(var_chirho) = &resolved_chirho
+                        if let TyChirho::VarChirho(var_chirho) = resolved_chirho
                             && let Some(key_chirho) = self
                                 .local_specialization_key_chirho(*var_chirho, final_subst_chirho)
                                 .or_else(|| {
@@ -589,7 +589,7 @@ impl InferCtxChirho {
                     // An instance method's skolem is no such parameter and keys
                     // as the open variable it replaced, below.
                     // workflow: language-features-chirho/dictionary-evidence-chirho
-                    if let TyChirho::ForallVarChirho(skolem_chirho) = &resolved_chirho
+                    if let TyChirho::ForallVarChirho(skolem_chirho) = resolved_chirho
                         && let Some(key_chirho) =
                             self.own_parameter_key_chirho(class_chirho, skolem_chirho)
                     {
@@ -611,25 +611,23 @@ impl InferCtxChirho {
                         (matches!(class_chirho.as_str(), "Show" | "Ord" | "Eq")
                             && !resolved_chirho.contains_var_chirho())
                         .then(|| {
-                            evidence_chirho::concrete_evidence_key_chirho(&resolved_chirho, false)
+                            evidence_chirho::concrete_evidence_key_chirho(resolved_chirho, false)
                         })
                         .flatten();
                     let key_chirho = resolved_structured_key_chirho
-                        .or_else(|| evidence_chirho::ground_list_key_chirho(&resolved_chirho))
-                        .or_else(|| head_key_chirho(&resolved_chirho))
+                        .or_else(|| evidence_chirho::ground_list_key_chirho(resolved_chirho))
+                        .or_else(|| head_key_chirho(resolved_chirho))
                         .or(hinted_key_chirho)
                         .or_else(|| default_occurrence_key_chirho(class_chirho))?;
                     Some(MethodOccurrenceRecordChirho {
-                        applied_ty_chirho: applied_evidence_ty_chirho(&resolved_chirho),
+                        applied_ty_chirho: applied_evidence_ty_chirho(resolved_chirho),
                         name_chirho: name_chirho.clone(),
                         ordinal_chirho: *ordinal_chirho,
                         class_name_chirho: class_chirho.clone(),
                         ty_key_chirho: key_chirho,
                         ground_pred_chirho: evidence_chirho::ground_pred_chirho(
                             self,
-                            class_chirho,
-                            &resolved_chirho,
-                            &[],
+                            &resolved_predicate_chirho,
                         ),
                         span_chirho: *span_chirho,
                         origin_chirho: *origin_chirho,

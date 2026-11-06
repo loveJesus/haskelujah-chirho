@@ -999,7 +999,17 @@ fn single_proof_chirho(proofs_chirho: &[JoinedProofChirho]) -> Option<JoinedProo
                         == std::slice::from_ref(ground_chirho)
                 });
             if agreed_chirho && !ground_preds_chirho.contains(ground_chirho) {
-                ground_preds_chirho.push(ground_chirho.clone());
+                let mut ground_chirho = ground_chirho.clone();
+                for other_chirho in proofs_chirho.iter().filter(|other_chirho| {
+                    other_chirho.class_name_chirho == proof_chirho.class_name_chirho
+                }) {
+                    for other_ground_chirho in &other_chirho.ground_preds_chirho {
+                        ground_chirho.meet_class_identity_chirho(
+                            other_ground_chirho.class_identity_chirho(),
+                        );
+                    }
+                }
+                ground_preds_chirho.push(ground_chirho);
             }
         }
     }
