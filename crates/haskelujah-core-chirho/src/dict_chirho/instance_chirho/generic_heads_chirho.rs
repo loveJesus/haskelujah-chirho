@@ -39,7 +39,6 @@
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use std::cell::Cell;
-use std::fmt;
 
 use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho, PredChirho};
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
@@ -180,11 +179,8 @@ impl DictPassCtxChirho {
         // reads has a row: an Eq method by its counterpart (row 606), and the compiler's own
         // Monad's `>>` by `>>=` when its declared default is authorized in this module (row 699,
         // `monad_default_covers_chirho`), never a namesake's.
-        let donor_covered_chirho = |donor_chirho: &str| {
-            !uncovered_chirho
-                .iter()
-                .any(|method_name_chirho| *method_name_chirho == donor_chirho)
-        };
+        let donor_covered_chirho =
+            |donor_chirho: &'static str| !uncovered_chirho.contains(&donor_chirho);
         let covered_by_default_chirho = |method_name_chirho: &str| {
             equality_counterpart_chirho(class_name_chirho, method_name_chirho)
                 .is_some_and(donor_covered_chirho)
@@ -406,18 +402,19 @@ impl DictPassCtxChirho {
     /// dictionary of `instance Monad (ReaderChirho r)`. The instance is found by matching its
     /// head, never by the predicate's spelling, and one instance seen twice is one. No match,
     /// several, one with a context, or one this pass built no dictionary for is the reason
-    /// returned (row 694, #31909).
+    /// returned, in the words a multi-parameter refusal names (row 694, #31909); a one-parameter
+    /// superclass slot reads each as a named gap (row 699).
     /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub(super) fn context_free_dictionary_chirho(
         &self,
         class_env_chirho: &ClassEnvChirho,
         predicate_chirho: &PredChirho,
-    ) -> Result<CoreIdChirho, DictionaryUnavailableChirho> {
+    ) -> Result<CoreIdChirho, String> {
         let (_instance_chirho, key_chirho, goals_chirho) =
             matching_instance_chirho(class_env_chirho, predicate_chirho)?;
         if !goals_chirho.is_empty() {
-            return Err(DictionaryUnavailableChirho::ContextualChirho(
-                predicate_chirho.to_string(),
+            return Err(format!(
+                "the instance matching `{predicate_chirho}` has a context, whose dictionaries this pass does not build here"
             ));
         }
         self.existing_id_named_chirho(&format!(
@@ -425,7 +422,7 @@ impl DictPassCtxChirho {
             predicate_chirho.class_name_chirho
         ))
         .ok_or_else(|| {
-            DictionaryUnavailableChirho::NotBuiltHereChirho(predicate_chirho.to_string())
+            format!("this pass built no dictionary for the instance matching `{predicate_chirho}`")
         })
     }
 
@@ -456,7 +453,6 @@ impl DictPassCtxChirho {
             )
             .and_then(|superclass_chirho| {
                 self.context_free_dictionary_chirho(class_env_chirho, &superclass_chirho)
-                    .map_err(|reason_chirho| reason_chirho.to_string())
             });
             fields_chirho.push(match field_chirho {
                 Ok(dictionary_chirho) => CoreExprChirho::VarChirho(dictionary_chirho),
@@ -503,53 +499,13 @@ impl DictPassCtxChirho {
     }
 }
 
-/// Why no context-free dictionary serves a predicate in this pass, each carrying the predicate as
-/// it displays (row 699). The display is the reason a multi-parameter refusal names, the words
-/// row 694 wrote. A one-parameter superclass slot shares the matcher, and for it each reason is a
-/// named gap.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum DictionaryUnavailableChirho {
-    /// No instance's head matches the predicate.
-    NoMatchChirho(String),
-    /// More than one instance's head matches it.
-    SeveralChirho(String),
-    /// The one matching instance has a context.
-    ContextualChirho(String),
-    /// The one matching context-free instance has no dictionary this pass built.
-    NotBuiltHereChirho(String),
-}
-
-impl fmt::Display for DictionaryUnavailableChirho {
-    fn fmt(&self, formatter_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::NoMatchChirho(predicate_chirho) => {
-                write!(formatter_chirho, "no instance matches `{predicate_chirho}`")
-            }
-            Self::SeveralChirho(predicate_chirho) => {
-                write!(
-                    formatter_chirho,
-                    "several instances match `{predicate_chirho}`"
-                )
-            }
-            Self::ContextualChirho(predicate_chirho) => write!(
-                formatter_chirho,
-                "the instance matching `{predicate_chirho}` has a context, whose dictionaries this pass does not build here"
-            ),
-            Self::NotBuiltHereChirho(predicate_chirho) => write!(
-                formatter_chirho,
-                "this pass built no dictionary for the instance matching `{predicate_chirho}`"
-            ),
-        }
-    }
-}
-
 /// The one instance whose head matches `predicate_chirho`, its registry key, and the sub-goals
 /// its context leaves at that predicate. One instance seen twice is one. No match or several is
-/// the reason returned (row 694's matching, shared by row 699).
+/// the reason returned, in row 694's words (row 694's matching, shared by row 699).
 fn matching_instance_chirho<'a>(
     class_env_chirho: &'a ClassEnvChirho,
     predicate_chirho: &PredChirho,
-) -> Result<(&'a InstDeclChirho, String, Vec<PredChirho>), DictionaryUnavailableChirho> {
+) -> Result<(&'a InstDeclChirho, String, Vec<PredChirho>), String> {
     let mut matching_chirho: Vec<(String, Vec<PredChirho>, &InstDeclChirho)> = class_env_chirho
         .instances_chirho
         .get(&predicate_chirho.class_name_chirho)
@@ -578,15 +534,11 @@ fn matching_instance_chirho<'a>(
         left_chirho.0 == right_chirho.0 && left_chirho.1.is_empty() == right_chirho.1.is_empty()
     });
     match matching_chirho.as_slice() {
-        [] => Err(DictionaryUnavailableChirho::NoMatchChirho(
-            predicate_chirho.to_string(),
-        )),
+        [] => Err(format!("no instance matches `{predicate_chirho}`")),
         [(key_chirho, goals_chirho, inst_chirho)] => {
             Ok((*inst_chirho, key_chirho.clone(), goals_chirho.clone()))
         }
-        _ => Err(DictionaryUnavailableChirho::SeveralChirho(
-            predicate_chirho.to_string(),
-        )),
+        _ => Err(format!("several instances match `{predicate_chirho}`")),
     }
 }
 

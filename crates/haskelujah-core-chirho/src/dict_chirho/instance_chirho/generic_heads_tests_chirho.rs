@@ -14,8 +14,8 @@ use haskelujah_typing_chirho::class_chirho::{
 use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
 
 use super::{
-    DictLayoutChirho, DictPassCtxChirho, DictionaryUnavailableChirho, GenericHeadChirho,
-    SUPERCLASS_STEPS_CHIRHO, distinct_variable_spine_chirho, generic_spine_chirho, head_key_chirho,
+    DictLayoutChirho, DictPassCtxChirho, GenericHeadChirho, SUPERCLASS_STEPS_CHIRHO,
+    distinct_variable_spine_chirho, generic_spine_chirho, head_key_chirho,
     matching_instance_chirho, superclass_at_head_chirho, written_spine_chirho,
 };
 use crate::expr_chirho::{CoreExprChirho, CoreIdChirho};
@@ -638,7 +638,7 @@ fn a_transformed_superclass_slot_holds_the_dictionary_its_template_matches_chirh
 fn tag_template_match_chirho(
     pass_chirho: &DictPassCtxChirho,
     env_chirho: &ClassEnvChirho,
-) -> Result<usize, DictionaryUnavailableChirho> {
+) -> Result<usize, String> {
     let template_chirho = superclass_at_head_chirho(
         env_chirho,
         instance_at_chirho(env_chirho, "TagChirho", "(BoxChirho t0)"),
@@ -710,9 +710,7 @@ fn an_unserved_superclass_slot_is_a_gap_without_alias_or_refusal_chirho() {
                 )],
             ),
             vec![tag_row_chirho],
-            Err(DictionaryUnavailableChirho::NoMatchChirho(
-                "ListyChirho (BoxChirho t0)".to_string(),
-            )),
+            Err("no instance matches `ListyChirho (BoxChirho t0)`".to_string()),
         ),
         (
             // A catch-all beside the Box instance, as the compiler's `Typeable a` beside a
@@ -727,9 +725,7 @@ fn an_unserved_superclass_slot_is_a_gap_without_alias_or_refusal_chirho() {
                 ],
             ),
             vec![box_row_chirho, tag_row_chirho],
-            Err(DictionaryUnavailableChirho::SeveralChirho(
-                "ListyChirho (BoxChirho t0)".to_string(),
-            )),
+            Err("several instances match `ListyChirho (BoxChirho t0)`".to_string()),
         ),
     ];
     for (case_chirho, env_chirho, rows_chirho, matched_chirho) in cases_chirho {

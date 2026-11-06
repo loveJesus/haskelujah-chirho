@@ -150,7 +150,7 @@ pub(in crate::dict_chirho) fn monad_default_covers_chirho(
     builtin_classes_chirho: &BuiltinClassScopeChirho,
     class_name_chirho: &str,
     method_name_chirho: &str,
-    donor_covered_chirho: impl FnOnce(&str) -> bool,
+    donor_covered_chirho: impl FnOnce(&'static str) -> bool,
 ) -> bool {
     monad_default_candidate_chirho(class_name_chirho, method_name_chirho).is_some_and(
         |donor_chirho| {
