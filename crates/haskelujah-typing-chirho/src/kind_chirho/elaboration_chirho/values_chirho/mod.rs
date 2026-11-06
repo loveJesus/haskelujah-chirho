@@ -5,6 +5,7 @@
 
 mod comprehensions_chirho;
 mod expressions_chirho;
+mod pattern_signatures_chirho;
 mod quotations_chirho;
 #[cfg(test)]
 mod tests_chirho;
@@ -339,11 +340,23 @@ impl TypeElaboratorChirho<'_> {
             }
             DeclChirho::PatSynDeclChirho {
                 name_chirho,
+                args_chirho,
                 pat_chirho,
                 dir_chirho,
                 ..
             } => {
                 self.signature_scope_chirho(name_chirho)?;
+                if let Some(syntax_chirho) = self
+                    .signature_variables_chirho
+                    .get(name_chirho.text_chirho())
+                    .and_then(|scope_chirho| scope_chirho.pattern_syntax_chirho.clone())
+                {
+                    self.check_pattern_signature_result_chirho(
+                        &syntax_chirho,
+                        args_chirho.len(),
+                        name_chirho.span_chirho(),
+                    )?;
+                }
                 self.pattern_chirho(pat_chirho)?;
                 if let PatSynDirChirho::ExplBidirChirho {
                     builder_binds_chirho,
@@ -485,6 +498,11 @@ impl TypeElaboratorChirho<'_> {
             ValueSignatureScopeChirho {
                 variables_chirho,
                 checked_chirho: Arc::new(checked_chirho),
+                pattern_syntax_chirho: if pattern_chirho {
+                    Some(Arc::new(self.state_chirho.copy_syntax_chirho(ty_chirho)?))
+                } else {
+                    None
+                },
             },
         );
         self.signature_undo_chirho

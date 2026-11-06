@@ -166,3 +166,129 @@ fn effective_rank_flag_overrides_default_edition_and_deferral_chirho() {
     ];
     assert_eq!(outcomes_chirho, [true, true, true, true]);
 }
+
+#[test]
+fn pattern_result_restriction_uses_written_arity_and_checked_binder_scope_chirho() {
+    let cases_chirho = [
+        (
+            "{-# language PatternSynonyms #-}\nmodule PatSynExistential where\npattern P :: () => forall x. x -> Maybe x\npattern P <- _\n",
+            false,
+        ),
+        (
+            "{-# LANGUAGE PatternSynonyms #-}\nmodule PatternUniversalResultChirho where\npattern PChirho :: forall aChirho. aChirho -> Maybe aChirho\npattern PChirho aChirho = Just aChirho\n",
+            true,
+        ),
+        (
+            "{-# LANGUAGE PatternSynonyms, GADTs #-}\nmodule PatternExistentialArgumentChirho where\ndata SomeChirho where\n  SomeChirho :: aChirho -> SomeChirho\npattern PChirho :: () => forall aChirho. aChirho -> SomeChirho\npattern PChirho aChirho <- SomeChirho aChirho\n",
+            true,
+        ),
+        (
+            "{-# LANGUAGE PatternSynonyms #-}\nmodule PatternUniversalFunctionChirho where\npattern PChirho :: forall aChirho. aChirho -> Int\npattern PChirho <- _\n",
+            true,
+        ),
+        (
+            "{-# LANGUAGE PatternSynonyms #-}\nmodule PatternExistentialFunctionChirho where\npattern PChirho :: () => forall aChirho. aChirho -> Int\npattern PChirho <- _\n",
+            false,
+        ),
+        (
+            "{-# LANGUAGE PatternSynonyms #-}\nmodule PatternErasedExistentialChirho where\ntype IgnoreChirho aChirho = Int\npattern PChirho :: () => forall aChirho. IgnoreChirho aChirho\npattern PChirho <- _\n",
+            false,
+        ),
+        (
+            "{-# LANGUAGE PatternSynonyms #-}\n{-# OPTIONS_GHC -fdefer-type-errors #-}\nmodule PatternExistentialDeferredChirho where\npattern PChirho :: () => forall aChirho. aChirho -> Maybe aChirho\npattern PChirho <- _\n",
+            false,
+        ),
+    ];
+    let outcomes_chirho = cases_chirho.map(|(source_chirho, expected_chirho)| {
+        let result_chirho = check_chirho(source_chirho, &[])
+            .map(|_| ())
+            .map_err(|error_chirho| format!("{error_chirho:?}"));
+        (expected_chirho, result_chirho)
+    });
+    assert!(
+        outcomes_chirho
+            .iter()
+            .all(|(expected_chirho, result_chirho)| *expected_chirho == result_chirho.is_ok()),
+        "{outcomes_chirho:?}"
+    );
+}
+
+#[test]
+fn pattern_alias_cursor_consumes_only_declared_arguments_chirho() {
+    let cases_chirho = [
+        (
+            r#####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE PatternSynonyms, GADTs #-}
+module PatternAliasArgumentChirho where
+data SomeChirho where
+  SomeChirho :: aChirho -> SomeChirho
+type ArgumentChirho aChirho = aChirho -> SomeChirho
+pattern PChirho :: () => forall aChirho. ArgumentChirho aChirho
+pattern PChirho aChirho <- SomeChirho aChirho
+"#####,
+            true,
+        ),
+        (
+            r#####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE PatternSynonyms #-}
+module PatternAliasResultChirho where
+type IgnoreChirho aChirho = Int
+type ArgumentChirho aChirho = Int -> IgnoreChirho aChirho
+pattern PChirho :: () => forall aChirho. ArgumentChirho aChirho
+pattern PChirho xChirho <- xChirho
+"#####,
+            false,
+        ),
+        (
+            r#####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE PatternSynonyms, GADTs #-}
+module PatternRepeatedCallerAliasChirho where
+data SomeChirho where
+  SomeChirho :: aChirho -> SomeChirho
+type KeepChirho aChirho = aChirho
+type ArgumentChirho aChirho = aChirho -> SomeChirho
+pattern PChirho :: () => forall aChirho. ArgumentChirho (KeepChirho (KeepChirho aChirho))
+pattern PChirho aChirho <- SomeChirho aChirho
+"#####,
+            true,
+        ),
+        (
+            r#####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE PatternSynonyms, GADTs, PolyKinds, KindSignatures, ExplicitForAll #-}
+module PatternHiddenPrefixChirho where
+import Data.Proxy
+data SomeChirho where
+  SomeChirho :: forall kChirho (aChirho :: kChirho). Proxy aChirho -> SomeChirho
+type ArgumentChirho (aChirho :: kChirho) = Proxy aChirho -> SomeChirho
+pattern PChirho :: () => forall kChirho (aChirho :: kChirho). ArgumentChirho aChirho
+pattern PChirho aChirho <- SomeChirho aChirho
+"#####,
+            true,
+        ),
+        (
+            r#####"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE PatternSynonyms, RankNTypes, ConstraintKinds, FlexibleContexts, ViewPatterns #-}
+module PatternClassHeadImageTypedChirho where
+data SomeChirho
+type ArgumentChirho cChirho aChirho = Int -> ((cChirho Int => Int) -> SomeChirho)
+viewChirho :: ((Eq Int => Int) -> SomeChirho) -> Int
+viewChirho _ = 1
+pattern PChirho :: () => forall aChirho. ArgumentChirho Eq aChirho
+pattern PChirho xChirho <- (viewChirho -> xChirho)
+"#####,
+            true,
+        ),
+    ];
+    let outcomes_chirho = cases_chirho.map(|(source_chirho, expected_chirho)| {
+        let result_chirho = check_chirho(source_chirho, &[])
+            .map(|_| ())
+            .map_err(|error_chirho| format!("{error_chirho:?}"));
+        (expected_chirho, result_chirho)
+    });
+    assert!(
+        outcomes_chirho
+            .iter()
+            .all(|(expected_chirho, result_chirho)| *expected_chirho == result_chirho.is_ok()),
+        "{outcomes_chirho:?}"
+    );
+}

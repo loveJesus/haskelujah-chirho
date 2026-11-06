@@ -62,6 +62,7 @@ type SourceVariablesChirho = Vec<(String, TyVarChirho, TyChirho)>;
 struct ValueSignatureScopeChirho {
     variables_chirho: SourceVariablesChirho,
     checked_chirho: Arc<TyChirho>,
+    pattern_syntax_chirho: Option<Arc<haskelujah_ast_chirho::ty_chirho::TypeChirho>>,
 }
 
 struct CheckedFamilyEquationChirho {
