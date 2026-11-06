@@ -26,6 +26,10 @@ flowchart TD
 
 The Phase4.4 field-type consumer reads the effective language flags already published by the common source producer. It does not infer a second default edition when RankNTypes is absent. A DatatypeContexts flag permits a declaration-head context; it does not exempt an independent constructor field from rank or impredicativity checks. The actual ordinary field AST and constructor-prefix context remain separate inputs. Structural licensing errors stay fatal when the caller defers ordinary type errors.
 
+A pattern synonym's existing checked signature scope also retains its written AST, copied under the same elaboration allowance. At the actual pattern declaration, its written argument count determines the result boundary. Quantifiers before the required context are universal; quantifiers after it are existential. The bounded borrowed cursor exposes only checked synonym syntax, matching the complete canonical telescope including hidden kind arguments, while another argument arrow is needed. Substitution images keep their caller frames and nested quantifiers mask those substitutions. After consuming the declared arguments, it stops unfolding and checks the remaining written type, kinds, contexts and multiplicities. Consequently `Ignore a` still mentions existential `a` even if `type Ignore a = Int`. Every frame lookup comparison, visit and generated frame spends the original State; lexical expansion keeps the existing128 depth cap and latches resource failure. This produces no class/instance or runtime authority.
+
+An applied arrow head needs the actual checked compiler function declaration and a nonopaque occurrence. Its spelling alone is insufficient, and an explicit opaque projection refuses even if a stale copied declaration proof remains on the occurrence. A grammar-owned `FunChirho` is already an arrow; the cursor consumes it directly.
+
 ```mermaid
 flowchart LR
     language_chirho["Real header, caller flags and post-CPP language state"] --> flags_chirho["One effective Module.extensions"]
@@ -33,6 +37,9 @@ flowchart LR
     fields_chirho["Actual constructor field types"] --> license_chirho
     license_chirho --> allowed_chirho["Enabled form continues"]
     license_chirho --> refused_chirho["Unlicensed form is a coded fatal diagnostic"]
+    signature_chirho["Checked written pattern signature"] --> arity_chirho["Consume actual declaration arguments with checked syntax"]
+    arity_chirho --> result_chirho["Scan residual written result under lexical masks"]
+    result_chirho -->|existential occurs| refused_chirho
 ```
 
 1. A named Haskell 98 newtype constructor has exactly one field (`GHC-23517`). A record
