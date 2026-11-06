@@ -66,13 +66,14 @@ impl ClassEnvChirho {
         let app_var_chirho = TyVarChirho(9042);
         let app_a_chirho = TyVarChirho(9043);
         let app_b_chirho = TyVarChirho(9044);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ApplicativeChirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FunctorChirho],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Applicative".to_string(),
-                supers_chirho: vec!["Functor".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: app_var_chirho,
                 methods_chirho: HashMap::from([
                     // pure :: a -> f a
@@ -134,13 +135,14 @@ impl ClassEnvChirho {
         let m_var_chirho = TyVarChirho(9045);
         let monad_a_chirho = TyVarChirho(9046);
         let monad_b_chirho = TyVarChirho(9047);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ApplicativeChirho],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Monad".to_string(),
-                supers_chirho: vec!["Applicative".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: m_var_chirho,
                 methods_chirho: HashMap::from([
                     // (>>=) :: m a -> (a -> m b) -> m b
@@ -300,13 +302,17 @@ impl ClassEnvChirho {
             )),
             MultChirho::ManyChirho,
         );
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TraversableChirho,
+            &[
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FunctorChirho,
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FoldableChirho,
+            ],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Traversable".to_string(),
-                supers_chirho: vec!["Functor".to_string(), "Foldable".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: trav_t_chirho,
                 methods_chirho: HashMap::from([
                     (

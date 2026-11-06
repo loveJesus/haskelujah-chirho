@@ -68,13 +68,14 @@ impl ClassEnvChirho {
                 (name_chirho.to_string(), ord_method_chirho(result_ty_chirho))
             })
             .collect();
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::OrdChirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::EqChirho],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Ord".to_string(),
-                supers_chirho: vec!["Eq".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: ord_var_chirho,
                 methods_chirho: ord_methods_chirho,
                 extra_vars_chirho: vec![],
@@ -219,13 +220,14 @@ impl ClassEnvChirho {
 
         // Fractional (superclass: Num)
         let frac_var_chirho = TyVarChirho(9010);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FractionalChirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::NumChirho],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Fractional".to_string(),
-                supers_chirho: vec!["Num".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: frac_var_chirho,
                 methods_chirho: HashMap::from([
                     (
@@ -462,13 +464,14 @@ impl ClassEnvChirho {
 
         // FiniteBits (superclass: Bits)
         let finite_bits_var_chirho = TyVarChirho(9013);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FiniteBitsChirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::BitsChirho],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "FiniteBits".to_string(),
-                supers_chirho: vec!["Bits".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: finite_bits_var_chirho,
                 methods_chirho: HashMap::from([
                     (

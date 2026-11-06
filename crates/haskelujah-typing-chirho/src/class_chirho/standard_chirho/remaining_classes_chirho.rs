@@ -12,13 +12,14 @@ impl ClassEnvChirho {
     pub(super) fn seed_remaining_classes_chirho(&mut self) {
         // Floating (superclass: Fractional)
         let floating_var_chirho = TyVarChirho(9009);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FloatingChirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FractionalChirho],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Floating".to_string(),
-                supers_chirho: vec!["Fractional".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: floating_var_chirho,
                 methods_chirho: HashMap::from([
                     (
@@ -161,13 +162,17 @@ impl ClassEnvChirho {
 
         // RealFrac (superclass: Real, Fractional)
         let realfrac_var_chirho = TyVarChirho(9060);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::RealFracChirho,
+            &[
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::RealChirho,
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FractionalChirho,
+            ],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "RealFrac".to_string(),
-                supers_chirho: vec!["Real".to_string(), "Fractional".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: realfrac_var_chirho,
                 methods_chirho: HashMap::new(),
                 extra_vars_chirho: vec![],
@@ -192,13 +197,17 @@ impl ClassEnvChirho {
 
         // RealFloat (superclass: RealFrac, Floating)
         let realfloat_var_chirho = TyVarChirho(9061);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::RealFloatChirho,
+            &[
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::RealFracChirho,
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FloatingChirho,
+            ],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "RealFloat".to_string(),
-                supers_chirho: vec!["RealFrac".to_string(), "Floating".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: realfloat_var_chirho,
                 methods_chirho: HashMap::new(),
                 extra_vars_chirho: vec![],
@@ -223,13 +232,14 @@ impl ClassEnvChirho {
 
         // MonadIO class
         let monadio_var_chirho = TyVarChirho(9062);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadIoChirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "MonadIO".to_string(),
-                supers_chirho: vec!["Monad".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: monadio_var_chirho,
                 methods_chirho: HashMap::new(),
                 extra_vars_chirho: vec![],
@@ -253,13 +263,14 @@ impl ClassEnvChirho {
         // MonadFail class
         let monad_fail_m_chirho = TyVarChirho(9063);
         let monad_fail_a_chirho = TyVarChirho(9064);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadFailChirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "MonadFail".to_string(),
-                supers_chirho: vec!["Monad".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: monad_fail_m_chirho,
                 methods_chirho: HashMap::from([(
                     "fail".to_string(),
@@ -302,13 +313,14 @@ impl ClassEnvChirho {
             Box::new(TyChirho::VarChirho(monad_fix_m_chirho)),
             Box::new(TyChirho::VarChirho(monad_fix_a_chirho)),
         );
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadFixChirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "MonadFix".to_string(),
-                supers_chirho: vec!["Monad".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: monad_fix_m_chirho,
                 methods_chirho: HashMap::from([(
                     "mfix".to_string(),
@@ -491,13 +503,14 @@ impl ClassEnvChirho {
 
         // MonadZip (superclass: Monad)
         let monadzip_var_chirho = TyVarChirho(9074);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadZipChirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "MonadZip".to_string(),
-                supers_chirho: vec!["Monad".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: monadzip_var_chirho,
                 methods_chirho: HashMap::from([(
                     "mzipWith".to_string(),
@@ -603,13 +616,14 @@ impl ClassEnvChirho {
 
         // SplitGen (superclass: RandomGen)
         let splitgen_var_chirho = TyVarChirho(90742);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::SplitGenChirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::RandomGenChirho],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "SplitGen".to_string(),
-                supers_chirho: vec!["RandomGen".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: splitgen_var_chirho,
                 methods_chirho: HashMap::from([(
                     "splitGen".to_string(),
@@ -712,13 +726,17 @@ impl ClassEnvChirho {
 
         // Real (superclass: Num, Ord)
         let real_var_chirho = TyVarChirho(9063);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::RealChirho,
+            &[
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::NumChirho,
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::OrdChirho,
+            ],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Real".to_string(),
-                supers_chirho: vec!["Num".to_string(), "Ord".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: real_var_chirho,
                 methods_chirho: HashMap::new(),
                 extra_vars_chirho: vec![],
@@ -746,13 +764,17 @@ impl ClassEnvChirho {
         // under an `Integral a` context come through Real => Ord => Eq, not
         // through Num, which has no superclasses.
         let integral_var_chirho = TyVarChirho(9008);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::IntegralChirho,
+            &[
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::RealChirho,
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::EnumChirho,
+            ],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Integral".to_string(),
-                supers_chirho: vec!["Real".to_string(), "Enum".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: integral_var_chirho,
                 methods_chirho: HashMap::from([
                     (

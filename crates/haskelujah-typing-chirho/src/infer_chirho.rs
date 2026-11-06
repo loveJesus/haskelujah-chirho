@@ -159,6 +159,9 @@ mod promotion_identity_tests_chirho;
 #[path = "infer_chirho/tests_chirho/signature_newtype_tests_chirho.rs"]
 mod signature_newtype_tests_chirho;
 #[cfg(test)]
+#[path = "infer_chirho/tests_chirho/superclass_reduction_tests_chirho.rs"]
+mod superclass_reduction_tests_chirho;
+#[cfg(test)]
 #[path = "infer_chirho/tests_chirho/test_support_chirho.rs"]
 mod test_support_chirho;
 #[cfg(test)]

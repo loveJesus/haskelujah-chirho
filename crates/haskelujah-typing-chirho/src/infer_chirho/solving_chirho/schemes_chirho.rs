@@ -539,30 +539,18 @@ impl InferCtxChirho {
         // Adjacent-only dedup left Num b, Integral a, Num b with two dictionary indices.
         scheme_preds_chirho = self.coalesce_scheme_predicates_chirho(scheme_preds_chirho);
 
-        // Context reduction: remove predicates that are entailed by
-        // other predicates via the superclass hierarchy.
-        // E.g. if we have (Eq a, Num a), remove Eq a since Num has Eq
-        // as a superclass.
+        // Context reduction (row 692): a predicate leaves only when another one entails it along
+        // proven compiler superclass edges at the same complete arguments (`(Eq a, Ord a)`
+        // keeps `Ord a`). An unknown or source participant stays, and every survivor keeps its
+        // own proof. Num has no superclass in the seed.
         let keep_chirho: Vec<bool> = scheme_preds_chirho
             .iter()
             .map(|pred_chirho| {
                 !scheme_preds_chirho.iter().any(|other_chirho| {
-                    other_chirho.class_name_chirho != pred_chirho.class_name_chirho
-                        && other_chirho.ty_chirho == pred_chirho.ty_chirho
-                        && other_chirho.kind_tys_chirho == pred_chirho.kind_tys_chirho
-                        && other_chirho.extra_tys_chirho == pred_chirho.extra_tys_chirho
-                        && self.is_transitive_superclass_chirho(
-                            &pred_chirho.class_name_chirho,
-                            &other_chirho.class_name_chirho,
-                        )
+                    self.compiler_superclass_entails_chirho(other_chirho, pred_chirho)
                 })
             })
             .collect();
-        if keep_chirho.iter().any(|keep_chirho| !keep_chirho) {
-            for predicate_chirho in &mut scheme_preds_chirho {
-                predicate_chirho.meet_class_identity_chirho(&haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::UnsupportedChirho));
-            }
-        }
         scheme_preds_chirho = scheme_preds_chirho
             .into_iter()
             .zip(keep_chirho)
@@ -680,9 +668,90 @@ impl InferCtxChirho {
         scheme_chirho
     }
 
+    /// Whether `given_chirho` entails `wanted_chirho` along proven compiler superclass edges
+    /// (row 692). Both must name a compiler class whose active record is that compiler record.
+    /// From the given, each step instantiates the proven seed templates of an active compiler
+    /// record at that predicate's complete arguments; a derived superclass counts only when it
+    /// is itself an active compiler record, and the wanted is reached only with the same class,
+    /// complete arguments and proof. An unknown, source or shadowed class, a template that is
+    /// not proven, or an exhausted search proves nothing, so the wanted stays.
+    /// workflow: language-features-chirho/fundep-generalization-chirho
+    pub(super) fn compiler_superclass_entails_chirho(
+        &self,
+        given_chirho: &SchemePredChirho,
+        wanted_chirho: &SchemePredChirho,
+    ) -> bool {
+        const STEPS_CHIRHO: usize = 64;
+        let wanted_chirho = PredChirho::from_scheme_chirho(wanted_chirho);
+        if self.active_compiler_record_chirho(&wanted_chirho).is_none() {
+            return false;
+        }
+        let given_chirho = PredChirho::from_scheme_chirho(given_chirho);
+        let mut seen_chirho = HashSet::from([given_chirho.clone()]);
+        let mut pending_chirho = vec![given_chirho];
+        let mut steps_chirho = 0usize;
+        while let Some(current_chirho) = pending_chirho.pop() {
+            if steps_chirho == STEPS_CHIRHO {
+                return false;
+            }
+            steps_chirho += 1;
+            let Some(record_chirho) = self.active_compiler_record_chirho(&current_chirho) else {
+                continue;
+            };
+            let Some(superclasses_chirho) = record_chirho.superclass_preds_at_chirho(
+                &current_chirho.kind_tys_chirho,
+                &current_chirho.all_tys_chirho(),
+            ) else {
+                continue;
+            };
+            for superclass_chirho in superclasses_chirho {
+                if self
+                    .active_compiler_record_chirho(&superclass_chirho)
+                    .is_none()
+                {
+                    continue;
+                }
+                if superclass_chirho == wanted_chirho
+                    && superclass_chirho.class_identity_chirho()
+                        == wanted_chirho.class_identity_chirho()
+                {
+                    return true;
+                }
+                if seen_chirho.insert(superclass_chirho.clone()) {
+                    pending_chirho.push(superclass_chirho);
+                }
+            }
+        }
+        false
+    }
+
+    /// The compiler record a predicate's proof names, when it is also the record active under
+    /// the predicate's spelling. An unknown or source proof, or a shadowed name, has none.
+    fn active_compiler_record_chirho(
+        &self,
+        predicate_chirho: &PredChirho,
+    ) -> Option<&std::sync::Arc<crate::class_chirho::ClassDeclChirho>> {
+        let haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::ProvenChirho(
+            haskelujah_ast_chirho::name_chirho::PredicateClassIdentityChirho::CompilerChirho(
+                identity_chirho,
+            ),
+        ) = predicate_chirho.class_identity_chirho()
+        else {
+            return None;
+        };
+        let producer_chirho = self
+            .class_env_chirho
+            .compiler_class_record_chirho(*identity_chirho)?;
+        let active_chirho = self
+            .class_env_chirho
+            .classes_chirho()
+            .get_chirho(&predicate_chirho.class_name_chirho)?;
+        std::sync::Arc::ptr_eq(producer_chirho, active_chirho).then_some(producer_chirho)
+    }
+
     /// Check if `potential_super_chirho` is a (transitive) superclass of
-    /// `sub_chirho`. For example, `Eq` is a superclass of `Ord` and also
-    /// of `Num` (since Num has Eq in its superclass list). Each class is
+    /// `sub_chirho`. For example, `Eq` is a superclass of `Ord`, and
+    /// transitively of `Real`. Each class is
     /// visited once, so a superclass cycle, legal under
     /// UndecidableSuperClasses (T16414's `All` and `All2`), ends the walk.
     /// workflow: language-features-chirho/rigid-type-variables-chirho
