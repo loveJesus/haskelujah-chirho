@@ -382,9 +382,8 @@ pub fn classify_contextual_keywords_with_extensions_chirho(
     let extensions_chirho = extensions_chirho.flags_chirho();
     let recursive_do_enabled_chirho = extension_enabled_chirho(extensions_chirho, "RecursiveDo");
     let qualified_do_enabled_chirho = extension_enabled_chirho(extensions_chirho, "QualifiedDo");
-    if !recursive_do_enabled_chirho && !qualified_do_enabled_chirho {
-        return;
-    }
+    let transform_list_comp_enabled_chirho =
+        extension_enabled_chirho(extensions_chirho, "TransformListComp");
 
     for token_chirho in tokens_chirho {
         let start_chirho = token_chirho.span_chirho.start_chirho().as_usize_chirho();
@@ -393,6 +392,21 @@ pub fn classify_contextual_keywords_with_extensions_chirho(
             continue;
         };
 
+        // GHC9.14.1 reserves unqualified by/using when this extension is on.
+        // Qualified identifiers keep their actual qualified spelling. group
+        // remains a legal identifier and is recognized in its then production.
+        if matches!(
+            token_chirho.kind_chirho,
+            RawTokenKindChirho::VarIdChirho
+                | RawTokenKindChirho::TransformByChirho
+                | RawTokenKindChirho::TransformUsingChirho
+        ) {
+            token_chirho.kind_chirho = match (transform_list_comp_enabled_chirho, text_chirho) {
+                (true, "by") => RawTokenKindChirho::TransformByChirho,
+                (true, "using") => RawTokenKindChirho::TransformUsingChirho,
+                _ => RawTokenKindChirho::VarIdChirho,
+            };
+        }
         if recursive_do_enabled_chirho
             && token_chirho.kind_chirho == RawTokenKindChirho::VarIdChirho
         {

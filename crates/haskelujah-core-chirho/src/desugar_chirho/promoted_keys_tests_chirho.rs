@@ -6,6 +6,7 @@
 //! scope the legacy keys remain, which are not corrected.
 
 use super::*;
+use haskelujah_ast_chirho::name_chirho::RawNameChirho;
 use haskelujah_ast_chirho::promotion_chirho::{PromotedKeyChirho, PromotionResolutionChirho};
 use haskelujah_span_chirho::SpanChirho;
 

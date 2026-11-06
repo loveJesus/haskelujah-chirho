@@ -10,8 +10,8 @@ use haskelujah_ast_chirho::decl_chirho::{
     GadtProjectionErrorChirho, PatSynDirChirho,
 };
 use haskelujah_ast_chirho::expr_chirho::{
-    AltChirho, ExprChirho, FieldAssignChirho, GuardedExprChirho, LocalBindChirho, MatchArmChirho,
-    RhsChirho, StmtChirho,
+    AltChirho, ComprehensionQualifierChirho, ExprChirho, FieldAssignChirho, GuardedExprChirho,
+    LocalBindChirho, MatchArmChirho, RhsChirho, StmtChirho,
 };
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::pat_chirho::{PatChirho, PatFieldChirho};
@@ -22,6 +22,7 @@ pub enum DesugarInputErrorChirho {
     ConstructorChirho(ConstructorSignatureErrorChirho),
     ProjectionChirho(GadtProjectionErrorChirho),
     UnexpandedPatternChirho { span_chirho: SpanChirho },
+    UnreadTransformChirho { span_chirho: SpanChirho },
 }
 
 impl DesugarInputErrorChirho {
@@ -29,13 +30,16 @@ impl DesugarInputErrorChirho {
         match self {
             Self::ConstructorChirho(error_chirho) => error_chirho.span_chirho(),
             Self::ProjectionChirho(error_chirho) => error_chirho.span_chirho,
-            Self::UnexpandedPatternChirho { span_chirho } => span_chirho,
+            Self::UnexpandedPatternChirho { span_chirho }
+            | Self::UnreadTransformChirho { span_chirho } => span_chirho,
         }
     }
     pub fn ghc_code_chirho(self) -> Option<&'static str> {
         match self {
             Self::ConstructorChirho(error_chirho) => error_chirho.ghc_code_chirho(),
-            Self::ProjectionChirho(_) | Self::UnexpandedPatternChirho { .. } => None,
+            Self::ProjectionChirho(_)
+            | Self::UnexpandedPatternChirho { .. }
+            | Self::UnreadTransformChirho { .. } => None,
         }
     }
 }
@@ -56,6 +60,9 @@ impl std::fmt::Display for DesugarInputErrorChirho {
             Self::ProjectionChirho(error_chirho) => error_chirho.fmt(formatter_chirho),
             Self::UnexpandedPatternChirho { .. } => {
                 formatter_chirho.write_str("unsupported unexpanded executable pattern splice")
+            }
+            Self::UnreadTransformChirho { .. } => {
+                formatter_chirho.write_str("unread comprehension transformer")
             }
         }
     }
@@ -78,7 +85,10 @@ enum NodeChirho<'syntax_chirho> {
     GuardChirho(&'syntax_chirho GuardedExprChirho),
     StatementsChirho(&'syntax_chirho [StmtChirho]),
     StatementChirho(&'syntax_chirho StmtChirho),
-    BranchesChirho(&'syntax_chirho [Vec<StmtChirho>]),
+    QualifiersChirho(&'syntax_chirho [ComprehensionQualifierChirho]),
+    QualifierChirho(&'syntax_chirho ComprehensionQualifierChirho),
+    QualifierProjectionChirho(&'syntax_chirho [ComprehensionQualifierChirho]),
+    BranchesChirho(&'syntax_chirho [Vec<ComprehensionQualifierChirho>]),
     AlternativesChirho(&'syntax_chirho [AltChirho]),
     AlternativeChirho(&'syntax_chirho AltChirho),
     FieldsChirho(&'syntax_chirho [FieldAssignChirho]),
@@ -103,7 +113,9 @@ fn push_chirho<'syntax_chirho>(
 pub(super) fn check_executable_patterns_chirho(
     module_chirho: &ModuleChirho,
     budget_chirho: &mut GadtProjectionBudgetChirho,
-) -> Result<(), DesugarInputErrorChirho> {
+    context_chirho: Option<&super::DesugarCtxChirho>,
+) -> Result<bool, DesugarInputErrorChirho> {
+    let mut expanded_rows_chirho = false;
     let mut pending_chirho = Vec::new();
     push_chirho(
         &mut pending_chirho,
@@ -171,6 +183,73 @@ pub(super) fn check_executable_patterns_chirho(
             NodeChirho::StatementsChirho(slice_chirho) => {
                 slice_chirho!(slice_chirho, StatementsChirho, StatementChirho);
             }
+            NodeChirho::QualifiersChirho(slice_chirho) => {
+                slice_chirho!(slice_chirho, QualifiersChirho, QualifierChirho);
+            }
+            NodeChirho::QualifierChirho(qualifier_chirho) => match qualifier_chirho {
+                ComprehensionQualifierChirho::StatementChirho(statement_chirho) => {
+                    push_chirho!(NodeChirho::StatementChirho(statement_chirho))
+                }
+                ComprehensionQualifierChirho::TransformChirho(transform_chirho) => {
+                    let Some(using_chirho) = &transform_chirho.using_chirho else {
+                        return Err(DesugarInputErrorChirho::UnreadTransformChirho {
+                            span_chirho: transform_chirho.span_chirho,
+                        });
+                    };
+                    push_chirho!(NodeChirho::ExpressionChirho(using_chirho));
+                    if let Some(by_chirho) = &transform_chirho.by_chirho {
+                        push_chirho!(NodeChirho::ExpressionChirho(by_chirho));
+                    }
+                }
+            },
+            NodeChirho::QualifierProjectionChirho(qualifiers_chirho) => {
+                let Some(context_chirho) = context_chirho else {
+                    continue;
+                };
+                let columns_chirho = context_chirho
+                    .comprehension_columns_chirho(qualifiers_chirho)
+                    .len();
+                budget_chirho.reserve_transport_chirho(
+                    columns_chirho.saturating_mul(32),
+                    depth_chirho,
+                    span_chirho,
+                )?;
+                // All actual prefix patterns have passed the borrowed depth
+                // cursor before the matcher's complete column inventory runs.
+                for (index_chirho, qualifier_chirho) in qualifiers_chirho.iter().enumerate() {
+                    let ComprehensionQualifierChirho::TransformChirho(transform_chirho) =
+                        qualifier_chirho
+                    else {
+                        continue;
+                    };
+                    let count_chirho = context_chirho
+                        .comprehension_columns_chirho(&qualifiers_chirho[..index_chirho])
+                        .len();
+                    // Each group column maps the same row stream and has one
+                    // tuple selector. Reserve its actual quadratic selector
+                    // footprint, loop nodes and key/prefix row before Core.
+                    let selectors_chirho = if transform_chirho.group_chirho {
+                        count_chirho
+                            .checked_mul(count_chirho)
+                            .and_then(|selectors_chirho| selectors_chirho.checked_mul(128))
+                    } else {
+                        Some(0)
+                    };
+                    let weight_chirho = selectors_chirho
+                        .and_then(|selectors_chirho| {
+                            count_chirho.checked_mul(64).and_then(|columns_chirho| {
+                                selectors_chirho.checked_add(columns_chirho)
+                            })
+                        })
+                        .and_then(|weight_chirho| weight_chirho.checked_add(128))
+                        .unwrap_or(usize::MAX);
+                    budget_chirho.reserve_transport_chirho(
+                        weight_chirho,
+                        depth_chirho,
+                        transform_chirho.span_chirho,
+                    )?;
+                }
+            }
             NodeChirho::AlternativesChirho(slice_chirho) => {
                 slice_chirho!(slice_chirho, AlternativesChirho, AlternativeChirho);
             }
@@ -183,7 +262,8 @@ pub(super) fn check_executable_patterns_chirho(
                             span_chirho
                         );
                     }
-                    push_chirho!(NodeChirho::StatementsChirho(first_chirho));
+                    push_chirho!(NodeChirho::QualifierProjectionChirho(first_chirho));
+                    push_chirho!(NodeChirho::QualifiersChirho(first_chirho));
                 }
             }
             NodeChirho::FieldsChirho(slice_chirho) => {
@@ -486,8 +566,31 @@ pub(super) fn check_executable_patterns_chirho(
                     parallel_quals_chirho,
                     ..
                 } => {
+                    let has_transform_chirho = quals_chirho.iter().any(|qualifier_chirho| {
+                        matches!(
+                            qualifier_chirho,
+                            ComprehensionQualifierChirho::TransformChirho(_)
+                        )
+                    });
+                    expanded_rows_chirho |=
+                        has_transform_chirho || !parallel_quals_chirho.is_empty();
+                    if context_chirho.is_some() {
+                        budget_chirho.reserve_transport_chirho(
+                            parallel_quals_chirho.len().saturating_mul(128),
+                            depth_chirho.saturating_add(parallel_quals_chirho.len()),
+                            span_chirho,
+                        )?;
+                    }
                     push_chirho!(NodeChirho::ExpressionChirho(body_chirho));
-                    push_chirho!(NodeChirho::StatementsChirho(quals_chirho));
+                    if quals_chirho.iter().any(|qualifier_chirho| {
+                        matches!(
+                            qualifier_chirho,
+                            ComprehensionQualifierChirho::TransformChirho(_)
+                        )
+                    }) {
+                        push_chirho!(NodeChirho::QualifierProjectionChirho(quals_chirho));
+                    }
+                    push_chirho!(NodeChirho::QualifiersChirho(quals_chirho));
                     push_chirho!(NodeChirho::BranchesChirho(parallel_quals_chirho));
                 }
                 ExprChirho::LeftSectionChirho { arg_chirho, .. }
@@ -520,5 +623,5 @@ pub(super) fn check_executable_patterns_chirho(
             },
         }
     }
-    Ok(())
+    Ok(expanded_rows_chirho)
 }

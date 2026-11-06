@@ -112,7 +112,9 @@ fn map_token_kind_chirho(raw_chirho: RawTokenKindChirho, text_chirho: &str) -> T
         RawTokenKindChirho::ForallChirho => TokenKindChirho::ForallKeywordChirho,
 
         // Identifiers and operators
-        RawTokenKindChirho::VarIdChirho => TokenKindChirho::VarIdChirho,
+        RawTokenKindChirho::VarIdChirho
+        | RawTokenKindChirho::TransformByChirho
+        | RawTokenKindChirho::TransformUsingChirho => TokenKindChirho::VarIdChirho,
         RawTokenKindChirho::ConIdChirho => TokenKindChirho::ConIdChirho,
         RawTokenKindChirho::VarSymChirho => TokenKindChirho::VarSymChirho,
         RawTokenKindChirho::ConSymChirho => TokenKindChirho::ConSymChirho,
@@ -254,6 +256,8 @@ impl<'src> ParserChirho<'src> {
                     | Some(RawTokenKindChirho::ThenChirho)
                     | Some(RawTokenKindChirho::ElseChirho)
                     | Some(RawTokenKindChirho::OfChirho)
+                    | Some(RawTokenKindChirho::TransformByChirho)
+                    | Some(RawTokenKindChirho::TransformUsingChirho)
             )
     }
 

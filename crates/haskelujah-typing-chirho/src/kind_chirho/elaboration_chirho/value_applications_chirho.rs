@@ -219,6 +219,7 @@ fn with_argument_elaborator_chirho<ResultChirho>(
         unlifted_datatypes_chirho: policy_chirho.unlifted_datatypes_chirho,
         scoped_type_variables_chirho: policy_chirho.scoped_type_variables_chirho,
         template_haskell_quotes_chirho: policy_chirho.template_haskell_quotes_chirho,
+        transform_list_comp_chirho: policy_chirho.transform_list_comp_chirho,
         quote_stage_chirho: 0,
         signature_variables_chirho: HashMap::new(),
         signature_undo_chirho: Vec::new(),

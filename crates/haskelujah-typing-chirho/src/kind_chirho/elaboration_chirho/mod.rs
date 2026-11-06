@@ -137,6 +137,7 @@ struct TypeElaboratorChirho<'scope_chirho> {
     unlifted_datatypes_chirho: bool,
     scoped_type_variables_chirho: bool,
     template_haskell_quotes_chirho: bool,
+    transform_list_comp_chirho: bool,
     quote_stage_chirho: usize,
     signature_variables_chirho: HashMap<String, ValueSignatureScopeChirho>,
     signature_undo_chirho: Vec<(String, Option<ValueSignatureScopeChirho>)>,
@@ -481,6 +482,12 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
                     "ScopedTypeVariables",
                     false,
                 ),
+            transform_list_comp_chirho:
+                haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(
+                    module_chirho,
+                    "TransformListComp",
+                    false,
+                ),
             template_haskell_quotes_chirho:
                 haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(
                     module_chirho,
@@ -511,6 +518,7 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
             unlifted_datatypes_chirho: policy_chirho.unlifted_datatypes_chirho,
             scoped_type_variables_chirho: policy_chirho.scoped_type_variables_chirho,
             template_haskell_quotes_chirho: policy_chirho.template_haskell_quotes_chirho,
+            transform_list_comp_chirho: policy_chirho.transform_list_comp_chirho,
             quote_stage_chirho: 0,
             signature_variables_chirho: HashMap::new(),
             signature_undo_chirho: Vec::new(),

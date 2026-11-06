@@ -139,8 +139,12 @@ fn borrowed_pattern_scan_uses_the_same_sticky_allowance_without_output_chirho() 
             output_chirho: 0,
             depth_chirho: 128,
         });
-    input_chirho::check_executable_patterns_chirho(&module_chirho, &mut budget_chirho)
-        .expect("borrowed scan copies no output");
+    input_chirho::check_executable_patterns_chirho(
+        &module_chirho,
+        &mut budget_chirho,
+        Some(&DesugarCtxChirho::new_chirho()),
+    )
+    .expect("borrowed scan copies no output");
     assert_eq!(budget_chirho.remaining_limits_chirho().output_chirho, 0);
     assert!(budget_chirho.remaining_limits_chirho().work_chirho < 100);
     let mut budget_chirho =
@@ -149,9 +153,12 @@ fn borrowed_pattern_scan_uses_the_same_sticky_allowance_without_output_chirho() 
             output_chirho: 0,
             depth_chirho: 128,
         });
-    let error_chirho =
-        input_chirho::check_executable_patterns_chirho(&module_chirho, &mut budget_chirho)
-            .expect_err("the cursor shares the finite allowance");
+    let error_chirho = input_chirho::check_executable_patterns_chirho(
+        &module_chirho,
+        &mut budget_chirho,
+        Some(&DesugarCtxChirho::new_chirho()),
+    )
+    .expect_err("the cursor shares the finite allowance");
     let DesugarInputErrorChirho::ProjectionChirho(error_chirho) = error_chirho else {
         panic!("resource error must remain typed")
     };
@@ -163,4 +170,85 @@ fn borrowed_pattern_scan_uses_the_same_sticky_allowance_without_output_chirho() 
         budget_chirho.visit_borrowed_syntax_chirho(SpanChirho::DUMMY_CHIRHO, 1),
         Err(error_chirho)
     );
+}
+
+fn transform_module_chirho(present_chirho: bool) -> ModuleChirho {
+    use haskelujah_ast_chirho::expr_chirho::{
+        ComprehensionQualifierChirho, ComprehensionTransformChirho,
+    };
+    module_chirho(DeclChirho::PatBindChirho {
+        pat_chirho: PatChirho::VarChirho(dummy_name_chirho("resultChirho")),
+        rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::ListCompChirho {
+            body_chirho: Box::new(unit_chirho()),
+            quals_chirho: vec![
+                haskelujah_ast_chirho::expr_chirho::StmtChirho::expr_stmt_chirho(
+                    ExprChirho::ConChirho(dummy_name_chirho("True")),
+                )
+                .into(),
+                ComprehensionQualifierChirho::TransformChirho(ComprehensionTransformChirho {
+                    group_chirho: true,
+                    using_chirho: present_chirho.then(|| {
+                        Box::new(ExprChirho::VarChirho(dummy_name_chirho(
+                            "transformerChirho",
+                        )))
+                    }),
+                    by_chirho: None,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                }),
+            ],
+            parallel_quals_chirho: vec![],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    })
+}
+
+#[test]
+fn unread_transform_refuses_before_any_core_publication_chirho() {
+    assert!(matches!(
+        desugar_module_chirho(&transform_module_chirho(false)),
+        Err(DesugarInputErrorChirho::UnreadTransformChirho { .. })
+    ));
+}
+
+#[test]
+fn transform_output_reserves_the_original_sticky_module_allowance_chirho() {
+    let context_chirho = DesugarCtxChirho::new_chirho();
+    let module_chirho = transform_module_chirho(true);
+    let mut budget_chirho =
+        GadtProjectionBudgetChirho::with_limits_chirho(GadtProjectionLimitsChirho {
+            work_chirho: 10000,
+            output_chirho: 127,
+            depth_chirho: 128,
+        });
+    let error_chirho = input_chirho::check_executable_patterns_chirho(
+        &module_chirho,
+        &mut budget_chirho,
+        Some(&context_chirho),
+    )
+    .expect_err("even a zero-column transform emits a real row/loop");
+    let DesugarInputErrorChirho::ProjectionChirho(error_chirho) = error_chirho else {
+        panic!("typed original resource failure")
+    };
+    assert_eq!(
+        error_chirho.limit_chirho,
+        GadtProjectionLimitChirho::OutputChirho
+    );
+    assert_eq!(
+        budget_chirho.reserve_transport_chirho(1, 1, SpanChirho::DUMMY_CHIRHO),
+        Err(error_chirho)
+    );
+    let mut budget_chirho =
+        GadtProjectionBudgetChirho::with_limits_chirho(GadtProjectionLimitsChirho {
+            work_chirho: 10000,
+            output_chirho: 128,
+            depth_chirho: 128,
+        });
+    input_chirho::check_executable_patterns_chirho(
+        &module_chirho,
+        &mut budget_chirho,
+        Some(&context_chirho),
+    )
+    .expect("the exact checked reserve fits");
+    assert_eq!(budget_chirho.remaining_limits_chirho().output_chirho, 0);
 }

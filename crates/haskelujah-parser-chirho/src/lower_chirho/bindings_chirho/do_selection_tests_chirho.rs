@@ -210,7 +210,16 @@ fn a_list_comprehension_generator_selects_nothing_chirho() {
         else {
             continue;
         };
-        comprehension_selections_chirho += selections_chirho(quals_chirho).len();
+        for qualifier_chirho in quals_chirho {
+            let haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho::StatementChirho(
+                statement_chirho,
+            ) = qualifier_chirho
+            else {
+                panic!("ordinary generator expected")
+            };
+            comprehension_selections_chirho +=
+                selections_chirho(std::slice::from_ref(statement_chirho.as_ref())).len();
+        }
     }
     assert_eq!(comprehension_selections_chirho, 0);
 }

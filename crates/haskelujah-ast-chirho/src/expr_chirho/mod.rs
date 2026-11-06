@@ -3,6 +3,9 @@
 
 //! # Expression syntax
 
+mod comprehension_chirho;
+pub use comprehension_chirho::{ComprehensionQualifierChirho, ComprehensionTransformChirho};
+
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::lit_chirho::LitChirho;
@@ -152,10 +155,10 @@ pub enum ExprChirho {
         /// Result expression produced for each successful qualifier path.
         body_chirho: Box<ExprChirho>,
         /// Sequential qualifiers driving generator, guard, and let semantics.
-        quals_chirho: Vec<StmtChirho>,
+        quals_chirho: Vec<ComprehensionQualifierChirho>,
         /// Parallel qualifier branches evaluated independently and zipped
         /// together before the result expression is evaluated.
-        parallel_quals_chirho: Vec<Vec<StmtChirho>>,
+        parallel_quals_chirho: Vec<Vec<ComprehensionQualifierChirho>>,
         /// Span covering the whole list comprehension.
         span_chirho: SpanChirho,
     },

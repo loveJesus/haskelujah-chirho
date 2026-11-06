@@ -210,6 +210,26 @@ fn statements_need_recursive_knot_chirho(stmts_chirho: &[StmtChirho]) -> bool {
     false
 }
 
+fn collect_comprehension_references_chirho(
+    qualifier_chirho: &haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho,
+    names_chirho: &mut Vec<String>,
+) {
+    use haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho;
+    match qualifier_chirho {
+        ComprehensionQualifierChirho::StatementChirho(statement_chirho) => {
+            collect_stmt_references_chirho(statement_chirho, names_chirho)
+        }
+        ComprehensionQualifierChirho::TransformChirho(transform_chirho) => {
+            if let Some(using_chirho) = &transform_chirho.using_chirho {
+                collect_expr_references_chirho(using_chirho, names_chirho);
+            }
+            if let Some(by_chirho) = &transform_chirho.by_chirho {
+                collect_expr_references_chirho(by_chirho, names_chirho);
+            }
+        }
+    }
+}
+
 fn collect_stmt_references_chirho(stmt_chirho: &StmtChirho, names_chirho: &mut Vec<String>) {
     match stmt_chirho {
         StmtChirho::ExprChirho { expr_chirho, .. } | StmtChirho::BindChirho { expr_chirho, .. } => {
@@ -379,11 +399,11 @@ fn collect_expr_references_chirho(expr_chirho: &ExprChirho, names_chirho: &mut V
         } => {
             collect_expr_references_chirho(body_chirho, names_chirho);
             for qual_chirho in quals_chirho {
-                collect_stmt_references_chirho(qual_chirho, names_chirho);
+                collect_comprehension_references_chirho(qual_chirho, names_chirho);
             }
             for group_chirho in parallel_quals_chirho {
                 for qual_chirho in group_chirho {
-                    collect_stmt_references_chirho(qual_chirho, names_chirho);
+                    collect_comprehension_references_chirho(qual_chirho, names_chirho);
                 }
             }
         }

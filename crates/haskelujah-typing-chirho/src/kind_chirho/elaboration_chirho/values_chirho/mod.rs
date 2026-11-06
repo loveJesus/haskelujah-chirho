@@ -3,6 +3,7 @@
 //! Written signatures, type applications and pattern annotations share the
 //! declaration solver. Every lexical exit restores its exact prior bindings.
 
+mod comprehensions_chirho;
 mod expressions_chirho;
 mod quotations_chirho;
 #[cfg(test)]

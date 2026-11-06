@@ -45,3 +45,6 @@ mod typed_hole_policy_chirho;
 
 #[path = "extensions_chirho/policy_chirho/quoted_patterns_chirho.rs"]
 mod quoted_patterns_chirho;
+
+#[path = "extensions_chirho/legacy_chirho/transform_comprehensions_chirho.rs"]
+mod transform_comprehensions_chirho;

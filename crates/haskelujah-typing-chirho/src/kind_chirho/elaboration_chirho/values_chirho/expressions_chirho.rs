@@ -247,10 +247,14 @@ impl TypeElaboratorChirho<'_> {
                     parallel_quals_chirho,
                     ..
                 } => this_chirho.scoped_chirho(|this_chirho| {
-                    this_chirho.statements_chirho(quals_chirho)?;
+                    this_chirho.comprehension_using_chirho(quals_chirho)?;
+                    for branch_chirho in parallel_quals_chirho.iter_mut() {
+                        this_chirho.comprehension_using_chirho(branch_chirho)?;
+                    }
+                    this_chirho.comprehension_qualifiers_chirho(quals_chirho)?;
                     for branch_chirho in parallel_quals_chirho {
                         this_chirho.scoped_chirho(|this_chirho| {
-                            this_chirho.statements_chirho(branch_chirho)
+                            this_chirho.comprehension_qualifiers_chirho(branch_chirho)
                         })?;
                     }
                     this_chirho.expression_chirho(body_chirho)

@@ -6,6 +6,10 @@
 //! helper kept for reference.
 
 use super::*;
+use haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho;
+
+mod parallel_chirho;
+mod transforms_chirho;
 
 impl DesugarCtxChirho {
     /// Desugar list comprehension body + qualifiers.
@@ -23,10 +27,23 @@ impl DesugarCtxChirho {
     pub(super) fn desugar_list_comp_chirho(
         &mut self,
         body_chirho: &ExprChirho,
-        quals_chirho: &[haskelujah_ast_chirho::expr_chirho::StmtChirho],
+        quals_chirho: &[ComprehensionQualifierChirho],
     ) -> CoreExprChirho {
         use haskelujah_ast_chirho::expr_chirho::StmtChirho;
 
+        if let Some(index_chirho) = quals_chirho.iter().rposition(|qualifier_chirho| {
+            matches!(
+                qualifier_chirho,
+                ComprehensionQualifierChirho::TransformChirho(_)
+            )
+        }) {
+            return self.desugar_comprehension_transform_chirho(
+                &mut |context_chirho| context_chirho.desugar_expr_chirho(body_chirho),
+                quals_chirho,
+                index_chirho,
+                Self::comprehension_nil_chirho(),
+            );
+        }
         if quals_chirho.is_empty() {
             // Base case: [e] — singleton list (:) e []
             let body_core_chirho = self.desugar_expr_chirho(body_chirho);
@@ -42,7 +59,11 @@ impl DesugarCtxChirho {
 
         let rest_chirho = &quals_chirho[1..];
 
-        match &quals_chirho[0] {
+        let ComprehensionQualifierChirho::StatementChirho(statement_chirho) = &quals_chirho[0]
+        else {
+            unreachable!("transform dispatched before ordinary qualifier lowering")
+        };
+        match statement_chirho.as_ref() {
             StmtChirho::BindChirho {
                 pat_chirho,
                 expr_chirho,
@@ -255,163 +276,6 @@ impl DesugarCtxChirho {
         }
     }
 
-    /// Desugar ParallelListComp branches through lockstep `zip` plus `map`.
-    ///
-    /// Each branch first produces the tuple of names it exports. The branch
-    /// streams are zipped to the shortest stream, then a pattern lambda
-    /// restores all branch bindings while evaluating the result expression.
-    /// This reuses ordinary list-comprehension and lambda-pattern lowering.
-    ///
-    /// workflow: parallel-list-comprehensions-chirho
-    pub(super) fn desugar_parallel_list_comp_chirho(
-        &mut self,
-        body_chirho: &ExprChirho,
-        parallel_quals_chirho: &[Vec<haskelujah_ast_chirho::expr_chirho::StmtChirho>],
-        span_chirho: SpanChirho,
-    ) -> CoreExprChirho {
-        let mut branch_streams_chirho = parallel_quals_chirho.iter().map(|group_chirho| {
-            let bound_names_chirho = Self::list_comp_bound_names_chirho(group_chirho);
-            let (packed_expr_chirho, packed_pat_chirho) =
-                Self::pack_list_comp_names_chirho(&bound_names_chirho, span_chirho);
-            (
-                ExprChirho::ListCompChirho {
-                    body_chirho: Box::new(packed_expr_chirho),
-                    quals_chirho: group_chirho.clone(),
-                    parallel_quals_chirho: vec![],
-                    span_chirho,
-                },
-                packed_pat_chirho,
-            )
-        });
-
-        let Some((mut zipped_expr_chirho, mut zipped_pat_chirho)) = branch_streams_chirho.next()
-        else {
-            return self.desugar_list_comp_chirho(body_chirho, &[]);
-        };
-
-        for (branch_expr_chirho, branch_pat_chirho) in branch_streams_chirho {
-            let zip_name_chirho =
-                NameChirho::RawChirho(RawNameChirho::unqualified_chirho("zip", span_chirho));
-            zipped_expr_chirho = ExprChirho::AppChirho {
-                fun_chirho: Box::new(ExprChirho::AppChirho {
-                    fun_chirho: Box::new(ExprChirho::VarChirho(zip_name_chirho)),
-                    arg_chirho: Box::new(zipped_expr_chirho),
-                    span_chirho,
-                }),
-                arg_chirho: Box::new(branch_expr_chirho),
-                span_chirho,
-            };
-            zipped_pat_chirho = PatChirho::TupleChirho {
-                elements_chirho: vec![zipped_pat_chirho, branch_pat_chirho],
-                span_chirho,
-            };
-        }
-
-        let mapper_chirho = ExprChirho::LamChirho {
-            pats_chirho: vec![zipped_pat_chirho],
-            body_chirho: Box::new(body_chirho.clone()),
-            span_chirho,
-        };
-        let map_name_chirho =
-            NameChirho::RawChirho(RawNameChirho::unqualified_chirho("map", span_chirho));
-        let mapped_chirho = ExprChirho::AppChirho {
-            fun_chirho: Box::new(ExprChirho::AppChirho {
-                fun_chirho: Box::new(ExprChirho::VarChirho(map_name_chirho)),
-                arg_chirho: Box::new(mapper_chirho),
-                span_chirho,
-            }),
-            arg_chirho: Box::new(zipped_expr_chirho),
-            span_chirho,
-        };
-        self.desugar_expr_chirho(&mapped_chirho)
-    }
-
-    fn list_comp_bound_names_chirho(
-        quals_chirho: &[haskelujah_ast_chirho::expr_chirho::StmtChirho],
-    ) -> Vec<String> {
-        use haskelujah_ast_chirho::expr_chirho::StmtChirho;
-
-        let mut names_chirho = Vec::new();
-        let mut seen_chirho = HashSet::new();
-        for qual_chirho in quals_chirho {
-            match qual_chirho {
-                StmtChirho::BindChirho { pat_chirho, .. } => {
-                    for name_chirho in
-                        haskelujah_typing_chirho::linearity_chirho::pat_bound_names_chirho(
-                            pat_chirho,
-                        )
-                    {
-                        if seen_chirho.insert(name_chirho.clone()) {
-                            names_chirho.push(name_chirho);
-                        }
-                    }
-                }
-                StmtChirho::LetChirho { binds_chirho, .. } => {
-                    for bind_chirho in binds_chirho {
-                        match bind_chirho {
-                            LocalBindChirho::FunBindChirho { name_chirho, .. } => {
-                                let name_chirho = name_chirho.text_chirho().to_string();
-                                if seen_chirho.insert(name_chirho.clone()) {
-                                    names_chirho.push(name_chirho);
-                                }
-                            }
-                            LocalBindChirho::PatBindChirho { pat_chirho, .. } => {
-                                for name_chirho in haskelujah_typing_chirho::linearity_chirho::pat_bound_names_chirho(
-                                    pat_chirho,
-                                ) {
-                                    if seen_chirho.insert(name_chirho.clone()) {
-                                        names_chirho.push(name_chirho);
-                                    }
-                                }
-                            }
-                            LocalBindChirho::TypeSigChirho { .. } => {}
-                        }
-                    }
-                }
-                StmtChirho::ExprChirho { expr_chirho: _, .. } => {}
-            }
-        }
-        names_chirho
-    }
-
-    fn pack_list_comp_names_chirho(
-        names_chirho: &[String],
-        span_chirho: SpanChirho,
-    ) -> (ExprChirho, PatChirho) {
-        let exprs_chirho: Vec<_> = names_chirho
-            .iter()
-            .map(|name_chirho| {
-                ExprChirho::VarChirho(NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-                    name_chirho,
-                    span_chirho,
-                )))
-            })
-            .collect();
-        let pats_chirho: Vec<_> = names_chirho
-            .iter()
-            .map(|name_chirho| {
-                PatChirho::VarChirho(NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-                    name_chirho,
-                    span_chirho,
-                )))
-            })
-            .collect();
-
-        match (exprs_chirho.as_slice(), pats_chirho.as_slice()) {
-            ([expr_chirho], [pat_chirho]) => (expr_chirho.clone(), pat_chirho.clone()),
-            _ => (
-                ExprChirho::TupleChirho {
-                    elements_chirho: exprs_chirho,
-                    span_chirho,
-                },
-                PatChirho::TupleChirho {
-                    elements_chirho: pats_chirho,
-                    span_chirho,
-                },
-            ),
-        }
-    }
-
     /// Desugar a list comprehension with a continuation expression.
     ///
     /// Instead of producing a standalone list and appending it to the
@@ -424,14 +288,40 @@ impl DesugarCtxChirho {
     fn desugar_list_comp_with_cont_chirho(
         &mut self,
         body_chirho: &ExprChirho,
-        quals_chirho: &[haskelujah_ast_chirho::expr_chirho::StmtChirho],
+        quals_chirho: &[ComprehensionQualifierChirho],
+        cont_chirho: CoreExprChirho,
+    ) -> CoreExprChirho {
+        self.desugar_comprehension_result_chirho(
+            quals_chirho,
+            &mut |context_chirho| context_chirho.desugar_expr_chirho(body_chirho),
+            cont_chirho,
+        )
+    }
+
+    fn desugar_comprehension_result_chirho(
+        &mut self,
+        quals_chirho: &[ComprehensionQualifierChirho],
+        result_chirho: &mut dyn FnMut(&mut Self) -> CoreExprChirho,
         cont_chirho: CoreExprChirho,
     ) -> CoreExprChirho {
         use haskelujah_ast_chirho::expr_chirho::StmtChirho;
 
+        if let Some(index_chirho) = quals_chirho.iter().rposition(|qualifier_chirho| {
+            matches!(
+                qualifier_chirho,
+                ComprehensionQualifierChirho::TransformChirho(_)
+            )
+        }) {
+            return self.desugar_comprehension_transform_chirho(
+                result_chirho,
+                quals_chirho,
+                index_chirho,
+                cont_chirho,
+            );
+        }
         if quals_chirho.is_empty() {
             // Base case: [e] with continuation k = (:) e k
-            let body_core_chirho = self.desugar_expr_chirho(body_chirho);
+            let body_core_chirho = result_chirho(self);
             return CoreExprChirho::ConAppChirho {
                 con_name_chirho: ":".to_string(),
                 args_chirho: vec![body_core_chirho, cont_chirho],
@@ -440,7 +330,11 @@ impl DesugarCtxChirho {
 
         let rest_chirho = &quals_chirho[1..];
 
-        match &quals_chirho[0] {
+        let ComprehensionQualifierChirho::StatementChirho(statement_chirho) = &quals_chirho[0]
+        else {
+            unreachable!("transform dispatched before ordinary qualifier lowering")
+        };
+        match statement_chirho.as_ref() {
             StmtChirho::BindChirho {
                 pat_chirho,
                 expr_chirho,
@@ -516,15 +410,15 @@ impl DesugarCtxChirho {
                     &skip_chirho,
                     &mut |ctx_chirho| {
                         if rest_chirho.is_empty() {
-                            let body_core_chirho = ctx_chirho.desugar_expr_chirho(body_chirho);
+                            let body_core_chirho = result_chirho(ctx_chirho);
                             CoreExprChirho::ConAppChirho {
                                 con_name_chirho: ":".to_string(),
                                 args_chirho: vec![body_core_chirho, go_rest_chirho.clone()],
                             }
                         } else {
-                            ctx_chirho.desugar_list_comp_with_cont_chirho(
-                                body_chirho,
+                            ctx_chirho.desugar_comprehension_result_chirho(
                                 rest_chirho,
+                                result_chirho,
                                 go_rest_chirho.clone(),
                             )
                         }
@@ -577,9 +471,9 @@ impl DesugarCtxChirho {
             } => {
                 // Guard with continuation: if guard then [e | rest] with k else k
                 let guard_core_chirho = self.desugar_expr_chirho(guard_expr_chirho);
-                let then_chirho = self.desugar_list_comp_with_cont_chirho(
-                    body_chirho,
+                let then_chirho = self.desugar_comprehension_result_chirho(
                     rest_chirho,
+                    result_chirho,
                     cont_chirho.clone(),
                 );
 
@@ -612,9 +506,9 @@ impl DesugarCtxChirho {
             // let binds in [e | rest] with continuation k
             StmtChirho::LetChirho { binds_chirho, .. } => {
                 self.desugar_let_around_chirho(binds_chirho, |ctx_chirho| {
-                    ctx_chirho.desugar_list_comp_with_cont_chirho(
-                        body_chirho,
+                    ctx_chirho.desugar_comprehension_result_chirho(
                         rest_chirho,
+                        result_chirho,
                         cont_chirho,
                     )
                 })

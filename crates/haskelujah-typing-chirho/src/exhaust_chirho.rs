@@ -476,11 +476,11 @@ impl<'a> ExhaustCheckerChirho<'a> {
             } => {
                 self.check_expr_chirho(body_chirho);
                 for q_chirho in quals_chirho {
-                    self.check_stmt_chirho(q_chirho);
+                    self.check_comprehension_qualifier_chirho(q_chirho);
                 }
                 for group_chirho in parallel_quals_chirho {
                     for q_chirho in group_chirho {
-                        self.check_stmt_chirho(q_chirho);
+                        self.check_comprehension_qualifier_chirho(q_chirho);
                     }
                 }
             }
@@ -530,6 +530,26 @@ impl<'a> ExhaustCheckerChirho<'a> {
             }
             // Leaves — no sub-expressions to check
             ExprChirho::VarChirho(_) | ExprChirho::ConChirho(_) | ExprChirho::LitChirho(_) => {}
+        }
+    }
+
+    fn check_comprehension_qualifier_chirho(
+        &mut self,
+        qualifier_chirho: &haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho,
+    ) {
+        use haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho;
+        match qualifier_chirho {
+            ComprehensionQualifierChirho::StatementChirho(statement_chirho) => {
+                self.check_stmt_chirho(statement_chirho)
+            }
+            ComprehensionQualifierChirho::TransformChirho(transform_chirho) => {
+                if let Some(using_chirho) = &transform_chirho.using_chirho {
+                    self.check_expr_chirho(using_chirho);
+                }
+                if let Some(by_chirho) = &transform_chirho.by_chirho {
+                    self.check_expr_chirho(by_chirho);
+                }
+            }
         }
     }
 

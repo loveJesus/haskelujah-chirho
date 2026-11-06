@@ -61,3 +61,25 @@ flowchart TD
 ```
 
 Core's public desugaring result preserves constructor/projection errors in DesugarInputErrorChirho and explicitly refuses an executable unexpanded pattern splice before collecting synonyms or generating bindings. This includes lazy patterns with no binders, records, views and explicit synonym builders. These source controls do not implement TH expansion/evaluation, the Code/TExp/Q declaration producers, or the complete typed-quotation result contract. Existing quote/splice fresh-type and Core-zero fallbacks remain explicit separate gaps; source admission is not execution proof. Unknown quoted type-name handling and the retained typed-quotation visible-application miss remain open. No runtime dictionary identity or constructor-packing permission follows from retaining syntax.
+
+## Transform/group qualifier transport Chirho
+
+```mermaid
+flowchart TD
+  flags_chirho[Real effective TransformListComp options] --> syntax_chirho[Common lexical boundaries and four written forms]
+  syntax_chirho --> payload_chirho[Ordered ListComp qualifier payloads and original spans]
+  payload_chirho --> outer_chirho[Check actual using in outer scope with rigid row forall]
+  outer_chirho --> key_chirho[Check by under the existing prefix bindings]
+  key_chirho --> scheme_chirho[Bounded complete Scheme substitution and grouped List depth]
+  scheme_chirho --> core_chirho[Capture actual lexical Core IDs at match and let success]
+  core_chirho --> transform_chirho[Transform the complete packed prefix stream]
+  transform_chirho --> columns_chirho[Project columns from the same group and restore suffix scope]
+  columns_chirho --> parallel_chirho[Direct Core lockstep branch transport]
+  allowance_chirho[Original module projection allowance] --> syntax_gate_chirho[Borrowed syntax gate before metadata collection]
+  syntax_gate_chirho --> reserve_chirho[Conditional same-budget actual column and loop reserve]
+  reserve_chirho --> core_chirho
+```
+
+No transformer is chosen by spelling. Compiler-generated row/list operations do not resolve a source-spelled map/zip/concatMap. User payload expressions and their existing occurrence metadata stay intact. A group lifts each complete existing value scheme, including hidden predicate kinds, extra arguments, proof/Unknown state and lexical quantifier ownership; all generated depth/output is charged to the original state. The original pre-collection executable-pattern gate remains in place. Its conditional row-reserve pass uses the same remaining allowance after actual record/pattern-synonym metadata is available; no Core is published on a typed resource or unread-input error.
+
+The unchanged mc18/tc240 list-based sources now typecheck in the focused source tests. Source-owned keyed-column, repeated grouping, outer transformer scope, zero-column guard and parallel lockstep interpreter controls match fresh GHC9.14.1. This does not supply the missing GHC.Exts groupWith body, establish all monadic transforms, prove native execution, or close ordinary preservation/full compatibility. The unmodified groupWith runtime test remains RED. Fresh current-main A9 baseline and combined root integration follow this coherent brick.

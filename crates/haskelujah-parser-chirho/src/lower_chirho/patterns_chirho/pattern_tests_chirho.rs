@@ -109,7 +109,13 @@ fn lower_list_comp_generator_as_pattern_preserves_alias_chirho() {
     let ExprChirho::ListCompChirho { quals_chirho, .. } = rhs_expr_chirho else {
         panic!("expected list comprehension rhs, got {:?}", rhs_expr_chirho);
     };
-    let StmtChirho::BindChirho { pat_chirho, .. } = &quals_chirho[0] else {
+    let haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho::StatementChirho(
+        statement_chirho,
+    ) = &quals_chirho[0]
+    else {
+        panic!("expected ordinary qualifier")
+    };
+    let StmtChirho::BindChirho { pat_chirho, .. } = statement_chirho.as_ref() else {
         panic!(
             "expected list comprehension generator, got {:?}",
             quals_chirho[0]

@@ -10,7 +10,8 @@
 
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::expr_chirho::{
-    ExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho, StmtChirho,
+    ComprehensionQualifierChirho, ExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho,
+    StmtChirho,
 };
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
@@ -58,7 +59,7 @@ fn main_statements_chirho(module_chirho: &ModuleChirho) -> &[StmtChirho] {
 }
 
 /// A comprehension's qualifiers, one group per parallel branch.
-fn qualifier_groups_chirho(expr_chirho: &ExprChirho) -> Vec<&[StmtChirho]> {
+fn qualifier_groups_chirho(expr_chirho: &ExprChirho) -> Vec<&[ComprehensionQualifierChirho]> {
     match expr_chirho {
         ExprChirho::ListCompChirho {
             quals_chirho,
@@ -91,19 +92,22 @@ fn bound_names_chirho(binds_chirho: &[LocalBindChirho]) -> Vec<String> {
 }
 
 /// The names a `let` qualifier binds.
-fn let_names_chirho(qual_chirho: &StmtChirho) -> Vec<String> {
-    match qual_chirho {
+fn let_names_chirho(qual_chirho: &ComprehensionQualifierChirho) -> Vec<String> {
+    let ComprehensionQualifierChirho::StatementChirho(qual_chirho) = qual_chirho else {
+        panic!("expected a statement qualifier: {qual_chirho:?}")
+    };
+    match qual_chirho.as_ref() {
         StmtChirho::LetChirho { binds_chirho, .. } => bound_names_chirho(binds_chirho),
         other_chirho => panic!("expected a let qualifier, got {other_chirho:?}"),
     }
 }
 
 /// The qualifier groups of the top-level comprehension `ysChirho`.
-fn ys_groups_chirho(source_chirho: &str) -> Vec<Vec<StmtChirho>> {
+fn ys_groups_chirho(source_chirho: &str) -> Vec<Vec<ComprehensionQualifierChirho>> {
     let module_chirho = lower_chirho(source_chirho);
     qualifier_groups_chirho(body_chirho(clause_chirho(&module_chirho, "ysChirho")))
         .into_iter()
-        .map(<[StmtChirho]>::to_vec)
+        .map(<[ComprehensionQualifierChirho]>::to_vec)
         .collect()
 }
 
@@ -163,7 +167,9 @@ fn a_comprehension_let_ends_at_each_of_its_delimiters_chirho() {
     );
     assert_eq!(groups_chirho[0].len(), 3);
     assert_eq!(let_names_chirho(&groups_chirho[0][1]), ["y"]);
-    assert!(matches!(groups_chirho[0][2], StmtChirho::ExprChirho { .. }));
+    assert!(
+        matches!(&groups_chirho[0][2], ComprehensionQualifierChirho::StatementChirho(statement_chirho) if matches!(statement_chirho.as_ref(), StmtChirho::ExprChirho { .. }))
+    );
     // CL08: the `|` of a parallel branch.
     let groups_chirho = ys_groups_chirho(
         "{-# LANGUAGE ParallelListComp #-}\nmodule Main where\nysChirho = [y + z | x <- [1, 2], let y = x * 10 | z <- [3, 4]]\n",

@@ -6,6 +6,8 @@
 
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
 
+mod comprehension_chirho;
+
 use super::ParserChirho;
 use super::cursor_chirho::{qualified_local_text_chirho, qualified_name_is_operator_chirho};
 use crate::lexer_chirho::RawTokenKindChirho;
@@ -415,7 +417,9 @@ impl ParserChirho<'_> {
             //   - generator: pat <- expr
             //   - guard: expr
             //   - let: let binds
-            // Separated by commas.
+            // Separated by commas. A transform consumes a preceding statement
+            // group; even a zero-column prefix needs an actual guard/let/bind.
+            let mut preceding_qualifier_chirho = false;
             while !self.at_chirho(RawTokenKindChirho::RightBracketChirho)
                 && !self.at_eof_chirho()
                 && (!self.at_decl_boundary_chirho() || self.at_list_comp_let_layout_close_chirho())
@@ -434,12 +438,22 @@ impl ParserChirho<'_> {
                 if self.at_chirho(RawTokenKindChirho::PipeChirho) {
                     self.bump_chirho();
                     self.eat_trivia_chirho();
+                    preceding_qualifier_chirho = false;
                 }
                 if !self.at_chirho(RawTokenKindChirho::RightBracketChirho)
                     && !self.at_eof_chirho()
                     && !self.at_decl_boundary_chirho()
                 {
-                    if self.at_chirho(RawTokenKindChirho::LetChirho) {
+                    if self.at_chirho(RawTokenKindChirho::ThenChirho) {
+                        if !preceding_qualifier_chirho {
+                            self.builder_chirho
+                                .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                            self.parse_comprehension_transform_chirho();
+                            self.builder_chirho.finish_node_chirho();
+                        } else {
+                            self.parse_comprehension_transform_chirho();
+                        }
+                    } else if self.at_chirho(RawTokenKindChirho::LetChirho) {
                         self.builder_chirho
                             .start_node_chirho(SyntaxKindChirho::LetStmtChirho);
                         self.bump_chirho(); // let
@@ -464,6 +478,7 @@ impl ParserChirho<'_> {
                 if self.pos_chirho == before_chirho {
                     break;
                 }
+                preceding_qualifier_chirho = true;
             }
         } else if self.at_chirho(RawTokenKindChirho::DotDotChirho) {
             // Arithmetic sequence: [a..], [a..b], [a,b..], [a,b..c]

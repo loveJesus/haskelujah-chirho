@@ -155,7 +155,13 @@ fn walk_expr_chirho(expr_chirho: &ExprChirho, counts_chirho: &mut HashMap<String
                 .iter()
                 .chain(parallel_quals_chirho.iter().flatten())
             {
-                walk_stmt_chirho(stmt_chirho, counts_chirho);
+                match stmt_chirho {
+                    haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho::StatementChirho(statement_chirho) => walk_stmt_chirho(statement_chirho, counts_chirho),
+                    haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho::TransformChirho(transform_chirho) => {
+                        if let Some(using_chirho) = &transform_chirho.using_chirho { walk_expr_chirho(using_chirho, counts_chirho); }
+                        if let Some(by_chirho) = &transform_chirho.by_chirho { walk_expr_chirho(by_chirho, counts_chirho); }
+                    }
+                }
             }
         }
         // Literals, constructors, wildcards — no variable usage

@@ -267,13 +267,16 @@ fn desugar_list_comp_chirho() {
     // [x | x <- xs]
     let expr_chirho = ExprChirho::ListCompChirho {
         body_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("x"))),
-        quals_chirho: vec![StmtChirho::BindChirho {
-            bind_chirho: None,
-            fail_chirho: None,
-            pat_chirho: PatChirho::VarChirho(dummy_name_chirho("x")),
-            expr_chirho: ExprChirho::VarChirho(dummy_name_chirho("xs")),
-            span_chirho: SpanChirho::DUMMY_CHIRHO,
-        }],
+        quals_chirho: vec![
+            StmtChirho::BindChirho {
+                bind_chirho: None,
+                fail_chirho: None,
+                pat_chirho: PatChirho::VarChirho(dummy_name_chirho("x")),
+                expr_chirho: ExprChirho::VarChirho(dummy_name_chirho("xs")),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }
+            .into(),
+        ],
         parallel_quals_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
@@ -303,12 +306,14 @@ fn desugar_list_comp_with_guard_chirho() {
                 pat_chirho: PatChirho::VarChirho(dummy_name_chirho("x")),
                 expr_chirho: ExprChirho::VarChirho(dummy_name_chirho("xs")),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
-            },
+            }
+            .into(),
             StmtChirho::expr_stmt_chirho(ExprChirho::AppChirho {
                 fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("even"))),
                 arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("x"))),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
-            }),
+            })
+            .into(),
         ],
         parallel_quals_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,

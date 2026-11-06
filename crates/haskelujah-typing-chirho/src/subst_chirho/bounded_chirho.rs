@@ -517,10 +517,24 @@ impl SubstChirho {
         term_chirho: &TyChirho,
         charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
     ) -> Option<TyChirho> {
+        self.apply_under_bounded_chirho(term_chirho, &[], charge_chirho, 0)
+    }
+
+    fn apply_under_bounded_chirho(
+        &self,
+        term_chirho: &TyChirho,
+        bound_chirho: &[TyVarChirho],
+        charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
+        depth_chirho: usize,
+    ) -> Option<TyChirho> {
         let used_chirho = Self::free_variables_bounded_chirho(term_chirho, charge_chirho)?;
         charge_chirho(used_chirho.len(), used_chirho.len())?;
         let mut free_chirho = HashMap::new();
         for variable_chirho in used_chirho {
+            charge_chirho(bound_chirho.len(), 0)?;
+            if bound_chirho.contains(&variable_chirho) {
+                continue;
+            }
             let Some(image_chirho) = self.lookup_chirho(&variable_chirho) else {
                 continue;
             };
@@ -534,6 +548,8 @@ impl SubstChirho {
             )?;
             free_chirho.insert(variable_chirho, free_image_chirho);
         }
+        charge_chirho(bound_chirho.len(), bound_chirho.len())?;
+        let mut bound_chirho = bound_chirho.to_vec();
         BoundedSubstitutionChirho {
             source_chirho: self,
             free_chirho,
@@ -543,7 +559,79 @@ impl SubstChirho {
             renaming_chirho: Vec::new(),
             next_variable_chirho: None,
         }
-        .walk_chirho(term_chirho, &mut Vec::new(), true, 0)
+        .walk_chirho(term_chirho, &mut bound_chirho, true, depth_chirho)
+    }
+
+    /// Substitute a complete scheme under its original sequential binder
+    /// ownership. Reserve generated enclosing body nodes before copying it.
+    pub(crate) fn apply_scheme_bounded_chirho(
+        &self,
+        scheme_chirho: &crate::ty_chirho::SchemeChirho,
+        body_depth_chirho: usize,
+        charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
+    ) -> Option<crate::ty_chirho::SchemeChirho> {
+        use crate::ty_chirho::{QuantifiedVariablesChirho, SchemeChirho};
+        charge_chirho(
+            scheme_chirho.vars_chirho.len(),
+            scheme_chirho.vars_chirho.len(),
+        )?;
+        let mut bound_chirho = Vec::new();
+        let mut records_chirho = Vec::new();
+        for record_chirho in scheme_chirho.vars_chirho.records_chirho() {
+            let kind_chirho = match &record_chirho.kind_chirho {
+                Some(kind_chirho) => Some(std::sync::Arc::new(self.apply_under_bounded_chirho(
+                    kind_chirho,
+                    &bound_chirho,
+                    charge_chirho,
+                    0,
+                )?)),
+                None => None,
+            };
+            let mut mapped_chirho = record_chirho.clone();
+            mapped_chirho.kind_chirho = kind_chirho;
+            records_chirho.push(mapped_chirho);
+            bound_chirho.push(record_chirho.variable_chirho);
+        }
+        charge_chirho(
+            scheme_chirho.preds_chirho.len(),
+            scheme_chirho.preds_chirho.len(),
+        )?;
+        let mut predicates_chirho = Vec::new();
+        for predicate_chirho in &scheme_chirho.preds_chirho {
+            charge_chirho(
+                predicate_chirho.class_name_chirho.len(),
+                predicate_chirho.class_name_chirho.len(),
+            )?;
+            charge_chirho(
+                predicate_chirho.kind_tys_chirho.len() + predicate_chirho.extra_tys_chirho.len(),
+                predicate_chirho.kind_tys_chirho.len() + predicate_chirho.extra_tys_chirho.len(),
+            )?;
+            predicates_chirho.push(
+                predicate_chirho
+                    .try_mapped_chirho(|term_chirho| {
+                        self.apply_under_bounded_chirho(
+                            term_chirho,
+                            &bound_chirho,
+                            charge_chirho,
+                            0,
+                        )
+                        .ok_or(())
+                    })
+                    .ok()?,
+            );
+        }
+        charge_chirho(body_depth_chirho, body_depth_chirho)?;
+        let body_chirho = self.apply_under_bounded_chirho(
+            &scheme_chirho.ty_chirho,
+            &bound_chirho,
+            charge_chirho,
+            body_depth_chirho,
+        )?;
+        Some(SchemeChirho {
+            vars_chirho: QuantifiedVariablesChirho::from_records_chirho(records_chirho),
+            preds_chirho: predicates_chirho,
+            ty_chirho: body_chirho,
+        })
     }
 }
 

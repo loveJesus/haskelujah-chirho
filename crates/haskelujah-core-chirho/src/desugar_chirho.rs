@@ -13,7 +13,7 @@
 mod bindings_chirho;
 #[path = "desugar_chirho/references_chirho/builtin_routes_chirho.rs"]
 mod builtin_routes_chirho;
-#[path = "desugar_chirho/sugar_chirho/comprehensions_chirho.rs"]
+#[path = "desugar_chirho/sugar_chirho/comprehensions_chirho/mod.rs"]
 mod comprehensions_chirho;
 #[path = "desugar_chirho/constructors_chirho.rs"]
 mod constructors_chirho;
@@ -69,7 +69,7 @@ use haskelujah_ast_chirho::decl_chirho::{
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho};
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::promotion_chirho::{
     PromotionScopeChirho, quoted_promoted_spelling_chirho, unquoted_promoted_spelling_chirho,

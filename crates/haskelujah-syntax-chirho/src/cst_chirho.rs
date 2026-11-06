@@ -258,6 +258,10 @@ pub enum SyntaxKindChirho {
     /// An untyped pattern splice, retaining its expression payload.
     /// Appended to preserve the existing serialized node discriminants.
     SplicePatChirho,
+    /// Ordered transform/group qualifier and its actual expression payloads.
+    ComprehensionTransformChirho,
+    ComprehensionUsingChirho,
+    ComprehensionByChirho,
 }
 
 impl SyntaxKindChirho {

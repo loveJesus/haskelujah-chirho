@@ -203,7 +203,13 @@ fn collect_expr_refs_chirho(
                 .iter()
                 .chain(parallel_quals_chirho.iter().flatten())
             {
-                collect_stmt_refs_chirho(q_chirho, refs_chirho);
+                match q_chirho {
+                    haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho::StatementChirho(statement_chirho) => collect_stmt_refs_chirho(statement_chirho, refs_chirho),
+                    haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho::TransformChirho(transform_chirho) => {
+                        if let Some(using_chirho) = &transform_chirho.using_chirho { collect_expr_refs_chirho(using_chirho, refs_chirho); }
+                        if let Some(by_chirho) = &transform_chirho.by_chirho { collect_expr_refs_chirho(by_chirho, refs_chirho); }
+                    }
+                }
             }
         }
         ExprChirho::LeftSectionChirho {

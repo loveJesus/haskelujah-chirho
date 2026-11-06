@@ -137,6 +137,9 @@ pub enum RawTokenKindChirho {
     // -- Special --
     EofChirho,
     ErrorChirho,
+    /// Extension-owned contextual boundaries, appended after legacy kinds.
+    TransformByChirho,
+    TransformUsingChirho,
 }
 
 impl RawTokenKindChirho {

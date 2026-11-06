@@ -404,3 +404,103 @@ fn kind_only_depth_uses_the_same_substitution_allowance_chirho() {
             .is_none()
     );
 }
+
+#[test]
+fn bounded_scheme_transport_keeps_prefix_predicates_and_binder_ownership_chirho() {
+    use crate::ty_chirho::{QuantifiedVariableChirho, QuantifiedVariablesChirho, SchemePredChirho};
+    let mut predicate_chirho =
+        SchemePredChirho::legacy_chirho(crate::ty_chirho::SchemePredPartsChirho {
+            class_name_chirho: "CChirho".into(),
+            kind_tys_chirho: vec![],
+            ty_chirho: TyChirho::VarChirho(TyVarChirho(0)),
+            extra_tys_chirho: vec![],
+        });
+    predicate_chirho.kind_tys_chirho = vec![TyChirho::VarChirho(TyVarChirho(2))];
+    predicate_chirho.extra_tys_chirho = vec![TyChirho::VarChirho(TyVarChirho(1))];
+    let scheme_chirho = SchemeChirho {
+        vars_chirho: QuantifiedVariablesChirho::from_records_chirho(vec![
+            QuantifiedVariableChirho {
+                variable_chirho: TyVarChirho(0),
+                kind_chirho: Some(std::sync::Arc::new(TyChirho::VarChirho(TyVarChirho(2)))),
+                source_chirho: None,
+                specificity_chirho: None,
+            },
+        ]),
+        preds_chirho: vec![predicate_chirho],
+        ty_chirho: TyChirho::fun_chirho(
+            TyChirho::VarChirho(TyVarChirho(0)),
+            TyChirho::VarChirho(TyVarChirho(1)),
+        ),
+    };
+    let mut substitution_chirho =
+        SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::bool_chirho());
+    substitution_chirho.insert_chirho(TyVarChirho(1), TyChirho::int_chirho());
+    substitution_chirho.insert_chirho(TyVarChirho(2), TyChirho::bool_chirho());
+    let mapped_chirho = substitution_chirho
+        .apply_scheme_bounded_chirho(&scheme_chirho, 1, &mut |_, _| Some(()))
+        .expect("complete scheme transport");
+    assert_eq!(
+        mapped_chirho.vars_chirho.records_chirho()[0]
+            .kind_chirho
+            .as_deref(),
+        Some(&TyChirho::bool_chirho())
+    );
+    assert_eq!(
+        mapped_chirho.preds_chirho[0].kind_tys_chirho,
+        vec![TyChirho::bool_chirho()]
+    );
+    assert_eq!(
+        mapped_chirho.preds_chirho[0].ty_chirho,
+        TyChirho::VarChirho(TyVarChirho(0))
+    );
+    assert_eq!(
+        mapped_chirho.preds_chirho[0].extra_tys_chirho,
+        vec![TyChirho::int_chirho()]
+    );
+    assert_eq!(
+        mapped_chirho.preds_chirho[0].class_identity_chirho(),
+        scheme_chirho.preds_chirho[0].class_identity_chirho()
+    );
+    assert_eq!(
+        mapped_chirho.ty_chirho,
+        TyChirho::fun_chirho(TyChirho::VarChirho(TyVarChirho(0)), TyChirho::int_chirho())
+    );
+}
+
+#[test]
+fn bounded_scheme_transport_refuses_capture_and_generated_body_depth_chirho() {
+    let scheme_chirho = SchemeChirho {
+        vars_chirho: vec![TyVarChirho(0)].into(),
+        preds_chirho: vec![],
+        ty_chirho: TyChirho::VarChirho(TyVarChirho(1)),
+    };
+    assert!(
+        SubstChirho::singleton_chirho(TyVarChirho(1), TyChirho::VarChirho(TyVarChirho(0)))
+            .apply_scheme_bounded_chirho(&scheme_chirho, 1, &mut |_, _| Some(()))
+            .is_none()
+    );
+    let mut body_chirho = TyChirho::int_chirho();
+    for _index_chirho in 0..128 {
+        body_chirho = TyChirho::ListChirho(Box::new(body_chirho));
+    }
+    let scheme_chirho = SchemeChirho::mono_chirho(body_chirho);
+    assert!(
+        SubstChirho::empty_chirho()
+            .apply_scheme_bounded_chirho(&scheme_chirho, 0, &mut |_, _| Some(()))
+            .is_some()
+    );
+    assert!(
+        SubstChirho::empty_chirho()
+            .apply_scheme_bounded_chirho(&scheme_chirho, 1, &mut |_, _| Some(()))
+            .is_none()
+    );
+    assert!(
+        SubstChirho::empty_chirho()
+            .apply_scheme_bounded_chirho(
+                &SchemeChirho::mono_chirho(TyChirho::int_chirho()),
+                1,
+                &mut |_, _| None
+            )
+            .is_none()
+    );
+}
