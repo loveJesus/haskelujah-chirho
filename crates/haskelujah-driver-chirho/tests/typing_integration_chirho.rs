@@ -113,6 +113,40 @@ fn assert_prints_everywhere_chirho(file_name_chirho: &str, source_chirho: &str, 
     }
 }
 
+/// One engine's run: its exit status and stdout, or its failure message.
+type EngineRunChirho = (&'static str, Result<(i32, String), String>);
+
+/// The interpreter, then LLVM and Cranelift through the native harness, each run alone with
+/// no fallback, so one engine's failure never hides another engine's outcome.
+fn every_engine_chirho(file_name_chirho: &str, source_chirho: &str) -> Vec<EngineRunChirho> {
+    let interpreter_chirho = eval_source_with_machine_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        file_name_chirho,
+        None,
+    )
+    .map(|(_value_chirho, machine_chirho)| (0, machine_chirho.io_output_chirho));
+    vec![
+        ("interpreter", interpreter_chirho),
+        (
+            "llvm",
+            native_round_trip_chirho(source_chirho, NativeBackendChirho::LlvmChirho, ""),
+        ),
+        (
+            "cranelift",
+            native_round_trip_chirho(source_chirho, NativeBackendChirho::CraneliftChirho, ""),
+        ),
+    ]
+}
+
+/// GHC's stdout and exit 0 on every engine.
+fn as_ghc_everywhere_chirho(ghc_chirho: &str) -> Vec<EngineRunChirho> {
+    ["interpreter", "llvm", "cranelift"]
+        .into_iter()
+        .map(|engine_chirho| (engine_chirho, Ok((0, ghc_chirho.to_string()))))
+        .collect()
+}
+
 fn assert_compile_success_chirho(file_name_chirho: &str, source_chirho: &str) {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let result_chirho =
