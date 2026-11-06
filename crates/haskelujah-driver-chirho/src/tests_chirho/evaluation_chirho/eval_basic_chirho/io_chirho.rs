@@ -617,7 +617,7 @@ fn eval_io_do_effect_chains_chirho() {
 // workflow: monadic-dispatch-chirho — INV-001 regression pin (prd_chirho.json)
 #[test]
 fn eval_io_bind_unchanged_chirho() {
-    use crate::eval_source_chirho;
+    use crate::{FrontendOptionsChirho, eval_source_outcome_with_options_chirho};
     // IO return/>>= keep their primop fast path (ReturnIOChirho/BindIOChirho)
     // because no $prim_Monad_*_IO body exists — the names fall through.
     let cases_chirho: [(&str, i64); 2] = [
@@ -627,7 +627,16 @@ fn eval_io_bind_unchanged_chirho() {
     for (body_chirho, want_chirho) in cases_chirho {
         let mut sm_chirho = SourceMapChirho::new_chirho();
         let src_chirho = format!("module Test where\n{body_chirho}");
-        let result_chirho = eval_source_chirho(&src_chirho, &mut sm_chirho, "TestChirho.hs", None);
+        // An IO program: `main` is its entry, so the action runs at IO (row 692).
+        let result_chirho = eval_source_outcome_with_options_chirho(
+            &src_chirho,
+            &mut sm_chirho,
+            "TestChirho.hs",
+            None,
+            &FrontendOptionsChirho::for_program_chirho("main"),
+        )
+        .and_then(|outcome_chirho| outcome_chirho.into_result_chirho())
+        .map(|(value_chirho, _machine_chirho)| value_chirho);
         match result_chirho {
             Ok(val_chirho) => assert_eq!(
                 val_chirho,

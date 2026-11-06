@@ -756,6 +756,39 @@ pub fn eval_source_with_input_chirho(
     )
 }
 
+/// `eval_source_with_input_chirho` under the caller's options, such as an executable's program
+/// entry (row 692).
+/// workflow: language-features-chirho/fundep-generalization-chirho
+pub fn eval_source_with_input_and_options_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    file_name_chirho: &str,
+    entry_name_chirho: Option<&str>,
+    input_lines_chirho: &[&str],
+    options_chirho: &FrontendOptionsChirho,
+) -> Result<
+    (
+        haskelujah_runtime_chirho::ValueChirho,
+        haskelujah_runtime_chirho::eval_chirho::MachineChirho,
+    ),
+    String,
+> {
+    let compile_result_chirho = compile_source_with_options_chirho(
+        source_chirho,
+        source_map_chirho,
+        file_name_chirho,
+        options_chirho,
+    )
+    .map_err(|diag_chirho| format!("compilation error: {:?}", diag_chirho))?;
+
+    stg_lower_chirho::lower_and_run_with_input_chirho(
+        &compile_result_chirho.core_chirho,
+        entry_name_chirho,
+        compile_result_chirho.newtype_cons_chirho,
+        input_lines_chirho,
+    )
+}
+
 /// Like `eval_source_with_machine_chirho` but with a custom step limit.
 /// Used for algorithmic tests that require more than the default 100,000 steps.
 pub fn eval_source_with_step_limit_chirho(

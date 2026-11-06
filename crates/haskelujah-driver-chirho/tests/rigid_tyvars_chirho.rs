@@ -23,6 +23,18 @@ fn assert_accepted_chirho(file_name_chirho: &str, source_chirho: &str) {
     }
 }
 
+/// `assert_accepted_chirho` for a GHC program, whose `main` is its IO entry (row 692).
+fn assert_program_accepted_chirho(file_name_chirho: &str, source_chirho: &str) {
+    if let Err(err_chirho) = haskelujah_driver::compile_source_with_options_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        file_name_chirho,
+        &haskelujah_driver::FrontendOptionsChirho::for_program_chirho("main"),
+    ) {
+        panic!("{file_name_chirho}: GHC accepts this program, we reported: {err_chirho}");
+    }
+}
+
 fn assert_output_chirho(file_name_chirho: &str, source_chirho: &str, expected_chirho: &str) {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(

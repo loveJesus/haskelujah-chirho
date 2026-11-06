@@ -3,7 +3,7 @@
 //! Exact frozen product counterexamples. Fixture bytes match the independent
 //! f6845284 GHC checkpoint; these tests exercise the actual frontend only.
 
-use super::ordinary_elaboration_chirho::frontend_chirho;
+use super::ordinary_elaboration_chirho::{frontend_chirho, program_frontend_chirho};
 
 #[test]
 fn promoted_constructor_annotation_survives_open_equation_lowering_chirho() {
@@ -59,12 +59,12 @@ fn promoted_same_kind_overlap_is_a_real_coherence_error_chirho() {
 
 #[test]
 fn qualified_proxy_type_application_skips_its_inferred_kind_chirho() {
-    frontend_chirho("{-# LANGUAGE PolyKinds, TypeApplications #-}\nmodule Main where\nimport qualified Data.Proxy as PChirho\nvalueChirho :: PChirho.Proxy Maybe\nvalueChirho = PChirho.Proxy @Maybe\nmain = pure ()\n").expect("qualified Proxy applies its specified type parameter");
+    program_frontend_chirho("{-# LANGUAGE PolyKinds, TypeApplications #-}\nmodule Main where\nimport qualified Data.Proxy as PChirho\nvalueChirho :: PChirho.Proxy Maybe\nvalueChirho = PChirho.Proxy @Maybe\nmain = pure ()\n").expect("qualified Proxy applies its specified type parameter");
 }
 
 #[test]
 fn inferred_constructor_kind_is_not_an_extra_visible_type_argument_chirho() {
-    let error_chirho = frontend_chirho("{-# LANGUAGE PolyKinds, TypeApplications #-}\nmodule Main where\nimport Data.Proxy (Proxy(..))\nvalueChirho = Proxy @Maybe @Bool\nmain = pure ()\n").err().expect("inferred kind binder cannot be explicitly applied");
+    let error_chirho = program_frontend_chirho("{-# LANGUAGE PolyKinds, TypeApplications #-}\nmodule Main where\nimport Data.Proxy (Proxy(..))\nvalueChirho = Proxy @Maybe @Bool\nmain = pure ()\n").err().expect("inferred kind binder cannot be explicitly applied");
     assert!(
         error_chirho.contains("no specified constructor type binder"),
         "{error_chirho}"
@@ -73,12 +73,12 @@ fn inferred_constructor_kind_is_not_an_extra_visible_type_argument_chirho() {
 
 #[test]
 fn source_constructor_inferred_kinds_stay_invisible_chirho() {
-    frontend_chirho("{-# LANGUAGE PolyKinds, KindSignatures, TypeApplications #-}\nmodule Main where\ndata PhantomChirho (a :: k) = MkChirho\nvalueChirho :: PhantomChirho Maybe\nvalueChirho = MkChirho @Maybe\nmain = pure ()\n").expect("source constructor skips its inferred kind parameter");
+    program_frontend_chirho("{-# LANGUAGE PolyKinds, KindSignatures, TypeApplications #-}\nmodule Main where\ndata PhantomChirho (a :: k) = MkChirho\nvalueChirho :: PhantomChirho Maybe\nvalueChirho = MkChirho @Maybe\nmain = pure ()\n").expect("source constructor skips its inferred kind parameter");
 }
 
 #[test]
 fn constructor_visible_type_application_checks_parameter_kinds_chirho() {
-    let error_chirho = frontend_chirho("{-# LANGUAGE TypeApplications #-}\nmodule Main where\nvalueChirho = Nothing @Maybe\nmain = pure ()\n").err().expect("Maybe cannot fill a Type constructor parameter");
+    let error_chirho = program_frontend_chirho("{-# LANGUAGE TypeApplications #-}\nmodule Main where\nvalueChirho = Nothing @Maybe\nmain = pure ()\n").err().expect("Maybe cannot fill a Type constructor parameter");
     assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
 }
 

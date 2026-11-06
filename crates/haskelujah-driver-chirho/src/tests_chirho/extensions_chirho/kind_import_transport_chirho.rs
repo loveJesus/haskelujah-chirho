@@ -114,7 +114,7 @@ fn hard_import_transport_failure_cannot_be_deferred_by_the_module_chirho() {
 
 #[test]
 fn checked_ast_qualification_keeps_constructor_and_lexical_variable_owners_chirho() {
-    let result_chirho = super::ordinary_elaboration_chirho::frontend_chirho("{-# LANGUAGE ScopedTypeVariables, KindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\ndata NominalChirho aChirho = MkNominalChirho\nfChirho :: forall (aChirho :: Type). Eq aChirho => NominalChirho aChirho -> NominalChirho aChirho\nfChirho xChirho = xChirho\nmain = pure ()\n").expect("checked producer AST");
+    let result_chirho = super::ordinary_elaboration_chirho::program_frontend_chirho("{-# LANGUAGE ScopedTypeVariables, KindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\ndata NominalChirho aChirho = MkNominalChirho\nfChirho :: forall (aChirho :: Type). Eq aChirho => NominalChirho aChirho -> NominalChirho aChirho\nfChirho xChirho = xChirho\nmain = pure ()\n").expect("checked producer AST");
     let original_chirho = result_chirho
         .module_chirho
         .decls_chirho

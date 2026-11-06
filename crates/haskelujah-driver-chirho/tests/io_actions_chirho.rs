@@ -6,17 +6,20 @@
 
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_test_harness_chirho::native_chirho::{
-    NativeBackendChirho, native_round_trip_chirho,
+    NativeBackendChirho, native_program_round_trip_chirho,
 };
 
+/// Every program here is an IO executable, so each engine compiles it as one: its `main` is
+/// the program's IO entry (row 692).
 fn assert_engines_chirho(source_chirho: &str, input_chirho: &str, expected_chirho: &str) {
     let input_lines_chirho: Vec<_> = input_chirho.lines().collect();
-    let (_, machine_chirho) = haskelujah_driver::eval_source_with_input_chirho(
+    let (_, machine_chirho) = haskelujah_driver::eval_source_with_input_and_options_chirho(
         source_chirho,
         &mut SourceMapChirho::new_chirho(),
         "ActionsChirho.hs",
         None,
         &input_lines_chirho,
+        &haskelujah_driver::FrontendOptionsChirho::for_program_chirho("main"),
     )
     .unwrap_or_else(|error_chirho| panic!("STG: {error_chirho}"));
     assert_eq!(machine_chirho.io_output_chirho, expected_chirho, "STG");
@@ -25,7 +28,7 @@ fn assert_engines_chirho(source_chirho: &str, input_chirho: &str, expected_chirh
         NativeBackendChirho::CraneliftChirho,
     ] {
         assert_eq!(
-            native_round_trip_chirho(source_chirho, backend_chirho, input_chirho)
+            native_program_round_trip_chirho(source_chirho, backend_chirho, input_chirho)
                 .unwrap_or_else(|error_chirho| panic!("{backend_chirho:?}: {error_chirho}")),
             (0, expected_chirho.to_string()),
             "{backend_chirho:?}",

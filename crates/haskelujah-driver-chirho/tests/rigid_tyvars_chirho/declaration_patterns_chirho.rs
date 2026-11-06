@@ -5,7 +5,10 @@
 //! meet their ordinary types. Sources have fresh GHC 9.14.1 receipts.
 //! workflow: language-features-chirho/pattern-matching-chirho
 
-use super::{assert_accepted_chirho, assert_output_chirho, assert_rejected_with_chirho};
+use super::{
+    assert_accepted_chirho, assert_output_chirho, assert_program_accepted_chirho,
+    assert_rejected_with_chirho,
+};
 
 #[test]
 fn declaration_heads_reach_known_type_patterns_chirho() {
@@ -150,7 +153,7 @@ main = print (BoxChirho 'x', BoxChirho 'x' == BoxChirho 'y')
 "#,
         ),
     ] {
-        assert_accepted_chirho(file_chirho, source_chirho);
+        assert_program_accepted_chirho(file_chirho, source_chirho);
     }
 }
 
