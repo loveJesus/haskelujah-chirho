@@ -881,10 +881,15 @@ flowchart TD
   [instance-obligations-chirho](instance-obligations-chirho.md#superclass-obligations--written-measured-not-enabled),
   whose completeness gate knows when a class's instance universe is closed.
 - The compiler's own Monad defaults `>>` to `\m k -> m >>= \_ -> k`, from this very instance's
-  body-backed `>>=` row (`instance_chirho/defaults_chirho/monad_defaults_chirho.rs`). The class
-  must have the compiler's seeded schema, the proof row 694's class authority compares. A
-  program's namesake, an absent `>>=` row and a stub never gain the default. Without it, G5 never
-  took a Monad head that writes only `>>=`. Cross-module overlap and same-name controls run only once a multi-module frozen build can
+  body-backed `>>=` row (`instance_chirho/defaults_chirho/monad_defaults_chirho.rs`). An absent
+  `>>=` row and a stub never donate. Without the default, G5 never took a Monad head that writes
+  only `>>=`.
+- The default's authority is OPEN (gpt_chirho #32268). Today the class entry is compared with
+  the compiler's seeded schema, which is not identity: row 694 also needs the naming K01
+  witness. An entry another producer made with the same compared fields passes the comparison.
+  The control `a_same_schema_namesake_without_a_producer_proof_never_takes_the_default_chirho`
+  exposes that seam and is RED until a producer proof reaches Core and fails closed without
+  one. No product run counts the default before then. Cross-module overlap and same-name controls run only once a multi-module frozen build can
   exercise them. A user-class method used directly mints no occurrence evidence, so its use
   site never consults the alias; a constrained call or a standard method's occurrence does.
   G4 counts only instances that reach the class environment: a context-free instance whose

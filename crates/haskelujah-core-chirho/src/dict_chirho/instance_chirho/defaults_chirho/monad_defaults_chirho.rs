@@ -5,11 +5,18 @@
 //! missing `>>` row left a stub in every such dictionary, so G5 never took a one-parameter Monad
 //! head as generic and its constructor never found the instance.
 //!
-//! The authority is the class itself, not its spelling. The default belongs to the compiler's
-//! Monad: the class environment's entry must have the compiler's seeded schema, the proof row
-//! 694's class authority reads. A program's own namesake has its own declaration and only its own
-//! declared defaults. The donor is this very instance's `>>=` row, a real body. A missing-method
-//! stub never donates, and an instance with no `>>=` row keeps its named missing-method failure.
+//! The default belongs to the compiler's Monad, never to a class that only shares its spelling.
+//! A program's own namesake has its own declaration and only its own declared defaults. The
+//! donor is this very instance's `>>=` row, a real body. A missing-method stub never donates, and
+//! an instance with no `>>=` row keeps its named missing-method failure.
+//!
+//! The authority is OPEN (gpt_chirho #32268). Today the entry is compared with the compiler's
+//! seeded schema, the comparison row 694's class authority also makes. Schema equality is not
+//! identity: row 694 also needs the naming K01 witness. An entry another producer made with the
+//! same compared fields passes this check. The control
+//! `a_same_schema_namesake_without_a_producer_proof_never_takes_the_default_chirho` exposes that
+//! seam, and no product run counts this default until a producer proof reaches Core and fails
+//! closed without one.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use haskelujah_span_chirho::SpanChirho;
@@ -21,11 +28,11 @@ use crate::expr_chirho::{
     BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, InlineAnnotationChirho,
 };
 
-/// Whether the class environment's `class_name_chirho` is the compiler's own class. Its entry's
-/// schema (its parameters, method schemes, superclasses and their templates) must be the
-/// compiler's seed (`ClassEnvChirho::seed_standard_chirho`), the schema row 694's class
-/// authority compares. A program's own namesake, or another module's class carried under that
-/// name, has a schema of its own and never is.
+/// Whether the class environment's `class_name_chirho` entry has the compiler's seeded schema:
+/// its parameters, method schemes, superclasses and their templates equal
+/// `ClassEnvChirho::seed_standard_chirho`'s, the fields row 694's class authority compares. This
+/// is NOT a proof that the entry is the compiler's class. An entry another producer made with
+/// the same compared fields passes it too (#32268, the open seam in the module docs).
 fn is_compiler_owned_class_chirho(
     class_env_chirho: &ClassEnvChirho,
     class_name_chirho: &str,

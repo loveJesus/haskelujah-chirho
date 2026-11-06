@@ -1,14 +1,18 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
 //! The compiler's own Monad defaults `>>` from this very instance's `>>=` row (row 699,
-//! #32248). The class's seeded schema is the authority. A program's namesake never gains the
-//! default, and neither does an instance whose `>>=` row is missing or a stub. Over the real
-//! seeded classes, RD1's Reader takes its own Applicative and Functor dictionaries in its
-//! superclass slots, and a use site finds each one under the constructor.
+//! #32248). A program's namesake never gains the default, and neither does an instance whose
+//! `>>=` row is missing or a stub. Over the real seeded classes, RD1's Reader takes its own
+//! Applicative and Functor dictionaries in its superclass slots, and a use site finds each one
+//! under the constructor.
+//!
+//! The authority is open (#32268). A namesake with the seed's exact compared fields carries no
+//! producer proof, so it must take no default. Its control is RED while the seeded-schema
+//! comparison stands, and turns green only when a producer proof reaches Core.
 
 use std::collections::HashMap;
 
-use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho};
+use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho};
 use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
 use super::{DictPassCtxChirho, monad_default_covers_chirho};
@@ -277,4 +281,35 @@ fn a_reader_monad_holds_its_own_superclasses_and_then_from_its_bind_chirho() {
             "{class_chirho}"
         );
     }
+}
+
+#[test]
+fn a_same_schema_namesake_without_a_producer_proof_never_takes_the_default_chirho() {
+    // #32268: equal compared fields are not identity. A program's own `class Monad m`, made by
+    // its declaration with the seed's variable, method schemes, superclasses and templates and
+    // no default of its own, replaces the seed's entry under that name. Nothing hands Core a
+    // producer proof for it, so it takes no default, like a namesake of any other schema. The
+    // seeded-schema comparison accepts it today: this control exposes that seam, and is RED
+    // until a producer proof reaches Core.
+    let mut env_chirho = reader_env_chirho(None);
+    let seed_chirho = env_chirho.classes_chirho["Monad"].clone();
+    env_chirho.add_class_chirho(ClassDeclChirho {
+        name_chirho: "Monad".to_string(),
+        supers_chirho: seed_chirho.supers_chirho,
+        super_templates_chirho: seed_chirho.super_templates_chirho,
+        var_chirho: seed_chirho.var_chirho,
+        methods_chirho: seed_chirho.methods_chirho,
+        extra_vars_chirho: seed_chirho.extra_vars_chirho,
+        fundeps_chirho: seed_chirho.fundeps_chirho,
+        defaults_chirho: HashMap::new(),
+    });
+    assert!(!monad_default_covers_chirho(
+        &env_chirho,
+        "Monad",
+        ">>",
+        |_| true
+    ));
+    let mut pass_chirho = reader_pass_chirho(&env_chirho, &READER_ROWS_CHIRHO);
+    assert!(!reader_monad_is_generic_chirho(&pass_chirho, &env_chirho));
+    assert_eq!(then_default_chirho(&mut pass_chirho, &env_chirho), None);
 }
