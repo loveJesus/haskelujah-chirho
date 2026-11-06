@@ -2064,16 +2064,19 @@ mod tests_chirho {
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("Red"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
                     },
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("Green"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
                     },
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("Blue"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
@@ -2106,6 +2109,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("Point"),
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkPoint"),
                     fields_chirho: vec![
                         (
@@ -2291,6 +2295,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("T"),
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkT"),
                     fields_chirho: vec![],
                     span_chirho: gen_span_chirho(),
@@ -2334,6 +2339,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("Pair"),
                 type_vars_chirho: vec![var_name_chirho("a").into(), var_name_chirho("b").into()],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkPair"),
                     fields_chirho: vec![
                         (
@@ -2396,6 +2402,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("Age"),
                 type_vars_chirho: vec![],
                 constructor_chirho: ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkAge"),
                     fields_chirho: vec![(
                         StrictnessChirho::LazyChirho,
@@ -2435,21 +2442,25 @@ mod tests_chirho {
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("North"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
                     },
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("South"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
                     },
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("East"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
                     },
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("West"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
@@ -2558,6 +2569,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("T"),
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkT"),
                     fields_chirho: vec![(
                         StrictnessChirho::LazyChirho,
@@ -2593,6 +2605,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("T"),
                 type_vars_chirho: vec![var_name_chirho("a").into()],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkT"),
                     fields_chirho: vec![],
                     span_chirho: gen_span_chirho(),
@@ -2630,11 +2643,13 @@ mod tests_chirho {
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("Red"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
                     },
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("Green"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
@@ -2692,6 +2707,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("Box"),
                 type_vars_chirho: vec![var_name_chirho("a").into()],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkBox"),
                     fields_chirho: vec![(
                         StrictnessChirho::LazyChirho,
@@ -2742,11 +2758,13 @@ mod tests_chirho {
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("F2"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
                     },
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("T2"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
@@ -2805,6 +2823,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("Age"),
                 type_vars_chirho: vec![],
                 constructor_chirho: ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkAge"),
                     fields_chirho: vec![(
                         StrictnessChirho::LazyChirho,
@@ -2885,6 +2904,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("Wrapper"),
                 type_vars_chirho: vec![],
                 constructor_chirho: ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkWrapper"),
                     fields_chirho: vec![(
                         StrictnessChirho::LazyChirho,
@@ -2934,6 +2954,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("App"),
                 type_vars_chirho: vec![var_name_chirho("f").into(), var_name_chirho("a").into()],
                 constructor_chirho: ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkApp"),
                     fields_chirho: vec![(
                         StrictnessChirho::LazyChirho,
@@ -2986,6 +3007,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("Box"),
                 type_vars_chirho: vec![var_name_chirho("a").into()],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkBox"),
                     fields_chirho: vec![(
                         StrictnessChirho::LazyChirho,
@@ -3032,6 +3054,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("Unit"),
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkUnit"),
                     fields_chirho: vec![],
                     span_chirho: gen_span_chirho(),
@@ -3064,6 +3087,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("Pair"),
                 type_vars_chirho: vec![var_name_chirho("a").into()],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkPair"),
                     fields_chirho: vec![
                         (
@@ -3117,11 +3141,13 @@ mod tests_chirho {
                 type_vars_chirho: vec![var_name_chirho("a").into()],
                 constructors_chirho: vec![
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("Nothing2"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
                     },
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("Just2"),
                         fields_chirho: vec![(
                             StrictnessChirho::LazyChirho,
@@ -3194,16 +3220,19 @@ mod tests_chirho {
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("Red"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
                     },
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("Green"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
                     },
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: var_name_chirho("Blue"),
                         fields_chirho: vec![],
                         span_chirho: gen_span_chirho(),
@@ -3263,6 +3292,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("Pair"),
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkPair"),
                     fields_chirho: vec![
                         (
@@ -3338,6 +3368,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("Unit"),
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkUnit"),
                     fields_chirho: vec![],
                     span_chirho: gen_span_chirho(),
@@ -3381,6 +3412,7 @@ mod tests_chirho {
                 name_chirho: var_name_chirho("Wrapper"),
                 type_vars_chirho: vec![var_name_chirho("a").into()],
                 constructor_chirho: ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: var_name_chirho("MkWrapper"),
                     fields_chirho: vec![(
                         StrictnessChirho::LazyChirho,

@@ -841,6 +841,7 @@ fn ordinary_record_field_type_is_still_resolved_chirho() {
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![],
         constructors_chirho: vec![ConDeclChirho::RecordChirho {
+            prefix_chirho: Default::default(),
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![FieldDeclChirho {
                 multiplicity_chirho: None,
@@ -881,6 +882,7 @@ fn parser_sensitive_rank_n_record_field_is_deferred_chirho() {
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![],
         constructor_chirho: ConDeclChirho::RecordChirho {
+            prefix_chirho: Default::default(),
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![FieldDeclChirho {
                 multiplicity_chirho: None,
@@ -910,6 +912,7 @@ fn required_forall_record_field_remains_checkable_chirho() {
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![],
         constructors_chirho: vec![ConDeclChirho::RecordChirho {
+            prefix_chirho: Default::default(),
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![FieldDeclChirho {
                 multiplicity_chirho: None,
@@ -1033,6 +1036,7 @@ fn ordinary_constructor_free_variable_requires_written_existential_binding_chirh
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+            prefix_chirho: Default::default(),
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![(
                 StrictnessChirho::LazyChirho,
@@ -1062,7 +1066,7 @@ fn ordinary_constructor_free_variable_requires_written_existential_binding_chirh
 }
 
 #[test]
-fn dropped_existential_prefix_defers_only_its_constructor_fields_chirho() {
+fn constructor_span_does_not_replace_its_actual_quantifier_prefix_chirho() {
     let declaration_span_chirho = SpanChirho::new_chirho(
         FileIdChirho::SYNTHETIC_CHIRHO,
         ByteOffsetChirho::new_chirho(10),
@@ -1081,6 +1085,7 @@ fn dropped_existential_prefix_defers_only_its_constructor_fields_chirho() {
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![],
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+            prefix_chirho: Default::default(),
             name_chirho: existential_name_chirho,
             fields_chirho: vec![(
                 StrictnessChirho::LazyChirho,
@@ -1093,9 +1098,31 @@ fn dropped_existential_prefix_defers_only_its_constructor_fields_chirho() {
         span_chirho: declaration_span_chirho,
     };
 
+    let diagnostics_chirho = check_chirho(
+        &module_chirho(vec![decl_chirho.clone()]),
+        &NameEnvChirho::new_chirho(),
+    );
+    assert_eq!(diagnostics_chirho.error_count_chirho(), 1);
+    assert!(format!("{diagnostics_chirho}").contains("hiddenChirho"));
+
+    let mut quantified_chirho = decl_chirho;
+    let DeclChirho::DataDeclChirho {
+        constructors_chirho,
+        ..
+    } = &mut quantified_chirho
+    else {
+        unreachable!()
+    };
+    let ConDeclChirho::OrdinaryChirho { prefix_chirho, .. } = &mut constructors_chirho[0] else {
+        unreachable!()
+    };
+    prefix_chirho.forall_written_chirho = true;
+    prefix_chirho
+        .existential_vars_chirho
+        .push(tyvar_chirho("hiddenChirho"));
     assert!(
         check_chirho(
-            &module_chirho(vec![decl_chirho]),
+            &module_chirho(vec![quantified_chirho]),
             &NameEnvChirho::new_chirho(),
         )
         .is_empty_chirho()

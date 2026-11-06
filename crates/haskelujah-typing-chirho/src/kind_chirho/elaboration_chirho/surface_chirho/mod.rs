@@ -651,6 +651,7 @@ impl TypeElaboratorChirho<'_> {
             self.state_chirho
                 .set_fresh_variable_kind_chirho(variable_chirho, stored_kind_chirho);
             binders_chirho.push(DeclarationBinderChirho {
+                term_specificity_chirho: binder_chirho.term_specificity_chirho,
                 variable_chirho,
                 kind_chirho,
                 visibility_chirho: binder_chirho.visibility_chirho,

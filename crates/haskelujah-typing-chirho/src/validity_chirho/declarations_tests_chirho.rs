@@ -93,6 +93,7 @@ fn newtype_chirho(constructor_chirho: ConDeclChirho) -> DeclChirho {
 
 fn ordinary_chirho(con_name_chirho: &str, field_count_chirho: usize) -> ConDeclChirho {
     ConDeclChirho::OrdinaryChirho {
+        prefix_chirho: Default::default(),
         name_chirho: name_chirho(con_name_chirho),
         fields_chirho: (0..field_count_chirho)
             .map(|_| (StrictnessChirho::LazyChirho, con_ty_chirho("Int")))
@@ -103,6 +104,7 @@ fn ordinary_chirho(con_name_chirho: &str, field_count_chirho: usize) -> ConDeclC
 
 fn record_chirho(field_names_chirho: &[&str]) -> ConDeclChirho {
     ConDeclChirho::RecordChirho {
+        prefix_chirho: Default::default(),
         name_chirho: name_chirho("R"),
         fields_chirho: vec![FieldDeclChirho {
             multiplicity_chirho: None,
@@ -358,6 +360,7 @@ fn annotated_chirho(
     strictness_chirho: &[StrictnessChirho],
 ) -> ConDeclChirho {
     ConDeclChirho::OrdinaryChirho {
+        prefix_chirho: Default::default(),
         name_chirho: name_chirho(con_name_chirho),
         fields_chirho: strictness_chirho
             .iter()
@@ -370,6 +373,7 @@ fn annotated_chirho(
 /// A one-field record constructor whose field carries this annotation.
 fn annotated_record_chirho(strictness_chirho: StrictnessChirho) -> ConDeclChirho {
     ConDeclChirho::RecordChirho {
+        prefix_chirho: Default::default(),
         name_chirho: name_chirho("R"),
         fields_chirho: vec![FieldDeclChirho {
             multiplicity_chirho: Some(

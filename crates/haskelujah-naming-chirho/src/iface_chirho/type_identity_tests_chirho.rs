@@ -72,6 +72,7 @@ fn data_chirho(
         name_chirho: defining_name_chirho,
         type_vars_chirho: vec![],
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+            prefix_chirho: Default::default(),
             name_chirho: name_chirho("MkChirho"),
             fields_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,

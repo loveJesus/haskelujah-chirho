@@ -978,11 +978,13 @@ mod tests_chirho {
                     type_vars_chirho: vec![],
                     constructors_chirho: vec![
                         ConDeclChirho::OrdinaryChirho {
+                            prefix_chirho: Default::default(),
                             name_chirho: dummy_name_chirho("Red"),
                             fields_chirho: vec![],
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                         },
                         ConDeclChirho::OrdinaryChirho {
+                            prefix_chirho: Default::default(),
                             name_chirho: dummy_name_chirho("Green"),
                             fields_chirho: vec![],
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1563,6 +1565,7 @@ mod tests_chirho {
                 name_chirho: dummy_name_chirho("Person"),
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![ConDeclChirho::RecordChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: dummy_name_chirho("MkPerson"),
                     fields_chirho: vec![
                         FieldDeclChirho {
@@ -1725,6 +1728,7 @@ mod tests_chirho {
                 name_chirho: dummy_name_chirho("Age"),
                 type_vars_chirho: vec![],
                 constructor_chirho: ConDeclChirho::RecordChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: dummy_name_chirho("MkAge"),
                     fields_chirho: vec![FieldDeclChirho {
                         multiplicity_chirho: None,
@@ -1887,6 +1891,7 @@ mod tests_chirho {
                     name_chirho: dummy_name_chirho("Wrapper"),
                     type_vars_chirho: vec![dummy_name_chirho("a").into()],
                     constructor_chirho: ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: dummy_name_chirho("MkWrapper"),
                         fields_chirho: vec![(
                             haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,

@@ -605,19 +605,28 @@ impl TypeElaboratorChirho<'_> {
         else {
             return Ok(false);
         };
+        if scheme_chirho.binders_chirho.iter().any(|binder_chirho| {
+            binder_chirho.visibility_chirho != TelescopeVisibilityChirho::RequiredChirho
+                && binder_chirho.term_specificity_chirho.is_none()
+        }) {
+            return Ok(false);
+        }
         let (binders_chirho, _, _) = self.instantiate_header_chirho(&scheme_chirho, span_chirho)?;
         let mut cursor_chirho = 0;
         for argument_chirho in arguments_chirho.into_iter().rev() {
             while binders_chirho
                 .get(cursor_chirho)
                 .is_some_and(|binder_chirho| {
-                    binder_chirho.visibility_chirho == TelescopeVisibilityChirho::InferredChirho
+                    binder_chirho.term_specificity_chirho == Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho)
                 })
             {
                 cursor_chirho += 1;
             }
             let Some(binder_chirho) = binders_chirho.get(cursor_chirho).filter(|binder_chirho| {
-                binder_chirho.visibility_chirho == TelescopeVisibilityChirho::SpecifiedChirho
+                binder_chirho.term_specificity_chirho
+                    == Some(
+                        haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho,
+                    )
             }) else {
                 return Err(Self::error_chirho(
                     "no specified constructor type binder remains for written type application",

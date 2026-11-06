@@ -184,6 +184,7 @@ impl TypeElaboratorChirho<'_> {
                         .local_binders_chirho
                         .push(DeclarationLocalBinderChirho {
                             binder_chirho: DeclarationBinderChirho {
+                                term_specificity_chirho: None,
                                 variable_chirho: slot_chirho,
                                 kind_chirho,
                                 visibility_chirho,
@@ -465,6 +466,9 @@ impl TypeElaboratorChirho<'_> {
                 .local_binders_chirho
                 .push(DeclarationLocalBinderChirho {
                     binder_chirho: DeclarationBinderChirho {
+                        term_specificity_chirho: record_chirho
+                            .binder_chirho
+                            .term_specificity_chirho,
                         variable_chirho: record_chirho.binder_chirho.variable_chirho,
                         kind_chirho: self
                             .state_chirho
@@ -1083,6 +1087,7 @@ impl TypeElaboratorChirho<'_> {
                 0,
             )?;
             canonical_binders_chirho.push(DeclarationBinderChirho {
+                term_specificity_chirho: binder_chirho.term_specificity_chirho,
                 variable_chirho: TyVarChirho(index_chirho as u32),
                 kind_chirho,
                 visibility_chirho: binder_chirho.visibility_chirho,

@@ -13,6 +13,47 @@ impl ParserChirho<'_> {
     // Type parsing
     // -----------------------------------------------------------------------
 
+    /// Retain the same complete written binder grammar in type and constructor prefixes.
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    pub(super) fn parse_forall_binders_chirho(&mut self) {
+        while !self.at_dot_chirho()
+            && !self.at_chirho(RawTokenKindChirho::RightArrowChirho)
+            && !self.at_eof_chirho()
+            && !self.at_decl_boundary_chirho()
+        {
+            if self.at_chirho(RawTokenKindChirho::VarIdChirho) {
+                self.bump_chirho();
+            } else if self.at_chirho(RawTokenKindChirho::LeftBraceChirho) {
+                // Braces are the producer of inferred specificity. Keep
+                // the complete binder group, including a written kind.
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ParenTypeChirho);
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+                self.expect_chirho(RawTokenKindChirho::VarIdChirho);
+                self.eat_trivia_chirho();
+                if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                    self.parse_type_chirho();
+                }
+                self.expect_chirho(RawTokenKindChirho::RightBraceChirho);
+                self.builder_chirho.finish_node_chirho();
+            } else if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
+                // Retain the complete balanced annotation. Kind inference
+                // decides its validity; lookahead only identifies a binder.
+                if self.has_kind_annotated_forall_binder_chirho() {
+                    self.parse_paren_type_chirho();
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+            self.eat_trivia_chirho();
+        }
+    }
+
     /// Parse a type. Handles qualified types (context => type) and function
     /// types (a -> b). Uses checkpoints for retroactive wrapping.
     pub(super) fn parse_type_chirho(&mut self) {
@@ -32,42 +73,7 @@ impl ParserChirho<'_> {
             // (RequiredTypeArguments).
             // Accepts bare VarId and kind-annotated (VarId :: Kind) binders
             // with a balanced kind of any written shape.
-            while !self.at_dot_chirho()
-                && !self.at_chirho(RawTokenKindChirho::RightArrowChirho)
-                && !self.at_eof_chirho()
-                && !self.at_decl_boundary_chirho()
-            {
-                if self.at_chirho(RawTokenKindChirho::VarIdChirho) {
-                    self.bump_chirho();
-                } else if self.at_chirho(RawTokenKindChirho::LeftBraceChirho) {
-                    // Braces are the producer of inferred specificity. Keep
-                    // the complete binder group, including a written kind.
-                    self.builder_chirho
-                        .start_node_chirho(SyntaxKindChirho::ParenTypeChirho);
-                    self.bump_chirho();
-                    self.eat_trivia_chirho();
-                    self.expect_chirho(RawTokenKindChirho::VarIdChirho);
-                    self.eat_trivia_chirho();
-                    if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
-                        self.bump_chirho();
-                        self.eat_trivia_chirho();
-                        self.parse_type_chirho();
-                    }
-                    self.expect_chirho(RawTokenKindChirho::RightBraceChirho);
-                    self.builder_chirho.finish_node_chirho();
-                } else if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
-                    // Retain the complete balanced annotation. Kind inference
-                    // decides its validity; lookahead only identifies a binder.
-                    if self.has_kind_annotated_forall_binder_chirho() {
-                        self.parse_paren_type_chirho();
-                    } else {
-                        break;
-                    }
-                } else {
-                    break;
-                }
-                self.eat_trivia_chirho();
-            }
+            self.parse_forall_binders_chirho();
             let delimited_chirho =
                 self.at_dot_chirho() || self.at_chirho(RawTokenKindChirho::RightArrowChirho);
             if self.at_dot_chirho() {

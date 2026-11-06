@@ -95,7 +95,7 @@ impl InferCtxChirho {
 
     /// A predicate is *certainly unsolvable* when its class's full instance
     /// universe is visible (standard-seeded or declared in this module —
-    /// see `fully_known_class_names_chirho`), every argument is ground with a
+    /// see `fully_known_class_names_chirho`), every argument has a fixed
     /// concrete outer head that is not an unexpanded synonym or stuck type
     /// family, no known or derived instance could ever match those heads, and
     /// the in-scope givens do not entail it. GHC reports exactly these as
@@ -115,9 +115,19 @@ impl InferCtxChirho {
         pred_chirho: &PredChirho,
         span_chirho: SpanChirho,
     ) -> bool {
-        if !(self.pred_fully_ground_chirho(pred_chirho)
-            && self.is_certainly_unsolvable_pred_chirho(pred_chirho))
-        {
+        self.pred_fully_ground_chirho(pred_chirho)
+            && self.report_certainly_unsolvable_wanted_chirho(pred_chirho, span_chirho)
+    }
+
+    /// Generalization cannot hide a wanted whose fixed argument heads no actual
+    /// complete class instance can ever match. Open heads and unknown records
+    /// remain unproved; non-ground predicates under givens stay in their scope.
+    pub(super) fn report_certainly_unsolvable_wanted_chirho(
+        &mut self,
+        pred_chirho: &PredChirho,
+        span_chirho: SpanChirho,
+    ) -> bool {
+        if !self.is_certainly_unsolvable_pred_chirho(pred_chirho) {
             return false;
         }
         let blamed_chirho = self.unsolvable_blame_pred_chirho(pred_chirho, 0);
@@ -139,7 +149,17 @@ impl InferCtxChirho {
         pred_chirho: &PredChirho,
         depth_chirho: usize,
     ) -> bool {
-        if !self.constraint_generation_faithful_chirho {
+        if !self.constraint_generation_faithful_chirho
+            || matches!(
+                pred_chirho.class_identity_chirho(),
+                haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                    haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::ResourceChirho(
+                        _
+                    )
+                )
+            )
+        {
+            // Soft metadata refusal never becomes a new ordinary type error.
             return false;
         }
         let class_name_chirho = pred_chirho.class_name_chirho.as_str();
@@ -149,7 +169,7 @@ impl InferCtxChirho {
                 .contains(class_name_chirho)
             || Self::MAGIC_CLASSES_CHIRHO.contains(&class_name_chirho)
             || class_name_chirho.starts_with('?')
-            || !self.pred_fully_ground_chirho(pred_chirho)
+            || (!self.pred_fully_ground_chirho(pred_chirho) && !self.given_preds_chirho.is_empty())
         {
             return false;
         }
@@ -171,6 +191,26 @@ impl InferCtxChirho {
                         || self.type_synonyms_chirho.contains_key(&head_chirho)
                         || head_chirho.ends_with('#')
                     {
+                        return false;
+                    }
+                    if !arg_chirho.free_vars_chirho().is_empty()
+                        && !matches!(
+                            arg_chirho,
+                            TyChirho::FunChirho(..)
+                                | TyChirho::ListChirho(_)
+                                | TyChirho::TupleChirho(_)
+                        )
+                        && !self
+                            .type_families_chirho
+                            .declaration_schemes_chirho()
+                            .get_chirho(&head_chirho)
+                            .and_then(|scheme_chirho| scheme_chirho.declaration_chirho.as_ref())
+                            .is_some_and(|declaration_chirho| {
+                                declaration_chirho.is_nominally_generative_chirho()
+                            })
+                    {
+                        // A spelling without a checked nominal producer may be
+                        // an unregistered imported family or a legacy placeholder.
                         return false;
                     }
                     head_names_chirho.push(head_chirho);

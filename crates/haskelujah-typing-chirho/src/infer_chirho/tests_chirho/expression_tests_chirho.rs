@@ -85,6 +85,7 @@ fn infer_module_data_and_function_chirho() {
                 name_chirho: dummy_name_chirho("Color"),
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: dummy_name_chirho("Red"),
                     fields_chirho: vec![],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -334,6 +335,7 @@ fn infer_lambda_constructor_body_chirho() {
                     name_chirho: dummy_name_chirho("R"),
                     type_vars_chirho: vec![],
                     constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: dummy_name_chirho("V"),
                         fields_chirho: vec![(
                             haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
@@ -420,6 +422,7 @@ fn infer_result_bind_lambda_constructor_body_chirho() {
                 type_vars_chirho: vec![dummy_name_chirho("a").into()],
                 constructors_chirho: vec![
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: dummy_name_chirho("Ok"),
                         fields_chirho: vec![(
                             haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
@@ -428,6 +431,7 @@ fn infer_result_bind_lambda_constructor_body_chirho() {
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                     ConDeclChirho::OrdinaryChirho {
+                        prefix_chirho: Default::default(),
                         name_chirho: dummy_name_chirho("Err"),
                         fields_chirho: vec![(
                             haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,

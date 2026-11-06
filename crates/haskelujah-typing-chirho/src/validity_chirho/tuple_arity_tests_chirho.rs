@@ -145,6 +145,7 @@ fn t18723b_promoted_tuple_in_a_constructor_field_is_refused_chirho() {
         name_chirho: name_chirho("T2"),
         type_vars_chirho: Vec::new(),
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+            prefix_chirho: Default::default(),
             name_chirho: name_chirho("MkT2"),
             fields_chirho: vec![(StrictnessChirho::LazyChirho, field_chirho)],
             span_chirho: SpanChirho::DUMMY_CHIRHO,

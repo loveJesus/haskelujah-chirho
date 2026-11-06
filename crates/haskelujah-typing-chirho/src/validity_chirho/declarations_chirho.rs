@@ -23,10 +23,9 @@
 //!
 //! The driver runs it on the module as written, after splices and before
 //! deriving appends generated instances, and reports it after name resolution.
-//! Shapes that lowering drops are not judged here: a Haskell 98 constructor's
-//! `forall` and context, a missing newtype constructor, and class-body bindings
-//! without a signature wait on the AST
-//! (`spec-chirho/bug-existential-constructor-scope-dropped-chirho.md`).
+//! Haskell 98 constructor prefixes retain their written quantifiers and context.
+//! Missing constructor placeholders and class-body bindings without a signature
+//! still need faithful syntax before they can be judged here.
 //! workflow: compiler-pipeline-chirho/declaration-validity-chirho
 
 use std::collections::HashMap;
@@ -191,10 +190,41 @@ fn check_newtype_constructor_chirho(
     constructor_chirho: &ConDeclChirho,
     errors_chirho: &mut Vec<DeclarationErrorChirho>,
 ) {
+    if let ConDeclChirho::OrdinaryChirho {
+        prefix_chirho,
+        span_chirho,
+        ..
+    }
+    | ConDeclChirho::RecordChirho {
+        prefix_chirho,
+        span_chirho,
+        ..
+    } = constructor_chirho
+    {
+        if !prefix_chirho.existential_vars_chirho.is_empty() {
+            errors_chirho.push(DeclarationErrorChirho {
+                ghc_code_chirho: Some("GHC-07525"),
+                message_chirho: "A newtype constructor must not have existential type variables"
+                    .to_string(),
+                span_chirho: *span_chirho,
+                related_span_chirho: None,
+            });
+        }
+        if !prefix_chirho.context_chirho.is_empty() {
+            errors_chirho.push(DeclarationErrorChirho {
+                ghc_code_chirho: Some("GHC-17440"),
+                message_chirho: "A newtype constructor must not have a context in its type"
+                    .to_string(),
+                span_chirho: *span_chirho,
+                related_span_chirho: None,
+            });
+        }
+    }
     // A written annotation is anything but the unannotated default.
     let (name_chirho, field_count_chirho, annotated_chirho, span_chirho) = match constructor_chirho
     {
         ConDeclChirho::OrdinaryChirho {
+            prefix_chirho: _,
             name_chirho,
             fields_chirho,
             span_chirho,
@@ -207,6 +237,7 @@ fn check_newtype_constructor_chirho(
             *span_chirho,
         ),
         ConDeclChirho::RecordChirho {
+            prefix_chirho: _,
             name_chirho,
             fields_chirho,
             span_chirho,
@@ -289,6 +320,7 @@ fn check_lazy_annotations_chirho(
     for constructor_chirho in constructors_chirho {
         let (name_chirho, lazy_chirho, span_chirho) = match constructor_chirho {
             ConDeclChirho::OrdinaryChirho {
+                prefix_chirho: _,
                 name_chirho,
                 fields_chirho,
                 span_chirho,
@@ -300,6 +332,7 @@ fn check_lazy_annotations_chirho(
                 *span_chirho,
             ),
             ConDeclChirho::RecordChirho {
+                prefix_chirho: _,
                 name_chirho,
                 fields_chirho,
                 span_chirho,

@@ -679,6 +679,7 @@ mod tests_chirho {
             name_chirho: mk_name_chirho("Person"),
             type_vars_chirho: vec![],
             constructors_chirho: vec![ConDeclChirho::RecordChirho {
+                prefix_chirho: Default::default(),
                 name_chirho: mk_name_chirho("Person"),
                 fields_chirho: vec![
                     FieldDeclChirho {

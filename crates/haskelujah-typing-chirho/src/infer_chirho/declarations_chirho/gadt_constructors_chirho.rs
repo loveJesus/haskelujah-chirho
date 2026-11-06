@@ -11,6 +11,213 @@ use haskelujah_ast_chirho::name_chirho::NameChirho;
 use std::collections::HashMap;
 
 impl InferCtxChirho {
+    /// The declaration gateway already checked the actual parent header. Retain an H98
+    /// prefix through the same scheme, source-correspondence and selector consumers as GADTs.
+    pub(super) fn bind_written_h98_constructor_chirho(
+        &mut self,
+        constructor_chirho: &haskelujah_ast_chirho::decl_chirho::ConDeclChirho,
+        parent_header_chirho: (
+            &NameChirho,
+            &[haskelujah_ast_chirho::decl_chirho::TyVarChirho],
+        ),
+        seed_chirho: &HashMap<String, TyVarChirho>,
+        type_constructor_scope_chirho: Option<
+            &haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho,
+        >,
+        module_name_chirho: &str,
+        projection_budget_chirho: &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
+    ) -> bool {
+        use haskelujah_ast_chirho::decl_chirho::{
+            ConDeclChirho, GadtConArgsChirho, GadtConFieldChirho, GadtConPrefixChirho,
+            check_constructor_projection_chirho, check_name_projection_chirho,
+            check_type_projection_chirho,
+        };
+        use haskelujah_ast_chirho::ty_chirho::TypeChirho;
+        let (name_chirho, prefix_chirho, span_chirho) = match constructor_chirho {
+            ConDeclChirho::OrdinaryChirho {
+                name_chirho,
+                prefix_chirho,
+                span_chirho,
+                ..
+            }
+            | ConDeclChirho::RecordChirho {
+                name_chirho,
+                prefix_chirho,
+                span_chirho,
+                ..
+            } => (name_chirho, prefix_chirho, *span_chirho),
+            ConDeclChirho::GadtChirho { .. } => return false,
+        };
+        if prefix_chirho.is_empty_chirho() {
+            return false;
+        }
+        if prefix_chirho.unread_chirho {
+            self.non_deferrable_diagnostics_chirho.push_chirho(
+                haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                    haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
+                    "constructor quantification was not faithfully lowered",
+                    span_chirho,
+                ),
+            );
+            return true;
+        }
+        let checked_chirho = (|| {
+            check_constructor_projection_chirho(constructor_chirho, projection_budget_chirho, 1)?;
+            check_name_projection_chirho(parent_header_chirho.0, projection_budget_chirho)?;
+            for binder_chirho in parent_header_chirho.1 {
+                check_name_projection_chirho(&binder_chirho.name_chirho, projection_budget_chirho)?;
+                if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                    check_type_projection_chirho(kind_chirho, projection_budget_chirho)?;
+                }
+                projection_budget_chirho.reserve_transport_chirho(1, 1, span_chirho)?;
+            }
+            Ok::<_, haskelujah_ast_chirho::decl_chirho::GadtProjectionErrorChirho>(())
+        })();
+        if let Err(error_chirho) = checked_chirho {
+            self.non_deferrable_diagnostics_chirho.push_chirho(
+                haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                    haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
+                    error_chirho.to_string(),
+                    error_chirho.span_chirho,
+                ),
+            );
+            return true;
+        }
+        let mut result_ty_chirho = TypeChirho::ConChirho(parent_header_chirho.0.clone());
+        let parent_scheme_chirho = type_constructor_scope_chirho
+            .and_then(|scope_chirho| {
+                scope_chirho.declaration_chirho(&parent_header_chirho.0.full_name_chirho())
+            })
+            .and_then(|declaration_chirho| {
+                self.type_families_chirho
+                    .declaration_schemes_chirho()
+                    .get_chirho(&declaration_chirho.identity_chirho.key_chirho())
+            });
+        if let Some(parent_scheme_chirho) = parent_scheme_chirho {
+            if let Err(error_chirho) = projection_budget_chirho.reserve_transport_chirho(
+                parent_scheme_chirho.binders_chirho.len(),
+                parent_scheme_chirho.binders_chirho.len().saturating_mul(3),
+                span_chirho,
+            ) {
+                self.non_deferrable_diagnostics_chirho.push_chirho(
+                    haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                        haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
+                        error_chirho.to_string(),
+                        span_chirho,
+                    ),
+                );
+                return true;
+            }
+            // Use every actual checked slot, including inferred kind arguments.
+            // data_head_type installed these same canonical slots in the seed.
+            for binder_chirho in &parent_scheme_chirho.binders_chirho {
+                let mut argument_name_chirho = NameChirho::RawChirho(
+                    haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
+                        format!("parent_slot_{}_chirho", binder_chirho.variable_chirho.0),
+                        span_chirho,
+                    ),
+                );
+                argument_name_chirho.set_type_variable_chirho(Some(
+                    haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho::QuantifiedChirho {
+                        declaration_chirho: parent_scheme_chirho.identity_chirho.clone(),
+                        index_chirho: binder_chirho.variable_chirho.0,
+                    },
+                ));
+                let argument_chirho = Box::new(TypeChirho::VarChirho(argument_name_chirho));
+                result_ty_chirho = if binder_chirho.visibility_chirho
+                    == crate::ty_chirho::declarations_chirho::TelescopeVisibilityChirho::RequiredChirho
+                {
+                    TypeChirho::AppChirho {
+                        fun_chirho: Box::new(result_ty_chirho), arg_chirho: argument_chirho, span_chirho,
+                    }
+                } else {
+                    TypeChirho::KindApplicationChirho {
+                        fun_chirho: Box::new(result_ty_chirho), arg_chirho: argument_chirho,
+                        written_chirho: false, span_chirho,
+                    }
+                };
+            }
+        } else {
+            // Legacy standalone inference has no checked catalogue. Preserve its
+            // written header without upgrading absent metadata to a telescope.
+            for binder_chirho in parent_header_chirho
+                .1
+                .iter()
+                .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+            {
+                result_ty_chirho = TypeChirho::AppChirho {
+                    fun_chirho: Box::new(result_ty_chirho),
+                    arg_chirho: Box::new(TypeChirho::VarChirho(binder_chirho.name_chirho.clone())),
+                    span_chirho,
+                };
+            }
+        }
+        let mut prefixes_chirho = Vec::new();
+        // The datatype producer owns this order: its universals precede the
+        // constructor's existentials, even when a field mentions only the latter.
+        // Both groups retain their stamped source owners through conversion.
+        if !parent_header_chirho.1.is_empty() {
+            prefixes_chirho.push(GadtConPrefixChirho::ForallChirho {
+                vars_chirho: parent_header_chirho.1.to_vec(),
+                required_chirho: false,
+                span_chirho,
+            });
+        }
+        if prefix_chirho.forall_written_chirho || !prefix_chirho.existential_vars_chirho.is_empty()
+        {
+            prefixes_chirho.push(GadtConPrefixChirho::ForallChirho {
+                vars_chirho: prefix_chirho.existential_vars_chirho.clone(),
+                required_chirho: false,
+                span_chirho,
+            });
+        }
+        if !prefix_chirho.context_chirho.is_empty() {
+            prefixes_chirho.push(GadtConPrefixChirho::ContextChirho {
+                constraints_chirho: prefix_chirho.context_chirho.clone(),
+                span_chirho,
+            });
+        }
+        let args_chirho = match constructor_chirho {
+            ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => {
+                GadtConArgsChirho::PositionalChirho(
+                    fields_chirho
+                        .iter()
+                        .map(|(strictness_chirho, ty_chirho)| GadtConFieldChirho {
+                            strictness_chirho: *strictness_chirho,
+                            multiplicity_chirho: None,
+                            ty_chirho: ty_chirho.clone(),
+                            span_chirho: ty_chirho.span_chirho(),
+                        })
+                        .collect(),
+                )
+            }
+            ConDeclChirho::RecordChirho { fields_chirho, .. } => {
+                GadtConArgsChirho::RecordChirho(fields_chirho.clone())
+            }
+            ConDeclChirho::GadtChirho { .. } => return false,
+        };
+        let signature_chirho = GadtConSignatureChirho {
+            prefix_chirho: prefixes_chirho,
+            args_chirho,
+            result_ty_chirho,
+            malformed_chirho: None,
+            span_chirho,
+        };
+        let source_binders_chirho = prefix_chirho
+            .existential_vars_chirho
+            .iter()
+            .collect::<Vec<_>>();
+        self.bind_constructor_signature_chirho(
+            name_chirho,
+            (&signature_chirho, &source_binders_chirho),
+            seed_chirho,
+            type_constructor_scope_chirho,
+            module_name_chirho,
+            projection_budget_chirho,
+        );
+        true
+    }
+
     pub(super) fn bind_gadt_constructor_chirho(
         &mut self,
         name_chirho: &NameChirho,
@@ -22,11 +229,51 @@ impl InferCtxChirho {
         module_name_chirho: &str,
         projection_budget_chirho: &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
     ) {
+        let source_binders_chirho = signature_chirho
+            .prefix_chirho
+            .iter()
+            .filter_map(|prefix_chirho| match prefix_chirho {
+                haskelujah_ast_chirho::decl_chirho::GadtConPrefixChirho::ForallChirho {
+                    vars_chirho,
+                    ..
+                } => Some(vars_chirho.as_slice()),
+                _ => None,
+            })
+            .flatten()
+            .collect::<Vec<_>>();
+        self.bind_constructor_signature_chirho(
+            name_chirho,
+            (signature_chirho, &source_binders_chirho),
+            seed_chirho,
+            type_constructor_scope_chirho,
+            module_name_chirho,
+            projection_budget_chirho,
+        );
+    }
+
+    /// The correspondence slice comes from the actual written constructor
+    /// producer; generated datatype universals never change its source indices.
+    fn bind_constructor_signature_chirho(
+        &mut self,
+        name_chirho: &NameChirho,
+        source_chirho: (
+            &GadtConSignatureChirho,
+            &[&haskelujah_ast_chirho::decl_chirho::TyVarChirho],
+        ),
+        seed_chirho: &HashMap<String, TyVarChirho>,
+        type_constructor_scope_chirho: Option<
+            &haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho,
+        >,
+        module_name_chirho: &str,
+        projection_budget_chirho: &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
+    ) {
+        let (signature_chirho, written_chirho) = source_chirho;
         let ty_chirho = match signature_chirho.try_as_type_chirho(projection_budget_chirho) {
             Ok(ty_chirho) => ty_chirho,
             Err(error_chirho) => {
-                self.diagnostics_chirho.push_chirho(
-                    haskelujah_diagnostics_chirho::DiagnosticChirho::error_chirho(
+                self.non_deferrable_diagnostics_chirho.push_chirho(
+                    haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                        haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
                         error_chirho.to_string(),
                         error_chirho.span_chirho(),
                     ),
@@ -49,22 +296,6 @@ impl InferCtxChirho {
                 .declaration_schemes_chirho()
                 .get_chirho(key_chirho)
         }) {
-            let written_chirho = signature_chirho
-                .prefix_chirho
-                .iter()
-                .filter_map(|prefix_chirho| {
-                    if let haskelujah_ast_chirho::decl_chirho::GadtConPrefixChirho::ForallChirho {
-                        vars_chirho,
-                        ..
-                    } = prefix_chirho
-                    {
-                        Some(vars_chirho.as_slice())
-                    } else {
-                        None
-                    }
-                })
-                .flatten()
-                .collect::<Vec<_>>();
             let mut correspondence_chirho = HashMap::new();
             for source_chirho in &header_chirho.source_variables_chirho {
                 let original_chirho = written_chirho
@@ -148,8 +379,9 @@ impl InferCtxChirho {
             ) {
                 Ok(availability_chirho) => availability_chirho,
                 Err(error_chirho) => {
-                    self.diagnostics_chirho.push_chirho(
-                        haskelujah_diagnostics_chirho::DiagnosticChirho::error_chirho(
+                    self.non_deferrable_diagnostics_chirho.push_chirho(
+                        haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                            haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
                             error_chirho.to_string(),
                             error_chirho.span_chirho(),
                         ),

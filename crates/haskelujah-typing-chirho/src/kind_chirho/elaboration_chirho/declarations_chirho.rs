@@ -115,6 +115,7 @@ impl TypeElaboratorChirho<'_> {
                 .copy_chirho(&kind_chirho, binder_chirho.name_chirho.span_chirho())?;
             source_binders_chirho.push((text_chirho, variable_chirho, stored_kind_chirho));
             telescope_chirho.push(DeclarationBinderChirho {
+                term_specificity_chirho: None,
                 variable_chirho,
                 kind_chirho,
                 visibility_chirho: if binder_chirho.is_visible_chirho() {
@@ -361,6 +362,7 @@ impl TypeElaboratorChirho<'_> {
                     .resolve_chirho(&binder_chirho.kind_chirho, span_chirho)?;
                 quantified_chirho.extend(kind_chirho.free_vars_chirho());
                 binders_chirho.push(DeclarationBinderChirho {
+                    term_specificity_chirho: binder_chirho.term_specificity_chirho,
                     variable_chirho: binder_chirho.variable_chirho,
                     kind_chirho,
                     visibility_chirho: binder_chirho.visibility_chirho,
@@ -508,13 +510,28 @@ impl TypeElaboratorChirho<'_> {
                     ));
                 };
                 quantified_chirho.remove(&variable_chirho);
-                inferred_chirho.push(DeclarationBinderChirho {
+                inferred_chirho.push(DeclarationBinderChirho { term_specificity_chirho: scheme_chirho.promoted_chirho.as_ref().map(|_| {
+                    self.state_chirho.source_specificity_chirho(variable_chirho)
+                        .unwrap_or(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho)
+                }),
                     variable_chirho,
                     kind_chirho,
                     visibility_chirho: if !self.declaration_variables_chirho.get(key_chirho).is_some_and(|variables_chirho| variables_chirho.constructor_inferred_chirho.contains(&variable_chirho)) && self.state_chirho.source_specificity_chirho(variable_chirho) == Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho) { TelescopeVisibilityChirho::SpecifiedChirho } else { TelescopeVisibilityChirho::InferredChirho },
                 });
             }
             inferred_chirho.extend(binders_chirho);
+            if scheme_chirho.promoted_chirho.is_some() {
+                for binder_chirho in &mut inferred_chirho {
+                    if binder_chirho.visibility_chirho != TelescopeVisibilityChirho::RequiredChirho
+                    {
+                        binder_chirho.term_specificity_chirho =
+                            binder_chirho.term_specificity_chirho.or_else(|| {
+                                self.state_chirho
+                                    .source_specificity_chirho(binder_chirho.variable_chirho)
+                            });
+                    }
+                }
+            }
             for binder_chirho in &inferred_chirho {
                 self.state_chirho
                     .mark_universal_chirho(binder_chirho.variable_chirho, span_chirho)?;

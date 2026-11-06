@@ -35,6 +35,7 @@ fn data_decl_chirho(type_chirho: &str, cons_chirho: &[(&str, usize)]) -> DeclChi
         constructors_chirho: cons_chirho
             .iter()
             .map(|(con_chirho, arity_chirho)| ConDeclChirho::OrdinaryChirho {
+                prefix_chirho: Default::default(),
                 name_chirho: name_chirho(con_chirho),
                 fields_chirho: (0..*arity_chirho)
                     .map(|_| {

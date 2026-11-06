@@ -17,6 +17,9 @@ use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
 use super::{ChildChirho, LowerCtxChirho, is_type_kind_chirho};
 
+#[path = "con_prefixes_chirho.rs"]
+mod con_prefixes_chirho;
+
 impl LowerCtxChirho {
     pub(super) fn lower_data_decl_chirho(
         &self,
@@ -216,42 +219,8 @@ impl LowerCtxChirho {
         let mut has_record_chirho = false;
         let mut record_fields_chirho: Vec<FieldDeclChirho> = Vec::new();
 
-        // ExistentialQuantification: skip past `forall ... . [Context =>]`
-        // by finding the index after DoubleArrow (=>) if present, or after Dot
-        // if forall is present without a context.
-        let mut start_idx_chirho = 0;
-        let has_forall_chirho = children_chirho.first().is_some_and(|c_chirho| {
-            matches!(
-                c_chirho.element_chirho,
-                GreenElementChirho::TokenChirho(t_chirho) if t_chirho.kind_chirho() == TokenKindChirho::ForallKeywordChirho
-            )
-        });
-        if has_forall_chirho {
-            // Look for => first (forall with context), then . (forall without context)
-            let mut found_double_arrow_chirho = false;
-            for (idx_chirho, child_chirho) in children_chirho.iter().enumerate() {
-                if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho
-                    && tok_chirho.kind_chirho() == TokenKindChirho::DoubleArrowChirho
-                {
-                    start_idx_chirho = idx_chirho + 1;
-                    found_double_arrow_chirho = true;
-                    break;
-                }
-            }
-            if !found_double_arrow_chirho {
-                // No context, just forall a .
-                for (idx_chirho, child_chirho) in children_chirho.iter().enumerate() {
-                    if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho
-                    {
-                        // The dot `.` in `forall a.` is a VarSymChirho token
-                        if tok_chirho.kind_chirho() == TokenKindChirho::VarSymChirho {
-                            start_idx_chirho = idx_chirho + 1;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+        let (prefix_chirho, start_idx_chirho) =
+            self.con_prefix_chirho(&children_chirho, span_chirho);
 
         let infix_operator_idx_chirho = children_chirho
             .iter()
@@ -290,6 +259,7 @@ impl LowerCtxChirho {
                 (left_field_chirho, right_field_chirho)
             {
                 return ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho,
                     name_chirho: operator_name_chirho,
                     fields_chirho: vec![left_field_chirho, right_field_chirho],
                     span_chirho,
@@ -379,12 +349,14 @@ impl LowerCtxChirho {
 
         if has_record_chirho {
             ConDeclChirho::RecordChirho {
+                prefix_chirho,
                 name_chirho: con_name_chirho,
                 fields_chirho: record_fields_chirho,
                 span_chirho,
             }
         } else {
             ConDeclChirho::OrdinaryChirho {
+                prefix_chirho,
                 name_chirho: con_name_chirho,
                 fields_chirho,
                 span_chirho,
@@ -770,6 +742,7 @@ impl LowerCtxChirho {
             type_vars_chirho,
             constructor_chirho: constructor_chirho.unwrap_or_else(|| {
                 ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: self.dummy_name_chirho(),
                     fields_chirho: vec![],
                     span_chirho,

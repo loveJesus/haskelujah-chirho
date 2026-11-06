@@ -6,13 +6,17 @@ Status: reversible source prototype. Root's first workspace/all-targets check is
 
 ```mermaid
 flowchart TD
-    A[Written constructor signature] --> B[Balanced forall and context prefix]
+    A[Written H98 or GADT constructor] --> B[Balanced rich forall binders and context prefix]
     B --> C[Canonical positional or named fields]
     C --> D[Retained strictness and multiplicity]
     D --> E[Written result type]
     E --> P[Shared charged projection budget]
     P --> F[Checked reconstructed signature view]
-    F --> G[Naming, kinds and constructor scheme]
+    F --> G[Lexical naming and checked declaration telescope]
+    G --> Q[Parent universals then written constructor locals]
+    Q --> R[Ordinary scheme retains full predicates and checked parent kind slots]
+    G --> S[One binder record retains promoted visibility and ordinary specificity]
+    S --> T[Ordinary VTA consumes only producer-proved specificity]
     C --> H[Field order and strict-field inventories]
     E --> I[Shared result recoverability]
     I --> J[Callable selector or field label only]
@@ -23,6 +27,10 @@ flowchart TD
     M --> N
     N --> O[Paired corpus axes on exact frozen source]
 ```
+
+Haskell 98 positional, infix and record syntax uses one prefix producer before choosing a constructor form. Its existing `ConPrefixChirho` stores full `TyVarChirho` binders, their kind annotations and specificity, the context, an explicit-empty-forall mark and an unread mark. Naming checks actual binders and restores their lexical scope; source spans and extension presence do not invent an existential binder. A context without `forall` may use already-bound datatype parameters.
+
+An ordinary constructor scheme places the actual datatype universals before written constructor locals. The reconstructed result uses every slot of the checked parent catalogue, including hidden kind arguments, with its canonical owner; placeholder spellings cannot supply or capture a slot. Parent binder kinds and constructor syntax use the same charged projection allowance before cloning. Ordinary type application and type-level promotion may expose different binders, so `DeclarationBinderChirho` retains ordinary specificity on the same canonical slot separately from promoted visibility. Publication and instantiation preserve the scalar; absent producer proof remains absent. Constructor contexts feed the existing wanted/given machinery. Generalization refuses a fixed predicate head only when the actual complete class records rule out every instance; open heads, unknown records and non-ground predicates under givens remain unproved.
 
 The AST stores ordered forall/context prefixes, one positional-or-record argument carrier, and the result. It stores no duplicate full signature. The full type view is reconstructed for existing type consumers. Grouped labels remain one field declaration and flatten only at a consumer that requires argument order. Ordinary and GADT field groups use the same comma-before-`::` producer.
 

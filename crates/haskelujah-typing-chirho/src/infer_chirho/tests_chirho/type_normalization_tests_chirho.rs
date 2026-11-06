@@ -23,6 +23,7 @@ fn normalize_ty_expands_synonym_exposed_by_family_reduction_chirho() {
             type_vars_chirho: vec![dummy_name_chirho("fChirho").into()],
             constructors_chirho: vec![
                 haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: dummy_name_chirho("MkGRepChirho"),
                     fields_chirho: vec![],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,

@@ -123,6 +123,7 @@ fn local_tagged_decl_shadows_builtin_tagged_kind_chirho() {
                 ),
             )],
             constructor_chirho: ConDeclChirho::RecordChirho {
+                prefix_chirho: Default::default(),
                 name_chirho: mk_name_chirho("Tagged"),
                 fields_chirho: vec![haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
                     multiplicity_chirho: None,

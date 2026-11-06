@@ -49,6 +49,7 @@ fn con_type_chirho(name_chirho: &str) -> TypeChirho {
 
 fn ordinary_chirho(name_chirho: &str, fields_chirho: Vec<TypeChirho>) -> ConDeclChirho {
     ConDeclChirho::OrdinaryChirho {
+        prefix_chirho: Default::default(),
         name_chirho: var_name_chirho(name_chirho),
         fields_chirho: fields_chirho
             .into_iter()
@@ -159,6 +160,7 @@ fn record_labels_and_field_types_keep_declaration_order_chirho() {
     let metadata_chirho = derived_show_metadata_chirho(&module_chirho(vec![data_chirho(
         "RChirho",
         vec![ConDeclChirho::RecordChirho {
+            prefix_chirho: Default::default(),
             name_chirho: var_name_chirho("RChirho"),
             fields_chirho: vec![
                 field_chirho(&["xChirho", "yChirho"], con_type_chirho("Int")),

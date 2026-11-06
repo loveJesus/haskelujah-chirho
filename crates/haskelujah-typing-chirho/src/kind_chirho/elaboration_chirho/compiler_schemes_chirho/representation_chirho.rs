@@ -68,6 +68,7 @@ impl TypeElaboratorChirho<'_> {
                 | CompilerRepresentationChirho::RuntimeConstraintChirho
         ) {
             vec![DeclarationBinderChirho {
+                term_specificity_chirho: None,
                 variable_chirho: TyVarChirho(0),
                 kind_chirho: runtime_rep_chirho.clone(),
                 visibility_chirho: TelescopeVisibilityChirho::RequiredChirho,
@@ -222,6 +223,7 @@ impl TypeElaboratorChirho<'_> {
             .into_iter()
             .enumerate()
             .map(|(index_chirho, kind_chirho)| DeclarationBinderChirho {
+                term_specificity_chirho: None,
                 variable_chirho: TyVarChirho(index_chirho as u32),
                 kind_chirho,
                 visibility_chirho: TelescopeVisibilityChirho::RequiredChirho,

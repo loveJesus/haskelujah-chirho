@@ -479,14 +479,11 @@ impl InferCtxChirho {
                     .iter()
                     .all(|v_chirho| vars_chirho.contains(v_chirho))
             {
-                // A predicate with no free variables passes the check above
-                // vacuously and used to be absorbed into the scheme unchecked
-                // — silently accepting programs GHC rejects (`Eq U` with no
-                // instance anywhere in the defining module). Groundness makes
-                // the verdict final: no later substitution can change it.
-                if pred_fvs_chirho.is_empty()
-                    && self.report_certainly_unsolvable_ground_chirho(&pred_chirho, span_chirho)
-                {
+                // Preserve unresolved contexts, but do not quantify away a
+                // wanted whose fixed heads cannot match any actual instance of
+                // a complete class. This includes Show (a -> a), even though a
+                // remains open; later refinement cannot change the arrow head.
+                if self.report_certainly_unsolvable_wanted_chirho(&pred_chirho, span_chirho) {
                     continue;
                 }
                 scheme_preds_chirho.push(SchemePredChirho::from_proof_chirho(

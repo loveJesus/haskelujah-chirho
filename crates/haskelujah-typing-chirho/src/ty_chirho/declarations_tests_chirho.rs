@@ -91,11 +91,13 @@ fn a_source_binder_maps_through_an_inferred_prefix_chirho() {
     let mut header_chirho = header_chirho("mappedChirho");
     header_chirho.binders_chirho = vec![
         DeclarationBinderChirho {
+            term_specificity_chirho: None,
             variable_chirho: TyVarChirho(0),
             kind_chirho: TyChirho::ConChirho("TypeChirho".to_owned()),
             visibility_chirho: TelescopeVisibilityChirho::InferredChirho,
         },
         DeclarationBinderChirho {
+            term_specificity_chirho: None,
             variable_chirho: TyVarChirho(1),
             kind_chirho: TyChirho::VarChirho(TyVarChirho(0)),
             visibility_chirho: TelescopeVisibilityChirho::RequiredChirho,
@@ -155,6 +157,7 @@ fn associated_owner_and_default_slots_are_validated_before_publication_chirho() 
     let mut class_chirho = header_chirho("classChirho");
     class_chirho.role_chirho = TypeConstructorRoleChirho::ClassChirho;
     class_chirho.binders_chirho.push(DeclarationBinderChirho {
+        term_specificity_chirho: None,
         variable_chirho: TyVarChirho(0),
         kind_chirho: TyChirho::ConChirho("TypeChirho".to_owned()),
         visibility_chirho: TelescopeVisibilityChirho::RequiredChirho,
@@ -229,6 +232,7 @@ fn local_binder_kinds_require_preceding_lexical_owners_chirho() {
         schema_chirho.local_binders_chirho = std::sync::Arc::from([
             DeclarationLocalBinderChirho {
                 binder_chirho: DeclarationBinderChirho {
+                    term_specificity_chirho: None,
                     variable_chirho: TyVarChirho(1),
                     kind_chirho: invalid_chirho
                         .map_or_else(|| TyChirho::ConChirho("Type".into()), TyChirho::VarChirho),
@@ -239,6 +243,7 @@ fn local_binder_kinds_require_preceding_lexical_owners_chirho() {
             },
             DeclarationLocalBinderChirho {
                 binder_chirho: DeclarationBinderChirho {
+                    term_specificity_chirho: None,
                     variable_chirho: TyVarChirho(2),
                     kind_chirho: TyChirho::VarChirho(TyVarChirho(1)),
                     visibility_chirho: TelescopeVisibilityChirho::SpecifiedChirho,
@@ -285,6 +290,7 @@ fn inline_quantifier_proof_drift_is_refused_before_first_publication_chirho() {
     schema_chirho.local_binders_chirho =
         std::sync::Arc::from([super::DeclarationLocalBinderChirho {
             binder_chirho: DeclarationBinderChirho {
+                term_specificity_chirho: None,
                 variable_chirho: TyVarChirho(1),
                 kind_chirho: TyChirho::ConChirho("Type".into()),
                 visibility_chirho: TelescopeVisibilityChirho::SpecifiedChirho,

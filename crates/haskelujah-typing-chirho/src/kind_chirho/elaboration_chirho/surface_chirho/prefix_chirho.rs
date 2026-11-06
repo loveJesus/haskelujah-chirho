@@ -133,6 +133,7 @@ impl ResultKindPrefixChirho {
         }
         let binder_chirho = &self.binders_chirho[self.cursor_chirho];
         Ok(Some(DeclarationBinderChirho {
+            term_specificity_chirho: None,
             variable_chirho: binder_chirho.record_chirho.variable_chirho,
             kind_chirho: context_chirho
                 .state_chirho

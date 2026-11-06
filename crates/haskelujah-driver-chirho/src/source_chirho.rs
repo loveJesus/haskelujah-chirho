@@ -5,6 +5,8 @@
 
 #[cfg(test)]
 mod class_kind_tests_chirho;
+#[cfg(test)]
+mod constructor_prefix_tests_chirho;
 pub(crate) mod cpp_chirho;
 #[cfg(test)]
 mod language_options_tests_chirho;

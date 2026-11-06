@@ -1138,6 +1138,7 @@ mod tests_chirho {
     /// `Con (forall a. a -> a)` as a single positional field.
     fn mk_poly_field_con_chirho() -> ConDeclChirho {
         ConDeclChirho::OrdinaryChirho {
+            prefix_chirho: Default::default(),
             name_chirho: mk_name_chirho("Con"),
             fields_chirho: vec![(StrictnessChirho::LazyChirho, mk_poly_id_chirho())],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1203,6 +1204,7 @@ mod tests_chirho {
             name_chirho: mk_name_chirho("T"),
             type_vars_chirho: vec![],
             constructors_chirho: vec![ConDeclChirho::RecordChirho {
+                prefix_chirho: Default::default(),
                 name_chirho: mk_name_chirho("Con"),
                 fields_chirho: vec![FieldDeclChirho {
                     multiplicity_chirho: None,
@@ -1304,6 +1306,7 @@ mod tests_chirho {
             name_chirho: mk_name_chirho("N"),
             type_vars_chirho: vec![],
             constructor_chirho: ConDeclChirho::OrdinaryChirho {
+                prefix_chirho: Default::default(),
                 name_chirho: mk_name_chirho("MkN"),
                 fields_chirho: vec![(StrictnessChirho::LazyChirho, mk_con_chirho("Int#"))],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,

@@ -870,6 +870,7 @@ mod tests_chirho {
         let constructors_chirho = cons_chirho
             .into_iter()
             .map(|(cn_chirho, arity_chirho)| ConDeclChirho::OrdinaryChirho {
+                prefix_chirho: Default::default(),
                 name_chirho: mk_name_chirho(cn_chirho),
                 fields_chirho: (0..arity_chirho)
                     .map(|_| {
@@ -1232,6 +1233,7 @@ mod tests_chirho {
                 name_chirho: mk_name_chirho("Wrapper"),
                 type_vars_chirho: vec![],
                 constructor_chirho: ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: mk_name_chirho("Wrap"),
                     fields_chirho: vec![(
                         haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,

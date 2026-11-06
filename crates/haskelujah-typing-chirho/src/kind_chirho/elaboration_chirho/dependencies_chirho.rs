@@ -763,6 +763,30 @@ impl TypeElaboratorChirho<'_> {
             }
         }
         for constructor_chirho in constructors_chirho {
+            if let ConDeclChirho::OrdinaryChirho { prefix_chirho, .. }
+            | ConDeclChirho::RecordChirho { prefix_chirho, .. } = constructor_chirho
+            {
+                for binder_chirho in &prefix_chirho.existential_vars_chirho {
+                    if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                        self.type_references_chirho(
+                            kind_chirho,
+                            indices_chirho,
+                            constructor_owners_chirho,
+                            references_chirho,
+                            0,
+                        )?;
+                    }
+                }
+                for constraint_chirho in &prefix_chirho.context_chirho {
+                    self.constraint_references_chirho(
+                        constraint_chirho,
+                        indices_chirho,
+                        constructor_owners_chirho,
+                        references_chirho,
+                        0,
+                    )?;
+                }
+            }
             match constructor_chirho {
                 ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => {
                     for (_, field_chirho) in fields_chirho {

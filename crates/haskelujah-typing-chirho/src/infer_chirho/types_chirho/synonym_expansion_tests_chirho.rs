@@ -70,7 +70,7 @@ fn alias_with_kinds_chirho(
                 body_chirho,
             } => {
                 for variable_chirho in vars_chirho {
-                    local_binders_chirho.push(crate::ty_chirho::declarations_chirho::DeclarationLocalBinderChirho { binder_chirho: DeclarationBinderChirho { variable_chirho: *variable_chirho, kind_chirho: TyChirho::ConChirho("%universe:type".into()), visibility_chirho: if matches!(term_chirho, TyChirho::RequiredForallChirho { .. }) { TelescopeVisibilityChirho::RequiredChirho } else { TelescopeVisibilityChirho::SpecifiedChirho } }, specificity_chirho: haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho });
+                    local_binders_chirho.push(crate::ty_chirho::declarations_chirho::DeclarationLocalBinderChirho { binder_chirho: DeclarationBinderChirho { term_specificity_chirho: None, variable_chirho: *variable_chirho, kind_chirho: TyChirho::ConChirho("%universe:type".into()), visibility_chirho: if matches!(term_chirho, TyChirho::RequiredForallChirho { .. }) { TelescopeVisibilityChirho::RequiredChirho } else { TelescopeVisibilityChirho::SpecifiedChirho } }, specificity_chirho: haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho });
                 }
                 pending_chirho.push(body_chirho);
             }
@@ -102,6 +102,7 @@ fn alias_with_kinds_chirho(
             role_chirho: TypeConstructorRoleChirho::TypeSynonymChirho,
             declaration_chirho: Some(declaration_chirho),
             binders_chirho: vec![DeclarationBinderChirho {
+                term_specificity_chirho: None,
                 variable_chirho: TyVarChirho(0),
                 kind_chirho: argument_kind_chirho,
                 visibility_chirho: TelescopeVisibilityChirho::RequiredChirho,

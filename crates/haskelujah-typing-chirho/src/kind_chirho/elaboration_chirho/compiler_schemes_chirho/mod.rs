@@ -36,12 +36,14 @@ impl TypeElaboratorChirho<'_> {
         }
         self.state_chirho.charge_chirho(16, 16, span_chirho)?;
         let mut binders_chirho = vec![DeclarationBinderChirho {
+            term_specificity_chirho: None,
             variable_chirho: TyVarChirho(0),
             kind_chirho: ElaborationStateChirho::type_universe_chirho(),
             visibility_chirho: TelescopeVisibilityChirho::InferredChirho,
         }];
         if heterogeneous_chirho {
             binders_chirho.push(DeclarationBinderChirho {
+                term_specificity_chirho: None,
                 variable_chirho: TyVarChirho(1),
                 kind_chirho: ElaborationStateChirho::type_universe_chirho(),
                 visibility_chirho: TelescopeVisibilityChirho::InferredChirho,
@@ -49,6 +51,7 @@ impl TypeElaboratorChirho<'_> {
         }
         for index_chirho in 0..2 {
             binders_chirho.push(DeclarationBinderChirho {
+                term_specificity_chirho: None,
                 variable_chirho: TyVarChirho(binders_chirho.len() as u32),
                 kind_chirho: TyChirho::VarChirho(TyVarChirho(if heterogeneous_chirho {
                     index_chirho
@@ -135,11 +138,13 @@ impl TypeElaboratorChirho<'_> {
             .charge_chirho(arity_chirho + 2, arity_chirho + 2, span_chirho)?;
         if constructor_chirho == CompilerTypeConstructorChirho::ProxyChirho {
             binders_chirho.push(DeclarationBinderChirho {
+                term_specificity_chirho: None,
                 variable_chirho: TyVarChirho(0),
                 kind_chirho: type_chirho.clone(),
                 visibility_chirho: TelescopeVisibilityChirho::InferredChirho,
             });
             binders_chirho.push(DeclarationBinderChirho {
+                term_specificity_chirho: None,
                 variable_chirho: TyVarChirho(1),
                 kind_chirho: TyChirho::VarChirho(TyVarChirho(0)),
                 visibility_chirho: TelescopeVisibilityChirho::RequiredChirho,
@@ -147,6 +152,7 @@ impl TypeElaboratorChirho<'_> {
         } else {
             for index_chirho in 0..arity_chirho {
                 binders_chirho.push(DeclarationBinderChirho {
+                    term_specificity_chirho: None,
                     variable_chirho: TyVarChirho(index_chirho as u32),
                     kind_chirho: type_chirho.clone(),
                     visibility_chirho: TelescopeVisibilityChirho::RequiredChirho,
@@ -259,6 +265,15 @@ impl TypeElaboratorChirho<'_> {
         let mut binders_chirho = Vec::new();
         for index_chirho in 0..parameter_count_chirho {
             binders_chirho.push(DeclarationBinderChirho {
+                term_specificity_chirho: Some(
+                    if parent_chirho == CompilerTypeConstructorChirho::ProxyChirho
+                        && index_chirho == 0
+                    {
+                        haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho
+                    } else {
+                        haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho
+                    },
+                ),
                 variable_chirho: TyVarChirho(index_chirho as u32),
                 kind_chirho: if parent_chirho == CompilerTypeConstructorChirho::ProxyChirho
                     && index_chirho == 1
@@ -310,6 +325,7 @@ impl TypeElaboratorChirho<'_> {
         let visible_arity_chirho = fields_chirho.len();
         for (index_chirho, kind_chirho) in fields_chirho.into_iter().enumerate() {
             binders_chirho.push(DeclarationBinderChirho {
+                term_specificity_chirho: None,
                 variable_chirho: TyVarChirho((parameter_count_chirho + index_chirho) as u32),
                 kind_chirho,
                 visibility_chirho: TelescopeVisibilityChirho::RequiredChirho,

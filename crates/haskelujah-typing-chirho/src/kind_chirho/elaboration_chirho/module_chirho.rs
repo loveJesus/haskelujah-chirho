@@ -274,7 +274,7 @@ impl TypeElaboratorChirho<'_> {
                                 index_chirho += 1;
                             } else {
                                 rigid_chirho.push(variable_chirho);
-                                binders_chirho.push(DeclarationBinderChirho { variable_chirho, kind_chirho, visibility_chirho: if self.state_chirho.source_specificity_chirho(variable_chirho) == Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho) { TelescopeVisibilityChirho::InferredChirho } else { TelescopeVisibilityChirho::SpecifiedChirho } });
+                                binders_chirho.push(DeclarationBinderChirho { term_specificity_chirho: None, variable_chirho, kind_chirho, visibility_chirho: if self.state_chirho.source_specificity_chirho(variable_chirho) == Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho) { TelescopeVisibilityChirho::InferredChirho } else { TelescopeVisibilityChirho::SpecifiedChirho } });
                             }
                         }
                         signature_chirho = *body_chirho;

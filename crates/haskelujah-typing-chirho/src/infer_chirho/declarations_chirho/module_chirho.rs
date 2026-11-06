@@ -282,6 +282,16 @@ impl InferCtxChirho {
                             );
                     }
                     for con_chirho in constructors_chirho {
+                        if self.bind_written_h98_constructor_chirho(
+                            con_chirho,
+                            (name_chirho, type_vars_chirho),
+                            &tv_map_chirho,
+                            type_constructor_scope_chirho.as_deref(),
+                            &module_name_chirho,
+                            &mut projection_budget_chirho,
+                        ) {
+                            continue;
+                        }
                         match con_chirho {
                             haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                                 name_chirho,
@@ -408,6 +418,16 @@ impl InferCtxChirho {
                         );
                     let (result_ty_chirho, mut nt_tv_map_chirho) =
                         self.data_head_type_chirho(name_chirho.text_chirho(), type_vars_chirho);
+                    if self.bind_written_h98_constructor_chirho(
+                        constructor_chirho,
+                        (name_chirho, type_vars_chirho),
+                        &nt_tv_map_chirho,
+                        type_constructor_scope_chirho.as_deref(),
+                        &module_name_chirho,
+                        &mut projection_budget_chirho,
+                    ) {
+                        continue;
+                    }
                     match constructor_chirho {
                         haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                             name_chirho: con_name_chirho,

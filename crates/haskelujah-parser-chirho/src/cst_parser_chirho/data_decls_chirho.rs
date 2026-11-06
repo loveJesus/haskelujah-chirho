@@ -144,68 +144,72 @@ impl ParserChirho<'_> {
         }
     }
 
+    /// Retain a constructor's actual forall and context before any field-shape branch.
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    fn parse_constructor_prefix_chirho(&mut self) {
+        if self.at_chirho(RawTokenKindChirho::ForallChirho) {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+            self.parse_forall_binders_chirho();
+            if self.at_dot_chirho() {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            } else {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                self.builder_chirho.finish_node_chirho();
+            }
+        }
+        // Optional context: `Show a =>`
+        // Check for `ConId VarId ... =>` pattern
+        let _save_pos_chirho = self.pos_chirho;
+        let mut found_arrow_chirho = false;
+        let mut lookahead_chirho = self.pos_chirho;
+        let mut delimiter_depth_chirho = 0usize;
+        while lookahead_chirho < self.tokens_chirho.len() {
+            let tk_chirho = self.tokens_chirho[lookahead_chirho].kind_chirho;
+            match tk_chirho {
+                RawTokenKindChirho::LeftParenChirho
+                | RawTokenKindChirho::LeftBracketChirho
+                | RawTokenKindChirho::LeftBraceChirho => delimiter_depth_chirho += 1,
+                RawTokenKindChirho::RightParenChirho
+                | RawTokenKindChirho::RightBracketChirho
+                | RawTokenKindChirho::RightBraceChirho => {
+                    delimiter_depth_chirho = delimiter_depth_chirho.saturating_sub(1);
+                }
+                RawTokenKindChirho::FatArrowChirho if delimiter_depth_chirho == 0 => {
+                    found_arrow_chirho = true;
+                    break;
+                }
+                RawTokenKindChirho::RightArrowChirho
+                | RawTokenKindChirho::VirtualSemicolonChirho
+                | RawTokenKindChirho::PipeChirho
+                    if delimiter_depth_chirho == 0 =>
+                {
+                    break;
+                }
+                _ => {}
+            }
+            lookahead_chirho += 1;
+        }
+        if found_arrow_chirho {
+            // Parse constraint(s) before =>
+            while !self.at_chirho(RawTokenKindChirho::FatArrowChirho) && !self.at_eof_chirho() {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            }
+            if self.at_chirho(RawTokenKindChirho::FatArrowChirho) {
+                self.bump_chirho(); // =>
+                self.eat_trivia_chirho();
+            }
+        }
+    }
+
     fn parse_con_decl_chirho(&mut self) {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::ConDeclChirho);
 
-        // ExistentialQuantification: `forall a. Ctx => Con ...`
-        if self.at_chirho(RawTokenKindChirho::ForallChirho) {
-            self.bump_chirho(); // forall
-            self.eat_trivia_chirho();
-            // Eat type variables until dot
-            while self.at_chirho(RawTokenKindChirho::VarIdChirho) {
-                self.bump_chirho();
-                self.eat_trivia_chirho();
-            }
-            // Expect '.'
-            if self.at_dot_chirho() {
-                self.bump_chirho(); // .
-                self.eat_trivia_chirho();
-            }
-            // Optional context: `Show a =>`
-            // Check for `ConId VarId ... =>` pattern
-            let _save_pos_chirho = self.pos_chirho;
-            let mut found_arrow_chirho = false;
-            let mut lookahead_chirho = self.pos_chirho;
-            let mut delimiter_depth_chirho = 0usize;
-            while lookahead_chirho < self.tokens_chirho.len() {
-                let tk_chirho = self.tokens_chirho[lookahead_chirho].kind_chirho;
-                match tk_chirho {
-                    RawTokenKindChirho::LeftParenChirho
-                    | RawTokenKindChirho::LeftBracketChirho
-                    | RawTokenKindChirho::LeftBraceChirho => delimiter_depth_chirho += 1,
-                    RawTokenKindChirho::RightParenChirho
-                    | RawTokenKindChirho::RightBracketChirho
-                    | RawTokenKindChirho::RightBraceChirho => {
-                        delimiter_depth_chirho = delimiter_depth_chirho.saturating_sub(1);
-                    }
-                    RawTokenKindChirho::FatArrowChirho if delimiter_depth_chirho == 0 => {
-                        found_arrow_chirho = true;
-                        break;
-                    }
-                    RawTokenKindChirho::RightArrowChirho
-                    | RawTokenKindChirho::VirtualSemicolonChirho
-                    | RawTokenKindChirho::PipeChirho
-                        if delimiter_depth_chirho == 0 =>
-                    {
-                        break;
-                    }
-                    _ => {}
-                }
-                lookahead_chirho += 1;
-            }
-            if found_arrow_chirho {
-                // Parse constraint(s) before =>
-                while !self.at_chirho(RawTokenKindChirho::FatArrowChirho) && !self.at_eof_chirho() {
-                    self.bump_chirho();
-                    self.eat_trivia_chirho();
-                }
-                if self.at_chirho(RawTokenKindChirho::FatArrowChirho) {
-                    self.bump_chirho(); // =>
-                    self.eat_trivia_chirho();
-                }
-            }
-        }
+        self.parse_constructor_prefix_chirho();
 
         let starts_infix_con_decl_chirho = self.starts_infix_con_decl_chirho();
 

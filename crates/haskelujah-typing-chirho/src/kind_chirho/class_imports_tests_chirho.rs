@@ -66,6 +66,7 @@ fn data_chirho(
             .map(|binder_chirho| TyVarChirho::plain_chirho(name_chirho(binder_chirho)))
             .collect(),
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+            prefix_chirho: Default::default(),
             name_chirho: name_chirho(&format!("Mk{type_text_chirho}")),
             fields_chirho: fields_chirho
                 .into_iter()

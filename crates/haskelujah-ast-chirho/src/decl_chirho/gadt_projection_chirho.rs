@@ -253,6 +253,25 @@ pub fn check_constructor_projection_chirho(
             factor_chirho,
             budget_chirho,
         )?;
+        if let ConDeclChirho::OrdinaryChirho { prefix_chirho, .. }
+        | ConDeclChirho::RecordChirho { prefix_chirho, .. } = constructor_chirho
+        {
+            budget_chirho.charge_chirho(1, 1, factor_chirho)?;
+            walk_chirho(
+                ProjectionNodeChirho::BindersChirho(&prefix_chirho.existential_vars_chirho),
+                1,
+                1,
+                factor_chirho,
+                budget_chirho,
+            )?;
+            walk_chirho(
+                ProjectionNodeChirho::ConstraintsChirho(&prefix_chirho.context_chirho),
+                1,
+                1,
+                factor_chirho,
+                budget_chirho,
+            )?;
+        }
         match constructor_chirho {
             ConDeclChirho::GadtChirho {
                 signature_chirho, ..

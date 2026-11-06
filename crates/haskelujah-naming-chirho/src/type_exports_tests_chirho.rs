@@ -445,6 +445,7 @@ fn plain_data_chirho(
 
 fn ordinary_constructor_chirho(constructor_text_chirho: &str) -> ConDeclChirho {
     ConDeclChirho::OrdinaryChirho {
+        prefix_chirho: Default::default(),
         name_chirho: name_chirho(constructor_text_chirho),
         fields_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -509,6 +510,7 @@ fn a_source_module_marks_the_types_it_declares_complete_chirho() {
             plain_data_chirho(
                 "RecordChirho",
                 vec![ConDeclChirho::RecordChirho {
+                    prefix_chirho: Default::default(),
                     name_chirho: name_chirho("RecordChirho"),
                     fields_chirho: vec![FieldDeclChirho {
                         multiplicity_chirho: None,

@@ -122,6 +122,7 @@ impl TypeElaboratorChirho<'_> {
                 span_chirho,
             )?;
             binders_chirho.push(DeclarationBinderChirho {
+                term_specificity_chirho: None,
                 variable_chirho: TyVarChirho(binders_chirho.len() as u32),
                 kind_chirho,
                 visibility_chirho: match (

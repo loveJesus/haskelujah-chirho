@@ -88,6 +88,7 @@ fn data_no_params_has_kind_star_chirho() {
         name_chirho: mk_name_chirho("Color"),
         type_vars_chirho: vec![],
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+            prefix_chirho: Default::default(),
             name_chirho: mk_name_chirho("Red"),
             fields_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -111,6 +112,7 @@ fn data_one_param_has_kind_star_to_star_chirho() {
         name_chirho: mk_name_chirho("Box"),
         type_vars_chirho: vec![mk_name_chirho("a").into()],
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+            prefix_chirho: Default::default(),
             name_chirho: mk_name_chirho("MkBox"),
             fields_chirho: vec![(
                 StrictnessChirho::LazyChirho,
@@ -141,6 +143,7 @@ fn data_two_params_chirho() {
         name_chirho: mk_name_chirho("Pair"),
         type_vars_chirho: vec![mk_name_chirho("a").into(), mk_name_chirho("b").into()],
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+            prefix_chirho: Default::default(),
             name_chirho: mk_name_chirho("MkPair"),
             fields_chirho: vec![
                 (
@@ -178,6 +181,7 @@ fn higher_kinded_type_param_chirho() {
         name_chirho: mk_name_chirho("App"),
         type_vars_chirho: vec![mk_name_chirho("f").into(), mk_name_chirho("a").into()],
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+            prefix_chirho: Default::default(),
             name_chirho: mk_name_chirho("MkApp"),
             fields_chirho: vec![(
                 StrictnessChirho::LazyChirho,
@@ -387,6 +391,7 @@ fn newtype_kind_chirho() {
         name_chirho: mk_name_chirho("Wrapper"),
         type_vars_chirho: vec![mk_name_chirho("a").into()],
         constructor_chirho: ConDeclChirho::OrdinaryChirho {
+            prefix_chirho: Default::default(),
             name_chirho: mk_name_chirho("Wrap"),
             fields_chirho: vec![(
                 StrictnessChirho::LazyChirho,

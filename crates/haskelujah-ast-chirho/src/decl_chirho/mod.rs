@@ -15,8 +15,10 @@ use crate::ty_chirho::{ConstraintChirho, TypeChirho};
 
 #[cfg(test)]
 mod associated_projection_tests_chirho;
+mod con_prefix_chirho;
 mod gadt_constructor_chirho;
 mod gadt_projection_chirho;
+pub use con_prefix_chirho::ConPrefixChirho;
 pub use gadt_constructor_chirho::{
     ConstructorSignatureErrorChirho, GadtConArgsChirho, GadtConFieldChirho, GadtConFieldRefChirho,
     GadtConMalformedChirho, GadtConPrefixChirho, GadtConSignatureChirho,
@@ -474,6 +476,8 @@ pub enum ConDeclChirho {
     OrdinaryChirho {
         /// Constructor name.
         name_chirho: NameChirho,
+        /// Actual constructor-local binders and stored constraints.
+        prefix_chirho: ConPrefixChirho,
         /// Positional constructor fields and their strictness.
         fields_chirho: Vec<(StrictnessChirho, TypeChirho)>,
         /// Span covering the whole constructor declaration.
@@ -483,6 +487,8 @@ pub enum ConDeclChirho {
     RecordChirho {
         /// Constructor name.
         name_chirho: NameChirho,
+        /// The same written prefix retained by positional and infix constructors.
+        prefix_chirho: ConPrefixChirho,
         /// Named record fields declared by the constructor.
         fields_chirho: Vec<FieldDeclChirho>,
         /// Span covering the whole constructor declaration.

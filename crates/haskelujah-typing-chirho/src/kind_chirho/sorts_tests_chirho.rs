@@ -137,6 +137,7 @@ fn data_chirho(
         name_chirho: name_chirho(type_text_chirho),
         type_vars_chirho: binders_chirho,
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+            prefix_chirho: Default::default(),
             name_chirho: name_chirho(&format!("Mk{type_text_chirho}")),
             fields_chirho: fields_chirho
                 .into_iter()

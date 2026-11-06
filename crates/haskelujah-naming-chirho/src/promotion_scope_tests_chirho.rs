@@ -37,6 +37,7 @@ fn data_decl_chirho(type_chirho: &str, constructor_chirho: &str) -> DeclChirho {
         name_chirho: name_chirho(type_chirho),
         type_vars_chirho: Vec::new(),
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+            prefix_chirho: Default::default(),
             name_chirho: name_chirho(constructor_chirho),
             fields_chirho: Vec::new(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,

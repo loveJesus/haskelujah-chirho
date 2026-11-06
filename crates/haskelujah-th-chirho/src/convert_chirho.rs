@@ -268,9 +268,15 @@ pub fn th_pat_to_ast_chirho(pat_chirho: &ThPatChirho) -> PatChirho {
         }
         ThPatChirho::WildPChirho => PatChirho::WildcardChirho(TH_SPAN_CHIRHO),
         ThPatChirho::ConPChirho(name_chirho, types_chirho, pats_chirho) => PatChirho::ConChirho {
-            type_args_chirho: types_chirho.iter().map(|ty_chirho| haskelujah_ast_chirho::pat_chirho::ConstructorTypePatternChirho {
-                ty_chirho: th_type_to_ast_chirho(ty_chirho), checked_binder_chirho: None,
-            }).collect(),
+            type_args_chirho: types_chirho
+                .iter()
+                .map(
+                    |ty_chirho| haskelujah_ast_chirho::pat_chirho::ConstructorTypePatternChirho {
+                        ty_chirho: th_type_to_ast_chirho(ty_chirho),
+                        checked_binder_chirho: None,
+                    },
+                )
+                .collect(),
             con_chirho: th_name_to_ast_chirho(name_chirho),
             args_chirho: pats_chirho
                 .iter()
@@ -768,6 +774,7 @@ fn th_con_to_ast_chirho(con_chirho: &ThConChirho) -> Option<ConDeclChirho> {
     match con_chirho {
         ThConChirho::NormalCChirho(name_chirho, bang_types_chirho) => {
             Some(ConDeclChirho::OrdinaryChirho {
+                prefix_chirho: Default::default(),
                 name_chirho: th_name_to_ast_chirho(name_chirho),
                 fields_chirho: bang_types_chirho
                     .iter()
@@ -783,6 +790,7 @@ fn th_con_to_ast_chirho(con_chirho: &ThConChirho) -> Option<ConDeclChirho> {
         }
         ThConChirho::RecCChirho(name_chirho, var_bang_types_chirho) => {
             Some(ConDeclChirho::RecordChirho {
+                prefix_chirho: Default::default(),
                 name_chirho: th_name_to_ast_chirho(name_chirho),
                 fields_chirho: var_bang_types_chirho
                     .iter()

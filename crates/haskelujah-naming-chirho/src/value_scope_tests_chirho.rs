@@ -392,6 +392,7 @@ fn a_source_derived_type_closes_on_its_complete_members_chirho() {
             name_chirho: name_chirho("X"),
             type_vars_chirho: vec![],
             constructors_chirho: vec![ConDeclChirho::RecordChirho {
+                prefix_chirho: Default::default(),
                 name_chirho: name_chirho("X"),
                 fields_chirho: vec![FieldDeclChirho {
                     multiplicity_chirho: None,
@@ -437,6 +438,7 @@ fn a_bare_type_item_supplies_no_constructor_of_the_same_name_chirho() {
             name_chirho: name_chirho("T"),
             type_vars_chirho: vec![],
             constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                prefix_chirho: Default::default(),
                 name_chirho: name_chirho("T"),
                 fields_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,

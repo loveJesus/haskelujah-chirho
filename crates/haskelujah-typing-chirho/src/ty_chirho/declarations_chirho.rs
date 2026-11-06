@@ -17,6 +17,10 @@ pub enum TelescopeVisibilityChirho {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeclarationBinderChirho {
+    /// Ordinary constructor specificity is a producer proof on this same slot.
+    /// Promotion may hide a named parent-kind binder that ordinary term VTA exposes.
+    /// None carries no ordinary constructor proof and never upgrades by spelling.
+    pub term_specificity_chirho: Option<haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho>,
     pub variable_chirho: TyVarChirho,
     pub kind_chirho: TyChirho,
     pub visibility_chirho: TelescopeVisibilityChirho,
@@ -122,6 +126,8 @@ pub(crate) fn same_local_binders_chirho(
     }
     for (left_chirho, right_chirho) in left_chirho.iter().zip(right_chirho) {
         if left_chirho.specificity_chirho != right_chirho.specificity_chirho
+            || left_chirho.binder_chirho.term_specificity_chirho
+                != right_chirho.binder_chirho.term_specificity_chirho
             || left_chirho.binder_chirho.variable_chirho
                 != right_chirho.binder_chirho.variable_chirho
             || left_chirho.binder_chirho.visibility_chirho
@@ -381,6 +387,13 @@ fn validate_published_chirho(scheme_chirho: &DeclarationSchemeChirho) -> Result<
     }
     // Validate bounded lexical structure before recursive free-variable helpers.
     super::declaration_syntax_chirho::validate_declaration_scopes_chirho(scheme_chirho)?;
+    if scheme_chirho.binders_chirho.iter().any(|binder_chirho| {
+        binder_chirho.term_specificity_chirho.is_some()
+            && (scheme_chirho.promoted_chirho.is_none()
+                || binder_chirho.visibility_chirho == TelescopeVisibilityChirho::RequiredChirho)
+    }) {
+        return Err("ordinary constructor specificity has no constructor quantifier owner".into());
+    }
     if let Some(promoted_chirho) = &scheme_chirho.promoted_chirho
         && (promoted_chirho.as_str_chirho() != scheme_chirho.identity_chirho.as_ref()
             || haskelujah_ast_chirho::promotion_chirho::is_unknown_promoted_key_chirho(

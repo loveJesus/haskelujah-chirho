@@ -240,6 +240,12 @@ impl InferCtxChirho {
         }) {
             return None;
         }
+        if header_chirho.binders_chirho.iter().any(|binder_chirho| {
+            binder_chirho.visibility_chirho != TelescopeVisibilityChirho::RequiredChirho
+                && binder_chirho.term_specificity_chirho.is_none()
+        }) {
+            return None;
+        }
         let mut parameters_chirho = SubstChirho::empty_chirho();
         for binder_chirho in &header_chirho.binders_chirho {
             parameters_chirho.insert_chirho(binder_chirho.variable_chirho, self.fresh_var_chirho());
@@ -251,7 +257,7 @@ impl InferCtxChirho {
                 .binders_chirho
                 .get(cursor_chirho)
                 .is_some_and(|binder_chirho| {
-                    binder_chirho.visibility_chirho == TelescopeVisibilityChirho::InferredChirho
+                    binder_chirho.term_specificity_chirho == Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho)
                 })
             {
                 cursor_chirho += 1;
@@ -261,8 +267,8 @@ impl InferCtxChirho {
                     .binders_chirho
                     .get(cursor_chirho)
                     .filter(|binder_chirho| {
-                        binder_chirho.visibility_chirho
-                            == TelescopeVisibilityChirho::SpecifiedChirho
+                        binder_chirho.term_specificity_chirho
+                            == Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho)
                     })?;
             let TypeChirho::KindAnnotationChirho { kind_chirho, .. } = argument_chirho else {
                 return None;

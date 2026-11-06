@@ -334,6 +334,7 @@ fn data_chirho(constructors_chirho: usize, binders_chirho: usize) -> DeclChirho 
             .collect(),
         constructors_chirho: (0..constructors_chirho)
             .map(|index_chirho| ConDeclChirho::OrdinaryChirho {
+                prefix_chirho: Default::default(),
                 name_chirho: name_chirho(&format!("C{index_chirho}Chirho")),
                 fields_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -397,6 +398,7 @@ fn ordinary_records_share_the_group_expansion_guard_chirho() {
         panic!("record fixture");
     };
     let constructor_chirho = ConDeclChirho::RecordChirho {
+        prefix_chirho: Default::default(),
         name_chirho: name_chirho("CChirho"),
         fields_chirho,
         span_chirho: SpanChirho::DUMMY_CHIRHO,

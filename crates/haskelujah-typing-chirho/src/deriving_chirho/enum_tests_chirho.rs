@@ -14,6 +14,7 @@ use super::derived_enum_metadata_chirho;
 /// A constructor with `fields_chirho` lazy `Int` fields.
 fn constructor_chirho(name_chirho: &str, fields_chirho: usize) -> ConDeclChirho {
     ConDeclChirho::OrdinaryChirho {
+        prefix_chirho: Default::default(),
         name_chirho: var_name_chirho(name_chirho),
         fields_chirho: (0..fields_chirho)
             .map(|_| {

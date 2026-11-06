@@ -493,14 +493,44 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
     }
 
     fn walk_constructor_chirho(&mut self, constructor_chirho: &ConDeclChirho) {
-        // Enabling existential syntax does not implicitly bind a bare H98 field variable.
-        // Only the existing explicit-prefix lowering recovery admits unrepresented binders.
-        let field_policy_chirho =
-            if constructor_has_unrepresented_scope_prefix_chirho(constructor_chirho) {
-                FreeTyVarPolicyChirho::ImplicitChirho
-            } else {
-                FreeTyVarPolicyChirho::RequireBoundChirho
-            };
+        let prefix_chirho = match constructor_chirho {
+            ConDeclChirho::OrdinaryChirho {
+                prefix_chirho,
+                span_chirho,
+                ..
+            }
+            | ConDeclChirho::RecordChirho {
+                prefix_chirho,
+                span_chirho,
+                ..
+            } => Some((prefix_chirho, *span_chirho)),
+            ConDeclChirho::GadtChirho { .. } => None,
+        };
+        let pushed_chirho = if let Some((prefix_chirho, span_chirho)) = prefix_chirho {
+            if prefix_chirho.unread_chirho {
+                self.diagnostics_chirho
+                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                        ErrorCodeChirho::error_chirho(UNDEFINED_TYPE_CODE_CHIRHO),
+                        "constructor quantification was not faithfully lowered",
+                        span_chirho,
+                    ));
+                return;
+            }
+            let pushed_chirho = self.push_explicit_binders_chirho(
+                &prefix_chirho.existential_vars_chirho,
+                FreeTyVarPolicyChirho::RequireBoundChirho,
+            );
+            for constraint_chirho in &prefix_chirho.context_chirho {
+                self.walk_constraint_chirho(
+                    constraint_chirho,
+                    FreeTyVarPolicyChirho::RequireBoundChirho,
+                );
+            }
+            pushed_chirho
+        } else {
+            Vec::new()
+        };
+        let field_policy_chirho = FreeTyVarPolicyChirho::RequireBoundChirho;
         match constructor_chirho {
             ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => {
                 for (_, field_ty_chirho) in fields_chirho {
@@ -538,6 +568,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 self.walk_signature_type_chirho(ty_chirho);
             }
         }
+        self.pop_binders_chirho(&pushed_chirho);
     }
 
     fn walk_type_chirho(
@@ -1128,36 +1159,6 @@ fn record_field_type_scope_reliable_chirho(ty_chirho: &TypeChirho) -> bool {
         | TypeChirho::WildcardChirho { .. }
         | TypeChirho::LitChirho { .. } => true,
     }
-}
-
-/// Whether lowering discarded an existential constructor prefix.
-///
-/// For prefix constructors the CST node starts at `forall` or its context,
-/// while the retained constructor name starts later. Infix constructors also
-/// have an earlier node start (their left operand), so they are deliberately
-/// excluded. Until `ConDeclChirho` can carry existential binders and context,
-/// fields behind this exact AST trust boundary must retain implicit scope.
-fn constructor_has_unrepresented_scope_prefix_chirho(constructor_chirho: &ConDeclChirho) -> bool {
-    let (name_chirho, span_chirho) = match constructor_chirho {
-        ConDeclChirho::OrdinaryChirho {
-            name_chirho,
-            span_chirho,
-            ..
-        }
-        | ConDeclChirho::RecordChirho {
-            name_chirho,
-            span_chirho,
-            ..
-        } => (name_chirho, *span_chirho),
-        ConDeclChirho::GadtChirho { .. } => return false,
-    };
-    let name_text_chirho = name_chirho.text_chirho();
-    name_text_chirho
-        .chars()
-        .next()
-        .is_some_and(char::is_uppercase)
-        && name_chirho.span_chirho().file_id_chirho() == span_chirho.file_id_chirho()
-        && name_chirho.span_chirho().start_chirho() > span_chirho.start_chirho()
 }
 
 fn record_field_constraint_scope_reliable_chirho(constraint_chirho: &ConstraintChirho) -> bool {
