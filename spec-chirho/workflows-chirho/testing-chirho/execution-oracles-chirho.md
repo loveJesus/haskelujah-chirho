@@ -151,10 +151,14 @@ refuses its spelling for:
 - a lambda parameter or captured argument slot;
 - a let, where or case binder the lowering holds;
 - a top-level binding outside the module's record of what the compiler generated,
-  `CoreProvenanceChirho::compiler_bindings_chirho`. A module without that record keeps
-  the legacy spelling route at top level. The multi-module interpreter merge
+  `CoreProvenanceChirho::compiler_bindings_chirho`. A module that arrives without that
+  record keeps the legacy spelling route at top level. The IO-action preparation records
+  its own wrappers, so the run boundary (`run_lowered_chirho`) never lets them give a
+  recordless module a record. The multi-module interpreter merge
   (`project_chirho/multi_module_chirho.rs`) still builds its module with empty
-  provenance: a named producer seam;
+  provenance: a named producer seam. Its top level keeps the legacy route, so the
+  dictionary pass's generated `force` and `deepseq` keep their primitives there; their
+  Core bodies use `seq#`, which the interpreter has no primitive for;
 - another program module's export (`imported_references_chirho`).
 
 Such an id keeps its own lookup, or its named missing-binding error. A free canonical
@@ -165,8 +169,10 @@ the Prelude's body; that refusal is not a claim that imports run. The native pre
 keeps its positive `builtin_references_chirho` rule.
 
 The controls are `stg_lower_chirho/primitives_chirho/binding_ownership_tests_chirho.rs`
-(all four paths, the generated, free and imported cases, and a real import from its
-producer to both interpreter consumers), and W3 and W4 on every engine.
+(all four paths, the generated, free, recordless and imported cases, a real import from
+its producer to both interpreter consumers, and the merge's generated `force` and
+`deepseq`), W3 and W4 on every engine, and native symbol identity's B7, a program's own
+top-level `undefined`, now on the interpreter too.
 
 Generated MaybeT helpers preserve the underlying monadic action. They accept the
 call-site Monad dictionary; pure is selected from its Applicative superclass,

@@ -510,8 +510,7 @@ fn a_programs_own_compare_keeps_its_body_chirho() {
 
 #[test]
 fn a_programs_own_undefined_keeps_its_body_chirho() {
-    // The interpreter still fails here ("Prelude.undefined"): not this row's engine.
-    assert_native_chirho(B7_CHIRHO);
+    assert_all_engines_chirho(B7_CHIRHO);
 }
 
 #[test]

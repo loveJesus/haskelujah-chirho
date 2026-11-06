@@ -265,8 +265,9 @@ impl LowerCtxChirho {
     /// - a let, where or case binder held in the environment;
     /// - a top-level binding the compiler did not generate. The module must record what it
     ///   generated (`CoreProvenanceChirho::compiler_bindings_chirho`, the only bindings a backend
-    ///   may recognize by spelling). A module without that record, such as the multi-module
-    ///   interpreter merge, keeps the legacy spelling route at top level;
+    ///   may recognize by spelling). A module that arrives without that record, such as the
+    ///   multi-module interpreter merge, keeps the legacy spelling route at top level; the IO
+    ///   preparation's own wrappers never give it one (`run_lowered_chirho`);
     /// - a reference to another program module's export (`imported_references_chirho`). Unlinked
     ///   here, it stays a missing binding.
     ///

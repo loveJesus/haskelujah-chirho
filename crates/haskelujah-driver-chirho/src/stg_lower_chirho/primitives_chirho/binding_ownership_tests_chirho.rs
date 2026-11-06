@@ -4,8 +4,9 @@
 //! lowering's four reference paths asks the one IO facade, which lets a spelling reach only an id
 //! the program does not own. The four paths are a bare reference, the head of an application, an
 //! argument, and a constructor field. A free reference and a binding the compiler generated keep
-//! the builtin primitive, and an unlinked import fails closed by name. The last control follows a
-//! real import from its producer, the module's provenance, to both interpreter consumers (#32361).
+//! the builtin primitive, and an unlinked import fails closed by name. A control follows a real
+//! import from its producer, the module's provenance, to both interpreter consumers (#32361). The
+//! last runs the multi-module merge, which records no generated bindings, through its top level.
 //! workflow: testing-chirho/execution-oracles-chirho
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -471,4 +472,28 @@ fn a_real_import_spelled_like_io_stays_the_programs_own_unlinked_reference_chirh
     .expect("the canonical program compiles");
     assert_eq!(canonical_chirho.result_chirho.map(|_| ()), Ok(()));
     assert_eq!(canonical_chirho.machine_chirho.io_output_chirho, "x\n");
+}
+
+/// A dependency, so that the program runs through the multi-module interpreter merge.
+const SEVEN_MODULE_CHIRHO: &str =
+    "module SevenChirho (sevenChirho) where\n\nsevenChirho :: Int\nsevenChirho = 7\n";
+
+/// Main, which forces through the compiler's generated `force` and `deepseq` rows.
+const FORCING_MAIN_CHIRHO: &str = "module Main where\n\nimport Control.DeepSeq (deepseq, force)\nimport SevenChirho (sevenChirho)\n\nmain :: IO ()\nmain = do\n  print (force sevenChirho)\n  sevenChirho `deepseq` putStrLn \"forced\"\n";
+
+#[test]
+fn the_merge_keeps_the_generated_force_and_deepseq_primitives_chirho() {
+    // The merge records no generated bindings, so its top level keeps the legacy spelling route
+    // even after the IO preparation records its own wrappers. Owned, these rows would run bodies
+    // the interpreter has no primitive for (`seq#`).
+    let (_, machine_chirho) = crate::eval_modules_with_machine_chirho(
+        &[
+            ("SevenChirho.hs", SEVEN_MODULE_CHIRHO),
+            ("Main.hs", FORCING_MAIN_CHIRHO),
+        ],
+        &mut SourceMapChirho::new_chirho(),
+        None,
+    )
+    .unwrap_or_else(|error_chirho| panic!("the merged program runs: {error_chirho}"));
+    assert_eq!(machine_chirho.io_output_chirho, "7\nforced\n");
 }
