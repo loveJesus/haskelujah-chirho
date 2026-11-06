@@ -2,7 +2,7 @@
 
 # Dependable GHC source integration resolution Chirho
 
-SOURCE ONLY. Isolated root-owned assembly on `dependable-integration-chirho`; main, progress SQLite, shared caches and remotes remain untouched by this unit. Root owns acceptance and landing. No compiler, GHC, product, native or RTS execution is authorized for this assembly. Numeric MR, runtime measurement and package-source changes remain separate.
+Original merge stage: SOURCE ONLY. Isolated root-owned assembly on `dependable-integration-chirho`; main, progress SQLite and shared caches remain untouched by this source unit. Root owns acceptance and landing. Later preliminary Rust-check authorization and source-push disposition are recorded in the follow-up section. No GHC, program, native or RTS execution is established. Numeric MR, runtime measurement and package-source changes remain separate.
 
 - Kind parent: `29a5b2b272df9624ff03cbd38e47f88462373e4a`; crates `6f327fa57ca7dab79bb4cdb33ca26bacd3ce7a58`.
 - Reader parent: `54dd469f34a59265b605f8812c1f7c4a8584f0e1`; crates `1b3071281cde458f6dbb022af2d8a620f973017f`.
@@ -18,7 +18,7 @@ SOURCE ONLY. Isolated root-owned assembly on `dependable-integration-chirho`; ma
 - [x] Standalone rustfmt with `skip_children=true` over incoming/modified Rust paths; source parse/format only.
 - [x] `git diff --check`; no unresolved conflict markers.
 - [x] Commit isolated merge and scan outgoing `51b27ed1c219fce68427089b81d3d433fc126a2c..HEAD` with gitleaks: 145 commits, approximately 6.18 MB, no leaks. Staged scan also found no leaks.
-- [ ] Root and both implementation writers review combined source before any test lease, push or landing.
+- [x] Root and both implementation writers review the source contracts; the follow-ups below retain the corrections and actual preliminary check. No behavior or landing acceptance follows.
 
 ## Actual conflicts
 
@@ -67,3 +67,15 @@ These were not textual conflicts. No type inference implementation region is edi
 No compilation, Clippy, unit/integration test, corpus, GHC reference, native, installed CLI or RTS claim is made by this assembly. Combined workspace/ordinary preservation and both corpus axes remain pending their owner's scheduler. The new contrast is written, not run.
 
 RD3/RD4 remain RED typing-obligation false accepts. LLVM boxed-Show remains RED. The inherited five eval-basic HeapPtr failures, unattributed eval-advanced numeric failures, missing `groupWith` body and recorded mandatory Chirho lint policy conflict remain open at their original scopes. No expectation, Core refusal, runtime measurement, MR repair, package publication behavior, prototype activation or lookup fallback is added here. Reader's held v5/v6 and NOT-GREEN v8 receipts stay historical and unchanged.
+
+## Follow-up source and preliminary compile disposition
+
+The tables above identify the original merge source, `9ac11116`, not a passing executable or the latest follow-up tree. Both writers reviewed its D/K/E/G/S and kind transport contracts without finding a code loss. Reader's review #32528 requested restoration of bare-Monad wording and identified the declaring-class arity boundary; root supplied those precise corrections.
+
+- Actual workspace all-target checking of `9ac11116` returned E0063: the identity-less test initializer lacked the new optional capture field. That source and failed receipt remain unchanged.
+- `4c2b4415` adds only `capture_chirho: None` to that initializer, preserving its intended identity-less control and assertions.
+- `60c03108` validates present capture kind/extra arity against the declaring class, retains a genuinely declared complete-telescope positive and undeclared-arity negatives, and restores the bare-Monad documentation. Absent legacy captures still manufacture no S1 goal.
+- Exact kind validity fix `1bea865e` is cherry-picked with provenance as `5e7f86f325af3eaae883c59a7bed8920535de012`; all four incoming blobs match their owner checkpoint. It removes the DatatypeContexts blanket field skip and the fallback that overrode NoRankNTypes. No MR/default/literal/seed implementation region changes.
+- The resulting crates tree is `8cd86a61d5c370e8c073d0aad50cdba2d8fb4b53`. Its actual preliminary `cargo check --locked --offline -j2 --workspace --all-targets` returned zero with zero compiler warnings in 10.40 seconds. The owner reports unchanged source/head/helper and an empty process group. Receipt: this worktree's `tmp-chirho/kind-reader-first-check-5e7f86f3-r2-chirho/receipt-chirho.json`; stdout SHA256 `53aff65d64c1235f2d9d6c3718037b1ee08c45cbfdfd6ba7bf7cceaf5d30959e`.
+
+Root clears an isolated source-branch push after the outgoing-range scan. No combined tests, Clippy, native execution, corpus acceptance, release or main compiler landing is established. The original no-execution statements above describe the original assembly stage; this section records the later preliminary Rust check explicitly.
