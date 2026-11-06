@@ -348,6 +348,10 @@ fn join_literal_chirho(
     let evidence_chirho = |key_chirho: &str| LiteralEvidenceChirho {
         class_name_chirho: "Num".to_string(),
         ty_key_chirho: key_chirho.to_string(),
+        class_identity_chirho:
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+            ),
     };
     let mut result_chirho = infer_result_chirho(vec![]);
     result_chirho.literal_evidence_by_origin_chirho = by_origin_chirho
@@ -426,6 +430,10 @@ fn two_generated_literals_at_one_span_each_take_their_own_evidence_chirho() {
     let evidence_chirho = |key_chirho: &str| LiteralEvidenceChirho {
         class_name_chirho: "Num".to_string(),
         ty_key_chirho: key_chirho.to_string(),
+        class_identity_chirho:
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+            ),
     };
 
     let mut result_chirho = infer_result_chirho(vec![]);

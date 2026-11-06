@@ -50,9 +50,9 @@ impl InferCtxChirho {
                     let lit_ty_chirho = self.fresh_var_chirho();
                     let wanted_chirho = self
                         .literal_predicate_chirho(CompilerClassChirho::NumChirho, &lit_ty_chirho);
+                    self.capture_literal_evidence_chirho(lit_chirho, &wanted_chirho);
                     self.deferred_preds_chirho
                         .push((wanted_chirho, *span_chirho));
-                    self.capture_literal_evidence_chirho(lit_chirho, "Num", &lit_ty_chirho);
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
                 LitChirho::FloatChirho(_, span_chirho, _) => {
@@ -61,9 +61,9 @@ impl InferCtxChirho {
                         CompilerClassChirho::FractionalChirho,
                         &lit_ty_chirho,
                     );
+                    self.capture_literal_evidence_chirho(lit_chirho, &wanted_chirho);
                     self.deferred_preds_chirho
                         .push((wanted_chirho, *span_chirho));
-                    self.capture_literal_evidence_chirho(lit_chirho, "Fractional", &lit_ty_chirho);
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
                 LitChirho::StringChirho(_, span_chirho, _) if self.overloaded_strings_chirho => {
@@ -72,9 +72,9 @@ impl InferCtxChirho {
                         CompilerClassChirho::IsStringChirho,
                         &lit_ty_chirho,
                     );
+                    self.capture_literal_evidence_chirho(lit_chirho, &wanted_chirho);
                     self.deferred_preds_chirho
                         .push((wanted_chirho, *span_chirho));
-                    self.capture_literal_evidence_chirho(lit_chirho, "IsString", &lit_ty_chirho);
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
                 _ => {

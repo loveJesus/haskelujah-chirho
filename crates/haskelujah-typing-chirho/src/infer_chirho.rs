@@ -469,11 +469,11 @@ pub struct MethodOccurrenceRecordChirho {
     pub resolved_entry_chirho: Option<String>,
 }
 
+/// A literal's minted wanted, captured whole so its class proof reaches finalization (row 692).
 type LiteralCaptureChirho = (
     SpanChirho,
     Option<OriginIdChirho>,
-    String,
-    TyChirho,
+    PredChirho,
     Option<Arc<[PredChirho]>>,
 );
 
