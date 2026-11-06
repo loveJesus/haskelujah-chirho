@@ -104,11 +104,16 @@ fn builtin_class_chirho(
     identity_chirho: CompilerClassChirho,
     arity_chirho: u8,
 ) -> BuiltinClassChirho {
+    assert_eq!(
+        identity_chirho
+            .schema_chirho()
+            .single_parameter_eta_arity_chirho(),
+        Some(arity_chirho as usize)
+    );
     BuiltinClassChirho {
         identity_chirho,
         module_chirho: "GHC.Base",
         name_chirho: identity_chirho.legacy_name_chirho(),
-        parameter_arities_chirho: if arity_chirho == 0 { &[0] } else { &[1] },
     }
 }
 

@@ -5,7 +5,7 @@
 use crate::{DiagnosticBundleChirho, FrontendOptionsChirho, FrontendResultChirho, SourceMapChirho};
 use haskelujah_parser_chirho::pragma_chirho::extension_enabled_chirho;
 
-fn check_chirho(
+pub(super) fn check_chirho(
     source_chirho: &str,
     options_chirho: &[&str],
 ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {

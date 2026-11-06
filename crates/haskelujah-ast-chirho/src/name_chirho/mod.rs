@@ -15,12 +15,18 @@ use haskelujah_span_chirho::SpanChirho;
 use crate::promotion_chirho::PromotionResolutionChirho;
 use crate::provenance_chirho::OriginIdChirho;
 
+mod compiler_class_kind_chirho;
+pub use compiler_class_kind_chirho::{
+    CompilerClassBinderChirho, CompilerClassChirho, CompilerClassGroundKindChirho,
+    CompilerClassKindAtomChirho, CompilerClassKindChirho, CompilerClassKindCoverageChirho,
+    CompilerClassSchemaChirho, TyVarSpecificityChirho, TyVarVisibilityChirho,
+};
 mod predicate_identity_chirho;
 mod representation_chirho;
 pub use predicate_identity_chirho::{
-    ClassIdentityUnknownChirho, CompilerClassChirho, CompilerClassEvidenceChirho,
-    InstanceDeclarationOriginChirho, InstanceIdentityChirho, PredicateClassIdentityChirho,
-    PredicateClassProofChirho, PredicateMetadataRefusalChirho, SourceUnitIdentityChirho,
+    ClassIdentityUnknownChirho, CompilerClassEvidenceChirho, InstanceDeclarationOriginChirho,
+    InstanceIdentityChirho, PredicateClassIdentityChirho, PredicateClassProofChirho,
+    PredicateMetadataRefusalChirho, SourceUnitIdentityChirho,
 };
 pub use representation_chirho::CompilerRepresentationChirho;
 
@@ -719,18 +725,22 @@ impl TypeConstructorScopeChirho {
 }
 
 /// A class the compiler itself defines, as naming proves it from a trusted builtin
-/// interface (K01). Each parameter's kind is the number of `Type` arguments it takes:
-/// `[0]` is `Type -> Constraint` and `[1]` is `(Type -> Type) -> Constraint`.
+/// interface (K01). The existing compiler identity owns the complete ordered kind schema;
+/// no parallel Type-only arity table can approximate higher-order parameters.
 /// workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BuiltinClassChirho {
     pub identity_chirho: CompilerClassChirho,
-    /// The base module documented as the class's home.
+    /// A public builtin provider in this compiler description, not a source-unit proof.
     pub module_chirho: &'static str,
     /// The class name as interfaces list it.
     pub name_chirho: &'static str,
-    /// One entry per class parameter, in order.
-    pub parameter_arities_chirho: &'static [u8],
+}
+
+impl BuiltinClassChirho {
+    pub const fn schema_chirho(&self) -> &'static CompilerClassSchemaChirho {
+        self.identity_chirho.schema_chirho()
+    }
 }
 
 /// The class spellings one module can write (`Eq`, `P.Eq`) that name a builtin class.

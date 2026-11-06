@@ -3,6 +3,8 @@
 //! Source-text frontend entry shared by typecheck measurements and full compilation.
 //! This path deliberately has no filesystem search and no backend generation.
 
+#[cfg(test)]
+mod class_kind_tests_chirho;
 pub(crate) mod cpp_chirho;
 #[cfg(test)]
 mod language_options_tests_chirho;

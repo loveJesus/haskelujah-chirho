@@ -4,6 +4,7 @@
 //! cannot be declared by a module; ordinary names require the naming proof.
 
 use super::*;
+mod class_schema_chirho;
 mod representation_chirho;
 #[cfg(test)]
 mod tests_chirho;
@@ -69,108 +70,6 @@ impl TypeElaboratorChirho<'_> {
                 role_chirho: TypeConstructorRoleChirho::UnknownChirho,
                 reduction_arity_chirho: binders_chirho.len(),
                 visible_arity_chirho: 2,
-                binders_chirho,
-                source_variables_chirho: Vec::new(),
-                result_kind_chirho: ElaborationStateChirho::constraint_universe_chirho(),
-                synonym_rhs_chirho: None,
-                synonym_syntax_chirho: None,
-                local_binders_chirho: std::sync::Arc::from([]),
-                promoted_chirho: None,
-                held_chirho: false,
-            })
-            .map_err(|message_chirho| Self::error_chirho(message_chirho, span_chirho))
-    }
-
-    /// All positive compiler class producers use this same Ty-based telescope.
-    /// Public names and legacy arity views cannot manufacture an identity.
-    pub(super) fn seed_class_header_chirho(
-        &mut self,
-        class_chirho: haskelujah_ast_chirho::name_chirho::CompilerClassChirho,
-        span_chirho: SpanChirho,
-    ) -> Result<(), ElaborationErrorChirho> {
-        use haskelujah_ast_chirho::name_chirho::CompilerClassChirho;
-        let identity_chirho: Arc<str> = Arc::from(format!(
-            "%class:compiler:{}",
-            class_chirho.legacy_name_chirho()
-        ));
-        if self
-            .registry_chirho
-            .declaration_schemes_chirho()
-            .get_chirho(&identity_chirho)
-            .is_some()
-        {
-            return Ok(());
-        }
-        self.state_chirho.charge_chirho(128, 128, span_chirho)?;
-        let type_chirho = ElaborationStateChirho::type_universe_chirho();
-        let mut binders_chirho = Vec::new();
-        let mut parameter_kinds_chirho = match class_chirho {
-            CompilerClassChirho::KnownNatChirho => vec![TyChirho::ConChirho("Nat".to_owned())],
-            CompilerClassChirho::KnownSymbolChirho => {
-                vec![TyChirho::ConChirho("Symbol".to_owned())]
-            }
-            CompilerClassChirho::KnownCharChirho => vec![TyChirho::ConChirho("Char".to_owned())],
-            CompilerClassChirho::TypeableChirho | CompilerClassChirho::CoercibleChirho => {
-                binders_chirho.push(DeclarationBinderChirho {
-                    variable_chirho: TyVarChirho(0),
-                    kind_chirho: type_chirho.clone(),
-                    visibility_chirho: TelescopeVisibilityChirho::InferredChirho,
-                });
-                let kind_chirho = TyChirho::VarChirho(TyVarChirho(0));
-                if class_chirho == CompilerClassChirho::CoercibleChirho {
-                    vec![kind_chirho.clone(), kind_chirho]
-                } else {
-                    vec![kind_chirho]
-                }
-            }
-            CompilerClassChirho::FunctorChirho
-            | CompilerClassChirho::ApplicativeChirho
-            | CompilerClassChirho::MonadChirho
-            | CompilerClassChirho::FoldableChirho
-            | CompilerClassChirho::TraversableChirho
-            | CompilerClassChirho::MonadIoChirho
-            | CompilerClassChirho::MonadFailChirho
-            | CompilerClassChirho::MonadFixChirho
-            | CompilerClassChirho::MonadZipChirho
-            | CompilerClassChirho::ContravariantChirho
-            | CompilerClassChirho::AlternativeChirho
-            | CompilerClassChirho::MonadPlusChirho => vec![ElaborationStateChirho::arrow_chirho(
-                type_chirho.clone(),
-                type_chirho.clone(),
-            )],
-            CompilerClassChirho::MonadTransChirho => vec![ElaborationStateChirho::arrow_chirho(
-                ElaborationStateChirho::arrow_chirho(type_chirho.clone(), type_chirho.clone()),
-                ElaborationStateChirho::arrow_chirho(type_chirho.clone(), type_chirho.clone()),
-            )],
-            CompilerClassChirho::HasFieldChirho => vec![
-                TyChirho::ConChirho("Symbol".to_owned()),
-                type_chirho.clone(),
-                type_chirho.clone(),
-            ],
-            _ => vec![type_chirho],
-        };
-        let visible_arity_chirho = parameter_kinds_chirho.len();
-        for kind_chirho in parameter_kinds_chirho.drain(..) {
-            binders_chirho.push(DeclarationBinderChirho {
-                variable_chirho: TyVarChirho(binders_chirho.len() as u32),
-                kind_chirho,
-                visibility_chirho: TelescopeVisibilityChirho::RequiredChirho,
-            });
-        }
-        self.registry_chirho
-            .declaration_schemes_mut_chirho()
-            .insert_chirho(DeclarationSchemeChirho {
-                injectivity_chirho: None,
-                association_chirho:
-                    crate::ty_chirho::declarations_chirho::DeclarationAssociationChirho::NoneChirho,
-                identity_chirho,
-                owner_chirho: None,
-                role_chirho: TypeConstructorRoleChirho::ClassChirho,
-                declaration_chirho: Some(TypeConstructorDeclarationChirho::compiler_data_chirho(
-                    CompilerTypeConstructorChirho::ClassChirho(class_chirho),
-                )),
-                reduction_arity_chirho: binders_chirho.len(),
-                visible_arity_chirho,
                 binders_chirho,
                 source_variables_chirho: Vec::new(),
                 result_kind_chirho: ElaborationStateChirho::constraint_universe_chirho(),
