@@ -1100,23 +1100,18 @@ impl DictPassCtxChirho {
         }
     }
 
-    /// An applied `print` at the enclosing binding's indexed own `Show` key, such as
-    /// `print x` inside `f :: Show a => a -> IO ()`, as `putStrLn` of that parameter's `show`
-    /// (row 697). The occurrence's proof is the binding's own dictionary, which no
-    /// `$prim_Show_show_<key>` row names. So `print` reached the generic Int-only binding,
-    /// and natively it printed a Char as its code point. The selector reads exactly the
-    /// indexed parameter, never another dictionary of the class. A program's own `print`
-    /// keeps its binding. A bare own key, proved only through a superclass, and a
-    /// first-class `print` stay unserved.
+    /// The `show` named by a `print` occurrence's proof at the enclosing binding's indexed own
+    /// `Show` key: `$sel_Show_show d`, where `d` is exactly `dict_vars[$own:i]` (rows 697 and
+    /// 698). No `$prim_Show_show_<key>` row names such a proof. Without this, `print` reached
+    /// the generic Int-only binding, and natively a Char printed as its code point. The
+    /// selector reads exactly the indexed parameter, never another dictionary of the class.
+    /// These get None: a program's own `print`, a bare own key proved only through a
+    /// superclass, and an indexed key whose parameter is not in scope.
     /// workflow: print-show-evidence-chirho
-    fn try_rewrite_own_show_print_chirho(
+    fn own_print_show_chirho(
         &self,
         head_id_chirho: CoreIdChirho,
-        arg_chirho: &CoreExprChirho,
         dict_vars_chirho: &HashMap<String, CoreIdChirho>,
-        evidence_classes_chirho: &HashSet<String>,
-        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
-        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
     ) -> Option<CoreExprChirho> {
         if self.names_programs_own_binder_chirho(head_id_chirho) {
             return None;
@@ -1147,11 +1142,26 @@ impl DictPassCtxChirho {
         if selector_class_chirho != "Show" {
             return None;
         }
-        let put_str_ln_id_chirho = self.lookup_compiler_owned_name_id_chirho("putStrLn")?;
-        let show_chirho = CoreExprChirho::AppChirho {
+        Some(CoreExprChirho::AppChirho {
             fun_chirho: Box::new(CoreExprChirho::VarChirho(*show_selector_id_chirho)),
             arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
-        };
+        })
+    }
+
+    /// An applied `print` at an indexed own `Show` key, such as `print x` inside
+    /// `f :: Show a => a -> IO ()`, as `putStrLn` of that parameter's `show` (row 697).
+    /// workflow: print-show-evidence-chirho
+    fn try_rewrite_own_show_print_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+        arg_chirho: &CoreExprChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        let show_chirho = self.own_print_show_chirho(head_id_chirho, dict_vars_chirho)?;
+        let put_str_ln_id_chirho = self.lookup_compiler_owned_name_id_chirho("putStrLn")?;
         let shown_arg_chirho = CoreExprChirho::AppChirho {
             fun_chirho: Box::new(show_chirho),
             arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
@@ -1165,6 +1175,26 @@ impl DictPassCtxChirho {
         Some(CoreExprChirho::AppChirho {
             fun_chirho: Box::new(CoreExprChirho::VarChirho(put_str_ln_id_chirho)),
             arg_chirho: Box::new(shown_arg_chirho),
+        })
+    }
+
+    /// A first-class `print` at an indexed own `Show` key, such as the one in `mapM_ print xs`
+    /// inside `f :: Show a => [a] -> IO ()`: `$print_via_show_chirho` over that parameter's
+    /// `show` (row 698). This is the proof the applied form consumes, passed as a value. Only
+    /// the value path reaches it, through `evidenced_value_in_scope_chirho`, at a bare
+    /// occurrence or a spine argument. The end-of-pass sweep has no dictionaries in scope and
+    /// keeps today's path.
+    /// workflow: print-show-evidence-chirho
+    pub(super) fn own_print_function_chirho(
+        &self,
+        id_chirho: CoreIdChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        let show_chirho = self.own_print_show_chirho(id_chirho, dict_vars_chirho)?;
+        let helper_id_chirho = self.lookup_body_backed_name_id_chirho(PRINT_VIA_SHOW_CHIRHO)?;
+        Some(CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(helper_id_chirho)),
+            arg_chirho: Box::new(show_chirho),
         })
     }
 }

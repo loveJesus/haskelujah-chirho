@@ -327,8 +327,11 @@ impl DictPassCtxChirho {
             .or_else(|| self.evidenced_applied_head_chirho(id_chirho))
     }
 
-    /// [`Self::evidenced_value_chirho`] where the binding's dictionaries are in scope:
-    /// an own-key aggregate (row 586) or extremum (row 612) is served by them.
+    /// [`Self::evidenced_value_chirho`] where the binding's dictionaries are in scope: a
+    /// first-class `print` at an indexed own `Show` key (row 698), then an own-key aggregate
+    /// (row 586) or extremum (row 612), is served by them. Only this value path serves the own
+    /// `print`. An applied `print` consumes its proof on its own path (row 697), so
+    /// [`Self::evidenced_applied_head_in_scope_chirho`] never rebuilds it.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn evidenced_value_in_scope_chirho(
         &self,
@@ -336,9 +339,11 @@ impl DictPassCtxChirho {
         dict_vars_chirho: &HashMap<String, CoreIdChirho>,
         evidence_classes_chirho: &HashSet<String>,
     ) -> Option<CoreExprChirho> {
-        self.evidenced_value_chirho(id_chirho).or_else(|| {
-            self.own_evidenced_chirho(id_chirho, dict_vars_chirho, evidence_classes_chirho)
-        })
+        self.evidenced_value_chirho(id_chirho)
+            .or_else(|| self.own_print_function_chirho(id_chirho, dict_vars_chirho))
+            .or_else(|| {
+                self.own_evidenced_chirho(id_chirho, dict_vars_chirho, evidence_classes_chirho)
+            })
     }
 
     /// [`Self::evidenced_applied_head_chirho`] where the binding's dictionaries are in

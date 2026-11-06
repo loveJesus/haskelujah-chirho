@@ -4,8 +4,11 @@
 //!
 //! Row 697 serves an applied `print` at an indexed own `Show` key through that parameter's
 //! `show`. A first-class `print` with the same proof, such as the one in `mapM_ print xs` inside
-//! `f :: Show a => [a] -> IO ()`, stayed unserved: the first-class path names only a concrete
-//! `$prim_Show_show_<key>` row, and it has no dictionaries in scope.
+//! `f :: Show a => [a] -> IO ()`, stayed unserved: the first-class path named only a concrete
+//! `$prim_Show_show_<key>` row. The measured baseline at main
+//! (`tmp-chirho/row698-gate-chirho/b04`) printed GHC's output on the interpreter. LLVM and
+//! Cranelift printed `97 98` for `'a' 'b'` and `1 0` for `True False`. A first-class `print`
+//! now takes the same proof as a value, over that parameter's `show`.
 //!
 //! Each probe compares every engine with GHC 9.14.1 in one assertion. A failing run therefore
 //! keeps each engine's exit status and stdout, or that engine's failure message:
@@ -15,7 +18,8 @@
 //!   first-class.
 //!
 //! Each program is embedded byte for byte from the child directory
-//! `first_class_show_print_chirho/`, and every `main` has the type `IO ()`.
+//! `first_class_show_print_chirho/`, and every `main` has the type `IO ()`. GHC 9.14.1 measured
+//! each one: `tmp-chirho/ghc-contract-refresh-chirho/first-class-show-print-r1-chirho`.
 //! workflow: print-show-evidence-chirho
 
 use haskelujah_driver::eval_source_with_machine_chirho;
@@ -27,15 +31,15 @@ use haskelujah_test_harness_chirho::native_chirho::{
 /// One engine's run: its exit status and stdout, or its failure message.
 type EngineRunChirho = (&'static str, Result<(i32, String), String>);
 
-/// P1 (sha256 49b2ad06). Predicted `'a'` then `'b'`; no GHC run yet.
+/// P1 (sha256 49b2ad06). GHC 9.14.1 prints `'a'` then `'b'`.
 const FIRST_CLASS_PRINT_CHAR_CHIRHO: &str =
     include_str!("first_class_show_print_chirho/first_class_print_char_chirho.hs");
 
-/// P2 (sha256 d64abb8c). Predicted `'a'`, `'b'`, `True`, `False`; no GHC run yet.
+/// P2 (sha256 d64abb8c). GHC 9.14.1 prints `'a'`, `'b'`, `True`, `False`.
 const TWO_SHOW_PREDICATES_CHIRHO: &str =
     include_str!("first_class_show_print_chirho/two_show_predicates_chirho.hs");
 
-/// P3 (sha256 92c45f93). Predicted `own hello`, `own x`, `own y`, `'a'`, `'b'`; no GHC run yet.
+/// P3 (sha256 92c45f93). GHC 9.14.1 prints `own hello`, `own x`, `own y`, `'a'`, `'b'`.
 const QUALIFIED_PRINT_BESIDE_OWN_CHIRHO: &str =
     include_str!("first_class_show_print_chirho/qualified_print_beside_own_chirho.hs");
 

@@ -534,8 +534,9 @@ fn a_proven_print_uses_only_body_backed_rows_chirho() {
 }
 
 /// A pass holding one `print` occurrence (id 22, canonical id 21) whose `Show` proof is
-/// `key_chirho`. `putStrLn` (id 23) has a body, `show`'s selector is id 24, the enclosing
-/// binding's dictionary is id 25 and `x` is id 26.
+/// `key_chirho`. `putStrLn` (id 23) and the first-class helper `$print_via_show_chirho`
+/// (id 27) have bodies, `show`'s selector is id 24, the enclosing binding's dictionary is
+/// id 25 and `x` is id 26.
 fn own_show_print_pass_chirho(key_chirho: &str) -> DictPassCtxChirho {
     let names_chirho = HashMap::from([
         (CoreIdChirho(21), "print".to_string()),
@@ -544,6 +545,7 @@ fn own_show_print_pass_chirho(key_chirho: &str) -> DictPassCtxChirho {
         (CoreIdChirho(24), "$sel_Show_show".to_string()),
         (CoreIdChirho(25), "$dShow_a".to_string()),
         (CoreIdChirho(26), "x".to_string()),
+        (CoreIdChirho(27), "$print_via_show_chirho".to_string()),
     ]);
     let mut pass_chirho = DictPassCtxChirho::new_chirho(100, names_chirho, HashMap::new());
     pass_chirho
@@ -560,6 +562,18 @@ fn own_show_print_pass_chirho(key_chirho: &str) -> DictPassCtxChirho {
         .generated_bindings_chirho
         .push(binding_chirho(23, "putStrLn"));
     pass_chirho
+        .generated_bindings_chirho
+        .push(binding_chirho(27, "$print_via_show_chirho"));
+    pass_chirho
+}
+
+/// `$print_via_show_chirho ($sel_Show_show $dShow_a)` in the ids of
+/// `own_show_print_pass_chirho`.
+fn own_show_print_function_chirho() -> CoreExprChirho {
+    app_chirho(
+        var_expr_chirho(27),
+        app_chirho(var_expr_chirho(24), var_expr_chirho(25)),
+    )
 }
 
 /// `putStrLn ($sel_Show_show $dShow_a x)` in the ids of `own_show_print_pass_chirho`.
@@ -575,7 +589,9 @@ fn own_show_printed_chirho() -> CoreExprChirho {
 
 /// Row 697: an applied `print` proved at the binding's indexed own `Show` key shows its
 /// argument through exactly that parameter's `show`. Before, no row named the key, and
-/// natively the generic Int-only `print` printed a Char as its code point.
+/// natively the generic Int-only `print` printed a Char as its code point. Row 698 keeps
+/// this applied form: with the first-class helper available too, it is still `putStrLn` of
+/// the parameter's `show`, never rebuilt as the helper applied to `x`.
 #[test]
 fn an_applied_print_at_an_indexed_own_show_key_takes_that_parameters_show_chirho() {
     let applied_chirho = app_chirho(var_expr_chirho(22), var_expr_chirho(26));
@@ -611,5 +627,43 @@ fn a_bare_or_absent_own_show_key_and_a_programs_own_print_stay_unserved_chirho()
         own_binder_pass_chirho.rewrite_method_refs_chirho(&applied_chirho, &dict_vars_chirho),
         own_show_printed_chirho(),
         "a program's own print keeps its binding"
+    );
+}
+
+/// Row 698: a first-class `print` proved at the binding's indexed own `Show` key is the
+/// print-via-show helper over exactly that parameter's `show`. Before, the first-class path
+/// named only concrete rows, so it reached the generic Int-only `print`.
+#[test]
+fn a_first_class_print_at_an_indexed_own_show_key_takes_that_parameters_show_chirho() {
+    let dict_vars_chirho = HashMap::from([("$own:0".to_string(), CoreIdChirho(25))]);
+    assert_eq!(
+        own_show_print_pass_chirho("$own:0")
+            .rewrite_method_refs_chirho(&var_expr_chirho(22), &dict_vars_chirho),
+        own_show_print_function_chirho(),
+    );
+}
+
+/// Row 698 keeps row 697's bounds for the first-class form: a bare own key, an indexed key
+/// whose parameter is not in scope, and a program's own `print` never take an own `show`.
+#[test]
+fn a_first_class_print_at_a_bare_or_absent_own_key_or_the_programs_own_stays_unserved_chirho() {
+    for (key_chirho, scope_key_chirho) in [("$own", "$own"), ("$own:0", "$own:1")] {
+        let dict_vars_chirho = HashMap::from([(scope_key_chirho.to_string(), CoreIdChirho(25))]);
+        assert_ne!(
+            own_show_print_pass_chirho(key_chirho)
+                .rewrite_method_refs_chirho(&var_expr_chirho(22), &dict_vars_chirho),
+            own_show_print_function_chirho(),
+            "first-class proof {key_chirho} with only {scope_key_chirho} in scope must stay unserved"
+        );
+    }
+    let mut own_binder_pass_chirho = own_show_print_pass_chirho("$own:0");
+    own_binder_pass_chirho
+        .module_bound_ids_chirho
+        .insert(CoreIdChirho(21));
+    let dict_vars_chirho = HashMap::from([("$own:0".to_string(), CoreIdChirho(25))]);
+    assert_ne!(
+        own_binder_pass_chirho.rewrite_method_refs_chirho(&var_expr_chirho(22), &dict_vars_chirho),
+        own_show_print_function_chirho(),
+        "a program's own first-class print keeps its binding"
     );
 }
