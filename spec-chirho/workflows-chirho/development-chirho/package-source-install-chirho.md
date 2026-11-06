@@ -74,11 +74,13 @@ library's first source directory, where builds discover it too.
 - The build path's `builtin_dependency_names_chirho` should read
   `haskelujah_package_chirho::BUILTIN_PACKAGE_NAMES_CHIRHO`. Until then a test pins the two
   lists equal.
-- Builds still collect dependency seeds best-effort (`collect_local_dependency_frontend_artifacts_chirho`
-  warns and skips). Install uses the strict mode, which returns the first missing or failing
-  direct or transitive dependency as its error.
-- `collect_package_deps_chirho` still keeps a library's bound and drops an executable's bound on
-  the same package. Only the library collector conjoins every bound.
+- `compile_cabal_project_chirho`, which compiles without linking, still collects dependency seeds
+  best-effort (`collect_local_dependency_frontend_artifacts_chirho` warns and skips). Install and
+  executable builds use the strict collector, which returns the first missing or failing direct or
+  transitive dependency as its error.
+- Executable builds gather bounds with `collect_build_package_deps_chirho`, which conjoins library
+  and executable bounds. `collect_package_deps_chirho`, which `compile_cabal_project_chirho` keeps,
+  still drops a later executable's bound on a package the library already names.
 
 ## Builtin versions (concrete missing metadata)
 
@@ -91,11 +93,18 @@ version for `base`, decided and recorded by its owner. Install cannot infer one.
 
 ## Linking dependency bodies (Unit B)
 
-`build_cabal_project_chirho` links the Core of every store dependency into each executable:
+`build_cabal_project_chirho` links the Core of every store dependency into each executable, at
+exactly the versions its strict build plan selects:
 
 ```mermaid
 flowchart TD
-  build["build_cabal_project_chirho"] --> linked["collect_linked_dependency_artifacts_chirho: strict, one compile per package"]
+  build["build_cabal_project_chirho"] --> gather["collect_build_package_deps_chirho: library and executable bounds conjoined"]
+  gather --> store["merge_local_dependency_store_chirho: index and store directories from one scan"]
+  store --> resolve{"resolve_build_deps_chirho: every reached bound holds?"}
+  resolve -- no --> refuseplan["error: dependency resolution failed, before anything compiles"]
+  resolve -- yes --> select{"StoreSelectionChirho::from_plan_chirho: one directory per planned version?"}
+  select -- no --> refusedir["error: planned version missing, or held twice"]
+  select -- yes --> linked["collect_linked_dependency_artifacts_chirho: compiles only planned directories, rechecks each reached bound"]
   linked --> once["compile_module_sources_once_chirho: typed seeds and Core from one SCC loop"]
   once --> sink["DependencyCoreChirho per package, dependencies first"]
   sink --> owners["dependency_module_owners_chirho: a module two packages define is refused"]
@@ -116,3 +125,13 @@ flowchart TD
   appends its own results and truncates them again, since compile results cannot be copied.
 - A dependency that fails to compile fails the build, because its body cannot be linked.
 - `compile_cabal_project_chirho`, which compiles without linking, keeps the best-effort seeds.
+- Strict resolution is the shared solver in its strict mode: `resolve_deps_chirho`, which
+  `compile_cabal_project_chirho` keeps, skips an unsatisfiable root with a warning and accepts a
+  version past an upper bound (allow-newer); `resolve_build_deps_chirho` does neither, for a
+  package resolved earlier as for a new one.
+- The solver does not backtrack. When a later dependent excludes the version it chose first, the
+  build is refused, even if an older version would satisfy both.
+- Builtins carry no declared version, so builds do not check their bounds (haskell-say's
+  `base >=4.7 && <5` builds), while install refuses such a bound.
+- A store package needs a version, from its .cabal file or its directory suffix. One without is not
+  in the index, so a build that needs it is refused.
