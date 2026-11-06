@@ -9,7 +9,10 @@ use std::time::Duration;
 
 use haskelujah_core_chirho::CoreModuleChirho;
 use haskelujah_driver_chirho::rts_snapshot_chirho::{RtsSnapshotChirho, rts_snapshot_chirho};
-use haskelujah_driver_chirho::{build_cabal_project_chirho, compile_source_chirho};
+use haskelujah_driver_chirho::{
+    FrontendOptionsChirho, build_cabal_project_chirho, compile_source_chirho,
+    compile_source_with_options_chirho,
+};
 use haskelujah_span_chirho::SourceMapChirho;
 
 use crate::process_chirho::{run_bounded_chirho, run_bounded_with_memory_chirho};
@@ -86,6 +89,27 @@ pub fn native_round_trip_chirho(
         input_chirho,
         Duration::from_secs(15),
     )
+}
+
+/// `native_round_trip_chirho` for an executable: `main` is checked as the program's IO entry
+/// (Report section 5, row 692). The value round trip above keeps the value purpose, so a
+/// pure entry still prints its result.
+/// workflow: language-features-chirho/fundep-generalization-chirho
+pub fn native_program_round_trip_chirho(
+    source_chirho: &str,
+    backend_chirho: NativeBackendChirho,
+    input_chirho: &str,
+) -> Result<(i32, String), String> {
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let compiled_chirho = compile_source_with_options_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "Main.hs",
+        &FrontendOptionsChirho::for_program_chirho("main"),
+    )
+    .map_err(|diagnostics_chirho| format!("frontend failed: {diagnostics_chirho:?}"))?;
+    let artifact_chirho = native_artifact_chirho(&compiled_chirho.core_chirho, backend_chirho)?;
+    native_artifact_round_trip_chirho(artifact_chirho, input_chirho, Duration::from_secs(15))
 }
 
 /// A workload-specific execution deadline, without weakening stage failures,

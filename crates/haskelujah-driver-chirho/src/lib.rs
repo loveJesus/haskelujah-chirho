@@ -612,6 +612,7 @@ pub fn compile_source_with_search_path_chirho(
             file_name_chirho,
             search_dir_chirho,
             checked_path_chirho: None,
+            program_entry_chirho: None,
         },
     )
 }
@@ -845,6 +846,34 @@ pub fn compile_source_file_with_search_path_chirho(
             file_name_chirho: &file_name_chirho,
             search_dir_chirho,
             checked_path_chirho: Some(checked_path_chirho),
+            program_entry_chirho: None,
+        },
+    )
+}
+
+/// `compile_source_file_with_search_path_chirho` for an executable: the checked file is the
+/// program's root, and `entry_chirho` its IO entry (Report section 5, row 692). The CLI's
+/// compile asks for this; library and check callers keep the wrapper above.
+/// workflow: language-features-chirho/fundep-generalization-chirho
+pub fn compile_program_file_with_search_path_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    checked_path_chirho: &Path,
+    search_dir_chirho: &Path,
+    entry_chirho: &str,
+) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
+    let file_name_chirho = checked_path_chirho
+        .file_name()
+        .unwrap_or(checked_path_chirho.as_os_str())
+        .to_string_lossy();
+    compile_source_with_search_context_chirho(
+        source_chirho,
+        source_map_chirho,
+        SourceSearchContextChirho {
+            file_name_chirho: &file_name_chirho,
+            search_dir_chirho,
+            checked_path_chirho: Some(checked_path_chirho),
+            program_entry_chirho: Some(entry_chirho),
         },
     )
 }
@@ -858,6 +887,7 @@ fn compile_source_with_search_context_chirho(
         file_name_chirho,
         search_dir_chirho,
         checked_path_chirho,
+        program_entry_chirho,
     } = context_chirho;
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
         source_map_chirho,
@@ -928,13 +958,23 @@ fn compile_source_with_search_context_chirho(
         },
     )?;
 
-    let frontend_result_chirho = run_frontend_with_type_synonyms_and_type_families_chirho(
+    // The root runs under the caller's purpose; the siblings above lend interfaces only.
+    let root_class_env_chirho =
+        haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho();
+    let frontend_result_chirho = run_frontend_with_options_chirho(
         source_chirho,
         file_id_chirho,
-        &all_ifaces_chirho,
-        &imported_types_chirho,
-        &imported_type_synonyms_chirho,
-        &imported_type_families_chirho,
+        FrontendImportsChirho {
+            ifaces_chirho: &all_ifaces_chirho,
+            types_chirho: &imported_types_chirho,
+            type_synonyms_chirho: &imported_type_synonyms_chirho,
+            type_families_chirho: &imported_type_families_chirho,
+            class_env_chirho: &root_class_env_chirho,
+        },
+        &FrontendOptionsChirho {
+            program_entry_chirho: program_entry_chirho.map(str::to_string),
+            ..FrontendOptionsChirho::default()
+        },
     )?;
 
     let FrontendResultChirho {
@@ -978,8 +1018,39 @@ pub fn eval_source_file_outcome_chirho(
     )
 }
 
+/// Run a program file as an executable: its `entry_chirho` binding is the program's IO entry
+/// (Report section 5, row 692). The CLI's run asks for this; `eval_source_file_outcome_chirho`
+/// keeps the value purpose for any other caller.
+/// workflow: language-features-chirho/fundep-generalization-chirho
+pub fn run_program_file_outcome_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    checked_path_chirho: &Path,
+    entry_chirho: &str,
+) -> Result<stg_lower_chirho::RunOutcomeChirho, String> {
+    let search_dir_chirho = checked_path_chirho
+        .parent()
+        .filter(|parent_chirho| !parent_chirho.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let compile_result_chirho = compile_program_file_with_search_path_chirho(
+        source_chirho,
+        source_map_chirho,
+        checked_path_chirho,
+        search_dir_chirho,
+        entry_chirho,
+    )
+    .map_err(|diagnostics_chirho| format!("compilation error: {diagnostics_chirho:?}"))?;
+    stg_lower_chirho::lower_and_run_outcome_chirho(
+        &compile_result_chirho.core_chirho,
+        Some(entry_chirho),
+        compile_result_chirho.newtype_cons_chirho,
+    )
+}
+
 struct SourceSearchContextChirho<'source_chirho> {
     file_name_chirho: &'source_chirho str,
     search_dir_chirho: &'source_chirho Path,
     checked_path_chirho: Option<&'source_chirho Path>,
+    /// The root's program entry; `None` for library and check purposes (row 692).
+    program_entry_chirho: Option<&'source_chirho str>,
 }

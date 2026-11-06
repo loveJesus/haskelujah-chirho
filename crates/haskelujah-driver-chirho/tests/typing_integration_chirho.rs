@@ -1,10 +1,12 @@
 // For God so loved the world that he gave his only begotten Son, that whoever
 // believes in him should not perish but have eternal life. — John 3:16
 
-use haskelujah_driver::{compile_source_chirho, eval_source_with_machine_chirho};
+use haskelujah_driver::{
+    FrontendOptionsChirho, compile_source_chirho, eval_source_outcome_with_options_chirho,
+};
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_test_harness_chirho::native_chirho::{
-    NativeBackendChirho, native_round_trip_chirho,
+    NativeBackendChirho, native_program_round_trip_chirho,
 };
 
 // A test crate root's `mod` resolves beside the root file, so the submodule
@@ -115,14 +117,17 @@ fn checks_like_ghc_chirho(file_name_chirho: &str, source_chirho: &str) {
     }
 }
 
-/// The interpreter, then LLVM and Cranelift, each print exactly GHC's output.
+/// The interpreter, then LLVM and Cranelift, each print exactly GHC's output. Each compiles
+/// the program as an executable, whose `main` is its IO entry (row 692).
 fn assert_prints_everywhere_chirho(file_name_chirho: &str, source_chirho: &str, ghc_chirho: &str) {
-    let (_, machine_chirho) = eval_source_with_machine_chirho(
+    let (_, machine_chirho) = eval_source_outcome_with_options_chirho(
         source_chirho,
         &mut SourceMapChirho::new_chirho(),
         file_name_chirho,
         None,
+        &FrontendOptionsChirho::for_program_chirho("main"),
     )
+    .and_then(|outcome_chirho| outcome_chirho.into_result_chirho())
     .unwrap_or_else(|error_chirho| panic!("{file_name_chirho}: interpreter: {error_chirho}"));
     assert_eq!(
         machine_chirho.io_output_chirho, ghc_chirho,
@@ -133,7 +138,7 @@ fn assert_prints_everywhere_chirho(file_name_chirho: &str, source_chirho: &str, 
         NativeBackendChirho::CraneliftChirho,
     ] {
         assert_eq!(
-            native_round_trip_chirho(source_chirho, backend_chirho, "").unwrap_or_else(
+            native_program_round_trip_chirho(source_chirho, backend_chirho, "").unwrap_or_else(
                 |error_chirho| panic!("{file_name_chirho}: {backend_chirho:?}: {error_chirho}")
             ),
             (0, ghc_chirho.to_string()),
@@ -807,17 +812,16 @@ main = case valueChirho of
     assert_execution_chirho(source_chirho, "19\n");
 }
 
+/// Runs the program as an executable on every engine; `main` is its IO entry (row 692).
 fn assert_execution_chirho(source_chirho: &str, expected_chirho: &str) {
-    use haskelujah_test_harness_chirho::native_chirho::{
-        NativeBackendChirho, native_round_trip_chirho,
-    };
-
-    let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(
+    let (_, machine_chirho) = eval_source_outcome_with_options_chirho(
         source_chirho,
         &mut SourceMapChirho::new_chirho(),
         "TypeOrderChirho.hs",
         None,
+        &FrontendOptionsChirho::for_program_chirho("main"),
     )
+    .and_then(|outcome_chirho| outcome_chirho.into_result_chirho())
     .expect("the GHC-accepted signature applications must compile and run");
     assert_eq!(machine_chirho.io_output_chirho, expected_chirho);
     for backend_chirho in [
@@ -825,7 +829,7 @@ fn assert_execution_chirho(source_chirho: &str, expected_chirho: &str) {
         NativeBackendChirho::CraneliftChirho,
     ] {
         let (status_chirho, output_chirho) =
-            native_round_trip_chirho(source_chirho, backend_chirho, "")
+            native_program_round_trip_chirho(source_chirho, backend_chirho, "")
                 .expect("bounded native compile, link and execution must succeed");
         assert_eq!(status_chirho, 0, "{backend_chirho:?}");
         assert_eq!(output_chirho, expected_chirho, "{backend_chirho:?}");

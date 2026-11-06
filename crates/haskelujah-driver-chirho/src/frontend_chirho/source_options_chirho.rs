@@ -13,6 +13,9 @@ use crate::DeferralPolicyChirho;
 pub(crate) struct FrontendPolicyChirho {
     pub(crate) deferral_chirho: DeferralPolicyChirho,
     pub(crate) extensions_chirho: EffectiveExtensionsChirho,
+    /// The caller's program entry for this module as the program root; never a header's
+    /// (row 692). See `FrontendOptionsChirho::program_entry_chirho`.
+    pub(crate) program_entry_chirho: Option<String>,
 }
 
 impl FrontendPolicyChirho {
@@ -34,6 +37,7 @@ impl FrontendPolicyChirho {
                 &module_options_chirho,
             ),
             extensions_chirho: EffectiveExtensionsChirho::from_entries_chirho(extensions_chirho),
+            program_entry_chirho: None,
         }
     }
 }

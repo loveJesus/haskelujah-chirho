@@ -30,18 +30,52 @@
 //! - Ownership: a program's own class spelled `Num` is never the compiler's numeric class.
 //!   A use may fix it; nothing defaults it.
 //!
+//! - Program entries: the all-engine helpers compile each program as an executable, so its
+//!   `main` must be an IO action (Report section 5). The entry's role fixes a restricted
+//!   entry's monad, and pure entries are refused, under NoMonomorphismRestriction too.
+//!
 //! Open by name: the restriction's first brick covers top-level function-syntax and simple
-//! pattern bindings. Three controls stay RED until their own bricks land (gpt_chirho #32518):
-//! - The executable entry's `IO t` obligation needs an explicit program purpose from the
-//!   caller (`the_executable_entry_role_makes_a_bare_return_io_chirho`).
+//! pattern bindings. These controls stay RED until their own bricks land (gpt_chirho #32518,
+//! #32531):
 //! - Non-simple pattern bindings are not yet restricted
 //!   (`a_pattern_binding_stays_restricted_despite_signatures_chirho`).
-//! - The standard seed's instance contexts and tuple instances carry no compiler proof, so a
-//!   structured residual such as `Show [t]` cannot reach `Show t` under the restriction's
-//!   proof gate (`a_restricted_list_reduces_through_its_instance_chirho`).
+//! - A polymorphic entry, overloaded by its signature or by NoMonomorphismRestriction, passes
+//!   typing at IO. Its Core binding still takes a dictionary that the entry wrapper never
+//!   supplies, so its action does not run. That needs a typed entry instantiation carried to
+//!   the wrapper (`an_overloaded_entry_runs_at_its_instantiated_type_chirho`,
+//!   `an_unrestricted_entry_runs_at_its_instantiated_type_chirho`).
 //! workflow: language-features-chirho/fundep-generalization-chirho
 
+use haskelujah_driver::{FrontendOptionsChirho, compile_source_with_options_chirho};
+use haskelujah_span_chirho::SourceMapChirho;
+
 use super::{assert_prints_everywhere_chirho, rejected_like_ghc_chirho};
+
+/// GHC rejects the program. Compiled as an executable, whose `main` is its IO entry, so must
+/// the compiler, for every named reason.
+fn rejected_as_program_like_ghc_chirho(
+    source_chirho: &str,
+    file_name_chirho: &str,
+    reasons_chirho: &[&str],
+) {
+    match compile_source_with_options_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        file_name_chirho,
+        &FrontendOptionsChirho::for_program_chirho("main"),
+    ) {
+        Ok(_) => panic!("{file_name_chirho}: GHC rejects this program; we accepted it"),
+        Err(error_chirho) => {
+            let message_chirho = error_chirho.to_string();
+            for reason_chirho in reasons_chirho {
+                assert!(
+                    message_chirho.contains(reason_chirho),
+                    "{file_name_chirho}: rejected, but not for `{reason_chirho}`: {message_chirho}"
+                );
+            }
+        }
+    }
+}
 
 /// The function binding is generalized; the unsigned entry is restricted to `IO Integer`.
 const RESTRICTED_IO_ENTRY_CHIRHO: &str =
@@ -99,6 +133,22 @@ const DECLARED_EMPTY_DEFAULT_CHIRHO: &str =
     include_str!("refused_chirho/declared_empty_default_chirho.hs");
 /// An unused `return` in a library module: no default and no entry role.
 const UNRESOLVED_MONAD_CHIRHO: &str = include_str!("refused_chirho/unresolved_monad_chirho.hs");
+/// NoMonomorphismRestriction `main = return 7`: the entry's role instantiates it at IO.
+const NO_RESTRICTION_RETURN_ENTRY_CHIRHO: &str =
+    include_str!("accepted_chirho/no_restriction_return_entry_chirho.hs");
+/// NoMonomorphismRestriction `main = print 7 >> return 7`: GHC prints 7.
+const NO_RESTRICTION_PRINTING_ENTRY_CHIRHO: &str =
+    include_str!("accepted_chirho/no_restriction_printing_entry_chirho.hs");
+/// `main :: Num a => IO a`: GHC instantiates and defaults it, then prints 1.
+const OVERLOADED_ENTRY_CHIRHO: &str = include_str!("accepted_chirho/overloaded_entry_chirho.hs");
+/// `main = 7` as a program: no IO action.
+const PURE_PROGRAM_ENTRY_CHIRHO: &str = include_str!("refused_chirho/pure_program_entry_chirho.hs");
+/// `main :: Int` as a program: the signature does not make it an action.
+const SIGNED_PURE_PROGRAM_ENTRY_CHIRHO: &str =
+    include_str!("refused_chirho/signed_pure_program_entry_chirho.hs");
+/// NoMonomorphismRestriction `main = 7` as a program: no `Num (IO t)` instance.
+const NO_RESTRICTION_PURE_ENTRY_CHIRHO: &str =
+    include_str!("refused_chirho/no_restriction_pure_entry_chirho.hs");
 
 #[test]
 fn a_restricted_io_entry_runs_its_action_everywhere_chirho() {
@@ -269,5 +319,55 @@ fn an_unused_restricted_return_has_no_monad_default_chirho() {
         UNRESOLVED_MONAD_CHIRHO,
         "unresolved_monad_chirho.hs",
         &["Monad"],
+    );
+}
+
+#[test]
+fn an_unrestricted_return_entry_is_instantiated_at_io_chirho() {
+    assert_prints_everywhere_chirho(
+        "no_restriction_return_entry_chirho.hs",
+        NO_RESTRICTION_RETURN_ENTRY_CHIRHO,
+        "",
+    );
+}
+
+#[test]
+fn an_unrestricted_entry_runs_at_its_instantiated_type_chirho() {
+    assert_prints_everywhere_chirho(
+        "no_restriction_printing_entry_chirho.hs",
+        NO_RESTRICTION_PRINTING_ENTRY_CHIRHO,
+        "7\n",
+    );
+}
+
+#[test]
+fn an_overloaded_entry_runs_at_its_instantiated_type_chirho() {
+    assert_prints_everywhere_chirho("overloaded_entry_chirho.hs", OVERLOADED_ENTRY_CHIRHO, "1\n");
+}
+
+#[test]
+fn a_pure_program_entry_is_refused_chirho() {
+    rejected_as_program_like_ghc_chirho(
+        PURE_PROGRAM_ENTRY_CHIRHO,
+        "pure_program_entry_chirho.hs",
+        &["IO"],
+    );
+}
+
+#[test]
+fn a_signed_pure_program_entry_is_refused_chirho() {
+    rejected_as_program_like_ghc_chirho(
+        SIGNED_PURE_PROGRAM_ENTRY_CHIRHO,
+        "signed_pure_program_entry_chirho.hs",
+        &["IO"],
+    );
+}
+
+#[test]
+fn an_unrestricted_pure_program_entry_is_refused_chirho() {
+    rejected_as_program_like_ghc_chirho(
+        NO_RESTRICTION_PURE_ENTRY_CHIRHO,
+        "no_restriction_pure_entry_chirho.hs",
+        &["Num"],
     );
 }

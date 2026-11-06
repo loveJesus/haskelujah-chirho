@@ -80,6 +80,8 @@ mod equality_normalization_chirho;
 pub(crate) use equality_normalization_chirho::{
     EqualityBudgetChirho, EqualityNormalizationExhaustedChirho, EqualityNormalizationViewChirho,
 };
+#[path = "infer_chirho/restriction_chirho/entry_obligation_chirho.rs"]
+mod entry_obligation_chirho;
 #[cfg(test)]
 #[path = "infer_chirho/solving_chirho/equality_normalization_tests_chirho.rs"]
 mod equality_normalization_tests_chirho;
@@ -821,6 +823,7 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
             promotion_scope_chirho: None,
             family_scope_chirho: None,
             type_constructor_scope_chirho: None,
+            entry_obligation_chirho: None,
         },
     )
 }
@@ -852,6 +855,10 @@ pub struct InferenceImportContextChirho<'imports_chirho> {
     pub family_scope_chirho: Option<Arc<TypeFamilyScopeChirho>>,
     pub type_constructor_scope_chirho:
         Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
+    /// The program entry this module, the caller's program root, must define as an IO action
+    /// (Report section 5). Only an executable caller names it. A value, library or check
+    /// purpose, and every dependency, pass `None` (row 692).
+    pub entry_obligation_chirho: Option<&'imports_chirho str>,
 }
 
 /// Run type inference on a module with everything it imports.
@@ -892,6 +899,7 @@ fn infer_module_with_elaboration_state_chirho(
         promotion_scope_chirho,
         family_scope_chirho,
         type_constructor_scope_chirho,
+        entry_obligation_chirho,
     } = context_chirho;
     let mut ctx_chirho =
         InferCtxChirho::new_with_imported_class_env_chirho(imported_class_env_chirho);
@@ -1003,6 +1011,11 @@ fn infer_module_with_elaboration_state_chirho(
     if ctx_chirho.has_non_deferrable_failure_chirho() {
         return ctx_chirho.finish_chirho();
     }
+    // The caller's program entry must be an IO action: checked after inference and before any
+    // final default, so the entry's role, never a default, fixes its monad (row 692).
+    let entry_subst_chirho =
+        ctx_chirho.require_program_entry_chirho(entry_obligation_chirho, &subst_chirho);
+    let subst_chirho = entry_subst_chirho.compose_chirho(&subst_chirho);
     // Rule 2 of the monomorphism restriction, at the module's end only, before the legacy
     // defaults: instance-method checks reach check_deferred_preds_chirho mid-module (row 692).
     let restricted_subst_chirho = ctx_chirho.resolve_restricted_residuals_chirho(&subst_chirho);

@@ -166,6 +166,7 @@ fn adopted_latched_failure_is_fatal_without_another_argument_chirho() {
                 promotion_scope_chirho: None,
                 family_scope_chirho: None,
                 type_constructor_scope_chirho: Some(Arc::new(scope_chirho)),
+                entry_obligation_chirho: None,
             },
             checked_chirho.state_chirho,
         );

@@ -95,13 +95,14 @@ pub(crate) fn typecheck_source_with_ifaces_and_options_chirho(
         effective_source_chirho,
     );
     let file_id_chirho = source_file_chirho.file_id_chirho();
-    let policy_chirho = FrontendPolicyChirho::resolve_chirho(
+    let mut policy_chirho = FrontendPolicyChirho::resolve_chirho(
         &options_chirho.ghc_options_chirho,
         [
             original_header_chirho,
             header_pragmas_chirho(effective_source_chirho, file_id_chirho),
         ],
     );
+    policy_chirho.program_entry_chirho = options_chirho.program_entry_chirho.clone();
 
     let mut builtin_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     let mut imported_types_chirho = std::collections::HashMap::new();

@@ -153,6 +153,16 @@ turns it off.
 
 Code: `crates/haskelujah-typing-chirho/src/infer_chirho/restriction_chirho/restriction_chirho.rs`.
 
+The program entry (Report section 5) is checked in `entry_obligation_chirho.rs` beside it. The
+caller's purpose decides whether there is one:
+- An executable names it: `FrontendOptionsChirho::program_entry_chirho`, set by the CLI's run
+  and compile and by the all-engine executable test helpers.
+- Value, library and check purposes, and every dependency, have none.
+
+The obligation unifies the root's entry with `IO t` after inference and before Rule 2, and
+reports a missing entry, a non-action entry, or an instantiated wanted that no instance can
+satisfy.
+
 ```mermaid
 flowchart TD
     L[literal producer: Int Num, Float Fractional, OverloadedStrings IsString] --> LP{RebindableSyntax or MagicHash in effect?}
@@ -173,7 +183,8 @@ flowchart TD
 Open by name:
 - non-simple pattern bindings, which are always restricted;
 - nested bindings;
-- the executable entry's `IO t` obligation, which needs an explicit program purpose from the
-  caller;
+- the Core dictionaries of a polymorphic program entry: an entry overloaded by its signature
+  or by NoMonomorphismRestriction passes the entry obligation at IO, but the entry wrapper
+  does not yet apply its instantiated dictionaries;
 - primitive literals under MagicHash, and RebindableSyntax's rebound literals, which stay
   unproven.
