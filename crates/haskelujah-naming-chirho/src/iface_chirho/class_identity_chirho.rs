@@ -97,8 +97,11 @@ const fn methodless_entry_chirho(
 
 /// The classes naming proves. All but one are those the kind pass may judge (#31175,
 /// #31176): monomorphic in GHC 9.14.1, with a real method every builtin entry lists. Read
-/// (its builtin entry lists `read`, not a method) and Real, RealFrac and RealFloat (no
-/// methods listed) stay out. The one methodless entry is the poly-kinded `Typeable` (#32090),
+/// (its builtin entry lists `read`, not a method) stays out. Real, RealFrac and RealFloat take
+/// their witnesses from the class table's GHC member sets (#32156). Their typing seed
+/// (class_chirho.rs) lists no method, so the witness proves which class a spelling names, never
+/// that the class environment implements its methods. The one methodless entry is the
+/// poly-kinded `Typeable` (#32090),
 /// whose hidden kind binder the kind pass never judges, and whose providers are the three
 /// builtin interfaces that export it, each measured importing it under GHC 9.14.1. The
 /// providers are a draft scanned from the builtin sources, held to the supplier guard and to
@@ -194,6 +197,27 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         "GHC.Float",
         "Floating",
         "pi",
+        &["Prelude", "GHC.Float"],
+    ),
+    entry_chirho(
+        CompilerClassChirho::RealChirho,
+        "GHC.Real",
+        "Real",
+        "toRational",
+        &["Prelude", "GHC.Real"],
+    ),
+    entry_chirho(
+        CompilerClassChirho::RealFracChirho,
+        "GHC.Real",
+        "RealFrac",
+        "properFraction",
+        &["Prelude", "GHC.Real"],
+    ),
+    entry_chirho(
+        CompilerClassChirho::RealFloatChirho,
+        "GHC.Float",
+        "RealFloat",
+        "floatRadix",
         &["Prelude", "GHC.Float"],
     ),
     entry_chirho(

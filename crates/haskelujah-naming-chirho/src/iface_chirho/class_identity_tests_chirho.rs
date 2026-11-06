@@ -538,3 +538,49 @@ fn each_measured_provider_proves_typeable_through_its_import_list_chirho() {
         );
     }
 }
+
+#[test]
+fn each_measured_real_class_provider_proves_its_class_chirho() {
+    // #32156 (t12760-route r2, r3): GHC 9.14.1 exports Real and RealFrac from GHC.Real,
+    // RealFloat from GHC.Float, and all three from the Prelude, each with its member set.
+    let ifaces_chirho = builtin_module_ifaces_chirho();
+    for (provider_chirho, class_name_chirho, identity_chirho) in [
+        ("Prelude", "Real", CompilerClassChirho::RealChirho),
+        ("Prelude", "RealFrac", CompilerClassChirho::RealFracChirho),
+        ("Prelude", "RealFloat", CompilerClassChirho::RealFloatChirho),
+        ("GHC.Real", "Real", CompilerClassChirho::RealChirho),
+        ("GHC.Real", "RealFrac", CompilerClassChirho::RealFracChirho),
+        (
+            "GHC.Float",
+            "RealFloat",
+            CompilerClassChirho::RealFloatChirho,
+        ),
+    ] {
+        let qualified_chirho = build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![],
+                vec![import_chirho(provider_chirho, Some("OwnedChirho"), true)],
+            ),
+            &ifaces_chirho,
+        );
+        assert_eq!(
+            qualified_chirho
+                .class_chirho(&format!("OwnedChirho.{class_name_chirho}"))
+                .map(|class_chirho| class_chirho.identity_chirho),
+            Some(identity_chirho),
+            "{provider_chirho}.{class_name_chirho}"
+        );
+        // The module's own class of that name excludes the builtin one.
+        let local_chirho = build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![class_decl_chirho(class_name_chirho)],
+                vec![import_chirho(provider_chirho, None, false)],
+            ),
+            &ifaces_chirho,
+        );
+        assert!(
+            !proven_chirho(&local_chirho, class_name_chirho),
+            "{provider_chirho}.{class_name_chirho}"
+        );
+    }
+}

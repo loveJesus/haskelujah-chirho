@@ -175,6 +175,10 @@ flowchart TD
   `AgeChirho 5`, `AgeChirho 7`). The module's own `class Typeable` keeps genuine GND (`int`),
   and without GND it is GHC-82023 (r3). Declaration validity's strategy rules still judge the
   clause.
+- Real, RealFrac and RealFloat derive through GND once naming proves them (T12760, #32156). Each
+  GND dictionary takes its superclass fields from the newtype's own dictionaries or, failing
+  that, the representation's. So Num/Ord under Real, Fractional under RealFrac and Floating
+  under RealFloat serve a derived Double newtype on every engine (t12760-route r2).
 - Root's fresh GHC 9.14.1 contracts (A1-A3, B1-B4, C1-C5, D1-D2, O1-O4) pin the policy: a
   written strategy needs DerivingStrategies or DerivingVia; anyclass needs DeriveAnyClass; an
   unwritten non-stock class needs DeriveAnyClass, or GND on a newtype; DeriveAnyClass wins over

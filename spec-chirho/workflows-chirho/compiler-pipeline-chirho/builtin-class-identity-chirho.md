@@ -40,15 +40,15 @@ Exclusion is monotonic: no later import restores an excluded spelling. Spellings
 
 ## Table
 
-The table holds twenty-two classes. Twenty-one are monomorphic in GHC 9.14.1, each with a witness method:
+The table holds twenty-five classes. Twenty-four are monomorphic in GHC 9.14.1, each with a witness method:
 
-- **`Type -> Constraint`:** Eq, Ord, Show, Enum, Bounded, Num, Integral, Fractional, Floating, Semigroup, Monoid.
+- **`Type -> Constraint`:** Eq, Ord, Show, Enum, Bounded, Num, Integral, Fractional, Floating, Real, RealFrac, RealFloat, Semigroup, Monoid.
 - **`(Type -> Type) -> Constraint`:** Functor, Applicative, Monad, MonadFail, Foldable, Traversable, Alternative, MonadFix, MonadIO.
 - **`((Type -> Type) -> Type -> Type) -> Constraint`:** MonadTrans.
 
 The twenty-second is `Typeable` (`forall k. k -> Constraint`), with no method to list. Its providers are Data.Typeable, Type.Reflection and Data.Data, the three builtin interfaces that export it, and each one's `import M (Typeable)` was measured under GHC 9.14.1 (typeable-route r2).
 
-Read, Real, RealFrac and RealFloat are left out, because their builtin entries list no real method. The kind environment's spelling-based `Typeable` and `Generic` kinds remain: K01's `Typeable` has a hidden kind binder, so it seeds no kind.
+Read is left out, because its builtin entry lists `read`, not a method. Real, RealFrac and RealFloat take their witnesses (`toRational`, `properFraction`, `floatRadix`) from the class table's GHC 9.14.1 member sets (#32156): Prelude and GHC.Real provide Real and RealFrac, Prelude and GHC.Float provide RealFloat, each measured (t12760-route r2 and r3). Their typing seed (`class_chirho.rs`) lists no method, so the witness proves which class a spelling names, not that the class environment implements their methods: the builtin functions of those names still serve them, a named gap. The kind environment's spelling-based `Typeable` and `Generic` kinds remain: K01's `Typeable` has a hidden kind binder, so it seeds no kind.
 
 ## Consumer
 
@@ -79,7 +79,7 @@ A variable head, an imported constructor (its kind is learned from a use) and an
   - a local homonym;
   - the direct path;
   - the proven `Typeable`, which seeds no kind.
-- **Driver:** `declarations_chirho/builtin_class_kinds_chirho.rs`, with the GHC-measured holds and negatives and T5120 embedded byte for byte. The Typeable provider programs are in `declarations_chirho/typeable_route_chirho/`.
+- **Driver:** `declarations_chirho/builtin_class_kinds_chirho.rs`, with the GHC-measured holds and negatives and T5120 embedded byte for byte. The Typeable provider programs are in `declarations_chirho/typeable_route_chirho/`. The Real, RealFrac and RealFloat provider programs and their GND Double-newtype superclass-chain program are in `declarations_chirho/real_classes_chirho/`, beside T12760 checked from the corpus.
 - **GHC:** the `oracle-classes-chirho` set.
   - One supplier program per class and provider.
   - A `:kind` probe.

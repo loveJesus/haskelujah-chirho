@@ -11,11 +11,20 @@
 //! T3955 and T12734 derive Applicative and Monad by generalized newtype deriving; their
 //! derived heads apply every type parameter and stay unjudged, as only written instance
 //! heads are.
+//!
+//! The `real_classes_chirho` fixtures are the Real, RealFrac and RealFloat references byte for
+//! byte (t12760-route r2 and r3, #32156). The provider programs import each class with every
+//! member, qualified, from each measured provider; they must type-check, and their method
+//! bodies are no runtime claim. The chain program derives all three on a Double newtype through
+//! GND and reaches Num/Ord under Real, Fractional under RealFrac and Floating under RealFloat;
+//! GHC 9.14.1 prints `(MeterChirho 3.5,True)`, `MeterChirho 0.75` and `MeterChirho 4.0`. T12760,
+//! which GHC's all.T compiles with -O (measured here in GHC's -fno-code typecheck scope only),
+//! is checked from the corpus unchanged.
 //! workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
 
 use haskelujah_span_chirho::SourceMapChirho;
 
-use super::rejected_like_ghc_chirho;
+use super::{assert_prints_everywhere_chirho, rejected_like_ghc_chirho};
 
 /// GHC accepts the program, so the checker must too.
 fn checks_like_ghc_chirho(file_name_chirho: &str, source_chirho: &str) {
@@ -457,5 +466,59 @@ fn a_qualified_builtin_class_field_is_rejected_like_ghc_chirho() {
         CN05_QUALIFIED_SHOW_FIELD_CHIRHO,
         "CN05QualifiedShowFieldChirho.hs",
         &["expected a type", "is a constraint"],
+    );
+}
+
+const REAL_CLASS_PROVIDERS_CHIRHO: [(&str, &str); 6] = [
+    (
+        "RealProviderGhcRealChirho.hs",
+        include_str!("real_classes_chirho/real_provider_ghc_real_chirho.hs"),
+    ),
+    (
+        "RealFracProviderGhcRealChirho.hs",
+        include_str!("real_classes_chirho/real_frac_provider_ghc_real_chirho.hs"),
+    ),
+    (
+        "RealFloatProviderGhcFloatChirho.hs",
+        include_str!("real_classes_chirho/real_float_provider_ghc_float_chirho.hs"),
+    ),
+    (
+        "RealProviderOpenPreludeChirho.hs",
+        include_str!("real_classes_chirho/real_provider_open_prelude_chirho.hs"),
+    ),
+    (
+        "RealFracProviderOpenPreludeChirho.hs",
+        include_str!("real_classes_chirho/real_frac_provider_open_prelude_chirho.hs"),
+    ),
+    (
+        "RealFloatProviderOpenPreludeChirho.hs",
+        include_str!("real_classes_chirho/real_float_provider_open_prelude_chirho.hs"),
+    ),
+];
+const REAL_CHAIN_DOUBLE_NEWTYPE_CHIRHO: &str =
+    include_str!("real_classes_chirho/real_chain_double_newtype_chirho.hs");
+const T12760_CHIRHO: &str =
+    include_str!("../../../../../ghc-tests-chirho/typecheck-chirho/should_compile/T12760.hs");
+
+#[test]
+fn each_measured_real_class_provider_checks_like_ghc_chirho() {
+    for (file_name_chirho, source_chirho) in REAL_CLASS_PROVIDERS_CHIRHO {
+        checks_like_ghc_chirho(file_name_chirho, source_chirho);
+    }
+}
+
+#[test]
+fn t12760_derives_the_real_classes_through_gnd_chirho() {
+    // The phase 3 mover (#32156): naming now proves Real, RealFrac and RealFloat from the
+    // implicit Prelude, so class authority admits their GND.
+    checks_like_ghc_chirho("T12760.hs", T12760_CHIRHO);
+}
+
+#[test]
+fn a_gnd_double_newtype_serves_each_real_superclass_chain_everywhere_chirho() {
+    assert_prints_everywhere_chirho(
+        "RealChainDoubleNewtypeChirho.hs",
+        REAL_CHAIN_DOUBLE_NEWTYPE_CHIRHO,
+        "(MeterChirho 3.5,True)\nMeterChirho 0.75\nMeterChirho 4.0\n",
     );
 }

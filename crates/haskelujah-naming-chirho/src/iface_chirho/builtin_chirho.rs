@@ -27,7 +27,10 @@ use crate::type_exports_chirho::{
 };
 
 /// The builtin class table: each class's methods, which every builtin export of its name lists,
-/// and which mark that export a class. `Typeable` lists none (#32090).
+/// and which mark that export a class. `Typeable` lists none (#32090). Real, RealFrac and
+/// RealFloat list GHC 9.14.1's members, measured from each provider (t12760-route r2, r3). The
+/// builtin functions of those names serve them; their typing seed (class_chirho.rs) lists no
+/// method, a named gap (#32156).
 fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'static str]> {
     match class_name_chirho {
         "Eq" => Some(&["==", "/="]),
@@ -40,6 +43,24 @@ fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'s
             "pi", "exp", "log", "sqrt", "sin", "cos", "tan", "asin", "acos", "atan",
         ]),
         "Integral" => Some(&["div", "mod", "quot", "rem", "toInteger"]),
+        "Real" => Some(&["toRational"]),
+        "RealFrac" => Some(&["properFraction", "truncate", "round", "ceiling", "floor"]),
+        "RealFloat" => Some(&[
+            "floatRadix",
+            "floatDigits",
+            "floatRange",
+            "decodeFloat",
+            "encodeFloat",
+            "exponent",
+            "significand",
+            "scaleFloat",
+            "isNaN",
+            "isInfinite",
+            "isDenormalized",
+            "isNegativeZero",
+            "isIEEE",
+            "atan2",
+        ]),
         // GHC's eight Enum methods, so `Enum(..)` imports and hides each (row 671).
         "Enum" => Some(&[
             "succ",
