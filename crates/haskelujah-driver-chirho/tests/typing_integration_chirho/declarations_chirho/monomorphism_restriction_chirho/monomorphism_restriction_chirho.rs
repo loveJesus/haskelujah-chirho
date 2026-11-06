@@ -44,6 +44,9 @@
 //!   supplies, so its action does not run. That needs a typed entry instantiation carried to
 //!   the wrapper (`an_overloaded_entry_runs_at_its_instantiated_type_chirho`,
 //!   `an_unrestricted_entry_runs_at_its_instantiated_type_chirho`).
+//! - The Int/Double lambda control (`an_unsigned_lambda_binding_has_one_type_chirho`) also
+//!   meets the unifier's Int/Double widening, a separate unsoundness finding (gpt_chirho
+//!   #32611); its Int/Integer sibling isolates Rule 1.
 //!
 //! workflow: language-features-chirho/fundep-generalization-chirho
 
@@ -118,9 +121,13 @@ const RESTRICTED_AMBIGUOUS_MONOID_CHIRHO: &str =
     include_str!("refused_chirho/restricted_ambiguous_monoid_chirho.hs");
 /// The program's own `Num` is not a standard numeric class, so it has no default.
 const SOURCE_NUM_UNFIXED_CHIRHO: &str = include_str!("refused_chirho/source_num_unfixed_chirho.hs");
-/// An unsigned lambda-valued simple pattern binding has one type.
+/// An unsigned lambda-valued simple pattern binding has one type. At Int and Double it also
+/// meets the unifier's Int/Double widening (`unify_chirho.rs`), a separate unsoundness finding.
 const LAMBDA_SIMPLE_PATTERN_CHIRHO: &str =
     include_str!("refused_chirho/lambda_simple_pattern_chirho.hs");
+/// The same binding at Int and Integer, which are never unified: Rule 1 alone.
+const LAMBDA_INTEGER_PATTERN_CHIRHO: &str =
+    include_str!("refused_chirho/lambda_integer_pattern_chirho.hs");
 /// One unsigned simple pattern binding restricts its function-syntax partner.
 const MIXED_SCC_CHIRHO: &str = include_str!("refused_chirho/mixed_scc_chirho.hs");
 /// A non-simple pattern binding stays restricted despite signatures.
@@ -281,6 +288,15 @@ fn an_unsigned_lambda_binding_has_one_type_chirho() {
     rejected_like_ghc_chirho(
         LAMBDA_SIMPLE_PATTERN_CHIRHO,
         "lambda_simple_pattern_chirho.hs",
+        &[],
+    );
+}
+
+#[test]
+fn an_unsigned_lambda_binding_has_one_type_at_int_and_integer_chirho() {
+    rejected_like_ghc_chirho(
+        LAMBDA_INTEGER_PATTERN_CHIRHO,
+        "lambda_integer_pattern_chirho.hs",
         &[],
     );
 }
