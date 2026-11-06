@@ -877,21 +877,32 @@ fn append_rts_link_args_chirho(
         .arg("-lhaskelujah_rts");
 }
 
-/// Build the RTS if it is stale and take this link's private snapshot of it (row 568).
+/// Run the RTS build under the snapshot lock before every native link, a no-op when the archive
+/// is fresh, with the gate's locked, offline, two-job policy, then take this link's private
+/// snapshot of the archive (rows 568, 703).
 /// workflow: testing-chirho/native-fail-loud-chirho
 fn ensure_rts_staticlib_chirho() -> Result<RtsSnapshotChirho, String> {
     let workspace_root_chirho = workspace_root_chirho();
     rts_snapshot_chirho(&workspace_root_chirho.join("target").join("debug"), || {
         let cargo_status_chirho = Command::new("cargo")
             .current_dir(&workspace_root_chirho)
-            .args(["build", "-p", "haskelujah-rts", "--quiet"])
+            .args([
+                "build",
+                "--locked",
+                "--offline",
+                "-j",
+                "2",
+                "-p",
+                "haskelujah-rts",
+                "--quiet",
+            ])
             .status()
             .map_err(|e_chirho| format!("could not build haskelujah-rts: {}", e_chirho))?;
         if cargo_status_chirho.success() {
             Ok(())
         } else {
             Err(format!(
-                "cargo build -p haskelujah-rts failed with exit code {}",
+                "cargo build --locked --offline -j 2 -p haskelujah-rts failed with exit code {}",
                 cargo_status_chirho.code().unwrap_or(-1)
             ))
         }
