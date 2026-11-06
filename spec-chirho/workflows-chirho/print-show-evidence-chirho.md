@@ -14,6 +14,8 @@ flowchart TD
     occurrence_chirho --> join_chirho[Driver joins source-order occurrence id to evidence]
     join_chirho --> validate_chirho{Show constrains print's own scheme?}
     validate_chirho -->|no| fallback_chirho[Preserve canonical print path]
+    validate_chirho -->|"yes, applied at the binding's indexed own key $own:i (row 697)"| own_show_chirho["try_rewrite_own_show_print_chirho: putStrLn applied to $sel_Show_show of that parameter"]
+    own_show_chirho --> core_show_chirho
     validate_chirho -->|yes| instance_chirho{Concrete Show binding exists?}
     instance_chirho -->|no| materialize_chirho{Complete supported shape with backed leaves?}
     materialize_chirho -->|no| fallback_chirho
@@ -58,6 +60,20 @@ flowchart TD
   - Before this, the generic Int-only `print` printed every element with `showInt#`. Natively,
     that showed a Double's bits, a Bool as 1 or 0, a Char as its code point, and a String or a
     derived value as a heap word.
+- An applied `print` at the enclosing binding's indexed own `Show` key, such as `print x` inside
+  `f :: Show a => a -> IO ()`, shows through that parameter's `show` (row 697).
+  - The occurrence's proof is the own key `$own:i`, which no `$prim_Show_show_<key>` row names.
+    So it had reached the generic Int-only `print`, and natively a Char printed as its code
+    point.
+  - `try_rewrite_own_show_print_chirho` runs at the applied-print site, before the concrete-row
+    path. It gives `putStrLn ($sel_Show_show d x)`, where `d` is exactly `dict_vars[$own:i]`,
+    never another Show dictionary in scope.
+  - A program's own `print` keeps its binding.
+  - A bare own key, proved only through a superclass, stays unserved, and so does a first-class
+    `print`, whose caller has no dictionaries in scope.
+  - Controls: `occurrence_rows_tests_chirho.rs` (the rewrite and its bounds), and R2 in
+    `tests/typing_integration_chirho/declarations_chirho/monad_owned_dictionary_chirho.rs`
+    (`'a'` on every engine).
 - `sum` and `product` take their solved `Num` proof the same way (row 552).
   - An evidenced occurrence, applied or first-class, becomes
     `foldl $prim_Num_+_K ($prim_Num_fromInteger_K 0)`, or `*_K` from 1 for `product`.

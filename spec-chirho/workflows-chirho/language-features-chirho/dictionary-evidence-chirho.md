@@ -433,6 +433,18 @@ flowchart TD
   stub: another synonym, an application head (written `Maybe Int`, typed `(Maybe Int)`) and
   a later argument of a multi-parameter head. A head with type variables (written `T b`,
   typed `(T t0)`) is the generic-head rule's.
+- Applied list and tuple constructors key as their sugar (row 697, 2026-11-05).
+  - `m Int` at `m := []` resolves to the applied constructor `[] Int`. Unification equates it
+    with `[Int]`, but `concrete_evidence_key_chirho` spelled it `[] Int`. That names no row, so
+    natively `print` fell to its generic show ("no native Show instance for a boxed value").
+  - The applied list now keys exactly as the list does, in `concrete_evidence_key_chirho` and
+    `ground_list_key_chirho`. So does a fully saturated tuple constructor, recognized by
+    unification's own `collect_tuple_app_chirho`.
+  - A partly applied tuple constructor and an applied list over a variable earn no aggregate
+    key.
+  - Controls: `evidence_validity_tests_chirho.rs` (the keys), and R1 in
+    `tests/typing_integration_chirho/declarations_chirho/monad_owned_dictionary_chirho.rs`
+    (`[5,6]` on every engine).
   A whole key the checker proved is never replaced by the
   argument-shape guess, which reads the element off the syntax and collapses `[[Int]]` to
   `[Int]`. And a call receives a dictionary for EVERY predicate: where none can be built,

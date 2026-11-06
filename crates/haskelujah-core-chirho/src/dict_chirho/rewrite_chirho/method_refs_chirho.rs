@@ -308,6 +308,20 @@ impl DictPassCtxChirho {
                             );
                         }
                         if spine_args_chirho.len() == 1 {
+                            // An applied `print` at the binding's indexed own `Show` key
+                            // (row 697); every other proof takes the evidenced row below.
+                            if let Some(rewritten_print_chirho) = self
+                                .try_rewrite_own_show_print_chirho(
+                                    *head_id_chirho,
+                                    spine_args_chirho[0],
+                                    dict_vars_chirho,
+                                    evidence_classes_chirho,
+                                    local_type_keys_chirho,
+                                    local_instance_dicts_chirho,
+                                )
+                            {
+                                return rewritten_print_chirho;
+                            }
                             if let Some(rewritten_print_chirho) = self
                                 .try_rewrite_evidenced_print_chirho(
                                     *head_id_chirho,
@@ -1084,5 +1098,73 @@ impl DictPassCtxChirho {
                     .collect(),
             },
         }
+    }
+
+    /// An applied `print` at the enclosing binding's indexed own `Show` key, such as
+    /// `print x` inside `f :: Show a => a -> IO ()`, as `putStrLn` of that parameter's `show`
+    /// (row 697). The occurrence's proof is the binding's own dictionary, which no
+    /// `$prim_Show_show_<key>` row names. So `print` reached the generic Int-only binding,
+    /// and natively it printed a Char as its code point. The selector reads exactly the
+    /// indexed parameter, never another dictionary of the class. A program's own `print`
+    /// keeps its binding. A bare own key, proved only through a superclass, and a
+    /// first-class `print` stay unserved.
+    /// workflow: print-show-evidence-chirho
+    fn try_rewrite_own_show_print_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+        arg_chirho: &CoreExprChirho,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreExprChirho> {
+        if self.names_programs_own_binder_chirho(head_id_chirho) {
+            return None;
+        }
+        let (reference_name_chirho, _canonical_id_chirho) =
+            self.method_occurrence_canon_chirho.get(&head_id_chirho)?;
+        if reference_name_chirho
+            .rsplit('.')
+            .next()
+            .unwrap_or(reference_name_chirho)
+            != "print"
+        {
+            return None;
+        }
+        let (class_name_chirho, ty_key_chirho) =
+            self.occurrence_evidence_chirho.get(&head_id_chirho)?;
+        let bare_own_chirho =
+            haskelujah_typing_chirho::infer_chirho::own_dictionary_key_chirho(None);
+        if class_name_chirho != "Show"
+            || *ty_key_chirho == bare_own_chirho
+            || !haskelujah_typing_chirho::infer_chirho::is_own_dictionary_key_chirho(ty_key_chirho)
+        {
+            return None;
+        }
+        let dict_id_chirho = *dict_vars_chirho.get(ty_key_chirho)?;
+        let (selector_class_chirho, show_selector_id_chirho) =
+            self.method_selectors_chirho.get("show")?;
+        if selector_class_chirho != "Show" {
+            return None;
+        }
+        let put_str_ln_id_chirho = self.lookup_compiler_owned_name_id_chirho("putStrLn")?;
+        let show_chirho = CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(*show_selector_id_chirho)),
+            arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
+        };
+        let shown_arg_chirho = CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(show_chirho),
+            arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
+                arg_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_type_keys_chirho,
+                local_instance_dicts_chirho,
+            )),
+        };
+        Some(CoreExprChirho::AppChirho {
+            fun_chirho: Box::new(CoreExprChirho::VarChirho(put_str_ln_id_chirho)),
+            arg_chirho: Box::new(shown_arg_chirho),
+        })
     }
 }

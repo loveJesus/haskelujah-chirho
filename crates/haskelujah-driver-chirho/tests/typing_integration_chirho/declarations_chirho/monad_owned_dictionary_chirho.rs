@@ -29,6 +29,14 @@
 //! (81fc2d5c) and `.../owned-monad-f40-r1-chirho/summary-chirho.json` (803257ec). U1 and U2
 //! have no GHC run yet.
 //!
+//! The first gate (5d564764) passed every one of these on the interpreter. Natively, two
+//! display consumers failed that the bind route never reaches. R1 and R2 reproduce each one
+//! directly, with no Monad dispatch at all:
+//! - R1: a list typed `m Int` at `m := []` reached `print` keyed `[] Int`, which names no Show
+//!   row. It now keys `[Int]`, like the list it is (O1's last line, A2).
+//! - R2: `print` at a binding's own `Show` key reached the generic Int-only binding and
+//!   printed a Char as its code point. It now shows through that parameter's `show` (O2).
+//!
 //! The Reader probe stays out. A user instance of a class with a superclass registers no
 //! dictionary under the key its use site carries, which is a separate defect.
 //! workflow: monadic-dispatch-chirho
@@ -70,6 +78,16 @@ const POLYMORPHIC_MAYBE_MONAD_CHIRHO: &str =
 /// 47d. Predicted 7; no GHC run yet.
 const POLYMORPHIC_IO_MONAD_CHIRHO: &str =
     include_str!("monad_owned_dictionary_chirho/polymorphic_io_monad_chirho.hs");
+
+/// R1: `sameChirho :: mChirho Int -> mChirho Int` at a list. Predicted `[5,6]`; no GHC run
+/// yet.
+const APPLIED_LIST_DISPLAY_CHIRHO: &str =
+    include_str!("monad_owned_dictionary_chirho/applied_list_display_chirho.hs");
+
+/// R2: `print` inside `showOneChirho :: Show aChirho => aChirho -> IO ()` at Char. Predicted
+/// `'a'`; no GHC run yet.
+const OWN_SHOW_PRINT_CHIRHO: &str =
+    include_str!("monad_owned_dictionary_chirho/own_show_print_chirho.hs");
 
 #[test]
 fn an_io_chain_under_a_maybe_owner_stays_io_everywhere_chirho() {
@@ -128,4 +146,18 @@ fn unary_maybe_and_io_monad_helpers_run_everywhere_chirho() {
         POLYMORPHIC_IO_MONAD_CHIRHO,
         "7\n",
     );
+}
+
+#[test]
+fn a_list_typed_through_a_constructor_variable_prints_as_its_list_everywhere_chirho() {
+    assert_prints_everywhere_chirho(
+        "AppliedListDisplayChirho.hs",
+        APPLIED_LIST_DISPLAY_CHIRHO,
+        "[5,6]\n",
+    );
+}
+
+#[test]
+fn print_at_a_bindings_own_show_dictionary_shows_a_char_everywhere_chirho() {
+    assert_prints_everywhere_chirho("OwnShowPrintChirho.hs", OWN_SHOW_PRINT_CHIRHO, "'a'\n");
 }

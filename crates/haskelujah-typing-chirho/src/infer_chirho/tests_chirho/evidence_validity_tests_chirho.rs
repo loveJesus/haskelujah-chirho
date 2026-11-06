@@ -642,3 +642,120 @@ fn certainly_unsolvable_skips_nonground_pred_chirho() {
         "a predicate with unification variables has no final verdict"
     );
 }
+
+/// `head` applied to `args`, as unification leaves a constructor variable's instance.
+fn applied_constructor_chirho(head_chirho: &str, args_chirho: Vec<TyChirho>) -> TyChirho {
+    args_chirho.into_iter().fold(
+        TyChirho::ConChirho(head_chirho.to_string()),
+        |fun_chirho, arg_chirho| TyChirho::AppChirho(Box::new(fun_chirho), Box::new(arg_chirho)),
+    )
+}
+
+/// `m Int` at `m := []` resolves to the applied list constructor `[] Int`, and a head
+/// variable at `(,)` to the applied tuple constructor. Unification equates each with its
+/// sugar, so each keys exactly as its sugar does. Show rows are named by those keys, and
+/// natively `print` of the applied form had found none (row 697).
+#[test]
+fn applied_list_and_saturated_tuple_constructors_key_as_their_sugar_chirho() {
+    let int_list_chirho = applied_constructor_chirho("[]", vec![TyChirho::int_chirho()]);
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    ctx_chirho.occurrence_captures_chirho.extend([
+        unspanned_capture_chirho("print", 0, "Show", int_list_chirho.clone()),
+        unspanned_capture_chirho(
+            "print",
+            1,
+            "Show",
+            applied_constructor_chirho("[]", vec![TyChirho::char_chirho()]),
+        ),
+        unspanned_capture_chirho(
+            "print",
+            2,
+            "Show",
+            applied_constructor_chirho("Maybe", vec![int_list_chirho.clone()]),
+        ),
+        unspanned_capture_chirho(
+            "print",
+            3,
+            "Show",
+            applied_constructor_chirho(
+                "(,)",
+                vec![TyChirho::int_chirho(), int_list_chirho.clone()],
+            ),
+        ),
+        unspanned_capture_chirho(
+            "==",
+            4,
+            "Eq",
+            applied_constructor_chirho("[]", vec![int_list_chirho.clone()]),
+        ),
+        unspanned_capture_chirho(
+            "compare",
+            5,
+            "Ord",
+            applied_constructor_chirho(
+                "(,,)",
+                vec![
+                    TyChirho::int_chirho(),
+                    TyChirho::bool_chirho(),
+                    TyChirho::char_chirho(),
+                ],
+            ),
+        ),
+    ]);
+
+    let records_chirho =
+        ctx_chirho.finalize_occurrence_records_chirho(&SubstChirho::empty_chirho());
+    let keys_chirho = records_chirho
+        .iter()
+        .map(|record_chirho| record_chirho.ty_key_chirho.as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        keys_chirho,
+        vec![
+            "[Int]",
+            "[Char]",
+            "Maybe [Int]",
+            "(Int,[Int])",
+            "[[Int]]",
+            "(Int,Bool,Char)"
+        ]
+    );
+    assert_eq!(
+        evidence_chirho::ground_list_key_chirho(&int_list_chirho).as_deref(),
+        Some("[Int]"),
+        "reference, literal and local keys take the same whole list key"
+    );
+}
+
+/// Only a fully saturated constructor over ground arguments earns its aggregate key: a
+/// partly applied tuple constructor keeps its applied spelling, and an applied list over
+/// a variable keeps the head `[]` (row 697).
+#[test]
+fn a_partial_tuple_or_open_list_constructor_earns_no_aggregate_key_chirho() {
+    let open_list_chirho =
+        applied_constructor_chirho("[]", vec![TyChirho::VarChirho(TyVarChirho(41))]);
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    ctx_chirho.occurrence_captures_chirho.extend([
+        unspanned_capture_chirho(
+            "show",
+            0,
+            "Show",
+            applied_constructor_chirho("(,)", vec![TyChirho::int_chirho()]),
+        ),
+        unspanned_capture_chirho("show", 1, "Show", open_list_chirho.clone()),
+    ]);
+
+    let records_chirho =
+        ctx_chirho.finalize_occurrence_records_chirho(&SubstChirho::empty_chirho());
+    let keys_chirho = records_chirho
+        .iter()
+        .map(|record_chirho| record_chirho.ty_key_chirho.as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(keys_chirho, vec!["(,) Int", "[]"]);
+    assert_eq!(
+        evidence_chirho::ground_list_key_chirho(&open_list_chirho),
+        None
+    );
+}

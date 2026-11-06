@@ -316,7 +316,7 @@ fn tuple_to_app_chirho(elems_chirho: &[TyChirho]) -> TyChirho {
 /// Check if a type is a fully-applied tuple constructor, e.g.
 /// `App(App(Con("(,)"), a), b)` → `Some([a, b])`.
 /// Returns `None` if the type is not a tuple constructor application.
-fn collect_tuple_app_chirho(ty_chirho: &TyChirho) -> Option<Vec<TyChirho>> {
+pub(crate) fn collect_tuple_app_chirho(ty_chirho: &TyChirho) -> Option<Vec<TyChirho>> {
     /// Walk the spine of applications to find the tuple constructor head.
     fn go_chirho(ty_chirho: &TyChirho, args_chirho: &mut Vec<TyChirho>) -> Option<usize> {
         match ty_chirho {

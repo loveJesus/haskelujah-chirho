@@ -532,3 +532,84 @@ fn a_proven_print_uses_only_body_backed_rows_chirho() {
         "body-backed rows give the first-class helper over show_Double"
     );
 }
+
+/// A pass holding one `print` occurrence (id 22, canonical id 21) whose `Show` proof is
+/// `key_chirho`. `putStrLn` (id 23) has a body, `show`'s selector is id 24, the enclosing
+/// binding's dictionary is id 25 and `x` is id 26.
+fn own_show_print_pass_chirho(key_chirho: &str) -> DictPassCtxChirho {
+    let names_chirho = HashMap::from([
+        (CoreIdChirho(21), "print".to_string()),
+        (CoreIdChirho(22), "print".to_string()),
+        (CoreIdChirho(23), "putStrLn".to_string()),
+        (CoreIdChirho(24), "$sel_Show_show".to_string()),
+        (CoreIdChirho(25), "$dShow_a".to_string()),
+        (CoreIdChirho(26), "x".to_string()),
+    ]);
+    let mut pass_chirho = DictPassCtxChirho::new_chirho(100, names_chirho, HashMap::new());
+    pass_chirho
+        .method_occurrence_canon_chirho
+        .insert(CoreIdChirho(22), ("print".to_string(), CoreIdChirho(21)));
+    pass_chirho.occurrence_evidence_chirho.insert(
+        CoreIdChirho(22),
+        ("Show".to_string(), key_chirho.to_string()),
+    );
+    pass_chirho
+        .method_selectors_chirho
+        .insert("show".to_string(), ("Show".to_string(), CoreIdChirho(24)));
+    pass_chirho
+        .generated_bindings_chirho
+        .push(binding_chirho(23, "putStrLn"));
+    pass_chirho
+}
+
+/// `putStrLn ($sel_Show_show $dShow_a x)` in the ids of `own_show_print_pass_chirho`.
+fn own_show_printed_chirho() -> CoreExprChirho {
+    app_chirho(
+        var_expr_chirho(23),
+        app_chirho(
+            app_chirho(var_expr_chirho(24), var_expr_chirho(25)),
+            var_expr_chirho(26),
+        ),
+    )
+}
+
+/// Row 697: an applied `print` proved at the binding's indexed own `Show` key shows its
+/// argument through exactly that parameter's `show`. Before, no row named the key, and
+/// natively the generic Int-only `print` printed a Char as its code point.
+#[test]
+fn an_applied_print_at_an_indexed_own_show_key_takes_that_parameters_show_chirho() {
+    let applied_chirho = app_chirho(var_expr_chirho(22), var_expr_chirho(26));
+    let dict_vars_chirho = HashMap::from([("$own:0".to_string(), CoreIdChirho(25))]);
+    assert_eq!(
+        own_show_print_pass_chirho("$own:0")
+            .rewrite_method_refs_chirho(&applied_chirho, &dict_vars_chirho),
+        own_show_printed_chirho(),
+    );
+}
+
+/// Row 697's bounds: a bare own key (a proof only through a superclass), an indexed key
+/// whose parameter is not in scope, and a program's own `print` never take an own `show`,
+/// even with a Show dictionary in scope under another key.
+#[test]
+fn a_bare_or_absent_own_show_key_and_a_programs_own_print_stay_unserved_chirho() {
+    let applied_chirho = app_chirho(var_expr_chirho(22), var_expr_chirho(26));
+    for (key_chirho, scope_key_chirho) in [("$own", "$own"), ("$own:0", "$own:1")] {
+        let dict_vars_chirho = HashMap::from([(scope_key_chirho.to_string(), CoreIdChirho(25))]);
+        assert_ne!(
+            own_show_print_pass_chirho(key_chirho)
+                .rewrite_method_refs_chirho(&applied_chirho, &dict_vars_chirho),
+            own_show_printed_chirho(),
+            "proof {key_chirho} with only {scope_key_chirho} in scope must stay unserved"
+        );
+    }
+    let mut own_binder_pass_chirho = own_show_print_pass_chirho("$own:0");
+    own_binder_pass_chirho
+        .module_bound_ids_chirho
+        .insert(CoreIdChirho(21));
+    let dict_vars_chirho = HashMap::from([("$own:0".to_string(), CoreIdChirho(25))]);
+    assert_ne!(
+        own_binder_pass_chirho.rewrite_method_refs_chirho(&applied_chirho, &dict_vars_chirho),
+        own_show_printed_chirho(),
+        "a program's own print keeps its binding"
+    );
+}
