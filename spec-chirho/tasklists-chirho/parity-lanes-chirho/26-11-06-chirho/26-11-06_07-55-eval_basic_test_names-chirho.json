@@ -458,7 +458,9 @@
     "tests_chirho::eval_basic_chirho::eval_hex_plus_octal_chirho": "tests_chirho::eval_basic_chirho::arithmetic_chirho::eval_hex_plus_octal_chirho",
     "tests_chirho::eval_basic_chirho::eval_binary_literal_chirho": "tests_chirho::eval_basic_chirho::arithmetic_chirho::eval_binary_literal_chirho"
   },
-  "status_chirho": "PLANNED: source preparation authorized; no actual move, compiled inventory or behavior gate yet",
+  "status_chirho": "ISOLATED SOURCE ONLY: implemented at6711d009; actual compiler inventory and paired behavior gate are pending, and current main still uses old names.",
   "root_review_chirho": "608335d557666815e1b4ad77239ceab8a46d655fb6eb44108496ca4a772c981a",
-  "future_selection_rule_chirho": "Use only after the implemented candidate passes its actual fresh-list name-map check; existing main and historical receipts still use their original names."
+  "future_selection_rule_chirho": "Candidate packets use this map with their fresh-list guard. Update current-main selections only after the reviewed candidate passes its actual gate and lands; historical receipts keep original names.",
+  "source_review_chirho": "22dd9a66e7159f271b4bbbc46fd037ee2a5df507e1dd6209e5491fe0b9ae8f16",
+  "candidate_chirho": "6711d009b8367bd5ea692db2082bd5350f7dcc72"
 }
