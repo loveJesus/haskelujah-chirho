@@ -73,9 +73,9 @@ registered no dictionary under the key its use site carries, so such a caller fa
 that named missing dictionary. Since row 699 a one-parameter head is found under its
 constructor when every superclass template matches one context-free instance built here.
 The head's slots then hold those dictionaries, and the compiler's own Monad defaults
-`>>` from the instance's own `>>=`. That default's producer proof is still open (#32268).
-Any other head keeps that named failure, never a module refusal
-(dictionary-evidence-chirho, Generic instance heads).
+`>>` from the instance's own `>>=`. That default needs naming's bare K01 proof and the
+class's own declared default (#32286). Any other head keeps that named failure, never a
+module refusal (dictionary-evidence-chirho, Generic instance heads).
 
 The legacy unresolved-name fallback remains for cases with neither evidence nor a
 known body; it is not a claim of general polymorphic-monad compatibility. The old

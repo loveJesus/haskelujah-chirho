@@ -178,7 +178,8 @@ impl DictPassCtxChirho {
         }
         // A method without a source row is covered by its default when the method that default
         // reads has a row: an Eq method by its counterpart (row 606), and the compiler's own
-        // Monad's `>>` by `>>=` (row 699), never a namesake's.
+        // Monad's `>>` by `>>=` when its declared default is authorized in this module (row 699,
+        // `monad_default_covers_chirho`), never a namesake's.
         let donor_covered_chirho = |donor_chirho: &str| {
             !uncovered_chirho
                 .iter()
@@ -189,6 +190,7 @@ impl DictPassCtxChirho {
                 .is_some_and(donor_covered_chirho)
                 || monad_default_covers_chirho(
                     class_env_chirho,
+                    &self.builtin_classes_chirho,
                     class_name_chirho,
                     method_name_chirho,
                     donor_covered_chirho,

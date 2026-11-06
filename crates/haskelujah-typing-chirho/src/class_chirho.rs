@@ -24,6 +24,10 @@ use crate::unify_chirho::unify_chirho;
 
 mod superclass_search_chirho;
 mod tuple_instances_chirho;
+// The standard Monad's declared `>>` default (row 699, gpt_chirho #32286).
+#[path = "class_chirho/standard_chirho/monad_defaults_chirho.rs"]
+mod monad_defaults_chirho;
+pub use monad_defaults_chirho::monad_then_default_arms_chirho;
 pub use superclass_search_chirho::SuperclassSearchExhaustedChirho;
 pub use tuple_instances_chirho::MAX_TUPLE_INSTANCE_ARITY_CHIRHO;
 
@@ -1205,7 +1209,8 @@ impl ClassEnvChirho {
             ]),
             extra_vars_chirho: vec![],
             fundeps_chirho: vec![],
-            defaults_chirho: HashMap::new(),
+            // GHC's declared default: `m >> k = m >>= \_ -> k` (row 699).
+            defaults_chirho: HashMap::from([(">>".to_string(), monad_then_default_arms_chirho())]),
         });
 
         // Foldable (t :: * -> *)

@@ -222,6 +222,8 @@ pub(crate) fn compile_backend_chirho(
         derived_shows_chirho,
         derived_enums_chirho,
         desugar_output_chirho.operator_occurrences_chirho,
+        // The same K01 scope, the compiler's own Monad's `>>` default included (row 699).
+        &builtin_class_scope_chirho,
     );
     // A GND instance whose representation's methods the dictionary pass could not build is
     // refused, never aliased to a missing method (row 694).

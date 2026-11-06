@@ -884,12 +884,21 @@ flowchart TD
   body-backed `>>=` row (`instance_chirho/defaults_chirho/monad_defaults_chirho.rs`). An absent
   `>>=` row and a stub never donate. Without the default, G5 never took a Monad head that writes
   only `>>=`.
-- The default's authority is OPEN (gpt_chirho #32268). Today the class entry is compared with
-  the compiler's seeded schema, which is not identity: row 694 also needs the naming K01
-  witness. An entry another producer made with the same compared fields passes the comparison.
-  The control `a_same_schema_namesake_without_a_producer_proof_never_takes_the_default_chirho`
-  exposes that seam and is RED until a producer proof reaches Core and fails closed without
-  one. No product run counts the default before then. Cross-module overlap and same-name controls run only once a multi-module frozen build can
+- The default's authority is the class's own declared default, proved to be the compiler's
+  (gpt_chirho #32268, #32286). The seeded Monad declares `m >> k = m >>= \_ -> k`
+  (`monad_then_default_arms_chirho`, typing `class_chirho/standard_chirho/`). G5 coverage and
+  the row both require all four of:
+  - naming's K01 proof that the module's BARE spelling `Monad` names the compiler's Monad. It
+    comes from the backend's builtin class scope, carried into the dictionary pass, and is fresh
+    for each module; the legacy entry points carry an empty scope;
+  - the supported schema;
+  - the entry's own declared default being exactly those arms, which the row implements;
+  - this instance's body-backed `>>=` donor.
+- Under that rule, none of these take anything: a qualified-only proof, an exact-schema
+  namesake without its own default, an absent or changed default, and a missing or stub donor.
+  Nothing falls back to a built-in body. A source class keeps its own desugared default rows.
+  The seam control `a_same_schema_namesake_without_a_producer_proof_never_takes_the_default_chirho`
+  was RED at ce9e9f65 and holds under this rule. Cross-module overlap and same-name controls run only once a multi-module frozen build can
   exercise them. A user-class method used directly mints no occurrence evidence, so its use
   site never consults the alias; a constrained call or a standard method's occurrence does.
   G4 counts only instances that reach the class environment: a context-free instance whose

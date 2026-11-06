@@ -15,6 +15,7 @@ flowchart TD
     seed_chirho --> heads_chirho["typing: check_builtin_instance_head_chirho"]
     seed_chirho --> sorts_chirho["typing: sort judgments know the builtin class heads"]
     scope_chirho --> deriving_chirho["typing: deriving and declaration validity (deriving-strategies-chirho), which ignore a proven Typeable request"]
+    scope_chirho --> dict_chirho["core: the dictionary pass, fresh per module, which grants the seeded Monad's declared >> default only under the BARE Monad proof (row 699, dictionary-evidence-chirho)"]
 ```
 
 ## Trust

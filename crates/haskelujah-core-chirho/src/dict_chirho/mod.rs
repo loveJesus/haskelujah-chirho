@@ -42,6 +42,7 @@ mod type_keys_chirho;
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
+use haskelujah_ast_chirho::name_chirho::BuiltinClassScopeChirho;
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
 use haskelujah_typing_chirho::deriving_chirho::DerivedShowChirho;
@@ -262,6 +263,12 @@ pub struct DictPassCtxChirho {
     derived_show_bounded_chirho: Cell<bool>,
     /// Derived-Show key → its generated `$prim_Show_showsPrec_<key>` helper.
     derived_show_helpers_chirho: HashMap<String, CoreIdChirho>,
+    /// Naming's builtin class scope for this module (K01): the spellings it can write that name
+    /// a compiler class. It is the backend's own proof, carried in, and it is fresh for each
+    /// module. The legacy entry points leave it empty, so no admission carries from one module
+    /// to the next (row 699, gpt_chirho #32286).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    builtin_classes_chirho: BuiltinClassScopeChirho,
 }
 
 impl DictPassCtxChirho {
@@ -313,6 +320,7 @@ impl DictPassCtxChirho {
             derived_show_provisional_chirho: RefCell::new(HashMap::new()),
             derived_show_bounded_chirho: Cell::new(false),
             derived_show_helpers_chirho: HashMap::new(),
+            builtin_classes_chirho: BuiltinClassScopeChirho::default(),
         }
     }
 
@@ -676,7 +684,8 @@ pub fn dict_pass_module_full_with_method_occurrences_chirho(
 /// each method occurrence's applied type (row 694), the
 /// checker's per-reference evidence for constrained references, the
 /// constructor metadata of every type that derives Show (row 533) or Enum (row 669),
-/// and the occurrences of written infix and section Ord operators (row 610).
+/// the occurrences of written infix and section Ord operators (row 610), and the module's
+/// builtin class scope from naming (K01, row 699).
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 #[allow(clippy::too_many_arguments)]
 pub fn dict_pass_module_full_with_evidence_chirho(
@@ -694,6 +703,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     derived_shows_chirho: HashMap<String, DerivedShowChirho>,
     derived_enums_chirho: HashMap<String, Vec<String>>,
     operator_occurrences_chirho: HashSet<CoreIdChirho>,
+    builtin_classes_chirho: &BuiltinClassScopeChirho,
 ) -> DictPassResultChirho {
     let max_id_chirho = find_max_id_chirho(module_chirho);
     let mut ctx_chirho =
@@ -707,6 +717,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     ctx_chirho.derived_shows_chirho = derived_shows_chirho;
     ctx_chirho.derived_enums_chirho = derived_enums_chirho;
     ctx_chirho.operator_occurrences_chirho = operator_occurrences_chirho;
+    ctx_chirho.builtin_classes_chirho = builtin_classes_chirho.clone();
     let transformed_chirho =
         ctx_chirho.transform_module_chirho(module_chirho, type_env_chirho, class_env_chirho);
     ctx_chirho.finish_chirho(transformed_chirho)
