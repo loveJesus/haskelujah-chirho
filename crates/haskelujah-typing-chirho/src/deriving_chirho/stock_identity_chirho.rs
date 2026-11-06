@@ -324,5 +324,5 @@ pub(crate) fn spell_generated_class_chirho(
 }
 
 #[cfg(test)]
-#[path = "stock_identity_tests_chirho.rs"]
+#[path = "tests_chirho/identity_chirho/stock_identity_tests_chirho.rs"]
 mod tests_chirho;

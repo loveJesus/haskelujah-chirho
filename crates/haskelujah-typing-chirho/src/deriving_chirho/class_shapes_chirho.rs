@@ -243,5 +243,5 @@ fn is_variable_chirho(type_chirho: &TypeChirho, name_chirho: &str) -> bool {
 }
 
 #[cfg(test)]
-#[path = "class_shapes_tests_chirho.rs"]
+#[path = "tests_chirho/identity_chirho/class_shapes_tests_chirho.rs"]
 mod tests_chirho;

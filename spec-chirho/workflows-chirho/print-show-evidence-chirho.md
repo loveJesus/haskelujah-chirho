@@ -172,7 +172,7 @@ flowchart TD
   `E`. Only an empty declaration reaches this case, since GHC rejects ordinary constructors after
   a result kind.
 - **Code:**
-  - `crates/haskelujah-typing-chirho/src/deriving_chirho/show_chirho.rs` (the instance and the metadata);
+  - `crates/haskelujah-typing-chirho/src/deriving_chirho/generators_chirho/show_chirho.rs` (the instance and the metadata);
   - `crates/haskelujah-core-chirho/src/dict_chirho/show_chirho/derived_chirho.rs` (the renderer);
   - the `DerivedChirho` shape in `show_chirho/shape_chirho.rs`.
 - **Tests:**

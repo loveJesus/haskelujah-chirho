@@ -402,5 +402,5 @@ pub(super) fn derive_show_chirho(
 }
 
 #[cfg(test)]
-#[path = "show_tests_chirho.rs"]
+#[path = "../tests_chirho/generators_chirho/show_tests_chirho.rs"]
 mod tests_chirho;
