@@ -9,7 +9,7 @@ This isolated pure move repairs the changed 2062-line lexer source. Public lexer
 - [x] Preserve every function body and literal, with only six scanner methods visible to their parent dispatch; keep fields and public APIs unchanged.
 - [x] Run workspace all-target checking, complete parser controls and exact test-name comparison.
 - [x] Attribute recursive Clippy over the entire move and retain any actual finding without suppression.
-- [ ] Commit and push coherent source after an outgoing secret scan.
+- [x] Commit and push coherent source after an outgoing secret scan.
 
 No language grammar, token kind, source span, permission, budget or runtime rule changes in this unit. Pattern splices, grouped comprehensions, builtin VTA metadata and broad ordinary-preservation acceptance remain separate open obligations.
 
