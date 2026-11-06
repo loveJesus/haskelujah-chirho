@@ -3,7 +3,7 @@
 # completed: 2026-11-05 22:10 EST; root independently verifies every final row/source hash and all 5,115 candidate raw files across both axes.
 # source: d6da5b12a332cd2a6cddab4ff5998a97eb2527e4 (row 697 exact Monad/Show dictionary transport and aggregate-key normalization)
 # crates tree: 21b1f27393cadb9df9d9ac048dc86d6e37af066d
-# Main integration uses exactly the measured crates tree and unchanged Cargo inputs; actual landing commit is recorded in the row 697 task/ledger.
+# Main integration: 12fe0a15dc325853791c494853ce7ba3a9728976 (pushed); crates and Cargo inputs equal the measured candidate.
 # Local development validation and a release-profile build; no installed CLI update, published release or full-GHC completion is implied.
 # Frozen candidate CLI SHA-256: 04417ec01b0f2ed0ed3b36c47ddc75f1b9c9837f4b6e7b73067f57eb95f4f52a
 # Release: rc0,211.315s,zero warning/error diagnostics,one own-manifest non-fresh executable artifact,opt-level3.
