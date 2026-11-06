@@ -102,18 +102,15 @@ impl LexerChirho<'_> {
     pub(super) fn lex_char_chirho(&mut self, start_chirho: usize) -> RawTokenChirho {
         // Template Haskell quoted names: 'foo, ''Bar, '(+)
         if let Some(next_chirho) = self.peek_at_chirho(1) {
-            if next_chirho == b'\'' {
-                if let Some(after_second_chirho) = self.peek_at_chirho(2) {
-                    if after_second_chirho == b'('
-                        || after_second_chirho == b'['
-                        || after_second_chirho == b'_'
-                        || after_second_chirho.is_ascii_alphabetic()
-                    {
-                        self.pos_chirho += 1;
-                        return self
-                            .make_token_chirho(RawTokenKindChirho::TickChirho, start_chirho);
-                    }
-                }
+            if next_chirho == b'\''
+                && let Some(after_second_chirho) = self.peek_at_chirho(2)
+                && (after_second_chirho == b'('
+                    || after_second_chirho == b'['
+                    || after_second_chirho == b'_'
+                    || after_second_chirho.is_ascii_alphabetic())
+            {
+                self.pos_chirho += 1;
+                return self.make_token_chirho(RawTokenKindChirho::TickChirho, start_chirho);
             }
             if next_chirho == b'_' || next_chirho.is_ascii_lowercase() {
                 let mut lookahead_chirho = self.pos_chirho + 1;

@@ -631,7 +631,7 @@ fn lex_preprocessed_primitive_bytearray_unsafe_thaw_arr_hash_stays_single_token_
             .expect("expected unsafeCoerce# argument in unsafeThawByteArray")
         + "unsafeCoerce# ".len();
     let file_id_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
-    let mut lexer_chirho = LexerChirho::new_chirho(&source_chirho, file_id_chirho);
+    let mut lexer_chirho = LexerChirho::new_chirho(source_chirho, file_id_chirho);
     let tokens_chirho = lexer_chirho.lex_all_chirho();
     let token_chirho = tokens_chirho
         .iter()

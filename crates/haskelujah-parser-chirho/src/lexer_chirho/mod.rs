@@ -414,10 +414,7 @@ impl<'src> LexerChirho<'src> {
                 if self.peek_at_chirho(1) == Some(b'.') && !self.has_more_symbol_at_chirho(2) {
                     self.pos_chirho += 2;
                     self.make_token_chirho(RawTokenKindChirho::DotDotChirho, start_chirho)
-                } else if self
-                    .peek_at_chirho(1)
-                    .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
-                {
+                } else if self.peek_at_chirho(1).is_some_and(is_symbol_char_chirho) {
                     self.lex_operator_chirho(start_chirho)
                 } else {
                     // Standalone dot — could be a qualified name separator or operator
@@ -429,10 +426,7 @@ impl<'src> LexerChirho<'src> {
                 if self.peek_at_chirho(1) == Some(b'>') && !self.has_more_symbol_at_chirho(2) {
                     self.pos_chirho += 2;
                     self.make_token_chirho(RawTokenKindChirho::FatArrowChirho, start_chirho)
-                } else if self
-                    .peek_at_chirho(1)
-                    .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
-                {
+                } else if self.peek_at_chirho(1).is_some_and(is_symbol_char_chirho) {
                     self.lex_operator_chirho(start_chirho)
                 } else {
                     self.pos_chirho += 1;
@@ -440,10 +434,7 @@ impl<'src> LexerChirho<'src> {
                 }
             }
             b'\\' => {
-                if self
-                    .peek_at_chirho(1)
-                    .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
-                {
+                if self.peek_at_chirho(1).is_some_and(is_symbol_char_chirho) {
                     self.lex_operator_chirho(start_chirho)
                 } else {
                     self.pos_chirho += 1;
@@ -463,10 +454,7 @@ impl<'src> LexerChirho<'src> {
                     // |] — quote close
                     self.pos_chirho += 2;
                     self.make_token_chirho(RawTokenKindChirho::ThCloseQuoteChirho, start_chirho)
-                } else if self
-                    .peek_at_chirho(1)
-                    .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
-                {
+                } else if self.peek_at_chirho(1).is_some_and(is_symbol_char_chirho) {
                     self.lex_operator_chirho(start_chirho)
                 } else {
                     self.pos_chirho += 1;
@@ -482,10 +470,7 @@ impl<'src> LexerChirho<'src> {
                 }
             }
             b'@' => {
-                if self
-                    .peek_at_chirho(1)
-                    .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
-                {
+                if self.peek_at_chirho(1).is_some_and(is_symbol_char_chirho) {
                     self.lex_operator_chirho(start_chirho)
                 } else {
                     self.pos_chirho += 1;
@@ -493,10 +478,7 @@ impl<'src> LexerChirho<'src> {
                 }
             }
             b'~' => {
-                if self
-                    .peek_at_chirho(1)
-                    .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
-                {
+                if self.peek_at_chirho(1).is_some_and(is_symbol_char_chirho) {
                     self.lex_operator_chirho(start_chirho)
                 } else {
                     self.pos_chirho += 1;
@@ -558,43 +540,43 @@ impl<'src> LexerChirho<'src> {
             _ if byte_chirho > 0x7F => {
                 // UnicodeSyntax: recognize Unicode alternatives for Haskell punctuation
                 let rest_chirho_pre = self.source_chirho.get(self.pos_chirho..);
-                if let Some(rest_pre_chirho) = rest_chirho_pre {
-                    if let Some(ch_pre_chirho) = rest_pre_chirho.chars().next() {
-                        let (kind_opt_chirho, len_chirho) = match ch_pre_chirho {
-                            '→' => (
-                                Some(RawTokenKindChirho::RightArrowChirho),
-                                ch_pre_chirho.len_utf8(),
-                            ),
-                            '←' => (
-                                Some(RawTokenKindChirho::LeftArrowChirho),
-                                ch_pre_chirho.len_utf8(),
-                            ),
-                            '∷' => (
-                                Some(RawTokenKindChirho::ColonColonChirho),
-                                ch_pre_chirho.len_utf8(),
-                            ),
-                            '⇒' => (
-                                Some(RawTokenKindChirho::FatArrowChirho),
-                                ch_pre_chirho.len_utf8(),
-                            ),
-                            '∀' => (
-                                Some(RawTokenKindChirho::ForallChirho),
-                                ch_pre_chirho.len_utf8(),
-                            ),
-                            'λ' => (
-                                Some(RawTokenKindChirho::BackslashChirho),
-                                ch_pre_chirho.len_utf8(),
-                            ),
-                            '⊸' => (
-                                Some(RawTokenKindChirho::LinearArrowChirho),
-                                ch_pre_chirho.len_utf8(),
-                            ),
-                            _ => (None, 0),
-                        };
-                        if let Some(kind_chirho) = kind_opt_chirho {
-                            self.pos_chirho += len_chirho;
-                            return self.make_token_chirho(kind_chirho, start_chirho);
-                        }
+                if let Some(rest_pre_chirho) = rest_chirho_pre
+                    && let Some(ch_pre_chirho) = rest_pre_chirho.chars().next()
+                {
+                    let (kind_opt_chirho, len_chirho) = match ch_pre_chirho {
+                        '→' => (
+                            Some(RawTokenKindChirho::RightArrowChirho),
+                            ch_pre_chirho.len_utf8(),
+                        ),
+                        '←' => (
+                            Some(RawTokenKindChirho::LeftArrowChirho),
+                            ch_pre_chirho.len_utf8(),
+                        ),
+                        '∷' => (
+                            Some(RawTokenKindChirho::ColonColonChirho),
+                            ch_pre_chirho.len_utf8(),
+                        ),
+                        '⇒' => (
+                            Some(RawTokenKindChirho::FatArrowChirho),
+                            ch_pre_chirho.len_utf8(),
+                        ),
+                        '∀' => (
+                            Some(RawTokenKindChirho::ForallChirho),
+                            ch_pre_chirho.len_utf8(),
+                        ),
+                        'λ' => (
+                            Some(RawTokenKindChirho::BackslashChirho),
+                            ch_pre_chirho.len_utf8(),
+                        ),
+                        '⊸' => (
+                            Some(RawTokenKindChirho::LinearArrowChirho),
+                            ch_pre_chirho.len_utf8(),
+                        ),
+                        _ => (None, 0),
+                    };
+                    if let Some(kind_chirho) = kind_opt_chirho {
+                        self.pos_chirho += len_chirho;
+                        return self.make_token_chirho(kind_chirho, start_chirho);
                     }
                 }
 
@@ -682,7 +664,7 @@ impl<'src> LexerChirho<'src> {
 
     fn has_more_symbol_at_chirho(&self, offset_chirho: usize) -> bool {
         self.peek_at_chirho(offset_chirho)
-            .is_some_and(|b_chirho| is_symbol_char_chirho(b_chirho))
+            .is_some_and(is_symbol_char_chirho)
     }
 
     fn starts_unboxed_paren_open_chirho(&self) -> bool {
@@ -888,12 +870,11 @@ fn is_ident_char_chirho(byte_chirho: u8) -> bool {
 /// This properly handles Unicode whitespace like non-breaking space (U+00A0)
 /// which should NOT be included in identifiers.
 fn unicode_ident_continue_len_chirho(source_chirho: &str, pos_chirho: usize) -> usize {
-    if let Some(rest_chirho) = source_chirho.get(pos_chirho..) {
-        if let Some(ch_chirho) = rest_chirho.chars().next() {
-            if ch_chirho.is_alphanumeric() || ch_chirho == '_' || ch_chirho == '\'' {
-                return ch_chirho.len_utf8();
-            }
-        }
+    if let Some(rest_chirho) = source_chirho.get(pos_chirho..)
+        && let Some(ch_chirho) = rest_chirho.chars().next()
+        && (ch_chirho.is_alphanumeric() || ch_chirho == '_' || ch_chirho == '\'')
+    {
+        return ch_chirho.len_utf8();
     }
     0
 }

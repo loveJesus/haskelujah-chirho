@@ -14,3 +14,5 @@ This isolated pure move repairs the changed 2062-line lexer source. Public lexer
 No language grammar, token kind, source span, permission, budget or runtime rule changes in this unit. Pattern splices, grouped comprehensions, builtin VTA metadata and broad ordinary-preservation acceptance remain separate open obligations.
 
 The pure move passes workspace checking, all 513 parser tests and 58 frontend source controls. A separately selected 54-test ordinary-elaboration group is 53 passing plus one exact-parent-reproduced predicate-prefix assertion failure; both raw failures remain retained. Recursive lint exposes the same 13 lexer code/message findings as the parent. Preserve this pure checkpoint before applying those ordinary lint fixes; no whole-feature lint pass is claimed.
+
+The separate cleanup applies the 13 existing lexer suggestions without suppressions. Its final source passes workspace all-target checking, all 513 parser controls and 58 frontend source controls; parser names/outcomes remain exact. Recursive milestone lint has zero intersections; unrelated whole-feature findings and the parent-reproduced ordinary predicate-prefix failure remain open.
