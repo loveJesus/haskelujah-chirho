@@ -18,6 +18,11 @@
 
 mod failures_chirho;
 mod lazy_chirho;
+mod root_frames_chirho;
+use root_frames_chirho::{
+    write_arity_frame_entry_chirho, write_parameter_frame_entry_chirho,
+    write_root_frame_entry_chirho, write_root_frame_return_chirho,
+};
 mod primitives_chirho;
 
 use std::collections::{HashMap, HashSet};
@@ -92,6 +97,7 @@ pub struct LlvmCodegenChirho {
     current_tco_param_slots_chirho: HashMap<CoreIdChirho, String>,
     /// Original parameter order for self-tail-call slot rebinding.
     current_tco_param_order_chirho: Vec<CoreIdChirho>,
+    current_root_captures_chirho: Vec<String>,
     /// Free ids of the current function that nothing binds (row 535's R1).
     unbound_ids_chirho: HashSet<CoreIdChirho>,
 }
@@ -140,6 +146,7 @@ impl LlvmCodegenChirho {
             current_tco_loop_label_chirho: None,
             current_tco_param_slots_chirho: HashMap::new(),
             current_tco_param_order_chirho: Vec::new(),
+            current_root_captures_chirho: Vec::new(),
             unbound_ids_chirho: HashSet::new(),
         }
     }
@@ -247,6 +254,7 @@ impl LlvmCodegenChirho {
             "  {tmp_chirho} = call i64 @haskelujah_enter_thunk_chirho(i64 {value_chirho})"
         )
         .unwrap();
+        self.emit_gc_root_push_i64_chirho(&tmp_chirho);
         tmp_chirho
     }
 
@@ -342,58 +350,6 @@ impl LlvmCodegenChirho {
         self.emit_gc_root_push_i64_chirho(&thunk_val_chirho);
 
         thunk_val_chirho
-    }
-
-    fn emit_gc_root_push_i64_chirho(&mut self, value_chirho: &str) {
-        let root_ptr_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {root_ptr_tmp_chirho} = inttoptr i64 {value_chirho} to ptr"
-        )
-        .unwrap();
-        writeln!(
-            self.output_chirho,
-            "  call void @haskelujah_gc_root_push_chirho(ptr {root_ptr_tmp_chirho})"
-        )
-        .unwrap();
-    }
-
-    // Native LLVM currently uses conservative process-lifetime roots for
-    // produced heap values; popping here can race callee-installed roots.
-    fn emit_gc_root_push_heap_i64_chirho(&mut self, value_chirho: &str) {
-        let is_heap_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {is_heap_tmp_chirho} = call i64 @haskelujah_is_heap_ptr_chirho(i64 {value_chirho})"
-        )
-        .unwrap();
-        let should_push_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {should_push_tmp_chirho} = icmp ne i64 {is_heap_tmp_chirho}, 0"
-        )
-        .unwrap();
-        let push_label_chirho = self.fresh_label_chirho("gc.root.push");
-        let done_label_chirho = self.fresh_label_chirho("gc.root.done");
-        writeln!(
-            self.output_chirho,
-            "  br i1 {should_push_tmp_chirho}, label %{push_label_chirho}, label %{done_label_chirho}"
-        )
-        .unwrap();
-        writeln!(self.output_chirho, "{push_label_chirho}:").unwrap();
-        self.emit_gc_root_push_i64_chirho(value_chirho);
-        writeln!(self.output_chirho, "  br label %{done_label_chirho}").unwrap();
-        writeln!(self.output_chirho, "{done_label_chirho}:").unwrap();
-    }
-
-    fn emit_gc_root_pop_count_chirho(&mut self, count_chirho: usize) {
-        for _ in 0..count_chirho {
-            writeln!(
-                self.output_chirho,
-                "  call void @haskelujah_gc_root_pop_chirho()"
-            )
-            .unwrap();
-        }
     }
 
     fn remember_local_binder_chirho(&mut self, binder_chirho: &BinderChirho) {
@@ -949,6 +905,15 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
         writeln!(inner_codegen_chirho.output_chirho, "entry:").unwrap();
+        let mut entry_roots_chirho = param_binders_chirho
+            .iter()
+            .map(|binder_chirho| format!("%v{}.entry_chirho", binder_chirho.id_chirho.0))
+            .collect::<Vec<_>>();
+        if !captured_ids_chirho.is_empty() {
+            inner_codegen_chirho.current_root_captures_chirho = vec!["%env_chirho".to_string()];
+            entry_roots_chirho.push("%env_chirho".to_string());
+        }
+        write_root_frame_entry_chirho(&mut inner_codegen_chirho.output_chirho, &entry_roots_chirho);
         inner_codegen_chirho.next_tmp_chirho = 0;
         if !captured_ids_chirho.is_empty() {
             if let Some(self_id_chirho) = self_binder_id_chirho {
@@ -1027,11 +992,10 @@ impl LlvmCodegenChirho {
 
         match inner_codegen_chirho.compile_tail_expr_chirho(body_chirho) {
             TailCompileOutcomeChirho::ValueChirho(result_chirho) => {
-                writeln!(
-                    inner_codegen_chirho.output_chirho,
-                    "  ret i64 {result_chirho}"
-                )
-                .unwrap();
+                write_root_frame_return_chirho(
+                    &mut inner_codegen_chirho.output_chirho,
+                    &result_chirho,
+                );
             }
             TailCompileOutcomeChirho::TerminatedChirho => {}
         }
@@ -1293,14 +1257,17 @@ impl LlvmCodegenChirho {
                 "  {with_space_tmp_chirho} = call i64 @haskelujah_append_str_chirho(i64 {current_i64_tmp_chirho}, i64 {space_i64_tmp_chirho})"
             )
             .unwrap();
+            self.emit_gc_root_push_i64_chirho(&with_space_tmp_chirho);
             let shown_arg_i64_tmp_chirho =
                 self.emit_show_expr_i64_direct_chirho(arg_expr_chirho)?;
+            self.emit_gc_root_push_i64_chirho(&shown_arg_i64_tmp_chirho);
             let appended_arg_tmp_chirho = self.fresh_tmp_chirho();
             writeln!(
                 self.output_chirho,
                 "  {appended_arg_tmp_chirho} = call i64 @haskelujah_append_str_chirho(i64 {with_space_tmp_chirho}, i64 {shown_arg_i64_tmp_chirho})"
             )
             .unwrap();
+            self.emit_gc_root_push_i64_chirho(&appended_arg_tmp_chirho);
             current_i64_tmp_chirho = appended_arg_tmp_chirho;
         }
 
@@ -1350,6 +1317,7 @@ impl LlvmCodegenChirho {
                 "undefined" | "undefined#" => {
                     writeln!(def_chirho, "define i64 @{fn_name_chirho}() {{").unwrap();
                     writeln!(def_chirho, "entry:").unwrap();
+                    write_arity_frame_entry_chirho(&mut def_chirho, arity_chirho);
                     failures_chirho::write_undefined_body_chirho(&mut def_chirho);
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
@@ -1357,6 +1325,7 @@ impl LlvmCodegenChirho {
                 "error" | "error#" | "errorWithoutStackTrace" => {
                     writeln!(def_chirho, "define i64 @{fn_name_chirho}(i64 %v0) {{").unwrap();
                     writeln!(def_chirho, "entry:").unwrap();
+                    write_arity_frame_entry_chirho(&mut def_chirho, arity_chirho);
                     failures_chirho::write_error_body_chirho(&mut def_chirho, "%v0");
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
@@ -1364,24 +1333,26 @@ impl LlvmCodegenChirho {
                 "getLine" | "getLine#" => {
                     writeln!(def_chirho, "define i64 @{fn_name_chirho}() {{").unwrap();
                     writeln!(def_chirho, "entry:").unwrap();
+                    write_arity_frame_entry_chirho(&mut def_chirho, arity_chirho);
                     writeln!(
                         def_chirho,
                         "  %line = call i64 @haskelujah_get_line_chirho()"
                     )
                     .unwrap();
-                    writeln!(def_chirho, "  ret i64 %line").unwrap();
+                    write_root_frame_return_chirho(&mut def_chirho, "%line");
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
                 }
                 "readFile" | "readFile#" => {
                     writeln!(def_chirho, "define i64 @{fn_name_chirho}(i64 %v0) {{").unwrap();
                     writeln!(def_chirho, "entry:").unwrap();
+                    write_arity_frame_entry_chirho(&mut def_chirho, arity_chirho);
                     writeln!(
                         def_chirho,
                         "  %contents = call i64 @haskelujah_read_file_chirho(i64 %v0)"
                     )
                     .unwrap();
-                    writeln!(def_chirho, "  ret i64 %contents").unwrap();
+                    write_root_frame_return_chirho(&mut def_chirho, "%contents");
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
                 }
@@ -1392,12 +1363,13 @@ impl LlvmCodegenChirho {
                     )
                     .unwrap();
                     writeln!(def_chirho, "entry:").unwrap();
+                    write_arity_frame_entry_chirho(&mut def_chirho, arity_chirho);
                     writeln!(
                         def_chirho,
                         "  %status = call i64 @haskelujah_write_file_chirho(i64 %v0, i64 %v1)"
                     )
                     .unwrap();
-                    writeln!(def_chirho, "  ret i64 %status").unwrap();
+                    write_root_frame_return_chirho(&mut def_chirho, "%status");
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
                 }
@@ -1408,8 +1380,9 @@ impl LlvmCodegenChirho {
                     )
                     .unwrap();
                     writeln!(def_chirho, "entry:").unwrap();
+                    write_arity_frame_entry_chirho(&mut def_chirho, arity_chirho);
                     writeln!(def_chirho, "  %result = add i64 %v0, %v1").unwrap();
-                    writeln!(def_chirho, "  ret i64 %result").unwrap();
+                    write_root_frame_return_chirho(&mut def_chirho, "%result");
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
                 }
@@ -1420,8 +1393,9 @@ impl LlvmCodegenChirho {
                     )
                     .unwrap();
                     writeln!(def_chirho, "entry:").unwrap();
+                    write_arity_frame_entry_chirho(&mut def_chirho, arity_chirho);
                     writeln!(def_chirho, "  %result = sub i64 %v0, %v1").unwrap();
-                    writeln!(def_chirho, "  ret i64 %result").unwrap();
+                    write_root_frame_return_chirho(&mut def_chirho, "%result");
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
                 }
@@ -1432,15 +1406,17 @@ impl LlvmCodegenChirho {
                     )
                     .unwrap();
                     writeln!(def_chirho, "entry:").unwrap();
+                    write_arity_frame_entry_chirho(&mut def_chirho, arity_chirho);
                     writeln!(def_chirho, "  %result = mul i64 %v0, %v1").unwrap();
-                    writeln!(def_chirho, "  ret i64 %result").unwrap();
+                    write_root_frame_return_chirho(&mut def_chirho, "%result");
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
                 }
                 "return" | "pure" | "returnIO#" => {
                     writeln!(def_chirho, "define i64 @{fn_name_chirho}(i64 %v0) {{").unwrap();
                     writeln!(def_chirho, "entry:").unwrap();
-                    writeln!(def_chirho, "  ret i64 %v0").unwrap();
+                    write_arity_frame_entry_chirho(&mut def_chirho, arity_chirho);
+                    write_root_frame_return_chirho(&mut def_chirho, "%v0");
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
                 }
@@ -1451,7 +1427,8 @@ impl LlvmCodegenChirho {
                     )
                     .unwrap();
                     writeln!(def_chirho, "entry:").unwrap();
-                    writeln!(def_chirho, "  ret i64 %v1").unwrap();
+                    write_arity_frame_entry_chirho(&mut def_chirho, arity_chirho);
+                    write_root_frame_return_chirho(&mut def_chirho, "%v1");
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
                 }
@@ -1462,9 +1439,10 @@ impl LlvmCodegenChirho {
                     )
                     .unwrap();
                     writeln!(def_chirho, "entry:").unwrap();
+                    write_arity_frame_entry_chirho(&mut def_chirho, arity_chirho);
                     writeln!(def_chirho, "  %cont_ptr = inttoptr i64 %v1 to ptr").unwrap();
                     writeln!(def_chirho, "  %result = call i64 %cont_ptr(i64 %v0)").unwrap();
-                    writeln!(def_chirho, "  ret i64 %result").unwrap();
+                    write_root_frame_return_chirho(&mut def_chirho, "%result");
                     writeln!(def_chirho, "}}").unwrap();
                     writeln!(def_chirho).unwrap();
                 }
@@ -1697,6 +1675,21 @@ impl LlvmCodegenChirho {
             "declare i64 @haskelujah_map_size_chirho(i64)"
         )
         .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare i64 @haskelujah_gc_root_frame_mark_chirho()"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare void @haskelujah_gc_root_frame_reset_chirho(i64)"
+        )
+        .unwrap();
+        writeln!(
+            self.output_chirho,
+            "declare void @haskelujah_gc_root_frame_restore_chirho(i64)"
+        )
+        .unwrap();
         // Fallback: if print's show call isn't elided, the backend's own wrapper over the
         // RTS's universal show. It is the compiler's generated `show` (`showInt#`), named apart
         // from every binding, so a program's own `show` never answers here (row 628). LLVM
@@ -1712,12 +1705,13 @@ impl LlvmCodegenChirho {
             )
             .unwrap();
             writeln!(self.output_chirho, "entry:").unwrap();
+            write_root_frame_entry_chirho(&mut self.output_chirho, &["%value_chirho".to_string()]);
             writeln!(
                 self.output_chirho,
                 "  %shown_chirho = call i64 @haskelujah_show_int_chirho(i64 %value_chirho)"
             )
             .unwrap();
-            writeln!(self.output_chirho, "  ret i64 %shown_chirho").unwrap();
+            write_root_frame_return_chirho(&mut self.output_chirho, "%shown_chirho");
             writeln!(self.output_chirho, "}}").unwrap();
         }
         writeln!(
@@ -1854,6 +1848,12 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
             }
+            write_root_frame_entry_chirho(
+                &mut self.output_chirho,
+                &(0..arity_chirho)
+                    .map(|index_chirho| format!("%a{index_chirho}_chirho"))
+                    .collect::<Vec<_>>(),
+            );
             // Build call with args
             let args_str_chirho: String = (0..arity_chirho)
                 .map(|i_chirho| format!("i64 %a{i_chirho}_chirho"))
@@ -1864,7 +1864,7 @@ impl LlvmCodegenChirho {
                 "  %result_chirho = call i64 %fn_chirho({args_str_chirho})"
             )
             .unwrap();
-            writeln!(self.output_chirho, "  ret i64 %result_chirho").unwrap();
+            write_root_frame_return_chirho(&mut self.output_chirho, "%result_chirho");
             writeln!(self.output_chirho, "}}").unwrap();
         }
 
@@ -1898,12 +1898,14 @@ impl LlvmCodegenChirho {
             )
             .unwrap();
             writeln!(self.output_chirho, "define i64 @{c_name_chirho}() {{").unwrap();
+            writeln!(self.output_chirho, "entry:").unwrap();
+            write_root_frame_entry_chirho(&mut self.output_chirho, &[]);
             writeln!(
                 self.output_chirho,
                 "  %result = call i64 @{haskell_fn_chirho}()"
             )
             .unwrap();
-            writeln!(self.output_chirho, "  ret i64 %result").unwrap();
+            write_root_frame_return_chirho(&mut self.output_chirho, "%result");
             writeln!(self.output_chirho, "}}").unwrap();
         }
 
@@ -1987,6 +1989,8 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
         writeln!(self.output_chirho, "entry:").unwrap();
+        self.current_root_captures_chirho.clear();
+        write_parameter_frame_entry_chirho(&mut self.output_chirho, &params_chirho, true);
 
         // Reset temporaries for this function
         self.next_tmp_chirho = 0;
@@ -2027,7 +2031,7 @@ impl LlvmCodegenChirho {
 
         match self.compile_tail_expr_chirho(body_chirho) {
             TailCompileOutcomeChirho::ValueChirho(result_chirho) => {
-                writeln!(self.output_chirho, "  ret i64 {result_chirho}").unwrap();
+                write_root_frame_return_chirho(&mut self.output_chirho, &result_chirho);
             }
             TailCompileOutcomeChirho::TerminatedChirho => {}
         }
@@ -2058,6 +2062,7 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
+                write_parameter_frame_entry_chirho(&mut self.output_chirho, params_chirho, false);
                 self.next_tmp_chirho = 0;
                 let argument_chirho =
                     self.emit_force_thunk_chirho(&format!("%v{}", arg_id_chirho.0));
@@ -2066,7 +2071,7 @@ impl LlvmCodegenChirho {
                     "  call i64 @haskelujah_put_str_chirho(i64 {argument_chirho})"
                 )
                 .unwrap();
-                writeln!(self.output_chirho, "  ret i64 0").unwrap();
+                write_root_frame_return_chirho(&mut self.output_chirho, "0");
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
@@ -2080,6 +2085,7 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
+                write_parameter_frame_entry_chirho(&mut self.output_chirho, params_chirho, false);
                 self.next_tmp_chirho = 0;
                 let argument_chirho =
                     self.emit_force_thunk_chirho(&format!("%v{}", arg_id_chirho.0));
@@ -2088,7 +2094,7 @@ impl LlvmCodegenChirho {
                     "  call i64 @haskelujah_put_str_ln_chirho(i64 {argument_chirho})"
                 )
                 .unwrap();
-                writeln!(self.output_chirho, "  ret i64 0").unwrap();
+                write_root_frame_return_chirho(&mut self.output_chirho, "0");
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
@@ -2102,6 +2108,7 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
+                write_parameter_frame_entry_chirho(&mut self.output_chirho, params_chirho, false);
                 self.next_tmp_chirho = 0;
                 let line_tmp_chirho = self.fresh_tmp_chirho();
                 writeln!(
@@ -2109,7 +2116,7 @@ impl LlvmCodegenChirho {
                     "  {line_tmp_chirho} = call i64 @haskelujah_get_line_chirho()"
                 )
                 .unwrap();
-                writeln!(self.output_chirho, "  ret i64 {line_tmp_chirho}").unwrap();
+                write_root_frame_return_chirho(&mut self.output_chirho, &line_tmp_chirho);
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
@@ -2123,6 +2130,7 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
+                write_parameter_frame_entry_chirho(&mut self.output_chirho, params_chirho, false);
                 self.next_tmp_chirho = 0;
                 let path_chirho = self.emit_force_thunk_chirho(&format!("%v{}", path_id_chirho.0));
                 let contents_tmp_chirho = self.fresh_tmp_chirho();
@@ -2131,7 +2139,7 @@ impl LlvmCodegenChirho {
                     "  {contents_tmp_chirho} = call i64 @haskelujah_read_file_chirho(i64 {path_chirho})"
                 )
                 .unwrap();
-                writeln!(self.output_chirho, "  ret i64 {contents_tmp_chirho}").unwrap();
+                write_root_frame_return_chirho(&mut self.output_chirho, &contents_tmp_chirho);
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
@@ -2145,6 +2153,7 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
+                write_parameter_frame_entry_chirho(&mut self.output_chirho, params_chirho, false);
                 self.next_tmp_chirho = 0;
                 let path_chirho = self.emit_force_thunk_chirho(&format!("%v{}", path_id_chirho.0));
                 let content_chirho =
@@ -2155,7 +2164,7 @@ impl LlvmCodegenChirho {
                     "  {status_tmp_chirho} = call i64 @haskelujah_write_file_chirho(i64 {path_chirho}, i64 {content_chirho})"
                 )
                 .unwrap();
-                writeln!(self.output_chirho, "  ret i64 {status_tmp_chirho}").unwrap();
+                write_root_frame_return_chirho(&mut self.output_chirho, &status_tmp_chirho);
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
@@ -2169,6 +2178,7 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
+                write_parameter_frame_entry_chirho(&mut self.output_chirho, params_chirho, false);
                 self.next_tmp_chirho = 0;
                 let arg_value_chirho = format!("%v{}", arg_id_chirho.0);
                 if let Some(print_kind_chirho) =
@@ -2178,7 +2188,7 @@ impl LlvmCodegenChirho {
                 } else {
                     self.emit_print_via_show_fallback_chirho(&arg_value_chirho);
                 }
-                writeln!(self.output_chirho, "  ret i64 0").unwrap();
+                write_root_frame_return_chirho(&mut self.output_chirho, "0");
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
@@ -2210,6 +2220,7 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
+                write_parameter_frame_entry_chirho(&mut self.output_chirho, params_chirho, false);
                 let message_value_chirho = format!("%v{}", arg_id_chirho.0);
                 failures_chirho::write_error_body_chirho(
                     &mut self.output_chirho,
@@ -2225,6 +2236,7 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
+                write_parameter_frame_entry_chirho(&mut self.output_chirho, params_chirho, false);
                 failures_chirho::write_undefined_body_chirho(&mut self.output_chirho);
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
@@ -2239,7 +2251,11 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
-                writeln!(self.output_chirho, "  ret i64 %v{}", arg_id_chirho.0).unwrap();
+                write_parameter_frame_entry_chirho(&mut self.output_chirho, params_chirho, false);
+                write_root_frame_return_chirho(
+                    &mut self.output_chirho,
+                    &format!("%v{}", arg_id_chirho.0),
+                );
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
@@ -2253,7 +2269,11 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
-                writeln!(self.output_chirho, "  ret i64 %v{}", arg_id_chirho.0).unwrap();
+                write_parameter_frame_entry_chirho(&mut self.output_chirho, params_chirho, false);
+                write_root_frame_return_chirho(
+                    &mut self.output_chirho,
+                    &format!("%v{}", arg_id_chirho.0),
+                );
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
@@ -2269,6 +2289,7 @@ impl LlvmCodegenChirho {
                 )
                 .unwrap();
                 writeln!(self.output_chirho, "entry:").unwrap();
+                write_parameter_frame_entry_chirho(&mut self.output_chirho, params_chirho, false);
                 self.next_tmp_chirho = 0;
                 let cont_ptr_tmp_chirho = self.fresh_tmp_chirho();
                 writeln!(
@@ -2284,7 +2305,7 @@ impl LlvmCodegenChirho {
                     value_id_chirho.0
                 )
                 .unwrap();
-                writeln!(self.output_chirho, "  ret i64 {result_tmp_chirho}").unwrap();
+                write_root_frame_return_chirho(&mut self.output_chirho, &result_tmp_chirho);
                 writeln!(self.output_chirho, "}}").unwrap();
                 true
             }
@@ -2348,6 +2369,12 @@ impl LlvmCodegenChirho {
 
     /// Compile a Core expression, returning the LLVM value name holding the result.
     fn compile_expr_chirho(&mut self, expr_chirho: &CoreExprChirho) -> String {
+        let value_chirho = self.compile_expr_inner_chirho(expr_chirho);
+        self.emit_gc_root_push_i64_chirho(&value_chirho);
+        value_chirho
+    }
+
+    fn compile_expr_inner_chirho(&mut self, expr_chirho: &CoreExprChirho) -> String {
         match expr_chirho {
             CoreExprChirho::LitChirho(lit_chirho) => self.compile_lit_chirho(lit_chirho),
 
@@ -2649,6 +2676,7 @@ impl LlvmCodegenChirho {
                     "  {forced_tmp_chirho} = call i64 @haskelujah_enter_thunk_chirho(i64 {scrut_raw_chirho})"
                 )
                 .unwrap();
+                self.emit_gc_root_push_i64_chirho(&forced_tmp_chirho);
                 let scrut_val_chirho = forced_tmp_chirho;
 
                 // Bind the case binder to the scrutinee value so %v{id} is defined
@@ -2801,6 +2829,7 @@ impl LlvmCodegenChirho {
                     "  {forced_tmp_chirho} = call i64 @haskelujah_enter_thunk_chirho(i64 {scrut_raw_chirho})"
                 )
                 .unwrap();
+                self.emit_gc_root_push_i64_chirho(&forced_tmp_chirho);
                 let scrut_val_chirho = forced_tmp_chirho;
                 self.bind_local_value_name_chirho(bind_chirho, &scrut_val_chirho);
 
@@ -2852,11 +2881,18 @@ impl LlvmCodegenChirho {
         if args_chirho.len() != param_ids_chirho.len() {
             return false;
         }
+        if param_ids_chirho
+            .iter()
+            .any(|id_chirho| !self.current_tco_param_slots_chirho.contains_key(id_chirho))
+        {
+            return false;
+        }
 
         let arg_vals_chirho: Vec<String> = args_chirho
             .iter()
             .map(|arg_chirho| self.compile_lazy_value_chirho(arg_chirho))
             .collect();
+        self.emit_root_frame_reset_chirho(&arg_vals_chirho);
         for (param_id_chirho, arg_val_chirho) in param_ids_chirho.iter().zip(arg_vals_chirho.iter())
         {
             let Some(slot_tmp_chirho) = self.current_tco_param_slots_chirho.get(param_id_chirho)
@@ -3000,6 +3036,7 @@ impl LlvmCodegenChirho {
             "  {result_tmp_chirho} = phi i64 [{direct_result_tmp_chirho}, %{direct_label_chirho}], [{closure_result_tmp_chirho}, %{boxed_label_chirho}]"
         )
         .unwrap();
+        self.emit_gc_root_push_i64_chirho(&result_tmp_chirho);
         result_tmp_chirho
     }
 
@@ -3322,6 +3359,12 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
         writeln!(wrapper_ir_chirho, "entry:").unwrap();
+        let mut wrapper_roots_chirho = vec!["%env_chirho".to_string()];
+        wrapper_roots_chirho.extend(
+            (0..remaining_arity_chirho)
+                .map(|index_chirho| format!("%partial_arg_{index_chirho}_chirho")),
+        );
+        write_root_frame_entry_chirho(&mut wrapper_ir_chirho, &wrapper_roots_chirho);
 
         let env_ptr_bits_tmp_chirho = fresh_wrapper_tmp_chirho();
         writeln!(
@@ -3383,7 +3426,7 @@ impl LlvmCodegenChirho {
             call_args_chirho.join(", ")
         )
         .unwrap();
-        writeln!(wrapper_ir_chirho, "  ret i64 {call_result_tmp_chirho}").unwrap();
+        write_root_frame_return_chirho(&mut wrapper_ir_chirho, &call_result_tmp_chirho);
         writeln!(wrapper_ir_chirho, "}}").unwrap();
 
         self.lifted_functions_chirho.push(wrapper_ir_chirho);
@@ -3478,6 +3521,7 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
         writeln!(self.output_chirho, "entry:").unwrap();
+        write_root_frame_entry_chirho(&mut self.output_chirho, &[arg_value_chirho.to_string()]);
         self.next_tmp_chirho = 0;
 
         match show_kind_chirho {
@@ -3495,7 +3539,7 @@ impl LlvmCodegenChirho {
                     "  {result_tmp_chirho} = ptrtoint ptr {ptr_tmp_chirho} to i64"
                 )
                 .unwrap();
-                writeln!(self.output_chirho, "  ret i64 {result_tmp_chirho}").unwrap();
+                write_root_frame_return_chirho(&mut self.output_chirho, &result_tmp_chirho);
             }
         }
 
@@ -3580,6 +3624,7 @@ impl LlvmCodegenChirho {
                     "  {buf_tmp_chirho} = call ptr @haskelujah_alloc_chirho(i64 8)"
                 )
                 .unwrap();
+                self.emit_gc_root_push_ptr_chirho(&buf_tmp_chirho);
                 let char_tmp_chirho = self.fresh_tmp_chirho();
                 writeln!(
                     self.output_chirho,
@@ -3601,6 +3646,7 @@ impl LlvmCodegenChirho {
                     "  {buf_tmp_chirho} = call ptr @haskelujah_alloc_chirho(i64 32)"
                 )
                 .unwrap();
+                self.emit_gc_root_push_ptr_chirho(&buf_tmp_chirho);
                 let float_tmp_chirho = self.fresh_tmp_chirho();
                 writeln!(
                     self.output_chirho,
@@ -3772,6 +3818,7 @@ impl LlvmCodegenChirho {
             "  {buf_tmp_chirho} = call ptr @haskelujah_alloc_chirho(i64 4096)"
         )
         .unwrap();
+        self.emit_gc_root_push_ptr_chirho(&buf_tmp_chirho);
         let index_ptr_tmp_chirho = self.fresh_tmp_chirho();
         writeln!(self.output_chirho, "  {index_ptr_tmp_chirho} = alloca i64").unwrap();
         writeln!(
@@ -4391,6 +4438,7 @@ impl LlvmCodegenChirho {
             "  {normalized_tmp_chirho} = phi i64 [{scrut_val_chirho}, %{boxed_label_chirho}], [0, %{immediate_label_chirho}], [{unpacked_tmp_chirho}, %{unpack_label_chirho}]"
         )
         .unwrap();
+        self.emit_gc_root_push_i64_chirho(&normalized_tmp_chirho);
         normalized_tmp_chirho
     }
 

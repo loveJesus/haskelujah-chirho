@@ -53,6 +53,7 @@ struct NativeGcRuntimeChirho {
     alloc_count_since_gc_chirho: u64,
     allocation_interval_chirho: u64,
     measurement_chirho: native_measurement_chirho::NativeMeasurementChirho,
+    root_frames_chirho: native_root_frames_chirho::NativeRootFramesChirho,
     #[cfg(test)]
     mark_visits_chirho: usize,
 }
@@ -114,6 +115,9 @@ impl NativeGcRuntimeChirho {
     }
 
     fn gc_root_push_chirho(&mut self, ptr_chirho: *mut u8) {
+        self.root_frames_chirho
+            .validate_push_chirho()
+            .unwrap_or_else(|error_chirho| internal_failure_chirho(error_chirho.as_bytes()));
         // Both code generators pass value bits, not addresses of root slots.
         // Every push must balance its pop, including zero/immediate values.
         // Only membership in the allocation registry authorizes dereferencing.
@@ -125,6 +129,9 @@ impl NativeGcRuntimeChirho {
     }
 
     fn gc_root_pop_chirho(&mut self) {
+        self.root_frames_chirho
+            .validate_pop_chirho(self.gc_roots_chirho.len())
+            .unwrap_or_else(|error_chirho| internal_failure_chirho(error_chirho.as_bytes()));
         let _ = self.gc_roots_chirho.pop();
     }
 
@@ -273,6 +280,7 @@ impl NativeGcRuntimeChirho {
         self.alloc_count_since_gc_chirho = 0;
         self.allocation_interval_chirho = 0;
         self.measurement_chirho = Default::default();
+        self.root_frames_chirho = Default::default();
         self.mark_visits_chirho = 0;
     }
 
@@ -423,6 +431,7 @@ mod native_io_refs_chirho;
 mod native_lists_chirho;
 mod native_maps_chirho;
 mod native_measurement_chirho;
+mod native_root_frames_chirho;
 mod native_show_text_chirho;
 mod native_thunks_chirho;
 pub use failure_chirho::{
@@ -438,6 +447,10 @@ pub use native_io_refs_chirho::{
     haskelujah_new_io_ref_chirho, haskelujah_read_io_ref_chirho, haskelujah_write_io_ref_chirho,
 };
 pub use native_maps_chirho::{haskelujah_map_from_list_chirho, haskelujah_map_size_chirho};
+pub use native_root_frames_chirho::{
+    haskelujah_gc_root_frame_mark_chirho, haskelujah_gc_root_frame_reset_chirho,
+    haskelujah_gc_root_frame_restore_chirho,
+};
 pub use native_show_text_chirho::haskelujah_show_string_chirho;
 pub use native_thunks_chirho::{
     haskelujah_alloc_thunk_chirho, haskelujah_enter_thunk_chirho, haskelujah_update_thunk_chirho,
