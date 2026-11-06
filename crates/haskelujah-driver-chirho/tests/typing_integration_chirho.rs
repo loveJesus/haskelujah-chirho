@@ -17,6 +17,8 @@ mod builtin_class_kinds_chirho;
 mod declaration_validity_chirho;
 #[path = "typing_integration_chirho/dollar_ownership_chirho.rs"]
 mod dollar_ownership_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/first_class_show_print_chirho.rs"]
+mod first_class_show_print_chirho;
 #[path = "typing_integration_chirho/import_scope_chirho.rs"]
 mod import_scope_chirho;
 #[path = "typing_integration_chirho/inferred_evidence_chirho.rs"]

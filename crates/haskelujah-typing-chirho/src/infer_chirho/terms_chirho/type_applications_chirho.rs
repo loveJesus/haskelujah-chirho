@@ -19,17 +19,33 @@ impl InferCtxChirho {
         full_name_chirho: &str,
         bare_name_chirho: &str,
     ) -> Option<SchemeChirho> {
+        self.lookup_value_scheme_keyed_chirho(full_name_chirho, bare_name_chirho)
+            .map(|(_entry_chirho, scheme_chirho)| scheme_chirho)
+    }
+
+    /// The scheme a written value name resolves to, with the qualified environment entry
+    /// that resolved it: the name's own qualified spelling, or the one entry it is a suffix
+    /// of. An unqualified name, and a qualified name that falls back to its bare outermost
+    /// binding, carry no entry. An occurrence capture keeps the entry, so the evidence join
+    /// judges a proof against the scheme its use took, not the bare spelling: `P.print`
+    /// beside a program's own `print` (row 698).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn lookup_value_scheme_keyed_chirho(
+        &self,
+        full_name_chirho: &str,
+        bare_name_chirho: &str,
+    ) -> Option<(Option<String>, SchemeChirho)> {
         let canonical_full_name_chirho = canonical_value_name_text_chirho(full_name_chirho);
         let canonical_bare_name_chirho = canonical_value_name_text_chirho(bare_name_chirho);
         if canonical_full_name_chirho == canonical_bare_name_chirho {
             return self
                 .env_chirho
                 .lookup_chirho(&canonical_bare_name_chirho)
-                .cloned();
+                .map(|scheme_chirho| (None, scheme_chirho.clone()));
         }
 
         if let Some(scheme_chirho) = self.env_chirho.lookup_chirho(&canonical_full_name_chirho) {
-            return Some(scheme_chirho.clone());
+            return Some((Some(canonical_full_name_chirho), scheme_chirho.clone()));
         }
 
         let suffix_chirho = format!(".{canonical_full_name_chirho}");
@@ -38,7 +54,7 @@ impl InferCtxChirho {
             .all_bindings_chirho()
             .into_iter()
             .filter(|(name_chirho, _scheme_chirho)| name_chirho.ends_with(&suffix_chirho))
-            .map(|(_name_chirho, scheme_chirho)| scheme_chirho.clone());
+            .map(|(name_chirho, scheme_chirho)| (Some(name_chirho.clone()), scheme_chirho.clone()));
         let first_match_chirho = suffix_matches_chirho.next();
         if first_match_chirho.is_some() && suffix_matches_chirho.next().is_none() {
             return first_match_chirho;
@@ -48,7 +64,7 @@ impl InferCtxChirho {
         // `let x` named the local (row 598).
         self.env_chirho
             .lookup_outermost_chirho(&canonical_bare_name_chirho)
-            .cloned()
+            .map(|scheme_chirho| (None, scheme_chirho.clone()))
     }
 
     pub(super) fn lookup_record_constructor_field_bundle_chirho(

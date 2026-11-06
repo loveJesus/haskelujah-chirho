@@ -321,6 +321,9 @@ pub struct InferResultChirho {
 /// `origin_chirho` is the reference's producer-minted identity when it has one.
 /// An occurrence with several predicates keeps one record per predicate, all
 /// under the same origin.
+/// `resolved_entry_chirho` is the qualified environment entry a qualified
+/// reference's scheme was resolved under (`P.print`), and `None` for every other
+/// reference: the join judges the proof against that entry's scheme (row 698).
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 #[derive(Debug, Clone, PartialEq)]
 pub struct MethodOccurrenceRecordChirho {
@@ -330,6 +333,7 @@ pub struct MethodOccurrenceRecordChirho {
     pub ty_key_chirho: String,
     pub span_chirho: SpanChirho,
     pub origin_chirho: Option<OriginIdChirho>,
+    pub resolved_entry_chirho: Option<String>,
 }
 
 /// The inference context — carries mutable state during inference.

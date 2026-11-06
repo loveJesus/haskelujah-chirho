@@ -87,6 +87,7 @@ fn occurrence_record_defaults_unresolved_standard_class_chirho() {
             ty_key_chirho: "Int".to_string(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             origin_chirho: None,
+            resolved_entry_chirho: None,
         }]
     );
 }
@@ -757,5 +758,58 @@ fn a_partial_tuple_or_open_list_constructor_earns_no_aggregate_key_chirho() {
     assert_eq!(
         evidence_chirho::ground_list_key_chirho(&open_list_chirho),
         None
+    );
+}
+
+#[test]
+fn a_qualified_capture_keeps_the_entry_its_lookup_resolved_chirho() {
+    // Row 698: a qualified reference's capture keeps the qualified entry its scheme came
+    // from, its own spelling (`P.print`) or the one entry it is a suffix of (`Q.go` in
+    // `Data.Q.go`), never a spelling guessed from the reference. An unqualified reference
+    // keeps none, so the join judges it by its bare name as before.
+    use haskelujah_ast_chirho::name_chirho::RawNameChirho;
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let var_chirho = TyVarChirho(0);
+    let show_scheme_chirho = SchemeChirho {
+        vars_chirho: vec![var_chirho],
+        preds_chirho: vec![SchemePredChirho {
+            class_name_chirho: "Show".to_string(),
+            ty_chirho: TyChirho::VarChirho(var_chirho),
+            extra_tys_chirho: vec![],
+        }],
+        ty_chirho: TyChirho::fun_chirho(
+            TyChirho::VarChirho(var_chirho),
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
+        ),
+    };
+    for entry_chirho in ["print", "P.print", "Data.Q.go"] {
+        ctx_chirho
+            .env_chirho
+            .bind_chirho(entry_chirho.to_string(), show_scheme_chirho.clone());
+    }
+    let qualified_chirho = |qualifier_chirho: &str, text_chirho: &str| {
+        NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+            qualifier_chirho,
+            text_chirho,
+            SpanChirho::DUMMY_CHIRHO,
+        ))
+    };
+    let pred_chirho = PredChirho::new_chirho("Show", ctx_chirho.fresh_var_chirho());
+    for name_chirho in [
+        qualified_chirho("P", "print"),
+        qualified_chirho("Q", "go"),
+        dummy_name_chirho("print"),
+    ] {
+        ctx_chirho
+            .capture_occurrence_predicates_chirho(&name_chirho, std::slice::from_ref(&pred_chirho));
+    }
+    let entries_chirho: Vec<Option<&str>> = ctx_chirho
+        .occurrence_captures_chirho
+        .iter()
+        .map(|capture_chirho| capture_chirho.resolved_entry_chirho.as_deref())
+        .collect();
+    assert_eq!(
+        entries_chirho,
+        vec![Some("P.print"), Some("Data.Q.go"), None]
     );
 }

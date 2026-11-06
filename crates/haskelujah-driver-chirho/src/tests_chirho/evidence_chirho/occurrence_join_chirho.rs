@@ -37,6 +37,7 @@ pub(super) fn record_chirho(
         ty_key_chirho: ty_key_chirho.to_string(),
         span_chirho,
         origin_chirho: None,
+        resolved_entry_chirho: None,
     }
 }
 

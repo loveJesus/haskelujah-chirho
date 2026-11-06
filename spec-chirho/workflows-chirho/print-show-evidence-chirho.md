@@ -12,10 +12,12 @@ flowchart TD
     source_chirho[Source: print value] --> infer_chirho[Type inference solves Show value_type]
     infer_chirho --> occurrence_chirho[Record print occurrence with full concrete Show key]
     occurrence_chirho --> join_chirho[Driver joins source-order occurrence id to evidence]
-    join_chirho --> validate_chirho{Show constrains print's own scheme?}
+    join_chirho --> validate_chirho{"Show constrains print's own scheme: the bare entry, or a qualified use's resolved entry (row 698)?"}
     validate_chirho -->|no| fallback_chirho[Preserve canonical print path]
     validate_chirho -->|"yes, applied at the binding's indexed own key $own:i (row 697)"| own_show_chirho["try_rewrite_own_show_print_chirho: putStrLn applied to $sel_Show_show of that parameter"]
     own_show_chirho --> core_show_chirho
+    validate_chirho -->|"yes, first-class at $own:i with the binding's dictionaries in scope (row 698)"| own_first_class_chirho["own_print_function_chirho: $print_via_show_chirho over that parameter's $sel_Show_show"]
+    own_first_class_chirho --> core_show_chirho
     validate_chirho -->|yes| instance_chirho{Concrete Show binding exists?}
     instance_chirho -->|no| materialize_chirho{Complete supported shape with backed leaves?}
     materialize_chirho -->|no| fallback_chirho
@@ -69,11 +71,32 @@ flowchart TD
     path. It gives `putStrLn ($sel_Show_show d x)`, where `d` is exactly `dict_vars[$own:i]`,
     never another Show dictionary in scope.
   - A program's own `print` keeps its binding.
-  - A bare own key, proved only through a superclass, stays unserved, and so does a first-class
-    `print`, whose caller has no dictionaries in scope.
+  - A bare own key, proved only through a superclass, stays unserved.
   - Controls: `occurrence_rows_tests_chirho.rs` (the rewrite and its bounds), and R2 in
     `tests/typing_integration_chirho/declarations_chirho/monad_owned_dictionary_chirho.rs`
     (`'a'` on every engine).
+- A first-class `print` at the same indexed own `Show` key, such as the one in `mapM_ print xs`
+  inside `f :: Show a => [a] -> IO ()`, takes that proof as a value (row 698).
+  - The measured baseline at main (receipts `tmp-chirho/row698-gate-chirho/b04`) printed GHC's
+    output on the interpreter. LLVM and Cranelift printed `97 98` for `'a' 'b'`, and `1 0` for
+    `True False`: the first-class path named only concrete rows.
+  - `own_print_show_chirho` holds the guards that the applied and first-class forms share: an
+    indexed `$own:i`, exactly `dict_vars[$own:i]`, Show's `show` selector, and a program's own
+    `print` kept. `own_print_function_chirho` gives `$print_via_show_chirho` over that `show`.
+  - Only the value path serves it, through `evidenced_value_in_scope_chirho`, at a bare
+    occurrence or a spine argument. An applied `print` keeps its own path, so the
+    applied-head hook never rebuilds it.
+  - A bare own key, an indexed key whose parameter is not in scope, and the end-of-pass sweep
+    (no dictionaries in scope) keep today's path.
+  - P3 is a qualified `P.print` beside a program's own `print :: String -> IO ()`. It lost its
+    proof in the join, not in the checker. The join judged the record by its bare name, which
+    named the program's `print`. Measured in `tmp-chirho/row698-gate-chirho/g02`:
+    `print Some([])`, `P.print Some(["Show"])`.
+  - The record now keeps the qualified entry its use resolved under, and the join consults that
+    entry. See "Method occurrences" in the dictionary-evidence workflow.
+  - Controls: `occurrence_rows_tests_chirho.rs`, and P1-P3 in
+    `tests/typing_integration_chirho/declarations_chirho/first_class_show_print_chirho.rs`
+    (GHC-measured; every engine).
 - `sum` and `product` take their solved `Num` proof the same way (row 552).
   - An evidenced occurrence, applied or first-class, becomes
     `foldl $prim_Num_+_K ($prim_Num_fromInteger_K 0)`, or `*_K` from 1 for `product`.
