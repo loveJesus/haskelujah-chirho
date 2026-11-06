@@ -24,6 +24,17 @@ flowchart TD
 
 ## Rules
 
+The Phase4.4 field-type consumer reads the effective language flags already published by the common source producer. It does not infer a second default edition when RankNTypes is absent. A DatatypeContexts flag permits a declaration-head context; it does not exempt an independent constructor field from rank or impredicativity checks. The actual ordinary field AST and constructor-prefix context remain separate inputs. Structural licensing errors stay fatal when the caller defers ordinary type errors.
+
+```mermaid
+flowchart LR
+    language_chirho["Real header, caller flags and post-CPP language state"] --> flags_chirho["One effective Module.extensions"]
+    flags_chirho --> license_chirho["Field-type license"]
+    fields_chirho["Actual constructor field types"] --> license_chirho
+    license_chirho --> allowed_chirho["Enabled form continues"]
+    license_chirho --> refused_chirho["Unlicensed form is a coded fatal diagnostic"]
+```
+
 1. A named Haskell 98 newtype constructor has exactly one field (`GHC-23517`). A record
    counts field names. Lowering's empty-name placeholder is never judged: it stands for a
    constructor lowering could not read (`newtype N = (:|) Int`, which GHC accepts).

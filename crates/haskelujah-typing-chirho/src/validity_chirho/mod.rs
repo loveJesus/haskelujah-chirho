@@ -107,10 +107,6 @@ pub(crate) struct LicenseChirho {
     impredicative_chirho: bool,
     /// `QuantifiedConstraints` is on.
     quantified_constraints_chirho: bool,
-    /// `DatatypeContexts` is on. When it is, constructor fields are skipped: a
-    /// datatype "stupid theta" is written on the declaration *head*, and we
-    /// will not risk judging a head context as if it were a field.
-    datatype_contexts_chirho: bool,
 }
 
 impl LicenseChirho {
@@ -123,25 +119,20 @@ impl LicenseChirho {
     }
 
     pub(crate) fn from_module_chirho(module_chirho: &ModuleChirho) -> Self {
-        // GHC: ImpredicativeTypes implies RankNTypes. `Rank2Types` is a legacy
-        // spelling of `RankNTypes` and still widely used in real source.
+        // The common language producer already expands the selected edition
+        // and ordered overrides. Do not re-enable a deliberately absent flag.
+        // Retain implication/alias support for direct legacy AST callers.
         let impredicative_chirho = extension_enabled_chirho(module_chirho, "ImpredicativeTypes");
         Self {
             allow_ambiguous_chirho: extension_enabled_chirho(module_chirho, "AllowAmbiguousTypes"),
             rank_n_chirho: impredicative_chirho
-            || extension_enabled_chirho(module_chirho, "RankNTypes")
-            || extension_enabled_chirho(module_chirho, "Rank2Types")
-            // A module that never declares a language edition is compiled by
-            // modern GHC under GHC2021, which enables RankNTypes. We do not
-            // model language editions, so assuming rank-N is OFF would reject
-            // ordinary modern code. Only an explicit legacy edition turns it off.
-            || !declares_legacy_edition_chirho(module_chirho),
+                || extension_enabled_chirho(module_chirho, "RankNTypes")
+                || extension_enabled_chirho(module_chirho, "Rank2Types"),
             impredicative_chirho,
             quantified_constraints_chirho: extension_enabled_chirho(
                 module_chirho,
                 "QuantifiedConstraints",
             ),
-            datatype_contexts_chirho: extension_enabled_chirho(module_chirho, "DatatypeContexts"),
         }
     }
 }
@@ -263,9 +254,6 @@ fn walk_con_decl_chirho(
     errors_chirho: &mut Vec<ValidityErrorChirho>,
     projection_budget_chirho: &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
 ) {
-    if license_chirho.datatype_contexts_chirho {
-        return;
-    }
     match con_chirho {
         ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => {
             for (_, ty_chirho) in fields_chirho {
@@ -371,13 +359,6 @@ fn walk_constraint_chirho(
             }
         }
     }
-}
-
-/// True when the module explicitly asks for a pre-GHC2021 language edition,
-/// where rank-N types are genuinely off unless requested.
-fn declares_legacy_edition_chirho(module_chirho: &ModuleChirho) -> bool {
-    extension_enabled_chirho(module_chirho, "Haskell2010")
-        || extension_enabled_chirho(module_chirho, "Haskell98")
 }
 
 /// Evaluate an extension flag with GHC's `NoFoo` override order: the last
@@ -1224,7 +1205,7 @@ mod tests_chirho {
     }
 
     #[test]
-    fn datatype_contexts_skips_constructor_fields_chirho() {
+    fn datatype_contexts_does_not_license_constructor_polytypes_chirho() {
         let decl_chirho = DeclChirho::DataDeclChirho {
             name_chirho: mk_name_chirho("T"),
             type_vars_chirho: vec![],
@@ -1237,7 +1218,12 @@ mod tests_chirho {
             vec![decl_chirho],
             vec!["Haskell2010".to_string(), "DatatypeContexts".to_string()],
         );
-        assert!(check_module_type_validity_chirho(&module_chirho).is_empty());
+        let errors_chirho = check_module_type_validity_chirho(&module_chirho);
+        assert_eq!(errors_chirho.len(), 1);
+        assert_eq!(
+            errors_chirho[0].suggested_extension_chirho,
+            Some("RankNTypes")
+        );
     }
 
     #[test]
@@ -1465,14 +1451,15 @@ mod tests_edition_chirho {
         check_module_type_validity_chirho(&module_chirho).is_empty()
     }
 
-    // Regression guard: the first version of this check assumed rank-N types
-    // were off whenever `RankNTypes` was absent. That wrongly rejected 13
-    // previously-passing GHC should_compile files, because modern GHC compiles
-    // an undeclared module under GHC2021, which enables RankNTypes — and
-    // because `Rank2Types` is a legacy spelling of the same extension.
+    // The common producer publishes RankNTypes for the modern default edition.
+    // A consumer must honor that effective flag rather than invent a default
+    // that would also override an explicit NoRankNTypes.
     #[test]
-    fn modern_default_edition_allows_rank_n_chirho() {
-        assert!(rank_two_is_accepted_with_chirho(vec![]));
+    fn effective_modern_default_edition_allows_rank_n_chirho() {
+        assert!(rank_two_is_accepted_with_chirho(vec![
+            "GHC2021".to_string(),
+            "RankNTypes".to_string(),
+        ]));
     }
 
     #[test]
