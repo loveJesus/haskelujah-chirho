@@ -9,7 +9,7 @@ Owner: root's dependability_audit_chirho subagent; branch native-runtime-measure
 - [x] Add O(1) counter updates at existing allocation/root/collection boundaries; report cold after the existing native entry returns without introducing collection or changing stdout/exit.
 - [x] Prepare a typed NOINLINE allocating self-tail loop that checks a live heap sentinel every iteration; collect both LLVM/Cranelift outcomes at N=4096 and 4N=16384 before judging them.
 - [x] Require actual allocated objects/bytes and at least three collections, then compare fixed growth envelopes for root high-water and post-GC live memory. The expected RED is a prediction, not a measured failure.
-- [ ] Source review, formatting/static checks and outgoing secret scan; commit/push only owned paths.
+- [x] Source review, standalone rustfmt, diff whitespace and static twelve-field producer/parser agreement; outgoing gitleaks scan clean. Source 3237c7683005176f26231d88b96679e8da8c8c05 (crates ced32b40add144d5b9c3344836ea85ac908a7521) is pushed to gh_chirho/native-runtime-measurement-chirho. Exactly seven owned paths are committed. No compiler/GHC/product has run, and no global warning-free/type-correct/runtime claim follows.
 - [ ] Request the smallest literal gate through root, with source/tool/RTS artifact identity and no competing compiler run.
 - [ ] Preserve actual warnings/failures, raw reports/artifacts and exact source identity; root folds the unit without calling the runtime repaired.
 
