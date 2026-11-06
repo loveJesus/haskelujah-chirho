@@ -10,7 +10,7 @@
 //! fields unevaluated, and an action entry yields what it returns. A monomorphic numeric
 //! entry is a number only because typing made it monomorphic (the monomorphism restriction),
 //! never because the API guessed a dictionary.
-//! workflow: language-features-chirho/monomorphism-restriction-chirho
+//! workflow: language-features-chirho/fundep-generalization-chirho
 
 use haskelujah_runtime_chirho::ValueChirho;
 use haskelujah_runtime_chirho::eval_chirho::MachineChirho;

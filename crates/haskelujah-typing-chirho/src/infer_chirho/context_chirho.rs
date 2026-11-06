@@ -436,6 +436,8 @@ impl InferCtxChirho {
             con_strict_fields_chirho: HashMap::new(),
             con_field_names_chirho: HashMap::new(),
             module_default_types_chirho: Vec::new(),
+            restriction_chirho: Default::default(),
+            compiler_literals_chirho: false,
             overloaded_strings_chirho: false,
             fully_known_class_names_chirho,
             local_class_prefix_instances_complete_chirho: false,

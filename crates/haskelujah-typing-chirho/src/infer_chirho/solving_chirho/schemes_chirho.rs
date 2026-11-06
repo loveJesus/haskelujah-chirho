@@ -328,6 +328,26 @@ impl InferCtxChirho {
         allow_io_defaulting_chirho: bool,
         scope_chirho: GeneralizationScopeChirho,
     ) -> SchemeChirho {
+        self.generalize_group_member_chirho(
+            ty_chirho,
+            allow_io_defaulting_chirho,
+            scope_chirho,
+            false,
+        )
+    }
+
+    /// Generalize one member of a declaration group. A member of a group the monomorphism
+    /// restriction restricts never quantifies a constrained variable (Haskell 2010 section
+    /// 4.5.5, Rule 1, row 692). Every variable of a predicate connected to its type stays
+    /// monomorphic for a later use to fix, and the module's end resolves what is left.
+    /// workflow: language-features-chirho/fundep-generalization-chirho
+    pub(super) fn generalize_group_member_chirho(
+        &mut self,
+        ty_chirho: &TyChirho,
+        allow_io_defaulting_chirho: bool,
+        scope_chirho: GeneralizationScopeChirho,
+        restricted_chirho: bool,
+    ) -> SchemeChirho {
         let mut env_fvs_chirho = self.env_chirho.free_vars_chirho();
         for pred_chirho in &self.given_preds_chirho {
             for kind_chirho in &pred_chirho.kind_tys_chirho {
@@ -376,10 +396,24 @@ impl InferCtxChirho {
                 }
             }
         }
+        // Rule 1 (row 692): a restricted member keeps every constrained variable monomorphic.
+        // They are neither scoped nor rigid, so no representation or skolem protection applies.
+        let withheld_chirho: HashSet<TyVarChirho> = if restricted_chirho {
+            seen_predicates_chirho
+                .iter()
+                .flat_map(|owner_chirho| predicate_variables_chirho[*owner_chirho].iter().copied())
+                .collect()
+        } else {
+            HashSet::new()
+        };
+        self.restriction_chirho
+            .withhold_chirho(withheld_chirho.iter().copied());
         let vars_chirho: Vec<TyVarChirho> = ty_fvs_chirho
             .into_iter()
             .filter(|v_chirho| {
-                !env_fvs_chirho.contains(v_chirho) && !newly_mono_chirho.contains(v_chirho)
+                !env_fvs_chirho.contains(v_chirho)
+                    && !newly_mono_chirho.contains(v_chirho)
+                    && !withheld_chirho.contains(v_chirho)
             })
             .collect();
         let mut scoped_chirho = env_fvs_chirho.clone();
@@ -689,6 +723,8 @@ impl InferCtxChirho {
                 .insert_chirho(*var_chirho, ty_chirho.clone());
         }
         self.env_chirho.apply_subst_chirho(subst_chirho);
+        self.restriction_chirho
+            .follow_substitution_chirho(subst_chirho);
         self.substitute_inferred_dictionary_owners_chirho(subst_chirho);
         self.recursive_references_chirho
             .apply_subst_chirho(subst_chirho);

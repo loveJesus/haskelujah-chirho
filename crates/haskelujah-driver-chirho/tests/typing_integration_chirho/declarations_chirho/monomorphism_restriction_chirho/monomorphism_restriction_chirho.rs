@@ -29,7 +29,14 @@
 //!   and a non-simple pattern binding that stays restricted despite signatures.
 //! - Ownership: a program's own class spelled `Num` is never the compiler's numeric class.
 //!   A use may fix it; nothing defaults it.
-//! workflow: language-features-chirho/monomorphism-restriction-chirho
+//!
+//! Open by name: the restriction's first brick covers top-level function-syntax and simple
+//! pattern bindings. Two controls stay RED until their own bricks land (gpt_chirho #32518):
+//! - The executable entry's `IO t` obligation needs an explicit program purpose from the
+//!   caller (`the_executable_entry_role_makes_a_bare_return_io_chirho`).
+//! - Non-simple pattern bindings are not yet restricted
+//!   (`a_pattern_binding_stays_restricted_despite_signatures_chirho`).
+//! workflow: language-features-chirho/fundep-generalization-chirho
 
 use super::{assert_prints_everywhere_chirho, rejected_like_ghc_chirho};
 

@@ -13,9 +13,29 @@ use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, TyChirho};
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, StmtChirho};
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
+use haskelujah_ast_chirho::name_chirho::CompilerClassChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
 
 impl InferCtxChirho {
+    /// The wanted a literal brings. Its translation names the compiler's own class whatever
+    /// is in scope (Report sections 3.2 and 6.4.1), so the predicate carries that proof, and
+    /// no `IsString` import is needed. Under RebindableSyntax the literal calls whatever
+    /// `fromInteger` is in scope, and under MagicHash it may be a primitive literal whose `#`
+    /// the AST erases. Either way the predicate stays legacy and unproven, a named support
+    /// boundary (row 692).
+    /// workflow: language-features-chirho/fundep-generalization-chirho
+    fn literal_predicate_chirho(
+        &self,
+        identity_chirho: CompilerClassChirho,
+        ty_chirho: &TyChirho,
+    ) -> PredChirho {
+        if self.compiler_literals_chirho {
+            PredChirho::compiler_chirho(identity_chirho, ty_chirho.clone())
+        } else {
+            PredChirho::new_chirho(identity_chirho.legacy_name_chirho(), ty_chirho.clone())
+        }
+    }
+
     /// Infer the type of an expression, returning (substitution, type).
     pub fn infer_expr_chirho(&mut self, expr_chirho: &ExprChirho) -> (SubstChirho, TyChirho) {
         let (substitution_chirho, ty_chirho) = self.infer_expr_inner_chirho(expr_chirho);
@@ -28,28 +48,32 @@ impl InferCtxChirho {
             ExprChirho::LitChirho(lit_chirho) => match lit_chirho {
                 LitChirho::IntChirho(_, span_chirho, _) => {
                     let lit_ty_chirho = self.fresh_var_chirho();
-                    self.deferred_preds_chirho.push((
-                        PredChirho::new_chirho("Num", lit_ty_chirho.clone()),
-                        *span_chirho,
-                    ));
+                    let wanted_chirho = self
+                        .literal_predicate_chirho(CompilerClassChirho::NumChirho, &lit_ty_chirho);
+                    self.deferred_preds_chirho
+                        .push((wanted_chirho, *span_chirho));
                     self.capture_literal_evidence_chirho(lit_chirho, "Num", &lit_ty_chirho);
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
                 LitChirho::FloatChirho(_, span_chirho, _) => {
                     let lit_ty_chirho = self.fresh_var_chirho();
-                    self.deferred_preds_chirho.push((
-                        PredChirho::new_chirho("Fractional", lit_ty_chirho.clone()),
-                        *span_chirho,
-                    ));
+                    let wanted_chirho = self.literal_predicate_chirho(
+                        CompilerClassChirho::FractionalChirho,
+                        &lit_ty_chirho,
+                    );
+                    self.deferred_preds_chirho
+                        .push((wanted_chirho, *span_chirho));
                     self.capture_literal_evidence_chirho(lit_chirho, "Fractional", &lit_ty_chirho);
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
                 LitChirho::StringChirho(_, span_chirho, _) if self.overloaded_strings_chirho => {
                     let lit_ty_chirho = self.fresh_var_chirho();
-                    self.deferred_preds_chirho.push((
-                        PredChirho::new_chirho("IsString", lit_ty_chirho.clone()),
-                        *span_chirho,
-                    ));
+                    let wanted_chirho = self.literal_predicate_chirho(
+                        CompilerClassChirho::IsStringChirho,
+                        &lit_ty_chirho,
+                    );
+                    self.deferred_preds_chirho
+                        .push((wanted_chirho, *span_chirho));
                     self.capture_literal_evidence_chirho(lit_chirho, "IsString", &lit_ty_chirho);
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }

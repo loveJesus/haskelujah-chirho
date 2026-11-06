@@ -4,6 +4,7 @@
 //! Moved from `infer_chirho.rs` in row 661.
 
 use super::InferCtxChirho;
+use super::restriction_chirho::{effective_flag_chirho, group_is_restricted_chirho};
 use super::{
     GeneralizationScopeChirho, SIGNATURE_MISMATCH_CODE_CHIRHO, ast_type_to_syn_rhs_chirho,
     binding_groups_chirho, canonical_value_name_text_chirho, collect_module_shadowed_names_chirho,
@@ -78,6 +79,11 @@ impl InferCtxChirho {
                     Self::UNFAITHFUL_CONSTRAINT_EXTENSIONS_CHIRHO
                         .contains(&extension_chirho.as_str())
                 });
+        // A literal names the compiler's own class unless the module rebinds its translation
+        // or may write primitive literals, whose `#` the AST erases (row 692).
+        self.compiler_literals_chirho =
+            !effective_flag_chirho(&module_chirho.extensions_chirho, "RebindableSyntax", false)
+                && !effective_flag_chirho(&module_chirho.extensions_chirho, "MagicHash", false);
         self.scoped_type_variables_chirho =
             Self::scoped_type_variables_enabled_chirho(module_chirho);
         self.relaxed_poly_rec_chirho =
@@ -629,7 +635,21 @@ impl InferCtxChirho {
         // 3b: Process each SCC group: infer → generalize
         // The rigid form of each checked signature, for the Phase 3c check.
         let mut skolemized_sigs_chirho: HashMap<String, TyChirho> = HashMap::new();
+        // The monomorphism restriction reads this module's facts once (row 692).
+        // workflow: language-features-chirho/fundep-generalization-chirho
+        self.restriction_chirho.begin_module_chirho(module_chirho);
         for group_chirho in &groups_chirho {
+            // Rule 1, decided once for the whole group: one unsigned simple pattern binding
+            // restricts every unsigned member, function syntax included.
+            let group_restricted_chirho = self.restriction_chirho.enabled_chirho()
+                && group_is_restricted_chirho(group_chirho.iter().map(|&member_chirho| {
+                    (
+                        fun_matches_refs_chirho[member_chirho]
+                            .first()
+                            .is_none_or(|arm_chirho| arm_chirho.pats_chirho.is_empty()),
+                        type_sigs_chirho.contains_key(&fun_names_chirho[member_chirho]),
+                    )
+                }));
             let mut equality_owners_chirho = Vec::new();
             // Infer each function body in the group
             let mut group_inferred_chirho: Vec<(usize, String, TyChirho, SpanChirho)> = Vec::new();
@@ -738,10 +758,11 @@ impl InferCtxChirho {
                 let argument_less_chirho = fun_matches_refs_chirho[*fi_chirho]
                     .first()
                     .is_none_or(|arm_chirho| arm_chirho.pats_chirho.is_empty());
-                let inferred_scheme_chirho = self.generalize_with_io_defaulting_chirho(
+                let inferred_scheme_chirho = self.generalize_group_member_chirho(
                     &final_ty_chirho,
                     argument_less_chirho,
                     GeneralizationScopeChirho::TopLevelChirho,
+                    group_restricted_chirho && !type_sigs_chirho.contains_key(binding_name_chirho),
                 );
                 let mut binding_scheme_chirho = inferred_scheme_chirho.clone();
 

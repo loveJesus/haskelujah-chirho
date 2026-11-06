@@ -136,3 +136,44 @@ Every embedded program was measured against GHC 9.14.1 exactly as the test
 builds it. tc126 is the corpus file itself. tc231 (GHC-39999, `No instance for
 Zork s (Z [Char]) b0`) is a correct new rejection that sits in the corpus's
 accept bucket. It stays there as an actual membership delta.
+
+## The monomorphism restriction (Haskell 2010 section 4.5.5)
+
+This is a second rule that keeps a variable monomorphic at generalization and finishes it at
+the module's end (row 692). GHC applies it in every compiled module. Only the GHCi prompt
+turns it off.
+
+- **Rule 1.** A group is restricted when one of its members is a simple pattern binding without
+  a signature. Every unsigned member of a restricted group then keeps each variable of its
+  connected wanteds monomorphic. A later use in the module may fix them.
+- **Rule 2.** Whatever is still unresolved at the module's end is defaulted or refused, before
+  the legacy defaults run and never by them.
+- **Literals.** A literal's wanted carries the compiler's own class proof, because its
+  translation names that class whatever is in scope.
+
+Code: `crates/haskelujah-typing-chirho/src/infer_chirho/restriction_chirho/restriction_chirho.rs`.
+
+```mermaid
+flowchart TD
+    L[literal producer: Int Num, Float Fractional, OverloadedStrings IsString] --> LP{RebindableSyntax or MagicHash in effect?}
+    LP -- no --> LC[PredChirho::compiler_chirho: proven compiler class]
+    LP -- yes --> LU[legacy Unknown predicate: named support boundary]
+    S[SCC loop: begin_module_chirho reads MR flag, default declaration] --> G{group_is_restricted_chirho:<br/>an argument-less member without a signature?}
+    G -- no --> N[generalize as before]
+    G -- yes --> W[generalize_group_member_chirho for each unsigned member:<br/>variables of connected wanteds withheld, not scoped or rigid]
+    W --> T[apply_subst_all_chirho: withheld variables follow every substitution]
+    T --> E[module end: resolve_restricted_residuals_chirho,<br/>before check_deferred_preds_chirho]
+    E --> R{reduce each residual to C v through one compiler instance;<br/>every class a proven, active compiler record and standard;<br/>one numeric, or IsString under OverloadedStrings}
+    R -- yes --> C{first candidate satisfying every original wanted, substituted:<br/>declared default list, even empty, else Integer, Double, String}
+    C -- found --> D[default substituted; ground wanteds go to the final discharge]
+    C -- none --> X[ambiguous type variable of a restricted binding: refused]
+    R -- no --> X
+```
+
+Open by name:
+- non-simple pattern bindings, which are always restricted;
+- nested bindings;
+- the executable entry's `IO t` obligation, which needs an explicit program purpose from the
+  caller;
+- primitive literals under MagicHash, and RebindableSyntax's rebound literals, which stay
+  unproven.
