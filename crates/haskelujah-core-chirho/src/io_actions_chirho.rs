@@ -22,6 +22,17 @@ mod scopes_chirho;
 const ACTION_CON_CHIRHO: &str = "$IOActionChirho";
 const RESULT_CON_CHIRHO: &str = "$IOResultChirho";
 
+/// The caller's native execution purpose, retained through final artifact emission.
+/// An IO program executes its action and discards its lazy result; value evaluation
+/// keeps each backend's existing result observation. This is independent of typing
+/// the entry and never supplies a missing entry dictionary.
+/// Workflow: testing-chirho/native-entry-role-chirho.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NativeExecutionRoleChirho {
+    ValueChirho,
+    ProgramChirho,
+}
+
 /// Preserve the original Core and its reusable entry value. A separate wrapper
 /// executes only the requested entry; references to that binding still denote
 /// the action, including recursive references.

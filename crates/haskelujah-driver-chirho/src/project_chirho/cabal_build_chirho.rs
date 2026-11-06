@@ -16,8 +16,9 @@ use super::{
     CompileResultChirho, ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
     preprocess_cpp_source_with_options_chirho, read_haskell_source_file_chirho,
 };
-use haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_chirho;
+use haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_with_role_chirho;
 use haskelujah_core_chirho::CoreModuleChirho;
+use haskelujah_core_chirho::io_actions_chirho::NativeExecutionRoleChirho;
 use haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho;
 use haskelujah_span_chirho::SourceMapChirho;
 use std::path::{Path, PathBuf};
@@ -193,7 +194,10 @@ pub fn build_cabal_project_chirho(
         let merged_core_chirho = merge_compile_results_core_chirho(
             &project_compile_result_chirho.module_results_chirho,
         )?;
-        let llvm_ir_chirho = try_compile_core_to_llvm_executable_chirho(&merged_core_chirho)?;
+        let llvm_ir_chirho = try_compile_core_to_llvm_executable_with_role_chirho(
+            &merged_core_chirho,
+            NativeExecutionRoleChirho::ProgramChirho,
+        )?;
         executables_chirho.push(CabalExecutableBuildResultChirho {
             name_chirho: executable_chirho.name_chirho.clone(),
             core_chirho: merged_core_chirho,

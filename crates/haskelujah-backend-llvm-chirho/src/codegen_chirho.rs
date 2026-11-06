@@ -18,7 +18,10 @@
 
 mod failures_chirho;
 mod lazy_chirho;
+mod native_entry_chirho;
 mod primitives_chirho;
+
+use haskelujah_core_chirho::io_actions_chirho::NativeExecutionRoleChirho;
 
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
@@ -4685,6 +4688,18 @@ pub fn compile_core_to_llvm_executable_chirho(module_chirho: &CoreModuleChirho) 
 pub fn try_compile_core_to_llvm_executable_chirho(
     module_chirho: &CoreModuleChirho,
 ) -> Result<String, String> {
+    try_compile_core_to_llvm_executable_with_role_chirho(
+        module_chirho,
+        NativeExecutionRoleChirho::ValueChirho,
+    )
+}
+
+/// Emit a native artifact under the caller's explicit program or value purpose.
+/// Workflow: testing-chirho/native-entry-role-chirho.
+pub fn try_compile_core_to_llvm_executable_with_role_chirho(
+    module_chirho: &CoreModuleChirho,
+    execution_role_chirho: NativeExecutionRoleChirho,
+) -> Result<String, String> {
     // Dictionary elision + reachability filtering via shared Core utility
     let mut filtered_module_chirho =
         haskelujah_core_chirho::elide_dicts_and_filter_chirho(module_chirho);
@@ -4692,86 +4707,12 @@ pub fn try_compile_core_to_llvm_executable_chirho(
 
     let mut codegen_chirho = LlvmCodegenChirho::new_chirho();
     let mut ir_chirho = codegen_chirho.compile_module_chirho(&filtered_module_chirho);
-    let has_builtin_io_chirho =
-        filtered_module_chirho
-            .bindings_chirho
-            .iter()
-            .any(|binding_chirho| {
-                matches!(
-                    binding_chirho.binder_chirho.name_chirho.as_str(),
-                    "putStrLn"
-                        | "putStrLn#"
-                        | "putStr"
-                        | "putStr#"
-                        | "putChar"
-                        | "putChar#"
-                        | "print"
-                        | "interact"
-                        | "getLine"
-                        | "getLine#"
-                        | "getChar"
-                        | "getContents"
-                        | "getContents#"
-                        | "readFile"
-                        | "writeFile"
-                        | "appendFile"
-                        | "return"
-                        | "pure"
-                        | ">>="
-                        | "bindIO#"
-                        | ">>"
-                        | "thenIO#"
-                )
-            });
-
-    // The recorded program entry, never a spelling, gets the C `main()` (row 628).
-    let has_main_chirho =
-        module_chirho
-            .provenance_chirho
-            .entry_chirho
-            .is_some_and(|entry_chirho| {
-                module_chirho
-                    .bindings_chirho
-                    .iter()
-                    .any(|binding_chirho| binding_chirho.binder_chirho.id_chirho == entry_chirho)
-            });
-
-    if has_main_chirho {
-        // Add a C main() entry point.
-        writeln!(ir_chirho).unwrap();
-        writeln!(ir_chirho, "; ── RTS entry point ──").unwrap();
-        writeln!(ir_chirho).unwrap();
-        writeln!(ir_chirho, "define i32 @main() {{").unwrap();
-        writeln!(ir_chirho, "entry:").unwrap();
-        writeln!(
-            ir_chirho,
-            "  %main_fn = ptrtoint ptr @haskelujah_main to i64"
-        )
-        .unwrap();
-        if has_builtin_io_chirho {
-            writeln!(
-                ir_chirho,
-                "  call i64 @haskelujah_main_with_large_stack_chirho(i64 %main_fn)"
-            )
-            .unwrap();
-            writeln!(ir_chirho, "  ret i32 0").unwrap();
-        } else {
-            writeln!(
-                ir_chirho,
-                "  %result = call i64 @haskelujah_main_with_large_stack_chirho(i64 %main_fn)"
-            )
-            .unwrap();
-            // The runtime refuses a live heap value instead of printing its address.
-            writeln!(
-                ir_chirho,
-                "  call i64 @haskelujah_print_int_chirho(i64 %result)"
-            )
-            .unwrap();
-            writeln!(ir_chirho, "  %exitcode = trunc i64 %result to i32").unwrap();
-            writeln!(ir_chirho, "  ret i32 %exitcode").unwrap();
-        }
-        writeln!(ir_chirho, "}}").unwrap();
-    }
+    native_entry_chirho::write_native_entry_chirho(
+        &mut ir_chirho,
+        module_chirho,
+        &filtered_module_chirho,
+        execution_role_chirho,
+    );
 
     if codegen_chirho.unsupported_primitives_chirho.is_empty() {
         Ok(ir_chirho)

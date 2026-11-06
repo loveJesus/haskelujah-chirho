@@ -8,6 +8,7 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 use haskelujah_core_chirho::CoreModuleChirho;
+use haskelujah_core_chirho::io_actions_chirho::NativeExecutionRoleChirho;
 use haskelujah_driver_chirho::rts_snapshot_chirho::{RtsSnapshotChirho, rts_snapshot_chirho};
 use haskelujah_driver_chirho::{
     FrontendOptionsChirho, build_cabal_project_chirho, compile_source_chirho,
@@ -92,8 +93,9 @@ pub fn native_round_trip_chirho(
 }
 
 /// `native_round_trip_chirho` for an executable: `main` is checked as the program's IO entry
-/// (Report section 5, row 692). The value round trip above keeps the value purpose, so a
-/// pure entry still prints its result.
+/// (Report section 5, rows 692 and 706). Artifact emission retains the program role: execute
+/// the action, discard its lazy result, and return zero. The value helper above retains each
+/// backend's legacy value observation; neither role supplies missing entry dictionaries.
 /// workflow: language-features-chirho/fundep-generalization-chirho
 pub fn native_program_round_trip_chirho(
     source_chirho: &str,
@@ -108,7 +110,11 @@ pub fn native_program_round_trip_chirho(
         &FrontendOptionsChirho::for_program_chirho("main"),
     )
     .map_err(|diagnostics_chirho| format!("frontend failed: {diagnostics_chirho:?}"))?;
-    let artifact_chirho = native_artifact_chirho(&compiled_chirho.core_chirho, backend_chirho)?;
+    let artifact_chirho = native_artifact_chirho(
+        &compiled_chirho.core_chirho,
+        backend_chirho,
+        NativeExecutionRoleChirho::ProgramChirho,
+    )?;
     native_artifact_round_trip_chirho(artifact_chirho, input_chirho, Duration::from_secs(15))
 }
 
@@ -124,7 +130,11 @@ pub fn native_round_trip_with_deadline_chirho(
     let compiled_chirho =
         compile_source_chirho(source_chirho, &mut source_map_chirho, "Main.hs")
             .map_err(|diagnostics_chirho| format!("frontend failed: {diagnostics_chirho:?}"))?;
-    let artifact_chirho = native_artifact_chirho(&compiled_chirho.core_chirho, backend_chirho)?;
+    let artifact_chirho = native_artifact_chirho(
+        &compiled_chirho.core_chirho,
+        backend_chirho,
+        NativeExecutionRoleChirho::ValueChirho,
+    )?;
     native_artifact_round_trip_chirho(artifact_chirho, input_chirho, deadline_chirho)
 }
 
@@ -171,25 +181,33 @@ pub fn native_project_round_trip_chirho(
         .executables_chirho
         .first()
         .ok_or("the package built no executable")?;
-    let artifact_chirho = native_artifact_chirho(&executable_chirho.core_chirho, backend_chirho)?;
+    let artifact_chirho = native_artifact_chirho(
+        &executable_chirho.core_chirho,
+        backend_chirho,
+        NativeExecutionRoleChirho::ProgramChirho,
+    )?;
     native_artifact_round_trip_chirho(artifact_chirho, input_chirho, deadline_chirho)
 }
 
-/// The backend's executable artifact for compiled Core.
+/// The backend's executable artifact, retaining the caller's execution role.
+/// Workflow: testing-chirho/native-entry-role-chirho.
 fn native_artifact_chirho(
     core_chirho: &CoreModuleChirho,
     backend_chirho: NativeBackendChirho,
+    execution_role_chirho: NativeExecutionRoleChirho,
 ) -> Result<NativeArtifactChirho, String> {
     Ok(match backend_chirho {
         NativeBackendChirho::LlvmChirho => NativeArtifactChirho::LlvmIrChirho(
-            haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_chirho(
+            haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_with_role_chirho(
                 core_chirho,
+                execution_role_chirho,
             )?,
         ),
         NativeBackendChirho::CraneliftChirho => NativeArtifactChirho::CraneliftObjectChirho(
-            haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_chirho(
+            haskelujah_backend_cranelift_chirho::compile_core_to_object_executable_with_role_chirho(
                 core_chirho,
                 &Default::default(),
+                execution_role_chirho,
             )?
             .object_bytes_chirho,
         ),

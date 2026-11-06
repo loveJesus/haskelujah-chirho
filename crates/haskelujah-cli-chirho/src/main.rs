@@ -9,10 +9,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode, Stdio};
 
 use haskelujah_backend_cranelift_chirho::{
-    TargetConfigChirho, compile_core_to_object_executable_chirho,
+    TargetConfigChirho, compile_core_to_object_executable_with_role_chirho,
 };
-use haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_chirho;
+use haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_with_role_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho;
+use haskelujah_core_chirho::io_actions_chirho::NativeExecutionRoleChirho;
 use haskelujah_driver_chirho::rts_snapshot_chirho::{RtsSnapshotChirho, rts_snapshot_chirho};
 use haskelujah_driver_chirho::{
     check_source_path_with_source_map_chirho, render_diagnostics_chirho, render_summary_chirho,
@@ -469,8 +470,9 @@ fn compile_command_chirho(
                     );
                 } else {
                     // Generate executable LLVM IR with C main() entry point
-                    let exec_ir_chirho = match try_compile_core_to_llvm_executable_chirho(
+                    let exec_ir_chirho = match try_compile_core_to_llvm_executable_with_role_chirho(
                         &result_chirho.core_chirho,
+                        NativeExecutionRoleChirho::ProgramChirho,
                     ) {
                         Ok(ir_chirho) => ir_chirho,
                         Err(error_chirho) => {
@@ -819,8 +821,12 @@ fn link_cranelift_executable_from_core_chirho(
     output_path_chirho: &Path,
 ) -> Result<(), String> {
     let config_chirho = TargetConfigChirho::default();
-    let obj_chirho = compile_core_to_object_executable_chirho(core_chirho, &config_chirho)
-        .map_err(|error_chirho| format!("cranelift compilation failed: {error_chirho}"))?;
+    let obj_chirho = compile_core_to_object_executable_with_role_chirho(
+        core_chirho,
+        &config_chirho,
+        NativeExecutionRoleChirho::ProgramChirho,
+    )
+    .map_err(|error_chirho| format!("cranelift compilation failed: {error_chirho}"))?;
     link_cranelift_object_file_chirho(&obj_chirho.object_bytes_chirho, output_path_chirho)
 }
 
