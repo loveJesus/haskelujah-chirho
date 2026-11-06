@@ -115,77 +115,6 @@ impl DictPassCtxChirho {
         result_chirho
     }
 
-    /// `>>=` or `>>` in code that owns a `Monad` dictionary, when no argument proves the monad:
-    /// the owning dictionary's own method, as `return` and `pure` already take the owning
-    /// Applicative. The owner is the binding's predicate (or a superclass the pass extracted
-    /// from it), passed by every caller, so the method runs in the caller's monad instead of
-    /// IO's by its name (row 697).
-    ///
-    /// Only an evidence class owns a dictionary (`fallback_dict_for_class_chirho`): the ground
-    /// dictionaries seeded for every binding never count, so evidence-free code such as `main`
-    /// keeps INV-001's name fallback. A program's own `>>=` or `>>` never reaches this point
-    /// (`local_shadow_ids_chirho`), and a spelling the selector registry gives to a class other
-    /// than `Monad`, or `mplus`, keeps its name.
-    /// workflow: monadic-dispatch-chirho
-    fn owned_monad_chain_chirho(
-        &self,
-        head_name_chirho: &str,
-        args_chirho: &[&CoreExprChirho],
-        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
-        evidence_classes_chirho: &HashSet<String>,
-        local_type_keys_chirho: &HashMap<CoreIdChirho, String>,
-        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
-    ) -> Option<CoreExprChirho> {
-        if head_name_chirho != ">>=" && head_name_chirho != ">>" {
-            return None;
-        }
-        let (class_chirho, selector_chirho) =
-            self.class_method_selector_for_name_chirho(head_name_chirho)?;
-        if class_chirho != "Monad" {
-            return None;
-        }
-        let dictionary_chirho = Self::fallback_dict_for_class_chirho(
-            &class_chirho,
-            dict_vars_chirho,
-            evidence_classes_chirho,
-        )?;
-        let mut result_chirho = CoreExprChirho::AppChirho {
-            fun_chirho: Box::new(CoreExprChirho::VarChirho(selector_chirho)),
-            arg_chirho: Box::new(CoreExprChirho::VarChirho(dictionary_chirho)),
-        };
-        for argument_chirho in args_chirho {
-            result_chirho = CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(result_chirho),
-                arg_chirho: Box::new(self.rewrite_method_refs_with_locals_chirho(
-                    argument_chirho,
-                    dict_vars_chirho,
-                    evidence_classes_chirho,
-                    local_type_keys_chirho,
-                    local_instance_dicts_chirho,
-                )),
-            };
-        }
-        Some(result_chirho)
-    }
-
-    /// Whether a monad dispatch key's head is a type variable (`(t5 Int)`, a rigid `mChirho`)
-    /// rather than a type constructor (`(Maybe Int)`, `[Int]`, `(IO ())`, a unit or tuple).
-    /// A key mentioning an arrow or a `forall` is never one: the function monad and a
-    /// higher-rank type keep their name.
-    /// workflow: monadic-dispatch-chirho
-    fn names_type_variable_head_chirho(key_chirho: &str) -> bool {
-        if key_chirho.contains("->") || key_chirho.contains("forall") {
-            return false;
-        }
-        key_chirho
-            .trim_start_matches(|character_chirho: char| {
-                character_chirho == '(' || character_chirho.is_whitespace()
-            })
-            .chars()
-            .next()
-            .is_some_and(|first_chirho| first_chirho.is_ascii_lowercase() || first_chirho == '_')
-    }
-
     /// Conservative type key for monad-chain dispatch (`>>=` / `>>`): only
     /// shapes that PROVE the monad head are trusted — constructor
     /// applications (Just x, Right y, x : xs), constructor vars, locally
@@ -436,18 +365,6 @@ impl DictPassCtxChirho {
         };
         let Some(value_key_chirho) = value_key_opt_chirho else {
             if matches!(head_name_chirho.as_str(), ">>=" | ">>" | "mplus") {
-                // No argument proves the monad: the owning Monad dictionary decides
-                // `>>=` and `>>`, as the owning Applicative already decides return/pure.
-                if let Some(owned_chirho) = self.owned_monad_chain_chirho(
-                    &head_name_chirho,
-                    &args_chirho,
-                    dict_vars_chirho,
-                    evidence_classes_chirho,
-                    local_type_keys_chirho,
-                    local_instance_dicts_chirho,
-                ) {
-                    return Some(owned_chirho);
-                }
                 return Some(self.rebuild_preserved_method_app_chirho(
                     head_id_chirho,
                     &args_chirho,
@@ -464,21 +381,6 @@ impl DictPassCtxChirho {
             self.lookup_dispatch_body_name_id_chirho(&format!("{prefix_chirho}{head_key_chirho}"))
         else {
             if matches!(head_name_chirho.as_str(), ">>=" | ">>" | "mplus") {
-                // A key that names only a type variable (`(t5 Int)`, a rigid `m`) proves a
-                // polymorphic monad, which the owning dictionary serves. A constructor key
-                // with no body keeps the name: it proves a monad the owner may not be.
-                if Self::names_type_variable_head_chirho(&value_key_chirho)
-                    && let Some(owned_chirho) = self.owned_monad_chain_chirho(
-                        &head_name_chirho,
-                        &args_chirho,
-                        dict_vars_chirho,
-                        evidence_classes_chirho,
-                        local_type_keys_chirho,
-                        local_instance_dicts_chirho,
-                    )
-                {
-                    return Some(owned_chirho);
-                }
                 return Some(self.rebuild_preserved_method_app_chirho(
                     head_id_chirho,
                     &args_chirho,

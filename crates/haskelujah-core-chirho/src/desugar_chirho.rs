@@ -469,8 +469,13 @@ impl DesugarCtxChirho {
     /// and falls back to the name this resolver would itself have chosen. That
     /// is a producer gap to close, not a second opinion: nothing here overrides
     /// a selection that exists.
+    ///
+    /// The selection's origin is the identity the checker recorded its proof
+    /// under, so a minted occurrence keeps it with the selection's role, as a
+    /// written operator does (row 697). An unminted id records nothing.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     /// workflow: language-features-chirho/qualified-do-chirho
+    /// workflow: monadic-dispatch-chirho
     fn resolve_selected_operation_chirho(
         &mut self,
         selected_chirho: Option<&SelectedOperationChirho>,
@@ -482,7 +487,14 @@ impl DesugarCtxChirho {
                 let name_chirho = &selected_chirho.name_chirho;
                 let text_chirho = name_chirho.text_chirho().to_string();
                 let carried_qualifier_chirho = name_chirho.qualifier_chirho().map(str::to_string);
-                self.resolve_do_method_chirho(carried_qualifier_chirho.as_deref(), &text_chirho)
+                let operation_id_chirho = self
+                    .resolve_do_method_chirho(carried_qualifier_chirho.as_deref(), &text_chirho);
+                self.record_occurrence_provenance_chirho(
+                    operation_id_chirho,
+                    selected_chirho.origin_chirho(),
+                    selected_chirho.role_chirho,
+                );
+                operation_id_chirho
             }
             None => self.resolve_do_method_chirho(qualifier_chirho, method_chirho),
         }
