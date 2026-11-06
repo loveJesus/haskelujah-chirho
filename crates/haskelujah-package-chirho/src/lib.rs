@@ -39,7 +39,7 @@ pub use pkgdb_chirho::{
 };
 pub use resolve_chirho::{
     BuildPlanChirho, BuildStepChirho, PackageIndexChirho, PackageMetaChirho, ResolveErrorChirho,
-    resolve_deps_chirho,
+    resolve_build_deps_chirho, resolve_deps_chirho,
 };
 pub use source_db_chirho::{
     CORE_CHECKED_SOURCE_CAPABILITY_CHIRHO, ResolvedDependencyChirho, SourceModuleChirho,
