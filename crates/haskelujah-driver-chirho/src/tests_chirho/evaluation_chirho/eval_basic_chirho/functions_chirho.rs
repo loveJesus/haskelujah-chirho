@@ -125,10 +125,6 @@ fn eval_partial_application_chirho() {
     }
 }
 
-// ---------------------------------------------------------------
-// Tuple operation tests (fst, snd)
-// ---------------------------------------------------------------
-
 #[test]
 fn eval_backtick_div_chirho() {
     use crate::eval_source_chirho;
@@ -459,8 +455,6 @@ fn eval_section_addition_chirho() {
     }
 }
 
-// ── Type annotation expressions ─────────────────────────────────
-
 // ── Lambda with tuple pattern ────────────────────────────────────
 
 #[test]
@@ -478,8 +472,6 @@ fn eval_lambda_tuple_pattern_chirho() {
         Err(e_chirho) => panic!("lambda tuple pattern: {}", e_chirho),
     }
 }
-
-// ── Chained function application ────────────────────────────────
 
 // ── Chained function application ────────────────────────────────
 
@@ -501,8 +493,6 @@ fn eval_chained_dollar_chirho() {
 
 // ── Lambda with constructor pattern ──────────────────────────────
 
-// ── Lambda with constructor pattern ──────────────────────────────
-
 #[test]
 fn eval_lambda_con_pattern_chirho() {
     // (\(Just x) -> x + 1) (Just 41) → 42
@@ -518,8 +508,6 @@ fn eval_lambda_con_pattern_chirho() {
         Err(e_chirho) => panic!("lambda con pattern: {}", e_chirho),
     }
 }
-
-// ── Uncurry with operator section ────────────────────────────────
 
 // ── Map with operator section ────────────────────────────────────
 

@@ -82,8 +82,6 @@ fn eval_seq_strict_chirho() {
     }
 }
 
-// ── Multi-equation list-pattern tests ───────────────────────────────
-
 // ── deepseq / force / evaluate tests ─────────────────────────────────
 
 #[test]

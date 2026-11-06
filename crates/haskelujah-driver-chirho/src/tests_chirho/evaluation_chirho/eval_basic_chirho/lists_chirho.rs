@@ -50,8 +50,6 @@ fn eval_concat_chirho() {
     assert_eq!(result_chirho.1.io_output_chirho, "abcdef\n");
 }
 
-// ── Priority 59: List comprehensions ─────────────────────────
-
 #[test]
 fn eval_map_chirho() {
     use crate::eval_source_chirho;
@@ -380,10 +378,6 @@ main = length (init [1, 2, 3, 4, 5])
         "length (init [1,2,3,4,5]) = 4"
     );
 }
-
-// ---------------------------------------------------------------
-// Priority 66: Polymorphic take/drop on lists
-// ---------------------------------------------------------------
 
 // ---------------------------------------------------------------
 // Priority 66: Polymorphic take/drop on lists
@@ -729,8 +723,6 @@ fn eval_powers_of_two_chirho() {
     }
 }
 
-// ── String comparison / Ord [Char] tests ─────────────────────────
-
 #[test]
 fn eval_product_chirho() {
     // product [1,2,3,4,5] → 120
@@ -823,9 +815,6 @@ fn eval_map_square_sum_chirho() {
 }
 
 // ── Accumulator pattern with recursive list building ──────────────
-
-/// Test 3: digits decomposition + sum — accumulator with ++ and recursion.
-/// sum (digits 12345) = 1+2+3+4+5 = 15
 
 #[test]
 fn eval_powerset_chirho() {

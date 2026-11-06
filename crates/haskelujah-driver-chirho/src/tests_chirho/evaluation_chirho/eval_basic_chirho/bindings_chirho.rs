@@ -149,8 +149,6 @@ main = let p = (3, 7) in
 }
 
 // ── Priority 50: let/where in do-notation ──────────────────
-
-// ── Priority 50: let/where in do-notation ──────────────────
 #[test]
 fn eval_let_in_where_chirho() {
     use crate::eval_source_chirho;
@@ -407,8 +405,6 @@ fn eval_where_forward_ref_chirho() {
 
 // ── Let with multiple bindings ──────────────────────────────────
 
-// ── Let with multiple bindings ──────────────────────────────────
-
 #[test]
 fn eval_let_multi_bind_chirho() {
     // let { a = 10; b = 20; c = 30 } in a + b + c
@@ -424,8 +420,6 @@ fn eval_let_multi_bind_chirho() {
         Err(e_chirho) => panic!("let multi bind: {}", e_chirho),
     }
 }
-
-// ── If in where ─────────────────────────────────────────────────
 
 // ── If in where ─────────────────────────────────────────────────
 
@@ -449,8 +443,6 @@ main = classify 42
         Err(e_chirho) => panic!("if in where: {}", e_chirho),
     }
 }
-
-// ── Where with multiple helper functions ─────────────────────────
 
 // ── Where with multiple helper functions ─────────────────────────
 
@@ -494,8 +486,6 @@ main = let x = double 5 in x + 3
         Err(e_chirho) => panic!("nested let where: {}", e_chirho),
     }
 }
-
-// ── Push to 1000 tests ─────────────────────────────────────────
 
 #[test]
 fn eval_nested_where_simple_chirho() {

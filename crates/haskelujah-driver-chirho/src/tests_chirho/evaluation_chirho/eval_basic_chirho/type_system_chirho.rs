@@ -4,8 +4,6 @@
 
 use haskelujah_span_chirho::SourceMapChirho;
 
-// ── Priority 51: Newtype deriving and GND ────────────────────
-
 #[test]
 fn eval_forall_type_sig_chirho() {
     use crate::eval_source_chirho;

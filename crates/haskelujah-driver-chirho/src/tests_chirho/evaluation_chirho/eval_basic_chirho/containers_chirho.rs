@@ -476,8 +476,6 @@ fn eval_set_fold_chirho() {
     }
 }
 
-// ── Type synonym in user code ───────────────────────────────────
-
 #[test]
 fn eval_map_find_with_default_chirho() {
     // mapFindWithDefault 99 5 mapEmpty → 99 (key not found, returns default)

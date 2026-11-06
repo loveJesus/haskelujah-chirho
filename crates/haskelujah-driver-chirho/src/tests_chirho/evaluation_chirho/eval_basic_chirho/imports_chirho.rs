@@ -8,10 +8,6 @@ use haskelujah_span_chirho::SourceMapChirho;
 // Multi-module evaluation tests
 // -----------------------------------------------------------------------
 
-// -----------------------------------------------------------------------
-// Multi-module evaluation tests
-// -----------------------------------------------------------------------
-
 #[test]
 fn eval_multi_module_function_call_chirho() {
     use crate::eval_modules_chirho;

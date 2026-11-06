@@ -444,8 +444,6 @@ fn eval_lines_unlines_chirho() {
 
 // -- String-as-[Char] interop tests --
 
-// -- String-as-[Char] interop tests --
-
 #[test]
 fn eval_head_string_chirho() {
     // head "hello" → 'h'
@@ -545,8 +543,6 @@ fn eval_null_string_chirho() {
         Err(e_chirho) => panic!("null empty string: {}", e_chirho),
     }
 }
-
-// -- Where-clause mutual recursion test --
 
 // -- Additional list-on-string tests --
 

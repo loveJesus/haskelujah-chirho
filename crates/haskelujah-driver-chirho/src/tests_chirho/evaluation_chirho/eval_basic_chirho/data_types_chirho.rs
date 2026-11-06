@@ -311,10 +311,6 @@ main = showColor Red
     }
 }
 
-// ---------------------------------------------------------------
-// Priority 64: deriving Eq / Show / Ord
-// ---------------------------------------------------------------
-
 #[test]
 fn eval_bool_and_chirho() {
     use crate::eval_source_chirho;
@@ -621,8 +617,6 @@ fn eval_catmaybes_chirho() {
 
 // ── Nested pattern matching in case ─────────────────────────────
 
-// ── Nested pattern matching in case ─────────────────────────────
-
 #[test]
 fn eval_case_nested_tuple_chirho() {
     // case (1, 2) of { (a, b) -> a + b }
@@ -641,8 +635,6 @@ fn eval_case_nested_tuple_chirho() {
 
 // ── Data constructor as function ────────────────────────────────
 
-// ── Data constructor as function ────────────────────────────────
-
 #[test]
 fn eval_map_just_chirho() {
     // map Just [1,2,3] → [Just 1, Just 2, Just 3], length → 3
@@ -658,8 +650,6 @@ fn eval_map_just_chirho() {
         Err(e_chirho) => panic!("map Just: {}", e_chirho),
     }
 }
-
-// ── Nested data types ───────────────────────────────────────────
 
 // ── Nested data types ───────────────────────────────────────────
 
