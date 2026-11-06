@@ -24,7 +24,7 @@ use super::cabal_build_chirho::{
     package_module_cpp_options_map_chirho,
 };
 use super::dependency_packages_chirho::{
-    collect_local_dependency_frontend_artifacts_chirho, find_local_dependency_package_dir_chirho,
+    collect_required_dependency_frontend_artifacts_chirho, find_local_dependency_package_dir_chirho,
 };
 use super::module_discovery_chirho::{
     discover_library_modules_chirho, discover_modules_for_library_chirho,
@@ -40,7 +40,7 @@ use haskelujah_package_chirho::{
     ResolvedDependencyChirho, SourceInstallErrorChirho, SourceInstallInputChirho,
     SourceModuleChirho, SourceModuleOriginChirho, SourcePackageDbChirho, SourcePackageRecordChirho,
     SourceStoreChirho, StoreLockChirho, StoreStateAfterFailureChirho, VersionChirho,
-    is_builtin_package_chirho,
+    is_builtin_package_chirho, is_trivial_constraint_chirho,
 };
 use haskelujah_span_chirho::SourceMapChirho;
 use package_source_tree_chirho::{
@@ -259,6 +259,12 @@ fn resolve_recorded_dependencies_chirho(
     for dependency_chirho in &library_deps_chirho {
         let name_chirho = &dependency_chirho.package_chirho;
         if is_builtin_package_chirho(name_chirho) {
+            if !is_trivial_constraint_chirho(&dependency_chirho.constraint_chirho) {
+                return Err(format!(
+                    "dependency {name_chirho} {} bounds a compiler-provided package, and the compiler declares no {name_chirho} version to check it against; source install refuses a bound it cannot prove",
+                    dependency_chirho.constraint_chirho
+                ));
+            }
             resolved_chirho.push(ResolvedDependencyChirho::BuiltinChirho(name_chirho.clone()));
             continue;
         }
@@ -320,10 +326,12 @@ fn package_relative_path_chirho(
     }
 }
 
-/// Every listed library module, found exactly once. A listed `Paths_<pkg>` without a shipped
-/// file is written from Cabal's contract into the listing library's first source directory,
-/// where builds find it too; a listed `PackageInfo_<pkg>` is refused; any other missing module
-/// is an error.
+/// Every listed library module, found exactly once.
+/// - A listed `Paths_<pkg>` without a shipped file is generated in Cabal's module shape into the
+///   listing library's first source directory, where builds find it too. Its directory getters
+///   need overrides, a source-check limitation.
+/// - A listed `PackageInfo_<pkg>` is refused.
+/// - Any other missing module is an error.
 fn inventory_library_modules_chirho(
     package_chirho: &PackageDescChirho,
     version_chirho: &VersionChirho,
@@ -428,7 +436,7 @@ fn check_library_compiles_chirho(
     }
     let module_cpp_options_chirho =
         package_module_cpp_options_map_chirho(package_chirho, package_dir_chirho);
-    let seeds_chirho = collect_local_dependency_frontend_artifacts_chirho(
+    let seeds_chirho = collect_required_dependency_frontend_artifacts_chirho(
         package_dir_chirho,
         library_deps_chirho,
     )?;

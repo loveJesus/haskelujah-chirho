@@ -21,16 +21,16 @@ flowchart TD
   fetch --> install["install_package_chirho"]
   local --> install
   install --> open["SourceStoreChirho::open_chirho: discoverable name, no nested store"]
-  open --> lock["lock_chirho: exclusive non-blocking advisory lock"]
+  open --> lock["lock_chirho: exclusive non-blocking advisory lock, tied to this store"]
   lock --> load["load_db_chirho: missing is empty, damaged is an error"]
   load --> sweep["sweep_staging_chirho: leftovers of crashed installs"]
   sweep --> stage["stage_source_chirho: bounded, link-free copy without dist-chirho"]
   stage --> cabal["read_single_cabal_file_chirho: exactly one .cabal"]
   cabal --> setup["ensure_runs_no_setup_code_chirho: Simple, or Cabal's default Setup"]
   setup --> name["ensure_new_package_name_chirho: no record, no directory for the name"]
-  name --> deps["resolve_recorded_dependencies_chirho: builtin, or recorded, satisfying and selected"]
+  name --> deps["resolve_recorded_dependencies_chirho: every library bound conjoined; builtin only with a trivial bound; else recorded, satisfying and selected"]
   deps --> inventory["inventory_library_modules_chirho: every listed module; Paths_ written; PackageInfo_ refused"]
-  inventory --> check["check_library_compiles_chirho: whole library to Core with store seeds"]
+  inventory --> check["check_library_compiles_chirho: whole library to Core; seeds from collect_required_dependency_frontend_artifacts_chirho"]
   check --> publish["rename staged directory to store/name-version"]
   publish --> save["save_db_chirho: temp file, sync, rename"]
   save -- saved --> done["InstallResultChirho"]
@@ -62,8 +62,11 @@ library's first source directory, where builds discover it too.
 
 - `version` is exact.
 - Each directory getter returns the documented `<pkg>_<dir>` override. Without the override it
-  fails with an explicit `IOError`, because a source package installs no binaries, libraries,
-  data or configuration.
+  fails with an explicit `IOError`. That is a source-check limitation, not Cabal's behavior:
+  Cabal falls back to the configured installation directories, and a source package has none.
+- An unused listed `Paths_` module proves only that this shape compiles, never that Cabal's
+  run-time paths work. Still to come: an override positive and a no-override `Unsupported`
+  contrast at run time.
 - `PackageInfo_<pkg>` has no generator, so a package listing it is refused.
 
 ## Consumers still to change (handed off, row 703)
@@ -71,6 +74,18 @@ library's first source directory, where builds discover it too.
 - The build path's `builtin_dependency_names_chirho` should read
   `haskelujah_package_chirho::BUILTIN_PACKAGE_NAMES_CHIRHO`. Until then a test pins the two
   lists equal.
-- `collect_local_dependency_frontend_artifacts_chirho` warns and skips a dependency that fails
-  to compile instead of returning the error.
+- Builds still collect dependency seeds best-effort (`collect_local_dependency_frontend_artifacts_chirho`
+  warns and skips). Install uses the strict mode, which returns the first missing or failing
+  direct or transitive dependency as its error.
+- `collect_package_deps_chirho` still keeps a library's bound and drops an executable's bound on
+  the same package. Only the library collector conjoins every bound.
 - Builds link only the project's own module bodies (Unit B).
+
+## Builtin versions (concrete missing metadata)
+
+The compiler declares no version for the packages it provides. The `MIN_VERSION_*` values its C
+preprocessor defines are compatibility seeds (`base` 4.14.0, `template-haskell` 2.16.0, `ghc`
+8.10.0, `process` 1.6.0, `time` 1.15.0), and a store directory of the same name can raise them.
+So install accepts a builtin dependency only with a trivial bound, and refuses every other bound
+explicitly. Accepting `base >=4.7 && <5`, as haskell-say needs, requires a declared capability
+version for `base`, decided and recorded by its owner. Install cannot infer one.

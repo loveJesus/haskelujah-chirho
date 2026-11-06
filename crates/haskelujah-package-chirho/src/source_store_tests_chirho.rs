@@ -3,6 +3,7 @@
 //! The source package database format, the store's lock and atomic save, the generated `Paths_`
 //! module and bounded archive extraction (row 703).
 
+use crate::builtin_packages_chirho::is_trivial_constraint_chirho;
 use crate::generated_modules_chirho::{paths_module_name_chirho, render_paths_module_chirho};
 use crate::hackage_chirho::extract_tarball_bounded_chirho;
 use crate::source_db_chirho::{
@@ -12,7 +13,9 @@ use crate::source_db_chirho::{
 use crate::source_store_chirho::{
     SOURCE_DB_TEMP_FILE_NAME_CHIRHO, SOURCE_STORE_DIR_NAME_CHIRHO, SourceStoreChirho,
 };
-use crate::version_chirho::parse_version_chirho;
+use crate::version_chirho::{
+    VersionConstraintChirho, parse_version_chirho, parse_version_constraint_chirho,
+};
 use std::fs;
 use std::path::PathBuf;
 
@@ -127,7 +130,7 @@ fn damaged_database_text_is_refused_with_its_line_chirho() {
 }
 
 #[test]
-fn generated_paths_module_follows_cabals_contract_chirho() {
+fn generated_paths_module_keeps_cabals_names_and_version_chirho() {
     let version_chirho = parse_version_chirho("1.0.0.0").unwrap();
     assert_eq!(paths_module_name_chirho("haskell-say"), "Paths_haskell_say");
     let text_chirho = render_paths_module_chirho("haskell-say", &version_chirho).unwrap();
@@ -302,4 +305,73 @@ fn bounded_extraction_refuses_links_chirho() {
         fs::read_to_string(dir_chirho.path().join("pkg-chirho-0.1/src/A.hs")).unwrap(),
         "module A where\n"
     );
+}
+
+#[test]
+fn a_lock_from_one_store_never_mutates_another_chirho() {
+    let dir_chirho = tempfile::tempdir().unwrap();
+    let root_a_chirho = dir_chirho
+        .path()
+        .join("a-chirho")
+        .join(SOURCE_STORE_DIR_NAME_CHIRHO);
+    let store_a_chirho = SourceStoreChirho::open_chirho(&root_a_chirho).unwrap();
+    let store_b_chirho = SourceStoreChirho::open_chirho(
+        &dir_chirho
+            .path()
+            .join("b-chirho")
+            .join(SOURCE_STORE_DIR_NAME_CHIRHO),
+    )
+    .unwrap();
+    let lock_a_chirho = store_a_chirho.lock_chirho().unwrap();
+    let db_chirho = db_with_chirho(&[record_chirho("thing-chirho", "1.2.0")]);
+
+    let refused_chirho = store_b_chirho
+        .save_db_chirho(&db_chirho, &lock_a_chirho)
+        .expect_err("store B refuses store A's lock");
+    assert!(refused_chirho.contains("belongs to"), "{refused_chirho}");
+    assert!(!store_b_chirho.db_path_chirho().exists());
+    assert!(store_b_chirho.sweep_staging_chirho(&lock_a_chirho).is_err());
+    assert!(
+        store_b_chirho
+            .new_staging_dir_chirho(&lock_a_chirho)
+            .is_err()
+    );
+    assert!(!store_b_chirho.staging_root_chirho().exists());
+
+    // The same store reached by another spelling is the same store.
+    let respelled_chirho = SourceStoreChirho::open_chirho(
+        &dir_chirho
+            .path()
+            .join("a-chirho")
+            .join(".")
+            .join(SOURCE_STORE_DIR_NAME_CHIRHO),
+    )
+    .unwrap();
+    respelled_chirho
+        .save_db_chirho(&db_chirho, &lock_a_chirho)
+        .unwrap();
+    assert_eq!(store_a_chirho.load_db_chirho().unwrap(), db_chirho);
+}
+
+#[test]
+fn only_bounds_no_version_can_violate_are_trivial_chirho() {
+    assert!(is_trivial_constraint_chirho(
+        &VersionConstraintChirho::AnyChirho
+    ));
+    for (text_chirho, trivial_chirho) in [
+        (">=0", true),
+        (">=0 || <1", true),
+        (">=4.7 && <5", false),
+        (">=999", false),
+        ("<5", false),
+        ("==4.18.*", false),
+        ("^>=4.18", false),
+    ] {
+        let constraint_chirho = parse_version_constraint_chirho(text_chirho).unwrap();
+        assert_eq!(
+            is_trivial_constraint_chirho(&constraint_chirho),
+            trivial_chirho,
+            "{text_chirho}"
+        );
+    }
 }
