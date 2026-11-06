@@ -9,6 +9,7 @@
 //! - a method occurrence whose head replacement and the rewrite after it left the bare method
 //!   at the head;
 //! - a constrained reference slot that ended with no dictionary.
+//!
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use std::collections::HashSet;

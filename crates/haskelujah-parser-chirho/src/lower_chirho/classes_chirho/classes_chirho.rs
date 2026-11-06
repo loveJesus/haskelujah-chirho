@@ -161,14 +161,10 @@ impl LowerCtxChirho {
             {
                 continue;
             }
-            if tok_chirho.kind_chirho() == TokenKindChirho::AtSignChirho {
-                if let Some((binder_chirho, consumed_chirho)) =
-                    self.declaration_head_binder_chirho(&children_chirho, *tok_idx_chirho)
-                {
-                    type_vars_chirho.push(binder_chirho);
-                    skip_until_child_idx_chirho = Some(*tok_idx_chirho + consumed_chirho);
-                }
-            } else if tok_chirho.kind_chirho() == TokenKindChirho::UnderscoreReservedIdChirho {
+            if matches!(
+                tok_chirho.kind_chirho(),
+                TokenKindChirho::AtSignChirho | TokenKindChirho::UnderscoreReservedIdChirho
+            ) {
                 if let Some((binder_chirho, consumed_chirho)) =
                     self.declaration_head_binder_chirho(&children_chirho, *tok_idx_chirho)
                 {

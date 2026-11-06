@@ -681,7 +681,8 @@ fn measured_headers_keep_every_binder_chirho() {
     // Accepted should_compile programs whose closed families put an applied-kind binder
     // before another binder: each family keeps its declared arity, and so does every
     // equation, which the arity check (GHC-12985) compares.
-    let files_chirho: [(&str, &str, &[(&str, usize)]); 5] = [
+    type HeaderFixtureChirho = (&'static str, &'static str, &'static [(&'static str, usize)]);
+    let files_chirho: [HeaderFixtureChirho; 5] = [
         (
             "T15473.hs",
             include_str!(

@@ -296,8 +296,8 @@ fn checked_synonym_export_budget_exhaustion_is_latched_and_coded_chirho() {
             &producer_chirho.infer_result_chirho,
             &mut budget_chirho,
         )
-        .err()
-        .expect("no partial export on exhaustion");
+        .map(|_| ())
+        .expect_err("no partial export on exhaustion");
         assert!(format!("{error_chirho}").contains("error[E0300]"));
     }
 }

@@ -111,7 +111,10 @@ fn conflicting_mirrors_refuse_without_fabricating_metadata_chirho() {
         TyVarSpecificityChirho::SpecifiedChirho,
         &mut EqualityBudgetChirho::new_chirho(),
     );
-    assert_eq!(copied_chirho.records_chirho(), &[known_chirho.clone()]);
+    assert_eq!(
+        copied_chirho.records_chirho(),
+        std::slice::from_ref(&known_chirho)
+    );
     let refused_chirho = context_chirho.quantify_variables_chirho(
         vec![TyVarChirho(1)],
         &[

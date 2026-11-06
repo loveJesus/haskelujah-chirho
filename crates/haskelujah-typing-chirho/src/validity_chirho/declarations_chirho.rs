@@ -16,7 +16,9 @@
 //!    declared number of arguments (`GHC-12985`), in `family_equations_chirho`.
 //! 6. a newtype constructor's field has no strictness annotation (`GHC-04049`);
 //! 7. a lazy field annotation (`~T`) needs `StrictData` or `Strict` (`GHC-81601`).
+//!
 //! Deriving strategy and role-annotation rules also retain the landed row694 checks.
+//!
 //! 7. to 16. deriving strategies, the extensions they need and the classes they derive
 //!    (`deriving_strategy_chirho.rs`, row 694);
 //! 17. to 24. role annotations: their words, a repeat, their target, the extension, their

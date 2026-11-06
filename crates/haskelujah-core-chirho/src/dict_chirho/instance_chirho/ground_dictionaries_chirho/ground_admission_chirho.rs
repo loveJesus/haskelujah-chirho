@@ -9,6 +9,7 @@
 //!   and their evidence is never built for or reported.
 //! - The rows of a module instance whose declaration the producers pair (S3), and whose
 //!   context the pass indexes faithfully, lead with that context, whatever their head.
+//!
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use super::DictPassCtxChirho;

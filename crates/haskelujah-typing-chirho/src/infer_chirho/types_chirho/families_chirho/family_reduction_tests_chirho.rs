@@ -930,7 +930,7 @@ fn equation_variables_carry_checked_polytypes_without_decomposing_them_chirho() 
         vec![branch_chirho(0, vec![var_chirho(0)], var_chirho(0), vec![])],
     );
     assert_eq!(
-        reduce_chirho(&identity_chirho, &[forall_chirho.clone()]),
+        reduce_chirho(&identity_chirho, std::slice::from_ref(&forall_chirho)),
         Some(forall_chirho.clone())
     );
     let repeated_chirho = closed_chirho(
@@ -959,7 +959,7 @@ fn equation_variables_carry_checked_polytypes_without_decomposing_them_chirho() 
         )],
     );
     assert_eq!(
-        reduce_chirho(&concrete_chirho, &[forall_chirho.clone()]),
+        reduce_chirho(&concrete_chirho, std::slice::from_ref(&forall_chirho)),
         None
     );
     let forbidden_pattern_chirho = closed_chirho(
@@ -972,7 +972,10 @@ fn equation_variables_carry_checked_polytypes_without_decomposing_them_chirho() 
         )],
     );
     assert_eq!(
-        reduce_chirho(&forbidden_pattern_chirho, &[forall_chirho.clone()]),
+        reduce_chirho(
+            &forbidden_pattern_chirho,
+            std::slice::from_ref(&forall_chirho)
+        ),
         None
     );
     assert_eq!(

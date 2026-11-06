@@ -405,7 +405,7 @@ pub fn infer_module_kinds_with_imports_chirho(
                     && k_chirho
                         .chars()
                         .next()
-                        .map_or(true, |c_chirho| c_chirho.is_lowercase())
+                        .is_none_or(|c_chirho| c_chirho.is_lowercase())
             })
             .cloned()
             .collect();

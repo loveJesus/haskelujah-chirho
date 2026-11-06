@@ -234,10 +234,8 @@ impl DesugarCtxChirho {
                         }
                     }
                     // Pre-bind default methods not provided by the instance
-                    if let Some(defaults_chirho) =
-                        class_defaults_chirho.get(&class_name_chirho.to_string())
-                    {
-                        for (default_name_chirho, _) in defaults_chirho {
+                    if let Some(defaults_chirho) = class_defaults_chirho.get(class_name_chirho) {
+                        for default_name_chirho in defaults_chirho.keys() {
                             if !provided_chirho.contains(default_name_chirho) {
                                 let prim_name_chirho = format!(
                                     "$prim_{}_{}_{}",
@@ -435,9 +433,7 @@ impl DesugarCtxChirho {
                         }
                     }
                     // Generate bindings for default methods not provided
-                    if let Some(defaults_chirho) =
-                        class_defaults_chirho.get(&class_name_chirho.to_string())
-                    {
+                    if let Some(defaults_chirho) = class_defaults_chirho.get(class_name_chirho) {
                         for (default_name_chirho, default_arms_chirho) in defaults_chirho {
                             if !provided_chirho.contains(default_name_chirho) {
                                 let core_rhs_chirho =

@@ -190,21 +190,19 @@ impl LowerCtxChirho {
         }
         // `= r | r -> a` names the result, never a default or parameter.
         // Its explicit kind is retained from the already-lowered RHS syntax.
-        if saw_injectivity_chirho {
-            if let Some(mut named_result_chirho) = rhs_chirho.take() {
-                loop {
-                    match named_result_chirho {
-                        TypeChirho::ParenChirho { inner_chirho, .. } => {
-                            named_result_chirho = *inner_chirho
-                        }
-                        TypeChirho::KindAnnotationChirho { kind_chirho, .. } => {
-                            if result_kind_chirho.is_none() {
-                                result_kind_chirho = Some(*kind_chirho);
-                            }
-                            break;
-                        }
-                        _ => break,
+        if saw_injectivity_chirho && let Some(mut named_result_chirho) = rhs_chirho.take() {
+            loop {
+                match named_result_chirho {
+                    TypeChirho::ParenChirho { inner_chirho, .. } => {
+                        named_result_chirho = *inner_chirho
                     }
+                    TypeChirho::KindAnnotationChirho { kind_chirho, .. } => {
+                        if result_kind_chirho.is_none() {
+                            result_kind_chirho = Some(*kind_chirho);
+                        }
+                        break;
+                    }
+                    _ => break,
                 }
             }
         }

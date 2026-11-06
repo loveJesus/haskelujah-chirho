@@ -414,23 +414,19 @@ fn recoverable_result_vars_chirho(
         TypeChirho::AppChirho { .. } | TypeChirho::KindApplicationChirho { .. } => {
             let mut head_chirho = ty_chirho;
             let mut args_chirho = Vec::new();
-            loop {
-                match head_chirho {
-                    TypeChirho::AppChirho {
-                        fun_chirho,
-                        arg_chirho,
-                        ..
-                    }
-                    | TypeChirho::KindApplicationChirho {
-                        fun_chirho,
-                        arg_chirho,
-                        ..
-                    } => {
-                        args_chirho.push(arg_chirho.as_ref());
-                        head_chirho = fun_chirho;
-                    }
-                    _ => break,
-                }
+            while let TypeChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            }
+            | TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } = head_chirho
+            {
+                args_chirho.push(arg_chirho.as_ref());
+                head_chirho = fun_chirho;
             }
             if let TypeChirho::ConChirho(name_chirho) = head_chirho
                 && generative_head_chirho(name_chirho)

@@ -133,114 +133,111 @@ impl DictPassCtxChirho {
         let type_key_override_chirho = evidence_chirho
             .map(|(_class_chirho, key_chirho)| key_chirho.as_str())
             .or(type_key_override_chirho);
-        if let Some(name_chirho) = self.names_chirho.get(&id_chirho) {
-            if let Some((class_name_chirho, sel_id_chirho)) =
+        if let Some(name_chirho) = self.names_chirho.get(&id_chirho)
+            && let Some((class_name_chirho, sel_id_chirho)) =
                 self.class_method_selector_for_name_chirho(name_chirho)
-            {
-                // The checker proved this occurrence is at a rigid variable of
-                // the enclosing signature: the binding's own dictionary
-                // parameter for the class is the evidence, no instance is.
-                // workflow: language-features-chirho/dictionary-evidence-chirho
-                if let Some(own_key_chirho) = type_key_override_chirho.filter(|key_chirho| {
-                    haskelujah_typing_chirho::infer_chirho::is_own_dictionary_key_chirho(key_chirho)
-                }) {
-                    if let Some(dict_id_chirho) = Self::own_dict_chirho(
-                        &class_name_chirho,
-                        own_key_chirho,
-                        dict_vars_chirho,
-                        evidence_classes_chirho,
-                    ) {
+        {
+            // The checker proved this occurrence is at a rigid variable of
+            // the enclosing signature: the binding's own dictionary
+            // parameter for the class is the evidence, no instance is.
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            if let Some(own_key_chirho) = type_key_override_chirho.filter(|key_chirho| {
+                haskelujah_typing_chirho::infer_chirho::is_own_dictionary_key_chirho(key_chirho)
+            }) && let Some(dict_id_chirho) = Self::own_dict_chirho(
+                &class_name_chirho,
+                own_key_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+            ) {
+                return CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
+                };
+            }
+            // Try type-specific instance dict first. For higher-kinded
+            // classes, value inference sees keys like `Either Int Int`
+            // while generated dictionaries are keyed by the type head
+            // (`Either`, `Maybe`, `[]`).
+            if let Some(type_key_chirho) = type_key_override_chirho {
+                let candidate_keys_chirho =
+                    Self::registry_spellings_chirho(&class_name_chirho, type_key_chirho);
+                for candidate_key_chirho in candidate_keys_chirho {
+                    if let Some(dict_id_chirho) = local_instance_dicts_chirho
+                        .get(&(class_name_chirho.clone(), candidate_key_chirho.clone()))
+                    {
                         return CoreExprChirho::AppChirho {
                             fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
-                            arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
+                            arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
+                        };
+                    }
+                    if let Some(dict_id_chirho) = self
+                        .instance_dicts_chirho
+                        .get(&(class_name_chirho.clone(), candidate_key_chirho))
+                    {
+                        return CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
+                            arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
                         };
                     }
                 }
-                // Try type-specific instance dict first. For higher-kinded
-                // classes, value inference sees keys like `Either Int Int`
-                // while generated dictionaries are keyed by the type head
-                // (`Either`, `Maybe`, `[]`).
-                if let Some(type_key_chirho) = type_key_override_chirho {
-                    let candidate_keys_chirho =
-                        Self::registry_spellings_chirho(&class_name_chirho, type_key_chirho);
-                    for candidate_key_chirho in candidate_keys_chirho {
-                        if let Some(dict_id_chirho) = local_instance_dicts_chirho
-                            .get(&(class_name_chirho.clone(), candidate_key_chirho.clone()))
-                        {
-                            return CoreExprChirho::AppChirho {
-                                fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
-                                arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
-                            };
-                        }
-                        if let Some(dict_id_chirho) = self
-                            .instance_dicts_chirho
-                            .get(&(class_name_chirho.clone(), candidate_key_chirho))
-                        {
-                            return CoreExprChirho::AppChirho {
-                                fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
-                                arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
-                            };
-                        }
-                    }
-                    if self
-                        .class_param_count_chirho
-                        .get(&class_name_chirho)
-                        .copied()
-                        .unwrap_or(1)
-                        > 1
+                if self
+                    .class_param_count_chirho
+                    .get(&class_name_chirho)
+                    .copied()
+                    .unwrap_or(1)
+                    > 1
+                {
+                    let prefix_chirho = format!("{type_key_chirho}_");
+                    let mut dict_ids_chirho = Vec::new();
+                    for ((dict_class_chirho, dict_key_chirho), dict_id_chirho) in
+                        local_instance_dicts_chirho
                     {
-                        let prefix_chirho = format!("{type_key_chirho}_");
-                        let mut dict_ids_chirho = Vec::new();
-                        for ((dict_class_chirho, dict_key_chirho), dict_id_chirho) in
-                            local_instance_dicts_chirho
+                        if dict_class_chirho == &class_name_chirho
+                            && dict_key_chirho.starts_with(&prefix_chirho)
+                            && !dict_ids_chirho.contains(dict_id_chirho)
                         {
-                            if dict_class_chirho == &class_name_chirho
-                                && dict_key_chirho.starts_with(&prefix_chirho)
-                                && !dict_ids_chirho.contains(dict_id_chirho)
-                            {
-                                dict_ids_chirho.push(*dict_id_chirho);
-                            }
-                        }
-                        for ((dict_class_chirho, dict_key_chirho), dict_id_chirho) in
-                            &self.instance_dicts_chirho
-                        {
-                            if dict_class_chirho == &class_name_chirho
-                                && dict_key_chirho.starts_with(&prefix_chirho)
-                                && !dict_ids_chirho.contains(dict_id_chirho)
-                            {
-                                dict_ids_chirho.push(*dict_id_chirho);
-                            }
-                        }
-                        if let [dict_id_chirho] = dict_ids_chirho.as_slice() {
-                            return CoreExprChirho::AppChirho {
-                                fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
-                                arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
-                            };
+                            dict_ids_chirho.push(*dict_id_chirho);
                         }
                     }
+                    for ((dict_class_chirho, dict_key_chirho), dict_id_chirho) in
+                        &self.instance_dicts_chirho
+                    {
+                        if dict_class_chirho == &class_name_chirho
+                            && dict_key_chirho.starts_with(&prefix_chirho)
+                            && !dict_ids_chirho.contains(dict_id_chirho)
+                        {
+                            dict_ids_chirho.push(*dict_id_chirho);
+                        }
+                    }
+                    if let [dict_id_chirho] = dict_ids_chirho.as_slice() {
+                        return CoreExprChirho::AppChirho {
+                            fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
+                            arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
+                        };
+                    }
                 }
+            }
 
-                // A ground goal of a conditional instance takes the dictionary the pre-pass
-                // built for this occurrence (S1): after every keyed route, before any ambient.
-                // workflow: language-features-chirho/dictionary-evidence-chirho
-                if let Some(projection_chirho) =
-                    self.ground_goal_projection_chirho(id_chirho, &class_name_chirho, sel_id_chirho)
-                {
-                    return projection_chirho;
-                }
+            // A ground goal of a conditional instance takes the dictionary the pre-pass
+            // built for this occurrence (S1): after every keyed route, before any ambient.
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            if let Some(projection_chirho) =
+                self.ground_goal_projection_chirho(id_chirho, &class_name_chirho, sel_id_chirho)
+            {
+                return projection_chirho;
+            }
 
-                // Fall back only to dictionaries backed by real local evidence.
-                // Ambient seeded defaults are not proof for an unresolved method
-                // use and used to pick arbitrary semantics.
-                if evidence_classes_chirho.contains(&class_name_chirho)
-                    && !foreign_proof_chirho
-                    && let Some(dict_id_chirho) = dict_vars_chirho.get(&class_name_chirho)
-                {
-                    return CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
-                    };
-                }
+            // Fall back only to dictionaries backed by real local evidence.
+            // Ambient seeded defaults are not proof for an unresolved method
+            // use and used to pick arbitrary semantics.
+            if evidence_classes_chirho.contains(&class_name_chirho)
+                && !foreign_proof_chirho
+                && let Some(dict_id_chirho) = dict_vars_chirho.get(&class_name_chirho)
+            {
+                return CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(*dict_id_chirho)),
+                };
             }
         }
         if foreign_proof_chirho

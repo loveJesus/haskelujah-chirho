@@ -462,6 +462,14 @@ pub struct MethodOccurrenceRecordChirho {
     pub resolved_entry_chirho: Option<String>,
 }
 
+type LiteralCaptureChirho = (
+    SpanChirho,
+    Option<OriginIdChirho>,
+    String,
+    TyChirho,
+    Option<Arc<[PredChirho]>>,
+);
+
 /// The inference context — carries mutable state during inference.
 pub struct InferCtxChirho {
     non_deferrable_diagnostics_chirho: DiagnosticBundleChirho,
@@ -495,13 +503,7 @@ pub struct InferCtxChirho {
     occurrence_counters_chirho: HashMap<String, u32>,
     /// Literal evidence captures: (span, overloading class, literal type),
     /// finalized by `finalize_literal_evidence_chirho`.
-    literal_captures_chirho: Vec<(
-        SpanChirho,
-        Option<OriginIdChirho>,
-        String,
-        TyChirho,
-        Option<Arc<[PredChirho]>>,
-    )>,
+    literal_captures_chirho: Vec<LiteralCaptureChirho>,
     /// Reference evidence captures: (span, instantiated predicates in scheme
     /// order), finalized by `finalize_reference_evidence_chirho`.
     reference_captures_chirho: Vec<evidence_chirho::ReferenceCaptureChirho>,

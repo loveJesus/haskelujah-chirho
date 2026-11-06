@@ -81,32 +81,32 @@ fn corpus_t11811_chirho() {
 #[test]
 fn corpus_polytypedecomp_chirho() {
     let error_chirho = check_chirho("should_compile", "PolytypeDecomp.hs")
-        .err()
-        .expect("root's exact GHC-rejected source must reject");
+        .map(|_| ())
+        .expect_err("root's exact GHC-rejected source must reject");
     assert!(error_chirho.contains("error[E"), "{error_chirho}");
 }
 
 #[test]
 fn corpus_t14048a_chirho() {
     let error_chirho = check_chirho("should_fail", "T14048a.hs")
-        .err()
-        .expect("root's exact GHC-rejected source must reject");
+        .map(|_| ())
+        .expect_err("root's exact GHC-rejected source must reject");
     assert!(error_chirho.contains("error[E"), "{error_chirho}");
 }
 
 #[test]
 fn corpus_t16059c_chirho() {
     let error_chirho = check_chirho("should_fail", "T16059c.hs")
-        .err()
-        .expect("root's exact GHC-rejected source must reject");
+        .map(|_| ())
+        .expect_err("root's exact GHC-rejected source must reject");
     assert!(error_chirho.contains("error[E"), "{error_chirho}");
 }
 
 #[test]
 fn corpus_t22560_fail_b_chirho() {
     let error_chirho = check_chirho("should_fail", "T22560_fail_b.hs")
-        .err()
-        .expect("root's exact GHC-rejected source must reject");
+        .map(|_| ())
+        .expect_err("root's exact GHC-rejected source must reject");
     assert!(error_chirho.contains("error[E"), "{error_chirho}");
 }
 
@@ -119,8 +119,8 @@ fn corpus_t4524_finishes_without_resource_exhaustion_chirho() {
 #[test]
 fn corpus_t16512a_rejects_with_a_coded_diagnostic_chirho() {
     let error_chirho = check_chirho("should_fail", "T16512a.hs")
-        .err()
-        .expect("the retained GHC-rejected source must reject");
+        .map(|_| ())
+        .expect_err("the retained GHC-rejected source must reject");
     assert!(error_chirho.contains("error[E"), "{error_chirho}");
 }
 
@@ -139,16 +139,16 @@ fn corpus_tc269_keeps_alpha_equivalent_kinds_and_universe_producers_chirho() {
 #[test]
 fn corpus_visflag2_keeps_required_quantifiers_distinct_chirho() {
     let error_chirho = check_chirho("should_fail", "VisFlag2.hs")
-        .err()
-        .expect("fresh GHC visibility negative rejects");
+        .map(|_| ())
+        .expect_err("fresh GHC visibility negative rejects");
     assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
 }
 
 #[test]
 fn corpus_visflag3_keeps_associated_quantifier_visibility_chirho() {
     let error_chirho = check_chirho("should_fail", "VisFlag3.hs")
-        .err()
-        .expect("fresh GHC associated visibility negative rejects");
+        .map(|_| ())
+        .expect_err("fresh GHC associated visibility negative rejects");
     assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
 }
 
@@ -179,16 +179,16 @@ fn corpus_t18986a_instantiates_kind_through_family_application_chirho() {
 #[test]
 fn corpus_t18640a_does_not_erase_family_visibility_chirho() {
     let error_chirho = check_chirho("should_fail", "T18640a.hs")
-        .err()
-        .expect("fresh GHC family visibility negative rejects");
+        .map(|_| ())
+        .expect_err("fresh GHC family visibility negative rejects");
     assert!(error_chirho.contains("error[E"), "{error_chirho}");
 }
 
 #[test]
 fn corpus_specificity8_does_not_make_inferred_binders_required_chirho() {
     let error_chirho = check_chirho("should_fail", "ExplicitSpecificity8.hs")
-        .err()
-        .expect("fresh GHC specificity negative rejects");
+        .map(|_| ())
+        .expect_err("fresh GHC specificity negative rejects");
     assert!(error_chirho.contains("error[E"), "{error_chirho}");
 }
 
