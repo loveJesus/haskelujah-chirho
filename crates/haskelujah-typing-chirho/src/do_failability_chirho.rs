@@ -74,6 +74,8 @@ pub fn refine_do_selections_chirho(module_chirho: &mut ModuleChirho) -> usize {
 /// every non-variable pattern.
 pub fn pattern_can_fail_chirho(pat_chirho: &PatChirho, env_chirho: &TypeConEnvChirho) -> bool {
     match pat_chirho {
+        // Expansion has not supplied a pattern; never prove it irrefutable.
+        PatChirho::SpliceChirho { .. } => true,
         // Nothing to match against.
         PatChirho::VarChirho(_) | PatChirho::WildcardChirho(_) => false,
         // A lazy pattern defers the match, so the bind itself never fails —

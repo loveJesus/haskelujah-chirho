@@ -28,8 +28,9 @@ pub mod simplify_chirho;
 mod transform_chirho;
 
 pub use desugar_chirho::{
-    DesugarInputsChirho, DesugarOutputChirho, ImportSuppliersChirho, desugar_module_chirho,
-    desugar_module_with_inputs_chirho, desugar_module_with_method_occurrences_chirho,
+    DesugarInputErrorChirho, DesugarInputsChirho, DesugarOutputChirho, ImportSuppliersChirho,
+    desugar_module_chirho, desugar_module_with_inputs_chirho,
+    desugar_module_with_method_occurrences_chirho,
 };
 pub use dict_chirho::{
     DictPassDiagnosticChirho, DictPassEvidenceChirho, DictPassInputsChirho, DictPassResultChirho,

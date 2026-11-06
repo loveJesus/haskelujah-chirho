@@ -288,6 +288,7 @@ fn collect_pat_names_chirho(pat_chirho: &PatChirho, out_chirho: &mut Vec<String>
         PatChirho::ViewChirho { pat_chirho, .. } => {
             collect_pat_names_chirho(pat_chirho, out_chirho);
         }
+        PatChirho::SpliceChirho { .. } => {}
         _ => {}
     }
 }

@@ -481,9 +481,10 @@ impl LowerCtxChirho {
                         TokenKindChirho::EqualsChirho | TokenKindChirho::RightArrowChirho
                     ) {
                         if !current_qual_parts_chirho.is_empty() {
-                            if let Some(qual_chirho) = self
-                                .flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
-                            {
+                            if let Some(qual_chirho) = self.flush_qual_parts_chirho(
+                                &mut current_qual_parts_chirho,
+                                span_chirho,
+                            ) {
                                 quals_chirho.push(qual_chirho);
                             }
                             current_qual_parts_chirho.clear();
@@ -491,9 +492,10 @@ impl LowerCtxChirho {
                         saw_equals_chirho = true;
                     } else if saw_pipe_chirho && !saw_equals_chirho {
                         if tok_chirho.kind_chirho() == TokenKindChirho::CommaChirho {
-                            if let Some(qual_chirho) = self
-                                .flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
-                            {
+                            if let Some(qual_chirho) = self.flush_qual_parts_chirho(
+                                &mut current_qual_parts_chirho,
+                                span_chirho,
+                            ) {
                                 quals_chirho.push(qual_chirho);
                             }
                             current_qual_parts_chirho.clear();
@@ -518,9 +520,10 @@ impl LowerCtxChirho {
                 GreenElementChirho::NodeChirho(n_chirho) => {
                     if saw_pipe_chirho && !saw_equals_chirho {
                         if n_chirho.kind_chirho() == SyntaxKindChirho::LetStmtChirho {
-                            if let Some(qual_chirho) = self
-                                .flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
-                            {
+                            if let Some(qual_chirho) = self.flush_qual_parts_chirho(
+                                &mut current_qual_parts_chirho,
+                                span_chirho,
+                            ) {
                                 quals_chirho.push(qual_chirho);
                             }
                             current_qual_parts_chirho.clear();
@@ -553,7 +556,7 @@ impl LowerCtxChirho {
 
         if !current_qual_parts_chirho.is_empty()
             && let Some(qual_chirho) =
-                self.flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
+                self.flush_qual_parts_chirho(&mut current_qual_parts_chirho, span_chirho)
         {
             quals_chirho.push(qual_chirho);
         }

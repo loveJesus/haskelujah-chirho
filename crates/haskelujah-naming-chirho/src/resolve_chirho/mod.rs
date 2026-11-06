@@ -639,6 +639,7 @@ fn bind_pat_names_chirho(env_chirho: &mut NameEnvChirho, pat_chirho: &PatChirho)
             bind_pat_names_chirho(env_chirho, pat_chirho);
         }
         // Literals, wildcards, negated literals — no bindings
+        PatChirho::SpliceChirho { .. } => {} // expansion has not supplied binders
         PatChirho::LitChirho(_) | PatChirho::WildcardChirho(_) | PatChirho::NegChirho { .. } => {}
     }
 }

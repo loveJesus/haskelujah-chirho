@@ -79,6 +79,20 @@ fn assert_depth_refusal_chirho(error_chirho: ConstructorSignatureErrorChirho) {
     );
 }
 
+fn core_source_error_chirho(
+    error_chirho: haskelujah_core_chirho::DesugarInputErrorChirho,
+) -> ConstructorSignatureErrorChirho {
+    match error_chirho {
+        haskelujah_core_chirho::DesugarInputErrorChirho::ConstructorChirho(error_chirho) => {
+            error_chirho
+        }
+        haskelujah_core_chirho::DesugarInputErrorChirho::ProjectionChirho(error_chirho) => {
+            ConstructorSignatureErrorChirho::ProjectionChirho(error_chirho)
+        }
+        other_chirho => panic!("expected the source/resource error, found {other_chirho}"),
+    }
+}
+
 fn th_source_error_chirho(
     error_chirho: haskelujah_th_chirho::reify_chirho::ThReificationErrorChirho,
 ) -> ConstructorSignatureErrorChirho {
@@ -96,10 +110,10 @@ fn amplified_signature_depth_reaches_every_existing_error_channel_chirho() {
             .try_as_type_chirho(&mut GadtProjectionBudgetChirho::new_chirho())
             .expect_err("expanded arrow depth is bounded"),
     );
-    assert_depth_refusal_chirho(
+    assert_depth_refusal_chirho(core_source_error_chirho(
         haskelujah_core_chirho::desugar_module_chirho(&module_chirho)
             .expect_err("Core must not return a partial module"),
-    );
+    ));
     assert_depth_refusal_chirho(
         haskelujah_naming_chirho::build_iface_chirho(&module_chirho)
             .expect_err("an interface must not publish partial availability"),
@@ -158,8 +172,10 @@ fn malformed_record_arrows_stay_distinct_from_resource_exhaustion_chirho() {
         signature_chirho
             .try_as_type_chirho(&mut GadtProjectionBudgetChirho::new_chirho())
             .expect_err("malformed recovery is not a type"),
-        haskelujah_core_chirho::desugar_module_chirho(&module_chirho)
-            .expect_err("malformed recovery is not Core"),
+        core_source_error_chirho(
+            haskelujah_core_chirho::desugar_module_chirho(&module_chirho)
+                .expect_err("malformed recovery is not Core"),
+        ),
         haskelujah_naming_chirho::build_iface_chirho(&module_chirho)
             .expect_err("malformed recovery is not an interface"),
         th_source_error_chirho(

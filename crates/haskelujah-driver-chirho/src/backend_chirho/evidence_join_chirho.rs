@@ -121,7 +121,8 @@ pub(crate) fn source_value_names_chirho(module_chirho: &ModuleChirho) -> HashSet
             }
             PatChirho::LitChirho(_)
             | PatChirho::WildcardChirho(_)
-            | PatChirho::NegChirho { .. } => {}
+            | PatChirho::NegChirho { .. }
+            | PatChirho::SpliceChirho { .. } => {}
         }
     }
     let mut names_chirho = HashSet::new();

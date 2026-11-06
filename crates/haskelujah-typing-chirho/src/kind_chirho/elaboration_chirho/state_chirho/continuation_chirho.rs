@@ -239,6 +239,7 @@ impl ElaborationStateChirho {
     fn preflight_syntax_chirho(
         &mut self,
         span_chirho: SpanChirho,
+        depth_chirho: usize,
         action_chirho: impl FnOnce(
             &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
         ) -> Result<
@@ -253,7 +254,7 @@ impl ElaborationStateChirho {
         let initial_chirho = GadtProjectionLimitsChirho {
             work_chirho: self.work_left_chirho,
             output_chirho: self.output_left_chirho,
-            depth_chirho: 128,
+            depth_chirho: depth_chirho.min(128),
         };
         let mut budget_chirho = GadtProjectionBudgetChirho::with_limits_chirho(initial_chirho);
         let result_chirho = action_chirho(&mut budget_chirho);
@@ -274,11 +275,41 @@ impl ElaborationStateChirho {
         })
     }
 
+    pub(in crate::kind_chirho::elaboration_chirho) fn check_retained_syntax_chirho(
+        &mut self,
+        syntax_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirho,
+        depth_chirho: usize,
+    ) -> Result<(), ElaborationErrorChirho> {
+        self.preflight_syntax_chirho(syntax_chirho.span_chirho(), depth_chirho, |budget_chirho| {
+            haskelujah_ast_chirho::decl_chirho::check_borrowed_type_syntax_chirho(
+                syntax_chirho,
+                budget_chirho,
+            )
+        })
+    }
+
+    pub(in crate::kind_chirho::elaboration_chirho) fn check_retained_declaration_syntax_chirho(
+        &mut self,
+        declaration_chirho: &haskelujah_ast_chirho::decl_chirho::DeclChirho,
+        depth_chirho: usize,
+    ) -> Result<(), ElaborationErrorChirho> {
+        self.preflight_syntax_chirho(
+            declaration_chirho.span_chirho(),
+            depth_chirho,
+            |budget_chirho| {
+                haskelujah_ast_chirho::decl_chirho::check_borrowed_declaration_syntax_chirho(
+                    declaration_chirho,
+                    budget_chirho,
+                )
+            },
+        )
+    }
+
     pub(in crate::kind_chirho::elaboration_chirho) fn copy_syntax_chirho(
         &mut self,
         syntax_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirho,
     ) -> Result<haskelujah_ast_chirho::ty_chirho::TypeChirho, ElaborationErrorChirho> {
-        self.preflight_syntax_chirho(syntax_chirho.span_chirho(), |budget_chirho| {
+        self.preflight_syntax_chirho(syntax_chirho.span_chirho(), 128, |budget_chirho| {
             haskelujah_ast_chirho::decl_chirho::check_type_projection_chirho(
                 syntax_chirho,
                 budget_chirho,
@@ -291,7 +322,7 @@ impl ElaborationStateChirho {
         &mut self,
         name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
     ) -> Result<haskelujah_ast_chirho::name_chirho::NameChirho, ElaborationErrorChirho> {
-        self.preflight_syntax_chirho(name_chirho.span_chirho(), |budget_chirho| {
+        self.preflight_syntax_chirho(name_chirho.span_chirho(), 128, |budget_chirho| {
             haskelujah_ast_chirho::decl_chirho::check_name_projection_chirho(
                 name_chirho,
                 budget_chirho,

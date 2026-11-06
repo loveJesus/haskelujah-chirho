@@ -504,6 +504,11 @@ pub fn visit_expr_walk_chirho(expr_chirho: &mut ExprChirho, walk_chirho: &mut Wa
 /// function is an expression, so its occurrences are visited.
 fn visit_pat_chirho(pat_chirho: &mut PatChirho, walk_chirho: &mut WalkChirho<'_>) {
     match pat_chirho {
+        PatChirho::SpliceChirho { expr_chirho, .. } => {
+            if let Some(expr_chirho) = expr_chirho {
+                visit_expr_walk_chirho(expr_chirho, walk_chirho);
+            }
+        }
         PatChirho::ViewChirho {
             expr_chirho,
             pat_chirho,

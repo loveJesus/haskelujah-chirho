@@ -130,6 +130,14 @@ pub enum PatChirho {
         /// Span covering the whole typed pattern.
         span_chirho: SpanChirho,
     },
+    /// An unexpanded untyped pattern splice. Quoted syntax retains it as data;
+    /// ordinary executable patterns require actual expansion before checking.
+    SpliceChirho {
+        /// Missing only for malformed syntax passed through unchecked lowering.
+        /// No variable, wildcard or fabricated expression replaces an absent payload.
+        expr_chirho: Option<Box<super::expr_chirho::ExprChirho>>,
+        span_chirho: SpanChirho,
+    },
 }
 
 /// A field in a record pattern (`field = pat`).
@@ -161,7 +169,8 @@ impl PatChirho {
             | Self::InfixConChirho { span_chirho, .. }
             | Self::RecordChirho { span_chirho, .. }
             | Self::ViewChirho { span_chirho, .. }
-            | Self::TypeAnnotChirho { span_chirho, .. } => *span_chirho,
+            | Self::TypeAnnotChirho { span_chirho, .. }
+            | Self::SpliceChirho { span_chirho, .. } => *span_chirho,
         }
     }
 }

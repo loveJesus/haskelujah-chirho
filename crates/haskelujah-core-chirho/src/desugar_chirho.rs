@@ -17,6 +17,9 @@ mod builtin_routes_chirho;
 mod comprehensions_chirho;
 #[path = "desugar_chirho/constructors_chirho.rs"]
 mod constructors_chirho;
+#[path = "desugar_chirho/input_chirho.rs"]
+mod input_chirho;
+pub use input_chirho::DesugarInputErrorChirho;
 #[path = "desugar_chirho/sugar_chirho/do_notation_chirho.rs"]
 mod do_notation_chirho;
 #[path = "desugar_chirho/expressions_chirho.rs"]
@@ -666,8 +669,7 @@ fn extract_var_name_from_pat_chirho(pat_chirho: &PatChirho) -> Option<String> {
 /// Desugar a module from AST to Core, returning the Core module and a name map.
 pub fn desugar_module_chirho(
     module_chirho: &ModuleChirho,
-) -> Result<DesugarOutputChirho, haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho>
-{
+) -> Result<DesugarOutputChirho, DesugarInputErrorChirho> {
     let mut ctx_chirho = DesugarCtxChirho::new_chirho();
     ctx_chirho.extensions_chirho = module_chirho.extensions_chirho.clone();
     ctx_chirho.desugar_module_chirho(module_chirho)
@@ -680,8 +682,7 @@ pub fn desugar_module_chirho(
 pub fn desugar_module_with_method_occurrences_chirho(
     module_chirho: &ModuleChirho,
     method_names_chirho: HashSet<String>,
-) -> Result<DesugarOutputChirho, haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho>
-{
+) -> Result<DesugarOutputChirho, DesugarInputErrorChirho> {
     desugar_module_with_inputs_chirho(
         module_chirho,
         DesugarInputsChirho {
@@ -722,8 +723,7 @@ pub struct DesugarInputsChirho {
 pub fn desugar_module_with_inputs_chirho(
     module_chirho: &ModuleChirho,
     inputs_chirho: DesugarInputsChirho,
-) -> Result<DesugarOutputChirho, haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho>
-{
+) -> Result<DesugarOutputChirho, DesugarInputErrorChirho> {
     let mut ctx_chirho = DesugarCtxChirho::new_chirho();
     ctx_chirho.extensions_chirho = module_chirho.extensions_chirho.clone();
     ctx_chirho.set_method_occurrence_names_chirho(inputs_chirho.method_names_chirho);

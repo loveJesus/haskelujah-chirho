@@ -510,19 +510,22 @@ impl<'a> ExhaustCheckerChirho<'a> {
                     self.check_expr_chirho(&f_chirho.value_chirho);
                 }
             }
-            // TH splice/quote expressions — recurse into inner expressions
-            // but they contain no patterns to check for exhaustiveness.
             ExprChirho::SpliceChirho { expr_chirho, .. }
             | ExprChirho::TypedSpliceChirho { expr_chirho, .. }
-            | ExprChirho::QuoteExprChirho { expr_chirho, .. } => {
+            | ExprChirho::QuoteExprChirho {
+                expr_chirho,
+                typed_chirho: true,
+                ..
+            } => {
                 self.check_expr_chirho(expr_chirho);
             }
-            ExprChirho::QuoteDeclChirho { decls_chirho, .. } => {
-                for d_chirho in decls_chirho {
-                    self.check_decl_chirho(d_chirho);
-                }
+            ExprChirho::QuoteDeclChirho { .. }
+            | ExprChirho::QuoteExprChirho {
+                typed_chirho: false,
+                ..
             }
-            ExprChirho::QuoteTypeChirho { .. } | ExprChirho::QuotePatChirho { .. } => {
+            | ExprChirho::QuoteTypeChirho { .. }
+            | ExprChirho::QuotePatChirho { .. } => {
                 // Type and pattern quotes contain no sub-expressions to check.
             }
             // Leaves — no sub-expressions to check
@@ -658,7 +661,7 @@ impl<'a> ExhaustCheckerChirho<'a> {
                         seen_cons_chirho.push((name_chirho, idx_chirho));
                     }
                 }
-                PatClassChirho::LitChirho => {
+                PatClassChirho::LitChirho | PatClassChirho::UnknownChirho => {
                     if has_wildcard_chirho {
                         redundant_indices_chirho.push(idx_chirho);
                     } else {
@@ -766,11 +769,14 @@ enum PatClassChirho {
     ConChirho(String),
     /// Literal pattern — matches one value.
     LitChirho,
+    /// Expansion has supplied no pattern and establishes no coverage.
+    UnknownChirho,
 }
 
 /// Classify a pattern, stripping through syntactic sugar.
 fn classify_pattern_chirho(pat_chirho: &PatChirho) -> PatClassChirho {
     match pat_chirho {
+        PatChirho::SpliceChirho { .. } => PatClassChirho::UnknownChirho,
         PatChirho::VarChirho(_) | PatChirho::WildcardChirho(_) => PatClassChirho::WildcardChirho,
         PatChirho::ConChirho { con_chirho, .. } => {
             PatClassChirho::ConChirho(con_chirho.text_chirho().to_string())

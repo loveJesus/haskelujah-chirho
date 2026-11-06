@@ -216,7 +216,7 @@ fn a_reference_re_read_as_a_binder_is_no_longer_an_occurrence_chirho() {
         con_chirho,
         args_chirho,
         ..
-    } = LowerCtxChirho::expr_to_pat_chirho(&expr_chirho)
+    } = LowerCtxChirho::expr_to_pat_chirho(expr_chirho)
     else {
         panic!("expected a constructor pattern");
     };

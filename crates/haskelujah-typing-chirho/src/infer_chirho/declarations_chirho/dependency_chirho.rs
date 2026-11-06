@@ -7,7 +7,76 @@ use super::canonical_value_name_text_chirho;
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::expr_chirho::StmtChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
+use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use std::collections::HashSet;
+
+/// Pattern binders are not references. Retained view/splice expressions are.
+fn collect_pattern_refs_chirho(pattern_chirho: &PatChirho, refs_chirho: &mut HashSet<String>) {
+    match pattern_chirho {
+        PatChirho::SpliceChirho {
+            expr_chirho: Some(expr_chirho),
+            ..
+        } => collect_expr_refs_chirho(expr_chirho, refs_chirho),
+        PatChirho::ConChirho { args_chirho, .. }
+        | PatChirho::TupleChirho {
+            elements_chirho: args_chirho,
+            ..
+        }
+        | PatChirho::ListChirho {
+            elements_chirho: args_chirho,
+            ..
+        } => {
+            for pattern_chirho in args_chirho {
+                collect_pattern_refs_chirho(pattern_chirho, refs_chirho);
+            }
+        }
+        PatChirho::AsChirho { pattern_chirho, .. }
+        | PatChirho::ParenChirho {
+            inner_chirho: pattern_chirho,
+            ..
+        }
+        | PatChirho::LazyChirho {
+            inner_chirho: pattern_chirho,
+            ..
+        }
+        | PatChirho::BangChirho {
+            inner_chirho: pattern_chirho,
+            ..
+        }
+        | PatChirho::TypeAnnotChirho {
+            pat_chirho: pattern_chirho,
+            ..
+        } => collect_pattern_refs_chirho(pattern_chirho, refs_chirho),
+        PatChirho::ViewChirho {
+            expr_chirho,
+            pat_chirho,
+            ..
+        } => {
+            collect_expr_refs_chirho(expr_chirho, refs_chirho);
+            collect_pattern_refs_chirho(pat_chirho, refs_chirho);
+        }
+        PatChirho::RecordChirho { fields_chirho, .. } => {
+            for field_chirho in fields_chirho {
+                collect_pattern_refs_chirho(&field_chirho.pattern_chirho, refs_chirho);
+            }
+        }
+        PatChirho::InfixConChirho {
+            left_chirho,
+            right_chirho,
+            ..
+        } => {
+            collect_pattern_refs_chirho(left_chirho, refs_chirho);
+            collect_pattern_refs_chirho(right_chirho, refs_chirho);
+        }
+        PatChirho::VarChirho(_)
+        | PatChirho::LitChirho(_)
+        | PatChirho::WildcardChirho(_)
+        | PatChirho::NegChirho { .. }
+        | PatChirho::SpliceChirho {
+            expr_chirho: None, ..
+        } => {}
+    }
+}
 
 /// Collect variable references from an expression (shallow walk).
 fn collect_expr_refs_chirho(
@@ -27,7 +96,14 @@ fn collect_expr_refs_chirho(
             collect_expr_refs_chirho(fun_chirho, refs_chirho);
             collect_expr_refs_chirho(arg_chirho, refs_chirho);
         }
-        ExprChirho::LamChirho { body_chirho, .. } => {
+        ExprChirho::LamChirho {
+            pats_chirho,
+            body_chirho,
+            ..
+        } => {
+            for pattern_chirho in pats_chirho {
+                collect_pattern_refs_chirho(pattern_chirho, refs_chirho);
+            }
             collect_expr_refs_chirho(body_chirho, refs_chirho);
         }
         ExprChirho::LetChirho {
@@ -60,6 +136,7 @@ fn collect_expr_refs_chirho(
         } => {
             collect_expr_refs_chirho(scrutinee_chirho, refs_chirho);
             for alt_chirho in alts_chirho {
+                collect_pattern_refs_chirho(&alt_chirho.pat_chirho, refs_chirho);
                 collect_rhs_refs_chirho(&alt_chirho.rhs_chirho, refs_chirho);
                 for wb_chirho in &alt_chirho.where_binds_chirho {
                     collect_local_bind_refs_chirho(wb_chirho, refs_chirho);
@@ -170,7 +247,10 @@ fn collect_expr_refs_chirho(
                 collect_expr_refs_chirho(&f_chirho.value_chirho, refs_chirho);
             }
         }
-        // Literals, constructors, quote decls/types/pats have no variable refs
+        ExprChirho::QuotePatChirho { pat_chirho, .. } => {
+            collect_pattern_refs_chirho(pat_chirho, refs_chirho)
+        }
+        // Other syntax payloads keep their existing dependency policy.
         _ => {}
     }
 }
@@ -185,12 +265,18 @@ fn collect_local_bind_refs_chirho(
             ..
         } => {
             for arm_chirho in matches_chirho {
+                for pattern_chirho in &arm_chirho.pats_chirho {
+                    collect_pattern_refs_chirho(pattern_chirho, refs_chirho);
+                }
                 collect_rhs_refs_chirho(&arm_chirho.rhs_chirho, refs_chirho);
             }
         }
         haskelujah_ast_chirho::expr_chirho::LocalBindChirho::PatBindChirho {
-            rhs_chirho, ..
+            pat_chirho,
+            rhs_chirho,
+            ..
         } => {
+            collect_pattern_refs_chirho(pat_chirho, refs_chirho);
             collect_rhs_refs_chirho(rhs_chirho, refs_chirho);
         }
         _ => {}
@@ -231,7 +317,15 @@ fn collect_stmt_refs_chirho(
     refs_chirho: &mut std::collections::HashSet<String>,
 ) {
     match stmt_chirho {
-        StmtChirho::ExprChirho { expr_chirho, .. } | StmtChirho::BindChirho { expr_chirho, .. } => {
+        StmtChirho::BindChirho {
+            pat_chirho,
+            expr_chirho,
+            ..
+        } => {
+            collect_pattern_refs_chirho(pat_chirho, refs_chirho);
+            collect_expr_refs_chirho(expr_chirho, refs_chirho)
+        }
+        StmtChirho::ExprChirho { expr_chirho, .. } => {
             collect_expr_refs_chirho(expr_chirho, refs_chirho)
         }
         StmtChirho::LetChirho { binds_chirho, .. } => {
@@ -369,6 +463,9 @@ pub(super) fn binding_groups_chirho(
     for (i_chirho, (_, matches_chirho)) in fun_decls_chirho.iter().enumerate() {
         let mut refs_chirho = std::collections::HashSet::new();
         for arm_chirho in *matches_chirho {
+            for pattern_chirho in &arm_chirho.pats_chirho {
+                collect_pattern_refs_chirho(pattern_chirho, &mut refs_chirho);
+            }
             collect_rhs_refs_chirho(&arm_chirho.rhs_chirho, &mut refs_chirho);
             for wb_chirho in &arm_chirho.where_binds_chirho {
                 collect_local_bind_refs_chirho(wb_chirho, &mut refs_chirho);

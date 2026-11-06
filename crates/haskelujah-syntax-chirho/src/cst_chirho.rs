@@ -255,6 +255,9 @@ pub enum SyntaxKindChirho {
     LayoutBlockChirho,
     /// Error recovery node — wraps tokens that could not be parsed.
     ErrorNodeChirho,
+    /// An untyped pattern splice, retaining its expression payload.
+    /// Appended to preserve the existing serialized node discriminants.
+    SplicePatChirho,
 }
 
 impl SyntaxKindChirho {

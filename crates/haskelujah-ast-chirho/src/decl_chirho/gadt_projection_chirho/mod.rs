@@ -6,6 +6,11 @@
 //! representation factor also bounds its deeper/wider encoding (AST: 1, TH: 3).
 //! Workflow: compiler-pipeline-chirho/gadt-constructor-carrier-chirho.md.
 
+mod borrowed_chirho;
+#[cfg(test)]
+mod tests_chirho;
+pub use borrowed_chirho::check_borrowed_declaration_syntax_chirho;
+
 use std::fmt;
 
 use super::{
@@ -44,6 +49,7 @@ pub enum GadtProjectionLimitChirho {
     OutputChirho,
     DepthChirho,
     ArithmeticChirho,
+    ProducerResourceChirho,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -59,6 +65,7 @@ impl fmt::Display for GadtProjectionErrorChirho {
             GadtProjectionLimitChirho::OutputChirho => "expanded output-size",
             GadtProjectionLimitChirho::DepthChirho => "expanded depth",
             GadtProjectionLimitChirho::ArithmeticChirho => "checked size-arithmetic",
+            GadtProjectionLimitChirho::ProducerResourceChirho => "retained parser resource",
         };
         write!(
             formatter_chirho,
@@ -147,6 +154,19 @@ impl GadtProjectionBudgetChirho {
         Ok(())
     }
 
+    /// Charge a borrowed syntax cursor before it allocates a pending entry.
+    /// This consumes the existing allowance and reserves no copied output.
+    pub fn visit_borrowed_syntax_chirho(
+        &mut self,
+        span_chirho: SpanChirho,
+        depth_chirho: usize,
+    ) -> Result<(), GadtProjectionErrorChirho> {
+        checked_chirho(span_chirho, self, |budget_chirho| {
+            budget_chirho.work_chirho(1)?;
+            budget_chirho.depth_chirho(depth_chirho, 0, 1)
+        })
+    }
+
     fn depth_chirho(
         &self,
         depth_chirho: usize,
@@ -175,6 +195,24 @@ pub fn check_type_projection_chirho(
             ProjectionNodeChirho::TypeChirho(ty_chirho),
             1,
             1,
+            1,
+            budget_chirho,
+        )
+    })
+}
+
+/// Bound a borrowed retained type without allocating or reserving a copy.
+/// All hidden kinds, forall binders, predicates and checked-name metadata use
+/// the same walk and depth limit; only actual traversal work is charged.
+pub fn check_borrowed_type_syntax_chirho(
+    ty_chirho: &TypeChirho,
+    budget_chirho: &mut GadtProjectionBudgetChirho,
+) -> Result<(), GadtProjectionErrorChirho> {
+    checked_chirho(ty_chirho.span_chirho(), budget_chirho, |budget_chirho| {
+        walk_chirho(
+            ProjectionNodeChirho::TypeChirho(ty_chirho),
+            1,
+            0,
             1,
             budget_chirho,
         )
@@ -957,13 +995,25 @@ fn walk_chirho(
             ProjectionNodeChirho::DerivationsChirho(derivations_chirho) => {
                 if let Some((first_chirho, rest_chirho)) = derivations_chirho.split_first() {
                     if !rest_chirho.is_empty() {
-                        push_chirho(ProjectionNodeChirho::DerivationsChirho(rest_chirho), depth_chirho)?;
+                        push_chirho(
+                            ProjectionNodeChirho::DerivationsChirho(rest_chirho),
+                            depth_chirho,
+                        )?;
                     }
-                    push_chirho(ProjectionNodeChirho::TypesChirho(&first_chirho.class_arguments_chirho), depth_chirho)?;
+                    push_chirho(
+                        ProjectionNodeChirho::TypesChirho(&first_chirho.class_arguments_chirho),
+                        depth_chirho,
+                    )?;
                     if let Some(strategy_chirho) = &first_chirho.strategy_chirho {
-                        push_chirho(ProjectionNodeChirho::NameChirho(strategy_chirho.keyword_chirho()), depth_chirho)?;
+                        push_chirho(
+                            ProjectionNodeChirho::NameChirho(strategy_chirho.keyword_chirho()),
+                            depth_chirho,
+                        )?;
                     }
-                    push_chirho(ProjectionNodeChirho::NameChirho(&first_chirho.class_chirho), depth_chirho)?;
+                    push_chirho(
+                        ProjectionNodeChirho::NameChirho(&first_chirho.class_chirho),
+                        depth_chirho,
+                    )?;
                 }
                 continue;
             }

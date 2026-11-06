@@ -83,6 +83,7 @@ pub(crate) struct ElaborationPolicyChirho {
     pub unlifted_newtypes_chirho: bool,
     pub unlifted_datatypes_chirho: bool,
     pub scoped_type_variables_chirho: bool,
+    pub template_haskell_quotes_chirho: bool,
     pub builtin_classes_chirho:
         std::sync::Arc<haskelujah_ast_chirho::name_chirho::BuiltinClassScopeChirho>,
 }

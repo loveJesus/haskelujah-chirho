@@ -40,3 +40,24 @@ Abstraction and branch compatibility spend the original elaboration state's work
 The real source controls pair T18891 with T18891a and exercise a required quantifier group that crosses the header/result boundary. The latter also checks the actual published telescope, residual kind and lexical dependency, alongside contradictory binder-kind and inferred-binder cases. These source tests establish their selected behavior only; frozen CLI, ordinary preservation and corpus acceptance require their own receipts.
 
 Still open in this vertical: remaining configured corpus disagreements, ordinary-preservation acceptance and whole-row lint/structure obligations. A parsed header or a passing kind check does not imply runtime identity, constructor packing or full GHC compatibility.
+
+## Quotation stages and retained patterns Chirho
+
+The source parser retains an untyped pattern splice as SplicePatChirho and PatChirho::SpliceChirho with its actual optional expression payload and span. Missing or malformed payloads stay parser errors; a missing unchecked AST payload never becomes a wildcard. Expression quotations retain their typedness. Qualifier lowering consumes its existing owned parts and expression nodes, preserving payload occurrences without a recursive payload clone before elaboration.
+
+The same elaborator tracks quotation syntax stage under the effective TemplateHaskellQuotes authority. Untyped quoted annotations, signatures, required-argument syntax and declaration headers use the common borrowed syntax traversal with zero copied output. Their binders do not acquire checked outer signature owners. A typed outer expression quotation keeps ordinary annotation checks. An escape visits its actual payload one stage out; lexical scope, quotation stage and syntax depth restore on success and error. The original state settles all borrowed work, retains its remaining depth and keeps resource exhaustion terminal, including a parser's retained GADT resource marker.
+
+```mermaid
+flowchart TD
+  syntax_chirho[Actual CST splice payload and quotation mode] --> stage_chirho{Executable pattern or quotation data?}
+  stage_chirho -- quotation --> borrowed_chirho[Same-state bounded syntax traversal]
+  borrowed_chirho --> escape_chirho[Visit actual escape payload one stage out]
+  borrowed_chirho --> restore_chirho[Restore lexical scope, stage and remaining allowance]
+  stage_chirho -- executable unexpanded pattern --> fatal_chirho[Coded non-deferrable refusal]
+  core_chirho[Unchecked public AST input] --> preflight_chirho[Existing Core module projection allowance]
+  preflight_chirho --> check_chirho[Borrowed executable-pattern scan before Core publication]
+  check_chirho -- unexpanded pattern --> fatal_chirho
+  check_chirho -- quoted syntax data --> retain_chirho[Retain the Pat-only boundary]
+```
+
+Core's public desugaring result preserves constructor/projection errors in DesugarInputErrorChirho and explicitly refuses an executable unexpanded pattern splice before collecting synonyms or generating bindings. This includes lazy patterns with no binders, records, views and explicit synonym builders. These source controls do not implement TH expansion/evaluation, the Code/TExp/Q declaration producers, or the complete typed-quotation result contract. Existing quote/splice fresh-type and Core-zero fallbacks remain explicit separate gaps; source admission is not execution proof. Unknown quoted type-name handling and the retained typed-quotation visible-application miss remain open. No runtime dictionary identity or constructor-packing permission follows from retaining syntax.

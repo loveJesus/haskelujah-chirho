@@ -229,6 +229,8 @@ pub enum ExprChirho {
     },
     /// Template Haskell expression quotation (`[| expr |]` or `[e| expr |]`).
     QuoteExprChirho {
+        /// Typed quotations check their payload; untyped quotations retain syntax.
+        typed_chirho: bool,
         /// Quoted expression AST payload.
         expr_chirho: Box<ExprChirho>,
         /// Span covering the whole expression quote.

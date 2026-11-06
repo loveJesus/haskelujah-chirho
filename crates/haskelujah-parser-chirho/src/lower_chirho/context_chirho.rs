@@ -413,6 +413,7 @@ pub(super) fn is_pat_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::InfixConPatChirho
             | SyntaxKindChirho::ViewPatChirho
             | SyntaxKindChirho::SigPatChirho
+            | SyntaxKindChirho::SplicePatChirho
     )
 }
 

@@ -418,9 +418,10 @@ impl LowerCtxChirho {
                             if tok_chirho.kind_chirho() == TokenKindChirho::PipeChirho
                                 && past_pipe_chirho =>
                         {
-                            if let Some(qual_chirho) = self
-                                .flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
-                            {
+                            if let Some(qual_chirho) = self.flush_qual_parts_chirho(
+                                &mut current_qual_parts_chirho,
+                                span_chirho,
+                            ) {
                                 current_qual_group_chirho.push(qual_chirho);
                             }
                             current_qual_parts_chirho.clear();
@@ -434,9 +435,10 @@ impl LowerCtxChirho {
                                 && past_pipe_chirho =>
                         {
                             // Flush current qualifier
-                            if let Some(qual_chirho) = self
-                                .flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
-                            {
+                            if let Some(qual_chirho) = self.flush_qual_parts_chirho(
+                                &mut current_qual_parts_chirho,
+                                span_chirho,
+                            ) {
                                 current_qual_group_chirho.push(qual_chirho);
                             }
                             current_qual_parts_chirho.clear();
@@ -472,7 +474,7 @@ impl LowerCtxChirho {
                                 body_expr_chirho = Some(expr_chirho);
                             } else if n_chirho.kind_chirho() == SyntaxKindChirho::LetStmtChirho {
                                 if let Some(qual_chirho) = self.flush_qual_parts_chirho(
-                                    &current_qual_parts_chirho,
+                                    &mut current_qual_parts_chirho,
                                     span_chirho,
                                 ) {
                                     current_qual_group_chirho.push(qual_chirho);
@@ -506,7 +508,7 @@ impl LowerCtxChirho {
                 // Flush last qualifier
                 if !current_qual_parts_chirho.is_empty()
                     && let Some(qual_chirho) =
-                        self.flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
+                        self.flush_qual_parts_chirho(&mut current_qual_parts_chirho, span_chirho)
                 {
                     current_qual_group_chirho.push(qual_chirho);
                 }
@@ -571,13 +573,14 @@ impl LowerCtxChirho {
     /// it's a guard (plain expression).
     pub(super) fn flush_qual_parts_chirho(
         &self,
-        parts_chirho: &[QualPartChirho],
+        parts_chirho: &mut Vec<QualPartChirho>,
         span_chirho: SpanChirho,
     ) -> Option<StmtChirho> {
         if parts_chirho.is_empty() {
             return None;
         }
 
+        let mut parts_chirho = std::mem::take(parts_chirho);
         // Find the arrow position, if any
         let arrow_pos_chirho = parts_chirho
             .iter()
@@ -586,20 +589,17 @@ impl LowerCtxChirho {
         if let Some(pos_chirho) = arrow_pos_chirho {
             // Generator: parts before arrow form the pattern (as expr),
             // parts after arrow form the source expression.
-            let pat_parts_chirho = parts_chirho
-                .iter()
-                .take(pos_chirho)
-                .cloned()
-                .collect::<Vec<_>>();
+            let source_parts_chirho = parts_chirho.split_off(pos_chirho + 1);
+            parts_chirho.pop(); // the actual arrow marker
+            let pat_parts_chirho = parts_chirho;
             let pat_chirho = self
-                .fold_qual_pat_parts_to_pat_chirho(&pat_parts_chirho, span_chirho)
+                .fold_qual_pat_parts_to_pat_chirho(pat_parts_chirho, span_chirho)
                 .unwrap_or(PatChirho::WildcardChirho(span_chirho));
 
-            let src_exprs_chirho: Vec<ExprChirho> = parts_chirho
-                .iter()
-                .skip(pos_chirho + 1)
+            let src_exprs_chirho: Vec<ExprChirho> = source_parts_chirho
+                .into_iter()
                 .filter_map(|p_chirho| match p_chirho {
-                    QualPartChirho::ExprChirho(e_chirho) => Some(e_chirho.clone()),
+                    QualPartChirho::ExprChirho(e_chirho) => Some(e_chirho),
                     _ => None,
                 })
                 .collect();
@@ -618,9 +618,9 @@ impl LowerCtxChirho {
         } else {
             // Guard: single expression
             let exprs_chirho: Vec<ExprChirho> = parts_chirho
-                .iter()
+                .into_iter()
                 .filter_map(|p_chirho| match p_chirho {
-                    QualPartChirho::ExprChirho(e_chirho) => Some(e_chirho.clone()),
+                    QualPartChirho::ExprChirho(e_chirho) => Some(e_chirho),
                     _ => None,
                 })
                 .collect();

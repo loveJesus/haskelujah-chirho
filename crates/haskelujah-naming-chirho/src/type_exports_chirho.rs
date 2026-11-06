@@ -921,6 +921,7 @@ fn pat_bound_names_chirho(pat_chirho: &PatChirho) -> Vec<String> {
         PatChirho::VarChirho(name_chirho) => {
             names_chirho.push(name_chirho.text_chirho().to_string());
         }
+        PatChirho::SpliceChirho { .. } => {} // expansion has not supplied binders
         PatChirho::LitChirho(_) | PatChirho::WildcardChirho(_) | PatChirho::NegChirho { .. } => {}
         PatChirho::TupleChirho {
             elements_chirho, ..

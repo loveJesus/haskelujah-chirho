@@ -41,6 +41,18 @@ impl InferCtxChirho {
         ty_chirho: &TyChirho,
     ) -> SubstChirho {
         match pat_chirho {
+            PatChirho::SpliceChirho { span_chirho, .. } => {
+                self.non_deferrable_diagnostics_chirho.push_chirho(
+                    haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                        haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(
+                            super::TYPE_MISMATCH_CODE_CHIRHO,
+                        ),
+                        "unsupported unexpanded executable pattern splice",
+                        *span_chirho,
+                    ),
+                );
+                SubstChirho::empty_chirho()
+            }
             PatChirho::VarChirho(name_chirho) => {
                 // For higher-rank types: if the type is ForallChirho, bind as a
                 // polymorphic scheme so each use gets a fresh instantiation.

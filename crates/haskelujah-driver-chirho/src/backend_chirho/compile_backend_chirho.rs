@@ -103,7 +103,8 @@ pub(crate) fn compile_backend_chirho(
     .map_err(|error_chirho| {
         let mut diagnostics_chirho = DiagnosticBundleChirho::empty_chirho();
         diagnostics_chirho.push_chirho(
-            haskelujah_diagnostics_chirho::DiagnosticChirho::error_chirho(
+            haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
                 error_chirho.to_string(),
                 error_chirho.span_chirho(),
             ),

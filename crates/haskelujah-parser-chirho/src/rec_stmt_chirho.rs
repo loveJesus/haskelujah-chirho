@@ -470,6 +470,8 @@ fn collect_pat_bound_names_chirho(pat_chirho: &PatChirho, names_chirho: &mut Vec
         | PatChirho::TypeAnnotChirho { pat_chirho, .. } => {
             collect_pat_bound_names_chirho(pat_chirho, names_chirho);
         }
+        // Only actual expansion can supply generated binders.
+        PatChirho::SpliceChirho { .. } => {}
         PatChirho::LitChirho(_) | PatChirho::WildcardChirho(_) | PatChirho::NegChirho { .. } => {}
     }
 }

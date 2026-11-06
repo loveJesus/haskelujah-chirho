@@ -97,10 +97,7 @@ impl DesugarCtxChirho {
     pub fn desugar_module_chirho(
         &mut self,
         module_chirho: &ModuleChirho,
-    ) -> Result<
-        DesugarOutputChirho,
-        haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho,
-    > {
+    ) -> Result<DesugarOutputChirho, DesugarInputErrorChirho> {
         haskelujah_ast_chirho::decl_chirho::check_module_constructor_signatures_chirho(
             module_chirho,
         )?;
@@ -112,6 +109,10 @@ impl DesugarCtxChirho {
             },
         );
         check_module_projection_chirho(module_chirho, &mut projection_budget_chirho, 3)?;
+        input_chirho::check_executable_patterns_chirho(
+            module_chirho,
+            &mut projection_budget_chirho,
+        )?;
         let record_selector_plans_chirho =
             self.record_selector_plans_chirho(module_chirho, &mut projection_budget_chirho)?;
         self.current_module_name_chirho = Some(module_chirho.name_chirho.text_chirho().to_string());

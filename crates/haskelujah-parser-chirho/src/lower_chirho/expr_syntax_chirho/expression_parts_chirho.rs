@@ -299,8 +299,8 @@ impl LowerCtxChirho {
                         && saw_pipe_chirho
                         && !in_guard_body_chirho
                     {
-                        if let Some(qual_chirho) =
-                            self.flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
+                        if let Some(qual_chirho) = self
+                            .flush_qual_parts_chirho(&mut current_qual_parts_chirho, span_chirho)
                         {
                             current_guard_quals_chirho.push(qual_chirho);
                         }
@@ -328,9 +328,10 @@ impl LowerCtxChirho {
                         ));
                     } else if tok_chirho.kind_chirho() == TokenKindChirho::RightArrowChirho {
                         if saw_pipe_chirho {
-                            if let Some(qual_chirho) = self
-                                .flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
-                            {
+                            if let Some(qual_chirho) = self.flush_qual_parts_chirho(
+                                &mut current_qual_parts_chirho,
+                                span_chirho,
+                            ) {
                                 current_guard_quals_chirho.push(qual_chirho);
                             }
                             current_qual_parts_chirho.clear();
@@ -347,8 +348,8 @@ impl LowerCtxChirho {
                         && !in_guard_body_chirho
                         && n_chirho.kind_chirho() == SyntaxKindChirho::LetStmtChirho
                     {
-                        if let Some(qual_chirho) =
-                            self.flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
+                        if let Some(qual_chirho) = self
+                            .flush_qual_parts_chirho(&mut current_qual_parts_chirho, span_chirho)
                         {
                             current_guard_quals_chirho.push(qual_chirho);
                         }
@@ -391,7 +392,7 @@ impl LowerCtxChirho {
         let rhs_chirho = if saw_pipe_chirho {
             if !current_qual_parts_chirho.is_empty()
                 && let Some(qual_chirho) =
-                    self.flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
+                    self.flush_qual_parts_chirho(&mut current_qual_parts_chirho, span_chirho)
             {
                 current_guard_quals_chirho.push(qual_chirho);
             }

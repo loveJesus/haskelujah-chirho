@@ -318,7 +318,8 @@ impl DesugarCtxChirho {
             }
             PatChirho::WildcardChirho(_)
             | PatChirho::LitChirho(_)
-            | PatChirho::NegChirho { .. } => {}
+            | PatChirho::NegChirho { .. }
+            | PatChirho::SpliceChirho { .. } => {}
             PatChirho::ParenChirho { inner_chirho, .. }
             | PatChirho::BangChirho { inner_chirho, .. }
             | PatChirho::LazyChirho { inner_chirho, .. } => {

@@ -165,6 +165,9 @@ impl DesugarCtxChirho {
         subst_chirho: &HashMap<String, CoreIdChirho>,
     ) -> CoreExprChirho {
         match pat_chirho {
+            PatChirho::SpliceChirho { .. } => {
+                self.case_failure_chirho("unsupported unexpanded executable pattern splice")
+            }
             PatChirho::VarChirho(name_chirho) => {
                 if let Some(id_chirho) = subst_chirho.get(name_chirho.text_chirho()) {
                     CoreExprChirho::VarChirho(*id_chirho)
