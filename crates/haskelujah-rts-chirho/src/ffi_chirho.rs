@@ -52,6 +52,7 @@ struct NativeGcRuntimeChirho {
     alloc_total_chirho: u64,
     alloc_count_since_gc_chirho: u64,
     allocation_interval_chirho: u64,
+    measurement_chirho: native_measurement_chirho::NativeMeasurementChirho,
     #[cfg(test)]
     mark_visits_chirho: usize,
 }
@@ -106,6 +107,8 @@ impl NativeGcRuntimeChirho {
             },
         );
         self.alloc_total_chirho += actual_size_chirho as u64;
+        self.measurement_chirho.allocated_objects_chirho += 1;
+        self.measurement_chirho.live_bytes_chirho += actual_size_chirho as u64;
         self.alloc_count_since_gc_chirho += 1;
         ptr_chirho
     }
@@ -115,6 +118,10 @@ impl NativeGcRuntimeChirho {
         // Every push must balance its pop, including zero/immediate values.
         // Only membership in the allocation registry authorizes dereferencing.
         self.gc_roots_chirho.push(ptr_chirho as usize);
+        self.measurement_chirho.root_depth_high_water_chirho = self
+            .measurement_chirho
+            .root_depth_high_water_chirho
+            .max(self.gc_roots_chirho.len());
     }
 
     fn gc_root_pop_chirho(&mut self) {
@@ -125,6 +132,20 @@ impl NativeGcRuntimeChirho {
         self.mark_all_reachable_chirho();
         self.sweep_unreachable_chirho();
         self.clear_marks_chirho();
+        self.measurement_chirho.collection_count_chirho += 1;
+        self.measurement_chirho.live_objects_after_gc_chirho = self.allocations_by_ptr_chirho.len();
+        self.measurement_chirho.live_bytes_after_gc_chirho =
+            self.measurement_chirho.live_bytes_chirho;
+        self.measurement_chirho
+            .live_objects_after_gc_high_water_chirho = self
+            .measurement_chirho
+            .live_objects_after_gc_high_water_chirho
+            .max(self.allocations_by_ptr_chirho.len());
+        self.measurement_chirho
+            .live_bytes_after_gc_high_water_chirho = self
+            .measurement_chirho
+            .live_bytes_after_gc_high_water_chirho
+            .max(self.measurement_chirho.live_bytes_chirho);
         self.alloc_count_since_gc_chirho = 0;
         self.allocation_interval_chirho =
             (self.allocations_by_ptr_chirho.len() as u64).max(GC_THRESHOLD_CHIRHO);
@@ -210,6 +231,7 @@ impl NativeGcRuntimeChirho {
             if let Some(record_chirho) =
                 self.allocations_by_ptr_chirho.remove(&dead_ptr_addr_chirho)
             {
+                self.measurement_chirho.live_bytes_chirho -= record_chirho.size_chirho as u64;
                 unsafe {
                     dealloc(dead_ptr_addr_chirho as *mut u8, record_chirho.layout_chirho);
                 }
@@ -238,6 +260,7 @@ impl NativeGcRuntimeChirho {
                 }
             }
         }
+        self.measurement_chirho.live_bytes_chirho = 0;
     }
 
     #[cfg(test)]
@@ -249,6 +272,7 @@ impl NativeGcRuntimeChirho {
         self.alloc_total_chirho = 0;
         self.alloc_count_since_gc_chirho = 0;
         self.allocation_interval_chirho = 0;
+        self.measurement_chirho = Default::default();
         self.mark_visits_chirho = 0;
     }
 
@@ -398,6 +422,7 @@ mod gc_tests_chirho;
 mod native_io_refs_chirho;
 mod native_lists_chirho;
 mod native_maps_chirho;
+mod native_measurement_chirho;
 mod native_show_text_chirho;
 mod native_thunks_chirho;
 pub use failure_chirho::{
@@ -439,10 +464,17 @@ pub extern "C" fn haskelujah_main_with_large_stack_chirho(entry_fn_bits_chirho: 
             )
         });
 
-    match join_handle_chirho.join() {
+    let result_chirho = match join_handle_chirho.join() {
         Ok(result_chirho) => result_chirho,
         Err(_) => internal_failure_chirho(b"native main thread panicked"),
+    };
+    // Cold, explicitly requested observation only: never collect or change stdout/status.
+    // Missing/partial reports are a failure in the measuring parent, not a product exit.
+    if let Some(path_chirho) = std::env::var_os(native_measurement_chirho::REPORT_ENV_CHIRHO) {
+        let _ = native_gc_runtime_lock_chirho()
+            .write_measurement_report_chirho(std::path::Path::new(&path_chirho));
     }
+    result_chirho
 }
 
 /// Print an integer value followed by a newline for native backends that avoid
