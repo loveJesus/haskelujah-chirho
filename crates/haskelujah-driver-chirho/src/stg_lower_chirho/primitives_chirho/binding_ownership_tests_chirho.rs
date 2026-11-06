@@ -4,9 +4,9 @@
 //! lowering's four reference paths asks the one IO facade, which lets a spelling reach only an id
 //! the program does not own. The four paths are a bare reference, the head of an application, an
 //! argument, and a constructor field. A free reference and a binding the compiler generated keep
-//! the builtin primitive, and an unlinked import fails closed by name. A control follows a real
-//! import from its producer, the module's provenance, to both interpreter consumers (#32361). The
-//! last runs the multi-module merge, which records no generated bindings, through its top level.
+//! the builtin primitive, and an unlinked import fails closed by name. The last control follows a
+//! real import from its producer, the module's provenance, to both interpreter consumers (#32361).
+//! The multi-module merge's own controls sit beside it (`multi_module_tests_chirho.rs`, #32375).
 //! workflow: testing-chirho/execution-oracles-chirho
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -30,7 +30,8 @@ const APPLY_CHIRHO: u32 = 2;
 const GENERATED_CHIRHO: u32 = 9;
 
 /// The provenance of a module that records what the compiler generated, as the dictionary pass's
-/// output does. A top-level binding outside that record is then the program's own.
+/// output does. A top-level binding outside that record is the program's own, exactly as it is
+/// beside an empty record.
 fn recorded_chirho() -> CoreProvenanceChirho {
     CoreProvenanceChirho {
         compiler_bindings_chirho: BTreeSet::from([CoreIdChirho(GENERATED_CHIRHO)]),
@@ -167,10 +168,10 @@ fn an_applied_spelling_reaches_only_a_value_the_program_does_not_own_chirho() {
             99,
         ),
         (
-            "a module without a record of its generated bindings keeps the legacy top-level route",
+            "a top-level binding the program owns, beside an empty record",
             vec![own_seq_chirho.clone(), main_chirho.clone()],
             CoreProvenanceChirho::default(),
-            7,
+            99,
         ),
         (
             "a binding the compiler generated keeps the primitive",
@@ -472,28 +473,4 @@ fn a_real_import_spelled_like_io_stays_the_programs_own_unlinked_reference_chirh
     .expect("the canonical program compiles");
     assert_eq!(canonical_chirho.result_chirho.map(|_| ()), Ok(()));
     assert_eq!(canonical_chirho.machine_chirho.io_output_chirho, "x\n");
-}
-
-/// A dependency, so that the program runs through the multi-module interpreter merge.
-const SEVEN_MODULE_CHIRHO: &str =
-    "module SevenChirho (sevenChirho) where\n\nsevenChirho :: Int\nsevenChirho = 7\n";
-
-/// Main, which forces through the compiler's generated `force` and `deepseq` rows.
-const FORCING_MAIN_CHIRHO: &str = "module Main where\n\nimport Control.DeepSeq (deepseq, force)\nimport SevenChirho (sevenChirho)\n\nmain :: IO ()\nmain = do\n  print (force sevenChirho)\n  sevenChirho `deepseq` putStrLn \"forced\"\n";
-
-#[test]
-fn the_merge_keeps_the_generated_force_and_deepseq_primitives_chirho() {
-    // The merge records no generated bindings, so its top level keeps the legacy spelling route
-    // even after the IO preparation records its own wrappers. Owned, these rows would run bodies
-    // the interpreter has no primitive for (`seq#`).
-    let (_, machine_chirho) = crate::eval_modules_with_machine_chirho(
-        &[
-            ("SevenChirho.hs", SEVEN_MODULE_CHIRHO),
-            ("Main.hs", FORCING_MAIN_CHIRHO),
-        ],
-        &mut SourceMapChirho::new_chirho(),
-        None,
-    )
-    .unwrap_or_else(|error_chirho| panic!("the merged program runs: {error_chirho}"));
-    assert_eq!(machine_chirho.io_output_chirho, "7\nforced\n");
 }

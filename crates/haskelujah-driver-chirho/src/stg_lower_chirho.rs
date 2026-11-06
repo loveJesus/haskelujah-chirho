@@ -1357,17 +1357,10 @@ fn run_lowered_chirho(
     step_limit_chirho: u64,
     input_lines_chirho: &[&str],
 ) -> Result<RunOutcomeChirho, String> {
-    let arrived_chirho = &module_chirho.provenance_chirho.compiler_bindings_chirho;
-    let mut actions_chirho = haskelujah_core_chirho::io_actions_chirho::prepare_io_actions_chirho(
+    let actions_chirho = haskelujah_core_chirho::io_actions_chirho::prepare_io_actions_chirho(
         module_chirho,
         entry_name_chirho.unwrap_or("main"),
     );
-    // The preparation records its own wrappers. They never make a module that arrived without
-    // a record of its generated bindings (the multi-module merge) look recorded (#32355).
-    let generated_chirho = &mut actions_chirho.provenance_chirho.compiler_bindings_chirho;
-    if arrived_chirho.is_empty() {
-        generated_chirho.clear();
-    }
     let module_chirho = &actions_chirho;
     let program_chirho = lower_module_to_stg_chirho(module_chirho, newtype_cons_chirho);
 
