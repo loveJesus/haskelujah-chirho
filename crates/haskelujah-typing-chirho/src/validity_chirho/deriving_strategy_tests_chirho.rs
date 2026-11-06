@@ -578,3 +578,44 @@ fn an_explicit_stock_needs_the_builtin_proof_chirho() {
         .is_empty()
     );
 }
+
+#[test]
+fn a_builtin_typeable_request_is_never_a_duplicate_instance_chirho() {
+    // GHC ignores a request to derive the builtin Typeable (#32106): two clauses and a
+    // standalone declaration for one newtype are no instances, so rule 16 counts none.
+    let scope_chirho = prelude_scope_chirho(&[
+        CompilerClassChirho::TypeableChirho,
+        CompilerClassChirho::ShowChirho,
+    ]);
+    let found_chirho = errors_with_chirho(
+        vec![
+            newtype_chirho(vec![
+                class_with_chirho("Typeable", None),
+                class_with_chirho("Typeable", stock_chirho()),
+            ]),
+            DeclChirho::StandaloneDerivingDeclChirho {
+                strategy_chirho: None,
+                context_chirho: vec![],
+                class_chirho: name_at_chirho("Typeable", span_at_chirho(50)),
+                types_chirho: vec![TypeChirho::ConChirho(name_chirho("AgeChirho"))],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        ],
+        &["DerivingStrategies", "StandaloneDeriving"],
+        &scope_chirho,
+    );
+    assert!(found_chirho.is_empty(), "{found_chirho:?}");
+    // The same two clauses for Show are GHC-59692: the rule still counts every other class.
+    let found_chirho = errors_with_chirho(
+        vec![newtype_chirho(vec![
+            class_with_chirho("Show", None),
+            class_with_chirho("Show", stock_chirho()),
+        ])],
+        &["DerivingStrategies"],
+        &scope_chirho,
+    );
+    assert_eq!(
+        codes_at_chirho(&found_chirho),
+        [("GHC-59692", span_at_chirho(40))]
+    );
+}

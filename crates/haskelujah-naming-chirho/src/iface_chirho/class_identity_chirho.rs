@@ -5,8 +5,9 @@
 //! A class spelling the module can write (`Eq`, `P.Eq`) names a builtin class only when a
 //! trusted builtin interface provides it: the interface's origin is builtin, the class is
 //! in the compiler's table, the interface is one of that entry's exact providers, and its
-//! type export is the class entry, listing the class's witness method. A spelling also
-//! bound to anything else (a local declaration, a source interface, an untrusted builtin
+//! type export is the class entry: it lists the class's witness method or, for a class with
+//! no method to list (`Typeable`), its producer marks it a class and it lists none. A spelling
+//! also bound to anything else (a local declaration, a source interface, an untrusted builtin
 //! homonym, a different class) is excluded for good: a later import cannot restore it.
 //! workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
 
@@ -19,15 +20,40 @@ use haskelujah_ast_chirho::name_chirho::{
     BuiltinClassChirho, BuiltinClassScopeChirho, CompilerClassChirho,
 };
 
-use super::{IfaceOriginChirho, ModuleIfaceChirho};
+use super::{IfaceOriginChirho, IfaceTypeChirho, ModuleIfaceChirho};
 use crate::env_chirho::NamespaceChirho;
 use crate::resolve_chirho::compute_imported_names_chirho;
+
+/// What shows that a provider's type export is the class itself.
+#[derive(Debug, Clone, Copy)]
+enum ClassWitnessChirho {
+    /// The export lists this method.
+    MethodChirho(&'static str),
+    /// A class with no method to list: its producer marks the export a class, and the
+    /// export lists no method (#32090).
+    MethodlessClassChirho,
+}
+
+impl ClassWitnessChirho {
+    /// Whether `export_chirho` shows this witness.
+    fn shown_by_chirho(self, export_chirho: &IfaceTypeChirho) -> bool {
+        match self {
+            Self::MethodChirho(method_chirho) => export_chirho
+                .methods_chirho
+                .iter()
+                .any(|listed_chirho| listed_chirho == method_chirho),
+            Self::MethodlessClassChirho => {
+                export_chirho.is_class_chirho && export_chirho.methods_chirho.is_empty()
+            }
+        }
+    }
+}
 
 /// One class the compiler defines, with the builtin interfaces trusted to provide it.
 struct BuiltinClassEntryChirho {
     class_chirho: BuiltinClassChirho,
-    /// A method the provider's type export must list, so the export is the class itself.
-    witness_method_chirho: &'static str,
+    /// What the provider's type export must show, so the export is the class itself.
+    witness_chirho: ClassWitnessChirho,
     /// The builtin interfaces trusted to provide the class, exactly. A builtin homonym
     /// anywhere else stays unproven.
     providers_chirho: &'static [&'static str],
@@ -46,16 +72,37 @@ const fn entry_chirho(
             module_chirho,
             name_chirho,
         },
-        witness_method_chirho,
+        witness_chirho: ClassWitnessChirho::MethodChirho(witness_method_chirho),
         providers_chirho,
     }
 }
 
-/// The classes the kind pass may judge (#31175, #31176): monomorphic in GHC 9.14.1, with
-/// a real method every builtin entry lists. Read (its builtin entry lists `read`, not a
-/// method) and Real, RealFrac and RealFloat (no methods listed) stay out. The providers
-/// are a draft scanned from the builtin sources, held to the supplier guard and to GHC's
-/// export lists before any consumer reads them.
+/// The entry of a class with no method to list, which a class-marked export witnesses.
+const fn methodless_entry_chirho(
+    identity_chirho: CompilerClassChirho,
+    module_chirho: &'static str,
+    name_chirho: &'static str,
+    providers_chirho: &'static [&'static str],
+) -> BuiltinClassEntryChirho {
+    BuiltinClassEntryChirho {
+        class_chirho: BuiltinClassChirho {
+            identity_chirho,
+            module_chirho,
+            name_chirho,
+        },
+        witness_chirho: ClassWitnessChirho::MethodlessClassChirho,
+        providers_chirho,
+    }
+}
+
+/// The classes naming proves. All but one are those the kind pass may judge (#31175,
+/// #31176): monomorphic in GHC 9.14.1, with a real method every builtin entry lists. Read
+/// (its builtin entry lists `read`, not a method) and Real, RealFrac and RealFloat (no
+/// methods listed) stay out. The one methodless entry is the poly-kinded `Typeable` (#32090),
+/// whose hidden kind binder the kind pass never judges, and whose providers are the three
+/// builtin interfaces that export it, each measured importing it under GHC 9.14.1. The
+/// providers are a draft scanned from the builtin sources, held to the supplier guard and to
+/// GHC's export lists before any consumer reads them.
 /// workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
 const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
     entry_chirho(
@@ -205,6 +252,12 @@ const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
         "traverse",
         &["Prelude", "Data.Traversable"],
     ),
+    methodless_entry_chirho(
+        CompilerClassChirho::TypeableChirho,
+        "Data.Typeable",
+        "Typeable",
+        &["Data.Typeable", "Type.Reflection", "Data.Data"],
+    ),
 ];
 
 /// Every table-named spelling bound so far: its class, or `None` once excluded.
@@ -289,8 +342,8 @@ fn table_entry_chirho(name_chirho: &str) -> Option<&'static BuiltinClassEntryChi
 }
 
 /// The table entry that trusts `iface_chirho` to give `name_chirho` the builtin class's
-/// identity: a builtin interface, one of the entry's providers, and a type export that is
-/// the class entry, listing the witness method.
+/// identity: a builtin interface, one of the entry's providers, and a type export that shows
+/// the entry's witness, so it is the class entry.
 fn trusted_builtin_class_chirho(
     iface_chirho: &ModuleIfaceChirho,
     name_chirho: &str,
@@ -306,10 +359,9 @@ fn trusted_builtin_class_chirho(
         return None;
     }
     let export_chirho = iface_chirho.exports_chirho.types_chirho.get(name_chirho)?;
-    export_chirho
-        .methods_chirho
-        .iter()
-        .any(|method_chirho| method_chirho == entry_chirho.witness_method_chirho)
+    entry_chirho
+        .witness_chirho
+        .shown_by_chirho(export_chirho)
         .then_some(entry_chirho)
 }
 

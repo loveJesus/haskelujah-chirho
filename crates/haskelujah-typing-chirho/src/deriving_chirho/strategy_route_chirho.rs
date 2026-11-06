@@ -15,6 +15,9 @@
 //! whose last parameter's kind arity the module proves (`class_shapes_chirho.rs`, T3955):
 //! `C args rep' => C args N'`, every argument kept and both heads eta-reduced by that arity.
 //! The stock generators write one head type, so declaration validity refuses the rest.
+//! A request K01 proves names the builtin `Typeable` takes no route at all: GHC ignores it
+//! (`ignores_derived_class_chirho`), so whatever its strategy it mints no instance and asks
+//! for no representation dictionary (#32106).
 //! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use std::collections::HashMap;
@@ -116,14 +119,20 @@ impl<'a> DerivingPolicyChirho<'a> {
     }
 
     /// How `derived_chirho` is produced for a newtype (`is_newtype_chirho`) or a data
-    /// type. `None` when nothing is derived: a strategy declaration validity refuses, a class
-    /// applied to arguments outside the anyclass route, or a class the legacy policy cannot
-    /// derive.
+    /// type. `None` when nothing is derived: a request GHC ignores (the builtin `Typeable`),
+    /// a strategy declaration validity refuses, a class applied to arguments outside the
+    /// anyclass route, or a class the legacy policy cannot derive.
     pub(super) fn route_chirho(
         &self,
         is_newtype_chirho: bool,
         derived_chirho: &DerivedClassChirho,
     ) -> Option<DerivationRouteChirho> {
+        if self
+            .identity_chirho
+            .ignores_derived_class_chirho(&derived_chirho.class_chirho)
+        {
+            return None;
+        }
         let stock_class_chirho = self.stock_class_for_chirho(derived_chirho);
         let empty_instance_chirho = stock_class_chirho
             .is_some_and(|class_chirho| EMPTY_INSTANCE_CLASSES_CHIRHO.contains(&class_chirho));
@@ -324,9 +333,13 @@ pub(super) fn derive_class_chirho(
             }
         }
         // A written strategy no route takes, or a class applied to arguments outside the
-        // anyclass route: declaration validity reports it.
+        // anyclass route: declaration validity reports it. A request GHC ignores derives
+        // nothing and warns nothing.
         None if derived_chirho.strategy_chirho.is_some()
-            || derived_chirho.has_class_arguments_chirho() => {}
+            || derived_chirho.has_class_arguments_chirho()
+            || policy_chirho
+                .identity_chirho
+                .ignores_derived_class_chirho(&derived_chirho.class_chirho) => {}
         None => warnings_chirho.push(format!(
             "deriving {class_text_chirho} not yet supported for {type_text_chirho}"
         )),
@@ -348,8 +361,8 @@ pub struct GndRequestChirho {
 /// Every instance the module's declarations derive through the newtype strategy, in
 /// declaration order: its deriving clauses as routed with the builtin classes naming proved
 /// for the module, the same routing the deriving pass used, and its `deriving newtype
-/// instance` declarations. GND's coercion proof checks exactly these, and the dictionary pass
-/// gives only these the representation's dictionary.
+/// instance` declarations, except a request GHC ignores. GND's coercion proof checks exactly
+/// these, and the dictionary pass gives only these the representation's dictionary.
 /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub fn newtype_strategy_requests_chirho(
     module_chirho: &ModuleChirho,
@@ -385,8 +398,13 @@ pub fn newtype_strategy_requests_chirho(
             } if strategy_chirho.is_newtype_chirho() => {
                 // The derived type is the head's last type. A class applied to arguments
                 // (`deriving newtype instance C Int N`) is refused by declaration validity
-                // until the GND dictionary keys every head type.
-                if types_chirho.len() > 1 {
+                // until the GND dictionary keys every head type, and a request GHC ignores
+                // (the builtin `Typeable`) asks for no dictionary.
+                if types_chirho.len() > 1
+                    || policy_chirho
+                        .identity_chirho
+                        .ignores_derived_class_chirho(class_chirho)
+                {
                     continue;
                 }
                 let Some(target_chirho) = types_chirho

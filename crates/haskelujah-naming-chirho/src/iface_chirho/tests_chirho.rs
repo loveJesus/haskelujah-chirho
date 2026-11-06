@@ -465,6 +465,7 @@ fn module_re_export_chirho() {
                     name_chirho: "InnerType".to_string(),
                     constructors_chirho: vec!["MkInner".to_string()],
                     methods_chirho: vec![],
+                    is_class_chirho: false,
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
             );
@@ -754,6 +755,7 @@ fn explicit_export_list_reexports_imported_type_chirho() {
                     name_chirho: "Parsec".to_string(),
                     constructors_chirho: vec![],
                     methods_chirho: vec![],
+                    is_class_chirho: false,
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
             );

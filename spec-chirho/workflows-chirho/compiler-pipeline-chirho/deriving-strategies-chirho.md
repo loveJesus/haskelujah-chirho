@@ -29,6 +29,9 @@ flowchart TD
     route_chirho -->|anyclass| empty_chirho["derive_anyclass_chirho: an empty instance over the full head C args (T vs), using the class defaults"]
     route_chirho -->|newtype| gnd_chirho["newtype_route_chirho.rs derive_newtype_instance_chirho: C args rep => C args N, the written class arguments first, eta-reduced by the outer arrows of the builtin class's one parameter kind (MonadTrans drops two) or by the local class shape's Type arity, no methods"]
     route_chirho --> inventory_chirho["newtype_strategy_classes_chirho: each newtype's newtype-routed classes"]
+    identity_chirho --> ignored_chirho["StockIdentityChirho::ignores_derived_class_chirho: a request K01 proves names the builtin Typeable takes no route, mints no instance, never enters the inventory (a clause or a standalone deriving newtype instance) and is never a rule-16 duplicate"]
+    ignored_chirho --> route_chirho
+    ignored_chirho --> validity_chirho
     stock_chirho --> metadata_chirho["Show and Enum metadata: only entries the same judgment names as stock Show or Enum"]
     inventory_chirho --> info_chirho["Driver build_newtype_info_chirho, with the module's real K01 scope: NewtypeInfoChirho.newtype_derived_classes_chirho"]
     roles_annotation_chirho["Lowering role_annotations_chirho.rs: type role T r.. onto T's parameters"] --> roles_chirho["parameter_roles_chirho.rs: each local parameter's role (phantom < representational < Unknown < nominal), a least fixed point with annotations as floors"]
@@ -164,6 +167,14 @@ flowchart TD
   written with (`[aChirho]`).
 - One builtin class K01 proves has at most one instance for a type's whole head, however each
   spells it (`P.Show` and `Show`): GHC-59692, measured.
+- A request K01 proves names the builtin `Typeable` derives nothing, whatever its strategy:
+  GHC 9.14.1 ignores it, every type being `Typeable` through the class environment's
+  universal instance (#32106). It mints no instance, asks for no representation dictionary
+  (as a clause or a standalone `deriving newtype instance`), and rule 16 never counts it. A
+  stock `Show` beside it keeps the constructor on every engine (typeable-route r2, r6 and r7:
+  `AgeChirho 5`, `AgeChirho 7`). The module's own `class Typeable` keeps genuine GND (`int`),
+  and without GND it is GHC-82023 (r3). Declaration validity's strategy rules still judge the
+  clause.
 - Root's fresh GHC 9.14.1 contracts (A1-A3, B1-B4, C1-C5, D1-D2, O1-O4) pin the policy: a
   written strategy needs DerivingStrategies or DerivingVia; anyclass needs DeriveAnyClass; an
   unwritten non-stock class needs DeriveAnyClass, or GND on a newtype; DeriveAnyClass wins over

@@ -27,7 +27,8 @@
 //! 16. one builtin class, however each instance spells it (`Show`, `P.Show`), has at most one
 //!     instance for a type's whole head, whether derived or written (`GHC-59692`, measured on
 //!     `QualifiedDuplicateGndInstanceChirho`): K01's proof names the class, so distinct source
-//!     homonyms are never compared.
+//!     homonyms are never compared. The builtin `Typeable` is never counted: GHC ignores a
+//!     request to derive it, so it is no instance (#32106).
 //!
 //! Rule 7 points at the strategy keyword and every other rule at the class, as GHC's caret
 //! does. An entry is judged by the first rule that refuses it, in GHC's order: the renamer's
@@ -147,7 +148,8 @@ pub(super) fn check_deriving_strategies_chirho(
 /// Rule 16: each instance of a builtin class K01 proved, by the head type it covers whole,
 /// in declaration order: every derived class, and each written or standalone instance whose
 /// head is a local type applied to distinct variables. A second one for a pair is GHC's
-/// duplicate instance error, pointing at it with the first as related.
+/// duplicate instance error, pointing at it with the first as related. The builtin `Typeable`
+/// is left out, as before K01 proved it: a request GHC ignores is no instance.
 /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 fn check_builtin_duplicates_chirho(
     module_chirho: &ModuleChirho,
@@ -158,6 +160,11 @@ fn check_builtin_duplicates_chirho(
     let builtin_chirho = |class_chirho: &NameChirho| {
         builtin_classes_chirho
             .class_chirho(&class_chirho.full_name_chirho())
+            .filter(|_| {
+                !judge_chirho
+                    .identity_chirho
+                    .ignores_derived_class_chirho(class_chirho)
+            })
             .map(|builtin_chirho| builtin_chirho.name_chirho)
     };
     let mut seen_chirho: HashMap<(String, &'static str), SpanChirho> = HashMap::new();

@@ -16,13 +16,18 @@
 //! table does not hold. An unwritten strategy keeps the legacy route, which takes a written name
 //! K01 cannot judge for that stock class. A generated instance names its class with the written
 //! spelling, so naming resolves it to the class proved here.
+//!
+//! K01's builtin `Typeable` is the one class no strategy derives: every type already has it,
+//! and GHC ignores a request for it (`ignores_derived_class_chirho`, #32106).
 //! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use std::collections::HashSet;
 
 use haskelujah_ast_chirho::decl_chirho::{DeclChirho, DerivedClassChirho, TyVarChirho};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::name_chirho::{BuiltinClassScopeChirho, NameChirho};
+use haskelujah_ast_chirho::name_chirho::{
+    BuiltinClassScopeChirho, CompilerClassChirho, NameChirho,
+};
 use haskelujah_ast_chirho::ty_chirho::ConstraintChirho;
 
 /// The classes GHC derives with the stock strategy: its refusal names any other class "not a
@@ -121,6 +126,23 @@ impl<'a> StockIdentityChirho<'a> {
         self.builtin_classes_chirho
             .class_chirho(&class_chirho.full_name_chirho())
             .is_some()
+    }
+
+    /// Whether GHC ignores a request to derive `class_chirho`: K01 proved it names the
+    /// builtin `Typeable`, which every type already has (the class environment's universal
+    /// instance). GHC 9.14.1 accepts such a clause, unwritten or with an explicit `stock` or
+    /// `newtype` strategy, and a standalone `deriving newtype instance`; a stock `Show`
+    /// beside each keeps printing the constructor (typeable-route r2, r6, r7). So the request
+    /// is no instance at all: nothing is derived, no representation dictionary is requested,
+    /// and it duplicates nothing (#32106). A source class named `Typeable` is never proved
+    /// here and keeps its own route.
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+    pub(crate) fn ignores_derived_class_chirho(&self, class_chirho: &NameChirho) -> bool {
+        self.builtin_classes_chirho
+            .class_chirho(&class_chirho.full_name_chirho())
+            .is_some_and(|builtin_chirho| {
+                builtin_chirho.identity_chirho == CompilerClassChirho::TypeableChirho
+            })
     }
 
     /// The stock derivable builtin class K01 proved `class_chirho` names, by its own name

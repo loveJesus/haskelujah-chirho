@@ -3,7 +3,8 @@
 //! Deriving strategy routes (row 694): an explicit `newtype` takes the representation's
 //! instance and never a stock one, `stock` and `anyclass` stay themselves, an unwritten
 //! strategy keeps the legacy policy, and a GND head drops the variables a builtin class's
-//! parameter kind needs (one for `Functor`, two for `MonadTrans`).
+//! parameter kind needs (one for `Functor`, two for `MonadTrans`). A request K01 proves names
+//! the builtin `Typeable` takes no route at all (#32106).
 
 use std::collections::HashMap;
 
@@ -549,6 +550,121 @@ fn an_anyclass_instance_takes_the_full_written_head_chirho() {
         ]
     );
     assert!(result_chirho.warnings_chirho.is_empty());
+}
+
+/// A scope proving `Typeable` as `import Data.Typeable (Typeable)` does.
+fn typeable_scope_chirho() -> BuiltinClassScopeChirho {
+    BuiltinClassScopeChirho::new_chirho(HashMap::from([(
+        "Typeable".to_string(),
+        BuiltinClassChirho {
+            identity_chirho: CompilerClassChirho::TypeableChirho,
+            module_chirho: "Data.Typeable",
+            name_chirho: "Typeable",
+        },
+    )]))
+}
+
+#[test]
+fn a_proven_builtin_typeable_request_derives_nothing_under_any_strategy_chirho() {
+    // GHC 9.14.1 ignores it (#32106; typeable-route r2, r6 and r7): no instance, no warning and
+    // no representation dictionary, so the stock Show beside it keeps the constructor.
+    let standalone_chirho = DeclChirho::StandaloneDerivingDeclChirho {
+        strategy_chirho: newtype_chirho(),
+        context_chirho: vec![],
+        class_chirho: var_name_chirho("Typeable"),
+        types_chirho: vec![con_ty_chirho("AgeChirho")],
+        span_chirho: gen_span_chirho(),
+    };
+    for extensions_chirho in [
+        &[][..],
+        &[
+            "DerivingStrategies",
+            "GeneralizedNewtypeDeriving",
+            "DeriveAnyClass",
+        ][..],
+    ] {
+        let mut module_chirho = module_chirho(vec![
+            age_chirho(vec![
+                derived_chirho("Show", None),
+                derived_chirho("Typeable", None),
+                derived_chirho("Typeable", stock_chirho()),
+                derived_chirho("Typeable", newtype_chirho()),
+                derived_chirho("Typeable", anyclass_chirho()),
+            ]),
+            data_decl_chirho("TagChirho", &[], vec![derived_chirho("Typeable", None)]),
+            standalone_chirho.clone(),
+        ]);
+        module_chirho.extensions_chirho = extensions_chirho
+            .iter()
+            .map(|extension_chirho| extension_chirho.to_string())
+            .collect();
+        let result_chirho =
+            derive_instances_with_builtins_chirho(&module_chirho, &typeable_scope_chirho());
+        assert!(
+            result_chirho.warnings_chirho.is_empty(),
+            "{extensions_chirho:?}: {:?}",
+            result_chirho.warnings_chirho
+        );
+        let shapes_chirho = instance_shapes_chirho(&result_chirho);
+        assert_eq!(
+            shapes_chirho.len(),
+            1,
+            "{extensions_chirho:?}: only the stock Show"
+        );
+        let (class_chirho, context_chirho, methods_chirho) = &shapes_chirho[0];
+        assert_eq!(class_chirho, "Show");
+        assert!(
+            context_chirho.is_empty() && *methods_chirho > 0,
+            "{extensions_chirho:?}: the stock Show writes its methods"
+        );
+        assert!(
+            newtype_strategy_classes_chirho(&module_chirho, &typeable_scope_chirho()).is_empty(),
+            "{extensions_chirho:?}"
+        );
+    }
+}
+
+#[test]
+fn only_the_proven_builtin_typeable_is_ignored_chirho() {
+    // TypeableLocalGndChirho's shape: the module's own `class Typeable` keeps genuine GND, as
+    // GHC 9.14.1 does (it prints `int`, typeable-route r2). K01 never proves a local class,
+    // so the scope is empty, and a spelling K01 cannot judge keeps its route too.
+    let local_class_chirho = DeclChirho::ClassDeclChirho {
+        context_chirho: vec![],
+        name_chirho: var_name_chirho("Typeable"),
+        type_vars_chirho: vec![var_name_chirho("a").into()],
+        methods_chirho: vec![],
+        associated_tfs_chirho: vec![],
+        fundeps_chirho: vec![],
+        span_chirho: gen_span_chirho(),
+    };
+    for decls_chirho in [
+        vec![
+            local_class_chirho,
+            age_chirho(vec![derived_chirho("Typeable", None)]),
+        ],
+        vec![age_chirho(vec![derived_chirho("Typeable", None)])],
+    ] {
+        let module_chirho = module_chirho(decls_chirho);
+        let scope_chirho = BuiltinClassScopeChirho::default();
+        let result_chirho = derive_instances_with_builtins_chirho(&module_chirho, &scope_chirho);
+        assert_eq!(
+            instance_shapes_chirho(&result_chirho),
+            [(
+                "Typeable".to_string(),
+                vec![ConstraintChirho::ClassChirho {
+                    class_chirho: var_name_chirho("Typeable"),
+                    args_chirho: vec![con_ty_chirho("Int")],
+                    span_chirho: gen_span_chirho(),
+                }],
+                0
+            )]
+        );
+        assert_eq!(
+            newtype_strategy_classes_chirho(&module_chirho, &scope_chirho),
+            HashMap::from([("AgeChirho".to_string(), vec!["Typeable".to_string()])])
+        );
+    }
 }
 
 #[test]

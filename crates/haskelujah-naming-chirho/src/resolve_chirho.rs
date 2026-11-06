@@ -868,6 +868,7 @@ mod tests_chirho {
                 name_chirho: "Color".to_string(),
                 constructors_chirho: vec!["Red".to_string(), "Blue".to_string()],
                 methods_chirho: vec![],
+                is_class_chirho: false,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );
@@ -1174,6 +1175,7 @@ mod tests_chirho {
                 name_chirho: "Wrap".to_string(),
                 constructors_chirho: vec!["Wrap".to_string()],
                 methods_chirho: vec!["unwrap".to_string()],
+                is_class_chirho: false,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );

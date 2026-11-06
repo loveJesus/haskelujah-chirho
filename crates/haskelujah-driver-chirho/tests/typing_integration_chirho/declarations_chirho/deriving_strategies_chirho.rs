@@ -25,6 +25,14 @@
 //! S2, G1 and G3 are root's measured multi-parameter superclass controls (#31916, #31936):
 //! GHC 9.14.1 prints `True`, `AgeChirho 5` and `5`. A1 and W1, measured too, are the interpreter
 //! suite's check and compile controls; their output waits on `>>=` at an abstract monad.
+//!
+//! The `typeable_route_chirho` fixtures are the Typeable route's GHC 9.14.1 references byte
+//! for byte (typeable-route r2, r3, r6 and r7, #32090, #32106). A builtin `Typeable` clause,
+//! unwritten or with an explicit `stock` or `newtype` strategy, and a standalone `deriving
+//! newtype instance`, are ignored, so the stock `Show` beside each prints the constructor
+//! (`AgeChirho 5`, `AgeChirho 7`). The module's own
+//! `class Typeable` keeps genuine GND (`int`), and without GND it is GHC-82023. Each
+//! provider's `import M (Typeable)` is accepted (`typeable`).
 //! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use super::{assert_prints_everywhere_chirho, rejected_like_ghc_chirho};
@@ -70,6 +78,36 @@ const STOCK_SUPERCLASS_GROUND_NEWTYPE_CHIRHO: &str =
     include_str!("gnd_methods_chirho/stock_superclass_ground_newtype_chirho.hs");
 const NEWTYPE_SUPERCLASS_PARAMETRIC_CHIRHO: &str =
     include_str!("gnd_methods_chirho/newtype_superclass_parametric_chirho.hs");
+const TYPEABLE_UNWRITTEN_GND_SHOW_CHIRHO: &str =
+    include_str!("typeable_route_chirho/typeable_unwritten_gnd_show_chirho.hs");
+const TYPEABLE_UNWRITTEN_NO_GND_CHIRHO: &str =
+    include_str!("typeable_route_chirho/typeable_unwritten_no_gnd_chirho.hs");
+const TYPEABLE_EXPLICIT_NEWTYPE_SHOW_CHIRHO: &str =
+    include_str!("typeable_route_chirho/typeable_explicit_newtype_show_chirho.hs");
+const TYPEABLE_EXPLICIT_STOCK_SHOW_CHIRHO: &str =
+    include_str!("typeable_route_chirho/typeable_explicit_stock_show_chirho.hs");
+const TYPEABLE_STANDALONE_NEWTYPE_SHOW_CHIRHO: &str =
+    include_str!("typeable_route_chirho/typeable_standalone_newtype_show_chirho.hs");
+const TYPEABLE_LOCAL_GND_CHIRHO: &str =
+    include_str!("typeable_route_chirho/typeable_local_gnd_chirho.hs");
+const TYPEABLE_LOCAL_NO_GND_PRAGMA_CHIRHO: &str =
+    include_str!("typeable_route_chirho/typeable_local_no_gnd_pragma_chirho.hs");
+const TYPEABLE_LOCAL_HASKELL2010_CHIRHO: &str =
+    include_str!("typeable_route_chirho/typeable_local_haskell2010_chirho.hs");
+const TYPEABLE_PROVIDERS_CHIRHO: [(&str, &str); 3] = [
+    (
+        "TypeableProviderDataTypeableChirho.hs",
+        include_str!("typeable_route_chirho/typeable_provider_data_typeable_chirho.hs"),
+    ),
+    (
+        "TypeableProviderTypeReflectionChirho.hs",
+        include_str!("typeable_route_chirho/typeable_provider_type_reflection_chirho.hs"),
+    ),
+    (
+        "TypeableProviderDataDataChirho.hs",
+        include_str!("typeable_route_chirho/typeable_provider_data_data_chirho.hs"),
+    ),
+];
 
 #[test]
 fn deriving_newtype_show_prints_the_representation_everywhere_chirho() {
@@ -275,4 +313,91 @@ fn deriving_newtype_without_the_extension_is_refused_chirho() {
             "GeneralizedNewtypeDeriving is not enabled",
         ],
     );
+}
+
+#[test]
+fn a_builtin_typeable_clause_keeps_the_stock_show_constructor_everywhere_chirho() {
+    // typeable-route r2, r6 and r7: GHC 9.14.1 ignores the request in each written form.
+    for (file_name_chirho, source_chirho, ghc_chirho) in [
+        (
+            "TypeableUnwrittenGndShowChirho.hs",
+            TYPEABLE_UNWRITTEN_GND_SHOW_CHIRHO,
+            "AgeChirho 5\n",
+        ),
+        (
+            "TypeableUnwrittenNoGndChirho.hs",
+            TYPEABLE_UNWRITTEN_NO_GND_CHIRHO,
+            "AgeChirho 7\n",
+        ),
+        (
+            "TypeableExplicitNewtypeShowChirho.hs",
+            TYPEABLE_EXPLICIT_NEWTYPE_SHOW_CHIRHO,
+            "AgeChirho 5\n",
+        ),
+        (
+            "TypeableExplicitStockShowChirho.hs",
+            TYPEABLE_EXPLICIT_STOCK_SHOW_CHIRHO,
+            "AgeChirho 5\n",
+        ),
+        (
+            "TypeableStandaloneNewtypeShowChirho.hs",
+            TYPEABLE_STANDALONE_NEWTYPE_SHOW_CHIRHO,
+            "AgeChirho 5\n",
+        ),
+    ] {
+        assert_prints_everywhere_chirho(file_name_chirho, source_chirho, ghc_chirho);
+    }
+}
+
+#[test]
+fn a_local_typeable_class_keeps_genuine_gnd_everywhere_chirho() {
+    // typeable-route r2: GHC 9.14.1 prints the representation's `int`, never the default.
+    assert_prints_everywhere_chirho(
+        "TypeableLocalGndChirho.hs",
+        TYPEABLE_LOCAL_GND_CHIRHO,
+        "int\n",
+    );
+}
+
+#[test]
+fn a_local_typeable_class_without_gnd_is_refused_chirho() {
+    // typeable-route r3: GHC-82023 under NoGeneralizedNewtypeDeriving and under Haskell2010.
+    for (file_name_chirho, source_chirho) in [
+        (
+            "TypeableLocalNoGndPragmaChirho.hs",
+            TYPEABLE_LOCAL_NO_GND_PRAGMA_CHIRHO,
+        ),
+        (
+            "TypeableLocalHaskell2010Chirho.hs",
+            TYPEABLE_LOCAL_HASKELL2010_CHIRHO,
+        ),
+    ] {
+        rejected_like_ghc_chirho(
+            source_chirho,
+            file_name_chirho,
+            &[
+                "E0209",
+                "`Typeable AgeChirho`",
+                "is not a stock derivable class",
+            ],
+        );
+    }
+}
+
+#[test]
+fn each_typeable_provider_import_runs_on_the_interpreter_chirho() {
+    // typeable-route r2: GHC 9.14.1 prints `typeable` for each provider.
+    for (file_name_chirho, source_chirho) in TYPEABLE_PROVIDERS_CHIRHO {
+        let (_, machine_chirho) = haskelujah_driver::eval_source_with_machine_chirho(
+            source_chirho,
+            &mut haskelujah_span_chirho::SourceMapChirho::new_chirho(),
+            file_name_chirho,
+            None,
+        )
+        .unwrap_or_else(|error_chirho| panic!("{file_name_chirho}: interpreter: {error_chirho}"));
+        assert_eq!(
+            machine_chirho.io_output_chirho, "typeable\n",
+            "{file_name_chirho}"
+        );
+    }
 }

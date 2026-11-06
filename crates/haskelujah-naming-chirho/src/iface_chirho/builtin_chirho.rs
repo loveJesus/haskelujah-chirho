@@ -26,6 +26,8 @@ use crate::type_exports_chirho::{
     canonical_value_name_chirho, normalize_builtin_type_exports_chirho,
 };
 
+/// The builtin class table: each class's methods, which every builtin export of its name lists,
+/// and which mark that export a class. `Typeable` lists none (#32090).
 fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'static str]> {
     match class_name_chirho {
         "Eq" => Some(&["==", "/="]),
@@ -98,10 +100,12 @@ fn builtin_class_methods_chirho(class_name_chirho: &str) -> Option<&'static [&'s
         "ArrowPlus" => Some(&["<+>"]),
         "ArrowLoop" => Some(&["loop"]),
         "IsOption" => Some(&["defaultValue", "parseValue", "optionName", "optionHelp"]),
+        "Typeable" => Some(&[]),
         _ => None,
     }
 }
 
+/// Give every builtin export the class table names the class marker and its methods.
 fn normalize_builtin_class_exports_chirho(modules_chirho: &mut [ModuleIfaceChirho]) {
     for module_chirho in modules_chirho {
         let class_names_chirho: Vec<String> = module_chirho
@@ -119,6 +123,7 @@ fn normalize_builtin_class_exports_chirho(modules_chirho: &mut [ModuleIfaceChirh
                 .types_chirho
                 .get_mut(&class_name_chirho)
             {
+                ty_chirho.is_class_chirho = true;
                 for method_chirho in methods_chirho {
                     let method_name_chirho = method_chirho.to_string();
                     if !ty_chirho.methods_chirho.contains(&method_name_chirho) {
@@ -151,7 +156,8 @@ fn mk_val_chirho(name_chirho: &str) -> (String, IfaceValueChirho) {
     )
 }
 
-/// An exported type or class with these constructors, no methods and no source span.
+/// An exported type or class with these constructors, no methods, no class marker and no
+/// source span: the class table's pass marks and fills its classes.
 fn mk_type_chirho(name_chirho: &str, cons_chirho: &[&str]) -> (String, IfaceTypeChirho) {
     (
         name_chirho.to_string(),
@@ -162,6 +168,7 @@ fn mk_type_chirho(name_chirho: &str, cons_chirho: &[&str]) -> (String, IfaceType
                 .map(|c_chirho| c_chirho.to_string())
                 .collect(),
             methods_chirho: vec![],
+            is_class_chirho: false,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         },
     )
