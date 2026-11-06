@@ -17,7 +17,7 @@ pub mod compile_chirho;
 pub mod diff_chirho;
 #[path = "evaluation_chirho/eval_advanced_chirho.rs"]
 pub mod eval_advanced_chirho;
-#[path = "evaluation_chirho/eval_basic_chirho.rs"]
+#[path = "evaluation_chirho/eval_basic_chirho/mod.rs"]
 pub mod eval_basic_chirho;
 pub mod eval_data_chirho;
 #[path = "evaluation_chirho/eval_io_chirho.rs"]
