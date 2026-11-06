@@ -747,3 +747,22 @@ fn mixed_parameter_context_keeps_the_original_wildcard_type_mismatch_chirho() {
     .expect_err("fresh GHC18872 preserves the original partial-signature mismatch");
     assert!(error_chirho.contains("error[E0200]"), "{error_chirho}");
 }
+
+#[test]
+fn corpus_rank_newtype_record_binder_kinds_default_at_the_field_chirho() {
+    check_chirho("should_compile", "tc140.hs").expect(
+        "fresh GHC-positive quantified newtype field kinds default without becoming existentials",
+    );
+}
+
+#[test]
+fn corpus_rank_newtype_coercion_fields_keep_bound_variables_chirho() {
+    check_chirho("should_compile", "T22537.hs")
+        .expect("fresh GHC-positive bound field variables and their kinds stay scoped");
+}
+
+#[test]
+fn corpus_rank_newtype_pattern_keeps_its_checked_field_quantifiers_chirho() {
+    check_chirho("should_compile", "T7891.hs")
+        .expect("fresh GHC-positive field quantifiers survive their pattern inference handoff");
+}

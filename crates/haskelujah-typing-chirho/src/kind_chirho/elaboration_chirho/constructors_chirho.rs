@@ -692,7 +692,7 @@ impl TypeElaboratorChirho<'_> {
                 } => {
                     for (_, field_chirho) in source_fields_chirho {
                         let span_chirho = field_chirho.span_chirho();
-                        let typed_chirho = this_chirho.infer_value_type_chirho(field_chirho)?;
+                        let typed_chirho = this_chirho.infer_defaulted_value_type_chirho(field_chirho, true)?;
                         this_chirho.state_chirho.charge_chirho(2, 2, span_chirho)?;
                         fields_chirho.push(typed_chirho.term_chirho);
                         field_kinds_chirho.push((typed_chirho.kind_chirho, span_chirho));
@@ -703,7 +703,7 @@ impl TypeElaboratorChirho<'_> {
                     ..
                 } => {
                     for field_chirho in source_fields_chirho {
-                        let typed_chirho = this_chirho.infer_value_type_chirho(&mut field_chirho.ty_chirho)?;
+                        let typed_chirho = this_chirho.infer_defaulted_value_type_chirho(&mut field_chirho.ty_chirho, true)?;
                         this_chirho.state_chirho.charge_chirho(1, 1, field_chirho.span_chirho)?;
                         field_kinds_chirho.push((typed_chirho.kind_chirho, field_chirho.span_chirho));
                         for _ in &field_chirho.names_chirho {
@@ -764,7 +764,7 @@ impl TypeElaboratorChirho<'_> {
                         GadtConArgsChirho::PositionalChirho(source_fields_chirho) => {
                             for field_chirho in source_fields_chirho {
                                 let span_chirho = field_chirho.ty_chirho.span_chirho();
-                                let typed_chirho = this_chirho.infer_value_type_chirho(&mut field_chirho.ty_chirho)?;
+                                let typed_chirho = this_chirho.infer_defaulted_value_type_chirho(&mut field_chirho.ty_chirho, true)?;
                                 this_chirho.state_chirho.charge_chirho(2, 2, span_chirho)?;
                                 fields_chirho.push(typed_chirho.term_chirho);
                                 field_kinds_chirho.push((typed_chirho.kind_chirho, span_chirho));
@@ -772,7 +772,7 @@ impl TypeElaboratorChirho<'_> {
                         }
                         GadtConArgsChirho::RecordChirho(source_fields_chirho) => {
                             for field_chirho in source_fields_chirho {
-                                let typed_chirho = this_chirho.infer_value_type_chirho(&mut field_chirho.ty_chirho)?;
+                                let typed_chirho = this_chirho.infer_defaulted_value_type_chirho(&mut field_chirho.ty_chirho, true)?;
                                 this_chirho.state_chirho.charge_chirho(1, 1, field_chirho.span_chirho)?;
                                 field_kinds_chirho.push((typed_chirho.kind_chirho, field_chirho.span_chirho));
                                 for _ in &field_chirho.names_chirho {

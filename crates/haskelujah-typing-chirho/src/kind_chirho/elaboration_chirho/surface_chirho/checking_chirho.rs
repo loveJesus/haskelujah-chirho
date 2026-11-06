@@ -48,13 +48,26 @@ impl TypeElaboratorChirho<'_> {
         &mut self,
         syntax_chirho: &mut TypeChirho,
     ) -> Result<TyChirho, ElaborationErrorChirho> {
+        self.infer_defaulted_value_type_chirho(syntax_chirho, false)
+            .map(|typed_chirho| typed_chirho.term_chirho)
+    }
+
+    /// A value-type producer closes only its newly generated representation
+    /// metas. Rich nested binder kinds remain part of the returned checked
+    /// term, and parent universals/outer kind dependencies remain protected.
+    /// Workflow: language-features-chirho/rank-n-visible-type-application-chirho.
+    pub(in crate::kind_chirho::elaboration_chirho) fn infer_defaulted_value_type_chirho(
+        &mut self,
+        syntax_chirho: &mut TypeChirho,
+        preserve_result_kind_chirho: bool,
+    ) -> Result<ElaboratedTypeChirho, ElaborationErrorChirho> {
         let span_chirho = syntax_chirho.span_chirho();
         self.state_chirho.charge_chirho(
             self.variables_chirho.len(),
             self.variables_chirho.len(),
             span_chirho,
         )?;
-        let outer_chirho = self
+        let mut outer_chirho = self
             .variables_chirho
             .values()
             .map(|record_chirho| record_chirho.variable_chirho)
@@ -62,9 +75,6 @@ impl TypeElaboratorChirho<'_> {
         let typed_chirho = self.infer_value_type_chirho(syntax_chirho)?;
         // An inner annotation may constrain an outer variable, but cannot
         // default its kind-only metas before that outer binding generalizes.
-        let protected_chirho = self
-            .state_chirho
-            .kind_dependency_closure_chirho(&outer_chirho, span_chirho)?;
         let mut roots_chirho = typed_chirho.term_chirho.free_vars_chirho();
         let kind_roots_chirho = typed_chirho.kind_chirho.free_vars_chirho();
         self.state_chirho.charge_chirho(
@@ -72,6 +82,15 @@ impl TypeElaboratorChirho<'_> {
             kind_roots_chirho.len(),
             span_chirho,
         )?;
+        if preserve_result_kind_chirho {
+            // Constructor fields still meet their actual parent result kind.
+            // An opaque unboxed field must not become lifted before that
+            // comparison. Nested binder-kind metas remain default candidates.
+            outer_chirho.extend(kind_roots_chirho.iter().copied());
+        }
+        let protected_chirho = self
+            .state_chirho
+            .kind_dependency_closure_chirho(&outer_chirho, span_chirho)?;
         roots_chirho.extend(kind_roots_chirho);
         let candidates_chirho = self
             .state_chirho
@@ -81,8 +100,14 @@ impl TypeElaboratorChirho<'_> {
             &protected_chirho,
             span_chirho,
         )?;
-        self.state_chirho
-            .resolve_chirho(&typed_chirho.term_chirho, span_chirho)
+        Ok(ElaboratedTypeChirho {
+            term_chirho: self
+                .state_chirho
+                .resolve_chirho(&typed_chirho.term_chirho, span_chirho)?,
+            kind_chirho: self
+                .state_chirho
+                .resolve_chirho(&typed_chirho.kind_chirho, span_chirho)?,
+        })
     }
 
     /// GHC requires a lifted method value. Default only generated representation

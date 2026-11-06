@@ -151,3 +151,20 @@ flowchart TD
 - A nested lambda has a distinct parameter list and may use evidence from its enclosing
   implication. Ordinary type mismatches retain the existing deferral category; resource
   and scope failures do not acquire that category.
+
+## Quantified constructor field kinds
+
+```mermaid
+flowchart TD
+    field_chirho[Infer actual constructor field type and full binder kinds] --> protect_chirho[Protect enclosing variables and the field outer kind]
+    protect_chirho --> default_chirho[Default only owned nested representation metas]
+    default_chirho --> parent_chirho[Compare with actual newtype result kind]
+    parent_chirho --> variables_chirho[Check complete field free variables against actual result parameters]
+    variables_chirho --> publish_chirho[Publish the same checked constructor telescope]
+```
+
+Generated representation metas inside `forall t. t -> t` default at the value-type producer;
+they are not constructor existentials. The field's outer kind remains open until comparison
+with the actual parent result, including unboxed and checked-family results. Declared
+universals, parent parameter refinements and true escaping existentials retain their existing
+guards. Rich binder-kind free variables remain part of every scope check.
