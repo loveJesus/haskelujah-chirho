@@ -84,7 +84,10 @@ flowchart TD
   included. A stopped search is unknown, never "not entailed": the obligation stays, and a
   ground wanted it leaves undecided is refused by name through the Unsupported packaging, never
   accepted as proved and never reported as "no instance" (#31984; GHC 9.14.1 rejects that
-  program, U1, with GHC-39999 and accepts the first and second edges, P1 and P2). Context
+  program, U1, with GHC-39999 and accepts the first and second edges, P1 and P2). That refusal
+  is decided at the givens' scope end (`refuse_undecided_ground_wanteds_chirho`, called from
+  `discharge_deferred_with_current_givens_chirho`): the module-end pass sees no givens, and r23
+  measured U1 there as E0204. Context
   reduction and the fundep subclass guard keep the name walk `is_transitive_superclass_chirho`
   (T16414; controls in `rigid_tyvars_chirho/superclass_cycles_chirho.rs` and
   `class_chirho/superclass_search_tests_chirho.rs`).

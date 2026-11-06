@@ -155,7 +155,7 @@ impl InferCtxChirho {
     /// is neither proved nor refuted, so the program is refused through the Unsupported
     /// packaging (row 694, #31984).
     /// workflow: language-features-chirho/rigid-type-variables-chirho
-    fn report_undecided_superclass_chirho(
+    pub(super) fn report_undecided_superclass_chirho(
         &mut self,
         pred_chirho: &PredChirho,
         span_chirho: SpanChirho,
