@@ -45,3 +45,28 @@ flowchart TD
 ```
 
 Publication and retirement share the existing collector lock, use the allocation registry as authority, and contain no native allocation or collection. An aliased returned capture remains reachable through the result word before its old environment edge is removed. Explicit update during an active callback does not prove the environment is dead. The one-process `native_thunk_retirement_chirho` RTS integration test exercises real collections and post-update environment reads; it is protocol proof, not emitted-code proof. Its same-source old-update negative control must compile and fail semantically before acceptance. The original driver growth and surviving-value controls supply the separate emitted-code evidence.
+
+## Boxed application arity Chirho
+
+The frozen LLVM nested-PAP case exposed a separate ABI fault: an entry requiring two arguments received one, evaluated prematurely and later supplied a scalar as a code address. The exact retained executable UUID matches the automatic macOS crash report. Source observation identifies the arity mismatch; it does not establish a measured baseline result or a repaired candidate pass.
+
+```mermaid
+flowchart TD
+    function_value_chirho[Force only the function to WHNF] --> call_kind_chirho{Registered boxed value?}
+    call_kind_chirho -->|no| bare_call_chirho[Preserve existing bare-pointer call ABI]
+    call_kind_chirho -->|yes| boxed_entry_chirho[Call unary entry with original environment and one lazy argument]
+    boxed_entry_chirho --> entry_frame_chirho[Mark frame and root real environment and argument]
+    entry_frame_chirho --> saturated_chirho{All worker arguments supplied?}
+    saturated_chirho -->|no| next_pap_chirho[Allocate next PAP with original environment and supplied values]
+    saturated_chirho -->|yes| worker_chirho[Call unchanged direct worker with complete arguments]
+    next_pap_chirho --> frame_result_chirho[Restore frame and transfer actual result without native allocation]
+    worker_chirho --> frame_result_chirho
+    frame_result_chirho --> root_intermediate_chirho[Caller roots actual intermediate result]
+    root_intermediate_chirho --> remaining_chirho{More application arguments?}
+    remaining_chirho -->|yes| function_value_chirho
+    remaining_chirho -->|no| continuation_value_chirho[Continue with rooted result]
+```
+
+All newly emitted PAP/adaptor entries use checked 704 root frames. The entry header of a captured multiargument closure points to a unary adapter, while its existing capture slots and fully saturated direct worker retain their layout and ABI. Partial stages preserve an original closure environment separately from supplied arguments. Boxed grouped calls apply one argument at a time; each intermediate result is rooted before any further forcing or allocation. Bare function pointers still lack runtime arity authority and retain their previous limitation. This unit makes no new representation, tag, registry or blanket forcing rule.
+
+The separate `native_boxed_applications_chirho` driver test exercises grouped and staged returned captured binary closures, grouped PAPs and captured-worker PAPs across allocation pressure. Each shape runs in both backends, expects independently specified result 24, and requires actual allocations and several collections. The original six survival-case source and the row 702 workload remain unchanged for comparative evidence. Final acceptance also preserves error, blackhole, laziness and effect neighbors, with pinned source, binaries, linked RTS copies and raw outcomes.

@@ -8,7 +8,7 @@ Owner: GPT dependability child, row 704; root alone owns the DB. Source starts a
 - [x] Use one registry/kind/size-validated result publication helper in completed entry and explicit update; publish the result before retiring old captures, under the existing lock and without native allocation.
 - [x] Preserve environments while callbacks are active, including explicit update followed by actual collection and further environment reads.
 - [x] Prepare one isolated-process RTS protocol test for completed entry, inactive update, returned capture alias and active update; use registry membership only before dereferencing, with no intervening allocation when checking reclamation.
-- [ ] Standalone rustfmt, whitespace review, owned-path review, outgoing-range gitleaks, source commit and push.
+- [x] Standalone rustfmt, whitespace review, owned-path review, outgoing-range gitleaks, source commit and push: `70d0e81191674c2b5e49aa69c2b669184a1b91ee`, `gh_chirho/native-thunk-retirement-chirho`. This is source evidence only.
 - [ ] Sole scheduler actual grant, pinned source/test/tool/own-RTS identities, bounded owned-group receipts and fresh exact-name listing.
 - [ ] Compile and run the same test against the old `39a5` thunk update implementation in a separate disposable negative-control worktree; retain the expected obsolete-capture membership failure as raw evidence. A compile or protocol failure is not a valid negative control.
 - [ ] Candidate RTS protocol test passes; existing thunk/frame controls pass; unchanged row 702 growth test passes both backends at both scales with the original exercise and envelope assertions.

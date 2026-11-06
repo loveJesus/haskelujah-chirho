@@ -18,6 +18,7 @@
 
 mod failures_chirho;
 mod lazy_chirho;
+mod partial_applications_chirho;
 mod root_frames_chirho;
 use root_frames_chirho::{
     write_arity_frame_entry_chirho, write_parameter_frame_entry_chirho,
@@ -1024,7 +1025,11 @@ impl LlvmCodegenChirho {
             return tmp_chirho;
         }
 
-        self.emit_closure_value_chirho(lifted_name_chirho, &captured_ids_chirho)
+        self.emit_closure_value_chirho(
+            lifted_name_chirho,
+            &captured_ids_chirho,
+            param_binders_chirho.len(),
+        )
     }
 
     fn classify_expr_show_kind_chirho(
@@ -2958,88 +2963,6 @@ impl LlvmCodegenChirho {
         global_name_chirho
     }
 
-    fn compile_indirect_call_chirho(
-        &mut self,
-        fun_val_chirho: &str,
-        args_str_chirho: &str,
-    ) -> String {
-        let forced_fun_chirho = self.emit_force_thunk_chirho(fun_val_chirho);
-        let fun_val_chirho = forced_fun_chirho.as_str();
-        let boxed_label_chirho = self.fresh_label_chirho("call.boxed");
-        let direct_label_chirho = self.fresh_label_chirho("call.direct");
-        let join_label_chirho = self.fresh_label_chirho("call.join");
-        let is_boxed_tmp_chirho = self.fresh_tmp_chirho();
-        let boxed_probe_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {boxed_probe_tmp_chirho} = call i64 @haskelujah_is_heap_ptr_chirho(i64 {fun_val_chirho})"
-        )
-        .unwrap();
-        writeln!(
-            self.output_chirho,
-            "  {is_boxed_tmp_chirho} = icmp ne i64 {boxed_probe_tmp_chirho}, 0"
-        )
-        .unwrap();
-        writeln!(
-            self.output_chirho,
-            "  br i1 {is_boxed_tmp_chirho}, label %{boxed_label_chirho}, label %{direct_label_chirho}"
-        )
-        .unwrap();
-
-        writeln!(self.output_chirho, "{direct_label_chirho}:").unwrap();
-        let direct_fun_ptr_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {direct_fun_ptr_tmp_chirho} = inttoptr i64 {fun_val_chirho} to ptr"
-        )
-        .unwrap();
-        let direct_result_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {direct_result_tmp_chirho} = call i64 {direct_fun_ptr_tmp_chirho}({args_str_chirho})"
-        )
-        .unwrap();
-        writeln!(self.output_chirho, "  br label %{join_label_chirho}").unwrap();
-
-        writeln!(self.output_chirho, "{boxed_label_chirho}:").unwrap();
-        let closure_fun_bits_tmp_chirho =
-            self.load_boxed_constructor_field_chirho(fun_val_chirho, 0);
-        let closure_entry_bits_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {closure_entry_bits_tmp_chirho} = and i64 {closure_fun_bits_tmp_chirho}, {NATIVE_OBJECT_HEADER_PTR_MASK_CHIRHO}"
-        )
-        .unwrap();
-        let closure_fun_ptr_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {closure_fun_ptr_tmp_chirho} = inttoptr i64 {closure_entry_bits_tmp_chirho} to ptr"
-        )
-        .unwrap();
-        let closure_result_tmp_chirho = self.fresh_tmp_chirho();
-        let closure_args_chirho = if args_str_chirho.is_empty() {
-            format!("i64 {fun_val_chirho}")
-        } else {
-            format!("i64 {fun_val_chirho}, {args_str_chirho}")
-        };
-        writeln!(
-            self.output_chirho,
-            "  {closure_result_tmp_chirho} = call i64 {closure_fun_ptr_tmp_chirho}({closure_args_chirho})"
-        )
-        .unwrap();
-        writeln!(self.output_chirho, "  br label %{join_label_chirho}").unwrap();
-
-        writeln!(self.output_chirho, "{join_label_chirho}:").unwrap();
-        let result_tmp_chirho = self.fresh_tmp_chirho();
-        writeln!(
-            self.output_chirho,
-            "  {result_tmp_chirho} = phi i64 [{direct_result_tmp_chirho}, %{direct_label_chirho}], [{closure_result_tmp_chirho}, %{boxed_label_chirho}]"
-        )
-        .unwrap();
-        self.emit_gc_root_push_i64_chirho(&result_tmp_chirho);
-        result_tmp_chirho
-    }
-
     fn load_boxed_constructor_field_chirho(
         &mut self,
         boxed_value_chirho: &str,
@@ -3059,32 +2982,6 @@ impl LlvmCodegenChirho {
         )
         .unwrap();
         field_val_tmp_chirho
-    }
-
-    fn compile_curried_indirect_apps_chirho(
-        &mut self,
-        fun_val_chirho: &str,
-        arg_vals_chirho: &[String],
-    ) -> String {
-        if arg_vals_chirho.is_empty() {
-            return fun_val_chirho.to_string();
-        }
-        // Try a saturated multi-arg call first: pass ALL arguments to the
-        // function at once.  For bare function pointers (direct path) this
-        // is correct when the callee's arity matches the number of args.
-        // For closures (boxed path) the entry code already expects the
-        // closure env + all real args.
-        //
-        // If the callee has FEWER parameters we get UB, so fall-through
-        // curried application is the safe default.  However, the vast
-        // majority of indirect calls at the call-site have the right
-        // arity, so this is the common fast path.
-        let all_args_str_chirho = arg_vals_chirho
-            .iter()
-            .map(|v_chirho| format!("i64 {v_chirho}"))
-            .collect::<Vec<_>>()
-            .join(", ");
-        self.compile_indirect_call_chirho(fun_val_chirho, &all_args_str_chirho)
     }
 
     fn compile_known_call_chirho(
@@ -3207,7 +3104,12 @@ impl LlvmCodegenChirho {
             return format!("%v{}", id_chirho.0);
         }
 
-        self.emit_closure_value_chirho(lifted_name_chirho, &captured_ids_chirho)
+        let arity_chirho = self
+            .lifted_local_arities_chirho
+            .get(&id_chirho)
+            .copied()
+            .expect("captured local worker has a known arity Chirho");
+        self.emit_closure_value_chirho(lifted_name_chirho, &captured_ids_chirho, arity_chirho)
     }
 
     fn compile_known_lifted_local_call_chirho(
@@ -3237,7 +3139,7 @@ impl LlvmCodegenChirho {
         let closure_val_chirho = if self.local_scope_chirho.contains(&id_chirho) {
             format!("%v{}", id_chirho.0)
         } else {
-            self.emit_closure_value_chirho(lifted_name_chirho, &captured_ids_chirho)
+            self.emit_closure_value_chirho(lifted_name_chirho, &captured_ids_chirho, arity_chirho)
         };
         self.compile_known_closure_call_chirho(
             &format!("@{lifted_name_chirho}"),
@@ -3251,6 +3153,7 @@ impl LlvmCodegenChirho {
         &mut self,
         lifted_name_chirho: &str,
         captured_ids_chirho: &[CoreIdChirho],
+        arity_chirho: usize,
     ) -> String {
         let captured_vals_chirho: Vec<String> = captured_ids_chirho
             .iter()
@@ -3258,7 +3161,9 @@ impl LlvmCodegenChirho {
                 self.compile_expr_chirho(&CoreExprChirho::VarChirho(*capture_id_chirho))
             })
             .collect();
-        self.emit_captured_value_closure_chirho(lifted_name_chirho, &captured_vals_chirho)
+        let entry_name_chirho =
+            self.emit_boxed_closure_entry_chirho(lifted_name_chirho, arity_chirho);
+        self.emit_captured_value_closure_chirho(&entry_name_chirho, &captured_vals_chirho)
     }
 
     fn emit_captured_value_closure_chirho(
@@ -3330,113 +3235,6 @@ impl LlvmCodegenChirho {
         // reachable while its caller evaluates later, allocating arguments.
         self.emit_gc_root_push_i64_chirho(&tagged_closure_tmp_chirho);
         tagged_closure_tmp_chirho
-    }
-
-    fn emit_partial_application_closure_chirho(
-        &mut self,
-        fn_ref_chirho: &str,
-        closure_env_val_chirho: Option<&str>,
-        applied_arg_vals_chirho: &[String],
-        remaining_arity_chirho: usize,
-    ) -> String {
-        let wrapper_name_chirho = self.fresh_lifted_name_chirho();
-        let mut wrapper_ir_chirho = String::new();
-        let mut next_tmp_idx_chirho = 0usize;
-        let mut fresh_wrapper_tmp_chirho = || {
-            let tmp_chirho = format!("%t{next_tmp_idx_chirho}");
-            next_tmp_idx_chirho += 1;
-            tmp_chirho
-        };
-
-        let mut params_chirho = vec!["i64 %env_chirho".to_string()];
-        for arg_idx_chirho in 0..remaining_arity_chirho {
-            params_chirho.push(format!("i64 %partial_arg_{arg_idx_chirho}_chirho"));
-        }
-        writeln!(
-            wrapper_ir_chirho,
-            "define i64 @{wrapper_name_chirho}({}) {{",
-            params_chirho.join(", ")
-        )
-        .unwrap();
-        writeln!(wrapper_ir_chirho, "entry:").unwrap();
-        let mut wrapper_roots_chirho = vec!["%env_chirho".to_string()];
-        wrapper_roots_chirho.extend(
-            (0..remaining_arity_chirho)
-                .map(|index_chirho| format!("%partial_arg_{index_chirho}_chirho")),
-        );
-        write_root_frame_entry_chirho(&mut wrapper_ir_chirho, &wrapper_roots_chirho);
-
-        let env_ptr_bits_tmp_chirho = fresh_wrapper_tmp_chirho();
-        writeln!(
-            wrapper_ir_chirho,
-            "  {env_ptr_bits_tmp_chirho} = and i64 %env_chirho, {BOXED_CONSTRUCTOR_PTR_MASK_CHIRHO}"
-        )
-        .unwrap();
-        let env_ptr_tmp_chirho = fresh_wrapper_tmp_chirho();
-        writeln!(
-            wrapper_ir_chirho,
-            "  {env_ptr_tmp_chirho} = inttoptr i64 {env_ptr_bits_tmp_chirho} to ptr"
-        )
-        .unwrap();
-
-        let mut env_field_idx_chirho = 1usize;
-        let mut call_args_chirho = Vec::new();
-        if closure_env_val_chirho.is_some() {
-            let closure_slot_ptr_tmp_chirho = fresh_wrapper_tmp_chirho();
-            writeln!(
-                wrapper_ir_chirho,
-                "  {closure_slot_ptr_tmp_chirho} = getelementptr i64, ptr {env_ptr_tmp_chirho}, i64 {env_field_idx_chirho}"
-            )
-            .unwrap();
-            let closure_val_tmp_chirho = fresh_wrapper_tmp_chirho();
-            writeln!(
-                wrapper_ir_chirho,
-                "  {closure_val_tmp_chirho} = load i64, ptr {closure_slot_ptr_tmp_chirho}"
-            )
-            .unwrap();
-            call_args_chirho.push(format!("i64 {closure_val_tmp_chirho}"));
-            env_field_idx_chirho += 1;
-        }
-
-        for _ in applied_arg_vals_chirho {
-            let capture_slot_ptr_tmp_chirho = fresh_wrapper_tmp_chirho();
-            writeln!(
-                wrapper_ir_chirho,
-                "  {capture_slot_ptr_tmp_chirho} = getelementptr i64, ptr {env_ptr_tmp_chirho}, i64 {env_field_idx_chirho}"
-            )
-            .unwrap();
-            let capture_val_tmp_chirho = fresh_wrapper_tmp_chirho();
-            writeln!(
-                wrapper_ir_chirho,
-                "  {capture_val_tmp_chirho} = load i64, ptr {capture_slot_ptr_tmp_chirho}"
-            )
-            .unwrap();
-            call_args_chirho.push(format!("i64 {capture_val_tmp_chirho}"));
-            env_field_idx_chirho += 1;
-        }
-
-        for arg_idx_chirho in 0..remaining_arity_chirho {
-            call_args_chirho.push(format!("i64 %partial_arg_{arg_idx_chirho}_chirho"));
-        }
-
-        let call_result_tmp_chirho = fresh_wrapper_tmp_chirho();
-        writeln!(
-            wrapper_ir_chirho,
-            "  {call_result_tmp_chirho} = tail call i64 {fn_ref_chirho}({})",
-            call_args_chirho.join(", ")
-        )
-        .unwrap();
-        write_root_frame_return_chirho(&mut wrapper_ir_chirho, &call_result_tmp_chirho);
-        writeln!(wrapper_ir_chirho, "}}").unwrap();
-
-        self.lifted_functions_chirho.push(wrapper_ir_chirho);
-
-        let mut captured_vals_chirho = Vec::new();
-        if let Some(closure_env_val_chirho) = closure_env_val_chirho {
-            captured_vals_chirho.push(closure_env_val_chirho.to_string());
-        }
-        captured_vals_chirho.extend(applied_arg_vals_chirho.iter().cloned());
-        self.emit_captured_value_closure_chirho(&wrapper_name_chirho, &captured_vals_chirho)
     }
 
     fn compile_constructor_app_chirho(
