@@ -13,15 +13,30 @@ use std::collections::HashMap;
 
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
+use haskelujah_ast_chirho::name_chirho::BuiltinClassScopeChirho;
 
+use super::stock_identity_chirho::StockIdentityChirho;
 use super::{all_nullary_chirho, con_name_chirho, declaration_heads_chirho};
 
-/// Every local `data` type whose deriving clause names Enum and whose instance derives, by
+/// Every local `data` type whose deriving clause names Enum and whose instance derives, with
+/// no builtin class proof: every class keeps its written name.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub fn derived_enum_metadata_chirho(module_chirho: &ModuleChirho) -> HashMap<String, Vec<String>> {
+    derived_enum_metadata_with_builtins_chirho(module_chirho, &BuiltinClassScopeChirho::default())
+}
+
+/// Every local `data` type whose deriving clause asks for the stock Enum class, judged with
+/// the builtin classes naming proved for the module (row 694), and whose instance derives, by
 /// type name: its constructor names in declaration order. These are exactly the shapes the
 /// derived instance accepts, with no visible parameter and one or more constructors, all
 /// nullary, so every entry has a first and a last constructor.
 /// workflow: language-features-chirho/dictionary-evidence-chirho
-pub fn derived_enum_metadata_chirho(module_chirho: &ModuleChirho) -> HashMap<String, Vec<String>> {
+pub fn derived_enum_metadata_with_builtins_chirho(
+    module_chirho: &ModuleChirho,
+    builtin_classes_chirho: &BuiltinClassScopeChirho,
+) -> HashMap<String, Vec<String>> {
+    let identity_chirho =
+        StockIdentityChirho::of_module_chirho(module_chirho, builtin_classes_chirho);
     let mut metadata_chirho = HashMap::new();
     for decl_chirho in &module_chirho.decls_chirho {
         let DeclChirho::DataDeclChirho {
@@ -36,9 +51,10 @@ pub fn derived_enum_metadata_chirho(module_chirho: &ModuleChirho) -> HashMap<Str
         else {
             continue;
         };
+        // Only the stock instance enumerates constructors (row 694).
         if !deriving_chirho
             .iter()
-            .any(|class_chirho| class_chirho.text_chirho() == "Enum")
+            .any(|derived_chirho| identity_chirho.names_stock_class_chirho(derived_chirho, "Enum"))
         {
             continue;
         }

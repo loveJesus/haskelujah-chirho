@@ -141,6 +141,7 @@ fn data_chirho(
                 .map(|field_chirho| (StrictnessChirho::LazyChirho, field_chirho))
                 .collect(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
         }],
         deriving_chirho: vec![],
         kind_sig_chirho: None,

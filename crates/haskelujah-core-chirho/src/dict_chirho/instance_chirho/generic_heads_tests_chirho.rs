@@ -118,6 +118,7 @@ fn class_env_chirho(
                 .iter()
                 .map(|name_chirho| name_chirho.to_string())
                 .collect(),
+            super_templates_chirho: Vec::new(),
             var_chirho: TyVarChirho(100),
             methods_chirho: HashMap::new(),
             extra_vars_chirho,

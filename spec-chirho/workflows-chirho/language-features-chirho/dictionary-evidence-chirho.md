@@ -20,10 +20,10 @@ flowchart TD
     desugar_chirho[Desugar: literal becomes App fromInteger-occurrence lit]
     desugar_chirho --> prov_chirho[record_occurrence_provenance_chirho: occurrence id → the literal's origin and role]
     desugar_chirho --> spans_chirho[record_literal_occurrence_chirho: occurrence id → literal span, for literals with no origin]
-    result_chirho --> join_chirho[join_occurrence_evidence_chirho: by origin first, then span, then the per-name ordinal join]
+    result_chirho --> join_chirho[join_occurrence_evidence_chirho: by origin first, then span, then the per-name ordinal join; each occurrence also keeps the ground applied type its proving record resolved to, BoxChirho Int, row 694]
     prov_chirho --> join_chirho
     spans_chirho --> join_chirho
-    join_chirho --> pass_chirho[Dictionary pass at every occurrence entry, occurrence_head_replacement_chirho and try_rewrite_method_var_chirho: prim row, an Eq/Ord proven list key's dispatch, or keyed selector from the record]
+    join_chirho --> pass_chirho[Dictionary pass at every occurrence entry, occurrence_head_replacement_chirho and try_rewrite_method_var_chirho: a parametric GND factory's dictionary at the applied type, then prim row, an Eq/Ord proven list key's dispatch, or keyed selector from the record]
     pass_chirho --> stg_chirho[STG: the literal's fromInteger has its dictionary]
 ```
 
@@ -36,6 +36,10 @@ flowchart TD
   were joined by a per-name ordinal until 2026-09-19. See "Method occurrences" below; the
   lesson is that an invariant in this document is not evidence about the code, and the join it
   describes has to be read.
+- A multi-parameter predicate's reference record also carries its complete ground head
+  (`applied_head_chirho`, row 694, #31909). The pass serves it before any first-argument key,
+  from the one conditional-registry entry whose instance head matches (`head_dictionary_chirho`);
+  the flow is in `compiler-pipeline-chirho/deriving-strategies-chirho.md`.
 - A concrete head is evidence, and so is a signature's rigid variable (row 584). A literal there
   takes the binding's own key, as an occurrence at that variable does.
   - It takes `$own:k` for the predicate the signature declares. It takes the class-only `$own` for a class that no predicate names, such as a Num literal under `Fractional a`. The pass serves that through the superclass extraction.

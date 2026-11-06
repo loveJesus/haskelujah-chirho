@@ -156,6 +156,7 @@ pub(super) fn push_generics_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
                         .map(str::to_string)
                         .collect(),
                     methods_chirho: methods_chirho.into_iter().map(str::to_string).collect(),
+                    is_class_chirho: false,
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
             );

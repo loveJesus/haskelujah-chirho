@@ -76,8 +76,8 @@ fn import_chirho(
     }
 }
 
-/// An interface of `origin_chirho` exporting `class_text_chirho` as a type entry that
-/// lists `methods_chirho`.
+/// An interface of `origin_chirho` exporting `class_text_chirho` as a class-marked type
+/// entry that lists `methods_chirho`.
 fn class_iface_chirho(
     module_text_chirho: &str,
     class_text_chirho: &str,
@@ -97,6 +97,7 @@ fn class_iface_chirho(
                 .iter()
                 .map(|method_chirho| method_chirho.to_string())
                 .collect(),
+            is_class_chirho: true,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         },
     );
@@ -137,7 +138,12 @@ fn an_unqualified_trusted_provider_binds_its_bare_and_qualified_spellings_chirho
     let class_chirho = scope_chirho
         .class_chirho("Functor")
         .expect("Prelude's Functor is the builtin class");
-    assert_eq!(class_chirho.parameter_arities_chirho, &[1]);
+    assert_eq!(
+        class_chirho
+            .schema_chirho()
+            .single_parameter_eta_arity_chirho(),
+        Some(1)
+    );
     assert!(proven_chirho(&scope_chirho, "Prelude.Functor"));
     assert!(!proven_chirho(&scope_chirho, "Main.Functor"));
 }
@@ -276,8 +282,8 @@ fn every_listed_provider_exports_the_class_entry_with_its_witness_chirho() {
                 trusted_builtin_class_chirho(iface_chirho, class_text_chirho)
                     .map(|trusted_chirho| trusted_chirho.class_chirho.name_chirho),
                 Some(class_text_chirho),
-                "{provider_chirho} must export class {class_text_chirho} listing `{}`",
-                entry_chirho.witness_method_chirho
+                "{provider_chirho} must export class {class_text_chirho} showing {:?}",
+                entry_chirho.witness_chirho
             );
         }
     }
@@ -295,11 +301,7 @@ fn every_builtin_class_export_is_a_listed_or_named_untrusted_provider_chirho() {
             else {
                 continue;
             };
-            if !export_chirho
-                .methods_chirho
-                .iter()
-                .any(|method_chirho| method_chirho == entry_chirho.witness_method_chirho)
-            {
+            if !entry_chirho.witness_chirho.shown_by_chirho(export_chirho) {
                 continue;
             }
             let module_text_chirho = iface_chirho.name_chirho.as_str();
@@ -327,10 +329,258 @@ fn the_table_names_each_class_once_at_a_known_parameter_kind_chirho() {
             "{} is listed twice",
             entry_chirho.class_chirho.name_chirho
         );
+        let schema_chirho = entry_chirho.class_chirho.schema_chirho();
+        // A deriving clause gives every class exactly one parameter, the derived type.
+        assert_eq!(schema_chirho.visible_parameter_count_chirho(), 1);
+        // Typeable's hidden kind binder leaves it no GND head and no kind judgment.
+        assert_eq!(
+            schema_chirho.single_parameter_eta_arity_chirho().is_some(),
+            matches!(
+                entry_chirho.witness_chirho,
+                ClassWitnessChirho::MethodChirho(_)
+            ),
+            "{}",
+            entry_chirho.class_chirho.name_chirho
+        );
+    }
+}
+
+#[test]
+fn selected_standard_class_proofs_survive_real_prelude_and_import_filters_chirho() {
+    let ifaces_chirho = builtin_module_ifaces_chirho();
+    for (provider_chirho, class_name_chirho, identity_chirho) in [
+        (
+            "Control.Applicative",
+            "Alternative",
+            CompilerClassChirho::AlternativeChirho,
+        ),
+        (
+            "Control.Monad.Fix",
+            "MonadFix",
+            CompilerClassChirho::MonadFixChirho,
+        ),
+        (
+            "Control.Monad.IO.Class",
+            "MonadIO",
+            CompilerClassChirho::MonadIoChirho,
+        ),
+        (
+            "Control.Monad.Trans.Class",
+            "MonadTrans",
+            CompilerClassChirho::MonadTransChirho,
+        ),
+    ] {
+        let qualified_chirho = build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![],
+                vec![
+                    import_chirho("Prelude", None, false),
+                    import_chirho(provider_chirho, Some("OwnedChirho"), true),
+                ],
+            ),
+            &ifaces_chirho,
+        );
+        assert_eq!(
+            qualified_chirho
+                .class_chirho(&format!("OwnedChirho.{class_name_chirho}"))
+                .map(|class_chirho| class_chirho.identity_chirho),
+            Some(identity_chirho)
+        );
+        let mut selected_chirho = import_chirho(provider_chirho, None, false);
+        selected_chirho.spec_chirho = Some(ImportSpecChirho {
+            hiding_chirho: false,
+            items_chirho: vec![ImportItemChirho::TyConChirho {
+                name_chirho: name_chirho(class_name_chirho),
+                members_chirho: ExportMembersChirho::NoneChirho,
+            }],
+        });
+        let selected_module_chirho = module_chirho(
+            vec![],
+            vec![
+                import_chirho("Prelude", None, false),
+                selected_chirho.clone(),
+            ],
+        );
+        let scope_chirho =
+            build_builtin_class_scope_chirho(&selected_module_chirho, &ifaces_chirho);
+        assert_eq!(
+            scope_chirho
+                .class_chirho(class_name_chirho)
+                .map(|class_chirho| class_chirho.identity_chirho),
+            Some(identity_chirho),
+            "selected {provider_chirho}.{class_name_chirho} beside real Prelude"
+        );
+        selected_chirho.spec_chirho.as_mut().unwrap().hiding_chirho = true;
+        let hidden_chirho = build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![],
+                vec![import_chirho("Prelude", None, false), selected_chirho],
+            ),
+            &ifaces_chirho,
+        );
+        assert!(!proven_chirho(&hidden_chirho, class_name_chirho));
+        let local_chirho = build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![class_decl_chirho(class_name_chirho)],
+                vec![import_chirho(provider_chirho, None, false)],
+            ),
+            &ifaces_chirho,
+        );
+        assert!(!proven_chirho(&local_chirho, class_name_chirho));
+        let mut incomplete_chirho = ifaces_chirho.clone();
+        incomplete_chirho
+            .iter_mut()
+            .find(|iface_chirho| iface_chirho.name_chirho == provider_chirho)
+            .unwrap()
+            .exports_chirho
+            .types_chirho
+            .get_mut(class_name_chirho)
+            .unwrap()
+            .methods_chirho
+            .clear();
+        let incomplete_scope_chirho =
+            build_builtin_class_scope_chirho(&selected_module_chirho, &incomplete_chirho);
+        assert!(!proven_chirho(&incomplete_scope_chirho, class_name_chirho));
+    }
+    let prelude_chirho = build_builtin_class_scope_chirho(
+        &module_chirho(
+            vec![],
+            vec![import_chirho("Prelude", Some("PChirho"), true)],
+        ),
+        &ifaces_chirho,
+    );
+    assert!(!proven_chirho(&prelude_chirho, "PChirho.Alternative"));
+}
+
+/// A builtin interface exporting the methodless `Typeable` class.
+fn builtin_typeable_chirho(module_text_chirho: &str) -> ModuleIfaceChirho {
+    class_iface_chirho(
+        module_text_chirho,
+        "Typeable",
+        &[],
+        IfaceOriginChirho::BuiltinChirho,
+    )
+}
+
+#[test]
+fn a_methodless_class_is_proved_only_by_its_marked_export_chirho() {
+    // #32090: Typeable lists no method, so its producer's class marker is the witness.
+    let importing_chirho = module_chirho(vec![], vec![import_chirho("Data.Typeable", None, false)]);
+    let scope_chirho = build_builtin_class_scope_chirho(
+        &importing_chirho,
+        &[builtin_typeable_chirho("Data.Typeable")],
+    );
+    assert_eq!(
+        scope_chirho
+            .class_chirho("Typeable")
+            .map(|class_chirho| class_chirho.identity_chirho),
+        Some(CompilerClassChirho::TypeableChirho)
+    );
+    // An unmarked export of the same name, as a data type's would be, proves nothing.
+    let mut unmarked_chirho = builtin_typeable_chirho("Data.Typeable");
+    unmarked_chirho
+        .exports_chirho
+        .types_chirho
+        .get_mut("Typeable")
+        .unwrap()
+        .is_class_chirho = false;
+    assert!(!proven_chirho(
+        &build_builtin_class_scope_chirho(&importing_chirho, &[unmarked_chirho]),
+        "Typeable"
+    ));
+    // Nor does a marked export from a builtin interface the entry does not list, or one
+    // beside the module's own class of that name.
+    assert!(!proven_chirho(
+        &build_builtin_class_scope_chirho(
+            &module_chirho(vec![], vec![import_chirho("TypeableChirho", None, false)]),
+            &[builtin_typeable_chirho("TypeableChirho")],
+        ),
+        "Typeable"
+    ));
+    assert!(!proven_chirho(
+        &build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![class_decl_chirho("Typeable")],
+                vec![import_chirho("Data.Typeable", None, false)],
+            ),
+            &[builtin_typeable_chirho("Data.Typeable")],
+        ),
+        "Typeable"
+    ));
+}
+
+#[test]
+fn each_measured_provider_proves_typeable_through_its_import_list_chirho() {
+    // typeable-route r2: GHC 9.14.1 accepts `import M (Typeable)` from each provider.
+    let ifaces_chirho = builtin_module_ifaces_chirho();
+    for provider_chirho in ["Data.Typeable", "Type.Reflection", "Data.Data"] {
+        let mut selected_chirho = import_chirho(provider_chirho, None, false);
+        selected_chirho.spec_chirho = Some(ImportSpecChirho {
+            hiding_chirho: false,
+            items_chirho: vec![ImportItemChirho::TyConChirho {
+                name_chirho: name_chirho("Typeable"),
+                members_chirho: ExportMembersChirho::NoneChirho,
+            }],
+        });
+        let scope_chirho = build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![],
+                vec![import_chirho("Prelude", None, false), selected_chirho],
+            ),
+            &ifaces_chirho,
+        );
+        assert_eq!(
+            scope_chirho
+                .class_chirho("Typeable")
+                .map(|class_chirho| class_chirho.identity_chirho),
+            Some(CompilerClassChirho::TypeableChirho),
+            "{provider_chirho}"
+        );
+    }
+}
+
+#[test]
+fn each_measured_real_class_provider_proves_its_class_chirho() {
+    // #32156 (t12760-route r2, r3): GHC 9.14.1 exports Real and RealFrac from GHC.Real,
+    // RealFloat from GHC.Float, and all three from the Prelude, each with its member set.
+    let ifaces_chirho = builtin_module_ifaces_chirho();
+    for (provider_chirho, class_name_chirho, identity_chirho) in [
+        ("Prelude", "Real", CompilerClassChirho::RealChirho),
+        ("Prelude", "RealFrac", CompilerClassChirho::RealFracChirho),
+        ("Prelude", "RealFloat", CompilerClassChirho::RealFloatChirho),
+        ("GHC.Real", "Real", CompilerClassChirho::RealChirho),
+        ("GHC.Real", "RealFrac", CompilerClassChirho::RealFracChirho),
+        (
+            "GHC.Float",
+            "RealFloat",
+            CompilerClassChirho::RealFloatChirho,
+        ),
+    ] {
+        let qualified_chirho = build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![],
+                vec![import_chirho(provider_chirho, Some("OwnedChirho"), true)],
+            ),
+            &ifaces_chirho,
+        );
+        assert_eq!(
+            qualified_chirho
+                .class_chirho(&format!("OwnedChirho.{class_name_chirho}"))
+                .map(|class_chirho| class_chirho.identity_chirho),
+            Some(identity_chirho),
+            "{provider_chirho}.{class_name_chirho}"
+        );
+        // The module's own class of that name excludes the builtin one.
+        let local_chirho = build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![class_decl_chirho(class_name_chirho)],
+                vec![import_chirho(provider_chirho, None, false)],
+            ),
+            &ifaces_chirho,
+        );
         assert!(
-            entry_chirho.class_chirho.parameter_arities_chirho == TYPE_PARAMETER_CHIRHO
-                || entry_chirho.class_chirho.parameter_arities_chirho
-                    == CONSTRUCTOR_PARAMETER_CHIRHO
+            !proven_chirho(&local_chirho, class_name_chirho),
+            "{provider_chirho}.{class_name_chirho}"
         );
     }
 }

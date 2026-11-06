@@ -13,6 +13,13 @@ use crate::name_chirho::NameChirho;
 use crate::pat_chirho::PatChirho;
 use crate::ty_chirho::{ConstraintChirho, TypeChirho};
 
+#[path = "decl_chirho/con_prefix_chirho.rs"]
+mod con_prefix_chirho;
+#[path = "decl_chirho/derived_class_chirho.rs"]
+mod derived_class_chirho;
+pub use con_prefix_chirho::ConPrefixChirho;
+pub use derived_class_chirho::{DerivedClassChirho, DerivingStrategyChirho};
+
 /// AST-level kind annotation (written in source code with KindSignatures).
 ///
 /// Represents kind expressions like `*`, `* -> *`, `(* -> *) -> *`.
@@ -42,15 +49,7 @@ pub struct TypeFamilyEquationChirho {
     pub span_chirho: SpanChirho,
 }
 
-/// Whether a declaration-head binder consumes an ordinary type argument.
-/// This is not the specified/inferred distinction on invisible forall binders.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TyVarVisibilityChirho {
-    /// An ordinary head parameter, written `a` or `(a :: k)`.
-    VisibleChirho,
-    /// A scoped invisible parameter, written `@a` or `@(a :: k)`.
-    InvisibleChirho,
-}
+pub use crate::name_chirho::{TyVarSpecificityChirho, TyVarVisibilityChirho};
 
 /// A type variable, optionally annotated with a kind signature.
 ///
@@ -196,8 +195,8 @@ pub enum DeclChirho {
         type_vars_chirho: Vec<TyVarChirho>,
         /// Constructors belonging to the data type.
         constructors_chirho: Vec<ConDeclChirho>,
-        /// Classes listed in the deriving clause.
-        deriving_chirho: Vec<NameChirho>,
+        /// Classes the deriving clauses list, each with its clause's strategy.
+        deriving_chirho: Vec<DerivedClassChirho>,
         /// Optional inline result kind and/or complete standalone kind signature.
         kind_sig_chirho: Option<DataKindSigChirho>,
         /// Span covering the whole data declaration.
@@ -211,8 +210,8 @@ pub enum DeclChirho {
         type_vars_chirho: Vec<TyVarChirho>,
         /// The single runtime constructor carried by the newtype.
         constructor_chirho: ConDeclChirho,
-        /// Classes listed in the deriving clause.
-        deriving_chirho: Vec<NameChirho>,
+        /// Classes the deriving clauses list, each with its clause's strategy.
+        deriving_chirho: Vec<DerivedClassChirho>,
         /// Optional inline result kind and/or complete standalone kind signature.
         kind_sig_chirho: Option<DataKindSigChirho>,
         /// Span covering the whole newtype declaration.
@@ -336,6 +335,18 @@ pub enum DeclChirho {
         /// Span covering the whole pattern synonym declaration.
         span_chirho: SpanChirho,
     },
+    /// A role annotation as written (`type role T nominal _ phantom`, RoleAnnotations, row
+    /// 694): the annotated type's name and every role word with its span, malformed ones
+    /// included. Declaration checking judges it; role inference reads a well-formed one as
+    /// the floors of its type's parameters.
+    RoleAnnotationDeclChirho {
+        /// The annotated type's name.
+        type_name_chirho: NameChirho,
+        /// Each role word as written, in order.
+        roles_chirho: Vec<NameChirho>,
+        /// Span covering the whole annotation.
+        span_chirho: SpanChirho,
+    },
     /// Template Haskell splice at declaration level (`$(makeLenses ''Foo)`).
     SpliceDeclChirho {
         /// Splice expression to execute during compilation.
@@ -345,6 +356,8 @@ pub enum DeclChirho {
     },
     /// Standalone deriving declaration (`deriving instance Show Foo`).
     StandaloneDerivingDeclChirho {
+        /// The explicit strategy (`deriving newtype instance ...`); `None` when unwritten.
+        strategy_chirho: Option<DerivingStrategyChirho>,
         /// Constraints attached to the deriving instance head.
         context_chirho: Vec<ConstraintChirho>,
         /// Class being derived.
@@ -406,6 +419,8 @@ pub enum ConDeclChirho {
         name_chirho: NameChirho,
         /// Positional constructor fields and their strictness.
         fields_chirho: Vec<(StrictnessChirho, TypeChirho)>,
+        /// The `forall vs. ctx =>` written before the name, if any (row 694).
+        prefix_chirho: ConPrefixChirho,
         /// Span covering the whole constructor declaration.
         span_chirho: SpanChirho,
     },
@@ -415,6 +430,9 @@ pub enum ConDeclChirho {
         name_chirho: NameChirho,
         /// Named record fields declared by the constructor.
         fields_chirho: Vec<FieldDeclChirho>,
+        /// The `forall vs. ctx =>` written before the name, if any; unread for a GADT
+        /// record, whose signature this shape does not hold (row 694).
+        prefix_chirho: ConPrefixChirho,
         /// Span covering the whole constructor declaration.
         span_chirho: SpanChirho,
     },
@@ -530,6 +548,7 @@ impl DeclChirho {
             | Self::PatSynDeclChirho { span_chirho, .. }
             | Self::TypeFamilyDeclChirho { span_chirho, .. }
             | Self::TypeFamilyInstanceDeclChirho { span_chirho, .. }
+            | Self::RoleAnnotationDeclChirho { span_chirho, .. }
             | Self::SpliceDeclChirho { span_chirho, .. }
             | Self::StandaloneDerivingDeclChirho { span_chirho, .. } => *span_chirho,
         }

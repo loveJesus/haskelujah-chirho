@@ -239,7 +239,8 @@ fn no_origin_owned_proof_reaches_a_legacy_consumer_at_its_span_chirho() {
         &HashMap::new(),
         &legacy_spans_chirho,
         &HashMap::new(),
-    );
+    )
+    .evidence_chirho;
     assert!(methods_chirho.is_empty(), "{methods_chirho:?}");
 }
 
@@ -299,7 +300,8 @@ fn no_origin_owned_literal_proof_reaches_a_legacy_literal_at_its_span_chirho() {
         &legacy_chirho,
         &HashMap::new(),
         &HashMap::new(),
-    );
+    )
+    .evidence_chirho;
     assert!(joined_chirho.is_empty(), "{joined_chirho:?}");
 }
 
@@ -372,7 +374,8 @@ fn a_qualified_print_beside_the_programs_own_print_keeps_its_own_show_proof_chir
             occurrence_chirho,
             ProvenanceChirho::new_chirho(*origin_chirho, OccurrenceRoleChirho::Reference),
         )]),
-    );
+    )
+    .evidence_chirho;
     assert_eq!(
         joined_chirho.get(&occurrence_chirho),
         Some(&("Show".to_string(), own_key_chirho.clone())),

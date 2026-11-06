@@ -7,6 +7,8 @@
 
 use super::*;
 
+use haskelujah_core_chirho::dict_chirho::NewtypeInfoChirho;
+
 /// Extract the first argument type from a GADT type signature.
 /// Peels through forall and qualified types, then returns the first `arg` from
 /// `arg -> result`.  Returns `None` for non-function types (nullary GADT ctors).
@@ -89,11 +91,22 @@ pub(crate) fn build_con_type_map_chirho(
     map_chirho
 }
 
-/// Build a mapping from newtype type name to (constructor name, underlying type key).
+/// Build each newtype's record by type name: its constructor, its underlying type key, and
+/// the classes its own declarations derive with the newtype strategy, routed with the builtin
+/// classes naming proved for the module (row 694).
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub(crate) fn build_newtype_info_chirho(
     module_chirho: &ModuleChirho,
-) -> std::collections::HashMap<String, (String, String)> {
+    builtin_classes_chirho: &haskelujah_ast_chirho::name_chirho::BuiltinClassScopeChirho,
+    coercion_proofs_chirho: &[haskelujah_typing_chirho::GndCoercionProofChirho],
+    default_method_rows_chirho: &std::collections::HashSet<String>,
+) -> std::collections::HashMap<String, NewtypeInfoChirho> {
     let mut map_chirho = std::collections::HashMap::new();
+    let mut derived_classes_chirho =
+        haskelujah_typing_chirho::deriving_chirho::newtype_strategy_classes_chirho(
+            module_chirho,
+            builtin_classes_chirho,
+        );
     for decl_chirho in &module_chirho.decls_chirho {
         if let haskelujah_ast_chirho::decl_chirho::DeclChirho::NewtypeDeclChirho {
             name_chirho,
@@ -144,7 +157,33 @@ pub(crate) fn build_newtype_info_chirho(
                     (cn_chirho.text_chirho().to_string(), underlying_chirho)
                 }
             };
-            map_chirho.insert(type_name_chirho, con_name_chirho);
+            let (constructor_chirho, underlying_key_chirho) = con_name_chirho;
+            let newtype_derived_classes_chirho = derived_classes_chirho
+                .remove(&type_name_chirho)
+                .unwrap_or_default();
+            // Typing's proofs for this newtype, and the rows of its instances the desugarer
+            // filled from class defaults (row 694).
+            let newtype_proofs_chirho = coercion_proofs_chirho
+                .iter()
+                .filter(|proof_chirho| proof_chirho.newtype_chirho() == type_name_chirho)
+                .cloned()
+                .collect();
+            let row_suffix_chirho = format!("_{type_name_chirho}");
+            let newtype_default_rows_chirho = default_method_rows_chirho
+                .iter()
+                .filter(|row_chirho| row_chirho.ends_with(&row_suffix_chirho))
+                .cloned()
+                .collect();
+            map_chirho.insert(
+                type_name_chirho,
+                NewtypeInfoChirho {
+                    constructor_chirho,
+                    underlying_key_chirho,
+                    newtype_derived_classes_chirho,
+                    coercion_proofs_chirho: newtype_proofs_chirho,
+                    default_method_rows_chirho: newtype_default_rows_chirho,
+                },
+            );
         }
     }
     for (type_name_chirho, con_name_chirho, underlying_chirho) in [
@@ -155,7 +194,11 @@ pub(crate) fn build_newtype_info_chirho(
     ] {
         map_chirho
             .entry(type_name_chirho.to_string())
-            .or_insert((con_name_chirho.to_string(), underlying_chirho.to_string()));
+            .or_insert_with(|| NewtypeInfoChirho {
+                constructor_chirho: con_name_chirho.to_string(),
+                underlying_key_chirho: underlying_chirho.to_string(),
+                ..NewtypeInfoChirho::default()
+            });
     }
     map_chirho
 }

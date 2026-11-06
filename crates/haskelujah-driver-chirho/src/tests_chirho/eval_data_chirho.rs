@@ -2408,8 +2408,11 @@ main = putStrLn "works"
 
 // ── RoleAnnotations test ────────────────────────────────────────────
 
+/// A type without parameters takes no role, so GHC refuses this annotation by the count rule
+/// root measured as GHC-54298 (`RoleCountHoldChirho`, row 694 #31844); this exact source is
+/// not measured. It used to run because lowering rewrote an annotation it could not read.
 #[test]
-fn role_annotations_chirho() {
+fn a_role_for_a_type_without_parameters_is_refused_chirho() {
     let mut sm_chirho = SourceMapChirho::new_chirho();
     let src_chirho = r#"
 {-# LANGUAGE RoleAnnotations #-}
@@ -2418,10 +2421,15 @@ data MyTag = TagA | TagB deriving Show
 type role MyTag nominal
 main = print TagA
 "#;
-    let (_val_chirho, m_chirho) =
-        eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None)
-            .unwrap_or_else(|e_chirho| panic!("RoleAnnotations failed: {}", e_chirho));
-    assert_eq!(m_chirho.io_output_chirho, "TagA\n");
+    let message_chirho =
+        match eval_source_with_machine_chirho(src_chirho, &mut sm_chirho, "TestChirho.hs", None) {
+            Ok(_) => panic!("GHC refuses a role for a type without parameters; it ran"),
+            Err(error_chirho) => error_chirho.to_string(),
+        };
+    assert!(
+        message_chirho.contains("Wrong number of roles"),
+        "refused, but not for its role count: {message_chirho}"
+    );
 }
 
 // ── DeriveDataTypeable test ─────────────────────────────────────────

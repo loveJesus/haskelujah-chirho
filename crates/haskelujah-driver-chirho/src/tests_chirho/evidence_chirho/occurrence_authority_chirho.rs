@@ -85,6 +85,7 @@ fn joined_print_chirho(
             ProvenanceChirho::new_chirho(origin_chirho, OccurrenceRoleChirho::Reference),
         )]),
     )
+    .evidence_chirho
     .remove(&occurrence_chirho)
 }
 

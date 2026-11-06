@@ -12,6 +12,13 @@
 //!
 //! The receipts are retained under `tmp-chirho/superclass-cycle-1018-chirho/`
 //! of claude2_chirho's worktree.
+//!
+//! The bounded superclass search (row 694, #31972, #31984) has a checker-level group of its own,
+//! root's GHC 9.14.1 sources byte for byte (superclass-search-r1-chirho, summary d67ed9be): a
+//! first and a second edge of the changing cycle `class CycleChirho [a] => CycleChirho a` are
+//! accepted, and the never-reached `CycleChirho Int` is GHC-39999. A search a bound stops is
+//! undecided, so Haskelujah refuses that program by name, never as proved and never as
+//! "no instance".
 //! workflow: language-features-chirho/fundep-generalization-chirho
 
 use super::check_chirho;
@@ -122,5 +129,49 @@ fn t16414_keeps_the_held_route_chirho() {
     // Held ba1e5c29 accepts T16414. GHC's overlap rejection is not claimed here.
     if let Err(err_chirho) = check_chirho("T16414.hs", T16414_CHIRHO) {
         panic!("T16414: held accepts this program, we reported: {err_chirho}");
+    }
+}
+
+/// P1 and P2: GHC 9.14.1 accepts both and prints `first edge` and `second edge`. sha256
+/// 36a3bf413b8d47fcff5deffc1ed55126853a922311088033be3c445a58decb42 and
+/// 979f9b9b07f8ac23e89cb1aed0b72b9c48cfb638209af6f405284da8d35dbf7d.
+const SUPERCLASS_FIRST_EDGE_CHIRHO: &str =
+    include_str!("superclass_search_chirho/superclass_first_edge_chirho.hs");
+const SUPERCLASS_SECOND_EDGE_CHIRHO: &str =
+    include_str!("superclass_search_chirho/superclass_second_edge_chirho.hs");
+
+/// U1: GHC 9.14.1 rejects it, GHC-39999 "Could not deduce `CycleChirho Int`". sha256
+/// 94ca26585c134ebb62f6854433d38b11c4f320c7ab90057b3430f4ee61eb4223.
+const SUPERCLASS_UNREACHED_INT_CHIRHO: &str =
+    include_str!("superclass_search_chirho/superclass_unreached_int_chirho.hs");
+
+#[test]
+fn a_changing_cycles_first_two_edges_check_like_ghc_chirho() {
+    for (file_name_chirho, source_chirho) in [
+        ("SuperclassFirstEdgeChirho.hs", SUPERCLASS_FIRST_EDGE_CHIRHO),
+        (
+            "SuperclassSecondEdgeChirho.hs",
+            SUPERCLASS_SECOND_EDGE_CHIRHO,
+        ),
+    ] {
+        if let Err(err_chirho) = check_chirho(file_name_chirho, source_chirho) {
+            panic!("{file_name_chirho}: GHC accepts this program, we reported: {err_chirho}");
+        }
+    }
+}
+
+#[test]
+fn an_undecided_superclass_search_is_refused_by_name_chirho() {
+    match check_chirho(
+        "SuperclassUnreachedIntChirho.hs",
+        SUPERCLASS_UNREACHED_INT_CHIRHO,
+    ) {
+        Ok(()) => {
+            panic!("SuperclassUnreachedIntChirho.hs: GHC rejects this program; we accepted it")
+        }
+        Err(err_chirho) => assert!(
+            err_chirho.contains("neither proved nor refuted"),
+            "SuperclassUnreachedIntChirho.hs: refused, but not as an undecided search: {err_chirho}"
+        ),
     }
 }

@@ -34,8 +34,10 @@ fn only_the_marked_range_receives_its_enum_proof_chirho() {
     result_chirho.reference_evidence_chirho.insert(
         span_chirho,
         vec![ReferenceEvidenceChirho {
+            applied_head_chirho: None,
             class_name_chirho: "Enum".to_string(),
             ty_key_chirho: Some("Integer".to_string()),
+            applied_ty_chirho: None,
         }],
     );
     let occurrences_chirho = HashMap::from([
@@ -63,21 +65,29 @@ fn range_proofs_require_a_real_span_and_one_solved_enum_obligation_chirho() {
     for records_chirho in [
         Vec::new(),
         vec![ReferenceEvidenceChirho {
+            applied_head_chirho: None,
             class_name_chirho: "Enum".to_string(),
             ty_key_chirho: None,
+            applied_ty_chirho: None,
         }],
         vec![ReferenceEvidenceChirho {
+            applied_head_chirho: None,
             class_name_chirho: "Num".to_string(),
             ty_key_chirho: Some("Int".to_string()),
+            applied_ty_chirho: None,
         }],
         vec![
             ReferenceEvidenceChirho {
+                applied_head_chirho: None,
                 class_name_chirho: "Enum".to_string(),
                 ty_key_chirho: Some("Int".to_string()),
+                applied_ty_chirho: None,
             },
             ReferenceEvidenceChirho {
+                applied_head_chirho: None,
                 class_name_chirho: "Enum".to_string(),
                 ty_key_chirho: Some("Char".to_string()),
+                applied_ty_chirho: None,
             },
         ],
     ] {
@@ -94,8 +104,10 @@ fn range_proofs_require_a_real_span_and_one_solved_enum_obligation_chirho() {
     result_chirho.reference_evidence_chirho.insert(
         SpanChirho::DUMMY_CHIRHO,
         vec![ReferenceEvidenceChirho {
+            applied_head_chirho: None,
             class_name_chirho: "Enum".to_string(),
             ty_key_chirho: Some("Char".to_string()),
+            applied_ty_chirho: None,
         }],
     );
     assert!(

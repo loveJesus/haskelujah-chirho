@@ -893,6 +893,7 @@ mod tests_chirho {
                     })
                     .collect(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
             })
             .collect();
         DeclChirho::DataDeclChirho {
@@ -1250,6 +1251,7 @@ mod tests_chirho {
                         )),
                     )],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 },
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,

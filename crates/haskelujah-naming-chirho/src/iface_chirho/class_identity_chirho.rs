@@ -5,8 +5,9 @@
 //! A class spelling the module can write (`Eq`, `P.Eq`) names a builtin class only when a
 //! trusted builtin interface provides it: the interface's origin is builtin, the class is
 //! in the compiler's table, the interface is one of that entry's exact providers, and its
-//! type export is the class entry, listing the class's witness method. A spelling also
-//! bound to anything else (a local declaration, a source interface, an untrusted builtin
+//! type export is the class entry: it lists the class's witness method or, for a class with
+//! no method to list (`Typeable`), its producer marks it a class and it lists none. A spelling
+//! also bound to anything else (a local declaration, a source interface, an untrusted builtin
 //! homonym, a different class) is excluded for good: a later import cannot restore it.
 //! workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
 
@@ -15,170 +16,271 @@ use std::collections::hash_map::Entry;
 
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::name_chirho::{BuiltinClassChirho, BuiltinClassScopeChirho};
+use haskelujah_ast_chirho::name_chirho::{
+    BuiltinClassChirho, BuiltinClassScopeChirho, CompilerClassChirho,
+};
 
-use super::{IfaceOriginChirho, ModuleIfaceChirho};
+use super::{IfaceOriginChirho, IfaceTypeChirho, ModuleIfaceChirho};
 use crate::env_chirho::NamespaceChirho;
 use crate::resolve_chirho::compute_imported_names_chirho;
+
+/// What shows that a provider's type export is the class itself.
+#[derive(Debug, Clone, Copy)]
+enum ClassWitnessChirho {
+    /// The export lists this method.
+    MethodChirho(&'static str),
+    /// A class with no method to list: its producer marks the export a class, and the
+    /// export lists no method (#32090).
+    MethodlessClassChirho,
+}
+
+impl ClassWitnessChirho {
+    /// Whether `export_chirho` shows this witness.
+    fn shown_by_chirho(self, export_chirho: &IfaceTypeChirho) -> bool {
+        match self {
+            Self::MethodChirho(method_chirho) => export_chirho
+                .methods_chirho
+                .iter()
+                .any(|listed_chirho| listed_chirho == method_chirho),
+            Self::MethodlessClassChirho => {
+                export_chirho.is_class_chirho && export_chirho.methods_chirho.is_empty()
+            }
+        }
+    }
+}
 
 /// One class the compiler defines, with the builtin interfaces trusted to provide it.
 struct BuiltinClassEntryChirho {
     class_chirho: BuiltinClassChirho,
-    /// A method the provider's type export must list, so the export is the class itself.
-    witness_method_chirho: &'static str,
+    /// What the provider's type export must show, so the export is the class itself.
+    witness_chirho: ClassWitnessChirho,
     /// The builtin interfaces trusted to provide the class, exactly. A builtin homonym
     /// anywhere else stays unproven.
     providers_chirho: &'static [&'static str],
 }
 
-/// A parameter of kind `Type`.
-const TYPE_PARAMETER_CHIRHO: &[u8] = &[0];
-/// A parameter of kind `Type -> Type`.
-const CONSTRUCTOR_PARAMETER_CHIRHO: &[u8] = &[1];
-
 const fn entry_chirho(
+    identity_chirho: CompilerClassChirho,
     module_chirho: &'static str,
     name_chirho: &'static str,
-    parameter_arities_chirho: &'static [u8],
     witness_method_chirho: &'static str,
     providers_chirho: &'static [&'static str],
 ) -> BuiltinClassEntryChirho {
     BuiltinClassEntryChirho {
         class_chirho: BuiltinClassChirho {
+            identity_chirho,
             module_chirho,
             name_chirho,
-            parameter_arities_chirho,
         },
-        witness_method_chirho,
+        witness_chirho: ClassWitnessChirho::MethodChirho(witness_method_chirho),
         providers_chirho,
     }
 }
 
-/// The classes the kind pass may judge (#31175, #31176): monomorphic in GHC 9.14.1, with
-/// a real method every builtin entry lists. Read (its builtin entry lists `read`, not a
-/// method) and Real, RealFrac and RealFloat (no methods listed) stay out. The providers
-/// are a draft scanned from the builtin sources, held to the supplier guard and to GHC's
-/// export lists before any consumer reads them.
+/// The entry of a class with no method to list, which a class-marked export witnesses.
+const fn methodless_entry_chirho(
+    identity_chirho: CompilerClassChirho,
+    module_chirho: &'static str,
+    name_chirho: &'static str,
+    providers_chirho: &'static [&'static str],
+) -> BuiltinClassEntryChirho {
+    BuiltinClassEntryChirho {
+        class_chirho: BuiltinClassChirho {
+            identity_chirho,
+            module_chirho,
+            name_chirho,
+        },
+        witness_chirho: ClassWitnessChirho::MethodlessClassChirho,
+        providers_chirho,
+    }
+}
+
+/// The classes naming proves. All but one are those the kind pass may judge (#31175,
+/// #31176): monomorphic in GHC 9.14.1, with a real method every builtin entry lists. Read
+/// (its builtin entry lists `read`, not a method) stays out. Real, RealFrac and RealFloat take
+/// their witnesses from the class table's GHC member sets (#32156). Their typing seed
+/// (class_chirho.rs) lists no method, so the witness proves which class a spelling names, never
+/// that the class environment implements its methods. The one methodless entry is the
+/// poly-kinded `Typeable` (#32090),
+/// whose hidden kind binder the kind pass never judges, and whose providers are the three
+/// builtin interfaces that export it, each measured importing it under GHC 9.14.1. The
+/// providers are a draft scanned from the builtin sources, held to the supplier guard and to
+/// GHC's export lists before any consumer reads them.
 /// workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
 const BUILTIN_CLASSES_CHIRHO: &[BuiltinClassEntryChirho] = &[
     entry_chirho(
+        CompilerClassChirho::AlternativeChirho,
+        "Control.Applicative",
+        "Alternative",
+        "empty",
+        &["Control.Applicative"],
+    ),
+    entry_chirho(
+        CompilerClassChirho::MonadFixChirho,
+        "Control.Monad.Fix",
+        "MonadFix",
+        "mfix",
+        &["Control.Monad.Fix"],
+    ),
+    entry_chirho(
+        CompilerClassChirho::MonadIoChirho,
+        "Control.Monad.IO.Class",
+        "MonadIO",
+        "liftIO",
+        &["Control.Monad.IO.Class", "Control.Monad.Trans"],
+    ),
+    entry_chirho(
+        CompilerClassChirho::MonadTransChirho,
+        "Control.Monad.Trans.Class",
+        "MonadTrans",
+        "lift",
+        &["Control.Monad.Trans.Class", "Control.Monad.Trans"],
+    ),
+    entry_chirho(
+        CompilerClassChirho::EqChirho,
         "GHC.Classes",
         "Eq",
-        TYPE_PARAMETER_CHIRHO,
         "==",
         &["Prelude", "Data.Eq", "GHC.Classes"],
     ),
     entry_chirho(
+        CompilerClassChirho::OrdChirho,
         "GHC.Classes",
         "Ord",
-        TYPE_PARAMETER_CHIRHO,
         "compare",
         &["Prelude", "Data.Ord", "GHC.Classes"],
     ),
     entry_chirho(
+        CompilerClassChirho::ShowChirho,
         "GHC.Show",
         "Show",
-        TYPE_PARAMETER_CHIRHO,
         "show",
         &["Prelude", "Text.Show", "GHC.Show"],
     ),
     entry_chirho(
+        CompilerClassChirho::EnumChirho,
         "GHC.Enum",
         "Enum",
-        TYPE_PARAMETER_CHIRHO,
         "succ",
         &["Prelude", "GHC.Enum"],
     ),
     entry_chirho(
+        CompilerClassChirho::BoundedChirho,
         "GHC.Enum",
         "Bounded",
-        TYPE_PARAMETER_CHIRHO,
         "minBound",
         &["Prelude", "GHC.Enum"],
     ),
     entry_chirho(
+        CompilerClassChirho::NumChirho,
         "GHC.Num",
         "Num",
-        TYPE_PARAMETER_CHIRHO,
         "fromInteger",
         &["Prelude", "GHC.Num"],
     ),
     entry_chirho(
+        CompilerClassChirho::IntegralChirho,
         "GHC.Real",
         "Integral",
-        TYPE_PARAMETER_CHIRHO,
         "toInteger",
         &["Prelude", "GHC.Real"],
     ),
     entry_chirho(
+        CompilerClassChirho::FractionalChirho,
         "GHC.Real",
         "Fractional",
-        TYPE_PARAMETER_CHIRHO,
         "fromRational",
         &["Prelude", "GHC.Real"],
     ),
     entry_chirho(
+        CompilerClassChirho::FloatingChirho,
         "GHC.Float",
         "Floating",
-        TYPE_PARAMETER_CHIRHO,
         "pi",
         &["Prelude", "GHC.Float"],
     ),
     entry_chirho(
+        CompilerClassChirho::RealChirho,
+        "GHC.Real",
+        "Real",
+        "toRational",
+        &["Prelude", "GHC.Real"],
+    ),
+    entry_chirho(
+        CompilerClassChirho::RealFracChirho,
+        "GHC.Real",
+        "RealFrac",
+        "properFraction",
+        &["Prelude", "GHC.Real"],
+    ),
+    entry_chirho(
+        CompilerClassChirho::RealFloatChirho,
+        "GHC.Float",
+        "RealFloat",
+        "floatRadix",
+        &["Prelude", "GHC.Float"],
+    ),
+    entry_chirho(
+        CompilerClassChirho::SemigroupChirho,
         "GHC.Base",
         "Semigroup",
-        TYPE_PARAMETER_CHIRHO,
         "<>",
         &["Prelude", "Data.Semigroup", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::MonoidChirho,
         "GHC.Base",
         "Monoid",
-        TYPE_PARAMETER_CHIRHO,
         "mempty",
         &["Prelude", "Data.Monoid", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::FunctorChirho,
         "GHC.Base",
         "Functor",
-        CONSTRUCTOR_PARAMETER_CHIRHO,
         "fmap",
         &["Prelude", "Data.Functor", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::ApplicativeChirho,
         "GHC.Base",
         "Applicative",
-        CONSTRUCTOR_PARAMETER_CHIRHO,
         "pure",
         &["Prelude", "Control.Applicative", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::MonadChirho,
         "GHC.Base",
         "Monad",
-        CONSTRUCTOR_PARAMETER_CHIRHO,
         ">>=",
         &["Prelude", "Control.Monad", "GHC.Base"],
     ),
     entry_chirho(
+        CompilerClassChirho::MonadFailChirho,
         "Control.Monad.Fail",
         "MonadFail",
-        CONSTRUCTOR_PARAMETER_CHIRHO,
         "fail",
         &["Prelude", "Control.Monad", "Control.Monad.Fail"],
     ),
     entry_chirho(
+        CompilerClassChirho::FoldableChirho,
         "Data.Foldable",
         "Foldable",
-        CONSTRUCTOR_PARAMETER_CHIRHO,
         "foldr",
         &["Prelude", "Data.Foldable"],
     ),
     entry_chirho(
+        CompilerClassChirho::TraversableChirho,
         "Data.Traversable",
         "Traversable",
-        CONSTRUCTOR_PARAMETER_CHIRHO,
         "traverse",
         &["Prelude", "Data.Traversable"],
+    ),
+    methodless_entry_chirho(
+        CompilerClassChirho::TypeableChirho,
+        "Data.Typeable",
+        "Typeable",
+        &["Data.Typeable", "Type.Reflection", "Data.Data"],
     ),
 ];
 
@@ -264,8 +366,8 @@ fn table_entry_chirho(name_chirho: &str) -> Option<&'static BuiltinClassEntryChi
 }
 
 /// The table entry that trusts `iface_chirho` to give `name_chirho` the builtin class's
-/// identity: a builtin interface, one of the entry's providers, and a type export that is
-/// the class entry, listing the witness method.
+/// identity: a builtin interface, one of the entry's providers, and a type export that shows
+/// the entry's witness, so it is the class entry.
 fn trusted_builtin_class_chirho(
     iface_chirho: &ModuleIfaceChirho,
     name_chirho: &str,
@@ -281,10 +383,9 @@ fn trusted_builtin_class_chirho(
         return None;
     }
     let export_chirho = iface_chirho.exports_chirho.types_chirho.get(name_chirho)?;
-    export_chirho
-        .methods_chirho
-        .iter()
-        .any(|method_chirho| method_chirho == entry_chirho.witness_method_chirho)
+    entry_chirho
+        .witness_chirho
+        .shown_by_chirho(export_chirho)
         .then_some(entry_chirho)
 }
 

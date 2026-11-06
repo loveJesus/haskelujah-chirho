@@ -417,6 +417,7 @@ fn ordinary_constructor_chirho(constructor_text_chirho: &str) -> ConDeclChirho {
         name_chirho: name_chirho(constructor_text_chirho),
         fields_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
+        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
     }
 }
 
@@ -483,6 +484,7 @@ fn a_source_module_marks_the_types_it_declares_complete_chirho() {
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
             ),
             DeclChirho::NewtypeDeclChirho {

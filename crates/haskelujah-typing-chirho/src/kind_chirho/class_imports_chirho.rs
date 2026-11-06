@@ -5,7 +5,11 @@
 //! their instance heads.
 //! workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
 
-use haskelujah_ast_chirho::name_chirho::{BuiltinClassChirho, BuiltinClassScopeChirho};
+use haskelujah_ast_chirho::decl_chirho::TyVarVisibilityChirho;
+use haskelujah_ast_chirho::name_chirho::{
+    BuiltinClassChirho, BuiltinClassScopeChirho, CompilerClassGroundKindChirho,
+    CompilerClassKindAtomChirho, CompilerClassKindChirho, CompilerClassKindCoverageChirho,
+};
 
 use super::sorts_chirho::kind_after_arguments_chirho;
 use super::{
@@ -24,8 +28,10 @@ impl KindInferCtxChirho {
             if self.local_kind_decl_names_chirho.contains(spelling_chirho) {
                 continue;
             }
-            self.env_chirho
-                .bind_chirho(spelling_chirho.to_string(), class_kind_chirho(class_chirho));
+            if let Some(kind_chirho) = class_kind_chirho(class_chirho) {
+                self.env_chirho
+                    .bind_chirho(spelling_chirho.to_string(), kind_chirho);
+            }
             self.builtin_classes_chirho
                 .insert(spelling_chirho.to_string(), *class_chirho);
         }
@@ -50,9 +56,10 @@ impl KindInferCtxChirho {
         let Some(class_chirho) = self.builtin_classes_chirho.get(spelling_chirho).copied() else {
             return false;
         };
-        let ([head_chirho], [arity_chirho]) =
-            (head_types_chirho, class_chirho.parameter_arities_chirho)
-        else {
+        let ([head_chirho], [parameter_chirho]) = (
+            head_types_chirho,
+            class_chirho.schema_chirho().binders_chirho,
+        ) else {
             return true;
         };
         let Some(found_chirho) = self.known_head_kind_chirho(head_chirho) else {
@@ -61,7 +68,12 @@ impl KindInferCtxChirho {
         if !found_chirho.free_vars_chirho().is_empty() {
             return true;
         }
-        let expected_chirho = parameter_kind_chirho(*arity_chirho);
+        if parameter_chirho.visibility_chirho != TyVarVisibilityChirho::VisibleChirho {
+            return true;
+        }
+        let Some(expected_chirho) = parameter_kind_chirho(parameter_chirho.kind_chirho, 0) else {
+            return true;
+        };
         if found_chirho != expected_chirho {
             self.diagnostics_chirho
                 .push_chirho(DiagnosticChirho::error_with_code_chirho(
@@ -118,20 +130,46 @@ impl KindInferCtxChirho {
     }
 }
 
-/// A builtin class's kind: its parameters' kinds, then `Constraint`.
-fn class_kind_chirho(class_chirho: &BuiltinClassChirho) -> KindChirho {
-    KindChirho::arrow_n_chirho(
-        class_chirho
-            .parameter_arities_chirho
-            .iter()
-            .map(|arity_chirho| parameter_kind_chirho(*arity_chirho)),
-        KindChirho::ConstraintChirho,
-    )
+/// A lossless legacy projection only. Nat, dependent and hidden-polymorphic schemas are
+/// left to the coherent engine; this view must never approximate them as Type.
+fn class_kind_chirho(class_chirho: &BuiltinClassChirho) -> Option<KindChirho> {
+    let schema_chirho = class_chirho.schema_chirho();
+    if schema_chirho.coverage_chirho != CompilerClassKindCoverageChirho::CompleteChirho {
+        return None;
+    }
+    let mut parameters_chirho = Vec::new();
+    for binder_chirho in schema_chirho.binders_chirho {
+        if binder_chirho.visibility_chirho != TyVarVisibilityChirho::VisibleChirho {
+            return None;
+        }
+        parameters_chirho.push(parameter_kind_chirho(binder_chirho.kind_chirho, 0)?);
+    }
+    Some(KindChirho::arrow_n_chirho(
+        parameters_chirho,
+        parameter_kind_chirho(schema_chirho.result_kind_chirho, 0)?,
+    ))
 }
 
-/// `Type` after `arity_chirho` `Type` arguments: `0` is `Type`, `1` is `Type -> Type`.
-fn parameter_kind_chirho(arity_chirho: u8) -> KindChirho {
-    (0..arity_chirho).fold(KindChirho::StarChirho, |result_chirho, _| {
-        KindChirho::arrow_chirho(KindChirho::StarChirho, result_chirho)
-    })
+fn parameter_kind_chirho(
+    kind_chirho: &CompilerClassKindChirho,
+    depth_chirho: usize,
+) -> Option<KindChirho> {
+    if depth_chirho >= 128 {
+        return None;
+    }
+    match kind_chirho {
+        CompilerClassKindChirho::AtomChirho(CompilerClassKindAtomChirho::GroundChirho(
+            CompilerClassGroundKindChirho::TYPE_CHIRHO,
+        )) => Some(KindChirho::StarChirho),
+        CompilerClassKindChirho::AtomChirho(CompilerClassKindAtomChirho::GroundChirho(
+            CompilerClassGroundKindChirho::CONSTRAINT_CHIRHO,
+        )) => Some(KindChirho::ConstraintChirho),
+        CompilerClassKindChirho::ArrowChirho(argument_chirho, result_chirho) => {
+            Some(KindChirho::arrow_chirho(
+                parameter_kind_chirho(argument_chirho, depth_chirho + 1)?,
+                parameter_kind_chirho(result_chirho, depth_chirho + 1)?,
+            ))
+        }
+        _ => None,
+    }
 }
