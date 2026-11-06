@@ -147,12 +147,12 @@ impl DictPassCtxChirho {
                         self.build_gnd_dict_chirho(&pair_chirho, methods_chirho)
                     }
                     Ok(None) => waiting_chirho.push(pair_chirho),
-                    Err(reason_chirho) => self.gnd_unsupported_chirho.push(reason_chirho),
+                    Err(reason_chirho) => self.unsupported_dictionaries_chirho.push(reason_chirho),
                 }
             }
             if waiting_chirho.len() == before_chirho {
                 for pair_chirho in &waiting_chirho {
-                    self.gnd_unsupported_chirho.push(format!(
+                    self.unsupported_dictionaries_chirho.push(format!(
                         "{}: the `{}` dictionary for its representation `{}` needs a context dictionary no instance supplies",
                         pair_chirho.label_chirho(),
                         pair_chirho.class_chirho,
@@ -217,7 +217,7 @@ impl DictPassCtxChirho {
             match self.multi_head_gnd_factory_chirho(class_env_chirho, newtype_chirho, inst_chirho)
             {
                 Ok(builder_chirho) => self.register_multi_head_chirho(inst_chirho, builder_chirho),
-                Err(reason_chirho) => self.gnd_unsupported_chirho.push(format!(
+                Err(reason_chirho) => self.unsupported_dictionaries_chirho.push(format!(
                     "deriving {class_name_chirho} for {newtype_chirho} through the newtype strategy: {reason_chirho}"
                 )),
             }

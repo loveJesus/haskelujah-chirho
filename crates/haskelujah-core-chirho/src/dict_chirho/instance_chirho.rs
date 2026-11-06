@@ -657,26 +657,33 @@ impl DictPassCtxChirho {
             let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
 
             // Superclass dictionary arguments: a multi-parameter instance's are its class's
-            // templates at its whole head (row 694, #31909); a one-parameter instance's are
-            // named by its own key, as before.
-            let multi_head_chirho =
-                multi_heads_chirho.get(&(class_name_chirho.clone(), type_key_chirho.clone()));
-            if let Some(inst_chirho) = multi_head_chirho {
-                let superclasses_chirho = self.multi_head_superclass_fields_chirho(
-                    class_env_chirho,
-                    inst_chirho,
-                    &layout_chirho,
-                );
-                field_args_chirho.extend(superclasses_chirho);
-            } else {
-                for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
-                    let super_dict_name_chirho =
-                        format!("$f{}{}", super_name_chirho, type_key_chirho);
-                    let super_dict_id_chirho =
-                        self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
-                    field_args_chirho.push(CoreExprChirho::VarChirho(super_dict_id_chirho));
+            // templates at its whole head, and it is registered for its uses only when every one
+            // was built (row 694, #31909, #31948); a one-parameter instance's are named by its
+            // own key, as before.
+            let registered_head_chirho = match multi_heads_chirho
+                .get(&(class_name_chirho.clone(), type_key_chirho.clone()))
+            {
+                Some(inst_chirho) => {
+                    let (superclasses_chirho, built_chirho) = self
+                        .multi_head_superclass_fields_chirho(
+                            class_env_chirho,
+                            inst_chirho,
+                            &layout_chirho,
+                        );
+                    field_args_chirho.extend(superclasses_chirho);
+                    built_chirho.then_some(inst_chirho)
                 }
-            }
+                None => {
+                    for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
+                        let super_dict_name_chirho =
+                            format!("$f{}{}", super_name_chirho, type_key_chirho);
+                        let super_dict_id_chirho =
+                            self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
+                        field_args_chirho.push(CoreExprChirho::VarChirho(super_dict_id_chirho));
+                    }
+                    None
+                }
+            };
 
             // Method implementation arguments (primitives)
             let generic_head_chirho = generic_head_by_key_chirho
@@ -705,7 +712,7 @@ impl DictPassCtxChirho {
             };
 
             let dict_id_chirho = dict_binder_chirho.id_chirho;
-            if let Some(inst_chirho) = multi_head_chirho {
+            if let Some(inst_chirho) = registered_head_chirho {
                 self.register_multi_head_chirho(inst_chirho, dict_id_chirho);
             }
 

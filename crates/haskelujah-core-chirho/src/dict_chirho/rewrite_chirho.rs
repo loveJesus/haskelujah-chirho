@@ -784,7 +784,7 @@ impl DictPassCtxChirho {
                 self.canonicalize_surviving_occurrences_chirho(&mut binding_chirho.rhs_chirho);
             }
         }
-        let mut unsupported_chirho = self.gnd_unsupported_chirho;
+        let mut unsupported_chirho = self.unsupported_dictionaries_chirho;
         unsupported_chirho.extend(self.gnd_unbuilt_uses_chirho.into_inner());
         DictPassResultChirho {
             module_chirho,

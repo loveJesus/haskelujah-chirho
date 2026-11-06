@@ -207,8 +207,10 @@ pub struct DictPassCtxChirho {
     gnd_default_rows_chirho: HashMap<CoreIdChirho, CoreExprChirho>,
     /// Every generated missing-method stub: never a representation's method (row 694).
     missing_method_ids_chirho: HashSet<CoreIdChirho>,
-    /// Each GND instance whose representation's methods this pass cannot build, said why.
-    gnd_unsupported_chirho: Vec<String>,
+    /// Each dictionary this pass cannot build, said why: a GND instance whose representation's
+    /// methods it cannot build (row 694), or a multi-parameter instance's superclass field
+    /// (#31909). Each refuses the module (`DictPassResultChirho::unsupported_chirho`).
+    unsupported_dictionaries_chirho: Vec<String>,
     /// Each (class, newtype) whose GND instance applies the newtype to type variables
     /// (`Show a => Show (BoxChirho a)`): this pass builds no dictionary for it (row 694, P1, P2).
     gnd_parametric_chirho: HashSet<(String, String)>,
@@ -295,7 +297,7 @@ impl DictPassCtxChirho {
             newtype_info_chirho: HashMap::new(),
             gnd_default_rows_chirho: HashMap::new(),
             missing_method_ids_chirho: HashSet::new(),
-            gnd_unsupported_chirho: Vec::new(),
+            unsupported_dictionaries_chirho: Vec::new(),
             gnd_parametric_chirho: HashSet::new(),
             gnd_unbuilt_uses_chirho: RefCell::new(BTreeSet::new()),
             gnd_factory_gaps_chirho: HashMap::new(),
@@ -337,7 +339,7 @@ impl DictPassCtxChirho {
 
     /// The id this pass already holds for `name_chirho`: a module-free reference's, else the
     /// earliest generated binder's. `None` when it holds none, so a field that must never be an
-    /// unbound id says why instead of minting one (row 694, #31909).
+    /// unbound id refuses instead of minting one (row 694, #31909).
     fn existing_id_named_chirho(&self, name_chirho: &str) -> Option<CoreIdChirho> {
         if let Some(id_chirho) = self.module_free_id_named_chirho(name_chirho) {
             return Some(id_chirho);

@@ -19,9 +19,9 @@
 //!
 //! A multi-parameter instance's head is read whole (row 694, #31909). Its key joins every head
 //! type (`head_key_chirho`). Each superclass field is its class's template at that head, served
-//! by the one context-free instance that matches it; a field this pass cannot build is an
-//! explicit error naming why. The instance is registered in the conditional registry under that
-//! key with its record, where a use at a complete ground head finds it by matching.
+//! by the one context-free instance that matches it; a field this pass cannot build refuses the
+//! module by name. A complete instance is registered in the conditional registry under that key
+//! with its record, where a use at a complete ground head finds it by matching.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho, PredChirho};
@@ -294,20 +294,22 @@ impl DictPassCtxChirho {
         })
     }
 
-    /// The superclass fields of the multi-parameter instance `inst_chirho`, in layout order: one
-    /// per template of its class, instantiated at the instance's whole head and served by the one
-    /// context-free instance that matches it (`ShowSecondChirho Int Bool` holds `Show Bool`'s,
-    /// row 694, #31909). A field this pass cannot build is an explicit error naming why, which
-    /// fails only if forced, as a use site's missing dictionary does (`missing_dictionary_chirho`),
-    /// never an unbound id.
+    /// The superclass fields of the multi-parameter instance `inst_chirho`, in layout order, and
+    /// whether every one was built: one per template of its class, instantiated at the
+    /// instance's whole head and served by the one context-free instance that matches it
+    /// (`ShowSecondChirho Int Bool` holds `Show Bool`'s, row 694, #31909). A required field this
+    /// pass cannot build refuses the module by name (`unsupported_dictionaries_chirho`, #31948)
+    /// and holds an explicit error meanwhile, never an unbound id; that instance is never
+    /// registered as built.
     /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub(super) fn multi_head_superclass_fields_chirho(
-        &self,
+        &mut self,
         class_env_chirho: &ClassEnvChirho,
         inst_chirho: &InstDeclChirho,
         layout_chirho: &DictLayoutChirho,
-    ) -> Vec<CoreExprChirho> {
+    ) -> (Vec<CoreExprChirho>, bool) {
         let mut fields_chirho = Vec::new();
+        let mut built_chirho = true;
         for (index_chirho, (super_name_chirho, _)) in
             layout_chirho.super_slots_chirho.iter().enumerate()
         {
@@ -322,13 +324,19 @@ impl DictPassCtxChirho {
             });
             fields_chirho.push(match built_chirho {
                 Ok(dictionary_chirho) => CoreExprChirho::VarChirho(dictionary_chirho),
-                Err(reason_chirho) => explicit_error_chirho(format!(
-                    "the `{super_name_chirho}` superclass dictionary of the instance `{}`: {reason_chirho}",
-                    instance_label_chirho(inst_chirho)
-                )),
+                Err(reason_chirho) => {
+                    built_chirho = false;
+                    let refusal_chirho = format!(
+                        "the `{super_name_chirho}` superclass dictionary of the instance `{}`: {reason_chirho}",
+                        instance_label_chirho(inst_chirho)
+                    );
+                    self.unsupported_dictionaries_chirho
+                        .push(refusal_chirho.clone());
+                    explicit_error_chirho(refusal_chirho)
+                }
             });
         }
-        fields_chirho
+        (fields_chirho, built_chirho)
     }
 
     /// Registers the multi-parameter instance `inst_chirho` in the conditional registry under
@@ -423,8 +431,8 @@ pub(super) fn instance_label_chirho(inst_chirho: &InstDeclChirho) -> String {
     .to_string()
 }
 
-/// A dictionary field that fails by name when forced: a non-atomic field is lowered to a thunk,
-/// so a program that never reads it runs.
+/// The placeholder of a superclass field whose refusal already stops the module: it fails by
+/// name if ever forced, so the dictionary binds no unbound id meanwhile.
 fn explicit_error_chirho(message_chirho: String) -> CoreExprChirho {
     CoreExprChirho::PrimOpChirho {
         name_chirho: "error".to_string(),

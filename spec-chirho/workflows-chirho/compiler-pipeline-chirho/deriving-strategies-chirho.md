@@ -54,7 +54,8 @@ flowchart TD
     shapes_chirho --> route_chirho
     templates_chirho["Typing class_instance_chirho.rs: each superclass as a template over the class's own variables; superclass_closure_chirho entails at a given's own arguments, so AskChirho Int m gives Monad m"] --> multi_written_chirho
     templates_chirho --> multi_factory_chirho
-    multi_written_chirho["generate_instance_dicts_chirho: a written multi-parameter instance's superclass fields are the templates at its whole head, each the one context-free instance matching it (context_free_dictionary_chirho), else a named lazy error"] --> registry_chirho
+    multi_written_chirho["generate_instance_dicts_chirho: a written multi-parameter instance's superclass fields are the templates at its whole head, each the one context-free instance matching it (context_free_dictionary_chirho); an unbuilt field refuses the module, and only a complete instance is registered"] --> registry_chirho
+    multi_written_chirho --> refuse_chirho
     eligible_chirho --> multi_factory_chirho["multi_head_gnd_factory_chirho: C x.. (N a..) over the representation's C; methodless; each superclass at the newtype's position is the newtype's own dictionary (parametric_superclass_chirho); any other shape refuses the module"]
     multi_factory_chirho --> registry_chirho["register_multi_head_chirho: conditional_dicts_chirho by the whole head key, with the instance record"]
     multi_factory_chirho --> refuse_chirho
@@ -86,8 +87,9 @@ flowchart TD
   arguments: `AskChirho Int m` gives `Monad m`, never `Monad Int`, and `ShowSecondChirho a b`
   never gives `Show a`. A written multi-parameter instance's superclass fields are the templates
   at its whole head, each the dictionary of the one context-free instance matching it
-  (`Show Bool` for `ShowSecondChirho Int Bool`, S2); none, several, or one with a context is an
-  explicit error naming why, which fails only if forced. A multi-parameter GND instance's
+  (`Show Bool` for `ShowSecondChirho Int Bool`, S2); none, several, or one with a context
+  refuses the module by name when it compiles (#31948), and that instance is never registered
+  as built. A multi-parameter GND instance's
   factory holds only superclass fields, each at the newtype's position and the newtype's own
   dictionary there (G1's stock `Show AgeChirho`, G3's factory over the representation's
   superclass field); any other shape refuses the module by name. Both are registered by their
@@ -183,6 +185,10 @@ flowchart TD
   `ReaderChirho Int` keeps the generic-instance-key gap.
 - Inferred-scheme context reduction (`schemes_chirho.rs`) and the instance-method givens check
   still compare superclasses at the first argument.
+- A written multi-parameter instance whose superclass needs an instance with a context
+  (`ShowSecondChirho Int [Bool]` needs `Show a => Show [a]`, R3) is refused when the module
+  compiles, a valid-source gap GHC accepts, until superclass fields can take context
+  dictionaries.
 - Typing still keys classes by unqualified name, so a module with a local `class Eq` and the
   Prelude's `Eq` in one program is not yet told apart past deriving (S2's end-to-end run).
 - Generated method bodies name their helpers unqualified, so a module that hides or qualifies the

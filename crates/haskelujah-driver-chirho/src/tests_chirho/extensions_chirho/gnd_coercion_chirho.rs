@@ -442,6 +442,37 @@ fn gnd_class_argument_superclass_off_the_newtype_is_refused_by_name_chirho() {
     );
 }
 
+/// R3 (#31948): a written multi-parameter instance whose superclass only an instance with a
+/// context serves (`Show [Bool]` through `Show a => Show [a]`). This pass builds no such field,
+/// so the module is refused by name when it compiles, never left with an unbuilt dictionary.
+/// GHC 9.14.1 is predicted to print `[True,False]` (unmeasured): a valid-source gap.
+const CONTEXTUAL_SUPERCLASS_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+module Main where
+
+class Show b => ShowSecondChirho a b
+
+instance ShowSecondChirho Int [Bool]
+
+describeChirho :: ShowSecondChirho a b => a -> b -> String
+describeChirho _ secondChirho = show secondChirho
+
+main :: IO ()
+main = putStrLn (describeChirho (5 :: Int) [True, False])
+"#;
+
+#[test]
+fn mptc_contextual_superclass_is_refused_by_name_chirho() {
+    assert_refused_chirho(
+        "ContextualSuperclassChirho.hs",
+        CONTEXTUAL_SUPERCLASS_CHIRHO,
+        &[
+            "the `Show` superclass dictionary of the instance `ShowSecondChirho Int [Bool]`",
+            "has a context, whose dictionaries this pass does not build here",
+        ],
+    );
+}
+
 /// Q1: GHC 9.14.1 prints (True,False). sha256 151287147a71c3efc462a709bb33a9f929a23e9033982d455a4e3dbf6ff7911c.
 const QUALIFIED_STOCK_WITH_SHADOWED_INSTANCE_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 {-# LANGUAGE DerivingStrategies #-}
