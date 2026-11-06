@@ -25,6 +25,11 @@ mod bracketed_exprs_chirho;
 mod class_tests_chirho;
 #[path = "lower_chirho/classes_chirho/classes_chirho.rs"]
 mod classes_chirho;
+#[cfg(test)]
+#[path = "lower_chirho/data_types_chirho/con_prefix_tests_chirho.rs"]
+mod con_prefix_tests_chirho;
+#[path = "lower_chirho/data_types_chirho/con_prefixes_chirho.rs"]
+mod con_prefixes_chirho;
 mod context_chirho;
 #[cfg(test)]
 #[path = "lower_chirho/declarations_chirho/context_tests_chirho.rs"]
@@ -48,6 +53,11 @@ mod declaration_kinds_chirho;
 mod declaration_tests_chirho;
 #[path = "lower_chirho/declarations_chirho/declarations_chirho.rs"]
 mod declarations_chirho;
+#[cfg(test)]
+#[path = "lower_chirho/data_types_chirho/deriving_clause_tests_chirho.rs"]
+mod deriving_clause_tests_chirho;
+#[path = "lower_chirho/data_types_chirho/deriving_clauses_chirho.rs"]
+mod deriving_clauses_chirho;
 #[path = "lower_chirho/bindings_chirho/do_selection_chirho.rs"]
 mod do_selection_chirho;
 #[cfg(test)]
@@ -114,6 +124,11 @@ mod prefix_minus_tests_chirho;
 mod qualified_sections_tests_chirho;
 #[path = "lower_chirho/patterns_chirho/record_patterns_chirho.rs"]
 mod record_patterns_chirho;
+#[cfg(test)]
+#[path = "lower_chirho/declarations_chirho/role_annotation_tests_chirho.rs"]
+mod role_annotation_tests_chirho;
+#[path = "lower_chirho/declarations_chirho/role_annotations_chirho.rs"]
+mod role_annotations_chirho;
 #[cfg(test)]
 mod test_support_chirho;
 #[path = "lower_chirho/classes_chirho/type_families_chirho.rs"]

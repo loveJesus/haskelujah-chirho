@@ -28,6 +28,7 @@
 //! - Instance method body compilation from source `where` clauses
 
 pub mod instance_chirho;
+pub use instance_chirho::NewtypeInfoChirho;
 pub mod layout_chirho;
 mod monad_fix_chirho;
 mod parameters_chirho;
@@ -39,13 +40,14 @@ mod show_chirho;
 mod type_keys_chirho;
 
 use std::cell::{Cell, RefCell};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
 use haskelujah_typing_chirho::deriving_chirho::DerivedShowChirho;
 use haskelujah_typing_chirho::env_chirho::TyEnvChirho;
-use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, TyChirho};
+use haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho;
+use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 
 use crate::expr_chirho::{
     BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreModuleChirho,
@@ -66,6 +68,23 @@ pub struct DictLayoutChirho {
     pub field_count_chirho: usize,
 }
 
+/// One conditional instance's dictionary factory (row 694): the binding that takes the
+/// instance's context dictionaries, in context order, and returns its dictionary; the formal
+/// binders its head applies the type constructor to, in order; and the context, over those
+/// binders, whose dictionaries the factory takes. A use instantiates the context through the
+/// binders at the actual arguments, never from a formatted key.
+#[derive(Debug, Clone)]
+pub(crate) struct ConditionalDictChirho {
+    pub(crate) builder_chirho: CoreIdChirho,
+    pub(crate) formals_chirho: Vec<TyVarChirho>,
+    pub(crate) context_chirho: Vec<haskelujah_typing_chirho::class_chirho::PredChirho>,
+    /// For a multi-parameter instance, its record: a use at a complete ground head takes this
+    /// entry when the record's head matches, its context instantiated by that match
+    /// (`head_dictionary_chirho`, row 694, #31909). `None` for a one-parameter factory, whose
+    /// formals bind the applied type's arguments.
+    pub(crate) instance_chirho: Option<haskelujah_typing_chirho::class_chirho::InstDeclChirho>,
+}
+
 /// Result of the dictionary-passing transform.
 #[derive(Debug)]
 pub struct DictPassResultChirho {
@@ -74,6 +93,10 @@ pub struct DictPassResultChirho {
     pub names_chirho: HashMap<CoreIdChirho, String>,
     /// Dictionary layouts for each class.
     pub layouts_chirho: HashMap<String, DictLayoutChirho>,
+    /// Each GND instance whose representation's methods could not be built, and each use of a
+    /// GND dictionary this pass cannot build, said why: the driver refuses the module rather
+    /// than alias a missing method or leave a missing dictionary to the runtime (row 694).
+    pub unsupported_chirho: Vec<String>,
 }
 
 /// A final derived-Show answer (row 533). `Renders` holds at the deepest nesting it was
@@ -145,10 +168,15 @@ pub struct DictPassCtxChirho {
     /// Populated by later phases (typing bridge / defaulting); when present the
     /// occurrence dispatches directly to `$prim_{class}_{method}_{key}`.
     occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
-    /// Reference evidence: occurrence id of a constrained reference → one
-    /// (class, key) per predicate in scheme order; a `None` key is "nothing
-    /// proved for this position". See `evidence_dict_for_class_chirho`.
-    reference_evidence_chirho: HashMap<CoreIdChirho, Vec<(String, Option<String>)>>,
+    /// The ground application each method occurrence's proof resolved to, where the checker
+    /// recorded one (`BoxChirho Int`): the arguments a conditional instance's factory takes
+    /// (`method_through_factory_chirho`, row 694, M1).
+    occurrence_applied_tys_chirho: HashMap<CoreIdChirho, TyChirho>,
+    /// Reference evidence: occurrence id of a constrained reference → the checker's record
+    /// per predicate in scheme order, its class, its key (a `None` key is "nothing proved
+    /// for this position") and, for a ground application, its type. See
+    /// `evidence_dict_for_class_chirho` and `conditional_dictionary_chirho`.
+    reference_evidence_chirho: HashMap<CoreIdChirho, Vec<ReferenceEvidenceChirho>>,
     /// The occurrences of written infix and section Ord operators, from
     /// `DesugarOutputChirho::operator_occurrences_chirho` (row 610).
     /// workflow: language-features-chirho/dictionary-evidence-chirho
@@ -162,16 +190,36 @@ pub struct DictPassCtxChirho {
     /// Superclass selector CoreIds: `(subclass, superclass)` → selector id.
     /// Used to extract a superclass dictionary from a subclass dictionary.
     super_selectors_chirho: HashMap<(String, String), CoreIdChirho>,
-    /// Conditional instance dict builders: `(class_name, type_constructor)` →
-    /// `(builder_id, context_classes)`. The builder is a lambda that takes
-    /// element/component dictionaries and returns the constructed class dict.
-    /// For example, `Eq a => Eq [a]` yields `("Eq", "List")` →
-    /// `($fEqList, ["Eq"])` where `$fEqList = \$dEqA -> $DictEq (list_eq_impl $dEqA)`.
-    #[allow(dead_code)]
-    conditional_dicts_chirho: HashMap<(String, String), (CoreIdChirho, Vec<String>)>,
-    /// Newtype info: maps type name to (constructor name, underlying type key).
-    /// Used for GND: `"Age"` → `("MkAge", "Int")`.
-    newtype_info_chirho: HashMap<String, (String, String)>,
+    /// Conditional instance dict builders: `(class_name, type_constructor)` → the builder, a
+    /// lambda that takes the instance's context dictionaries and returns the constructed
+    /// class dict, with the head's formal binders and the context those parameters stand for.
+    /// A parametric GND instance (`Show a => Show (BoxChirho a)`) has one (row 694). A
+    /// multi-parameter instance is keyed by its whole head key instead and carries its record,
+    /// by which a use at a complete ground head finds it (`head_dictionary_chirho`, #31909).
+    conditional_dicts_chirho: HashMap<(String, String), ConditionalDictChirho>,
+    /// Newtype info by type name: its constructor, its representation's key and the
+    /// classes it derives with the newtype strategy. Used for GND (row 694):
+    /// `"Age"` → `MkAge`, `Int`, `["Num"]`.
+    newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
+    /// A GND newtype's rows the desugarer filled from class defaults, each with the
+    /// representation's method it becomes (row 694): the module's binding keeps its id, so
+    /// every reference to it takes the representation's method, as GHC coerces every method.
+    gnd_default_rows_chirho: HashMap<CoreIdChirho, CoreExprChirho>,
+    /// Every generated missing-method stub: never a representation's method (row 694).
+    missing_method_ids_chirho: HashSet<CoreIdChirho>,
+    /// Each dictionary this pass cannot build, said why: a GND instance whose representation's
+    /// methods it cannot build (row 694), or a multi-parameter instance's superclass field
+    /// (#31909). Each refuses the module (`DictPassResultChirho::unsupported_chirho`).
+    unsupported_dictionaries_chirho: Vec<String>,
+    /// Each (class, newtype) whose GND instance applies the newtype to type variables
+    /// (`Show a => Show (BoxChirho a)`): this pass builds no dictionary for it (row 694, P1, P2).
+    gnd_parametric_chirho: HashSet<(String, String)>,
+    /// Each use that needed a parametric GND dictionary, said why: refused at compile time,
+    /// never left to fail when the program runs.
+    gnd_unbuilt_uses_chirho: RefCell<BTreeSet<String>>,
+    /// Each parametric GND instance whose factory this pass refused, with the reason, which a
+    /// use that needs its dictionary reports (#31851).
+    gnd_factory_gaps_chirho: HashMap<(String, String), String>,
     /// Number of type parameters per class. 1 for single-parameter classes
     /// (Eq, Ord, ...), >1 for MPTCs (e.g., Addable a b has 2).
     class_param_count_chirho: HashMap<String, usize>,
@@ -240,12 +288,19 @@ impl DictPassCtxChirho {
             extra_dict_param_names_chirho: HashSet::new(),
             method_occurrence_canon_chirho: HashMap::new(),
             occurrence_evidence_chirho: HashMap::new(),
+            occurrence_applied_tys_chirho: HashMap::new(),
             reference_evidence_chirho: HashMap::new(),
             operator_occurrences_chirho: HashSet::new(),
             context_leading_rows_chirho: HashMap::new(),
             super_selectors_chirho: HashMap::new(),
             conditional_dicts_chirho: HashMap::new(),
             newtype_info_chirho: HashMap::new(),
+            gnd_default_rows_chirho: HashMap::new(),
+            missing_method_ids_chirho: HashSet::new(),
+            unsupported_dictionaries_chirho: Vec::new(),
+            gnd_parametric_chirho: HashSet::new(),
+            gnd_unbuilt_uses_chirho: RefCell::new(BTreeSet::new()),
+            gnd_factory_gaps_chirho: HashMap::new(),
             class_param_count_chirho: HashMap::new(),
             method_arities_chirho: HashMap::new(),
             local_shadow_ids_chirho: RefCell::new(HashSet::new()),
@@ -278,11 +333,18 @@ impl DictPassCtxChirho {
     /// Prelude's `length` unbound in some runs (row 594).
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     fn resolve_or_fresh_id_chirho(&mut self, name_chirho: &str) -> CoreIdChirho {
+        self.existing_id_named_chirho(name_chirho)
+            .unwrap_or_else(|| self.fresh_id_chirho(name_chirho))
+    }
+
+    /// The id this pass already holds for `name_chirho`: a module-free reference's, else the
+    /// earliest generated binder's. `None` when it holds none, so a field that must never be an
+    /// unbound id refuses instead of minting one (row 694, #31909).
+    fn existing_id_named_chirho(&self, name_chirho: &str) -> Option<CoreIdChirho> {
         if let Some(id_chirho) = self.module_free_id_named_chirho(name_chirho) {
-            return id_chirho;
+            return Some(id_chirho);
         }
-        let existing_chirho = self
-            .names_chirho
+        self.names_chirho
             .iter()
             .filter(|(id_chirho, existing_name_chirho)| {
                 existing_name_chirho.as_str() == name_chirho
@@ -292,8 +354,7 @@ impl DictPassCtxChirho {
                     && !self.imported_reference_ids_chirho.contains(id_chirho)
             })
             .map(|(id_chirho, _)| *id_chirho)
-            .min();
-        existing_chirho.unwrap_or_else(|| self.fresh_id_chirho(name_chirho))
+            .min()
     }
 
     /// Record top-level source bindings, the ids they use without binding, and the ids
@@ -548,7 +609,7 @@ pub fn dict_pass_module_full_chirho(
     type_env_chirho: &TyEnvChirho,
     class_env_chirho: &ClassEnvChirho,
     con_types_chirho: HashMap<String, String>,
-    newtype_info_chirho: HashMap<String, (String, String)>,
+    newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
 ) -> DictPassResultChirho {
     dict_pass_module_full_with_extra_dict_param_names_chirho(
         module_chirho,
@@ -567,7 +628,7 @@ pub fn dict_pass_module_full_with_extra_dict_param_names_chirho(
     type_env_chirho: &TyEnvChirho,
     class_env_chirho: &ClassEnvChirho,
     con_types_chirho: HashMap<String, String>,
-    newtype_info_chirho: HashMap<String, (String, String)>,
+    newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
     extra_dict_param_names_chirho: HashSet<String>,
 ) -> DictPassResultChirho {
     dict_pass_module_full_with_method_occurrences_chirho(
@@ -594,7 +655,7 @@ pub fn dict_pass_module_full_with_method_occurrences_chirho(
     type_env_chirho: &TyEnvChirho,
     class_env_chirho: &ClassEnvChirho,
     con_types_chirho: HashMap<String, String>,
-    newtype_info_chirho: HashMap<String, (String, String)>,
+    newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
     extra_dict_param_names_chirho: HashSet<String>,
     method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
     occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
@@ -612,7 +673,8 @@ pub fn dict_pass_module_full_with_method_occurrences_chirho(
 }
 
 /// Dictionary-evidence entry: like the method-occurrence entry, also threading
-/// the checker's per-reference evidence for constrained references, the
+/// each method occurrence's applied type (row 694), the
+/// checker's per-reference evidence for constrained references, the
 /// constructor metadata of every type that derives Show (row 533) or Enum (row 669),
 /// and the occurrences of written infix and section Ord operators (row 610).
 /// workflow: language-features-chirho/dictionary-evidence-chirho
@@ -623,11 +685,12 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     type_env_chirho: &TyEnvChirho,
     class_env_chirho: &ClassEnvChirho,
     con_types_chirho: HashMap<String, String>,
-    newtype_info_chirho: HashMap<String, (String, String)>,
+    newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
     extra_dict_param_names_chirho: HashSet<String>,
     method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
     occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
-    reference_evidence_chirho: HashMap<CoreIdChirho, Vec<(String, Option<String>)>>,
+    occurrence_applied_tys_chirho: HashMap<CoreIdChirho, TyChirho>,
+    reference_evidence_chirho: HashMap<CoreIdChirho, Vec<ReferenceEvidenceChirho>>,
     derived_shows_chirho: HashMap<String, DerivedShowChirho>,
     derived_enums_chirho: HashMap<String, Vec<String>>,
     operator_occurrences_chirho: HashSet<CoreIdChirho>,
@@ -639,6 +702,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     ctx_chirho.extra_dict_param_names_chirho = extra_dict_param_names_chirho;
     ctx_chirho.method_occurrence_canon_chirho = method_occurrence_canon_chirho;
     ctx_chirho.occurrence_evidence_chirho = occurrence_evidence_chirho;
+    ctx_chirho.occurrence_applied_tys_chirho = occurrence_applied_tys_chirho;
     ctx_chirho.reference_evidence_chirho = reference_evidence_chirho;
     ctx_chirho.derived_shows_chirho = derived_shows_chirho;
     ctx_chirho.derived_enums_chirho = derived_enums_chirho;

@@ -89,8 +89,12 @@ impl DictPassCtxChirho {
     /// dictionary applied, in context order, each predicate one-parameter,
     /// ground and registered exactly; otherwise it is not served at all and
     /// the caller's keyed route decides.
+    /// The GND pass reaches a representation's context-leading row the same way (row 694).
     /// workflow: language-features-chirho/own-class-method-occurrences-chirho
-    pub(super) fn proof_row_chirho(&self, row_name_chirho: &str) -> Option<CoreExprChirho> {
+    pub(in crate::dict_chirho) fn proof_row_chirho(
+        &self,
+        row_name_chirho: &str,
+    ) -> Option<CoreExprChirho> {
         let row_id_chirho = self.find_global_id_by_name_chirho(row_name_chirho)?;
         let Some(context_chirho) = self.context_leading_rows_chirho.get(&row_id_chirho) else {
             return Some(CoreExprChirho::VarChirho(row_id_chirho));

@@ -273,7 +273,6 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             "Bounded",
             "Functor",
             "Applicative",
-            "Alternative",
             "Monad",
             "MonadFail",
             "Semigroup",

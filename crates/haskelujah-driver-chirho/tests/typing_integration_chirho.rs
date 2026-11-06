@@ -15,6 +15,8 @@ mod annotated_pattern_bindings_chirho;
 mod builtin_class_kinds_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/declaration_validity_chirho.rs"]
 mod declaration_validity_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/deriving_strategies_chirho.rs"]
+mod deriving_strategies_chirho;
 #[path = "typing_integration_chirho/dollar_ownership_chirho.rs"]
 mod dollar_ownership_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/first_class_show_print_chirho.rs"]

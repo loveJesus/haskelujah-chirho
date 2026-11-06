@@ -89,11 +89,7 @@ impl ParserChirho<'_> {
             self.parse_gadt_constructor_block_chirho();
         }
 
-        // Optional deriving clause
-        self.eat_trivia_chirho();
-        if self.at_chirho(RawTokenKindChirho::DerivingChirho) {
-            self.parse_deriving_clause_chirho();
-        }
+        self.parse_deriving_clauses_chirho();
 
         self.builder_chirho.finish_node_chirho();
     }
@@ -502,6 +498,38 @@ impl ParserChirho<'_> {
         self.builder_chirho.finish_node_chirho();
     }
 
+    /// Every deriving clause of one `data` or `newtype` declaration: GHC allows any number,
+    /// each with its own strategy (`deriving stock Eq` then `deriving newtype Num`).
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+    fn parse_deriving_clauses_chirho(&mut self) {
+        self.eat_trivia_chirho();
+        while self.at_chirho(RawTokenKindChirho::DerivingChirho) {
+            self.parse_deriving_clause_chirho();
+            // Trivia between two clauses belongs to the declaration, like the trivia
+            // before the first one; trivia after the last clause stays outside it.
+            let next_chirho = self.skip_trivia_idx_chirho(self.pos_chirho);
+            let another_clause_chirho =
+                self.tokens_chirho
+                    .get(next_chirho)
+                    .is_some_and(|token_chirho| {
+                        token_chirho.kind_chirho == RawTokenKindChirho::DerivingChirho
+                    });
+            if !another_clause_chirho {
+                break;
+            }
+            self.eat_trivia_chirho();
+        }
+    }
+
+    /// Whether the current token is a `DerivingStrategies` strategy keyword. `stock` and
+    /// `anyclass` lex as variable identifiers, but `newtype` is a reserved word and always
+    /// arrives as its keyword token.
+    pub(super) fn at_deriving_strategy_chirho(&self) -> bool {
+        self.at_varid_text_chirho("stock")
+            || self.at_varid_text_chirho("anyclass")
+            || self.at_chirho(RawTokenKindChirho::NewtypeChirho)
+    }
+
     fn parse_deriving_clause_chirho(&mut self) {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::DerivingClauseChirho);
@@ -509,35 +537,38 @@ impl ParserChirho<'_> {
         self.expect_chirho(RawTokenKindChirho::DerivingChirho);
         self.eat_trivia_chirho();
 
-        // DerivingStrategies: consume optional strategy keyword
-        if self.at_varid_text_chirho("stock")
-            || self.at_varid_text_chirho("newtype")
-            || self.at_varid_text_chirho("anyclass")
-        {
+        // DerivingStrategies: an unconsumed `newtype` would end this clause and start a
+        // separate `newtype` declaration named after the class (row 694).
+        if self.at_deriving_strategy_chirho() {
             self.bump_chirho(); // strategy keyword
             self.eat_trivia_chirho();
         }
 
-        // deriving (Show, Eq) or deriving Show
+        // deriving (Show, C (Maybe Int)) or deriving Show. A class may take parenthesized
+        // arguments, so the list ends at the parenthesis that closes it. A layout token
+        // ends the clause even inside an unclosed list, so a malformed clause cannot
+        // swallow the next declaration.
         if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
             self.bump_chirho();
-            self.eat_trivia_chirho();
-            while !self.at_chirho(RawTokenKindChirho::RightParenChirho) && !self.at_eof_chirho() {
+            let mut depth_chirho = 1usize;
+            while depth_chirho > 0 {
                 self.eat_trivia_chirho();
-                if !self.at_chirho(RawTokenKindChirho::CommaChirho)
-                    && !self.at_chirho(RawTokenKindChirho::RightParenChirho)
+                if self.at_eof_chirho()
+                    || self.at_chirho(RawTokenKindChirho::VirtualSemicolonChirho)
+                    || self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
                 {
-                    self.bump_chirho();
+                    break;
                 }
-                self.eat_trivia_chirho();
-                if self.at_chirho(RawTokenKindChirho::CommaChirho) {
-                    self.bump_chirho();
+                if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
+                    depth_chirho += 1;
+                } else if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                    depth_chirho -= 1;
                 }
-            }
-            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
                 self.bump_chirho();
             }
-        } else if self.at_chirho(RawTokenKindChirho::ConIdChirho) {
+        } else if self.at_chirho(RawTokenKindChirho::ConIdChirho)
+            || self.at_chirho(RawTokenKindChirho::QualifiedIdChirho)
+        {
             self.bump_chirho();
         }
 
@@ -611,11 +642,7 @@ impl ParserChirho<'_> {
             self.parse_gadt_constructor_block_chirho();
         }
 
-        // Optional deriving clause
-        self.eat_trivia_chirho();
-        if self.at_chirho(RawTokenKindChirho::DerivingChirho) {
-            self.parse_deriving_clause_chirho();
-        }
+        self.parse_deriving_clauses_chirho();
 
         self.builder_chirho.finish_node_chirho();
     }

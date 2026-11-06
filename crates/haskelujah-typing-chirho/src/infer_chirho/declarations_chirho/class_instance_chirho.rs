@@ -56,15 +56,43 @@ impl InferCtxChirho {
                     .insert(ast_var_chirho.text_chirho().to_string(), ty_var_chirho);
             }
 
-            // Superclasses from context
-            let supers_chirho: Vec<String> = context_chirho
-                .iter()
-                .filter_map(|c_chirho| {
-                    c_chirho
-                        .simple_class_chirho()
-                        .map(|class_chirho| class_chirho.text_chirho().to_string())
-                })
-                .collect();
+            // Superclasses from context: each one's class, and as a template over the class's
+            // own variables every argument it constrains (`Monad m` in
+            // `class Monad m => MonadReader r m`, row 694, #31909).
+            let mut supers_chirho: Vec<String> = Vec::new();
+            let mut super_templates_chirho: Vec<SchemePredChirho> = Vec::new();
+            for constraint_chirho in context_chirho {
+                let (Some(super_class_chirho), Some(arguments_chirho)) = (
+                    constraint_chirho.simple_class_chirho(),
+                    constraint_chirho.simple_args_chirho(),
+                ) else {
+                    continue;
+                };
+                let converted_chirho: Vec<TyChirho> = arguments_chirho
+                    .iter()
+                    .map(|argument_chirho| {
+                        self.ast_type_to_scheme_seeded_chirho(
+                            argument_chirho,
+                            &class_scoped_tyvars_chirho,
+                            false,
+                        )
+                        .0
+                        .ty_chirho
+                    })
+                    .collect();
+                let (ty_chirho, extra_tys_chirho) = match converted_chirho.split_first() {
+                    Some((first_chirho, rest_chirho)) => {
+                        (first_chirho.clone(), rest_chirho.to_vec())
+                    }
+                    None => (TyChirho::VarChirho(class_tv_chirho), Vec::new()),
+                };
+                supers_chirho.push(super_class_chirho.text_chirho().to_string());
+                super_templates_chirho.push(SchemePredChirho {
+                    class_name_chirho: super_class_chirho.text_chirho().to_string(),
+                    ty_chirho,
+                    extra_tys_chirho,
+                });
+            }
 
             // Method signatures and optional default implementations
             let mut method_map_chirho = HashMap::new();
@@ -148,6 +176,7 @@ impl InferCtxChirho {
             self.class_env_chirho.add_class_chirho(ClassDeclChirho {
                 name_chirho: class_name_chirho.clone(),
                 supers_chirho,
+                super_templates_chirho,
                 var_chirho: class_tv_chirho,
                 methods_chirho: method_map_chirho,
                 extra_vars_chirho,

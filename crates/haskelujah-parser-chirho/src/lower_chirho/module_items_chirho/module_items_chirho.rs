@@ -75,7 +75,15 @@ impl LowerCtxChirho {
                     SyntaxKindChirho::TypeSigDeclChirho => {
                         let span_chirho =
                             self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                        if let Some((name_chirho, kind_chirho)) = self
+                        // A role annotation is its own declaration, every word as written
+                        // (row 694).
+                        if let Some(role_annotation_chirho) = self.lower_role_annotation_chirho(
+                            n_chirho,
+                            child_chirho.start_chirho,
+                            span_chirho,
+                        ) {
+                            decls_chirho.push(role_annotation_chirho);
+                        } else if let Some((name_chirho, kind_chirho)) = self
                             .lower_standalone_kind_sig_chirho(
                                 n_chirho,
                                 child_chirho.start_chirho,

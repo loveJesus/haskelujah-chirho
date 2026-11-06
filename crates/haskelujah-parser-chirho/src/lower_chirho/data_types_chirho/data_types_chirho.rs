@@ -4,7 +4,8 @@
 //! Part of CST-to-AST lowering (`lower_chirho.rs`), split by category in row 641.
 
 use haskelujah_ast_chirho::decl_chirho::{
-    ConDeclChirho, DataKindSigChirho, DeclChirho, FieldDeclChirho, StrictnessChirho,
+    ConDeclChirho, ConPrefixChirho, DataKindSigChirho, DeclChirho, FieldDeclChirho,
+    StrictnessChirho,
 };
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
@@ -128,8 +129,9 @@ impl LowerCtxChirho {
                             self.lower_gadt_con_decl_chirho(n_chirho, child_chirho.start_chirho),
                         );
                     } else if n_chirho.kind_chirho() == SyntaxKindChirho::DerivingClauseChirho {
-                        deriving_chirho =
-                            self.lower_deriving_chirho(n_chirho, child_chirho.start_chirho);
+                        deriving_chirho.extend(
+                            self.lower_deriving_clause_chirho(n_chirho, child_chirho.start_chirho),
+                        );
                     }
                 }
             }
@@ -209,8 +211,10 @@ impl LowerCtxChirho {
 
         // ExistentialQuantification: skip past `forall ... . [Context =>]`
         // by finding the index after DoubleArrow (=>) if present, or after Dot
-        // if forall is present without a context.
+        // if forall is present without a context. The prefix itself is the
+        // constructor's, which role inference reads (row 694).
         let mut start_idx_chirho = 0;
+        let mut prefix_chirho = ConPrefixChirho::default();
         let has_forall_chirho = children_chirho.first().is_some_and(|c_chirho| {
             matches!(
                 c_chirho.element_chirho,
@@ -218,6 +222,7 @@ impl LowerCtxChirho {
             )
         });
         if has_forall_chirho {
+            prefix_chirho = self.con_prefix_chirho(&children_chirho, span_chirho);
             // Look for => first (forall with context), then . (forall without context)
             let mut found_double_arrow_chirho = false;
             for (idx_chirho, child_chirho) in children_chirho.iter().enumerate() {
@@ -283,6 +288,7 @@ impl LowerCtxChirho {
                 return ConDeclChirho::OrdinaryChirho {
                     name_chirho: operator_name_chirho,
                     fields_chirho: vec![left_field_chirho, right_field_chirho],
+                    prefix_chirho,
                     span_chirho,
                 };
             }
@@ -372,12 +378,14 @@ impl LowerCtxChirho {
             ConDeclChirho::RecordChirho {
                 name_chirho: con_name_chirho,
                 fields_chirho: record_fields_chirho,
+                prefix_chirho,
                 span_chirho,
             }
         } else {
             ConDeclChirho::OrdinaryChirho {
                 name_chirho: con_name_chirho,
                 fields_chirho,
+                prefix_chirho,
                 span_chirho,
             }
         }
@@ -497,10 +505,13 @@ impl LowerCtxChirho {
         // on the AST decision (spec-chirho/bug-gadt-record-fields-dropped-chirho.md).
         // For `data T where MkT :: { .. } -> T` the result is the declaration head, so
         // nothing is lost; for a refined result it is, exactly as before this change.
+        // Its signature's quantification and result are not on this shape, so its prefix is
+        // unread: no consumer may read it as a constructor without them (row 694).
         if let Some(fields_chirho) = record_fields_chirho {
             return ConDeclChirho::RecordChirho {
                 name_chirho: con_name_chirho,
                 fields_chirho,
+                prefix_chirho: ConPrefixChirho::unread_quantification_chirho(),
                 span_chirho,
             };
         }
@@ -513,44 +524,14 @@ impl LowerCtxChirho {
             None => ConDeclChirho::OrdinaryChirho {
                 name_chirho: con_name_chirho,
                 fields_chirho: Vec::new(),
+                prefix_chirho: ConPrefixChirho::unread_quantification_chirho(),
                 span_chirho,
             },
         }
     }
 
-    fn lower_deriving_chirho(
-        &self,
-        node_chirho: &GreenNodeChirho,
-        base_chirho: usize,
-    ) -> Vec<NameChirho> {
-        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
-        let mut names_chirho = Vec::new();
-        let mut saw_via_chirho = false;
-        for child_chirho in &children_chirho {
-            if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
-                // If we see "via", these classes belong to DerivingVia, not regular deriving
-                if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho
-                    && tok_chirho.text_chirho() == "via"
-                {
-                    saw_via_chirho = true;
-                    continue;
-                }
-                if !saw_via_chirho && tok_chirho.kind_chirho() == TokenKindChirho::ConIdChirho {
-                    let s_chirho =
-                        self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
-                    names_chirho.push(self.name_from_token_chirho(tok_chirho, s_chirho));
-                }
-            }
-        }
-        // If `via` was present, these classes are handled by DerivingVia, not regular deriving
-        if saw_via_chirho {
-            names_chirho.clear();
-        }
-        names_chirho
-    }
-
     /// Extract class names before "via" from a `deriving (Class) via Type` clause.
-    /// Unlike `lower_deriving_chirho`, this returns the classes even when via is present.
+    /// Unlike `lower_deriving_clause_chirho`, this returns the classes when via is present.
     fn lower_deriving_via_classes_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
@@ -742,8 +723,9 @@ impl LowerCtxChirho {
                             self.lower_gadt_con_decl_chirho(n_chirho, child_chirho.start_chirho),
                         );
                     } else if n_chirho.kind_chirho() == SyntaxKindChirho::DerivingClauseChirho {
-                        deriving_chirho =
-                            self.lower_deriving_chirho(n_chirho, child_chirho.start_chirho);
+                        deriving_chirho.extend(
+                            self.lower_deriving_clause_chirho(n_chirho, child_chirho.start_chirho),
+                        );
                     }
                 }
             }
@@ -765,6 +747,7 @@ impl LowerCtxChirho {
                 ConDeclChirho::OrdinaryChirho {
                     name_chirho: self.dummy_name_chirho(),
                     fields_chirho: vec![],
+                    prefix_chirho: ConPrefixChirho::unread_quantification_chirho(),
                     span_chirho,
                 }
             }),

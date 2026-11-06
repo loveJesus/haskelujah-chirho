@@ -954,6 +954,12 @@ pub use dictionaries_chirho::{elide_dicts_and_filter_chirho, elide_dicts_chirho}
 #[cfg(test)]
 mod dictionary_tests_chirho;
 
+// ── Newtype constructor erasure for GND-represented newtypes (row 694) ──
+mod newtype_erasure_chirho;
+pub use newtype_erasure_chirho::erase_newtype_constructors_chirho;
+#[cfg(test)]
+mod newtype_erasure_tests_chirho;
+
 // ---------------------------------------------------------------------------
 // Common Subexpression Elimination (CSE)
 // ---------------------------------------------------------------------------

@@ -88,6 +88,7 @@ fn infer_module_data_and_function_chirho() {
                     name_chirho: dummy_name_chirho("Red"),
                     fields_chirho: vec![],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
@@ -324,68 +325,70 @@ fn infer_dollar_applies_constructor_to_lambda_chirho() {
 
 #[test]
 fn infer_lambda_constructor_body_chirho() {
-    let module_chirho =
-        ModuleChirho {
-            name_chirho: dummy_name_chirho("LambdaConstructor"),
-            exports_chirho: None,
-            imports_chirho: vec![],
-            decls_chirho: vec![
-                DeclChirho::DataDeclChirho {
-                    name_chirho: dummy_name_chirho("R"),
-                    type_vars_chirho: vec![],
-                    constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
-                        name_chirho: dummy_name_chirho("V"),
-                        fields_chirho: vec![(
-                            haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
-                            TypeChirho::ConChirho(dummy_name_chirho("Int")),
-                        )],
-                        span_chirho: SpanChirho::DUMMY_CHIRHO,
-                    }],
-                    deriving_chirho: vec![],
-                    kind_sig_chirho: None,
+    let module_chirho = ModuleChirho {
+        name_chirho: dummy_name_chirho("LambdaConstructor"),
+        exports_chirho: None,
+        imports_chirho: vec![],
+        decls_chirho: vec![
+            DeclChirho::DataDeclChirho {
+                name_chirho: dummy_name_chirho("R"),
+                type_vars_chirho: vec![],
+                constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
+                    name_chirho: dummy_name_chirho("V"),
+                    fields_chirho: vec![(
+                        haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
+                        TypeChirho::ConChirho(dummy_name_chirho("Int")),
+                    )],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                DeclChirho::FunBindChirho {
-                    name_chirho: dummy_name_chirho("fChirho"),
-                    matches_chirho: vec![MatchArmChirho {
-                        pats_chirho: vec![],
-                        rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LamChirho {
-                            pats_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("n"))],
-                            body_chirho: Box::new(ExprChirho::AppChirho {
-                                fun_chirho: Box::new(ExprChirho::ConChirho(dummy_name_chirho("V"))),
-                                arg_chirho: Box::new(ExprChirho::AppChirho {
-                                    fun_chirho: Box::new(ExprChirho::AppChirho {
-                                        fun_chirho: Box::new(ExprChirho::VarChirho(
-                                            dummy_name_chirho("*"),
-                                        )),
-                                        arg_chirho: Box::new(ExprChirho::VarChirho(
-                                            dummy_name_chirho("n"),
-                                        )),
-                                        span_chirho: SpanChirho::DUMMY_CHIRHO,
-                                    }),
-                                    arg_chirho: Box::new(ExprChirho::LitChirho(
-                                        LitChirho::IntChirho(2, SpanChirho::DUMMY_CHIRHO, None),
-                                    )),
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
+                }],
+                deriving_chirho: vec![],
+                kind_sig_chirho: None,
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            DeclChirho::FunBindChirho {
+                name_chirho: dummy_name_chirho("fChirho"),
+                matches_chirho: vec![MatchArmChirho {
+                    pats_chirho: vec![],
+                    rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::LamChirho {
+                        pats_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("n"))],
+                        body_chirho: Box::new(ExprChirho::AppChirho {
+                            fun_chirho: Box::new(ExprChirho::ConChirho(dummy_name_chirho("V"))),
+                            arg_chirho: Box::new(ExprChirho::AppChirho {
+                                fun_chirho: Box::new(ExprChirho::AppChirho {
+                                    fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho(
+                                        "*",
+                                    ))),
+                                    arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho(
+                                        "n",
+                                    ))),
                                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                                 }),
+                                arg_chirho: Box::new(ExprChirho::LitChirho(LitChirho::IntChirho(
+                                    2,
+                                    SpanChirho::DUMMY_CHIRHO,
+                                    None,
+                                ))),
                                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                             }),
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                         }),
-                        where_binds_chirho: vec![],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
-                    }],
+                    }),
+                    where_binds_chirho: vec![],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-            ],
-            extensions_chirho: vec![],
-            inline_pragmas_chirho: std::collections::HashMap::new(),
-            specialize_pragmas_chirho: std::collections::HashMap::new(),
-            foreign_exports_chirho: vec![],
-            deriving_via_chirho: vec![],
-            span_chirho: SpanChirho::DUMMY_CHIRHO,
-            origin_supply_chirho: Default::default(),
-        };
+                }],
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        ],
+        extensions_chirho: vec![],
+        inline_pragmas_chirho: std::collections::HashMap::new(),
+        specialize_pragmas_chirho: std::collections::HashMap::new(),
+        foreign_exports_chirho: vec![],
+        deriving_via_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+        origin_supply_chirho: Default::default(),
+    };
 
     let result_chirho = infer_module_chirho(&module_chirho);
     assert!(
@@ -426,6 +429,8 @@ fn infer_result_bind_lambda_constructor_body_chirho() {
                             TypeChirho::VarChirho(dummy_name_chirho("a")),
                         )],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                     ConDeclChirho::OrdinaryChirho {
                         name_chirho: dummy_name_chirho("Err"),
@@ -434,6 +439,8 @@ fn infer_result_bind_lambda_constructor_body_chirho() {
                             TypeChirho::ConChirho(dummy_name_chirho("String")),
                         )],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                 ],
                 deriving_chirho: vec![],

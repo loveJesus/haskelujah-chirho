@@ -89,6 +89,15 @@ impl DictPassCtxChirho {
             ) {
                 return self_dict_head_chirho;
             }
+            // The factory route of `occurrence_head_replacement_chirho` (row 694, M1).
+            // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+            if let Some(dispatched_chirho) = self.method_through_factory_chirho(
+                id_chirho,
+                evidence_class_chirho,
+                local_instance_dicts_chirho,
+            ) {
+                return dispatched_chirho;
+            }
             if let Some((method_name_chirho, _canonical_chirho)) =
                 self.method_occurrence_canon_chirho.get(&id_chirho)
             {

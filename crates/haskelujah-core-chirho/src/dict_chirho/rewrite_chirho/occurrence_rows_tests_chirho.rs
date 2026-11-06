@@ -19,6 +19,19 @@ use crate::expr_chirho::{
 use super::DictPassCtxChirho;
 use crate::dict_chirho::prelude_chirho::fractional_power_chirho::FRACTIONAL_POWER_DOUBLE_INT_CHIRHO;
 
+/// The checker's record proving `class_chirho` at `key_chirho`, with no applied type.
+fn keyed_proof_chirho(
+    class_chirho: &str,
+    key_chirho: &str,
+) -> haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
+    haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
+        applied_head_chirho: None,
+        class_name_chirho: class_chirho.to_string(),
+        ty_key_chirho: Some(key_chirho.to_string()),
+        applied_ty_chirho: None,
+    }
+}
+
 fn con_chirho(name_chirho: &str) -> TyChirho {
     TyChirho::ConChirho(name_chirho.to_string())
 }
@@ -51,8 +64,8 @@ fn fractional_power_requires_two_exact_proofs_and_body_backed_rows_chirho() {
     pass_chirho.reference_evidence_chirho.insert(
         CoreIdChirho(1),
         vec![
-            ("Fractional".to_string(), Some("Double".to_string())),
-            ("Integral".to_string(), Some("Int".to_string())),
+            keyed_proof_chirho("Fractional", "Double"),
+            keyed_proof_chirho("Integral", "Int"),
         ],
     );
     assert_eq!(
@@ -76,11 +89,8 @@ fn fractional_power_requires_two_exact_proofs_and_body_backed_rows_chirho() {
     pass_chirho.reference_evidence_chirho.insert(
         CoreIdChirho(1),
         vec![
-            ("Fractional".to_string(), Some("Double".to_string())),
-            (
-                "Integral".to_string(),
-                Some("IntegerLikeChirho".to_string()),
-            ),
+            keyed_proof_chirho("Fractional", "Double"),
+            keyed_proof_chirho("Integral", "IntegerLikeChirho"),
         ],
     );
     assert_eq!(
@@ -365,10 +375,9 @@ fn a_builtin_alias_without_dict_params_canonicalizes_despite_reference_evidence_
     pass_chirho
         .method_occurrence_canon_chirho
         .insert(CoreIdChirho(30), ("fromList".to_string(), CoreIdChirho(31)));
-    pass_chirho.reference_evidence_chirho.insert(
-        CoreIdChirho(30),
-        vec![("Ord".to_string(), Some("Int".to_string()))],
-    );
+    pass_chirho
+        .reference_evidence_chirho
+        .insert(CoreIdChirho(30), vec![keyed_proof_chirho("Ord", "Int")]);
     let empty_dicts_chirho = HashMap::new();
     let empty_classes_chirho = HashSet::new();
     let empty_local_dicts_chirho = HashMap::new();

@@ -567,6 +567,7 @@ pub(super) fn push_numeric_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
                     "show".to_string(),
                     "showList".to_string(),
                 ],
+                is_class_chirho: true,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );

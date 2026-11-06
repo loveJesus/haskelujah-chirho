@@ -258,6 +258,7 @@ pub(super) fn push_numbers_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
                     "unsafeShiftL".to_string(),
                     "unsafeShiftR".to_string(),
                 ],
+                is_class_chirho: true,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );
@@ -271,6 +272,7 @@ pub(super) fn push_numbers_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
                     "countLeadingZeros".to_string(),
                     "countTrailingZeros".to_string(),
                 ],
+                is_class_chirho: true,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );

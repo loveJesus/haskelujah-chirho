@@ -203,6 +203,7 @@ pub fn visit_decl_walk_chirho(decl_chirho: &mut DeclChirho, walk_chirho: &mut Wa
         | DeclChirho::FixityDeclChirho { .. }
         | DeclChirho::DefaultDeclChirho { .. }
         | DeclChirho::ForeignDeclChirho { .. }
+        | DeclChirho::RoleAnnotationDeclChirho { .. }
         | DeclChirho::StandaloneDerivingDeclChirho { .. } => {}
     }
 }

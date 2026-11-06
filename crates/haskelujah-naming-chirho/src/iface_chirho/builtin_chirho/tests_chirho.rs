@@ -151,18 +151,19 @@ fn builtin_data_foldable_class_methods_exported_chirho() {
 }
 
 #[test]
-fn builtin_prelude_exports_alternative_helpers_chirho() {
+fn builtin_prelude_retains_legacy_helpers_without_an_alternative_class_chirho() {
     let ifaces_chirho = builtin_module_ifaces_chirho();
     let prelude_chirho = ifaces_chirho
         .iter()
         .find(|iface_chirho| iface_chirho.name_chirho == "Prelude")
         .expect("Prelude builtin iface should exist");
+    // GHC-76037: Prelude does not supply this class; its fake export poisons a real import.
     assert!(
-        prelude_chirho
+        !prelude_chirho
             .exports_chirho
             .types_chirho
             .contains_key("Alternative"),
-        "Prelude should export Alternative"
+        "Prelude must not supply the Alternative class"
     );
     assert!(
         prelude_chirho
