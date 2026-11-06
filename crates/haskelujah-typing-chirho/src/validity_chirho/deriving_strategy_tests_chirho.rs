@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use haskelujah_ast_chirho::decl_chirho::{
     ConDeclChirho, DerivedClassChirho, DerivingStrategyChirho, StrictnessChirho,
 };
-use haskelujah_ast_chirho::name_chirho::{BuiltinClassChirho, RawNameChirho};
+use haskelujah_ast_chirho::name_chirho::{BuiltinClassChirho, CompilerClassChirho, RawNameChirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::{ByteOffsetChirho, FileIdChirho, SpanChirho};
 
@@ -168,7 +168,7 @@ fn a_written_strategy_needs_deriving_strategies_chirho() {
         let accepted_chirho = errors_with_chirho(
             vec![data_chirho(vec![class_with_chirho("Show", stock_chirho())])],
             extensions_chirho,
-            &prelude_scope_chirho(&["Show"]),
+            &prelude_scope_chirho(&[CompilerClassChirho::ShowChirho]),
         );
         assert!(
             accepted_chirho.is_empty(),
@@ -392,7 +392,7 @@ fn a_class_application_must_leave_one_parameter_chirho() {
                 strategy_chirho,
             )])],
             &["DerivingStrategies"],
-            &prelude_scope_chirho(&["Eq"]),
+            &prelude_scope_chirho(&[CompilerClassChirho::EqChirho]),
         );
         assert_eq!(
             codes_at_chirho(&found_chirho),
@@ -425,9 +425,9 @@ fn the_stock_strategy_needs_the_builtin_class_itself_chirho() {
     let builtin_chirho = BuiltinClassScopeChirho::new_chirho(HashMap::from([(
         "P.Eq".to_string(),
         BuiltinClassChirho {
+            identity_chirho: CompilerClassChirho::EqChirho,
             module_chirho: "GHC.Classes",
             name_chirho: "Eq",
-            parameter_arities_chirho: &[0],
         },
     )]));
     let prelude_eq_chirho = DerivedClassChirho::new_chirho(
@@ -514,19 +514,18 @@ fn a_standalone_head_derives_for_its_last_type_chirho() {
     );
 }
 
-/// A scope proving each bare spelling for its builtin class, as the implicit Prelude import
-/// does.
-fn prelude_scope_chirho(classes_chirho: &[&'static str]) -> BuiltinClassScopeChirho {
+/// A scope proving each class's bare spelling, as the implicit Prelude import does.
+fn prelude_scope_chirho(classes_chirho: &[CompilerClassChirho]) -> BuiltinClassScopeChirho {
     BuiltinClassScopeChirho::new_chirho(
         classes_chirho
             .iter()
             .map(|&class_chirho| {
                 (
-                    class_chirho.to_string(),
+                    class_chirho.legacy_name_chirho().to_string(),
                     BuiltinClassChirho {
+                        identity_chirho: class_chirho,
                         module_chirho: "Prelude",
-                        name_chirho: class_chirho,
-                        parameter_arities_chirho: &[0],
+                        name_chirho: class_chirho.legacy_name_chirho(),
                     },
                 )
             })
@@ -564,7 +563,7 @@ fn an_explicit_stock_needs_the_builtin_proof_chirho() {
     let found_chirho = errors_with_chirho(
         vec![data_chirho(vec![class_with_chirho("Num", stock_chirho())])],
         &["DerivingStrategies"],
-        &prelude_scope_chirho(&["Num"]),
+        &prelude_scope_chirho(&[CompilerClassChirho::NumChirho]),
     );
     assert_eq!(
         codes_at_chirho(&found_chirho),

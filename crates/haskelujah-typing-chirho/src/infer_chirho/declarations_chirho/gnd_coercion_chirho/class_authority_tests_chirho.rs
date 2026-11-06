@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use haskelujah_ast_chirho::decl_chirho::{DeclChirho, TyVarChirho};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{
-    BuiltinClassChirho, BuiltinClassScopeChirho, NameChirho, RawNameChirho,
+    BuiltinClassChirho, BuiltinClassScopeChirho, CompilerClassChirho, NameChirho, RawNameChirho,
 };
 use haskelujah_span_chirho::SpanChirho;
 
@@ -59,22 +59,17 @@ fn module_chirho(decls_chirho: Vec<DeclChirho>) -> ModuleChirho {
     }
 }
 
-/// K01 proves `Show`, `P.Show` (under `import qualified Prelude as P`) and `Ix`.
+/// K01 proves `Show` and `P.Show` (under `import qualified Prelude as P`), as its naming table
+/// does for those imports.
 fn scope_chirho() -> BuiltinClassScopeChirho {
     let show_chirho = BuiltinClassChirho {
+        identity_chirho: CompilerClassChirho::ShowChirho,
         module_chirho: "GHC.Show",
         name_chirho: "Show",
-        parameter_arities_chirho: &[0],
-    };
-    let ix_chirho = BuiltinClassChirho {
-        module_chirho: "GHC.Ix",
-        name_chirho: "Ix",
-        parameter_arities_chirho: &[0],
     };
     BuiltinClassScopeChirho::new_chirho(HashMap::from([
         ("Show".to_string(), show_chirho),
         ("P.Show".to_string(), show_chirho),
-        ("Ix".to_string(), ix_chirho),
     ]))
 }
 
@@ -157,8 +152,9 @@ fn a_proven_builtin_names_only_its_seeded_entry_chirho() {
         ),
         None
     );
-    // A proven builtin the seed does not hold has no compiler-proven entry.
-    assert!(gap_chirho(vec![], &env_chirho, &name_chirho("Ix")).is_some());
+    // A checker environment without the proven builtin's entry has no compiler-proven entry
+    // either. Every class K01 proves is in the standard seed, so the seed never lacks one.
+    assert!(gap_chirho(vec![], &ClassEnvChirho::new_chirho(), &name_chirho("Show")).is_some());
 }
 
 #[test]

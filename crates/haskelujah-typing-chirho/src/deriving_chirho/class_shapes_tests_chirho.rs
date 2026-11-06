@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use haskelujah_ast_chirho::decl_chirho::{ClassMethodChirho, DerivedClassChirho};
 use haskelujah_ast_chirho::name_chirho::{
-    BuiltinClassChirho, BuiltinClassScopeChirho, NameChirho, RawNameChirho,
+    BuiltinClassChirho, BuiltinClassScopeChirho, CompilerClassChirho, NameChirho, RawNameChirho,
 };
 use haskelujah_span_chirho::SpanChirho;
 
@@ -80,23 +80,32 @@ fn module_chirho(decls_chirho: Vec<DeclChirho>) -> ModuleChirho {
     }
 }
 
-/// K01 proves `Monad` (one argument) and `Show` (none).
+/// K01 proves `Monad` (one argument), `Show` (none) and `MonadTrans`, whose parameter takes a
+/// constructor and then a type.
 fn scope_chirho() -> BuiltinClassScopeChirho {
     BuiltinClassScopeChirho::new_chirho(HashMap::from([
         (
             "Monad".to_string(),
             BuiltinClassChirho {
+                identity_chirho: CompilerClassChirho::MonadChirho,
                 module_chirho: "GHC.Base",
                 name_chirho: "Monad",
-                parameter_arities_chirho: &[1],
             },
         ),
         (
             "Show".to_string(),
             BuiltinClassChirho {
+                identity_chirho: CompilerClassChirho::ShowChirho,
                 module_chirho: "GHC.Show",
                 name_chirho: "Show",
-                parameter_arities_chirho: &[0],
+            },
+        ),
+        (
+            "MonadTrans".to_string(),
+            BuiltinClassChirho {
+                identity_chirho: CompilerClassChirho::MonadTransChirho,
+                module_chirho: "Control.Monad.Trans.Class",
+                name_chirho: "MonadTrans",
             },
         ),
     ]))
@@ -229,4 +238,22 @@ fn every_other_class_argument_shape_stays_refused_chirho() {
         SpanChirho::DUMMY_CHIRHO,
     )));
     assert_eq!(arity_chirho(local_chirho(), &foreign_chirho), None);
+}
+
+#[test]
+fn a_transformer_superclass_proves_no_type_argument_count_chirho() {
+    // `class MonadTrans m => LiftChirho r m`: `m` takes a constructor and then a type, so no
+    // count of `Type` arguments describes it, and its two outer arrows never stand in for one.
+    assert_eq!(
+        arity_chirho(
+            vec![class_chirho(
+                "LiftChirho",
+                vec![on_last_chirho("MonadTrans")],
+                plain_last_chirho(),
+                &[]
+            )],
+            &applied_chirho(name_chirho("LiftChirho"))
+        ),
+        None
+    );
 }

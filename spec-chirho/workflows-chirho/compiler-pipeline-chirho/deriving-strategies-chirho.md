@@ -27,7 +27,7 @@ flowchart TD
     scope_chirho["Pipeline: build_builtin_class_scope_chirho before deriving (K01)"] --> route_chirho
     route_chirho -->|stock| stock_chirho["declaration_heads_chirho.rs derive_stock_class_chirho: the proven class's generator; spell_generated_class_chirho names the instance's class as written"]
     route_chirho -->|anyclass| empty_chirho["derive_anyclass_chirho: an empty instance over the full head C args (T vs), using the class defaults"]
-    route_chirho -->|newtype| gnd_chirho["newtype_route_chirho.rs derive_newtype_instance_chirho: C args rep => C args N, the written class arguments first, eta-reduced by the builtin class's parameter arity or the local class shape's, no methods"]
+    route_chirho -->|newtype| gnd_chirho["newtype_route_chirho.rs derive_newtype_instance_chirho: C args rep => C args N, the written class arguments first, eta-reduced by the outer arrows of the builtin class's one parameter kind (MonadTrans drops two) or by the local class shape's Type arity, no methods"]
     route_chirho --> inventory_chirho["newtype_strategy_classes_chirho: each newtype's newtype-routed classes"]
     stock_chirho --> metadata_chirho["Show and Enum metadata: only entries the same judgment names as stock Show or Enum"]
     inventory_chirho --> info_chirho["Driver build_newtype_info_chirho, with the module's real K01 scope: NewtypeInfoChirho.newtype_derived_classes_chirho"]
@@ -50,9 +50,9 @@ flowchart TD
     erase_chirho --> merge_chirho["Native merge: the union of every module's erased set, refusing a spelling another module declares as a constructor"]
     alias_chirho --> erase_chirho
     erase_chirho --> backends_chirho["Interpreter, LLVM and Cranelift all receive the field itself"]
-    shapes_chirho["class_shapes_chirho.rs LocalClassShapesChirho: a module-owned methodless class with one parameter more than the clause writes, its last parameter's arity proven by a kind annotation or a K01 superclass (T3955's MonadReader a)"] --> validity_chirho
+    shapes_chirho["class_shapes_chirho.rs LocalClassShapesChirho: a module-owned methodless class with one parameter more than the clause writes, its last parameter's Type arity proven by a kind annotation or a K01 superclass's closed parameter kind, both read by kind_arity_chirho (T3955's MonadReader a; MonadTrans proves none)"] --> validity_chirho
     shapes_chirho --> route_chirho
-    templates_chirho["Typing class_instance_chirho.rs: each superclass as a template over the class's own variables; superclass_closure_chirho entails at a given's own arguments, so AskChirho Int m gives Monad m"] --> multi_written_chirho
+    templates_chirho["Typing class_instance_chirho.rs: each superclass as a template over the class's own variables; superclass_search_chirho.rs superclass_entails_chirho, bounded and demand-directed, entails at a given's own arguments, so AskChirho Int m gives Monad m"] --> multi_written_chirho
     templates_chirho --> multi_factory_chirho
     multi_written_chirho["generate_instance_dicts_chirho: a written multi-parameter instance's superclass fields are the templates at its whole head, each the one context-free instance matching it (context_free_dictionary_chirho); an unbuilt field refuses the module, and only a complete instance is registered"] --> registry_chirho
     multi_written_chirho --> refuse_chirho
@@ -71,15 +71,19 @@ flowchart TD
 - A written instance with a context on a newtype head (`instance Show Int => Show Wrap`) is
   not GND: only the newtype's own deriving declarations put a class in
   `newtype_derived_classes_chirho`, so the dictionary pass never replaces its methods.
-- A GND head drops the trailing variables the class's last parameter needs, read from the
-  builtin class scope naming proved: `Functor`, `Applicative` and `Monad` drop one. A local or
-  imported source class keeps the full head, as before.
+- A GND head drops as many trailing variables as the outer arrows of the builtin class's one
+  parameter kind, read from K01's schema for the class naming proved: `Functor`,
+  `Applicative`, `Monad`, `MonadIO`, `MonadFix` and `Alternative` drop one, `MonadTrans` two
+  (T12734). A schema with a hidden binder, several parameters or a kind outside `Type` and its
+  arrows keeps the full head, as does a local or imported source class.
 - A class keeps its written arguments. The anyclass route derives `C args (T vs)` through the
   ordinary multi-parameter instance path. The stock generators write one head type, so
   declaration validity refuses a stock class applied to arguments (GHC-73993). The newtype
   strategy derives `C args rep => C args N` for a class the module declares itself with no
-  method, one parameter more than the clause writes, and a last parameter whose arity a kind
-  annotation or a K01 superclass proves (T3955's `MonadReader a`, #31897); any other class with
+  method, one parameter more than the clause writes, and a last parameter whose `Type` arity a
+  kind annotation or a K01 superclass's closed parameter kind proves, both by one rule
+  (T3955's `MonadReader a`, #31897; an eta count never stands in for a kind, so `MonadTrans`
+  proves none); any other class with
   arguments is Unsupported there. GHC accepts those too (W3 prints `MeterChirho 12`), so they
   are a compatibility gap, not GHC coverage.
 - A class records each superclass as a template over its own variables (`Monad m` for

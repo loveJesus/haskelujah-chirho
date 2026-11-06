@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 
 use haskelujah_ast_chirho::decl_chirho::DerivingStrategyChirho;
-use haskelujah_ast_chirho::name_chirho::{BuiltinClassChirho, RawNameChirho};
+use haskelujah_ast_chirho::name_chirho::{BuiltinClassChirho, CompilerClassChirho, RawNameChirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
 
@@ -60,8 +60,8 @@ fn module_chirho(decls_chirho: Vec<DeclChirho>) -> ModuleChirho {
     }
 }
 
-/// A scope proving each spelling for its builtin class, all over one `Type` parameter.
-fn scope_chirho(spellings_chirho: &[(&str, &'static str)]) -> BuiltinClassScopeChirho {
+/// A scope proving each spelling for its builtin class.
+fn scope_chirho(spellings_chirho: &[(&str, CompilerClassChirho)]) -> BuiltinClassScopeChirho {
     BuiltinClassScopeChirho::new_chirho(
         spellings_chirho
             .iter()
@@ -69,9 +69,9 @@ fn scope_chirho(spellings_chirho: &[(&str, &'static str)]) -> BuiltinClassScopeC
                 (
                     spelling_chirho.to_string(),
                     BuiltinClassChirho {
+                        identity_chirho: class_chirho,
                         module_chirho: "GHC.Classes",
-                        name_chirho: class_chirho,
-                        parameter_arities_chirho: &[0],
+                        name_chirho: class_chirho.legacy_name_chirho(),
                     },
                 )
             })
@@ -82,7 +82,10 @@ fn scope_chirho(spellings_chirho: &[(&str, &'static str)]) -> BuiltinClassScopeC
 #[test]
 fn a_proven_spelling_names_its_builtin_class_whatever_its_qualifier_chirho() {
     // `import qualified Prelude as P` beside a local `class Eq` (the S2 control's module).
-    let builtin_chirho = scope_chirho(&[("P.Eq", "Eq"), ("P.Num", "Num")]);
+    let builtin_chirho = scope_chirho(&[
+        ("P.Eq", CompilerClassChirho::EqChirho),
+        ("P.Num", CompilerClassChirho::NumChirho),
+    ]);
     let module_chirho = module_chirho(vec![class_decl_chirho("Eq", &["valueChirho"])]);
     let identity_chirho = StockIdentityChirho::of_module_chirho(&module_chirho, &builtin_chirho);
     assert_eq!(
@@ -109,7 +112,7 @@ fn a_proven_spelling_names_its_builtin_class_whatever_its_qualifier_chirho() {
 #[test]
 fn a_local_class_is_never_a_builtin_stock_class_chirho() {
     // The S1 control: `deriving stock (Eq)` beside `class Eq`.
-    let builtin_chirho = scope_chirho(&[("P.Eq", "Eq")]);
+    let builtin_chirho = scope_chirho(&[("P.Eq", CompilerClassChirho::EqChirho)]);
     let module_chirho = module_chirho(vec![class_decl_chirho("Eq", &["valueChirho"])]);
     let identity_chirho = StockIdentityChirho::of_module_chirho(&module_chirho, &builtin_chirho);
     assert_eq!(
@@ -185,7 +188,7 @@ fn only_the_legacy_route_takes_a_spelling_k01_cannot_judge_chirho() {
 
 #[test]
 fn only_a_bare_stock_or_unwritten_entry_names_a_stock_class_chirho() {
-    let builtin_chirho = scope_chirho(&[("Show", "Show")]);
+    let builtin_chirho = scope_chirho(&[("Show", CompilerClassChirho::ShowChirho)]);
     let module_chirho = module_chirho(vec![]);
     let identity_chirho = StockIdentityChirho::of_module_chirho(&module_chirho, &builtin_chirho);
     let span_chirho = SpanChirho::DUMMY_CHIRHO;

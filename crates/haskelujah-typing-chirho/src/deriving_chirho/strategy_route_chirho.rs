@@ -194,15 +194,20 @@ impl<'a> DerivingPolicyChirho<'a> {
         }
     }
 
-    /// How many trailing type variables a GND head drops for `class_chirho`: the kind
-    /// arity of the builtin class's last parameter, as naming proved the class. Any other
-    /// class keeps the full head.
+    /// How many trailing type variables a GND head drops for `class_chirho`: the outer arrows
+    /// of the builtin class's one parameter kind, as naming proved the class (`Functor` drops
+    /// one, `MonadTrans` two). Any other class keeps the full head, as does a builtin schema
+    /// with a hidden binder or a kind outside `Type` and its arrows.
     pub(super) fn eta_arity_chirho(&self, class_chirho: &NameChirho) -> usize {
         self.identity_chirho
             .builtin_classes_chirho()
             .class_chirho(&class_chirho.full_name_chirho())
-            .and_then(|builtin_chirho| builtin_chirho.parameter_arities_chirho.last())
-            .map_or(0, |arity_chirho| usize::from(*arity_chirho))
+            .and_then(|builtin_chirho| {
+                builtin_chirho
+                    .schema_chirho()
+                    .single_parameter_eta_arity_chirho()
+            })
+            .unwrap_or(0)
     }
 }
 

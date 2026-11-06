@@ -177,9 +177,9 @@ impl<'a> StockIdentityChirho<'a> {
     }
 
     /// How many parameters `derived_chirho`'s class takes, where the module can tell: a
-    /// builtin class from K01's proof, a local class from its declaration, and, on the legacy
-    /// route of an unwritten strategy, a stock class one. `None` for a class only an interface
-    /// knows.
+    /// builtin class's visible parameters from K01's schema (a hidden kind binder is never
+    /// written), a local class from its declaration, and, on the legacy route of an unwritten
+    /// strategy, a stock class one. `None` for a class only an interface knows.
     pub(crate) fn parameter_count_chirho(
         &self,
         derived_chirho: &DerivedClassChirho,
@@ -189,7 +189,11 @@ impl<'a> StockIdentityChirho<'a> {
             .builtin_classes_chirho
             .class_chirho(&class_chirho.full_name_chirho())
         {
-            return Some(builtin_chirho.parameter_arities_chirho.len());
+            return Some(
+                builtin_chirho
+                    .schema_chirho()
+                    .visible_parameter_count_chirho(),
+            );
         }
         if self.names_local_chirho(class_chirho) {
             return self

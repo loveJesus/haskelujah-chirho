@@ -2,15 +2,15 @@
 
 //! Deriving strategy routes (row 694): an explicit `newtype` takes the representation's
 //! instance and never a stock one, `stock` and `anyclass` stay themselves, an unwritten
-//! strategy keeps the legacy policy, and a GND head drops the variables a builtin class
-//! over `Type -> Type` needs.
+//! strategy keeps the legacy policy, and a GND head drops the variables a builtin class's
+//! parameter kind needs (one for `Functor`, two for `MonadTrans`).
 
 use std::collections::HashMap;
 
 use haskelujah_ast_chirho::decl_chirho::{
     DerivedClassChirho, DerivingStrategyChirho, StrictnessChirho,
 };
-use haskelujah_ast_chirho::name_chirho::BuiltinClassChirho;
+use haskelujah_ast_chirho::name_chirho::{BuiltinClassChirho, CompilerClassChirho};
 use haskelujah_ast_chirho::ty_chirho::ConstraintChirho;
 
 use super::*;
@@ -166,7 +166,7 @@ fn the_stock_twin_and_an_unwritten_show_render_the_constructor_chirho() {
                 "Show",
                 strategy_chirho.clone(),
             )])]),
-            &prelude_scope_chirho(&["Show"]),
+            &prelude_scope_chirho(&[CompilerClassChirho::ShowChirho]),
         );
         let shapes_chirho = instance_shapes_chirho(&result_chirho);
         assert_eq!(shapes_chirho.len(), 1, "{strategy_chirho:?}");
@@ -233,35 +233,23 @@ fn db_with_chirho() -> ModuleChirho {
     )])
 }
 
-/// A scope proving each bare spelling for its builtin class over one `Type` parameter, as
-/// the implicit Prelude import does.
-fn prelude_scope_chirho(classes_chirho: &[&'static str]) -> BuiltinClassScopeChirho {
+/// A scope proving each class's bare spelling, as the implicit Prelude import does.
+fn prelude_scope_chirho(classes_chirho: &[CompilerClassChirho]) -> BuiltinClassScopeChirho {
     BuiltinClassScopeChirho::new_chirho(
         classes_chirho
             .iter()
             .map(|&class_chirho| {
                 (
-                    class_chirho.to_string(),
+                    class_chirho.legacy_name_chirho().to_string(),
                     BuiltinClassChirho {
+                        identity_chirho: class_chirho,
                         module_chirho: "Prelude",
-                        name_chirho: class_chirho,
-                        parameter_arities_chirho: &[0],
+                        name_chirho: class_chirho.legacy_name_chirho(),
                     },
                 )
             })
             .collect(),
     )
-}
-
-fn functor_scope_chirho() -> BuiltinClassScopeChirho {
-    BuiltinClassScopeChirho::new_chirho(HashMap::from([(
-        "Functor".to_string(),
-        BuiltinClassChirho {
-            module_chirho: "GHC.Base",
-            name_chirho: "Functor",
-            parameter_arities_chirho: &[1],
-        },
-    )]))
 }
 
 /// The single instance's head type and context argument.
@@ -287,8 +275,10 @@ fn gnd_head_and_context_chirho(result_chirho: &DerivingResultChirho) -> (TypeChi
 
 #[test]
 fn a_gnd_head_drops_the_variables_a_constructor_class_needs_chirho() {
-    let result_chirho =
-        derive_instances_with_builtins_chirho(&db_with_chirho(), &functor_scope_chirho());
+    let result_chirho = derive_instances_with_builtins_chirho(
+        &db_with_chirho(),
+        &prelude_scope_chirho(&[CompilerClassChirho::FunctorChirho]),
+    );
     let (head_chirho, representation_chirho) = gnd_head_and_context_chirho(&result_chirho);
     // `Functor (DBImpl b e) => Functor (DBWith b e)`
     assert_eq!(
@@ -332,10 +322,44 @@ fn a_representation_that_cannot_drop_the_variable_derives_nothing_chirho() {
         con_ty_chirho("Int"),
         vec![derived_chirho("Functor", newtype_chirho())],
     )]);
-    let result_chirho =
-        derive_instances_with_builtins_chirho(&module_chirho, &functor_scope_chirho());
+    let result_chirho = derive_instances_with_builtins_chirho(
+        &module_chirho,
+        &prelude_scope_chirho(&[CompilerClassChirho::FunctorChirho]),
+    );
     assert!(result_chirho.instances_chirho.is_empty());
     assert_eq!(result_chirho.warnings_chirho.len(), 1);
+}
+
+#[test]
+fn a_gnd_head_drops_the_two_variables_a_transformer_class_needs_chirho() {
+    // T12734: `newtype KnownTyx cls t m a = KnownTyx (IdentityT m a) deriving newtype
+    // MonadTrans` asks for `MonadTrans IdentityT => MonadTrans (KnownTyx cls t)`.
+    let field_chirho = app_ty_chirho(
+        app_ty_chirho(con_ty_chirho("IdentityT"), var_ty_chirho("m")),
+        var_ty_chirho("a"),
+    );
+    let module_chirho = module_chirho(vec![newtype_decl_chirho(
+        "KnownTyx",
+        &["cls", "t", "m", "a"],
+        TypeChirho::ParenChirho {
+            inner_chirho: Box::new(field_chirho),
+            span_chirho: gen_span_chirho(),
+        },
+        vec![derived_chirho("MonadTrans", newtype_chirho())],
+    )]);
+    let result_chirho = derive_instances_with_builtins_chirho(
+        &module_chirho,
+        &prelude_scope_chirho(&[CompilerClassChirho::MonadTransChirho]),
+    );
+    let (head_chirho, representation_chirho) = gnd_head_and_context_chirho(&result_chirho);
+    assert_eq!(
+        head_chirho,
+        app_ty_chirho(
+            app_ty_chirho(con_ty_chirho("KnownTyx"), var_ty_chirho("cls")),
+            var_ty_chirho("t"),
+        )
+    );
+    assert_eq!(representation_chirho, con_ty_chirho("IdentityT"));
 }
 
 #[test]
@@ -386,7 +410,7 @@ fn an_anyclass_show_has_no_constructor_rendering_chirho() {
         kind_sig_chirho: None,
         span_chirho: gen_span_chirho(),
     };
-    let prelude_chirho = prelude_scope_chirho(&["Show"]);
+    let prelude_chirho = prelude_scope_chirho(&[CompilerClassChirho::ShowChirho]);
     assert!(
         derived_show_metadata_with_builtins_chirho(
             &module_chirho(vec![data_chirho(stock_chirho())]),
@@ -553,9 +577,9 @@ fn a_stock_instance_names_its_class_as_written_chirho() {
     let builtin_chirho = BuiltinClassScopeChirho::new_chirho(HashMap::from([(
         "P.Eq".to_string(),
         BuiltinClassChirho {
+            identity_chirho: CompilerClassChirho::EqChirho,
             module_chirho: "GHC.Classes",
             name_chirho: "Eq",
-            parameter_arities_chirho: &[0],
         },
     )]));
     let local_eq_chirho = DeclChirho::ClassDeclChirho {

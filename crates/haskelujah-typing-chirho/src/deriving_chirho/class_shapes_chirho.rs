@@ -19,6 +19,9 @@ use haskelujah_ast_chirho::decl_chirho::{
     AstKindChirho, DeclChirho, DerivedClassChirho, TyVarChirho,
 };
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
+use haskelujah_ast_chirho::name_chirho::{
+    CompilerClassGroundKindChirho, CompilerClassKindAtomChirho, CompilerClassKindChirho,
+};
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 
 use super::stock_identity_chirho::StockIdentityChirho;
@@ -98,8 +101,10 @@ impl LocalClassShapesChirho {
 }
 
 /// How many type arguments `last_chirho` takes: its kind annotation's, or the one superclass
-/// constraints fix through builtin classes naming proves. `None` when nothing proves it or two
-/// proofs disagree.
+/// constraints fix through builtin classes naming proves. A builtin class proves its closed
+/// parameter kind, read by the same rule as an annotation; its eta count never stands in for
+/// that kind (`MonadTrans t` makes `t` take a constructor and then a type, so it proves no
+/// count of `Type` arguments). `None` when nothing proves it or two proofs disagree.
 fn last_parameter_arity_chirho(
     last_chirho: &TyVarChirho,
     context_chirho: &[ConstraintChirho],
@@ -131,10 +136,14 @@ fn last_parameter_arity_chirho(
         };
         for (index_chirho, argument_chirho) in args_chirho.iter().enumerate() {
             if is_variable_chirho(argument_chirho, last_chirho.name_chirho.text_chirho())
-                && let Some(arity_chirho) =
-                    builtin_chirho.parameter_arities_chirho.get(index_chirho)
+                && let Some(arity_chirho) = builtin_chirho
+                    .schema_chirho()
+                    .closed_parameter_kind_chirho(index_chirho)
+                    .and_then(written_kind_chirho)
+                    .as_ref()
+                    .and_then(kind_arity_chirho)
             {
-                proofs_chirho.push(usize::from(*arity_chirho));
+                proofs_chirho.push(arity_chirho);
             }
         }
     }
@@ -156,6 +165,23 @@ fn kind_arity_chirho(kind_chirho: &AstKindChirho) -> Option<usize> {
             kind_arity_chirho(result_chirho).map(|rest_chirho| rest_chirho + 1)
         }
         _ => None,
+    }
+}
+
+/// A builtin class's closed parameter kind as a written one, so an annotation and a builtin
+/// proof share `kind_arity_chirho`. `None` for an atom other than `Type`.
+fn written_kind_chirho(kind_chirho: &CompilerClassKindChirho) -> Option<AstKindChirho> {
+    match kind_chirho {
+        CompilerClassKindChirho::AtomChirho(CompilerClassKindAtomChirho::GroundChirho(
+            CompilerClassGroundKindChirho::TYPE_CHIRHO,
+        )) => Some(AstKindChirho::StarChirho),
+        CompilerClassKindChirho::ArrowChirho(argument_chirho, result_chirho) => {
+            Some(AstKindChirho::ArrowChirho(
+                Box::new(written_kind_chirho(argument_chirho)?),
+                Box::new(written_kind_chirho(result_chirho)?),
+            ))
+        }
+        CompilerClassKindChirho::AtomChirho(_) => None,
     }
 }
 
