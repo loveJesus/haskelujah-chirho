@@ -10,9 +10,11 @@ Base: `7075a7df`. This worktree owns only the native launcher role, its callers 
 - [x] Carry explicit program role through harness and CLI/Cabal artifact emission.
 - [x] Prepare emitted controls for lazy result discard, effects, errors and value evaluation.
 - [x] Document the open generic-entry dictionary consumer seam and exact pending gate.
-- [ ] Format, inspect the owned diff, scan the outgoing range and commit/push source only.
+- [x] Format, inspect the owned diff, scan the outgoing range and commit/push source only.
 - [ ] Run the focused real-backend packet only after the sole scheduler grants a compiler slot.
 
 The implementation belongs in `core::io_actions_chirho` for the shared role, with small `codegen_chirho/native_entry_chirho.rs` modules owning only the C launcher in each backend. Backends already depend on Core; no dependency direction changes. The role does not instantiate an entry dictionary, alter a typeclass/defaulting decision, force an IO payload or change RTS/root ownership.
 
 Root granted the launcher/CLI regions and the two-line Cabal producer lease before those edits. The row 704 candidate is frozen; this unit owns no frame or worker changes. Cabal frontend program-entry obligation propagation remains a separate named seam; selecting Program role for the executable artifact does not supply that missing frontend obligation.
+
+Source implementation `e8b931f1ebaf8965cbc4ec38db033ad9dbb3d0ff` is pushed to `gh_chirho/native-entry-role-706-chirho`. Standalone rustfmt check, Git whitespace checks, staged gitleaks and exact outgoing-range gitleaks passed. No compiler, native executable or GHC ran. The compiler packet stays unchecked until the sole scheduler grants its slot.

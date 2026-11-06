@@ -28,3 +28,5 @@ Record the generic effect control separately if it remains red. Program launcher
 After the focused target, rerun the original row 692 restriction controls at the assembled candidate, preserving their sources/expected results and old `7075a7df`/w08 receipts. The row 704 owner separately gates root-lifetime behavior; unit 706 changes neither the RTS worker nor generated frame ownership. Preserve `99898c26`'s independent RTS build policy when assembling the harness/CLI hunks.
 
 Cabal executable IR emission receives Program role at its existing producer, not by regenerating IR only in the CLI. Cabal frontend entry-obligation propagation remains open. The launcher regions extracted from both backends are byte-identical in `7075a7df` and `39a5a806`; preserve row 704 module imports and all frame/handoff hunks when assembling.
+
+Source implementation: `e8b931f1ebaf8965cbc4ec38db033ad9dbb3d0ff`, pushed on `native-entry-role-706-chirho`. A following documentation-only receipt marks that source preparation complete. The implementation's formatter, whitespace and exact outgoing gitleaks checks passed; behavior remains unrun.
