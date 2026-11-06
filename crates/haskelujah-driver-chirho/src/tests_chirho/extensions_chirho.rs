@@ -23,7 +23,10 @@ use haskelujah_syntax_chirho::SourceFileChirho;
 
 mod corpus_kind_transport_chirho;
 mod deferral_flags_chirho;
+mod deriving_policy_chirho;
+mod deriving_strategies_chirho;
 mod expression_annotations_chirho;
+mod gnd_coercion_chirho;
 mod impredicative_application_chirho;
 mod kind_import_transport_chirho;
 mod kind_qualified_context_chirho;
@@ -32,6 +35,8 @@ mod ordinary_elaboration_chirho;
 mod qualified_do_chirho;
 mod recursive_do_chirho;
 mod required_type_arguments_chirho;
+mod role_annotation_checks_chirho;
+mod role_surface_checks_chirho;
 mod type_level_character_families_chirho;
 mod typed_hole_policy_chirho;
 

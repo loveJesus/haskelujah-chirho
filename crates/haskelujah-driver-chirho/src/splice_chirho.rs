@@ -610,7 +610,6 @@ mod tests_chirho {
             name_chirho: mk_name_chirho("Person"),
             type_vars_chirho: vec![],
             constructors_chirho: vec![ConDeclChirho::RecordChirho {
-                prefix_chirho: Default::default(),
                 name_chirho: mk_name_chirho("Person"),
                 fields_chirho: vec![
                     FieldDeclChirho {
@@ -631,6 +630,7 @@ mod tests_chirho {
                     },
                 ],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
             }],
             deriving_chirho: vec![],
             kind_sig_chirho: None,
@@ -808,7 +808,6 @@ mod tests_chirho {
                 name_chirho: mk_name_chirho("Config"),
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![ConDeclChirho::RecordChirho {
-                    prefix_chirho: Default::default(),
                     name_chirho: mk_name_chirho("Config"),
                     fields_chirho: vec![
                         FieldDeclChirho {
@@ -829,6 +828,7 @@ mod tests_chirho {
                         },
                     ],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,

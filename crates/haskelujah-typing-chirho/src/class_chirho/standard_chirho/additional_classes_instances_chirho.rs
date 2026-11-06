@@ -16,6 +16,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::AlternativeChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Alternative".to_string(),
                 supers_chirho: vec!["Applicative".to_string()],
@@ -81,6 +82,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadPlusChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "MonadPlus".to_string(),
                 supers_chirho: vec!["Monad".to_string(), "Alternative".to_string()],
@@ -146,6 +148,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::SemigroupChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Semigroup".to_string(),
                 supers_chirho: vec![],
@@ -175,6 +178,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonoidChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Monoid".to_string(),
                 supers_chirho: vec!["Semigroup".to_string()],
@@ -591,6 +595,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadTransChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "MonadTrans".to_string(),
                 supers_chirho: vec![],
@@ -618,6 +623,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::IsStringChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "IsString".to_string(),
                 supers_chirho: vec![],
@@ -669,6 +675,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::IsListChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "IsList".to_string(),
                 supers_chirho: vec![],
@@ -734,6 +741,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::GenericChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Generic".to_string(),
                 supers_chirho: vec![],

@@ -4,7 +4,8 @@
 //! real front end, every record that carries an origin carries the origin of an
 //! occurrence of that very name, uses of one method at two types keep two
 //! origins, an occurrence with two predicates keeps both under one origin, and
-//! the references deriving generates are identified as well.
+//! the references deriving generates are identified as well. A qualified use
+//! beside a program's namesake keeps its own proof through the join (row 698).
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use std::collections::{HashMap, HashSet};
@@ -238,7 +239,8 @@ fn no_origin_owned_proof_reaches_a_legacy_consumer_at_its_span_chirho() {
         &HashMap::new(),
         &legacy_spans_chirho,
         &HashMap::new(),
-    );
+    )
+    .evidence_chirho;
     assert!(methods_chirho.is_empty(), "{methods_chirho:?}");
 }
 
@@ -298,6 +300,87 @@ fn no_origin_owned_literal_proof_reaches_a_legacy_literal_at_its_span_chirho() {
         &legacy_chirho,
         &HashMap::new(),
         &HashMap::new(),
-    );
+    )
+    .evidence_chirho;
     assert!(joined_chirho.is_empty(), "{joined_chirho:?}");
+}
+
+#[test]
+fn a_qualified_print_beside_the_programs_own_print_keeps_its_own_show_proof_chirho() {
+    // Row 698 P3 (#32075): `mapM_ P.print` inside `Show aChirho =>`, in a module that hides the
+    // Prelude's `print` and defines its own. The checker proves this use's `Show` at the
+    // signature's own key, under the use's origin. The occurrence the desugarer mints for that
+    // origin must take that proof through the join. The source is the pinned probe itself.
+    use haskelujah_ast_chirho::provenance_chirho::{OccurrenceRoleChirho, ProvenanceChirho};
+    use haskelujah_core_chirho::CoreIdChirho;
+    let mut result_chirho = frontend_chirho(include_str!(
+        "../../../tests/typing_integration_chirho/declarations_chirho/first_class_show_print_chirho/qualified_print_beside_own_chirho.hs"
+    ));
+    let mut origins_chirho: Vec<OriginIdChirho> = Vec::new();
+    for decl_chirho in &mut result_chirho.module_chirho.decls_chirho {
+        visit_decl_chirho(decl_chirho, &mut |occurrence_chirho| {
+            if let (OccurrenceMutChirho::ReferenceChirho(name_chirho), Some(origin_chirho)) =
+                (&occurrence_chirho, occurrence_chirho.origin_chirho())
+                && name_chirho.qualifier_chirho() == Some("P")
+                && name_chirho.text_chirho() == "print"
+            {
+                origins_chirho.push(origin_chirho);
+            }
+        });
+    }
+    let [origin_chirho] = origins_chirho.as_slice() else {
+        panic!("the probe stamps one `P.print`: {origins_chirho:?}");
+    };
+    let infer_chirho = &result_chirho.infer_result_chirho;
+    let classes_in_scope_chirho = |name_chirho: &str| {
+        infer_chirho
+            .env_chirho
+            .lookup_chirho(name_chirho)
+            .map(|scheme_chirho| {
+                scheme_chirho
+                    .preds_chirho
+                    .iter()
+                    .map(|pred_chirho| pred_chirho.class_name_chirho.clone())
+                    .collect::<Vec<_>>()
+            })
+    };
+    let own_key_chirho = haskelujah_typing_chirho::infer_chirho::own_dictionary_key_chirho(Some(0));
+    let proofs_chirho: Vec<(&str, &str, &str)> = infer_chirho
+        .method_occurrences_chirho
+        .iter()
+        .filter(|record_chirho| record_chirho.origin_chirho == Some(*origin_chirho))
+        .map(|record_chirho| {
+            (
+                record_chirho.name_chirho.as_str(),
+                record_chirho.class_name_chirho.as_str(),
+                record_chirho.ty_key_chirho.as_str(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        proofs_chirho,
+        vec![("print", "Show", own_key_chirho.as_str())],
+        "the checker's proof for `P.print`; classes in scope: print {:?}, P.print {:?}",
+        classes_in_scope_chirho("print"),
+        classes_in_scope_chirho("P.print")
+    );
+    let occurrence_chirho = CoreIdChirho(30_000);
+    let joined_chirho = crate::join_occurrence_evidence_chirho(
+        infer_chirho,
+        &HashMap::from([(occurrence_chirho, ("print".to_string(), CoreIdChirho(1)))]),
+        &HashMap::new(),
+        &HashMap::new(),
+        &HashMap::from([(
+            occurrence_chirho,
+            ProvenanceChirho::new_chirho(*origin_chirho, OccurrenceRoleChirho::Reference),
+        )]),
+    )
+    .evidence_chirho;
+    assert_eq!(
+        joined_chirho.get(&occurrence_chirho),
+        Some(&("Show".to_string(), own_key_chirho.clone())),
+        "the join dropped the use's own proof; classes in scope: print {:?}, P.print {:?}",
+        classes_in_scope_chirho("print"),
+        classes_in_scope_chirho("P.print")
+    );
 }

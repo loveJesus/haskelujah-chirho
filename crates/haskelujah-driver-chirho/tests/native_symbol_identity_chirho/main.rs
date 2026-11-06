@@ -13,7 +13,8 @@
 //! multi-module programs on the interpreter too, are the `import_identity_chirho`,
 //! `module_exports_chirho` and `reexport_origins_chirho` submodules. Row 656's synonym-closure
 //! programs reuse this harness from the `synonym_closure_chirho` submodule; they test type-synonym
-//! expansion, not symbol identity.
+//! expansion, not symbol identity. Row 694's `newtype_representation_chirho` runs an imported GND
+//! newtype through the same harness.
 //! workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
 
 use std::time::Duration;
@@ -26,6 +27,7 @@ use haskelujah_test_harness_chirho::native_chirho::{
 mod family_registry_chirho;
 mod import_identity_chirho;
 mod module_exports_chirho;
+mod newtype_representation_chirho;
 mod reexport_origins_chirho;
 mod synonym_closure_chirho;
 

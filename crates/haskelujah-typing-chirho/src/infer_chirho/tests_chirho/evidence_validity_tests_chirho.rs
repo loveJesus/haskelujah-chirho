@@ -81,6 +81,7 @@ fn occurrence_record_defaults_unresolved_standard_class_chirho() {
     assert_eq!(
         records_chirho,
         vec![MethodOccurrenceRecordChirho {
+            applied_ty_chirho: None,
             name_chirho: "+".to_string(),
             ordinal_chirho: 0,
             class_name_chirho: "Num".to_string(),
@@ -88,6 +89,7 @@ fn occurrence_record_defaults_unresolved_standard_class_chirho() {
             ground_pred_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             origin_chirho: None,
+            resolved_entry_chirho: None,
         }]
     );
 }
@@ -754,6 +756,7 @@ fn kind_prefix_context_chirho() -> (InferCtxChirho, PredChirho) {
         .class_env_chirho
         .add_class_chirho(ClassDeclChirho::legacy_chirho(
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: vec![TyVarChirho(0)],
                 name_chirho: "HiddenChirho".to_owned(),
                 supers_chirho: Vec::new(),
@@ -878,4 +881,177 @@ fn a_truncated_class_arena_never_turns_retained_prefixes_into_a_closed_universe_
             .is_empty_chirho()
     );
     assert!(!ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho));
+}
+
+/// `head` applied to `args`, as unification leaves a constructor variable's instance.
+fn applied_constructor_chirho(head_chirho: &str, args_chirho: Vec<TyChirho>) -> TyChirho {
+    args_chirho.into_iter().fold(
+        TyChirho::ConChirho(head_chirho.to_string()),
+        |fun_chirho, arg_chirho| TyChirho::AppChirho(Box::new(fun_chirho), Box::new(arg_chirho)),
+    )
+}
+
+/// `m Int` at `m := []` resolves to the applied list constructor `[] Int`, and a head
+/// variable at `(,)` to the applied tuple constructor. Unification equates each with its
+/// sugar, so each keys exactly as its sugar does. Show rows are named by those keys, and
+/// natively `print` of the applied form had found none (row 697).
+#[test]
+fn applied_list_and_saturated_tuple_constructors_key_as_their_sugar_chirho() {
+    let int_list_chirho = applied_constructor_chirho("[]", vec![TyChirho::int_chirho()]);
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    ctx_chirho.occurrence_captures_chirho.extend([
+        unspanned_capture_chirho("print", 0, "Show", int_list_chirho.clone()),
+        unspanned_capture_chirho(
+            "print",
+            1,
+            "Show",
+            applied_constructor_chirho("[]", vec![TyChirho::char_chirho()]),
+        ),
+        unspanned_capture_chirho(
+            "print",
+            2,
+            "Show",
+            applied_constructor_chirho("Maybe", vec![int_list_chirho.clone()]),
+        ),
+        unspanned_capture_chirho(
+            "print",
+            3,
+            "Show",
+            applied_constructor_chirho(
+                "(,)",
+                vec![TyChirho::int_chirho(), int_list_chirho.clone()],
+            ),
+        ),
+        unspanned_capture_chirho(
+            "==",
+            4,
+            "Eq",
+            applied_constructor_chirho("[]", vec![int_list_chirho.clone()]),
+        ),
+        unspanned_capture_chirho(
+            "compare",
+            5,
+            "Ord",
+            applied_constructor_chirho(
+                "(,,)",
+                vec![
+                    TyChirho::int_chirho(),
+                    TyChirho::bool_chirho(),
+                    TyChirho::char_chirho(),
+                ],
+            ),
+        ),
+    ]);
+
+    let records_chirho =
+        ctx_chirho.finalize_occurrence_records_chirho(&SubstChirho::empty_chirho());
+    let keys_chirho = records_chirho
+        .iter()
+        .map(|record_chirho| record_chirho.ty_key_chirho.as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        keys_chirho,
+        vec![
+            "[Int]",
+            "[Char]",
+            "Maybe [Int]",
+            "(Int,[Int])",
+            "[[Int]]",
+            "(Int,Bool,Char)"
+        ]
+    );
+    assert_eq!(
+        evidence_chirho::ground_list_key_chirho(&int_list_chirho).as_deref(),
+        Some("[Int]"),
+        "reference, literal and local keys take the same whole list key"
+    );
+}
+
+/// Only a fully saturated constructor over ground arguments earns its aggregate key: a
+/// partly applied tuple constructor keeps its applied spelling, and an applied list over
+/// a variable keeps the head `[]` (row 697).
+#[test]
+fn a_partial_tuple_or_open_list_constructor_earns_no_aggregate_key_chirho() {
+    let open_list_chirho =
+        applied_constructor_chirho("[]", vec![TyChirho::VarChirho(TyVarChirho(41))]);
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    ctx_chirho.occurrence_captures_chirho.extend([
+        unspanned_capture_chirho(
+            "show",
+            0,
+            "Show",
+            applied_constructor_chirho("(,)", vec![TyChirho::int_chirho()]),
+        ),
+        unspanned_capture_chirho("show", 1, "Show", open_list_chirho.clone()),
+    ]);
+
+    let records_chirho =
+        ctx_chirho.finalize_occurrence_records_chirho(&SubstChirho::empty_chirho());
+    let keys_chirho = records_chirho
+        .iter()
+        .map(|record_chirho| record_chirho.ty_key_chirho.as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(keys_chirho, vec!["(,) Int", "[]"]);
+    assert_eq!(
+        evidence_chirho::ground_list_key_chirho(&open_list_chirho),
+        None
+    );
+}
+
+#[test]
+fn a_qualified_capture_keeps_the_entry_its_lookup_resolved_chirho() {
+    // Row 698: a qualified reference's capture keeps the qualified entry its scheme came
+    // from, its own spelling (`P.print`) or the one entry it is a suffix of (`Q.go` in
+    // `Data.Q.go`), never a spelling guessed from the reference. An unqualified reference
+    // keeps none, so the join judges it by its bare name as before.
+    use haskelujah_ast_chirho::name_chirho::RawNameChirho;
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let var_chirho = TyVarChirho(0);
+    let show_scheme_chirho = SchemeChirho {
+        vars_chirho: vec![var_chirho].into(),
+        preds_chirho: vec![SchemePredChirho::legacy_chirho(
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Show".to_string(),
+                ty_chirho: TyChirho::VarChirho(var_chirho),
+                extra_tys_chirho: vec![],
+            },
+        )],
+        ty_chirho: TyChirho::fun_chirho(
+            TyChirho::VarChirho(var_chirho),
+            TyChirho::io_chirho(TyChirho::unit_chirho()),
+        ),
+    };
+    for entry_chirho in ["print", "P.print", "Data.Q.go"] {
+        ctx_chirho
+            .env_chirho
+            .bind_chirho(entry_chirho.to_string(), show_scheme_chirho.clone());
+    }
+    let qualified_chirho = |qualifier_chirho: &str, text_chirho: &str| {
+        NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+            qualifier_chirho,
+            text_chirho,
+            SpanChirho::DUMMY_CHIRHO,
+        ))
+    };
+    let pred_chirho = PredChirho::new_chirho("Show", ctx_chirho.fresh_var_chirho());
+    for name_chirho in [
+        qualified_chirho("P", "print"),
+        qualified_chirho("Q", "go"),
+        dummy_name_chirho("print"),
+    ] {
+        ctx_chirho
+            .capture_occurrence_predicates_chirho(&name_chirho, std::slice::from_ref(&pred_chirho));
+    }
+    let entries_chirho: Vec<Option<&str>> = ctx_chirho
+        .occurrence_captures_chirho
+        .iter()
+        .map(|capture_chirho| capture_chirho.resolved_entry_chirho.as_deref())
+        .collect();
+    assert_eq!(
+        entries_chirho,
+        vec![Some("P.print"), Some("Data.Q.go"), None]
+    );
 }

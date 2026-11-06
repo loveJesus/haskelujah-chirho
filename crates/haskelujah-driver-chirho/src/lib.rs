@@ -488,6 +488,10 @@ pub struct CompileResultChirho {
     pub wasm_bytes_chirho: Vec<u8>,
     /// Set of newtype constructor names — these are identity at runtime.
     pub newtype_cons_chirho: std::collections::HashSet<String>,
+    /// The constructors of this module's newtypes that take a class through the newtype
+    /// strategy, erased from its Core. A merge erases them from every module, so an
+    /// importer constructs and matches them as their fields too (row 694).
+    pub gnd_newtype_cons_chirho: std::collections::HashSet<String>,
 }
 
 /// Run only the frontend pipeline and return non-fatal warnings.

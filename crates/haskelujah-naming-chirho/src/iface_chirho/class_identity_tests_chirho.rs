@@ -79,8 +79,8 @@ fn import_chirho(
     }
 }
 
-/// An interface of `origin_chirho` exporting `class_text_chirho` as a type entry that
-/// lists `methods_chirho`.
+/// An interface of `origin_chirho` exporting `class_text_chirho` as a class-marked type
+/// entry that lists `methods_chirho`.
 fn class_iface_chirho(
     module_text_chirho: &str,
     class_text_chirho: &str,
@@ -101,6 +101,7 @@ fn class_iface_chirho(
                 .iter()
                 .map(|method_chirho| method_chirho.to_string())
                 .collect(),
+            is_class_chirho: true,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         },
     );
@@ -286,8 +287,8 @@ fn every_listed_provider_exports_the_class_entry_with_its_witness_chirho() {
                 trusted_builtin_class_chirho(iface_chirho, class_text_chirho)
                     .map(|trusted_chirho| trusted_chirho.class_chirho.name_chirho),
                 Some(class_text_chirho),
-                "{provider_chirho} must export class {class_text_chirho} listing `{}`",
-                entry_chirho.witness_method_chirho
+                "{provider_chirho} must export class {class_text_chirho} showing {:?}",
+                entry_chirho.witness_chirho
             );
         }
     }
@@ -305,11 +306,7 @@ fn every_builtin_class_export_is_a_listed_or_named_untrusted_provider_chirho() {
             else {
                 continue;
             };
-            if !export_chirho
-                .methods_chirho
-                .iter()
-                .any(|method_chirho| method_chirho == entry_chirho.witness_method_chirho)
-            {
+            if !entry_chirho.witness_chirho.shown_by_chirho(export_chirho) {
                 continue;
             }
             let module_text_chirho = iface_chirho.name_chirho.as_str();
@@ -337,77 +334,17 @@ fn the_table_names_each_class_once_at_a_known_parameter_kind_chirho() {
             "{} is listed twice",
             entry_chirho.class_chirho.name_chirho
         );
-        assert!(
-            entry_chirho
-                .class_chirho
-                .schema_chirho()
-                .single_parameter_eta_arity_chirho()
-                .is_some()
-        );
-    }
-}
-
-#[test]
-fn instance_head_coverage_is_a_producer_fact_not_a_builtin_origin_chirho() {
-    let interfaces_chirho = builtin_module_ifaces_chirho();
-    for name_chirho in ["Prelude", "Data.Kind", "Data.Proxy"] {
-        let mut producer_chirho = interfaces_chirho
-            .iter()
-            .find(|interface_chirho| interface_chirho.name_chirho == name_chirho)
-            .unwrap()
-            .clone();
-        // Retain this control's original metadata-free legacy merge lane.
-        producer_chirho.exposure_chirho = None;
-        assert!(
-            producer_chirho
-                .exports_chirho
-                .unary_variable_instance_heads_covered_chirho
-        );
-        let unknown_chirho = ModuleIfaceChirho {
-            exposure_chirho: None,
-            name_chirho: name_chirho.into(),
-            exports_chirho: IfaceExportsChirho {
-                origin_chirho: IfaceOriginChirho::BuiltinChirho,
-                ..IfaceExportsChirho::default()
-            },
-        };
-        for copies_chirho in [
-            vec![producer_chirho.clone(), unknown_chirho.clone()],
-            vec![unknown_chirho.clone(), producer_chirho.clone()],
-        ] {
-            let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
-            assert!(
-                !merged_chirho[0]
-                    .exports_chirho
-                    .unary_variable_instance_heads_covered_chirho
-            );
+        let schema_chirho = entry_chirho.class_chirho.schema_chirho();
+        assert_eq!(schema_chirho.visible_parameter_count_chirho(), 1);
+        if entry_chirho.class_chirho.identity_chirho == CompilerClassChirho::TypeableChirho {
+            // A complete polymorphic telescope does not become a closed
+            // Type-only hint merely because it has one visible argument.
+            assert_eq!(schema_chirho.binders_chirho.len(), 2);
+            assert!(schema_chirho.single_parameter_eta_arity_chirho().is_none());
+            assert!(schema_chirho.closed_parameter_kind_chirho(0).is_none());
+        } else {
+            assert!(schema_chirho.single_parameter_eta_arity_chirho().is_some());
         }
-    }
-}
-
-#[test]
-fn source_interface_copies_cannot_acquire_instance_coverage_by_merge_order_chirho() {
-    let mut producer_chirho = builtin_module_ifaces_chirho()
-        .into_iter()
-        .find(|interface_chirho| interface_chirho.name_chirho == "Data.Proxy")
-        .unwrap();
-    // Selection evidence is absent in this original legacy-copy control.
-    producer_chirho.exposure_chirho = None;
-    let source_chirho = ModuleIfaceChirho {
-        exposure_chirho: None,
-        name_chirho: producer_chirho.name_chirho.clone(),
-        exports_chirho: IfaceExportsChirho::default(),
-    };
-    for copies_chirho in [
-        vec![producer_chirho.clone(), source_chirho.clone()],
-        vec![source_chirho.clone(), producer_chirho.clone()],
-    ] {
-        let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
-        assert!(
-            !merged_chirho[0]
-                .exports_chirho
-                .unary_variable_instance_heads_covered_chirho
-        );
     }
 }
 
@@ -516,4 +453,201 @@ fn selected_standard_class_proofs_survive_real_prelude_and_import_filters_chirho
         &ifaces_chirho,
     );
     assert!(!proven_chirho(&prelude_chirho, "PChirho.Alternative"));
+}
+
+/// A builtin interface exporting the methodless `Typeable` class.
+fn builtin_typeable_chirho(module_text_chirho: &str) -> ModuleIfaceChirho {
+    class_iface_chirho(
+        module_text_chirho,
+        "Typeable",
+        &[],
+        IfaceOriginChirho::BuiltinChirho,
+    )
+}
+
+#[test]
+fn a_methodless_class_is_proved_only_by_its_marked_export_chirho() {
+    // #32090: Typeable lists no method, so its producer's class marker is the witness.
+    let importing_chirho = module_chirho(vec![], vec![import_chirho("Data.Typeable", None, false)]);
+    let scope_chirho = build_builtin_class_scope_chirho(
+        &importing_chirho,
+        &[builtin_typeable_chirho("Data.Typeable")],
+    );
+    assert_eq!(
+        scope_chirho
+            .class_chirho("Typeable")
+            .map(|class_chirho| class_chirho.identity_chirho),
+        Some(CompilerClassChirho::TypeableChirho)
+    );
+    // An unmarked export of the same name, as a data type's would be, proves nothing.
+    let mut unmarked_chirho = builtin_typeable_chirho("Data.Typeable");
+    unmarked_chirho
+        .exports_chirho
+        .types_chirho
+        .get_mut("Typeable")
+        .unwrap()
+        .is_class_chirho = false;
+    assert!(!proven_chirho(
+        &build_builtin_class_scope_chirho(&importing_chirho, &[unmarked_chirho]),
+        "Typeable"
+    ));
+    // Nor does a marked export from a builtin interface the entry does not list, or one
+    // beside the module's own class of that name.
+    assert!(!proven_chirho(
+        &build_builtin_class_scope_chirho(
+            &module_chirho(vec![], vec![import_chirho("TypeableChirho", None, false)]),
+            &[builtin_typeable_chirho("TypeableChirho")],
+        ),
+        "Typeable"
+    ));
+    assert!(!proven_chirho(
+        &build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![class_decl_chirho("Typeable")],
+                vec![import_chirho("Data.Typeable", None, false)],
+            ),
+            &[builtin_typeable_chirho("Data.Typeable")],
+        ),
+        "Typeable"
+    ));
+}
+
+#[test]
+fn each_measured_provider_proves_typeable_through_its_import_list_chirho() {
+    // typeable-route r2: GHC 9.14.1 accepts `import M (Typeable)` from each provider.
+    let ifaces_chirho = builtin_module_ifaces_chirho();
+    for provider_chirho in ["Data.Typeable", "Type.Reflection", "Data.Data"] {
+        let mut selected_chirho = import_chirho(provider_chirho, None, false);
+        selected_chirho.spec_chirho = Some(ImportSpecChirho {
+            hiding_chirho: false,
+            items_chirho: vec![ImportItemChirho::TyConChirho {
+                name_chirho: name_chirho("Typeable"),
+                members_chirho: ExportMembersChirho::NoneChirho,
+            }],
+        });
+        let scope_chirho = build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![],
+                vec![import_chirho("Prelude", None, false), selected_chirho],
+            ),
+            &ifaces_chirho,
+        );
+        assert_eq!(
+            scope_chirho
+                .class_chirho("Typeable")
+                .map(|class_chirho| class_chirho.identity_chirho),
+            Some(CompilerClassChirho::TypeableChirho),
+            "{provider_chirho}"
+        );
+    }
+}
+
+#[test]
+fn each_measured_real_class_provider_proves_its_class_chirho() {
+    // #32156 (t12760-route r2, r3): GHC 9.14.1 exports Real and RealFrac from GHC.Real,
+    // RealFloat from GHC.Float, and all three from the Prelude, each with its member set.
+    let ifaces_chirho = builtin_module_ifaces_chirho();
+    for (provider_chirho, class_name_chirho, identity_chirho) in [
+        ("Prelude", "Real", CompilerClassChirho::RealChirho),
+        ("Prelude", "RealFrac", CompilerClassChirho::RealFracChirho),
+        ("Prelude", "RealFloat", CompilerClassChirho::RealFloatChirho),
+        ("GHC.Real", "Real", CompilerClassChirho::RealChirho),
+        ("GHC.Real", "RealFrac", CompilerClassChirho::RealFracChirho),
+        (
+            "GHC.Float",
+            "RealFloat",
+            CompilerClassChirho::RealFloatChirho,
+        ),
+    ] {
+        let qualified_chirho = build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![],
+                vec![import_chirho(provider_chirho, Some("OwnedChirho"), true)],
+            ),
+            &ifaces_chirho,
+        );
+        assert_eq!(
+            qualified_chirho
+                .class_chirho(&format!("OwnedChirho.{class_name_chirho}"))
+                .map(|class_chirho| class_chirho.identity_chirho),
+            Some(identity_chirho),
+            "{provider_chirho}.{class_name_chirho}"
+        );
+        // The module's own class of that name excludes the builtin one.
+        let local_chirho = build_builtin_class_scope_chirho(
+            &module_chirho(
+                vec![class_decl_chirho(class_name_chirho)],
+                vec![import_chirho(provider_chirho, None, false)],
+            ),
+            &ifaces_chirho,
+        );
+        assert!(
+            !proven_chirho(&local_chirho, class_name_chirho),
+            "{provider_chirho}.{class_name_chirho}"
+        );
+    }
+}
+
+#[test]
+fn instance_head_coverage_is_a_producer_fact_not_a_builtin_origin_chirho() {
+    let interfaces_chirho = builtin_module_ifaces_chirho();
+    for name_chirho in ["Prelude", "Data.Kind", "Data.Proxy"] {
+        let mut producer_chirho = interfaces_chirho
+            .iter()
+            .find(|interface_chirho| interface_chirho.name_chirho == name_chirho)
+            .unwrap()
+            .clone();
+        // Retain this control's original metadata-free legacy merge lane.
+        producer_chirho.exposure_chirho = None;
+        assert!(
+            producer_chirho
+                .exports_chirho
+                .unary_variable_instance_heads_covered_chirho
+        );
+        let unknown_chirho = ModuleIfaceChirho {
+            exposure_chirho: None,
+            name_chirho: name_chirho.into(),
+            exports_chirho: IfaceExportsChirho {
+                origin_chirho: IfaceOriginChirho::BuiltinChirho,
+                ..IfaceExportsChirho::default()
+            },
+        };
+        for copies_chirho in [
+            vec![producer_chirho.clone(), unknown_chirho.clone()],
+            vec![unknown_chirho.clone(), producer_chirho.clone()],
+        ] {
+            let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
+            assert!(
+                !merged_chirho[0]
+                    .exports_chirho
+                    .unary_variable_instance_heads_covered_chirho
+            );
+        }
+    }
+}
+
+#[test]
+fn source_interface_copies_cannot_acquire_instance_coverage_by_merge_order_chirho() {
+    let mut producer_chirho = builtin_module_ifaces_chirho()
+        .into_iter()
+        .find(|interface_chirho| interface_chirho.name_chirho == "Data.Proxy")
+        .unwrap();
+    // Selection evidence is absent in this original legacy-copy control.
+    producer_chirho.exposure_chirho = None;
+    let source_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
+        name_chirho: producer_chirho.name_chirho.clone(),
+        exports_chirho: IfaceExportsChirho::default(),
+    };
+    for copies_chirho in [
+        vec![producer_chirho.clone(), source_chirho.clone()],
+        vec![source_chirho.clone(), producer_chirho.clone()],
+    ] {
+        let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
+        assert!(
+            !merged_chirho[0]
+                .exports_chirho
+                .unary_variable_instance_heads_covered_chirho
+        );
+    }
 }

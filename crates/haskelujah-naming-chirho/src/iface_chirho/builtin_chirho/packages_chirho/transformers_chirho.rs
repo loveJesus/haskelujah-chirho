@@ -593,6 +593,7 @@ pub(super) fn push_transformers_chirho(modules_chirho: &mut Vec<ModuleIfaceChirh
                 name_chirho: "SelectT".to_string(),
                 constructors_chirho: vec!["SelectT".to_string()],
                 methods_chirho: vec!["runSelectT".to_string()],
+                is_class_chirho: false,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );

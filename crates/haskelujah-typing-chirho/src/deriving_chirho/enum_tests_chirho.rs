@@ -4,7 +4,9 @@
 
 use std::collections::HashMap;
 
-use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, StrictnessChirho};
+use haskelujah_ast_chirho::decl_chirho::{
+    ConDeclChirho, DeclChirho, DerivedClassChirho, StrictnessChirho,
+};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 
@@ -14,7 +16,6 @@ use super::derived_enum_metadata_chirho;
 /// A constructor with `fields_chirho` lazy `Int` fields.
 fn constructor_chirho(name_chirho: &str, fields_chirho: usize) -> ConDeclChirho {
     ConDeclChirho::OrdinaryChirho {
-        prefix_chirho: Default::default(),
         name_chirho: var_name_chirho(name_chirho),
         fields_chirho: (0..fields_chirho)
             .map(|_| {
@@ -25,6 +26,7 @@ fn constructor_chirho(name_chirho: &str, fields_chirho: usize) -> ConDeclChirho 
             })
             .collect(),
         span_chirho: gen_span_chirho(),
+        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
     }
 }
 
@@ -43,7 +45,9 @@ fn data_chirho(
         constructors_chirho,
         deriving_chirho: deriving_chirho
             .iter()
-            .map(|class_chirho| var_name_chirho(class_chirho))
+            .map(|class_chirho| {
+                DerivedClassChirho::unspecified_chirho(var_name_chirho(class_chirho))
+            })
             .collect(),
         kind_sig_chirho: None,
         span_chirho: gen_span_chirho(),

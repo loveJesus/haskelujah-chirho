@@ -2,91 +2,67 @@
 
 # Builtin class identity Chirho
 
-K01 (#31175, #31176, #31203). A class spelling names one of the compiler's own classes only when naming proves it from a selected builtin interface. The existing compiler identity owns one ordered class-kind schema. A public class spelling, an interface label and an eta arity do not manufacture that identity or reconstruct its telescope.
+K01 (#31175, #31176, #31203). A class spelling names one of the compiler's own classes only when naming proves it from a selected builtin interface. The existing compiler identity owns one ordered class-kind schema. A spelling, interface label or eta arity does not manufacture that identity or reconstruct its telescope. The methodless Typeable entry uses the provider's truthful class marker (#32090).
 
 ```mermaid
 flowchart TD
-    module_chirho["module: declarations and imports, implicit Prelude injected"] --> build_chirho["naming: build_builtin_class_scope_chirho"]
-    ifaces_chirho["interfaces: origin, type exports and their methods"] --> build_chirho
-    table_chirho["BUILTIN_CLASSES_CHIRHO: compiler identity, public provider label, witness method, exact providers"] --> build_chirho
-    build_chirho --> scope_chirho["ast: BuiltinClassScopeChirho, spelling to BuiltinClassChirho"]
-    scope_chirho --> schema_chirho["ast: CompilerClassChirho.schema_chirho, ordered kinds and binder visibility"]
-    schema_chirho --> arena_chirho["ordinary engine: seed_class_header_chirho materializes one DeclarationSchemeChirho"]
-    arena_chirho --> elaboration_chirho["checked hidden prefix and complete nested kinds in the existing declaration arena"]
-    schema_chirho --> legacy_chirho["legacy KindImportsChirho: lossless closed Type/Constraint/arrow projection only"]
-    legacy_chirho --> heads_chirho["written instance-head and sort judgments"]
+    module_chirho["module: declarations and actual imports"] --> naming_chirho["build_builtin_class_scope_chirho"]
+    iface_chirho["selected interfaces: builtin origin, actual class exports and witnesses"] --> naming_chirho
+    providers_chirho["BUILTIN_CLASSES_CHIRHO: compiler identity, witness and exact measured providers"] --> naming_chirho
+    naming_chirho --> scope_chirho["one BuiltinClassScopeChirho"]
+    scope_chirho --> schema_chirho["CompilerClassChirho.schema_chirho: ordered kinds and binder visibility"]
+    schema_chirho --> arena_chirho["seed_class_header_chirho: one checked DeclarationSchemeChirho"]
+    arena_chirho --> engine_chirho["ordinary declaration/value elaboration: full hidden prefixes and lexical ownership"]
+    schema_chirho --> projection_chirho["legacy direct APIs: lossless closed Type/Constraint/arrow projection only"]
+    scope_chirho --> deriving_chirho["deriving and declaration validity: actual class identity and complete parameter kinds"]
+    type_scope_chirho["same selected type-constructor scope, before deriving"] --> deriving_chirho
+    deriving_chirho --> roles_chirho["GND: separate schema, role and method coercion checks"]
+    roles_chirho --> core_chirho["existing dictionary factories and evidence consumers"]
 ```
 
 ## Trust
 
-A spelling is bound to a builtin class only when all of these hold:
+A spelling is bound to a compiler class only when all of these hold:
 
-- The providing interface's origin is `IfaceOriginChirho::BuiltinChirho`.
-- The class is in the table, and the interface is one of that entry's exact providers.
-- The interface's type export of that name lists the entry's witness method.
+- The providing interface has builtin origin and is selected by the real import route.
+- The class is in the existing table and that interface is one of its exact providers.
+- Its class export carries the entry's witness method, or, for methodless Typeable, the producer's `IfaceTypeChirho::is_class_chirho` marker with no listed method.
 
-Builtin interfaces receive class methods by class name (`builtin_class_methods_chirho`), so the witness proves a type-namespace class entry in the interface. The GHC supplier oracles check the real module's corresponding export. The record's public module label is not a source-unit proof and does not authorize runtime instance selection.
+The builtin supplier produces the actual method membership and class marker. A source class declaration also sets its truthful marker, but source origin cannot prove a compiler class. A false marker, missing declaration or unknown/stub export supplies no positive proof. Export merges retain the marker while preserving the conservative declaration-identity meet. The public module label is not source-unit proof and does not authorize runtime instance selection.
 
 ## Exclusion
 
-A spelling is excluded when anything else binds it:
+A local declaration, source interface, untrusted builtin homonym or different class excludes the spelling. Exclusion is monotonic; a later import cannot restore it. Bare and module-qualified local names are excluded, and aliases, qualification, import lists and hiding use the actual import visibility. A proof is not recovered from a caller's spelling.
 
-- a declaration of this module, under both its bare and its module-qualified spelling;
-- a source interface;
-- an untrusted builtin homonym;
-- a different class.
+## Shared schema and providers
 
-Exclusion is monotonic: no later import restores an excluded spelling. Spellings follow imports exactly, including aliases, `qualified`, import lists and `hiding`.
+The table holds twenty-five classes. Twenty-four have a method witness:
 
-## Table
+- `Type -> Constraint`: Eq, Ord, Show, Enum, Bounded, Num, Integral, Fractional, Floating, Real, RealFrac, RealFloat, Semigroup and Monoid.
+- `(Type -> Type) -> Constraint`: Functor, Applicative, Monad, MonadFail, Foldable, Traversable, Alternative, MonadFix and MonadIO.
+- `((Type -> Type) -> Type -> Type) -> Constraint`: MonadTrans.
 
-The naming table holds twenty-one classes:
+Typeable has `forall {k}. k -> Constraint` and a methodless witness. Its measured providers are Data.Typeable, Type.Reflection and Data.Data. Alternative is provided by Control.Applicative, not Prelude; the erroneous Prelude type export was removed at its producer. MonadFix uses Control.Monad.Fix; MonadIO uses Control.Monad.IO.Class and Control.Monad.Trans; MonadTrans uses Control.Monad.Trans.Class and Control.Monad.Trans. Their real export membership, hidden/local/ambiguous controls and qualified imports are retained in the supplier evidence.
 
-- **`Type -> Constraint`:** Eq, Ord, Show, Enum, Bounded, Num, Integral, Fractional, Floating, Semigroup, Monoid.
-- **`(Type -> Type) -> Constraint`:** Functor, Applicative, Monad, MonadFail, Foldable, Traversable, Alternative, MonadFix, MonadIO.
-- **`((Type -> Type) -> Type -> Type) -> Constraint`:** MonadTrans. Its parameter has two outer result arrows, and its first domain is itself `Type -> Type`.
+Real and RealFrac use Prelude and GHC.Real, while RealFloat uses Prelude and GHC.Float. The existing method table retains their measured member sets and witnesses toRational, properFraction and floatRadix (#32156). Their typing seeds still have empty own-method maps: this identity proof does not claim those methods have dictionary implementations. The retained superclass-chain controls exercise Num/Ord through Real, Fractional through RealFrac and Floating through RealFloat. Read stays outside this naming table because its builtin entry lists read rather than a class method.
 
-The added providers are `Control.Applicative` (`empty`), `Control.Monad.Fix` (`mfix`), `Control.Monad.IO.Class` and `Control.Monad.Trans` (`liftIO`), and `Control.Monad.Trans.Class` and `Control.Monad.Trans` (`lift`). Prelude does not export the Alternative class; its former incorrect type export was removed at the supplier so an actual Control.Applicative import is not poisoned as ambiguous. Existing legacy value helpers are unchanged.
+The compiler schema also describes other positive class producers. Typeable and Coercible keep their inferred shared kind binder; KnownNat, KnownSymbol and KnownChar keep their literal kinds. HasField is explicitly the existing restricted Symbol-label/lifted-field producer; general label kinds and representation-polymorphic fields remain unsupported. No restricted schema is presented as GHC's complete HasField telescope.
 
-Read, Real, RealFrac and RealFloat remain outside this naming proof table because their builtin entries list no real method. The compiler's schema also describes its other existing positive class identities. Typeable and Coercible retain their inferred shared kind slot; KnownNat, KnownSymbol and KnownChar retain their respective literal kinds. HasField is explicitly marked as the existing restricted Symbol-label/lifted-field producer; general label kinds and representation-polymorphic fields remain unsupported.
+## Consumers
 
-## Consumer
+The frontend builds the class and type-constructor scopes before deriving and reuses them afterward: deriving appends instances and introduces no class or type header. The ordinary engine selects the common schema through the positive compiler identity, materializes it into the existing declaration arena and transports the complete hidden prefix. The adapter uses the original elaboration allowance and latches resource exhaustion there. The live frontend does not run the old spelling-based kind pass as another authority.
 
-The driver builds the scope from the interfaces resolution read. The ordinary engine selects the shared schema through the positive compiler identity and materializes it into the existing declaration arena, preserving the hidden prefix and preceding-slot ownership. The adapter charges the original elaboration allowance and latches depth exhaustion in that same state.
+The reusable AST schema is independent of the ordinary engine. Declaration binder visibility/specificity are the same shared types. `closed_parameter_kind_chirho` returns a complete closed Type/arrow tree; `single_parameter_eta_arity_chirho` counts outer result arrows for one required parameter. Hidden, dependent, literal-kind and partial schemas refuse a lossy legacy hint. An eta count never reconstructs a kind, and MonadTrans's first domain stays `(Type -> Type)`.
 
-The reusable AST schema is independent of the ordinary engine and runtime evidence carriers. Declaration binder visibility/specificity are re-exports of the same shared types. `closed_parameter_kind_chirho` returns a complete closed Type/arrow tree; `single_parameter_eta_arity_chirho` counts outer result arrows for a single required parameter. An eta count must never reconstruct the parameter kind. Hidden, dependent, literal-kind and partial schemas refuse that closed legacy hint rather than becoming Type-only approximations.
+A local methodless class with written deriving arguments may prove its last parameter's Type arity from the full AST annotation. That borrowed view accepts only arrows between actual compiler-owned universe atoms. It reads the same selected type-constructor scope, preserves an attached declaration first, refuses opaque/source homonyms and shares one shrinking projection-depth allowance. Fresh grammar star syntax is governed by the module's shared StarIsType policy. Proofless flat projections remain Unknown. Other full kind forms conservatively refuse this GND hint rather than being approximated.
 
-The legacy path still receives `KindImportsChirho`. Its projection binds only schemas it can represent without loss, and its direct empty-scope API mints no spelling-based class proof.
-
-**Seeding.** `seed_builtin_kinds_chirho` does two things:
-- It records the builtin environment's names, before anything is learned from a use.
-- It binds each proven spelling to its class kind. A local declaration is skipped, even if a scope were to list it.
-
-**Instance heads.** A builtin class's instance head is judged whatever the representability switch says, but only under all of these conditions:
-- the class has a single parameter, and the head has exactly one written argument, which cannot be misaligned;
-- the argument's kind is read without inference, from a constructor declared in this module or a builtin type, after its written arguments (list, tuple and function types are `*`);
-- that kind is variable-free.
-
-A variable head, an imported constructor (its kind is learned from a use) and any malformed shape stay unjudged. Only instance heads written in source are judged: the driver passes the count of declarations after splices (`written_decl_count_chirho`), and deriving appends its instances after them. A derived head applies every type parameter (`Monad (T a x)` for generalized newtype deriving), which is the deriver's own boundary, so derived heads stay unjudged (T3955, T12734). A spelling that names a builtin class never falls through to the local-class check.
-
-**Sort judgments.** The proven spellings join the known heads, so `newtype B = B (Show Int)` reports a constraint written where a type is required. This legacy projection does not replace the ordinary engine's checked declaration catalogue or grant authority to unresolved metadata.
+A derived Typeable request is truly ignored: it mints no instance, no GND request and no representation erasure. Source homonyms retain their own route. GND's instance/class schema, role and coercion checks remain separate. A full constructor prefix retains typed binders and context; an unread prefix or any kind-annotated existential remains conservative Unknown in role inference. This producer upgrade does not license new coercions or constructor packing.
 
 ## Controls
 
-- **Naming:** `iface_chirho/class_identity_tests_chirho.rs`.
-  - The trust and exclusion rules, on hand-built interfaces.
-  - The supplier guard over the real builtin interfaces: every listed provider exports the class entry with its witness, and every builtin class export is either a listed provider or a named untrusted one.
-  - All four added classes beside real Prelude: explicit class-only imports, qualified aliases, hidden/local bindings and missing witness methods.
-- **AST:** `name_chirho/compiler_class_kind_chirho/tests_chirho.rs`, including the nested MonadTrans domain, shared invisible kind ownership and non-Type literal kinds.
-- **Typing:** `kind_chirho/class_imports_tests_chirho.rs`, covering:
-  - the movers' and holds' shapes under their extensions;
-  - qualified spellings;
-  - a local homonym;
-  - the direct path.
-- **Driver:** `declarations_chirho/builtin_class_kinds_chirho.rs`, with the GHC-measured holds and negatives and T5120 embedded byte for byte.
-  - `source_chirho/class_kind_tests_chirho.rs` exercises the actual added provider imports, wrong-kind heads and Prelude-qualified Alternative refusal.
-- **Ordinary engine:** `elaboration_chirho/compiler_schemes_chirho/tests_chirho.rs`, including complete class telescopes, unbound-slot refusal and terminal resource failure across a later tiny argument.
-- **GHC:** the `oracle-classes-chirho` set.
-  - One supplier program per class and provider.
-  - A `:kind` probe.
-  - Instance-head holds and negatives, including a local homonym, a source-module homonym and a variable-headed instance.
+- Naming's class-identity tests cover exact selected suppliers, methodless markers, hidden/local/ambiguous imports, source homonyms and missing witnesses.
+- AST compiler-class-kind tests retain nested MonadTrans domains, invisible ownership and literal kinds.
+- The ordinary engine's compiler-scheme tests cover complete telescopes, unbound-slot refusal and terminal resource failure across a later tiny argument.
+- Existing driver class-kind, Typeable and Real-class fixtures retain their measured supplier bytes and original T12760 control; class identity does not itself prove all own methods implemented.
+- Full-kind-arity driver controls exercise the real parsed qualified universe beside a local Type, shared star overrides and a selected-scope proof erased before derivation. The private annotation control retains opacity and the existing depth limit.
+- Existing GND and evidence controls retain constructor-prefix Unknown behavior, complete class heads, applied types, qualified resolved entries and the runtime route's separate proof obligations.

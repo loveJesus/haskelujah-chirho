@@ -121,17 +121,39 @@ pub(crate) fn run_frontend_under_policy_chirho(
     // workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
     let splice_warnings_chirho = splice_result_chirho.warnings_chirho;
 
+    // The builtin classes the module's class spellings name, proven from the same
+    // interfaces resolution reads (K01). Declaration validity and deriving judge which stock
+    // class a derived class names by them, and deriving reads their parameter kinds to
+    // eta-reduce a GND head (row 694); the kind pass binds them. Deriving appends only
+    // instances, which declare no type name, so the scope is the same before and after it.
+    // workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
+    let builtin_class_scope_chirho =
+        haskelujah_naming_chirho::build_builtin_class_scope_chirho(&module_chirho, ifaces_chirho);
+
+    let type_constructor_scope_chirho = std::sync::Arc::new(
+        haskelujah_naming_chirho::build_type_constructor_scope_chirho(
+            &module_chirho,
+            ifaces_chirho,
+        ),
+    );
+
     // Phase 2.4: Declaration validity (row 683), judged on the module as written,
     // before deriving appends generated instances. Reported after name resolution.
     // workflow: compiler-pipeline-chirho/declaration-validity-chirho
     let declaration_validity_chirho =
-        haskelujah_typing_chirho::check_module_declaration_validity_diagnostics_chirho(
+        haskelujah_typing_chirho::check_module_declaration_validity_with_type_scope_diagnostics_chirho(
             &module_chirho,
+            &builtin_class_scope_chirho,
+            Some(&type_constructor_scope_chirho),
         );
 
     // Phase 2.5: Deriving — generate instance declarations for `deriving` clauses
     let deriving_warnings_chirho =
-        haskelujah_typing_chirho::deriving_chirho::apply_deriving_chirho(&mut module_chirho);
+        haskelujah_typing_chirho::deriving_chirho::apply_deriving_with_type_scope_chirho(
+            &mut module_chirho,
+            &builtin_class_scope_chirho,
+            Some(&type_constructor_scope_chirho),
+        );
 
     // Phase 2.6: Do-statement failability — clear the `fail` lowering RESERVED on
     // every bind wherever the pattern cannot fail, so what survives is a
@@ -181,22 +203,13 @@ pub(crate) fn run_frontend_under_policy_chirho(
         return Err(declaration_validity_chirho.diagnostics_chirho);
     }
 
-    let type_constructor_scope_chirho = std::sync::Arc::new(
-        haskelujah_naming_chirho::build_type_constructor_scope_chirho(
-            &module_chirho,
-            ifaces_chirho,
-        ),
-    );
-
     // Phase 3.1: Orphan instance detection
     let orphan_warnings_chirho =
         haskelujah_naming_chirho::check_orphan_instances_chirho(&module_chirho);
 
-    // Phase 3.5: Kind inference, knowing the builtin classes the module's class spellings
-    // name, proven from the same interfaces resolution read (K01).
+    // Phase 3.5: Kind inference uses the same selected class scope built before
+    // deriving, which appends only instances and cannot change class ownership.
     // workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
-    let builtin_class_scope_chirho =
-        haskelujah_naming_chirho::build_builtin_class_scope_chirho(&module_chirho, ifaces_chirho);
     let elaboration_chirho =
         haskelujah_typing_chirho::kind_chirho::elaboration_chirho::elaborate_module_chirho(
             &mut module_chirho,
@@ -537,6 +550,18 @@ pub(crate) fn run_frontend_under_policy_chirho(
     if !deferral_chirho.settle_inference_chirho(&mut infer_result_chirho.diagnostics_chirho) {
         return Err(infer_result_chirho.diagnostics_chirho);
     }
+
+    // Phase 4.1: GND method coercibility (row 694). Every instance the module derives through
+    // the newtype strategy needs a typed proof that its class's methods have one
+    // representation at the newtype and at its representation, before the dictionary pass may
+    // alias a row. A refusal is a declaration error and never defers.
+    // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+    infer_result_chirho.gnd_coercion_proofs_chirho =
+        haskelujah_typing_chirho::prove_gnd_coercions_chirho(
+            &module_chirho,
+            &builtin_class_scope_chirho,
+            &infer_result_chirho.class_env_chirho,
+        )?;
 
     // Phase 4.4: Source-type validity — reject type forms whose licensing
     // extension is not enabled (GHC's GHC-91510: illegal polymorphic /

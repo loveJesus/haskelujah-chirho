@@ -219,6 +219,7 @@ fn mptc_class_decl_chirho() {
     let a_chirho = TyVarChirho(100);
     let b_chirho = TyVarChirho(101);
     let decl_chirho = ClassDeclChirho::legacy_chirho(crate::class_chirho::ClassDeclPartsChirho {
+        super_templates_chirho: Vec::new(),
         kind_vars_chirho: Vec::new(),
         name_chirho: "Convert".to_string(),
         supers_chirho: vec![],
@@ -271,6 +272,7 @@ fn mptc_instance_resolution_chirho() {
     let b_chirho = TyVarChirho(101);
     env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
         crate::class_chirho::ClassDeclPartsChirho {
+            super_templates_chirho: Vec::new(),
             kind_vars_chirho: Vec::new(),
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
@@ -333,6 +335,7 @@ fn mptc_polymorphic_instance_resolution_chirho() {
     let b_chirho = TyVarChirho(101);
     env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
         crate::class_chirho::ClassDeclPartsChirho {
+            super_templates_chirho: Vec::new(),
             kind_vars_chirho: Vec::new(),
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
@@ -388,6 +391,7 @@ fn mptc_entails_chirho() {
     let b_chirho = TyVarChirho(101);
     env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
         crate::class_chirho::ClassDeclPartsChirho {
+            super_templates_chirho: Vec::new(),
             kind_vars_chirho: Vec::new(),
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
@@ -428,6 +432,7 @@ fn mptc_fundeps_stored_chirho() {
     let a_chirho = TyVarChirho(100);
     let b_chirho = TyVarChirho(101);
     let decl_chirho = ClassDeclChirho::legacy_chirho(crate::class_chirho::ClassDeclPartsChirho {
+        super_templates_chirho: Vec::new(),
         kind_vars_chirho: Vec::new(),
         name_chirho: "Convert".to_string(),
         supers_chirho: vec![],
@@ -453,6 +458,7 @@ fn mptc_fundep_improvement_chirho() {
     let b_chirho = TyVarChirho(101);
     env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
         crate::class_chirho::ClassDeclPartsChirho {
+            super_templates_chirho: Vec::new(),
             kind_vars_chirho: Vec::new(),
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
@@ -499,6 +505,7 @@ fn mptc_fundep_no_improvement_on_mismatch_chirho() {
     let b_chirho = TyVarChirho(101);
     env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
         crate::class_chirho::ClassDeclPartsChirho {
+            super_templates_chirho: Vec::new(),
             kind_vars_chirho: Vec::new(),
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],

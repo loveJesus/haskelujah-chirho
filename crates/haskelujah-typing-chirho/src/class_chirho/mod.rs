@@ -25,6 +25,7 @@ mod definitions_chirho;
 mod instance_matching_chirho;
 mod registration_budget_chirho;
 mod standard_chirho;
+mod superclass_search_chirho;
 mod tuple_instances_chirho;
 mod views_chirho;
 pub use arena_chirho::{
@@ -35,6 +36,7 @@ pub use definitions_chirho::{
     PredPartsChirho, QualTyChirho,
 };
 use instance_matching_chirho::match_consistently_chirho;
+pub use superclass_search_chirho::SuperclassSearchExhaustedChirho;
 pub use tuple_instances_chirho::MAX_TUPLE_INSTANCE_ARITY_CHIRHO;
 pub use views_chirho::{
     ClassNamesViewChirho, InstanceListViewChirho, InstanceNamesViewChirho, InstanceRecordsChirho,

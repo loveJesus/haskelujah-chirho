@@ -180,7 +180,7 @@ fn gadt_newtype_constructor_and_deriving_survive_lowering_chirho() {
         "expected preserved GADT constructor, got {constructor_chirho:?}"
     );
     assert_eq!(deriving_chirho.len(), 1);
-    assert_eq!(deriving_chirho[0].text_chirho(), "Eq");
+    assert_eq!(deriving_chirho[0].class_text_chirho(), "Eq");
 }
 
 #[test]
@@ -611,6 +611,12 @@ fn visible_kind_binders_do_not_become_family_arguments_chirho() {
         "  type FamilyChirho @kindChirho typeChirho\n",
         "  data DataFamilyChirho @kindChirho typeChirho\n",
     ));
+    assert!(module_chirho.decls_chirho.iter().any(|declaration_chirho| {
+        matches!(declaration_chirho, DeclChirho::ClassDeclChirho { type_vars_chirho, .. }
+            if type_vars_chirho.len() == 2
+                && !type_vars_chirho[0].is_visible_chirho()
+                && type_vars_chirho[1].is_visible_chirho())
+    }));
     let (class_parameters_chirho, family_parameters_chirho) = module_chirho
         .decls_chirho
         .iter()
@@ -622,6 +628,7 @@ fn visible_kind_binders_do_not_become_family_arguments_chirho() {
             } => Some((
                 type_vars_chirho
                     .iter()
+                    .filter(|type_var_chirho| type_var_chirho.is_visible_chirho())
                     .map(|type_var_chirho| type_var_chirho.name_chirho.text_chirho().to_string())
                     .collect::<Vec<_>>(),
                 associated_tfs_chirho

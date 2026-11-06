@@ -137,13 +137,13 @@ fn data_chirho(
         name_chirho: name_chirho(type_text_chirho),
         type_vars_chirho: binders_chirho,
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
-            prefix_chirho: Default::default(),
             name_chirho: name_chirho(&format!("Mk{type_text_chirho}")),
             fields_chirho: fields_chirho
                 .into_iter()
                 .map(|field_chirho| (StrictnessChirho::LazyChirho, field_chirho))
                 .collect(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
         }],
         deriving_chirho: vec![],
         kind_sig_chirho: None,

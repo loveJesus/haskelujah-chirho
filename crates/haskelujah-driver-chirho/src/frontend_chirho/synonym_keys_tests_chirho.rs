@@ -43,6 +43,7 @@ fn iface_exporting_chirho(module_chirho: &str, types_chirho: &[&str]) -> ModuleI
                 name_chirho: (*type_chirho).to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec![],
+                is_class_chirho: false,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );

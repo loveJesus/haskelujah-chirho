@@ -11,6 +11,8 @@ pub(crate) mod cpp_chirho;
 #[cfg(test)]
 mod family_budget_tests_chirho;
 #[cfg(test)]
+mod full_kind_arity_chirho;
+#[cfg(test)]
 mod instance_representations_chirho;
 #[cfg(test)]
 mod language_options_tests_chirho;

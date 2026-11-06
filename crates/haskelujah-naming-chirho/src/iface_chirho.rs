@@ -77,6 +77,12 @@ pub struct IfaceTypeChirho {
     /// For classes this is method names; for record types/newtypes this includes
     /// field selector functions.
     pub methods_chirho: Vec<String>,
+    /// Whether this export's producer knows it is a class: a source class declaration, the
+    /// builtin class table or an explicit builtin class entry. `false` claims nothing, so a
+    /// class whose producer cannot tell, such as a dependency package's, stays unmarked. K01
+    /// proves the methodless `Typeable` only from a marked export (#32090).
+    /// workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
+    pub is_class_chirho: bool,
     pub span_chirho: SpanChirho,
 }
 
@@ -249,6 +255,7 @@ fn merge_import_item_into_exports_chirho(
                         name_chirho: ty_chirho.name_chirho.clone(),
                         constructors_chirho,
                         methods_chirho,
+                        is_class_chirho: ty_chirho.is_class_chirho,
                         span_chirho: ty_chirho.span_chirho,
                     },
                 );
@@ -616,6 +623,7 @@ fn imported_type_in_scope_chirho(
                 name_chirho: ty_chirho.name_chirho.clone(),
                 constructors_chirho,
                 methods_chirho,
+                is_class_chirho: ty_chirho.is_class_chirho,
                 span_chirho: ty_chirho.span_chirho,
             },
             accompanying_values_chirho,
@@ -782,6 +790,7 @@ pub fn merge_module_ifaces_chirho(
                         {
                             existing_type_chirho.declaration_chirho = None;
                         }
+                        existing_type_chirho.is_class_chirho |= type_chirho.is_class_chirho;
                         for constructor_chirho in type_chirho.constructors_chirho {
                             if !existing_type_chirho
                                 .constructors_chirho
@@ -880,6 +889,7 @@ fn filter_exports_chirho(
                             name_chirho: ty_chirho.name_chirho.clone(),
                             constructors_chirho: vec![], // bare name = no constructors
                             methods_chirho: vec![],
+                            is_class_chirho: ty_chirho.is_class_chirho,
                             span_chirho: ty_chirho.span_chirho,
                         },
                     );
@@ -966,6 +976,7 @@ fn filter_exports_chirho(
                             name_chirho: ty_chirho.name_chirho.clone(),
                             constructors_chirho: cons_chirho,
                             methods_chirho,
+                            is_class_chirho: ty_chirho.is_class_chirho,
                             span_chirho: ty_chirho.span_chirho,
                         },
                     );

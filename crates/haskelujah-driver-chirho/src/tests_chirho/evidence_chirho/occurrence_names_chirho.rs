@@ -3,12 +3,18 @@
 //! Which names get an occurrence id per reference (gpt_chirho #28091): the
 //! standard set, and the methods of each single-parameter class the compiling
 //! module declares, read off the lowered module the driver hands the desugarer.
+//! `>>=` and `>>` are minted for their indexed own proof alone (row 697).
 //! workflow: language-features-chirho/own-class-method-occurrences-chirho
+//! workflow: monadic-dispatch-chirho
 
 use std::collections::HashSet;
 
+use haskelujah_ast_chirho::provenance_chirho::OccurrenceRoleChirho;
+
 use super::occurrence_producers_chirho::lower_chirho;
-use crate::evidence_join_chirho::method_occurrence_names_chirho;
+use crate::evidence_join_chirho::{
+    admits_operator_proof_chirho, joins_provenance_role_chirho, method_occurrence_names_chirho,
+};
 
 /// What a module opts in beyond what a module that declares no class does.
 fn added_names_chirho(source_chirho: &str) -> HashSet<String> {
@@ -32,6 +38,47 @@ fn a_declared_single_parameter_class_adds_exactly_its_methods_chirho() {
 }
 
 #[test]
+fn checked_hidden_kind_binders_do_not_become_visible_class_parameters_chirho() {
+    let source_chirho =
+        include_str!("../../source_chirho/full_kind_arity_chirho/ScopedClassVisibilityChirho.hs");
+    let result_chirho = crate::typecheck_source_chirho(
+        source_chirho,
+        &mut crate::SourceMapChirho::new_chirho(),
+        "HiddenClassBindersChirho.hs",
+    )
+    .unwrap_or_else(|error_chirho| {
+        panic!("the real checked class headers must elaborate: {error_chirho}")
+    });
+    let class_chirho = result_chirho
+        .module_chirho
+        .decls_chirho
+        .iter()
+        .find_map(|declaration_chirho| match declaration_chirho {
+            haskelujah_ast_chirho::decl_chirho::DeclChirho::ClassDeclChirho {
+                name_chirho,
+                type_vars_chirho,
+                ..
+            } if name_chirho.text_chirho() == "SizedChirho" => Some(type_vars_chirho),
+            _ => None,
+        })
+        .expect("the actual local class header");
+    assert!(
+        class_chirho.len() > 1,
+        "the checked header must retain its written invisible kind binder"
+    );
+    assert_eq!(
+        class_chirho
+            .iter()
+            .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+            .count(),
+        1
+    );
+    let names_chirho = method_occurrence_names_chirho(&result_chirho.module_chirho);
+    assert!(names_chirho.contains("sizeChirho"));
+    assert!(!names_chirho.contains("pairChirho"));
+}
+
+#[test]
 fn a_multi_parameter_class_and_the_inv_001_names_are_never_added_chirho() {
     // A multi-parameter class keeps its shared id. A single-parameter class
     // that declares `pure` adds its other methods, never `pure` (INV-001).
@@ -50,15 +97,7 @@ fn imported_and_seeded_class_methods_keep_their_shared_id_chirho() {
     let names_chirho = method_occurrence_names_chirho(&lower_chirho(
         "module Main where\nimport NeedsChirho (NeedsChirho (..))\nmain :: IO ()\nmain = print (neededChirho [1 :: Int], fmap negate [1 :: Int], [1 :: Int] <> [2])\n",
     ));
-    for name_chirho in [
-        "neededChirho",
-        "fmap",
-        "<>",
-        "toList",
-        "traverse",
-        "pure",
-        ">>=",
-    ] {
+    for name_chirho in ["neededChirho", "fmap", "<>", "toList", "traverse", "pure"] {
         assert!(
             !names_chirho.contains(name_chirho),
             "{name_chirho} must keep its shared id"
@@ -70,4 +109,94 @@ fn imported_and_seeded_class_methods_keep_their_shared_id_chirho() {
             .all(|name_chirho| names_chirho.contains(name_chirho)),
         "the standard set stays and includes the locally specialized Enum steps: {names_chirho:?}"
     );
+}
+
+#[test]
+fn bind_and_then_are_minted_for_their_own_proof_and_the_other_inv_001_names_are_not_chirho() {
+    // Row 697: each use of `>>=` and `>>` gets an occurrence id, so the checker's indexed own
+    // proof for that use reaches the dictionary pass; the join keeps no other proof for them.
+    // `return`, `pure` and `fail` keep their shared id (INV-001).
+    let names_chirho = method_occurrence_names_chirho(&lower_chirho(
+        "module Main where\nmain :: IO ()\nmain = print (1 :: Int)\n",
+    ));
+    assert!(
+        names_chirho.contains(">>=") && names_chirho.contains(">>"),
+        "{names_chirho:?}"
+    );
+    for name_chirho in ["return", "pure", "fail"] {
+        assert!(
+            !names_chirho.contains(name_chirho),
+            "{name_chirho} must keep its shared id"
+        );
+    }
+}
+
+#[test]
+fn bind_and_then_admit_only_an_indexed_own_monad_proof_chirho() {
+    // The exact predicate that types the use: its own dictionary parameter.
+    for (name_chirho, key_chirho) in [(">>=", "$own:0"), (">>", "$own:12")] {
+        assert!(
+            admits_operator_proof_chirho(name_chirho, "Monad", key_chirho),
+            "{name_chirho} at {key_chirho}"
+        );
+    }
+    // A ground key, a user monad, a bare superclass `$own`, a malformed index or another class
+    // proves nothing for them: the use keeps its canonical id and INV-001's path.
+    for (name_chirho, class_chirho, key_chirho) in [
+        (">>=", "Monad", "IO"),
+        (">>", "Monad", "Maybe"),
+        (">>=", "Monad", "ReaderChirho"),
+        (">>=", "Monad", "$own"),
+        (">>", "Monad", "$own:"),
+        (">>=", "Monad", "$own:first"),
+        (">>=", "MonadChirho", "$own:0"),
+    ] {
+        assert!(
+            !admits_operator_proof_chirho(name_chirho, class_chirho, key_chirho),
+            "{name_chirho} {class_chirho} at {key_chirho}"
+        );
+    }
+    // Every other name keeps every proof it had.
+    for (name_chirho, class_chirho, key_chirho) in [
+        ("show", "Show", "Int"),
+        ("==", "Eq", "$own"),
+        ("<", "Ord", "IO"),
+    ] {
+        assert!(admits_operator_proof_chirho(
+            name_chirho,
+            class_chirho,
+            key_chirho
+        ));
+    }
+}
+
+#[test]
+fn a_do_selection_joins_by_its_own_role_and_a_reference_by_reference_chirho() {
+    assert!(joins_provenance_role_chirho(
+        ">>=",
+        OccurrenceRoleChirho::Bind
+    ));
+    assert!(joins_provenance_role_chirho(
+        ">>",
+        OccurrenceRoleChirho::Then
+    ));
+    assert!(joins_provenance_role_chirho(
+        ">>=",
+        OccurrenceRoleChirho::Reference
+    ));
+    assert!(joins_provenance_role_chirho(
+        "show",
+        OccurrenceRoleChirho::Reference
+    ));
+    for (name_chirho, role_chirho) in [
+        (">>=", OccurrenceRoleChirho::Then),
+        (">>", OccurrenceRoleChirho::Bind),
+        ("show", OccurrenceRoleChirho::Bind),
+        ("fromInteger", OccurrenceRoleChirho::IntegerLiteral),
+    ] {
+        assert!(
+            !joins_provenance_role_chirho(name_chirho, role_chirho),
+            "{name_chirho} {role_chirho:?}"
+        );
+    }
 }

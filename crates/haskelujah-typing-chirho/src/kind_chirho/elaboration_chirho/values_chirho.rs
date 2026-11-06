@@ -278,6 +278,7 @@ impl TypeElaboratorChirho<'_> {
                 class_chirho,
                 types_chirho,
                 span_chirho,
+                ..
             } => {
                 for constraint_chirho in context_chirho {
                     self.infer_constraint_chirho(constraint_chirho)?;
@@ -325,7 +326,8 @@ impl TypeElaboratorChirho<'_> {
             | DeclChirho::NewtypeDeclChirho { .. }
             | DeclChirho::TypeAliasDeclChirho { .. }
             | DeclChirho::TypeFamilyDeclChirho { .. }
-            | DeclChirho::FixityDeclChirho { .. } => {}
+            | DeclChirho::FixityDeclChirho { .. }
+            | DeclChirho::RoleAnnotationDeclChirho { .. } => {}
         }
         Ok(())
     }

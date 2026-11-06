@@ -398,12 +398,18 @@ impl ParserChirho<'_> {
         self.builder_chirho.finish_node_chirho();
     }
 
-    /// Parse: `deriving instance [context =>] ClassName Type`
+    /// Parse: `deriving [strategy] instance [context =>] ClassName Type`
     pub(super) fn parse_standalone_deriving_chirho(&mut self) {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::StandaloneDerivingDeclChirho);
         self.bump_chirho(); // deriving
         self.eat_trivia_chirho();
+
+        // DerivingStrategies: `deriving newtype instance Show Age` (row 694).
+        if self.at_deriving_strategy_chirho() {
+            self.bump_chirho(); // strategy keyword
+            self.eat_trivia_chirho();
+        }
 
         // Expect "instance"
         if self.at_chirho(RawTokenKindChirho::InstanceChirho) {

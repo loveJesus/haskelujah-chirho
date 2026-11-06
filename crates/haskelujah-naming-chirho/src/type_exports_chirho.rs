@@ -370,6 +370,7 @@ fn ensure_type_export_chirho(
             name_chirho: canonical_name_chirho,
             constructors_chirho: Vec::new(),
             methods_chirho: Vec::new(),
+            is_class_chirho: false,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         });
 
@@ -421,6 +422,7 @@ fn merge_type_members_chirho(target_chirho: &mut IfaceTypeChirho, source_chirho:
     if target_chirho.declaration_chirho != source_chirho.declaration_chirho {
         target_chirho.declaration_chirho = None;
     }
+    target_chirho.is_class_chirho |= source_chirho.is_class_chirho;
     for constructor_chirho in source_chirho.constructors_chirho {
         if !target_chirho
             .constructors_chirho
@@ -552,6 +554,7 @@ pub(crate) fn collect_all_definitions_chirho(
                         name_chirho: type_name_chirho,
                         constructors_chirho: constructor_names_chirho,
                         methods_chirho: field_names_chirho,
+                        is_class_chirho: false,
                         span_chirho: *span_chirho,
                     },
                 );
@@ -592,6 +595,7 @@ pub(crate) fn collect_all_definitions_chirho(
                         name_chirho: type_name_chirho,
                         constructors_chirho: vec![constructor_name_chirho],
                         methods_chirho: field_names_chirho,
+                        is_class_chirho: false,
                         span_chirho: *span_chirho,
                     },
                 );
@@ -675,6 +679,7 @@ pub(crate) fn collect_all_definitions_chirho(
                         name_chirho: class_name_chirho,
                         constructors_chirho: Vec::new(),
                         methods_chirho: method_names_chirho,
+                        is_class_chirho: true,
                         span_chirho: *span_chirho,
                     },
                 );
@@ -732,6 +737,7 @@ pub(crate) fn collect_all_definitions_chirho(
             | DeclChirho::DefaultDeclChirho { .. }
             | DeclChirho::TypeFamilyInstanceDeclChirho { .. }
             | DeclChirho::SpliceDeclChirho { .. }
+            | DeclChirho::RoleAnnotationDeclChirho { .. }
             | DeclChirho::StandaloneDerivingDeclChirho { .. } => {}
         }
     }
@@ -881,6 +887,7 @@ fn insert_type_export_chirho(
             name_chirho: type_name_chirho,
             constructors_chirho: Vec::new(),
             methods_chirho: Vec::new(),
+            is_class_chirho: false,
             span_chirho,
         },
     );

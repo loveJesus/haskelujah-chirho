@@ -155,7 +155,6 @@ impl LowerCtxChirho {
         let mut name_chirho = None;
         let mut type_vars_chirho = Vec::new();
         let mut skip_until_child_idx_chirho: Option<usize> = None;
-        let mut next_binder_is_visible_kind_chirho = false;
         for (tok_chirho, s_chirho, tok_idx_chirho) in head_tokens_chirho {
             if skip_until_child_idx_chirho
                 .is_some_and(|skip_idx_chirho| *tok_idx_chirho < skip_idx_chirho)
@@ -163,9 +162,19 @@ impl LowerCtxChirho {
                 continue;
             }
             if tok_chirho.kind_chirho() == TokenKindChirho::AtSignChirho {
-                next_binder_is_visible_kind_chirho = true;
+                if let Some((binder_chirho, consumed_chirho)) =
+                    self.declaration_head_binder_chirho(&children_chirho, *tok_idx_chirho)
+                {
+                    type_vars_chirho.push(binder_chirho);
+                    skip_until_child_idx_chirho = Some(*tok_idx_chirho + consumed_chirho);
+                }
             } else if tok_chirho.kind_chirho() == TokenKindChirho::UnderscoreReservedIdChirho {
-                next_binder_is_visible_kind_chirho = false;
+                if let Some((binder_chirho, consumed_chirho)) =
+                    self.declaration_head_binder_chirho(&children_chirho, *tok_idx_chirho)
+                {
+                    type_vars_chirho.push(binder_chirho);
+                    skip_until_child_idx_chirho = Some(*tok_idx_chirho + consumed_chirho);
+                }
             } else if (matches!(
                 tok_chirho.kind_chirho(),
                 TokenKindChirho::ConIdChirho
@@ -182,11 +191,7 @@ impl LowerCtxChirho {
                 name_chirho = Some(self.name_from_token_chirho(tok_chirho, *s_chirho));
             } else if tok_chirho.kind_chirho() == TokenKindChirho::VarIdChirho {
                 let type_var_name_chirho = self.name_from_token_chirho(tok_chirho, *s_chirho);
-                if next_binder_is_visible_kind_chirho {
-                    next_binder_is_visible_kind_chirho = false;
-                } else {
-                    type_vars_chirho.push(type_var_name_chirho.into());
-                }
+                type_vars_chirho.push(type_var_name_chirho.into());
             } else if tok_chirho.kind_chirho() == TokenKindChirho::LeftParenChirho
                 && let Some((tv_chirho, consumed_chirho)) =
                     self.try_parse_kind_annotated_tyvar_chirho(&children_chirho, *tok_idx_chirho)

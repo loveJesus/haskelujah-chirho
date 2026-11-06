@@ -158,10 +158,25 @@ fn mptc_goals_require_every_argument_and_capture_cannot_invent_extras_chirho() {
             vec![TyChirho::int_chirho(), TyChirho::bool_chirho()],
         )],
     );
+    // The complete capture now retains its supplied extra argument. A separate
+    // genuinely partial capture still cannot invent the missing class position.
+    let partial_origin_chirho = supply_chirho.fresh_chirho();
+    ctx_chirho.capture_reference_evidence_chirho(
+        SpanChirho::DUMMY_CHIRHO,
+        Some(partial_origin_chirho),
+        &[PredChirho::new_chirho("PairChirho", TyChirho::int_chirho())],
+    );
     let (_, by_origin_chirho) =
         ctx_chirho.finalize_reference_evidence_chirho(&SubstChirho::empty_chirho());
+    assert_eq!(
+        by_origin_chirho[&origin_chirho][0].ground_pred_chirho,
+        Some(PredChirho::new_multi_chirho(
+            "PairChirho",
+            vec![TyChirho::int_chirho(), TyChirho::bool_chirho()],
+        )),
+    );
     assert!(
-        by_origin_chirho[&origin_chirho][0]
+        by_origin_chirho[&partial_origin_chirho][0]
             .ground_pred_chirho
             .is_none()
     );
@@ -182,6 +197,8 @@ fn ambiguous_ordinary_constructor_names_cannot_authorize_new_dispatch_chirho() {
 #[test]
 fn structural_disagreement_clears_only_the_new_goal_chirho() {
     let record_chirho = |ty_chirho| ReferenceEvidenceChirho {
+        applied_ty_chirho: None,
+        applied_head_chirho: None,
         class_name_chirho: "Eq".to_owned(),
         ty_key_chirho: Some("Maybe".to_owned()),
         ground_pred_chirho: Some(PredChirho::new_chirho("Eq", ty_chirho)),

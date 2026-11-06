@@ -27,6 +27,9 @@ fn identified_record_chirho(
     origin_chirho: Option<OriginIdChirho>,
 ) -> MethodOccurrenceRecordChirho {
     MethodOccurrenceRecordChirho {
+        ground_pred_chirho: None,
+        resolved_entry_chirho: None,
+        applied_ty_chirho: None,
         origin_chirho,
         ..record_chirho("show", 0, ty_key_chirho, SpanChirho::DUMMY_CHIRHO)
     }
@@ -61,10 +64,84 @@ fn join_chirho(
         &HashMap::new(),
         &provenance_chirho,
     )
+    .evidence_chirho
 }
 
 fn proof_chirho(key_chirho: &str) -> (String, String) {
     ("Show".to_string(), key_chirho.to_string())
+}
+
+#[test]
+fn an_origin_keeps_only_the_applied_type_all_its_records_prove_chirho() {
+    use haskelujah_typing_chirho::ty_chirho::TyChirho;
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    let origin_chirho = supply_chirho.fresh_chirho();
+    let applied_chirho = TyChirho::ListChirho(Box::new(TyChirho::int_chirho()));
+    for other_chirho in [
+        Some(applied_chirho.clone()),
+        Some(TyChirho::ListChirho(Box::new(TyChirho::bool_chirho()))),
+        None,
+    ] {
+        let mut first_chirho = identified_record_chirho("[]", Some(origin_chirho));
+        first_chirho.applied_ty_chirho = Some(applied_chirho.clone());
+        let mut second_chirho = first_chirho.clone();
+        second_chirho.applied_ty_chirho = other_chirho.clone();
+        let joined_chirho = join_occurrence_evidence_chirho(
+            &infer_result_chirho(vec![first_chirho, second_chirho]),
+            &show_occurrences_chirho(&[10]),
+            &HashMap::new(),
+            &HashMap::new(),
+            &HashMap::from([(CoreIdChirho(10), reference_chirho(origin_chirho))]),
+        );
+        assert_eq!(
+            joined_chirho.evidence_chirho.get(&CoreIdChirho(10)),
+            Some(&proof_chirho("[]"))
+        );
+        assert_eq!(
+            joined_chirho.applied_tys_chirho.get(&CoreIdChirho(10)),
+            (other_chirho.as_ref() == Some(&applied_chirho)).then_some(&applied_chirho),
+        );
+    }
+}
+
+#[test]
+fn a_reference_join_preserves_the_complete_checked_record_chirho() {
+    use haskelujah_typing_chirho::class_chirho::{PredChirho, PredPartsChirho};
+    use haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho;
+    use haskelujah_typing_chirho::ty_chirho::TyChirho;
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    let origin_chirho = supply_chirho.fresh_chirho();
+    let goal_chirho = PredChirho::legacy_chirho(PredPartsChirho {
+        class_name_chirho: "PolyChirho".to_string(),
+        kind_tys_chirho: vec![TyChirho::ConChirho("%universe:type".to_string())],
+        ty_chirho: TyChirho::int_chirho(),
+        extra_tys_chirho: vec![TyChirho::bool_chirho()],
+    });
+    let record_chirho = ReferenceEvidenceChirho {
+        class_name_chirho: "PolyChirho".to_string(),
+        ty_key_chirho: Some("Int".to_string()),
+        applied_ty_chirho: Some(TyChirho::int_chirho()),
+        applied_head_chirho: Some(vec![TyChirho::int_chirho(), TyChirho::bool_chirho()]),
+        ground_pred_chirho: Some(goal_chirho.clone()),
+    };
+    let mut result_chirho = infer_result_chirho(vec![]);
+    result_chirho
+        .reference_evidence_by_origin_chirho
+        .insert(origin_chirho, vec![record_chirho.clone()]);
+    let joined_chirho = crate::evidence_join_chirho::join_reference_evidence_chirho(
+        &result_chirho,
+        &HashMap::from([(CoreIdChirho(10), SpanChirho::DUMMY_CHIRHO)]),
+        &HashMap::from([(CoreIdChirho(10), reference_chirho(origin_chirho))]),
+    );
+    assert_eq!(joined_chirho[&CoreIdChirho(10)], vec![record_chirho]);
+    assert_eq!(
+        joined_chirho[&CoreIdChirho(10)][0]
+            .ground_pred_chirho
+            .as_ref()
+            .unwrap()
+            .class_identity_chirho(),
+        goal_chirho.class_identity_chirho(),
+    );
 }
 
 #[test]
@@ -175,6 +252,7 @@ fn legacy_method_join_chirho(
         &HashMap::from([(CoreIdChirho(10), genuine_chirho)]),
         &HashMap::new(),
     )
+    .evidence_chirho
     .remove(&CoreIdChirho(10))
 }
 
@@ -185,6 +263,9 @@ fn an_origin_owned_record_never_reaches_a_legacy_occurrence_by_span_chirho() {
     let mut supply_chirho = OriginSupplyChirho::new_chirho();
     let owner_chirho = supply_chirho.fresh_chirho();
     let joined_chirho = legacy_method_join_chirho(vec![MethodOccurrenceRecordChirho {
+        ground_pred_chirho: None,
+        resolved_entry_chirho: None,
+        applied_ty_chirho: None,
         origin_chirho: Some(owner_chirho),
         ..record_chirho("show", 0, "Int", span_chirho(200, 204))
     }]);
@@ -208,8 +289,10 @@ fn legacy_reference_join_chirho(
     let evidence_chirho = |key_chirho: &str| {
         vec![ReferenceEvidenceChirho {
             ground_pred_chirho: None,
+            applied_head_chirho: None,
             class_name_chirho: "Show".to_string(),
             ty_key_chirho: Some(key_chirho.to_string()),
+            applied_ty_chirho: None,
         }]
     };
     let mut result_chirho = infer_result_chirho(vec![]);
@@ -227,6 +310,12 @@ fn legacy_reference_join_chirho(
         &HashMap::new(),
     )
     .remove(&CoreIdChirho(10))
+    .map(|records_chirho| {
+        records_chirho
+            .into_iter()
+            .map(|record_chirho| (record_chirho.class_name_chirho, record_chirho.ty_key_chirho))
+            .collect()
+    })
 }
 
 #[test]
@@ -285,6 +374,7 @@ fn join_literal_chirho(
         &HashMap::new(),
         &provenance_map_chirho,
     )
+    .evidence_chirho
     .remove(&CoreIdChirho(10))
 }
 
@@ -382,7 +472,8 @@ fn two_generated_literals_at_one_span_each_take_their_own_evidence_chirho() {
         &literal_spans_chirho,
         &HashMap::new(),
         &provenance_chirho,
-    );
+    )
+    .evidence_chirho;
     assert_eq!(
         joined_chirho.get(&CoreIdChirho(10)),
         Some(&("Num".to_string(), "Double".to_string()))

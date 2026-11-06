@@ -5,44 +5,69 @@
 
 use super::*;
 
+use haskelujah_ast_chirho::decl_chirho::{DerivedClassChirho, DerivingStrategyChirho};
+
+use super::strategy_route_chirho::{DeclaredTypeChirho, DerivingPolicyChirho, derive_class_chirho};
+
+/// One standalone deriving declaration's request: its class, the head types before the
+/// derived one (the class's arguments), its written strategy and span.
+struct StandaloneRequestChirho<'a> {
+    class_chirho: &'a NameChirho,
+    class_arguments_chirho: &'a [TypeChirho],
+    strategy_chirho: Option<&'a DerivingStrategyChirho>,
+    span_chirho: SpanChirho,
+}
+
 pub(super) fn derive_standalone_instances_chirho(
     module_chirho: &ModuleChirho,
+    policy_chirho: &DerivingPolicyChirho<'_>,
     instances_chirho: &mut Vec<DeclChirho>,
     warnings_chirho: &mut Vec<String>,
 ) {
     // Process standalone deriving declarations: `deriving instance Show Foo`
     for decl_chirho in &module_chirho.decls_chirho {
         if let DeclChirho::StandaloneDerivingDeclChirho {
+            strategy_chirho,
             context_chirho,
             class_chirho,
             types_chirho,
             span_chirho,
-            ..
         } = decl_chirho
         {
-            let type_name_chirho = types_chirho.first().and_then(target_name_chirho);
+            // The derived type is the head's last type: `deriving anyclass instance
+            // Pair Int T` derives for `T` (row 694).
+            let type_name_chirho = types_chirho.last().and_then(target_name_chirho);
 
             if let Some(target_chirho) = type_name_chirho {
                 let first_generated_chirho = instances_chirho.len();
+                let request_chirho = StandaloneRequestChirho {
+                    class_chirho,
+                    class_arguments_chirho: &types_chirho[..types_chirho.len() - 1],
+                    strategy_chirho: strategy_chirho.as_ref(),
+                    span_chirho: *span_chirho,
+                };
                 let found_chirho = derive_standalone_for_type_chirho(
                     module_chirho,
-                    class_chirho,
+                    &request_chirho,
                     target_chirho,
-                    *span_chirho,
+                    policy_chirho,
                     instances_chirho,
                     warnings_chirho,
                 );
                 // Stock generators supply method bodies, but the instance is
                 // the declaration the user wrote, including specialization and
-                // its context. A kind-signature header may have no AST binders.
+                // its context, and its class as written. A kind-signature header
+                // may have no AST binders.
                 for generated_chirho in &mut instances_chirho[first_generated_chirho..] {
                     if let DeclChirho::InstanceDeclChirho {
                         context_chirho: generated_context_chirho,
+                        class_chirho: generated_class_chirho,
                         types_chirho: generated_types_chirho,
                         ..
                     } = generated_chirho
                     {
                         *generated_context_chirho = context_chirho.clone();
+                        *generated_class_chirho = class_chirho.clone();
                         *generated_types_chirho = types_chirho.clone();
                     }
                 }
@@ -61,14 +86,12 @@ pub(super) fn derive_standalone_instances_chirho(
 /// in the module and deriving the requested class for it.
 fn derive_standalone_for_type_chirho(
     module_chirho: &ModuleChirho,
-    class_chirho: &NameChirho,
+    request_chirho: &StandaloneRequestChirho<'_>,
     target_chirho: &str,
-    span_chirho: SpanChirho,
+    policy_chirho: &DerivingPolicyChirho<'_>,
     instances_chirho: &mut Vec<DeclChirho>,
     warnings_chirho: &mut Vec<String>,
 ) -> bool {
-    let class_text_chirho = class_chirho.text_chirho();
-
     for decl_chirho in &module_chirho.decls_chirho {
         match decl_chirho {
             DeclChirho::DataDeclChirho {
@@ -78,12 +101,17 @@ fn derive_standalone_for_type_chirho(
                 ..
             } if name_chirho.text_chirho() == target_chirho => {
                 let visible_vars_chirho = TyVarChirho::visible_binders_chirho(type_vars_chirho);
-                derive_class_for_data_chirho(
-                    class_text_chirho,
+                let declared_chirho = DeclaredTypeChirho {
                     name_chirho,
-                    visible_vars_chirho.as_ref(),
+                    type_vars_chirho: visible_vars_chirho.as_ref(),
                     constructors_chirho,
-                    span_chirho,
+                    newtype_constructor_chirho: None,
+                    span_chirho: request_chirho.span_chirho,
+                };
+                derive_standalone_class_chirho(
+                    &declared_chirho,
+                    request_chirho,
+                    policy_chirho,
                     instances_chirho,
                     warnings_chirho,
                 );
@@ -97,12 +125,17 @@ fn derive_standalone_for_type_chirho(
             } if name_chirho.text_chirho() == target_chirho => {
                 let cons_chirho = vec![constructor_chirho.clone()];
                 let visible_vars_chirho = TyVarChirho::visible_binders_chirho(type_vars_chirho);
-                derive_class_for_data_chirho(
-                    class_text_chirho,
+                let declared_chirho = DeclaredTypeChirho {
                     name_chirho,
-                    visible_vars_chirho.as_ref(),
-                    &cons_chirho,
-                    span_chirho,
+                    type_vars_chirho: visible_vars_chirho.as_ref(),
+                    constructors_chirho: &cons_chirho,
+                    newtype_constructor_chirho: Some(constructor_chirho),
+                    span_chirho: request_chirho.span_chirho,
+                };
+                derive_standalone_class_chirho(
+                    &declared_chirho,
+                    request_chirho,
+                    policy_chirho,
                     instances_chirho,
                     warnings_chirho,
                 );
@@ -114,8 +147,63 @@ fn derive_standalone_for_type_chirho(
     false
 }
 
-/// Derive a specific class for a data type (shared by inline deriving and standalone).
-fn derive_class_for_data_chirho(
+/// A written strategy routes like a deriving clause's (row 694); an unwritten one keeps
+/// standalone deriving's stock-only route, for the stock class the builtin class proof names.
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+fn derive_standalone_class_chirho(
+    declared_chirho: &DeclaredTypeChirho<'_>,
+    request_chirho: &StandaloneRequestChirho<'_>,
+    policy_chirho: &DerivingPolicyChirho<'_>,
+    instances_chirho: &mut Vec<DeclChirho>,
+    warnings_chirho: &mut Vec<String>,
+) {
+    if let Some(strategy_chirho) = request_chirho.strategy_chirho {
+        let derived_chirho = DerivedClassChirho::applied_chirho(
+            request_chirho.class_chirho.clone(),
+            request_chirho.class_arguments_chirho.to_vec(),
+            Some(strategy_chirho.clone()),
+        );
+        derive_class_chirho(
+            declared_chirho,
+            &derived_chirho,
+            policy_chirho,
+            instances_chirho,
+            warnings_chirho,
+        );
+        return;
+    }
+    let class_text_chirho = request_chirho.class_chirho.text_chirho();
+    let stock_class_chirho = policy_chirho.legacy_stock_class_chirho(request_chirho.class_chirho);
+    // A stock class applied to arguments: declaration validity refuses the head (rule 13).
+    if stock_class_chirho.is_some() && !request_chirho.class_arguments_chirho.is_empty() {
+        return;
+    }
+    let Some(stock_class_chirho) = stock_class_chirho else {
+        warnings_chirho.push(format!(
+            "standalone deriving {class_text_chirho} not yet supported for {}",
+            declared_chirho.name_chirho.text_chirho()
+        ));
+        return;
+    };
+    if !derive_stock_class_chirho(
+        stock_class_chirho,
+        declared_chirho.name_chirho,
+        declared_chirho.type_vars_chirho,
+        declared_chirho.constructors_chirho,
+        declared_chirho.span_chirho,
+        instances_chirho,
+        warnings_chirho,
+    ) {
+        warnings_chirho.push(format!(
+            "standalone deriving {class_text_chirho} not yet supported for {}",
+            declared_chirho.name_chirho.text_chirho()
+        ));
+    }
+}
+
+/// Run a class's stock generator for a data or newtype declaration, shared by deriving
+/// clauses and standalone deriving. False when the class has no stock generator.
+pub(super) fn derive_stock_class_chirho(
     class_text_chirho: &str,
     name_chirho: &NameChirho,
     type_vars_chirho: &[TyVarChirho],
@@ -123,7 +211,7 @@ fn derive_class_for_data_chirho(
     span_chirho: SpanChirho,
     instances_chirho: &mut Vec<DeclChirho>,
     warnings_chirho: &mut Vec<String>,
-) {
+) -> bool {
     match class_text_chirho {
         "Eq" => {
             instances_chirho.push(derive_eq_chirho(
@@ -223,20 +311,16 @@ fn derive_class_for_data_chirho(
                 Err(msg_chirho) => warnings_chirho.push(msg_chirho),
             }
         }
-        "Typeable" | "Data" | "Lift" | "NFData" => {
-            // Generate empty instance for these well-known classes
-        }
-        other_chirho => {
-            warnings_chirho.push(format!(
-                "standalone deriving {} not yet supported for {}",
-                other_chirho,
-                name_chirho.text_chirho()
-            ));
-        }
+        // Standalone deriving writes no instance for these well-known classes; a
+        // deriving clause gives them an empty instance before reaching here.
+        "Typeable" | "Data" | "Lift" | "NFData" => {}
+        _ => return false,
     }
+    true
 }
 
-fn target_name_chirho(ty_chirho: &TypeChirho) -> Option<&str> {
+/// The type constructor a standalone deriving head targets: `T` in `C (T a)`.
+pub(crate) fn target_name_chirho(ty_chirho: &TypeChirho) -> Option<&str> {
     match ty_chirho {
         TypeChirho::ConChirho(name_chirho) => Some(name_chirho.text_chirho()),
         TypeChirho::AppChirho { fun_chirho, .. } => target_name_chirho(fun_chirho),

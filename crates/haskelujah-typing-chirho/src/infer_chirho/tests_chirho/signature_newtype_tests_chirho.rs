@@ -133,13 +133,13 @@ fn infer_newtype_constructor_chirho() {
                 name_chirho: dummy_name_chirho("Age"),
                 type_vars_chirho: vec![],
                 constructor_chirho: ConDeclChirho::OrdinaryChirho {
-                    prefix_chirho: Default::default(),
                     name_chirho: dummy_name_chirho("MkAge"),
                     fields_chirho: vec![(
                         haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                         TypeChirho::ConChirho(dummy_name_chirho("Int")),
                     )],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 },
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
@@ -227,7 +227,6 @@ fn infer_newtype_record_constructor_with_function_field_chirho() {
                     ),
                 ],
                 constructor_chirho: ConDeclChirho::RecordChirho {
-                    prefix_chirho: Default::default(),
                     name_chirho: dummy_name_chirho("WrapChirho"),
                     fields_chirho: vec![haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
                         multiplicity_chirho: None,
@@ -258,6 +257,7 @@ fn infer_newtype_record_constructor_with_function_field_chirho() {
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 },
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
@@ -340,7 +340,6 @@ fn infer_writer_newtype_composition_with_tuple_payload_chirho() {
                     )),
                 ],
                 constructor_chirho: ConDeclChirho::RecordChirho {
-                    prefix_chirho: Default::default(),
                     name_chirho: dummy_name_chirho("WriterT"),
                     fields_chirho: vec![haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
                         multiplicity_chirho: None,
@@ -363,6 +362,7 @@ fn infer_writer_newtype_composition_with_tuple_payload_chirho() {
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 },
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
@@ -439,7 +439,6 @@ fn infer_state_newtype_composition_with_function_tuple_payload_chirho() {
                     )),
                 ],
                 constructor_chirho: ConDeclChirho::RecordChirho {
-                    prefix_chirho: Default::default(),
                     name_chirho: dummy_name_chirho("StateT"),
                     fields_chirho: vec![haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
                         multiplicity_chirho: None,
@@ -469,6 +468,7 @@ fn infer_state_newtype_composition_with_function_tuple_payload_chirho() {
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 },
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,

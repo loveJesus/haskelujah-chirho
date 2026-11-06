@@ -463,6 +463,13 @@ impl DictPassCtxChirho {
             self.written_orderings_resolved_chirho(&module_chirho.bindings_chirho);
         let mut bindings_chirho = Vec::new();
         for binding_chirho in resolved_bindings_chirho.iter() {
+            // A GND newtype's default-filled row is its representation's method, already
+            // resolved, behind the leading dictionaries its callers pass (row 694).
+            // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+            if let Some(gnd_row_chirho) = self.gnd_default_row_chirho(binding_chirho) {
+                bindings_chirho.push(gnd_row_chirho);
+                continue;
+            }
             let name_chirho = &binding_chirho.binder_chirho.name_chirho;
 
             // Look up the type scheme for this binding
@@ -794,11 +801,14 @@ impl DictPassCtxChirho {
                 self.canonicalize_surviving_occurrences_chirho(&mut binding_chirho.rhs_chirho);
             }
         }
+        let mut unsupported_chirho = self.unsupported_dictionaries_chirho;
+        unsupported_chirho.extend(self.gnd_unbuilt_uses_chirho.into_inner());
         DictPassResultChirho {
             module_chirho,
             names_chirho: self.names_chirho,
             layouts_chirho: self.layouts_chirho,
             diagnostics_chirho,
+            unsupported_chirho,
         }
     }
 }

@@ -19,6 +19,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FunctorChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Functor".to_string(),
                 supers_chirho: vec![],
@@ -68,6 +69,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ApplicativeChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Applicative".to_string(),
                 supers_chirho: vec!["Functor".to_string()],
@@ -135,6 +137,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Monad".to_string(),
                 supers_chirho: vec!["Applicative".to_string()],
@@ -211,6 +214,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FoldableChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Foldable".to_string(),
                 supers_chirho: vec![],
@@ -299,6 +303,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TraversableChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Traversable".to_string(),
                 supers_chirho: vec!["Functor".to_string(), "Foldable".to_string()],
@@ -362,6 +367,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ReadChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Read".to_string(),
                 supers_chirho: vec![],
@@ -388,6 +394,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::IsOptionChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "IsOption".to_string(),
                 supers_chirho: vec![],
@@ -457,6 +464,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::EnumChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Enum".to_string(),
                 supers_chirho: vec![],
@@ -522,6 +530,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::BoundedChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Bounded".to_string(),
                 supers_chirho: vec![],

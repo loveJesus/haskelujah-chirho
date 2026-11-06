@@ -75,6 +75,7 @@ pub(super) fn unspanned_capture_chirho(
         span_chirho: SpanChirho::DUMMY_CHIRHO,
         origin_chirho: None,
         instance_context_chirho: None,
+        resolved_entry_chirho: None,
     }
 }
 

@@ -35,8 +35,10 @@ fn only_the_marked_range_receives_its_enum_proof_chirho() {
         span_chirho,
         vec![ReferenceEvidenceChirho {
             ground_pred_chirho: None,
+            applied_head_chirho: None,
             class_name_chirho: "Enum".to_string(),
             ty_key_chirho: Some("Integer".to_string()),
+            applied_ty_chirho: None,
         }],
     );
     let occurrences_chirho = HashMap::from([
@@ -65,24 +67,32 @@ fn range_proofs_require_a_real_span_and_one_solved_enum_obligation_chirho() {
         Vec::new(),
         vec![ReferenceEvidenceChirho {
             ground_pred_chirho: None,
+            applied_head_chirho: None,
             class_name_chirho: "Enum".to_string(),
             ty_key_chirho: None,
+            applied_ty_chirho: None,
         }],
         vec![ReferenceEvidenceChirho {
             ground_pred_chirho: None,
+            applied_head_chirho: None,
             class_name_chirho: "Num".to_string(),
             ty_key_chirho: Some("Int".to_string()),
+            applied_ty_chirho: None,
         }],
         vec![
             ReferenceEvidenceChirho {
                 ground_pred_chirho: None,
+                applied_head_chirho: None,
                 class_name_chirho: "Enum".to_string(),
                 ty_key_chirho: Some("Int".to_string()),
+                applied_ty_chirho: None,
             },
             ReferenceEvidenceChirho {
                 ground_pred_chirho: None,
+                applied_head_chirho: None,
                 class_name_chirho: "Enum".to_string(),
                 ty_key_chirho: Some("Char".to_string()),
+                applied_ty_chirho: None,
             },
         ],
     ] {
@@ -100,8 +110,10 @@ fn range_proofs_require_a_real_span_and_one_solved_enum_obligation_chirho() {
         SpanChirho::DUMMY_CHIRHO,
         vec![ReferenceEvidenceChirho {
             ground_pred_chirho: None,
+            applied_head_chirho: None,
             class_name_chirho: "Enum".to_string(),
             ty_key_chirho: Some("Char".to_string()),
+            applied_ty_chirho: None,
         }],
     );
     assert!(

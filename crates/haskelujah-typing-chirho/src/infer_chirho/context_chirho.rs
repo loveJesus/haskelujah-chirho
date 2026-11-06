@@ -5,6 +5,7 @@
 //! Moved from `infer_chirho.rs` in row 661.
 
 use super::InferCtxChirho;
+use super::applied_evidence_chirho::applied_evidence_ty_chirho;
 use super::{
     InferResultChirho, MethodOccurrenceRecordChirho, evidence_chirho, seed_builtins_chirho,
 };
@@ -513,6 +514,7 @@ impl InferCtxChirho {
                      span_chirho,
                      origin_chirho,
                      instance_context_chirho,
+                     resolved_entry_chirho,
                  }| {
                     let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
                     if let Some(key_chirho) = self.instance_context_key_chirho(
@@ -523,6 +525,8 @@ impl InferCtxChirho {
                         final_subst_chirho,
                     ) {
                         return Some(MethodOccurrenceRecordChirho {
+                            applied_ty_chirho: None,
+                            resolved_entry_chirho: resolved_entry_chirho.clone(),
                             name_chirho: name_chirho.clone(),
                             ordinal_chirho: *ordinal_chirho,
                             class_name_chirho: class_chirho.clone(),
@@ -565,6 +569,7 @@ impl InferCtxChirho {
                                 })
                         {
                             return Some(MethodOccurrenceRecordChirho {
+                                applied_ty_chirho: None,
                                 name_chirho: name_chirho.clone(),
                                 ordinal_chirho: *ordinal_chirho,
                                 class_name_chirho: class_chirho.clone(),
@@ -572,6 +577,7 @@ impl InferCtxChirho {
                                 ground_pred_chirho: None,
                                 span_chirho: *span_chirho,
                                 origin_chirho: *origin_chirho,
+                                resolved_entry_chirho: resolved_entry_chirho.clone(),
                             });
                         }
                         return None;
@@ -588,6 +594,7 @@ impl InferCtxChirho {
                             self.own_parameter_key_chirho(class_chirho, skolem_chirho)
                     {
                         return Some(MethodOccurrenceRecordChirho {
+                            applied_ty_chirho: None,
                             name_chirho: name_chirho.clone(),
                             ordinal_chirho: *ordinal_chirho,
                             class_name_chirho: class_chirho.clone(),
@@ -595,6 +602,7 @@ impl InferCtxChirho {
                             ground_pred_chirho: None,
                             span_chirho: *span_chirho,
                             origin_chirho: *origin_chirho,
+                            resolved_entry_chirho: resolved_entry_chirho.clone(),
                         });
                     }
                     // A concrete type keys whole for Show, Ord and Eq, as their
@@ -612,6 +620,7 @@ impl InferCtxChirho {
                         .or(hinted_key_chirho)
                         .or_else(|| default_occurrence_key_chirho(class_chirho))?;
                     Some(MethodOccurrenceRecordChirho {
+                        applied_ty_chirho: applied_evidence_ty_chirho(&resolved_chirho),
                         name_chirho: name_chirho.clone(),
                         ordinal_chirho: *ordinal_chirho,
                         class_name_chirho: class_chirho.clone(),
@@ -624,6 +633,7 @@ impl InferCtxChirho {
                         ),
                         span_chirho: *span_chirho,
                         origin_chirho: *origin_chirho,
+                        resolved_entry_chirho: resolved_entry_chirho.clone(),
                     })
                 },
             )
@@ -683,6 +693,7 @@ impl InferCtxChirho {
             promotion_scope_chirho: self.promotion_scope_chirho,
             type_constructor_scope_chirho: self.type_constructor_scope_chirho,
             family_scope_chirho: self.family_scope_chirho,
+            gnd_coercion_proofs_chirho: Vec::new(),
         }
     }
 }

@@ -12,7 +12,7 @@ use haskelujah_ast_chirho::name_chirho::{
 
 use haskelujah_ast_chirho::expr_chirho::MatchArmChirho;
 
-use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
+use crate::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
 
 /// A class predicate: `ClassName Type`, e.g. `Eq Int`, `Show a`.
 /// For multi-parameter type classes: `Convert Int String`.
@@ -286,6 +286,8 @@ pub struct ClassDeclChirho {
     pub name_chirho: String,
     /// Superclass constraints, e.g. `Eq a` for `class Eq a => Ord a`.
     pub supers_chirho: Vec<String>,
+    /// Canonical full superclass predicates over this class's kind and type binders.
+    pub super_templates_chirho: Vec<SchemePredChirho>,
     /// The class type variable (e.g. `a` in `class Eq a`).
     /// For single-parameter classes; use `vars_chirho` for MPTCs.
     pub var_chirho: TyVarChirho,
@@ -310,6 +312,8 @@ pub struct ClassDeclPartsChirho {
     pub kind_vars_chirho: Vec<TyVarChirho>,
     pub name_chirho: String,
     pub supers_chirho: Vec<String>,
+    /// Canonical full superclass predicates over this class's kind and type binders.
+    pub super_templates_chirho: Vec<SchemePredChirho>,
     pub var_chirho: TyVarChirho,
     pub methods_chirho: HashMap<String, SchemeChirho>,
     pub extra_vars_chirho: Vec<TyVarChirho>,
@@ -341,6 +345,7 @@ impl ClassDeclChirho {
             kind_vars_chirho: parts_chirho.kind_vars_chirho,
             name_chirho: parts_chirho.name_chirho,
             supers_chirho: parts_chirho.supers_chirho,
+            super_templates_chirho: parts_chirho.super_templates_chirho,
             var_chirho: parts_chirho.var_chirho,
             methods_chirho: parts_chirho.methods_chirho,
             extra_vars_chirho: parts_chirho.extra_vars_chirho,
@@ -360,6 +365,59 @@ impl ClassDeclChirho {
         let mut vars_chirho = vec![self.var_chirho];
         vars_chirho.extend_from_slice(&self.extra_vars_chirho);
         vars_chirho
+    }
+
+    /// Structured superclass predicates; old seeded unary entries keep their legacy form.
+    pub fn superclass_templates_chirho(&self) -> Vec<SchemePredChirho> {
+        if !self.super_templates_chirho.is_empty() {
+            return self.super_templates_chirho.clone();
+        }
+        self.supers_chirho
+            .iter()
+            .map(|name_chirho| {
+                SchemePredChirho::legacy_chirho(crate::ty_chirho::SchemePredPartsChirho {
+                    kind_tys_chirho: Vec::new(),
+                    class_name_chirho: name_chirho.clone(),
+                    ty_chirho: TyChirho::VarChirho(self.var_chirho),
+                    extra_tys_chirho: Vec::new(),
+                })
+            })
+            .collect()
+    }
+
+    /// Specialize the complete checked telescope without truncating a hidden prefix.
+    /// An incomplete caller supplies no superclass certificate.
+    pub fn superclass_preds_at_chirho(
+        &self,
+        kind_tys_chirho: &[TyChirho],
+        tys_chirho: &[TyChirho],
+    ) -> Option<Vec<PredChirho>> {
+        let vars_chirho = self.all_vars_chirho();
+        if vars_chirho.len() != tys_chirho.len()
+            || self.kind_vars_chirho.len() != kind_tys_chirho.len()
+        {
+            return None;
+        }
+        let mut subst_chirho = crate::subst_chirho::SubstChirho::empty_chirho();
+        for (var_chirho, ty_chirho) in self
+            .kind_vars_chirho
+            .iter()
+            .zip(kind_tys_chirho)
+            .chain(vars_chirho.iter().zip(tys_chirho))
+        {
+            subst_chirho.insert_chirho(*var_chirho, ty_chirho.clone());
+        }
+        Some(
+            self.superclass_templates_chirho()
+                .iter()
+                .map(|predicate_chirho| {
+                    PredChirho::from_scheme_chirho(
+                        &predicate_chirho
+                            .mapped_chirho(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho)),
+                    )
+                })
+                .collect(),
+        )
     }
 
     /// Whether this is a multi-parameter type class.

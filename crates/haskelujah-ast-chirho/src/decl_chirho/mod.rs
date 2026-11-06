@@ -31,6 +31,8 @@ pub use gadt_projection_chirho::{
     check_name_projection_chirho, check_projection_chirho,
     check_record_accessors_projection_chirho, check_type_projection_chirho,
 };
+mod derived_class_chirho;
+pub use derived_class_chirho::{DerivedClassChirho, DerivingStrategyChirho};
 
 /// AST-level kind annotation (written in source code with KindSignatures).
 ///
@@ -239,8 +241,8 @@ pub enum DeclChirho {
         type_vars_chirho: Vec<TyVarChirho>,
         /// Constructors belonging to the data type.
         constructors_chirho: Vec<ConDeclChirho>,
-        /// Classes listed in the deriving clause.
-        deriving_chirho: Vec<NameChirho>,
+        /// Classes the deriving clauses list, each with its clause's strategy.
+        deriving_chirho: Vec<DerivedClassChirho>,
         /// Optional inline result kind and/or complete standalone kind signature.
         kind_sig_chirho: Option<DataKindSigChirho>,
         /// Span covering the whole data declaration.
@@ -254,8 +256,8 @@ pub enum DeclChirho {
         type_vars_chirho: Vec<TyVarChirho>,
         /// The single runtime constructor carried by the newtype.
         constructor_chirho: ConDeclChirho,
-        /// Classes listed in the deriving clause.
-        deriving_chirho: Vec<NameChirho>,
+        /// Classes the deriving clauses list, each with its clause's strategy.
+        deriving_chirho: Vec<DerivedClassChirho>,
         /// Optional inline result kind and/or complete standalone kind signature.
         kind_sig_chirho: Option<DataKindSigChirho>,
         /// Span covering the whole newtype declaration.
@@ -408,6 +410,18 @@ pub enum DeclChirho {
         /// Span covering the whole pattern synonym declaration.
         span_chirho: SpanChirho,
     },
+    /// A role annotation as written (`type role T nominal _ phantom`, RoleAnnotations, row
+    /// 694): the annotated type's name and every role word with its span, malformed ones
+    /// included. Declaration checking judges it; role inference reads a well-formed one as
+    /// the floors of its type's parameters.
+    RoleAnnotationDeclChirho {
+        /// The annotated type's name.
+        type_name_chirho: NameChirho,
+        /// Each role word as written, in order.
+        roles_chirho: Vec<NameChirho>,
+        /// Span covering the whole annotation.
+        span_chirho: SpanChirho,
+    },
     /// Template Haskell splice at declaration level (`$(makeLenses ''Foo)`).
     SpliceDeclChirho {
         /// Splice expression to execute during compilation.
@@ -417,6 +431,8 @@ pub enum DeclChirho {
     },
     /// Standalone deriving declaration (`deriving instance Show Foo`).
     StandaloneDerivingDeclChirho {
+        /// The explicit strategy (`deriving newtype instance ...`); `None` when unwritten.
+        strategy_chirho: Option<DerivingStrategyChirho>,
         /// Constraints attached to the deriving instance head.
         context_chirho: Vec<ConstraintChirho>,
         /// Class being derived.
@@ -642,6 +658,7 @@ impl DeclChirho {
             | Self::PatSynDeclChirho { span_chirho, .. }
             | Self::TypeFamilyDeclChirho { span_chirho, .. }
             | Self::TypeFamilyInstanceDeclChirho { span_chirho, .. }
+            | Self::RoleAnnotationDeclChirho { span_chirho, .. }
             | Self::SpliceDeclChirho { span_chirho, .. }
             | Self::StandaloneDerivingDeclChirho { span_chirho, .. } => *span_chirho,
         }

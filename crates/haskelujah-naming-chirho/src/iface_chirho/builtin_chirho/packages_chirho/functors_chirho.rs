@@ -282,6 +282,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
                 name_chirho: "Traversable1".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec!["traverse1".to_string(), "sequence1".to_string()],
+                is_class_chirho: true,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );
@@ -351,6 +352,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
                     "<.".to_string(),
                     "liftF2".to_string(),
                 ],
+                is_class_chirho: true,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );
@@ -361,6 +363,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
                 name_chirho: "Bind".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec![">>-".to_string(), "join".to_string()],
+                is_class_chirho: true,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );
@@ -371,6 +374,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
                 name_chirho: "Alt".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec!["<!>".to_string(), "some".to_string(), "many".to_string()],
+                is_class_chirho: true,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );
@@ -381,6 +385,7 @@ pub(super) fn push_functors_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) 
                 name_chirho: "Plus".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec!["zero".to_string()],
+                is_class_chirho: true,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );

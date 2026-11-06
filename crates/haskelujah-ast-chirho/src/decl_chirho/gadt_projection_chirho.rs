@@ -491,7 +491,7 @@ pub fn check_declaration_projection_chirho(
                 budget_chirho,
             )?;
             walk_chirho(
-                ProjectionNodeChirho::NamesChirho(deriving_chirho),
+                ProjectionNodeChirho::DerivationsChirho(deriving_chirho),
                 1,
                 1,
                 factor_chirho,
@@ -826,6 +826,7 @@ enum ProjectionNodeChirho<'syntax_chirho> {
     FundepsChirho(&'syntax_chirho [(Vec<String>, Vec<String>)]),
     NameChirho(&'syntax_chirho NameChirho),
     NamesChirho(&'syntax_chirho [NameChirho]),
+    DerivationsChirho(&'syntax_chirho [super::DerivedClassChirho]),
     MultiplicityChirho(&'syntax_chirho MultiplicityChirho),
 }
 
@@ -950,6 +951,19 @@ fn walk_chirho(
                         ProjectionNodeChirho::BinderChirho(first_chirho),
                         depth_chirho,
                     )?;
+                }
+                continue;
+            }
+            ProjectionNodeChirho::DerivationsChirho(derivations_chirho) => {
+                if let Some((first_chirho, rest_chirho)) = derivations_chirho.split_first() {
+                    if !rest_chirho.is_empty() {
+                        push_chirho(ProjectionNodeChirho::DerivationsChirho(rest_chirho), depth_chirho)?;
+                    }
+                    push_chirho(ProjectionNodeChirho::TypesChirho(&first_chirho.class_arguments_chirho), depth_chirho)?;
+                    if let Some(strategy_chirho) = &first_chirho.strategy_chirho {
+                        push_chirho(ProjectionNodeChirho::NameChirho(strategy_chirho.keyword_chirho()), depth_chirho)?;
+                    }
+                    push_chirho(ProjectionNodeChirho::NameChirho(&first_chirho.class_chirho), depth_chirho)?;
                 }
                 continue;
             }
@@ -1377,6 +1391,7 @@ fn walk_chirho(
             | ProjectionNodeChirho::ConstraintsChirho(_)
             | ProjectionNodeChirho::BindersChirho(_)
             | ProjectionNodeChirho::NamesChirho(_)
+            | ProjectionNodeChirho::DerivationsChirho(_)
             | ProjectionNodeChirho::FamilyEquationsChirho(_)
             | ProjectionNodeChirho::AssociatedFamiliesChirho(_)
             | ProjectionNodeChirho::AssociatedInstancesChirho(_)

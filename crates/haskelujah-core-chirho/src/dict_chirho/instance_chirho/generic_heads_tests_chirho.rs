@@ -118,6 +118,7 @@ fn class_env_chirho(
                 .iter()
                 .map(|name_chirho| name_chirho.to_string())
                 .collect(),
+            super_templates_chirho: Vec::new(),
             var_chirho: TyVarChirho(100),
             methods_chirho: HashMap::new(),
             extra_vars_chirho,
@@ -155,6 +156,35 @@ fn first_spine_chirho(env_chirho: &ClassEnvChirho) -> Option<(String, usize)> {
         .expect("registered instance");
     generic_spine_chirho(env_chirho, "TagChirho", first_chirho)
         .map(|(constructor_chirho, arity_chirho)| (constructor_chirho.to_string(), arity_chirho))
+}
+
+#[test]
+fn multi_head_registration_keeps_the_canonical_arena_record_chirho() {
+    let environment_chirho = class_env_chirho(
+        &[],
+        vec![TyVarChirho(101)],
+        vec![(con_chirho("Int"), vec![con_chirho("Bool")])],
+    );
+    let instance_chirho = environment_chirho
+        .instances_chirho()
+        .get_chirho("TagChirho")
+        .expect("the class has its arena view")
+        .first_chirho()
+        .expect("the view has its canonical record");
+    let mut pass_chirho = DictPassCtxChirho::new_chirho(10, HashMap::new(), HashMap::new());
+    pass_chirho.register_multi_head_chirho(instance_chirho, CoreIdChirho(20));
+    pass_chirho.register_multi_head_chirho(instance_chirho, CoreIdChirho(21));
+    assert_eq!(pass_chirho.conditional_dicts_chirho.len(), 1);
+    let dictionary_chirho = pass_chirho
+        .conditional_dicts_chirho
+        .values()
+        .next()
+        .unwrap();
+    assert_eq!(dictionary_chirho.builder_chirho, CoreIdChirho(20));
+    assert!(std::sync::Arc::ptr_eq(
+        instance_chirho,
+        dictionary_chirho.instance_chirho.as_ref().unwrap(),
+    ));
 }
 
 #[test]

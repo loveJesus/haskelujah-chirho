@@ -126,6 +126,8 @@ pub(crate) fn compile_backend_chirho(
     );
     let mut occurrence_evidence_chirho =
         evidence_join_chirho::occurrence_keys_chirho(&occurrence_proofs_chirho);
+    let mut occurrence_applied_tys_chirho =
+        evidence_join_chirho::occurrence_applied_tys_chirho(&occurrence_proofs_chirho);
     let mut ground_goals_chirho =
         evidence_join_chirho::occurrence_ground_goals_chirho(&occurrence_proofs_chirho);
     // Range syntax selected Enum itself, independently of a lexical namesake.
@@ -155,6 +157,9 @@ pub(crate) fn compile_backend_chirho(
             }
         }
     }
+    // An applied type serves only an occurrence that kept its proof.
+    occurrence_applied_tys_chirho
+        .retain(|id_chirho, _| occurrence_evidence_chirho.contains_key(id_chirho));
     occurrence_evidence_chirho.extend(evidence_join_chirho::join_range_evidence_chirho(
         &infer_result_chirho,
         &desugar_output_chirho.method_occurrences_chirho,
@@ -163,13 +168,31 @@ pub(crate) fn compile_backend_chirho(
 
     // Phase 5.5: Dictionary-passing transform (desugar typeclass constraints)
     let con_types_chirho = build_con_type_map_chirho(&module_chirho);
+    // The builtin classes the module's class spellings name (K01): the frontend built the
+    // same scope from the same declarations, imports and interfaces before deriving, and
+    // deriving adds only instances. The newtype inventory and the derived Show and Enum
+    // metadata judge each derived class by it, exactly as the deriving pass routed it (row 694).
+    // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+    let builtin_class_scope_chirho =
+        haskelujah_naming_chirho::build_builtin_class_scope_chirho(&module_chirho, ifaces_chirho);
     let newtype_info_chirho = build_newtype_info_chirho(
         &module_chirho,
+        &builtin_class_scope_chirho,
+        &infer_result_chirho.gnd_coercion_proofs_chirho,
+        &desugar_output_chirho.default_method_rows_chirho,
         infer_result_chirho.promotion_scope_chirho.as_deref(),
     );
     let mut newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
         .values()
-        .map(|(con_name_chirho, _)| con_name_chirho.clone())
+        .map(|info_chirho| info_chirho.constructor_chirho.clone())
+        .collect();
+    // The constructors of newtypes that take a class through the newtype strategy. Core
+    // erases them, so the representation's rows receive the field itself on every backend
+    // (row 694). workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+    let gnd_newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
+        .values()
+        .filter(|info_chirho| !info_chirho.newtype_derived_classes_chirho.is_empty())
+        .map(|info_chirho| info_chirho.constructor_chirho.clone())
         .collect();
     if !con_types_chirho.contains_key("Identity")
         && module_chirho.imports_chirho.iter().any(|import_chirho| {
@@ -221,9 +244,15 @@ pub(crate) fn compile_backend_chirho(
     // Constructor metadata for every type that derives Show (row 533) or Enum (row 669).
     // workflow: print-show-evidence-chirho
     let derived_shows_chirho =
-        haskelujah_typing_chirho::deriving_chirho::derived_show_metadata_chirho(&module_chirho);
+        haskelujah_typing_chirho::deriving_chirho::derived_show_metadata_with_builtins_chirho(
+            &module_chirho,
+            &builtin_class_scope_chirho,
+        );
     let derived_enums_chirho =
-        haskelujah_typing_chirho::deriving_chirho::derived_enum_metadata_chirho(&module_chirho);
+        haskelujah_typing_chirho::deriving_chirho::derived_enum_metadata_with_builtins_chirho(
+            &module_chirho,
+            &builtin_class_scope_chirho,
+        );
     // The checker's typed instance per source declaration, every span kept (S3).
     // workflow: language-features-chirho/dictionary-evidence-chirho
     let instance_declarations_chirho: Vec<haskelujah_core_chirho::InstanceDeclarationChirho> =
@@ -249,6 +278,7 @@ pub(crate) fn compile_backend_chirho(
             evidence_chirho: haskelujah_core_chirho::DictPassEvidenceChirho {
                 method_occurrence_canon_chirho: desugar_output_chirho.method_occurrences_chirho,
                 occurrence_evidence_chirho,
+                occurrence_applied_tys_chirho,
                 reference_evidence_chirho,
                 derived_shows_chirho,
                 derived_enums_chirho,
@@ -293,7 +323,19 @@ pub(crate) fn compile_backend_chirho(
             .map_text_chirho(|text_chirho| families_chirho.readable_keys_chirho(text_chirho));
         return Err(bundle_chirho);
     }
-    let core_chirho = dict_result_chirho.module_chirho;
+    // A GND instance whose representation's methods the dictionary pass could not build is
+    // refused, never aliased to a missing method (row 694).
+    // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+    if !dict_result_chirho.unsupported_chirho.is_empty() {
+        return Err(unsupported_gnd_diagnostics_chirho(
+            &dict_result_chirho.unsupported_chirho,
+        ));
+    }
+    let mut core_chirho = dict_result_chirho.module_chirho;
+    haskelujah_core_chirho::simplify_chirho::erase_newtype_constructors_chirho(
+        &mut core_chirho,
+        &gnd_newtype_cons_chirho,
+    );
 
     // Phase 6: Core-to-Core simplification (beta reduction, dead code, case-of-known)
     let config_chirho = SimplifyConfigChirho::default();
@@ -319,5 +361,28 @@ pub(crate) fn compile_backend_chirho(
         llvm_ir_chirho,
         wasm_bytes_chirho,
         newtype_cons_chirho,
+        gnd_newtype_cons_chirho,
     })
+}
+
+/// `E0209`, the code declaration validity reports a refused declaration under.
+const UNSUPPORTED_GND_CODE_CHIRHO: u16 = 209;
+
+/// The dictionary pass's unsupported GND instances, as errors (row 694).
+/// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+fn unsupported_gnd_diagnostics_chirho(reasons_chirho: &[String]) -> DiagnosticBundleChirho {
+    let mut diagnostics_chirho = DiagnosticBundleChirho::empty_chirho();
+    for reason_chirho in reasons_chirho {
+        diagnostics_chirho.push_chirho(
+            haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(
+                    UNSUPPORTED_GND_CODE_CHIRHO,
+                ),
+                reason_chirho.clone(),
+                haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+            )
+            .with_note_chirho("Haskelujah does not support this yet"),
+        );
+    }
+    diagnostics_chirho
 }

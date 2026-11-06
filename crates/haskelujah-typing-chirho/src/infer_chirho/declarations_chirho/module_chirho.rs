@@ -141,9 +141,9 @@ impl InferCtxChirho {
                     deriving_chirho,
                     ..
                 } => {
-                    for class_chirho in deriving_chirho {
+                    for derived_chirho in deriving_chirho {
                         self.derived_instance_heads_chirho.insert((
-                            class_chirho.text_chirho().to_string(),
+                            derived_chirho.class_text_chirho().to_string(),
                             name_chirho.text_chirho().to_string(),
                         ));
                     }

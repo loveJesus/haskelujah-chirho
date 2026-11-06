@@ -35,6 +35,7 @@ use std::sync::Arc;
 
 #[path = "infer_chirho/annotations_chirho/mod.rs"]
 mod annotations_chirho;
+mod applied_evidence_chirho;
 mod builtins_chirho;
 #[path = "infer_chirho/context_chirho.rs"]
 mod context_chirho;
@@ -49,6 +50,9 @@ mod dependency_chirho;
 pub(crate) use dependency_chirho::dependency_groups_chirho;
 #[path = "infer_chirho/declarations_chirho/gadt_constructors_chirho.rs"]
 mod gadt_constructors_chirho;
+// GND method coercibility, beside the instance obligations (row 694).
+#[path = "infer_chirho/declarations_chirho/gnd_coercion_chirho/mod.rs"]
+pub mod gnd_coercion_chirho;
 #[path = "infer_chirho/declarations_chirho/instance_obligations_chirho.rs"]
 mod instance_obligations_chirho;
 #[path = "infer_chirho/declarations_chirho/instance_signatures_chirho.rs"]
@@ -409,6 +413,11 @@ pub struct InferResultChirho {
     pub family_scope_chirho: Option<Arc<TypeFamilyScopeChirho>>,
     pub type_constructor_scope_chirho:
         Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
+    /// One typed proof per GND instance that its methods have one representation at the
+    /// newtype and at its representation (row 694). The frontend fills it after inference;
+    /// the dictionary pass aliases a newtype's rows only with its proof.
+    /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+    pub gnd_coercion_proofs_chirho: Vec<gnd_coercion_chirho::GndCoercionProofChirho>,
 }
 
 /// Evidence-threading P2: one concrete class-instantiation fact about one
@@ -420,9 +429,16 @@ pub struct InferResultChirho {
 /// `origin_chirho` is the reference's producer-minted identity when it has one.
 /// An occurrence with several predicates keeps one record per predicate, all
 /// under the same origin.
+/// `resolved_entry_chirho` is the qualified environment entry a qualified
+/// reference's scheme was resolved under (`P.print`), and `None` for every other
+/// reference: the join judges the proof against that entry's scheme (row 698).
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 #[derive(Debug, Clone, PartialEq)]
 pub struct MethodOccurrenceRecordChirho {
+    /// The predicate's resolved type when it is a ground application (`BoxChirho Int`), so a
+    /// conditional instance's factory can serve the occurrence at its actual arguments
+    /// (row 694, M1); `None` otherwise.
+    pub applied_ty_chirho: Option<TyChirho>,
     pub name_chirho: String,
     pub ordinal_chirho: u32,
     pub class_name_chirho: String,
@@ -432,6 +448,7 @@ pub struct MethodOccurrenceRecordChirho {
     pub ground_pred_chirho: Option<PredChirho>,
     pub span_chirho: SpanChirho,
     pub origin_chirho: Option<OriginIdChirho>,
+    pub resolved_entry_chirho: Option<String>,
 }
 
 /// The inference context — carries mutable state during inference.

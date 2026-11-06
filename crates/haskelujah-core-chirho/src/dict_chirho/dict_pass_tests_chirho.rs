@@ -359,6 +359,7 @@ fn missing_method_ignores_dangling_name_map_entry_chirho() {
             kind_vars_chirho: Vec::new(),
             name_chirho: "Needs".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),
             methods_chirho,
             extra_vars_chirho: vec![],

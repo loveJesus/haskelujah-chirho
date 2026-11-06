@@ -17,7 +17,9 @@ mod instance_context_chirho;
 /// One constrained reference's predicate, captured during inference and
 /// finalized into a `MethodOccurrenceRecordChirho` once the module is solved.
 /// The origin is the reference's identity; the span stays for diagnostics and
-/// for references that have no origin yet.
+/// for references that have no origin yet. The resolved entry is the qualified
+/// environment entry the reference's scheme came from, when it came from one
+/// (row 698).
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 #[derive(Debug, Clone)]
 pub(super) struct OccurrenceCaptureChirho {
@@ -28,6 +30,7 @@ pub(super) struct OccurrenceCaptureChirho {
     pub(super) span_chirho: SpanChirho,
     pub(super) origin_chirho: Option<OriginIdChirho>,
     pub(super) instance_context_chirho: Option<Arc<[PredChirho]>>,
+    pub(super) resolved_entry_chirho: Option<String>,
 }
 
 /// One constrained reference's instantiated predicates, in scheme order.
@@ -35,7 +38,8 @@ pub(super) struct OccurrenceCaptureChirho {
 pub(super) struct ReferenceCaptureChirho {
     pub(super) span_chirho: SpanChirho,
     pub(super) origin_chirho: Option<OriginIdChirho>,
-    pub(super) preds_chirho: Vec<(String, TyChirho)>,
+    /// Each predicate's class, first argument and extra arguments, in scheme order.
+    pub(super) preds_chirho: Vec<(String, TyChirho, Vec<TyChirho>)>,
     pub(super) instance_context_chirho: Option<Arc<[PredChirho]>>,
 }
 
@@ -110,6 +114,15 @@ pub struct ReferenceEvidenceChirho {
     pub ty_key_chirho: Option<String>,
     /// Full closed goal, preserving every class argument; never a partial MPTC goal.
     pub ground_pred_chirho: Option<PredChirho>,
+    /// The predicate's resolved type when it is a ground application (`BoxChirho Int`), so a
+    /// conditional instance's factory can take its context's dictionaries at the actual
+    /// arguments (row 694); `None` otherwise (`applied_evidence_chirho.rs`).
+    pub applied_ty_chirho: Option<TyChirho>,
+    /// A multi-parameter predicate's complete head when every argument resolved ground, in
+    /// order (`[Int, TChirho Int]` for `AskChirho Int (TChirho Int)`): the arguments a written
+    /// instance or a conditional factory is found and instantiated at (row 694, #31909).
+    /// `None` for a one-parameter predicate, whose `applied_ty_chirho` serves.
+    pub applied_head_chirho: Option<Vec<TyChirho>>,
 }
 
 /// The solved instance of one overloaded literal.
@@ -151,6 +164,7 @@ impl InferCtxChirho {
                         (
                             pred_chirho.class_name_chirho.clone(),
                             pred_chirho.ty_chirho.clone(),
+                            pred_chirho.extra_tys_chirho.clone(),
                         )
                     })
                     .collect(),
@@ -186,6 +200,11 @@ impl InferCtxChirho {
     /// instantiated predicates in scheme order, and one occurrence capture per
     /// predicate under the per-name ordinal and the reference's origin. An
     /// occurrence with several predicates keeps all of them.
+    ///
+    /// A qualified reference also keeps the qualified entry its scheme was resolved
+    /// under (row 698). Every capture site resolves this same name through the keyed
+    /// lookup's wrapper, so asking the keyed lookup again names that very entry. An
+    /// unqualified reference has none, and the join judges it by its bare name as before.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(super) fn capture_occurrence_predicates_chirho(
         &mut self,
@@ -198,6 +217,15 @@ impl InferCtxChirho {
         let span_chirho = name_chirho.span_chirho();
         let origin_chirho = name_chirho.origin_chirho();
         self.capture_reference_evidence_chirho(span_chirho, origin_chirho, preds_chirho);
+        let resolved_entry_chirho = name_chirho
+            .qualifier_chirho()
+            .and_then(|_qualifier_chirho| {
+                self.lookup_value_scheme_keyed_chirho(
+                    &name_chirho.full_name_chirho(),
+                    name_chirho.text_chirho(),
+                )
+                .and_then(|(entry_chirho, _scheme_chirho)| entry_chirho)
+            });
         let counter_chirho = self
             .occurrence_counters_chirho
             .entry(name_chirho.text_chirho().to_string())
@@ -214,6 +242,7 @@ impl InferCtxChirho {
                     span_chirho,
                     origin_chirho,
                     instance_context_chirho: self.active_instance_context_chirho.clone(),
+                    resolved_entry_chirho: resolved_entry_chirho.clone(),
                 });
         }
     }
@@ -241,6 +270,7 @@ impl InferCtxChirho {
                     (
                         pred_chirho.class_name_chirho.clone(),
                         pred_chirho.ty_chirho.clone(),
+                        pred_chirho.extra_tys_chirho.clone(),
                     )
                 })
                 .collect(),
@@ -415,13 +445,20 @@ impl InferCtxChirho {
             let records_chirho: Vec<ReferenceEvidenceChirho> = capture_chirho
                 .preds_chirho
                 .iter()
-                .map(|(class_name_chirho, ty_chirho)| {
+                .map(|(class_name_chirho, ty_chirho, extra_tys_chirho)| {
                     let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
+                    let extras_chirho: Vec<TyChirho> = extra_tys_chirho
+                        .iter()
+                        .map(|ty_chirho| final_subst_chirho.apply_ty_chirho(ty_chirho))
+                        .collect();
+                    let head_chirho: Vec<TyChirho> = std::iter::once(resolved_chirho.clone())
+                        .chain(extras_chirho.iter().cloned())
+                        .collect();
                     let ty_key_chirho = self
                         .instance_context_key_chirho(
                             class_name_chirho,
                             &resolved_chirho,
-                            &[],
+                            &extras_chirho,
                             capture_chirho.instance_context_chirho.as_deref(),
                             final_subst_chirho,
                         )
@@ -432,20 +469,32 @@ impl InferCtxChirho {
                                 final_subst_chirho,
                             )
                         });
-                    let ground_pred_chirho = if ty_key_chirho
+                    let own_chirho = ty_key_chirho
                         .as_deref()
-                        .is_some_and(is_own_dictionary_key_chirho)
-                    {
-                        None
-                    } else {
-                        // Captures currently retain only the primary argument.
-                        // The helper refuses a class that needs uncaptured extras.
-                        ground_pred_chirho(self, class_name_chirho, &resolved_chirho, &[])
-                    };
+                        .is_some_and(is_own_dictionary_key_chirho);
                     ReferenceEvidenceChirho {
                         class_name_chirho: class_name_chirho.clone(),
                         ty_key_chirho,
-                        ground_pred_chirho,
+                        ground_pred_chirho: if own_chirho {
+                            None
+                        } else {
+                            ground_pred_chirho(
+                                self,
+                                class_name_chirho,
+                                &resolved_chirho,
+                                &extras_chirho,
+                            )
+                        },
+                        applied_ty_chirho: if own_chirho {
+                            None
+                        } else {
+                            applied_evidence_chirho::applied_evidence_ty_chirho(&resolved_chirho)
+                        },
+                        applied_head_chirho: if own_chirho {
+                            None
+                        } else {
+                            applied_evidence_chirho::applied_evidence_head_chirho(&head_chirho)
+                        },
                     }
                 })
                 .collect();
@@ -580,17 +629,8 @@ pub(super) fn concrete_evidence_key_chirho(
             Some(if nested_chirho { "String" } else { "[Char]" }.to_string())
         }
         TyChirho::ConChirho(name_chirho) => Some(name_chirho.clone()),
-        TyChirho::ListChirho(inner_chirho) => {
-            if matches!(
-                inner_chirho.as_ref(),
-                TyChirho::ConChirho(name_chirho) if name_chirho == "Char"
-            ) {
-                return Some(if nested_chirho { "String" } else { "[Char]" }.to_string());
-            }
-            Some(format!(
-                "[{}]",
-                concrete_evidence_key_chirho(inner_chirho, true)?
-            ))
+        TyChirho::ListChirho(element_chirho) => {
+            list_evidence_key_chirho(element_chirho, nested_chirho)
         }
         TyChirho::TupleChirho(items_chirho) => {
             let item_keys_chirho = items_chirho
@@ -599,7 +639,20 @@ pub(super) fn concrete_evidence_key_chirho(
                 .collect::<Option<Vec<_>>>()?;
             Some(format!("({})", item_keys_chirho.join(",")))
         }
+        TyChirho::AppChirho(fun_chirho, element_chirho)
+            if is_list_constructor_chirho(fun_chirho) =>
+        {
+            list_evidence_key_chirho(element_chirho, nested_chirho)
+        }
         TyChirho::AppChirho(fun_chirho, arg_chirho) => {
+            // A fully saturated tuple constructor keys as the tuple unification equates it
+            // with; a partly applied one keeps its applied spelling (row 697).
+            if let Some(items_chirho) = crate::unify_chirho::collect_tuple_app_chirho(ty_chirho) {
+                return concrete_evidence_key_chirho(
+                    &TyChirho::TupleChirho(items_chirho),
+                    nested_chirho,
+                );
+            }
             let key_chirho = format!(
                 "{} {}",
                 concrete_evidence_key_chirho(fun_chirho, false)?,
@@ -614,16 +667,41 @@ pub(super) fn concrete_evidence_key_chirho(
     }
 }
 
+/// The list constructor `[]`, which `m Int` leaves applied at `m := []`. Unification
+/// already equates the applied `[] t` with `[t]` (row 697).
+fn is_list_constructor_chirho(ty_chirho: &TyChirho) -> bool {
+    matches!(ty_chirho, TyChirho::ConChirho(name_chirho) if name_chirho == "[]")
+}
+
+/// A list's whole key, however the checker spells the list: `[Int]`, and `[Char]` for a
+/// top-level list of Char (`String` once nested). The applied constructor `[] Int` keys the
+/// same, so its rows are found by the name `[Int]` gives them. It had keyed `[] Int`, which
+/// names no row, and native `print` fell to its generic show (row 697).
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+fn list_evidence_key_chirho(element_chirho: &TyChirho, nested_chirho: bool) -> Option<String> {
+    if matches!(element_chirho, TyChirho::ConChirho(name_chirho) if name_chirho == "Char") {
+        return Some(if nested_chirho { "String" } else { "[Char]" }.to_string());
+    }
+    Some(format!(
+        "[{}]",
+        concrete_evidence_key_chirho(element_chirho, true)?
+    ))
+}
+
 /// The key of a type the dictionary registry names by its WHOLE spelling: a
 /// list whose every part is ground keeps it (`[Int]`, `[[Int]]`, `[Char]` for
 /// a top-level `String`), because list dictionaries and method rows are named
 /// per element (`$fOrd[Int]`, `$prim_Eq_==_[Int]`) and the head `[]` names none
-/// of them. Every other type, and any list over a variable, gets `None` here
+/// of them. A list written `[t]` and the applied constructor `[] t` both count
+/// (row 697). Every other type, and any list over a variable, gets `None` here
 /// and keeps its head key.
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 pub(super) fn ground_list_key_chirho(ty_chirho: &TyChirho) -> Option<String> {
     match ty_chirho {
         TyChirho::ListChirho(_) => concrete_evidence_key_chirho(ty_chirho, false),
+        TyChirho::AppChirho(fun_chirho, _) if is_list_constructor_chirho(fun_chirho) => {
+            concrete_evidence_key_chirho(ty_chirho, false)
+        }
         TyChirho::ConChirho(name_chirho) if name_chirho == "String" => {
             concrete_evidence_key_chirho(ty_chirho, false)
         }

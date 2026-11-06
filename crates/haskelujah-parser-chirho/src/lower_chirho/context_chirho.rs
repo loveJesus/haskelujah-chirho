@@ -94,12 +94,13 @@ impl LowerCtxChirho {
     // -----------------------------------------------------------------------
 
     /// Walk all pragma tokens in the CST and extract LANGUAGE extension names.
-    /// Pragma tokens have the text `{-# LANGUAGE Ext1, Ext2 #-}`.
+    /// Pragma tokens have the text `{-# LANGUAGE Ext1, Ext2 #-}`. A written flag beats a
+    /// language edition in either order (`module_extensions_chirho`, row 694).
     pub(super) fn extract_pragma_extensions_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
     ) -> Vec<String> {
-        let mut extensions_chirho = Vec::new();
+        let mut entries_chirho = Vec::new();
         for child_chirho in node_chirho.children_chirho() {
             if !is_trivia_element_chirho(child_chirho) {
                 break;
@@ -107,12 +108,12 @@ impl LowerCtxChirho {
             if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho
                 && tok_chirho.kind_chirho() == TokenKindChirho::PragmaChirho
             {
-                extensions_chirho.extend(pragma_extension_entries_from_text_chirho(
+                entries_chirho.extend(pragma_extension_entries_from_text_chirho(
                     tok_chirho.text_chirho(),
                 ));
             }
         }
-        module_extensions_chirho(extensions_chirho)
+        module_extensions_chirho(entries_chirho)
     }
 
     /// Walk all pragma tokens and extract INLINE/NOINLINE/INLINABLE annotations.

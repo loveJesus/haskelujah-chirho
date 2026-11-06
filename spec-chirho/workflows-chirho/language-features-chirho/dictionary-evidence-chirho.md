@@ -20,10 +20,10 @@ flowchart TD
     desugar_chirho[Desugar: literal becomes App fromInteger-occurrence lit]
     desugar_chirho --> prov_chirho[record_occurrence_provenance_chirho: occurrence id → the literal's origin and role]
     desugar_chirho --> spans_chirho[record_literal_occurrence_chirho: occurrence id → literal span, for literals with no origin]
-    result_chirho --> join_chirho[join_occurrence_evidence_chirho: by origin first, then span, then the per-name ordinal join]
+    result_chirho --> join_chirho[join_occurrence_evidence_chirho: by origin first, then span, then the per-name ordinal join; each occurrence also keeps the ground applied type its proving record resolved to, BoxChirho Int, row 694]
     prov_chirho --> join_chirho
     spans_chirho --> join_chirho
-    join_chirho --> pass_chirho[Dictionary pass at every occurrence entry, occurrence_head_replacement_chirho and try_rewrite_method_var_chirho: prim row, an Eq/Ord proven list key's dispatch, or keyed selector from the record]
+    join_chirho --> pass_chirho[Dictionary pass at every occurrence entry, occurrence_head_replacement_chirho and try_rewrite_method_var_chirho: a parametric GND factory's dictionary at the applied type, then prim row, an Eq/Ord proven list key's dispatch, or keyed selector from the record]
     pass_chirho --> stg_chirho[STG: the literal's fromInteger has its dictionary]
 ```
 
@@ -36,6 +36,10 @@ flowchart TD
   were joined by a per-name ordinal until 2026-09-19. See "Method occurrences" below; the
   lesson is that an invariant in this document is not evidence about the code, and the join it
   describes has to be read.
+- A multi-parameter predicate's reference record also carries its complete ground head
+  (`applied_head_chirho`, row 694, #31909). The pass serves it before any first-argument key,
+  from the one conditional-registry entry whose instance head matches (`head_dictionary_chirho`);
+  the flow is in `compiler-pipeline-chirho/deriving-strategies-chirho.md`.
 - A concrete head is evidence, and so is a signature's rigid variable (row 584). A literal there
   takes the binding's own key, as an occurrence at that variable does.
   - It takes `$own:k` for the predicate the signature declares. It takes the class-only `$own` for a class that no predicate names, such as a Num literal under `Fractional a`. The pass serves that through the superclass extraction.
@@ -433,6 +437,18 @@ flowchart TD
   stub: another synonym, an application head (written `Maybe Int`, typed `(Maybe Int)`) and
   a later argument of a multi-parameter head. A head with type variables (written `T b`,
   typed `(T t0)`) is the generic-head rule's.
+- Applied list and tuple constructors key as their sugar (row 697, 2026-11-05).
+  - `m Int` at `m := []` resolves to the applied constructor `[] Int`. Unification equates it
+    with `[Int]`, but `concrete_evidence_key_chirho` spelled it `[] Int`. That names no row, so
+    natively `print` fell to its generic show ("no native Show instance for a boxed value").
+  - The applied list now keys exactly as the list does, in `concrete_evidence_key_chirho` and
+    `ground_list_key_chirho`. So does a fully saturated tuple constructor, recognized by
+    unification's own `collect_tuple_app_chirho`.
+  - A partly applied tuple constructor and an applied list over a variable earn no aggregate
+    key.
+  - Controls: `evidence_validity_tests_chirho.rs` (the keys), and R1 in
+    `tests/typing_integration_chirho/declarations_chirho/monad_owned_dictionary_chirho.rs`
+    (`[5,6]` on every engine).
   A whole key the checker proved is never replaced by the
   argument-shape guess, which reads the element off the syntax and collapses `[[Int]]` to
   `[Int]`. And a call receives a dictionary for EVERY predicate: where none can be built,
@@ -531,6 +547,17 @@ flowchart TD
   positional path, and vacancy in the consumer map is not ownership of a proof.
 - An ambiguous or duplicated span identifies nothing and does not fall through to a positional
   assignment; its occurrence simply carries no evidence.
+- A record proves its occurrence only when it is authoritative, by either of two arms:
+  - Its class declares the method (`==` → Eq).
+  - Its class constrains the function's own scheme (`print :: Show a => ...`). That scheme is
+    the bare name's entry. A qualified use also has the qualified entry the checker resolved it
+    under: `MethodOccurrenceRecordChirho::resolved_entry_chirho`, from the keyed lookup behind
+    `lookup_value_scheme_with_qualified_suffix_fallback_chirho` (row 698).
+  - The entry is consulted, never trusted. A use without one is judged by its bare name, as before.
+  - Judged by the bare name alone, `mapM_ P.print xs` beside a program's own
+    `print :: String -> IO ()` lost its Show proof and printed `97 98` natively.
+  - Controls: `src/tests_chirho/evidence_chirho/occurrence_authority_chirho.rs`, the front-end pin
+    in `occurrence_records_chirho.rs`, and the capture test in `evidence_validity_tests_chirho.rs`.
 - The positional path exists only because the desugarer mints occurrences at several sites and
   only the variable-reference site records a span. Deleting it turns 19 driver tests red (all
   desugared shapes); restricting it to names whose occurrences all lack spans regresses a

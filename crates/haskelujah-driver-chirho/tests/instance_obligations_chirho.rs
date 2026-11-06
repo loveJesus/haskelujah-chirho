@@ -632,3 +632,15 @@ fn a_live_equality_given_decides_types_and_wanteds_chirho() {
         });
     }
 }
+
+#[test]
+fn a_multi_parameter_given_entails_its_superclass_only_at_its_argument_chirho() {
+    // `class Show b => ShowSecondChirho a b` gives `Show b`, never `Show a` (row 694, #31909);
+    // the first-argument rule entailed `Show a` from it. GHC rejects the program, no instance
+    // for `Show a` (predicted, not yet measured).
+    rejected_with_chirho(
+        "FirstArgumentShowChirho.hs",
+        "{-# LANGUAGE MultiParamTypeClasses #-}\nmodule Main where\nclass Show b => ShowSecondChirho a b\ndescribeFirstChirho :: ShowSecondChirho a b => a -> b -> String\ndescribeFirstChirho firstChirho _ = show firstChirho\nmain :: IO ()\nmain = putStrLn \"ok\"\n",
+        "could not deduce `Show",
+    );
+}

@@ -841,7 +841,6 @@ fn ordinary_record_field_type_is_still_resolved_chirho() {
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![],
         constructors_chirho: vec![ConDeclChirho::RecordChirho {
-            prefix_chirho: Default::default(),
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![FieldDeclChirho {
                 multiplicity_chirho: None,
@@ -851,6 +850,7 @@ fn ordinary_record_field_type_is_still_resolved_chirho() {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
         }],
         deriving_chirho: vec![],
         kind_sig_chirho: None,
@@ -882,7 +882,6 @@ fn parser_sensitive_rank_n_record_field_is_deferred_chirho() {
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![],
         constructor_chirho: ConDeclChirho::RecordChirho {
-            prefix_chirho: Default::default(),
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![FieldDeclChirho {
                 multiplicity_chirho: None,
@@ -892,6 +891,7 @@ fn parser_sensitive_rank_n_record_field_is_deferred_chirho() {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
         },
         deriving_chirho: vec![],
         kind_sig_chirho: None,
@@ -912,7 +912,6 @@ fn required_forall_record_field_remains_checkable_chirho() {
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![],
         constructors_chirho: vec![ConDeclChirho::RecordChirho {
-            prefix_chirho: Default::default(),
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![FieldDeclChirho {
                 multiplicity_chirho: None,
@@ -926,6 +925,7 @@ fn required_forall_record_field_remains_checkable_chirho() {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
         }],
         deriving_chirho: vec![],
         kind_sig_chirho: None,
@@ -1036,13 +1036,13 @@ fn ordinary_constructor_free_variable_requires_written_existential_binding_chirh
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
-            prefix_chirho: Default::default(),
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![(
                 StrictnessChirho::LazyChirho,
                 TypeChirho::VarChirho(name_chirho("bChirho")),
             )],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
         }],
         deriving_chirho: vec![],
         kind_sig_chirho: None,
@@ -1085,13 +1085,13 @@ fn constructor_span_does_not_replace_its_actual_quantifier_prefix_chirho() {
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![],
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
-            prefix_chirho: Default::default(),
             name_chirho: existential_name_chirho,
             fields_chirho: vec![(
                 StrictnessChirho::LazyChirho,
                 TypeChirho::VarChirho(name_chirho("hiddenChirho")),
             )],
             span_chirho: declaration_span_chirho,
+            prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
         }],
         deriving_chirho: vec![],
         kind_sig_chirho: None,

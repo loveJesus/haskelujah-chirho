@@ -200,6 +200,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
                     "fromException".to_string(),
                     "displayException".to_string(),
                 ],
+                is_class_chirho: true,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );

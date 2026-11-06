@@ -411,7 +411,29 @@ impl InferCtxChirho {
                 !self.givens_discharge_wanted_chirho(pred_chirho, &givens_chirho)
             })
             .collect();
+        self.refuse_undecided_ground_wanteds_chirho();
         improvement_chirho
+    }
+
+    /// Refuse by name, while these givens are still in scope, each ground wanted their
+    /// superclass search left undecided. The module-end pass judges a deferred wanted with no
+    /// givens at all, so an exhausted search there reads as a complete "no instance" (row 694,
+    /// #31984; r23's U1).
+    /// workflow: language-features-chirho/rigid-type-variables-chirho
+    fn refuse_undecided_ground_wanteds_chirho(&mut self) {
+        let deferred_preds_chirho = std::mem::take(&mut self.deferred_preds_chirho);
+        for (pred_chirho, span_chirho) in deferred_preds_chirho {
+            if self.pred_fully_ground_chirho(&pred_chirho)
+                && matches!(
+                    self.ground_pred_verdict_chirho(&pred_chirho, 0),
+                    Some(Err(_))
+                )
+            {
+                self.report_undecided_superclass_chirho(&pred_chirho, span_chirho);
+            } else {
+                self.deferred_preds_chirho.push((pred_chirho, span_chirho));
+            }
+        }
     }
 
     /// A wanted leaves the deferred list at a given scope's end only when the

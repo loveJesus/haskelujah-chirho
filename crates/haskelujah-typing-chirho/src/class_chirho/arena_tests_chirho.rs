@@ -12,6 +12,7 @@ use crate::ty_chirho::{TyChirho, TyVarChirho};
 
 fn class_chirho(name_chirho: &str) -> ClassDeclChirho {
     ClassDeclChirho::legacy_chirho(ClassDeclPartsChirho {
+        super_templates_chirho: Vec::new(),
         kind_vars_chirho: vec![],
         name_chirho: name_chirho.to_owned(),
         supers_chirho: vec![],

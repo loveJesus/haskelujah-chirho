@@ -1,0 +1,532 @@
+{
+  "source_head_chirho": "73c7f93b604f72604ff176bb0f19d9bbf7956a5b",
+  "crates_tree_chirho": "6303600610cb4c97867a5fb7f95524da77ef3da0",
+  "candidate_sha256_chirho": "50378ae3b02e1fead1d8d236e5c7440d72b523b2a07c3a89be01e44059e05199",
+  "baseline_sha256_chirho": "b5f937afaf8406041d6bad539f558930ae4eac597030edd23376c80663fd3954",
+  "previous_contract_chirho": "spec-chirho/tasklists-chirho/parity-lanes-chirho/26-11-04-chirho/row688-checkpoint-ghc-contracts-chirho.json",
+  "previous_contract_sha256_chirho": "f041dd4e1caaffd793a19174c5b61494d6f9ca23d8715b976e7d466a9b367be5",
+  "scope_chirho": "22 fresh GHC9.14.1 typecheck comparisons plus four source-class typecheck comparisons reusing unchanged fresh GHC receipts. No corpus, runtime or main-engine landing claim.",
+  "candidate_matches_all_controls_chirho": true,
+  "corrected_against_main_chirho": [
+    "ClosedPrefixPositiveChirho",
+    "ClosedPrefixWrongResultChirho",
+    "NullaryResultArrowPositiveChirho",
+    "KnownNatWrongKindChirho",
+    "ImportedPrefixPositiveChirho",
+    "P02ZeroVisibleChirho",
+    "P03SharedSingChirho",
+    "P04SynonymKindChirho",
+    "N02SameKindOverlapChirho",
+    "N03ResultArrowNotBinderChirho",
+    "N04WrongNominalKindChirho"
+  ],
+  "regressions_in_prior_checkpoint_repaired_chirho": [
+    "TypeablePolykindPrefixChirho",
+    "P01KProxyChirho",
+    "P05ExplicitKindsChirho",
+    "PC1DeferredKindSubstitutionChirho",
+    "PC3MethodKindOwnershipChirho"
+  ],
+  "cases_chirho": [
+    {
+      "case_chirho": "ClosedPrefixPositiveChirho",
+      "expected_ghc_chirho": "ACCEPT",
+      "ghc_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0200]: type mismatch: expected `Bool`, found `Int`"
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "source_sha256_chirho": "31e92824edb3b2b8a80cf2f4e1f7c10f2cffa81d70830acb8f395fbe0c1ed9c4"
+    },
+    {
+      "case_chirho": "ClosedPrefixWrongResultChirho",
+      "expected_ghc_chirho": "REJECT",
+      "ghc_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/tmp-chirho/kind-engine-product-gate-chirho/oracles-chirho/negative-chirho/ClosedPrefixWrongResultChirho.hs:12:15: error: [GHC-83865]"
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0200]: type mismatch: expected `Int`, found `Bool`"
+      },
+      "source_sha256_chirho": "319be7f77ef28025f8458ed56950506be48895b7d5629aeeafecf67a27e70e89"
+    },
+    {
+      "case_chirho": "OpenPrefixPositiveChirho",
+      "expected_ghc_chirho": "ACCEPT",
+      "ghc_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "source_sha256_chirho": "8daffeff24405c6157ce607e9f163961cbbaf28a1ecd221ce0c5d973e3d5e877"
+    },
+    {
+      "case_chirho": "OpenPrefixWrongResultChirho",
+      "expected_ghc_chirho": "REJECT",
+      "ghc_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/tmp-chirho/kind-engine-product-gate-chirho/oracles-chirho/negative-chirho/OpenPrefixWrongResultChirho.hs:12:15: error: [GHC-83865]"
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0200]: type mismatch: expected `Int`, found `Bool`"
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0200]: type mismatch: expected `Int`, found `Bool`"
+      },
+      "source_sha256_chirho": "824475be914251f553e4ee4c5784885c79359293a5edd6fc6396c56d93a48f87"
+    },
+    {
+      "case_chirho": "NullaryResultArrowPositiveChirho",
+      "expected_ghc_chirho": "ACCEPT",
+      "ghc_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0300]: kind mismatch in type application: expected `*`, found `* -> k0`"
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "source_sha256_chirho": "9f81ca98b2e315f28d2b34bf26f816044e945b9386521d645eb86d15a305a308"
+    },
+    {
+      "case_chirho": "NullaryUnsaturatedTypeChirho",
+      "expected_ghc_chirho": "REJECT",
+      "ghc_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/tmp-chirho/kind-engine-product-gate-chirho/oracles-chirho/negative-chirho/NullaryUnsaturatedTypeChirho.hs:8:16: error: [GHC-83865]"
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0200]: type mismatch: expected `(Maybe t0)`, found `Maybe`"
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0300]: kind mismatch: expected `(%universe:type -> %universe:type)`, found `%universe:type`"
+      },
+      "source_sha256_chirho": "9ba2beae1db4d3eb136755cd594326eaf5173149a74dfc43e2c8d8f56a7af117"
+    },
+    {
+      "case_chirho": "TypeablePolykindPrefixChirho",
+      "expected_ghc_chirho": "ACCEPT",
+      "ghc_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "source_sha256_chirho": "8b2ec03b40e74c9af40c50119885727b0add824ade24ad03cc9f679ca435cf6f"
+    },
+    {
+      "case_chirho": "KnownNatWrongKindChirho",
+      "expected_ghc_chirho": "REJECT",
+      "ghc_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/tmp-chirho/kind-engine-product-gate-chirho/oracles-chirho/negative-chirho/KnownNatWrongKindChirho.hs:5:23: error: [GHC-83865]"
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0300]: kind mismatch: expected `(%universe:type -> %universe:type)`, found `Nat`"
+      },
+      "source_sha256_chirho": "33483c3a5c9b88d001026bdfbb69b27b5f6e1974b776da30f9425f96675207c6"
+    },
+    {
+      "case_chirho": "ImportedPrefixPositiveChirho",
+      "expected_ghc_chirho": "ACCEPT",
+      "ghc_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0300]: kind mismatch in type application: expected `*`, found `* -> *`"
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "source_sha256_chirho": "bc56157c840be6c5c697e5b52face60e1502b80c66d14f2a8cb6236c17aca482"
+    },
+    {
+      "case_chirho": "ImportedPrefixWrongResultChirho",
+      "expected_ghc_chirho": "REJECT",
+      "ghc_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/tmp-chirho/kind-engine-product-gate-chirho/oracles-chirho/projects-chirho/ImportedPrefixWrongResultChirho/Main.hs:8:15: error: [GHC-83865]"
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0300]: kind mismatch in type application: expected `*`, found `* -> *`"
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0200]: type mismatch: expected `Int`, found `Bool`"
+      },
+      "source_sha256_chirho": "4fab62b4d2aa64dddb16bcc09963e2affce1f4d628bb96c69e14ab8ae6eb6ec8"
+    },
+    {
+      "case_chirho": "P01KProxyChirho",
+      "expected_ghc_chirho": "ACCEPT",
+      "ghc_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "source_sha256_chirho": "83ca2ab44bd1b4bd2d2035024ebd943a906ab52b04624f72db7054a02eb953a2"
+    },
+    {
+      "case_chirho": "P02ZeroVisibleChirho",
+      "expected_ghc_chirho": "ACCEPT",
+      "ghc_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0200]: type mismatch: expected `Maybe`, found `BoolBoxChirho`"
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "source_sha256_chirho": "be6f7dd7981189d886a353bcc07ff1171ebcd6725334595c913759c5961a156d"
+    },
+    {
+      "case_chirho": "P03SharedSingChirho",
+      "expected_ghc_chirho": "ACCEPT",
+      "ghc_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0200]: type mismatch: expected `SFooChirho`, found `SBarChirho`"
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "source_sha256_chirho": "da13622d0b332b03582e2c7eaec1afa85b4b8a2972549d379da5f0e2c78a35db"
+    },
+    {
+      "case_chirho": "P04SynonymKindChirho",
+      "expected_ghc_chirho": "ACCEPT",
+      "ghc_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0300]: kind mismatch in type signature: expected `k8 -> k9`, found `*`"
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "source_sha256_chirho": "eb82c941c2a4a7b3a16fdc9b2ef983fcf7ba7e8fa9e5d061488470d491f84bd8"
+    },
+    {
+      "case_chirho": "P05ExplicitKindsChirho",
+      "expected_ghc_chirho": "ACCEPT",
+      "ghc_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "source_sha256_chirho": "3c9d3fc00ac41c80006c102937b5487b3b33d3e14eb8fedb8f6c1c95d0ab6175"
+    },
+    {
+      "case_chirho": "P06IndependentKindsChirho",
+      "expected_ghc_chirho": "ACCEPT",
+      "ghc_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "source_sha256_chirho": "b6d065f667e82bb1530373c5bb4eb9e39dc38e820f698653cfec37ff08b8776e"
+    },
+    {
+      "case_chirho": "N01WrongKProxyResultChirho",
+      "expected_ghc_chirho": "REJECT",
+      "ghc_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/oracle-chirho/negative-chirho/N01WrongKProxyResultChirho.hs:10:14: error: [GHC-83865]"
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0200]: type mismatch: expected `Int`, found `Char`"
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0200]: type mismatch: expected `Int`, found `Char`"
+      },
+      "source_sha256_chirho": "cb862deb3af8dfa9b4a935b065e689f6dae2ea37acd05c4755321c4693b6b8fb"
+    },
+    {
+      "case_chirho": "N02SameKindOverlapChirho",
+      "expected_ghc_chirho": "REJECT",
+      "ghc_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/oracle-chirho/negative-chirho/N02SameKindOverlapChirho.hs:7:15: error: [GHC-34447]"
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0209]: open-family branches have incompatible or unresolved overlap (family Main.KPChirho; branches Main:381#0 (index 0) and Main:447#0 (index 1))"
+      },
+      "source_sha256_chirho": "71be854fa2a1462c8d1216cfb4f839a4e473d22ae40443d1720f7865df1a5159"
+    },
+    {
+      "case_chirho": "N03ResultArrowNotBinderChirho",
+      "expected_ghc_chirho": "REJECT",
+      "ghc_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/oracle-chirho/negative-chirho/N03ResultArrowNotBinderChirho.hs:7:3: error: [GHC-12985]"
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0209]: Number of parameters must match family declaration; expected 0"
+      },
+      "source_sha256_chirho": "c8930c5112e555f2e10db923830ddce997c99ef17495d742728147f8de0fdcd7"
+    },
+    {
+      "case_chirho": "N04WrongNominalKindChirho",
+      "expected_ghc_chirho": "REJECT",
+      "ghc_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/oracle-chirho/negative-chirho/N04WrongNominalKindChirho.hs:7:25: error: [GHC-83865]"
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "ACCEPT",
+        "rc_chirho": 0,
+        "first_diagnostic_chirho": ""
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0300]: kind mismatch: expected `%constructor:source:4:Main:9:BarChirho`, found `%constructor:source:4:Main:9:FooChirho`"
+      },
+      "source_sha256_chirho": "20ab9dd4065e3ad2cce4409f2a42e6061665a52692ae65456d978dd0af342730"
+    },
+    {
+      "case_chirho": "N05ScopedKindChirho",
+      "expected_ghc_chirho": "REJECT",
+      "ghc_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/oracle-chirho/negative-chirho/N05ScopedKindChirho.hs:6:45: error: [GHC-76037]"
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0101]: type variable not in scope: `kChirho`"
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0101]: type variable not in scope: `kChirho`"
+      },
+      "source_sha256_chirho": "cecbde4b32a1a9077a08d0325f08c760cd9298a0617c04deb2c7198af212f420"
+    },
+    {
+      "case_chirho": "N06MissingVisibleArgumentChirho",
+      "expected_ghc_chirho": "REJECT",
+      "ghc_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/oracle-chirho/negative-chirho/N06MissingVisibleArgumentChirho.hs:6:14: error: [GHC-83865]"
+      },
+      "baseline_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0300]: kind mismatch in type signature: expected `k1 -> *`, found `*`"
+      },
+      "candidate_chirho": {
+        "verdict_chirho": "REJECT",
+        "rc_chirho": 1,
+        "first_diagnostic_chirho": "error[E0300]: kind mismatch: expected `(t5 -> %universe:type)`, found `%universe:type`"
+      },
+      "source_sha256_chirho": "f521cf0b1ddb3472743d4793f2b8e72b54d2cbef4c0beafa4c81b73eb5b94e65"
+    }
+  ],
+  "additional_predicate_cases_chirho": [
+    {
+      "case_chirho": "PC1DeferredKindSubstitutionChirho",
+      "source_sha256_chirho": "df52e9b4ba967333e4826d3d1124f112fd5d9808beee214b15675ce2a4b6b931",
+      "ghc_chirho": "ACCEPT",
+      "baseline_chirho": "ACCEPT",
+      "candidate_chirho": "ACCEPT",
+      "ghc_evidence_chirho": "Reused fresh GHC9.14.1 typechecks from predicate-frozen-f684-r1; source hashes unchanged",
+      "runtime_measured_chirho": false
+    },
+    {
+      "case_chirho": "PC2InstanceEntailmentPrefixChirho",
+      "source_sha256_chirho": "5519030c52b73e1472cd8682be31666b8dcb9af76c4b83dd2b25bab0cee08f95",
+      "ghc_chirho": "ACCEPT",
+      "baseline_chirho": "ACCEPT",
+      "candidate_chirho": "ACCEPT",
+      "ghc_evidence_chirho": "Reused fresh GHC9.14.1 typechecks from predicate-frozen-f684-r1; source hashes unchanged",
+      "runtime_measured_chirho": false
+    },
+    {
+      "case_chirho": "PC3MethodKindOwnershipChirho",
+      "source_sha256_chirho": "e6d33c99e6a7c92d47ce2255f5b14f76df845a20362ae8391fe550fce70a5dd4",
+      "ghc_chirho": "ACCEPT",
+      "baseline_chirho": "ACCEPT",
+      "candidate_chirho": "ACCEPT",
+      "ghc_evidence_chirho": "Reused fresh GHC9.14.1 typechecks from predicate-frozen-f684-r1; source hashes unchanged",
+      "runtime_measured_chirho": false
+    },
+    {
+      "case_chirho": "PC1DirectPassingTwinChirho",
+      "source_sha256_chirho": "3472971f29c7cb5d8ee4979dcf1ff0aee2c4968e8fe88cd0d649b1f39910d07f",
+      "ghc_chirho": "ACCEPT",
+      "baseline_chirho": "ACCEPT",
+      "candidate_chirho": "ACCEPT",
+      "ghc_evidence_chirho": "Reused fresh GHC9.14.1 typechecks from predicate-frozen-f684-r1; source hashes unchanged",
+      "runtime_measured_chirho": false
+    }
+  ],
+  "focused_validation_chirho": {
+    "passed_chirho": 66,
+    "groups_chirho": [
+      16,
+      18,
+      5,
+      14,
+      13
+    ],
+    "identical_committed_source_files_chirho": 38,
+    "changed_span_clippy_chirho": 0,
+    "other_clippy_warnings_chirho": 293,
+    "excluded_empty_filter_chirho": "r39 executed zero tests and is not counted"
+  },
+  "open_chirho": [
+    "associated defaults and complete class correspondence",
+    "stable exported AST ownership",
+    "complete import qualification",
+    "qualified synonym contexts",
+    "capture-safe earlier header instantiation",
+    "precise HasField representation-polymorphism boundary"
+  ]
+}

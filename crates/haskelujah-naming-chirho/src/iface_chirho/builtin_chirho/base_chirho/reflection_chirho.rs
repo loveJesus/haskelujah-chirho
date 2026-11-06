@@ -418,6 +418,7 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, mut v_chirho) = mk_type_chirho("TestEquality", &[]);
         v_chirho.methods_chirho.push("testEquality".to_string());
+        v_chirho.is_class_chirho = true;
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in &[
             "Refl",

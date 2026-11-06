@@ -7,6 +7,34 @@ use super::CompileResultChirho;
 use super::import_links_chirho::ImportLinkerChirho;
 use haskelujah_core_chirho::CoreModuleChirho;
 
+/// Whether `module_chirho` declares a data or newtype constructor spelled `spelling_chirho`.
+fn declares_constructor_chirho(
+    module_chirho: &haskelujah_ast_chirho::module_chirho::ModuleChirho,
+    spelling_chirho: &str,
+) -> bool {
+    use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
+    let names_chirho = |constructor_chirho: &ConDeclChirho| match constructor_chirho {
+        ConDeclChirho::OrdinaryChirho { name_chirho, .. }
+        | ConDeclChirho::RecordChirho { name_chirho, .. }
+        | ConDeclChirho::GadtChirho { name_chirho, .. } => {
+            name_chirho.text_chirho() == spelling_chirho
+        }
+    };
+    module_chirho
+        .decls_chirho
+        .iter()
+        .any(|decl_chirho| match decl_chirho {
+            DeclChirho::DataDeclChirho {
+                constructors_chirho,
+                ..
+            } => constructors_chirho.iter().any(names_chirho),
+            DeclChirho::NewtypeDeclChirho {
+                constructor_chirho, ..
+            } => names_chirho(constructor_chirho),
+            _ => false,
+        })
+}
+
 pub(crate) fn merge_compile_results_core_chirho(
     results_chirho: &[CompileResultChirho],
 ) -> Result<CoreModuleChirho, String> {
@@ -617,7 +645,7 @@ pub(crate) fn merge_compile_results_core_chirho(
         merged_provenance_chirho.remap_chirho(&duplicate_binding_remap_chirho);
     }
 
-    Ok(CoreModuleChirho {
+    let mut merged_chirho = CoreModuleChirho {
         name_chirho: results_chirho
             .last()
             .map(|result_chirho| {
@@ -633,5 +661,39 @@ pub(crate) fn merge_compile_results_core_chirho(
         specialize_pragmas_chirho: std::collections::HashMap::new(),
         foreign_exports_chirho: vec![],
         provenance_chirho: merged_provenance_chirho,
-    })
+    };
+    // One representation per newtype in the whole program (row 694): each module erased
+    // its own GND-represented constructors, and an importer's construction, match and
+    // selector use of them is erased here. Merged Core names constructors unqualified, so a
+    // spelling another module also declares as a constructor is refused by name rather than
+    // erased there too.
+    // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+    for (index_chirho, result_chirho) in results_chirho.iter().enumerate() {
+        for spelling_chirho in &result_chirho.gnd_newtype_cons_chirho {
+            if let Some(other_chirho) = results_chirho
+                .iter()
+                .enumerate()
+                .filter(|(other_index_chirho, _)| *other_index_chirho != index_chirho)
+                .map(|(_, other_chirho)| other_chirho)
+                .find(|other_chirho| {
+                    declares_constructor_chirho(&other_chirho.module_chirho, spelling_chirho)
+                })
+            {
+                return Err(format!(
+                    "cannot give newtype constructor `{spelling_chirho}` one representation: {} derives through it with the newtype strategy and {} also declares a constructor `{spelling_chirho}` (row 694)",
+                    result_chirho.module_chirho.name_chirho.text_chirho(),
+                    other_chirho.module_chirho.name_chirho.text_chirho()
+                ));
+            }
+        }
+    }
+    let erased_chirho: HashSet<String> = results_chirho
+        .iter()
+        .flat_map(|result_chirho| result_chirho.gnd_newtype_cons_chirho.iter().cloned())
+        .collect();
+    haskelujah_core_chirho::simplify_chirho::erase_newtype_constructors_chirho(
+        &mut merged_chirho,
+        &erased_chirho,
+    );
+    Ok(merged_chirho)
 }

@@ -298,7 +298,7 @@ impl InferCtxChirho {
         {
             let class_name_chirho = name_chirho.text_chirho().to_string();
 
-            let (head_chirho, class_scoped_tyvars_chirho) =
+            let (head_chirho, mut class_scoped_tyvars_chirho) =
                 self.data_head_type_chirho(name_chirho.text_chirho(), type_vars_chirho);
             let (_, arguments_chirho) = super::collect_app_spine_chirho(&head_chirho);
             let schema_chirho = name_chirho
@@ -409,14 +409,16 @@ impl InferCtxChirho {
                 })
                 .collect::<Vec<_>>();
 
-            // Superclasses from context
-            let supers_chirho: Vec<String> = context_chirho
+            // The common written-context converter preserves checked hidden prefixes,
+            // argument ownership and predicate proof; the legacy names are a layout view.
+            let (super_templates_chirho, _super_equalities_chirho, _unmodelled_supers_chirho) =
+                self.convert_written_context_chirho(
+                    context_chirho,
+                    &mut class_scoped_tyvars_chirho,
+                );
+            let supers_chirho = super_templates_chirho
                 .iter()
-                .filter_map(|c_chirho| {
-                    c_chirho
-                        .simple_class_chirho()
-                        .map(|class_chirho| class_chirho.text_chirho().to_string())
-                })
+                .map(|predicate_chirho| predicate_chirho.class_name_chirho.clone())
                 .collect();
 
             // Method signatures and optional default implementations
@@ -539,6 +541,7 @@ impl InferCtxChirho {
                         kind_vars_chirho,
                         name_chirho: class_name_chirho.clone(),
                         supers_chirho,
+                        super_templates_chirho,
                         var_chirho: class_tv_chirho,
                         methods_chirho: method_map_chirho,
                         extra_vars_chirho,

@@ -100,6 +100,7 @@ fn iface_chirho(
         type_chirho.to_string(),
         IfaceTypeChirho {
             declaration_chirho: None,
+            is_class_chirho: false,
             name_chirho: type_chirho.to_string(),
             constructors_chirho: constructors_chirho
                 .iter()

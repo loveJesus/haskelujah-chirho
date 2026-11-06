@@ -5,7 +5,7 @@
 
 use super::*;
 use haskelujah_ast_chirho::decl_chirho::{
-    DataKindSigChirho, FieldDeclChirho, FixityChirho, StrictnessChirho,
+    DataKindSigChirho, DerivedClassChirho, FieldDeclChirho, FixityChirho, StrictnessChirho,
 };
 use haskelujah_ast_chirho::module_chirho::ImportDeclChirho;
 
@@ -36,7 +36,9 @@ fn data_chirho(
         constructors_chirho,
         deriving_chirho: classes_chirho
             .iter()
-            .map(|class_chirho| var_name_chirho(class_chirho))
+            .map(|class_chirho| {
+                DerivedClassChirho::unspecified_chirho(var_name_chirho(class_chirho))
+            })
             .collect(),
         kind_sig_chirho: None,
         span_chirho: gen_span_chirho(),
@@ -49,13 +51,13 @@ fn con_type_chirho(name_chirho: &str) -> TypeChirho {
 
 fn ordinary_chirho(name_chirho: &str, fields_chirho: Vec<TypeChirho>) -> ConDeclChirho {
     ConDeclChirho::OrdinaryChirho {
-        prefix_chirho: Default::default(),
         name_chirho: var_name_chirho(name_chirho),
         fields_chirho: fields_chirho
             .into_iter()
             .map(|ty_chirho| (StrictnessChirho::LazyChirho, ty_chirho))
             .collect(),
         span_chirho: gen_span_chirho(),
+        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
     }
 }
 
@@ -160,13 +162,13 @@ fn record_labels_and_field_types_keep_declaration_order_chirho() {
     let metadata_chirho = derived_show_metadata_chirho(&module_chirho(vec![data_chirho(
         "RChirho",
         vec![ConDeclChirho::RecordChirho {
-            prefix_chirho: Default::default(),
             name_chirho: var_name_chirho("RChirho"),
             fields_chirho: vec![
                 field_chirho(&["xChirho", "yChirho"], con_type_chirho("Int")),
                 field_chirho(&["zChirho"], maybe_pair_chirho),
             ],
             span_chirho: gen_span_chirho(),
+            prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
         }],
         &["Show"],
     )]));
@@ -262,7 +264,9 @@ fn a_kind_signature_tail_gives_the_metadata_the_instance_heads_parameters_chirho
                 .map(|binder_chirho| TyVarChirho::plain_chirho(var_name_chirho(binder_chirho)))
                 .collect(),
             constructors_chirho: vec![],
-            deriving_chirho: vec![var_name_chirho("Show")],
+            deriving_chirho: vec![DerivedClassChirho::unspecified_chirho(var_name_chirho(
+                "Show",
+            ))],
             kind_sig_chirho: Some(DataKindSigChirho::ResultChirho(TypeChirho::FunChirho {
                 arg_chirho: Box::new(con_type_chirho("Type")),
                 result_chirho: Box::new(con_type_chirho("Type")),

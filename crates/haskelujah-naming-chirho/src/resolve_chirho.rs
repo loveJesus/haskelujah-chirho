@@ -935,6 +935,7 @@ mod tests_chirho {
                 name_chirho: "Color".to_string(),
                 constructors_chirho: vec!["Red".to_string(), "Blue".to_string()],
                 methods_chirho: vec![],
+                is_class_chirho: false,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );
@@ -978,16 +979,18 @@ mod tests_chirho {
                     type_vars_chirho: vec![],
                     constructors_chirho: vec![
                         ConDeclChirho::OrdinaryChirho {
-                            prefix_chirho: Default::default(),
                             name_chirho: dummy_name_chirho("Red"),
                             fields_chirho: vec![],
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            prefix_chirho:
+                                haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                         },
                         ConDeclChirho::OrdinaryChirho {
-                            prefix_chirho: Default::default(),
                             name_chirho: dummy_name_chirho("Green"),
                             fields_chirho: vec![],
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
+                            prefix_chirho:
+                                haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                         },
                     ],
                     deriving_chirho: vec![],
@@ -1257,6 +1260,7 @@ mod tests_chirho {
                 name_chirho: "Wrap".to_string(),
                 constructors_chirho: vec!["Wrap".to_string()],
                 methods_chirho: vec!["unwrap".to_string()],
+                is_class_chirho: false,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );
@@ -1565,7 +1569,6 @@ mod tests_chirho {
                 name_chirho: dummy_name_chirho("Person"),
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![ConDeclChirho::RecordChirho {
-                    prefix_chirho: Default::default(),
                     name_chirho: dummy_name_chirho("MkPerson"),
                     fields_chirho: vec![
                         FieldDeclChirho {
@@ -1590,6 +1593,7 @@ mod tests_chirho {
                         },
                     ],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
@@ -1728,7 +1732,6 @@ mod tests_chirho {
                 name_chirho: dummy_name_chirho("Age"),
                 type_vars_chirho: vec![],
                 constructor_chirho: ConDeclChirho::RecordChirho {
-                    prefix_chirho: Default::default(),
                     name_chirho: dummy_name_chirho("MkAge"),
                     fields_chirho: vec![FieldDeclChirho {
                         multiplicity_chirho: None,
@@ -1741,6 +1744,7 @@ mod tests_chirho {
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 },
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
@@ -1891,13 +1895,14 @@ mod tests_chirho {
                     name_chirho: dummy_name_chirho("Wrapper"),
                     type_vars_chirho: vec![dummy_name_chirho("a").into()],
                     constructor_chirho: ConDeclChirho::OrdinaryChirho {
-                        prefix_chirho: Default::default(),
                         name_chirho: dummy_name_chirho("MkWrapper"),
                         fields_chirho: vec![(
                             haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                             TypeChirho::VarChirho(dummy_name_chirho("a")),
                         )],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                     deriving_chirho: vec![],
                     kind_sig_chirho: None,

@@ -85,10 +85,10 @@ fn infer_module_data_and_function_chirho() {
                 name_chirho: dummy_name_chirho("Color"),
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
-                    prefix_chirho: Default::default(),
                     name_chirho: dummy_name_chirho("Red"),
                     fields_chirho: vec![],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
@@ -422,22 +422,24 @@ fn infer_result_bind_lambda_constructor_body_chirho() {
                 type_vars_chirho: vec![dummy_name_chirho("a").into()],
                 constructors_chirho: vec![
                     ConDeclChirho::OrdinaryChirho {
-                        prefix_chirho: Default::default(),
                         name_chirho: dummy_name_chirho("Ok"),
                         fields_chirho: vec![(
                             haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                             TypeChirho::VarChirho(dummy_name_chirho("a")),
                         )],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                     ConDeclChirho::OrdinaryChirho {
-                        prefix_chirho: Default::default(),
                         name_chirho: dummy_name_chirho("Err"),
                         fields_chirho: vec![(
                             haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                             TypeChirho::ConChirho(dummy_name_chirho("String")),
                         )],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                 ],
                 deriving_chirho: vec![],

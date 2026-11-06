@@ -19,10 +19,14 @@ mod builtin_class_kinds_chirho;
 mod closed_family_equations_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/declaration_validity_chirho.rs"]
 mod declaration_validity_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/deriving_strategies_chirho.rs"]
+mod deriving_strategies_chirho;
 #[path = "typing_integration_chirho/dollar_ownership_chirho.rs"]
 mod dollar_ownership_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/equality_scopes_chirho.rs"]
 mod equality_scopes_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/first_class_show_print_chirho.rs"]
+mod first_class_show_print_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/gadt_constructors_chirho.rs"]
 mod gadt_constructors_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/gadt_projection_channels_chirho.rs"]
@@ -41,6 +45,8 @@ mod lazy_fields_chirho;
 mod maybe_helper_schemes_chirho;
 #[path = "typing_integration_chirho/method_ownership_chirho.rs"]
 mod method_ownership_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/monad_owned_dictionary_chirho.rs"]
+mod monad_owned_dictionary_chirho;
 #[path = "typing_integration_chirho/operator_ownership_chirho.rs"]
 mod operator_ownership_chirho;
 #[path = "typing_integration_chirho/paren_infix_definitions_chirho.rs"]

@@ -165,8 +165,17 @@ fn incomplete_mptc_goals_and_unresolved_metas_prove_no_index_chirho() {
 #[test]
 fn method_reference_and_literal_captures_retain_their_own_context_chirho() {
     let mut ctx_chirho = context_chirho();
+    let qualified_scheme_chirho = ctx_chirho
+        .env_chirho
+        .lookup_chirho("+")
+        .expect("seeded numeric method")
+        .clone();
+    ctx_chirho
+        .env_chirho
+        .bind_chirho("P.+".to_owned(), qualified_scheme_chirho);
     let mut supply_chirho = OriginSupplyChirho::new_chirho();
     let origin_chirho = supply_chirho.fresh_chirho();
+    let qualified_origin_chirho = supply_chirho.fresh_chirho();
     let literal_origin_chirho = supply_chirho.fresh_chirho();
     let predicates_chirho = vec![
         PredChirho::new_chirho("Num", skolem_chirho("a%1")),
@@ -179,6 +188,14 @@ fn method_reference_and_literal_captures_retain_their_own_context_chirho() {
         );
         ctx_chirho
             .capture_occurrence_predicates_chirho(&method_chirho, &[predicates_chirho[1].clone()]);
+        let qualified_method_chirho = NameChirho::RawChirho(
+            RawNameChirho::qualified_chirho("P", "+", SpanChirho::DUMMY_CHIRHO)
+                .with_origin_chirho(qualified_origin_chirho),
+        );
+        ctx_chirho.capture_occurrence_predicates_chirho(
+            &qualified_method_chirho,
+            &[predicates_chirho[1].clone()],
+        );
         let literal_chirho =
             LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO, Some(literal_origin_chirho));
         ctx_chirho.capture_literal_evidence_chirho(&literal_chirho, "Num", &skolem_chirho("a%1"));
@@ -188,6 +205,12 @@ fn method_reference_and_literal_captures_retain_their_own_context_chirho() {
     let records_chirho = ctx_chirho.finalize_occurrence_records_chirho(&subst_chirho);
     assert_eq!(records_chirho[0].ty_key_chirho, "$own:1");
     assert!(records_chirho[0].ground_pred_chirho.is_none());
+    assert_eq!(records_chirho[0].resolved_entry_chirho, None);
+    assert_eq!(records_chirho[1].ty_key_chirho, "$own:1");
+    assert_eq!(
+        records_chirho[1].resolved_entry_chirho.as_deref(),
+        Some("P.+")
+    );
     let (_, references_chirho) = ctx_chirho.finalize_reference_evidence_chirho(&subst_chirho);
     assert_eq!(
         references_chirho[&origin_chirho][0]

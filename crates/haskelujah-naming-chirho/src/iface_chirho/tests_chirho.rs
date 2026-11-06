@@ -45,16 +45,18 @@ fn export_all_when_no_export_list_chirho() {
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![
                     ConDeclChirho::OrdinaryChirho {
-                        prefix_chirho: Default::default(),
                         name_chirho: mk_name_chirho("Red"),
                         fields_chirho: vec![],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                     ConDeclChirho::OrdinaryChirho {
-                        prefix_chirho: Default::default(),
                         name_chirho: mk_name_chirho("Blue"),
                         fields_chirho: vec![],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     },
                 ],
                 deriving_chirho: vec![],
@@ -117,10 +119,10 @@ fn export_list_filters_chirho() {
                 name_chirho: mk_name_chirho("Color"),
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
-                    prefix_chirho: Default::default(),
                     name_chirho: mk_name_chirho("Red"),
                     fields_chirho: vec![],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
@@ -180,10 +182,10 @@ fn export_type_without_constructors_chirho() {
             name_chirho: mk_name_chirho("Color"),
             type_vars_chirho: vec![],
             constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
-                prefix_chirho: Default::default(),
                 name_chirho: mk_name_chirho("Red"),
                 fields_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
             }],
             deriving_chirho: vec![],
             kind_sig_chirho: None,
@@ -223,16 +225,16 @@ fn export_some_constructors_chirho() {
             type_vars_chirho: vec![],
             constructors_chirho: vec![
                 ConDeclChirho::OrdinaryChirho {
-                    prefix_chirho: Default::default(),
                     name_chirho: mk_name_chirho("Red"),
                     fields_chirho: vec![],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 },
                 ConDeclChirho::OrdinaryChirho {
-                    prefix_chirho: Default::default(),
                     name_chirho: mk_name_chirho("Blue"),
                     fields_chirho: vec![],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 },
             ],
             deriving_chirho: vec![],
@@ -271,10 +273,10 @@ fn export_parenthesized_operator_type_with_constructor_chirho() {
             name_chirho: mk_name_chirho(":-"),
             type_vars_chirho: vec![mk_name_chirho("a").into(), mk_name_chirho("b").into()],
             constructor_chirho: ConDeclChirho::OrdinaryChirho {
-                prefix_chirho: Default::default(),
                 name_chirho: mk_name_chirho("Sub"),
                 fields_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
             },
             deriving_chirho: vec![],
             kind_sig_chirho: None,
@@ -355,7 +357,6 @@ fn record_field_selectors_exported_chirho() {
             name_chirho: mk_name_chirho("LanguageDefChirho"),
             type_vars_chirho: vec![],
             constructors_chirho: vec![ConDeclChirho::RecordChirho {
-                prefix_chirho: Default::default(),
                 name_chirho: mk_name_chirho("LanguageDefChirho"),
                 fields_chirho: vec![
                     haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
@@ -385,6 +386,7 @@ fn record_field_selectors_exported_chirho() {
                     },
                 ],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
             }],
             deriving_chirho: vec![],
             kind_sig_chirho: None,
@@ -421,10 +423,10 @@ fn newtype_exported_chirho() {
             name_chirho: mk_name_chirho("Wrapper"),
             type_vars_chirho: vec![],
             constructor_chirho: ConDeclChirho::OrdinaryChirho {
-                prefix_chirho: Default::default(),
                 name_chirho: mk_name_chirho("Wrap"),
                 fields_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
+                prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
             },
             deriving_chirho: vec![],
             kind_sig_chirho: None,
@@ -478,6 +480,7 @@ fn module_re_export_chirho() {
                     name_chirho: "InnerType".to_string(),
                     constructors_chirho: vec!["MkInner".to_string()],
                     methods_chirho: vec![],
+                    is_class_chirho: false,
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
             );
@@ -799,6 +802,7 @@ fn explicit_export_list_reexports_imported_type_chirho() {
                     name_chirho: "Parsec".to_string(),
                     constructors_chirho: vec![],
                     methods_chirho: vec![],
+                    is_class_chirho: false,
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
             );
@@ -911,11 +915,12 @@ fn iface_exports_foreign_import_names_chirho() {
 
 fn family_parent_iface_chirho(module_name_chirho: &str, member_chirho: &str) -> ModuleIfaceChirho {
     let mut exports_chirho = IfaceExportsChirho::default();
-    for name_chirho in ["CChirho", member_chirho] {
+    for (name_chirho, is_class_chirho) in [("CChirho", true), (member_chirho, false)] {
         exports_chirho.types_chirho.insert(
             name_chirho.to_owned(),
             IfaceTypeChirho {
                 declaration_chirho: None,
+                is_class_chirho,
                 name_chirho: name_chirho.to_owned(),
                 constructors_chirho: Vec::new(),
                 methods_chirho: Vec::new(),

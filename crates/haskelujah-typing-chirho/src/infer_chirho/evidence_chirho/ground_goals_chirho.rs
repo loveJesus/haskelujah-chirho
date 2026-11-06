@@ -110,28 +110,7 @@ pub(crate) fn ground_pred_chirho(
 pub(super) fn agreeing_reference_goals_chirho<KeyChirho: std::hash::Hash + Eq>(
     captures_chirho: std::collections::HashMap<KeyChirho, Vec<Vec<ReferenceEvidenceChirho>>>,
 ) -> std::collections::HashMap<KeyChirho, Vec<ReferenceEvidenceChirho>> {
-    captures_chirho
-        .into_iter()
-        .filter_map(|(key_chirho, mut captures_chirho)| {
-            let mut first_chirho = captures_chirho.pop()?;
-            for capture_chirho in captures_chirho {
-                if first_chirho.len() != capture_chirho.len() {
-                    return None;
-                }
-                for (first_chirho, next_chirho) in first_chirho.iter_mut().zip(capture_chirho) {
-                    if first_chirho.class_name_chirho != next_chirho.class_name_chirho
-                        || first_chirho.ty_key_chirho != next_chirho.ty_key_chirho
-                    {
-                        return None;
-                    }
-                    if first_chirho.ground_pred_chirho != next_chirho.ground_pred_chirho {
-                        first_chirho.ground_pred_chirho = None;
-                    }
-                }
-            }
-            Some((key_chirho, first_chirho))
-        })
-        .collect()
+    super::super::applied_evidence_chirho::agreeing_references_chirho(captures_chirho)
 }
 
 #[cfg(test)]

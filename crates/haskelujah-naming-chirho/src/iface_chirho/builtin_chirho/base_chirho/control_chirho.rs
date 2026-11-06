@@ -253,6 +253,7 @@ pub(super) fn push_control_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
                 name_chirho: "Monad".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec!["return".to_string(), ">>=".to_string(), ">>".to_string()],
+                is_class_chirho: true,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );
@@ -263,6 +264,7 @@ pub(super) fn push_control_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
                 name_chirho: "MonadPlus".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec!["mzero".to_string(), "mplus".to_string()],
+                is_class_chirho: true,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );
@@ -273,6 +275,7 @@ pub(super) fn push_control_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
                 name_chirho: "MonadFail".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec!["fail".to_string()],
+                is_class_chirho: true,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         );

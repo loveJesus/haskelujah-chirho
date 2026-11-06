@@ -93,13 +93,13 @@ fn infer_top_level_magic_hash_pattern_binder_survives_unsafe_coerce_rhs_chirho()
                 name_chirho: dummy_name_chirho("ByteArray"),
                 type_vars_chirho: vec![],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
-                    prefix_chirho: Default::default(),
                     name_chirho: dummy_name_chirho("ByteArray"),
                     fields_chirho: vec![(
                         haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                         TypeChirho::ConChirho(dummy_name_chirho("ByteArray#")),
                     )],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
@@ -109,13 +109,13 @@ fn infer_top_level_magic_hash_pattern_binder_survives_unsafe_coerce_rhs_chirho()
                 name_chirho: dummy_name_chirho("MutableByteArray"),
                 type_vars_chirho: vec![dummy_name_chirho("s").into()],
                 constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
-                    prefix_chirho: Default::default(),
                     name_chirho: dummy_name_chirho("MutableByteArray"),
                     fields_chirho: vec![(
                         haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
                         TypeChirho::ConChirho(dummy_name_chirho("ByteArray#")),
                     )],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
                 }],
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
@@ -339,7 +339,6 @@ fn infer_custom_infix_constructor_pattern_uses_constructor_scheme_chirho() {
                         dummy_name_chirho("b").into(),
                     ],
                     constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
-                        prefix_chirho: Default::default(),
                         name_chirho: dummy_name_chirho(":*:"),
                         fields_chirho: vec![
                             (
@@ -352,6 +351,8 @@ fn infer_custom_infix_constructor_pattern_uses_constructor_scheme_chirho() {
                             ),
                         ],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(
+                        ),
                     }],
                     deriving_chirho: vec![],
                     kind_sig_chirho: None,

@@ -23,6 +23,7 @@ use haskelujah_typing_chirho::class_chirho::PredChirho;
 use haskelujah_typing_chirho::infer_chirho::{
     MethodOccurrenceRecordChirho, ReferenceEvidenceChirho,
 };
+use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 use crate::InferResultChirho;
 
@@ -35,6 +36,7 @@ pub(crate) struct JoinedProofChirho {
     pub(crate) class_name_chirho: String,
     pub(crate) ty_key_chirho: String,
     pub(crate) ground_preds_chirho: Vec<PredChirho>,
+    pub(crate) applied_ty_chirho: Option<TyChirho>,
 }
 
 impl JoinedProofChirho {
@@ -44,6 +46,7 @@ impl JoinedProofChirho {
             class_name_chirho,
             ty_key_chirho,
             ground_preds_chirho: Vec::new(),
+            applied_ty_chirho: None,
         }
     }
 
@@ -56,6 +59,7 @@ impl JoinedProofChirho {
             class_name_chirho: record_chirho.class_name_chirho.clone(),
             ty_key_chirho,
             ground_preds_chirho: record_chirho.ground_pred_chirho.iter().cloned().collect(),
+            applied_ty_chirho: None,
         }
     }
 }
@@ -204,6 +208,64 @@ const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
 /// here opts them in, not even for a class this module declares itself.
 const INV_001_NAMES_CHIRHO: [&str; 5] = [">>=", ">>", "return", "pure", "fail"];
 
+/// The two INV-001 operators minted all the same (row 697). Their only accepted proof is the
+/// exact predicate the checker found for the use, an indexed own key joined by the use's own
+/// provenance (`admits_operator_proof_chirho`). Any other use goes back to its canonical id and
+/// INV-001's path. `return`, `pure` and `fail` stay unminted.
+/// workflow: monadic-dispatch-chirho
+const OWN_PROOF_OPERATORS_CHIRHO: [&str; 2] = [">>=", ">>"];
+
+/// Whether `name_chirho` is one of the two operators that take only an indexed own proof.
+fn is_own_proof_operator_chirho(name_chirho: &str) -> bool {
+    OWN_PROOF_OPERATORS_CHIRHO.contains(&name_chirho)
+}
+
+/// Whether provenance in `role_chirho` identifies a use of `name_chirho` to this join: a
+/// written reference, or the `>>=` (Bind) or `>>` (Then) a do statement selected (row 697).
+/// workflow: monadic-dispatch-chirho
+pub(crate) fn joins_provenance_role_chirho(
+    name_chirho: &str,
+    role_chirho: OccurrenceRoleChirho,
+) -> bool {
+    match role_chirho {
+        OccurrenceRoleChirho::Reference => true,
+        OccurrenceRoleChirho::Bind => name_chirho == ">>=",
+        OccurrenceRoleChirho::Then => name_chirho == ">>",
+        _ => false,
+    }
+}
+
+/// Whether a record for `name_chirho` proved at `class_chirho` and `key_chirho` may prove its
+/// occurrence. Every record may, except a `>>=` or `>>` record, which proves only the exact
+/// predicate that types its use: `Monad` at an indexed own key (`$own:i`), the binding's own
+/// dictionary parameter for that predicate.
+///
+/// Three kinds of key prove nothing here, and the use keeps its canonical id and INV-001's
+/// path: a ground key (`IO`, `Maybe`), a user monad, and a bare `$own` that a superclass
+/// entailed. The bare superclass case is an unserved runtime boundary, not a compatible pass
+/// (row 697).
+/// workflow: monadic-dispatch-chirho
+pub(crate) fn admits_operator_proof_chirho(
+    name_chirho: &str,
+    class_chirho: &str,
+    key_chirho: &str,
+) -> bool {
+    if !is_own_proof_operator_chirho(name_chirho) {
+        return true;
+    }
+    let bare_own_chirho = haskelujah_typing_chirho::infer_chirho::own_dictionary_key_chirho(None);
+    class_chirho == "Monad"
+        && key_chirho
+            .strip_prefix(bare_own_chirho.as_str())
+            .and_then(|rest_chirho| rest_chirho.strip_prefix(':'))
+            .is_some_and(|index_chirho| {
+                !index_chirho.is_empty()
+                    && index_chirho
+                        .bytes()
+                        .all(|byte_chirho| byte_chirho.is_ascii_digit())
+            })
+}
+
 /// The names whose every free reference the desugarer gives an occurrence id of
 /// its own, so the checker's proof for that one use reaches the dictionary pass:
 /// the standard set, and each method of a single-parameter class the compiling
@@ -214,10 +276,11 @@ const INV_001_NAMES_CHIRHO: [&str; 5] = [">>=", ">>", "return", "pure", "fail"];
 /// Boundaries, each keeping its shared id: a seeded standard class's methods
 /// outside the standard set (`fmap`, `<>`, `toList`), a class imported from
 /// another module (its rows live in that module's Core), a multi-parameter
-/// class, and the INV-001 names. Shadows stay the desugarer's: a lexical,
-/// top-level or field binding is found in scope before any occurrence is
-/// minted, and an occurrence the join proves nothing for is restored to its
-/// canonical id.
+/// class, and the INV-001 names. The exceptions are `>>=` and `>>`, minted for
+/// their indexed own proof alone (`OWN_PROOF_OPERATORS_CHIRHO`, row 697).
+/// Shadows stay the desugarer's: a lexical, top-level or field binding is found
+/// in scope before any occurrence is minted, and an occurrence the join proves
+/// nothing for is restored to its canonical id.
 /// workflow: language-features-chirho/own-class-method-occurrences-chirho
 pub(crate) fn method_occurrence_names_chirho(module_chirho: &ModuleChirho) -> HashSet<String> {
     let own_methods_chirho = module_chirho
@@ -228,7 +291,15 @@ pub(crate) fn method_occurrence_names_chirho(module_chirho: &ModuleChirho) -> Ha
                 type_vars_chirho,
                 methods_chirho,
                 ..
-            } if type_vars_chirho.len() == 1 => methods_chirho.as_slice(),
+            } if type_vars_chirho
+                .iter()
+                .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+                .take(2)
+                .count()
+                == 1 =>
+            {
+                methods_chirho.as_slice()
+            }
             _ => &[],
         })
         .map(|method_chirho| method_chirho.name_chirho.text_chirho().to_string());
@@ -237,6 +308,11 @@ pub(crate) fn method_occurrence_names_chirho(module_chirho: &ModuleChirho) -> Ha
         .map(|name_chirho| name_chirho.to_string())
         .chain(own_methods_chirho)
         .filter(|name_chirho| !INV_001_NAMES_CHIRHO.contains(&name_chirho.as_str()))
+        .chain(
+            OWN_PROOF_OPERATORS_CHIRHO
+                .iter()
+                .map(|name_chirho| name_chirho.to_string()),
+        )
         .collect()
 }
 
@@ -250,14 +326,18 @@ pub(crate) fn join_occurrence_evidence_chirho(
     literal_occurrence_spans_chirho: &HashMap<CoreIdChirho, haskelujah_span_chirho::SpanChirho>,
     reference_occurrence_spans_chirho: &HashMap<CoreIdChirho, haskelujah_span_chirho::SpanChirho>,
     occurrence_provenance_chirho: &HashMap<CoreIdChirho, ProvenanceChirho>,
-) -> HashMap<CoreIdChirho, (String, String)> {
-    occurrence_keys_chirho(&join_occurrence_proofs_chirho(
+) -> OccurrenceJoinChirho {
+    let proofs_chirho = join_occurrence_proofs_chirho(
         infer_result_chirho,
         method_occurrences_chirho,
         literal_occurrence_spans_chirho,
         reference_occurrence_spans_chirho,
         occurrence_provenance_chirho,
-    ))
+    );
+    OccurrenceJoinChirho {
+        evidence_chirho: occurrence_keys_chirho(&proofs_chirho),
+        applied_tys_chirho: occurrence_applied_tys_chirho(&proofs_chirho),
+    }
 }
 
 /// The class and engine key of each joined proof.
@@ -278,6 +358,21 @@ pub(crate) fn occurrence_keys_chirho(
         .collect()
 }
 
+/// The ground application is retained only by the same record join that chose its proof.
+pub(crate) fn occurrence_applied_tys_chirho(
+    proofs_chirho: &HashMap<CoreIdChirho, JoinedProofChirho>,
+) -> HashMap<CoreIdChirho, TyChirho> {
+    proofs_chirho
+        .iter()
+        .filter_map(|(id_chirho, proof_chirho)| {
+            proof_chirho
+                .applied_ty_chirho
+                .as_ref()
+                .map(|ty_chirho| (*id_chirho, ty_chirho.clone()))
+        })
+        .collect()
+}
+
 /// The ground goals (S1) of each joined proof that has any.
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 pub(crate) fn occurrence_ground_goals_chirho(
@@ -290,6 +385,19 @@ pub(crate) fn occurrence_ground_goals_chirho(
             (*occ_id_chirho, proof_chirho.ground_preds_chirho.clone())
         })
         .collect()
+}
+
+/// One record's proof for an occurrence, its class and type key, with the ground application
+/// its predicate resolved to, if any.
+type AppliedProofChirho = ((String, String), Option<TyChirho>);
+
+/// What the occurrence join proves: each occurrence's class and type key, and, where the
+/// checker recorded one, the ground application its predicate resolved to (row 694, M1).
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+#[cfg(test)]
+pub(crate) struct OccurrenceJoinChirho {
+    pub(crate) evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    pub(crate) applied_tys_chirho: HashMap<CoreIdChirho, TyChirho>,
 }
 
 /// Join the checker's occurrence records to the desugarer's occurrence ids.
@@ -307,6 +415,10 @@ pub(crate) fn occurrence_ground_goals_chirho(
 /// What remains positional serves only the population with no identity at all:
 /// occurrences with neither provenance nor a genuine span, and records with no
 /// origin, taken in order under a count guard.
+///
+/// Each occurrence also takes the ground application its proof's predicate resolved to,
+/// where the checker recorded one (row 694, M1): only from the very record that proves it,
+/// and from an origin's records only when every one proving that occurrence agrees.
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 pub(crate) fn join_occurrence_proofs_chirho(
     infer_result_chirho: &InferResultChirho,
@@ -324,6 +436,7 @@ pub(crate) fn join_occurrence_proofs_chirho(
     >,
     occurrence_provenance_chirho: &HashMap<CoreIdChirho, ProvenanceChirho>,
 ) -> HashMap<CoreIdChirho, JoinedProofChirho> {
+    let mut applied_chirho: HashMap<CoreIdChirho, TyChirho> = HashMap::new();
     // Literal evidence joins by span, exactly: the checker solved this very
     // literal. It is inserted first so the per-name ordinal join below never
     // overrides it. The engine's body-backed rows are keyed "Int"; the checker
@@ -423,14 +536,25 @@ pub(crate) fn join_occurrence_proofs_chirho(
                 .classes_chirho()
                 .get_chirho(&record_chirho.class_name_chirho)
                 .is_some_and(|class_chirho| class_chirho.methods_chirho.contains_key(name_chirho));
-            let function_requires_class_chirho = infer_result_chirho
-                .env_chirho
-                .lookup_chirho(name_chirho)
-                .is_some_and(|scheme_chirho| {
-                    scheme_chirho.preds_chirho.iter().any(|pred_chirho| {
-                        pred_chirho.class_name_chirho == record_chirho.class_name_chirho
+            let entry_requires_class_chirho = |entry_chirho: &str| {
+                infer_result_chirho
+                    .env_chirho
+                    .lookup_chirho(entry_chirho)
+                    .is_some_and(|scheme_chirho| {
+                        scheme_chirho.preds_chirho.iter().any(|pred_chirho| {
+                            pred_chirho.class_name_chirho == record_chirho.class_name_chirho
+                        })
                     })
-                });
+            };
+            // The function's own scheme is the one its bare name binds, as before, or the
+            // qualified entry the checker resolved the use under: `P.print` keeps its Show
+            // proof beside a program's own `print :: String -> IO ()` (row 698). The entry
+            // is consulted, never trusted; a use without one is judged by its bare name.
+            let function_requires_class_chirho = entry_requires_class_chirho(name_chirho.as_str())
+                || record_chirho
+                    .resolved_entry_chirho
+                    .as_deref()
+                    .is_some_and(entry_requires_class_chirho);
             class_declares_reference_chirho || function_requires_class_chirho
         };
     let backed_key_chirho =
@@ -457,10 +581,9 @@ pub(crate) fn join_occurrence_proofs_chirho(
     let mut occurrences_by_origin_chirho: HashMap<OriginIdChirho, Vec<(CoreIdChirho, &String)>> =
         HashMap::new();
     for (occ_id_chirho, provenance_chirho) in occurrence_provenance_chirho {
-        if provenance_chirho.role_chirho != OccurrenceRoleChirho::Reference {
-            continue;
-        }
-        if let Some((name_chirho, _canon_chirho)) = method_occurrences_chirho.get(occ_id_chirho) {
+        if let Some((name_chirho, _canon_chirho)) = method_occurrences_chirho.get(occ_id_chirho)
+            && joins_provenance_role_chirho(name_chirho, provenance_chirho.role_chirho)
+        {
             occurrences_by_origin_chirho
                 .entry(provenance_chirho.origin_chirho)
                 .or_default()
@@ -468,6 +591,8 @@ pub(crate) fn join_occurrence_proofs_chirho(
         }
     }
     let mut proofs_by_occurrence_chirho: HashMap<CoreIdChirho, Vec<JoinedProofChirho>> =
+        HashMap::new();
+    let mut applied_by_occurrence_chirho: HashMap<CoreIdChirho, Vec<AppliedProofChirho>> =
         HashMap::new();
     for (record_index_chirho, record_chirho) in infer_result_chirho
         .method_occurrences_chirho
@@ -478,6 +603,15 @@ pub(crate) fn join_occurrence_proofs_chirho(
             continue;
         };
         if !record_is_authoritative_chirho(record_chirho) {
+            continue;
+        }
+        // `>>=` and `>>` keep only an indexed own proof, before the record contributes
+        // anything to its occurrence (row 697).
+        if !admits_operator_proof_chirho(
+            &record_chirho.name_chirho,
+            &record_chirho.class_name_chirho,
+            &record_chirho.ty_key_chirho,
+        ) {
             continue;
         }
         let Some(candidates_chirho) = occurrences_by_origin_chirho.get(&origin_chirho) else {
@@ -499,13 +633,36 @@ pub(crate) fn join_occurrence_proofs_chirho(
                     record_chirho,
                     backed_key_chirho(record_chirho),
                 ));
+            applied_by_occurrence_chirho
+                .entry(*occ_id_chirho)
+                .or_default()
+                .push((
+                    (
+                        record_chirho.class_name_chirho.clone(),
+                        backed_key_chirho(record_chirho),
+                    ),
+                    record_chirho.applied_ty_chirho.clone(),
+                ));
         }
     }
     for (occ_id_chirho, proofs_chirho) in &proofs_by_occurrence_chirho {
         if let Some(proof_chirho) = single_proof_chirho(proofs_chirho) {
-            evidence_chirho
+            let chosen_chirho = evidence_chirho
                 .entry(*occ_id_chirho)
-                .or_insert(proof_chirho);
+                .or_insert(proof_chirho)
+                .clone();
+            if let Some(applied_ty_chirho) = agreed_applied_ty_chirho(
+                applied_by_occurrence_chirho
+                    .get(occ_id_chirho)
+                    .map(Vec::as_slice)
+                    .unwrap_or(&[]),
+                &(
+                    chosen_chirho.class_name_chirho.clone(),
+                    chosen_chirho.ty_key_chirho.clone(),
+                ),
+            ) {
+                applied_chirho.insert(*occ_id_chirho, applied_ty_chirho);
+            }
         }
     }
     // By span, for the occurrences without provenance, and only from records
@@ -519,6 +676,10 @@ pub(crate) fn join_occurrence_proofs_chirho(
         .enumerate()
     {
         if record_chirho.origin_chirho.is_some() {
+            continue;
+        }
+        // `>>=` and `>>` are proved by provenance alone, never by a span (row 697).
+        if is_own_proof_operator_chirho(&record_chirho.name_chirho) {
             continue;
         }
         if consumed_records_chirho.contains(&record_index_chirho) {
@@ -541,9 +702,17 @@ pub(crate) fn join_occurrence_proofs_chirho(
         }
         consumed_records_chirho.insert(record_index_chirho);
         identified_occurrences_chirho.insert(*occ_id_chirho);
-        evidence_chirho.entry(*occ_id_chirho).or_insert_with(|| {
-            JoinedProofChirho::from_record_chirho(record_chirho, backed_key_chirho(record_chirho))
-        });
+        if let std::collections::hash_map::Entry::Vacant(vacant_chirho) =
+            evidence_chirho.entry(*occ_id_chirho)
+        {
+            vacant_chirho.insert(JoinedProofChirho::from_record_chirho(
+                record_chirho,
+                backed_key_chirho(record_chirho),
+            ));
+            if let Some(applied_ty_chirho) = &record_chirho.applied_ty_chirho {
+                applied_chirho.insert(*occ_id_chirho, applied_ty_chirho.clone());
+            }
+        }
     }
     // What remains of the old positional join, and the three boundaries it
     // respects. The desugarer mints method occurrences at several sites and only
@@ -570,6 +739,10 @@ pub(crate) fn join_occurrence_proofs_chirho(
     // occurrence provenance, which is its own brick.
     // workflow: language-features-chirho/dictionary-evidence-chirho
     for (name_chirho, ids_chirho) in &occ_ids_by_name_chirho {
+        // `>>=` and `>>` are proved by provenance alone, never by position (row 697).
+        if is_own_proof_operator_chirho(name_chirho) {
+            continue;
+        }
         // Eligible here: an occurrence with NO identifying span at all, after the
         // identified ones are excluded. Anything carrying a genuine span belongs
         // to the span join, whether or not that join could use it: admitting a
@@ -614,15 +787,45 @@ pub(crate) fn join_occurrence_proofs_chirho(
             // The engine's body-backed instance rows are keyed "Int"; typing
             // defaults ambiguous numerics to "Integer" per the Report. Map
             // the evidence key onto the backed row at this boundary only.
-            evidence_chirho.entry(*occ_id_chirho).or_insert_with(|| {
-                JoinedProofChirho::from_record_chirho(
+            if let std::collections::hash_map::Entry::Vacant(vacant_chirho) =
+                evidence_chirho.entry(*occ_id_chirho)
+            {
+                vacant_chirho.insert(JoinedProofChirho::from_record_chirho(
                     record_chirho,
                     backed_key_chirho(record_chirho),
-                )
-            });
+                ));
+                if let Some(applied_ty_chirho) = &record_chirho.applied_ty_chirho {
+                    applied_chirho.insert(*occ_id_chirho, applied_ty_chirho.clone());
+                }
+            }
+        }
+    }
+    for (id_chirho, ty_chirho) in applied_chirho {
+        if let Some(proof_chirho) = evidence_chirho.get_mut(&id_chirho) {
+            proof_chirho.applied_ty_chirho = Some(ty_chirho);
         }
     }
     evidence_chirho
+}
+
+/// The applied type every record proving `chosen_chirho` for one occurrence agrees on; `None`
+/// when one carries none or two differ.
+fn agreed_applied_ty_chirho(
+    candidates_chirho: &[AppliedProofChirho],
+    chosen_chirho: &(String, String),
+) -> Option<TyChirho> {
+    let mut agreed_chirho: Option<&TyChirho> = None;
+    for (proof_chirho, applied_ty_chirho) in candidates_chirho {
+        if proof_chirho != chosen_chirho {
+            continue;
+        }
+        let applied_ty_chirho = applied_ty_chirho.as_ref()?;
+        match agreed_chirho {
+            Some(seen_chirho) if seen_chirho != applied_ty_chirho => return None,
+            _ => agreed_chirho = Some(applied_ty_chirho),
+        }
+    }
+    agreed_chirho.cloned()
 }
 
 /// Join the checker's per-predicate evidence for constrained references to the
@@ -634,7 +837,7 @@ pub(crate) fn join_reference_evidence_chirho(
     infer_result_chirho: &InferResultChirho,
     reference_occurrence_spans_chirho: &HashMap<CoreIdChirho, haskelujah_span_chirho::SpanChirho>,
     occurrence_provenance_chirho: &HashMap<CoreIdChirho, ProvenanceChirho>,
-) -> HashMap<CoreIdChirho, Vec<(String, Option<String>)>> {
+) -> HashMap<CoreIdChirho, Vec<haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho>> {
     reference_occurrence_spans_chirho
         .iter()
         .filter_map(|(occ_id_chirho, span_chirho)| {
@@ -658,7 +861,13 @@ pub(crate) fn join_reference_evidence_chirho(
                                 key_chirho.to_string()
                             }
                         });
-                        (record_chirho.class_name_chirho.clone(), key_chirho)
+                        // The applied type and a multi-parameter head ride along unchanged:
+                        // they are the checker's structure, which the dictionary pass
+                        // instantiates (row 694).
+                        haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
+                            ty_key_chirho: key_chirho,
+                            ..record_chirho.clone()
+                        }
                     })
                     .collect(),
             ))
@@ -798,5 +1007,6 @@ fn single_proof_chirho(proofs_chirho: &[JoinedProofChirho]) -> Option<JoinedProo
         class_name_chirho: first_chirho.class_name_chirho.clone(),
         ty_key_chirho: first_chirho.ty_key_chirho.clone(),
         ground_preds_chirho,
+        applied_ty_chirho: None,
     })
 }

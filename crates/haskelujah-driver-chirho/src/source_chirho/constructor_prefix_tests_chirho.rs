@@ -78,9 +78,20 @@ fn constructor_contexts_are_wanted_at_constructor_uses_chirho() {
     let source_chirho = format!(
         "{HEADER_CHIRHO}data HoldChirho = forall aChirho. Show aChirho => MkHoldChirho aChirho\nbadChirho = MkHoldChirho (\\xChirho -> xChirho)\n"
     );
-    let error_chirho = check_chirho(&source_chirho, &[])
-        .err()
-        .expect("the constructor-scope control must reject");
+    let error_chirho = match check_chirho(&source_chirho, &[]) {
+        Err(error_chirho) => error_chirho,
+        Ok(result_chirho) => panic!(
+            "the constructor-scope control must reject; constructor scheme {:?}; binding scheme {:?}",
+            result_chirho
+                .infer_result_chirho
+                .env_chirho
+                .lookup_chirho("MkHoldChirho"),
+            result_chirho
+                .infer_result_chirho
+                .env_chirho
+                .lookup_chirho("badChirho"),
+        ),
+    };
     assert!(
         error_chirho
             .diagnostics_chirho()

@@ -15,6 +15,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FloatingChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Floating".to_string(),
                 supers_chirho: vec!["Fractional".to_string()],
@@ -163,6 +164,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::RealFracChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "RealFrac".to_string(),
                 supers_chirho: vec!["Real".to_string(), "Fractional".to_string()],
@@ -193,6 +195,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::RealFloatChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "RealFloat".to_string(),
                 supers_chirho: vec!["RealFrac".to_string(), "Floating".to_string()],
@@ -223,6 +226,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadIoChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "MonadIO".to_string(),
                 supers_chirho: vec!["Monad".to_string()],
@@ -252,6 +256,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadFailChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "MonadFail".to_string(),
                 supers_chirho: vec!["Monad".to_string()],
@@ -300,6 +305,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadFixChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "MonadFix".to_string(),
                 supers_chirho: vec!["Monad".to_string()],
@@ -339,6 +345,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FormatTimeChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "FormatTime".to_string(),
                 supers_chirho: vec![],
@@ -354,6 +361,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ParseTimeChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "ParseTime".to_string(),
                 supers_chirho: vec![],
@@ -406,6 +414,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TypeableChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: vec![typeable_kind_chirho],
                 name_chirho: "Typeable".to_string(),
                 supers_chirho: vec![],
@@ -435,6 +444,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::DataChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Data".to_string(),
                 supers_chirho: vec!["Typeable".to_string()],
@@ -466,6 +476,7 @@ impl ClassEnvChirho {
                 class_identity_chirho
                     .expect("this compiler class declaration has an explicit seed identity"),
                 crate::class_chirho::ClassDeclPartsChirho {
+                    super_templates_chirho: Vec::new(),
                     kind_vars_chirho: Vec::new(),
                     name_chirho: class_name_chirho.to_string(),
                     supers_chirho: vec![],
@@ -483,6 +494,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadZipChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "MonadZip".to_string(),
                 supers_chirho: vec!["Monad".to_string()],
@@ -534,6 +546,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::RandomGenChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "RandomGen".to_string(),
                 supers_chirho: vec![],
@@ -593,6 +606,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::SplitGenChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "SplitGen".to_string(),
                 supers_chirho: vec!["RandomGen".to_string()],
@@ -622,6 +636,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ContravariantChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Contravariant".to_string(),
                 supers_chirho: vec![],
@@ -670,6 +685,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::CoercibleChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Coercible".to_string(),
                 supers_chirho: vec![],
@@ -699,6 +715,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::RealChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Real".to_string(),
                 supers_chirho: vec!["Num".to_string(), "Ord".to_string()],
@@ -732,6 +749,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::IntegralChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Integral".to_string(),
                 supers_chirho: vec!["Real".to_string(), "Enum".to_string()],
@@ -816,6 +834,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::NfDataChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "NFData".to_string(),
                 supers_chirho: vec![],

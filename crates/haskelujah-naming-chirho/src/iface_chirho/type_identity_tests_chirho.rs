@@ -92,6 +92,7 @@ fn iface_chirho(
         type_name_chirho.to_owned(),
         IfaceTypeChirho {
             name_chirho: type_name_chirho.to_owned(),
+            is_class_chirho: false,
             declaration_chirho,
             constructors_chirho: vec!["MkChirho".to_owned()],
             methods_chirho: vec![],

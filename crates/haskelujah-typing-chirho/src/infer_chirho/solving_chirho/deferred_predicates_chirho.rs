@@ -372,15 +372,9 @@ impl InferCtxChirho {
                         .collect(),
                 },
             );
-            if self.is_certainly_unsolvable_pred_chirho(&fully_resolved_pred_chirho) {
-                let blamed_chirho =
-                    self.unsolvable_blame_pred_chirho(&fully_resolved_pred_chirho, 0);
-                self.diagnostics_chirho
-                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
-                        ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
-                        format!("no instance for `{blamed_chirho}`"),
-                        span_chirho,
-                    ));
+            if self
+                .report_certainly_unsolvable_wanted_chirho(&fully_resolved_pred_chirho, span_chirho)
+            {
                 continue;
             }
             // Skip constraints for classes with no instances in our env.

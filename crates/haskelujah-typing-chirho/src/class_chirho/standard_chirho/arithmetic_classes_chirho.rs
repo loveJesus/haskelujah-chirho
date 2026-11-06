@@ -27,6 +27,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::EqChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Eq".to_string(),
                 supers_chirho: vec![],
@@ -70,6 +71,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::OrdChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Ord".to_string(),
                 supers_chirho: vec!["Eq".to_string()],
@@ -86,6 +88,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ShowChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Show".to_string(),
                 supers_chirho: vec![],
@@ -112,6 +115,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::NumChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Num".to_string(),
                 // GHC's Num has no superclasses (Eq and Show were dropped in GHC 7.4);
@@ -218,6 +222,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FractionalChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Fractional".to_string(),
                 supers_chirho: vec!["Num".to_string()],
@@ -271,6 +276,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::BitsChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Bits".to_string(),
                 supers_chirho: vec![],
@@ -459,6 +465,7 @@ impl ClassEnvChirho {
         self.add_seed_class_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FiniteBitsChirho,
             crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "FiniteBits".to_string(),
                 supers_chirho: vec!["Bits".to_string()],

@@ -458,6 +458,7 @@ fn scan_package_hs_files_chirho(
                                 name_chirho.clone(),
                                 IfaceTypeChirho {
                                     declaration_chirho: None,
+                                    is_class_chirho: false,
                                     name_chirho: name_chirho.clone(),
                                     constructors_chirho: vec![],
                                     methods_chirho: vec![],

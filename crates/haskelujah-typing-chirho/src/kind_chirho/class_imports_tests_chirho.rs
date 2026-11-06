@@ -66,13 +66,13 @@ fn data_chirho(
             .map(|binder_chirho| TyVarChirho::plain_chirho(name_chirho(binder_chirho)))
             .collect(),
         constructors_chirho: vec![ConDeclChirho::OrdinaryChirho {
-            prefix_chirho: Default::default(),
             name_chirho: name_chirho(&format!("Mk{type_text_chirho}")),
             fields_chirho: fields_chirho
                 .into_iter()
                 .map(|field_chirho| (StrictnessChirho::LazyChirho, field_chirho))
                 .collect(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
+            prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
         }],
         deriving_chirho: vec![],
         kind_sig_chirho: None,
@@ -394,6 +394,49 @@ fn a_local_homonym_is_never_seeded_as_the_builtin_class_chirho() {
         &module_chirho,
     );
     assert_eq!(count_chirho, 0, "{text_chirho}");
+}
+
+#[test]
+fn the_proven_builtin_typeable_is_seeded_with_no_kind_chirho() {
+    // #32090: K01 proves the methodless, poly-kinded Typeable. Its hidden kind binder seeds
+    // no kind, so `Typeable Maybe` (module_kind_tests' poly-kinded control) holds as it does
+    // without the proof. The proof only makes it a known constraint head: `Typeable Int`
+    // written as a field is a constraint where a type is required, as Show's is.
+    let typeable_chirho = BuiltinClassScopeChirho::new_chirho(std::collections::HashMap::from([(
+        "Typeable".to_string(),
+        BuiltinClassChirho {
+            identity_chirho: CompilerClassChirho::TypeableChirho,
+            module_chirho: "Data.Typeable",
+            name_chirho: "Typeable",
+        },
+    )]));
+    let poly_chirho = module_chirho(
+        &["ConstraintKinds"],
+        vec![DeclChirho::TypeAliasDeclChirho {
+            name_chirho: name_chirho("Typeable1Chirho"),
+            type_vars_chirho: vec![],
+            rhs_chirho: app_chirho(con_chirho("Typeable"), con_chirho("Maybe")),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+    );
+    for scope_chirho in [&typeable_chirho, &BuiltinClassScopeChirho::default()] {
+        let (count_chirho, text_chirho) = kind_errors_chirho(scope_chirho, &poly_chirho);
+        assert_eq!(count_chirho, 0, "{text_chirho}");
+    }
+    let field_chirho = module_chirho(
+        &[],
+        vec![data_chirho(
+            "BazChirho",
+            &[],
+            vec![app_chirho(con_chirho("Typeable"), con_chirho("Int"))],
+        )],
+    );
+    let (count_chirho, text_chirho) = kind_errors_chirho(&typeable_chirho, &field_chirho);
+    assert_eq!(count_chirho, 1, "{text_chirho}");
+    assert!(
+        text_chirho.contains(TYPE_POSITION_ERROR_CHIRHO),
+        "{text_chirho}"
+    );
 }
 
 #[test]
