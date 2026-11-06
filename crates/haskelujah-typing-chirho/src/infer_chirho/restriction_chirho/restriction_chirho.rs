@@ -182,10 +182,12 @@ pub(super) fn standard_class_chirho(identity_chirho: CompilerClassChirho) -> boo
         )
 }
 
-/// Whether `predicate_chirho` mentions `variable_chirho` in any argument: kind, primary or extra.
+/// Whether `predicate_chirho` constrains `variable_chirho` through an ordinary argument, primary
+/// or extra. A variable a wanted holds only in its kind arguments is the kind engine's, so the
+/// restriction neither defaults nor refuses it there.
 fn mentions_chirho(predicate_chirho: &PredChirho, variable_chirho: TyVarChirho) -> bool {
-    predicate_chirho
-        .semantic_tys_chirho()
+    std::iter::once(&predicate_chirho.ty_chirho)
+        .chain(&predicate_chirho.extra_tys_chirho)
         .any(|ty_chirho| ty_chirho.free_vars_chirho().contains(&variable_chirho))
 }
 
@@ -198,17 +200,29 @@ impl InferCtxChirho {
 
     /// Rule 1 reaches every wanted a restricted group left behind, not only those its result
     /// type mentions. `text = show (read "1")` leaves `Read a, Show a` on a variable that no
-    /// binding's type holds. Each variable created during the group's inference, at or above
-    /// `first_chirho` and still free in a residual wanted, stays monomorphic, so Rule 2
-    /// defaults or refuses it. A variable from an earlier group is that group's own.
+    /// binding's type holds.
+    ///
+    /// The variables are chosen group-locally, but the scan is module-wide: it visits every
+    /// deferred wanted once for each restricted group. That is the same visit generalization
+    /// already makes for each member when it builds its predicate owners over all deferred
+    /// wanteds (`generalize_group_member_chirho`), and no other budget is charged.
+    ///
+    /// Only a unification variable from a wanted's ordinary arguments (primary and extra) at
+    /// or above `first_chirho` is withheld; Rule 2 then defaults or refuses it.
+    /// - Kind arguments stay with the kind engine.
+    /// - Rigid variables are not unification variables.
+    /// - Givens are not deferred wanteds.
+    /// - A quantified variable has already left with its scheme.
+    /// - The variable supply only grows during a module's inference, so a variable from an
+    ///   earlier group stays that group's own.
     /// workflow: language-features-chirho/fundep-generalization-chirho
     pub(super) fn withhold_group_residuals_chirho(&mut self, first_chirho: TyVarChirho) {
         let residual_chirho: Vec<TyVarChirho> = self
             .deferred_preds_chirho
             .iter()
             .flat_map(|(predicate_chirho, _)| {
-                predicate_chirho
-                    .semantic_tys_chirho()
+                std::iter::once(&predicate_chirho.ty_chirho)
+                    .chain(&predicate_chirho.extra_tys_chirho)
                     .flat_map(TyChirho::free_vars_chirho)
                     .collect::<Vec<_>>()
             })

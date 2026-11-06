@@ -149,6 +149,20 @@ fn a_restricted_group_withholds_only_the_residual_variables_it_created_chirho() 
     let read_chirho = context_chirho.fresh_var_chirho();
     // A later variable of the group that no wanted mentions.
     let _unwanted_chirho = context_chirho.fresh_var_chirho();
+    // A group variable held only in a wanted's kind arguments stays with the kind engine.
+    let kind_only_chirho = context_chirho.fresh_var_chirho();
+    context_chirho.deferred_preds_chirho.push((
+        crate::class_chirho::PredChirho::from_compiler_chirho(
+            CompilerClassChirho::TypeableChirho,
+            crate::class_chirho::PredPartsChirho {
+                kind_tys_chirho: vec![kind_only_chirho],
+                class_name_chirho: "Typeable".to_string(),
+                ty_chirho: TyChirho::int_chirho(),
+                extra_tys_chirho: Vec::new(),
+            },
+        ),
+        haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+    ));
     for (class_chirho, ty_chirho) in [
         (CompilerClassChirho::ReadChirho, read_chirho.clone()),
         (CompilerClassChirho::ShowChirho, read_chirho.clone()),
@@ -163,7 +177,8 @@ fn a_restricted_group_withholds_only_the_residual_variables_it_created_chirho() 
     let TyChirho::VarChirho(read_variable_chirho) = read_chirho else {
         panic!("a fresh variable");
     };
-    // Only the group's own residual variable: not an earlier group's, nor one with no wanted.
+    // Only the group's own residual variable from an ordinary argument: not an earlier
+    // group's, not one no wanted mentions, and not one held only in kind arguments.
     assert_eq!(
         context_chirho
             .restriction_chirho
