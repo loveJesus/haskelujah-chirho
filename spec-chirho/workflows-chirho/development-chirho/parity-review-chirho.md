@@ -33,6 +33,30 @@ Source work stays in owner worktrees under `haskelujah-workspaces-chirho`. The c
 
 A later counterexample narrows or withdraws the earlier disposition. Preserve earlier passing observations at their actual scope, record the new failing input, and decide between rollback and forward repair explicitly. A known crash becoming a silent wrong result is a material failure even when the program was already unsupported; a successful exit alone is not a behavior gate.
 
+## Dependability convergence Chirho
+
+L.J.'s November 6 dependable-GHC direction uses the [current critical-path checklist](../../tasklists-chirho/parity-lanes-chirho/26-11-06-chirho/26-11-06_15-05-tasklist-dependable_ghc-chirho.md). Existing lane records own their detailed evidence. Source work proceeds in parallel, while one scheduler owns actual compiler windows and root owns integration/main/SQLite. Close a coherent language brick before expanding it into another feature family; keep useful package execution and runtime correctness on the acceptance path.
+
+```mermaid
+flowchart TD
+    baseline_chirho[Freeze actual main source and executable baseline] --> integration_chirho[Root assembles one coherent candidate]
+    typing_chirho[Kind identity and typing brick] --> integration_chirho
+    numeric_chirho[Numeric entry and Reader handoff] --> integration_chirho
+    packages_chirho[Truthful source install and dependency bodies] --> integration_chirho
+    runtime_chirho[Measure bounded roots then repair lifetime and sharing] --> integration_chirho
+    integration_chirho --> semantics_chirho[Check valid execution invalid refusal and failure recovery]
+    semantics_chirho --> package_app_chirho[Build link and execute useful real package app]
+    package_app_chirho --> frozen_gate_chirho[Freeze candidate and run unchanged comparative gates]
+    frozen_gate_chirho --> installed_chirho[Run installed CLI and matching RTS outside checkout]
+    installed_chirho --> accepted_profile_chirho[Publish only the established profile and remaining gaps]
+    semantics_chirho -- finding --> causal_repair_chirho[Retain failure and assign shared cause]
+    frozen_gate_chirho -- finding --> causal_repair_chirho
+    installed_chirho -- finding --> causal_repair_chirho
+    causal_repair_chirho --> integration_chirho
+```
+
+The checklist is an execution order, not a release claim or a new permission to run a broad suite. A retained historical binary is never relabeled as actual main; metadata-only package success is never promoted to executable acceptance. Source diagnosis, fixtures and bounded repairs continue while another lane owns the compiler window.
+
 ## Consolidated fleet reporting Chirho
 
 The canonical reporting policy is the global Metropoliluya skill, section Consolidated project-fleet reports to AICEO, updated October 17, 2026. Adoption source: AICEO/gpt_chirho DM #2199. It supersedes the older one-daily/up-to-three-heavy-work cadence. Routine cadence is 2-3 consolidated reports for the whole active HASKELUJAH fleet across its active workday. Important incidents, milestones, risks or changed dependencies are reported promptly even when that makes four or more. No empty quota reports, per-agent routine reports or per-agent timers are created.

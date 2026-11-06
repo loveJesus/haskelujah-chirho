@@ -1,0 +1,89 @@
+<!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
+
+# Dependable GHC critical path Chirho
+
+Authority: L.J., November 6, 2026: calculate the path to a dependable GHC and coordinate the fleet to optimize for it. Root owns this checklist, main, integration, the progress DB and consolidated reporting. Existing implementation owners and the sole compiler scheduler remain in place. Coordination is row 701; runtime measurement is row 702; package truth is row 703. Numeric entry remains row 692, types row 688 and Reader row 699.
+
+This is a pre-beta compiler with local, reversible development work. Actual risks include silent wrong results, false acceptance, unbounded retention and false package-install success. Shared cache/data replacement, public release and other projects are outside this assignment.
+
+## Destination and proof
+
+The PRD's full destination remains a GHC-compatible compiler for real Haskell programs and Hackage packages, including the named transformers/mtl/parsec smoke set and lens milestone. The first usable profile is the measured Darwin arm64 host with interpreter, LLVM and actual Cranelift execution. Wasm and the other targets retain their project goals but have separate acceptance evidence. Completion of this profile does not establish the full destination.
+
+The PRD names GHC 9.6/Haskell2010 plus common extensions; current reference receipts use GHC 9.14.1. Record the exact reference version, extensions, package versions and platform for each workload. Do not silently change the compatibility contract or mix results across versions. Source compatibility does not imply GHC object/interface ABI compatibility.
+
+A dependable milestone must demonstrate all of the following on one identified candidate:
+
+- Valid supported programs build, link and produce the reference's stdout, exit, files, effect order, laziness and exceptions. The selected backend really executes; a fallback is a separate outcome.
+- Invalid programs are refused at the appropriate producer/checking boundary. A runtime missing dictionary, unsupported feature or timeout is not successful type-system coverage.
+- Real package bodies execute. Resolution, interface availability, typechecking, source registration, binary installation and application execution are separate claims.
+- Bounded-live-set programs retire dead objects and roots; sharing and recovery preserve behavior. A correct small checksum alone cannot establish this.
+- A clean installed CLI and matching RTS work outside the checkout. Clean and incremental builds, failed builds and interrupted publication have explicit behavior.
+
+No overall percent-complete or delivery date is justified yet. Track wrong acceptance, wrong observable behavior, real package executions and remaining blocking causes separately. Published compatibility counts remain owned by the two committed measurement artifacts and their paired QUOTE-AS rule.
+
+## Starting evidence, November 6
+
+- Main `1c42c54724d583aa775543483d1434d5826bf52c` has compiler crates `a9a38e3ddd40b7bbf4782564d66b9556bbd85b07` (A9). The later main commits are records; frozen `39e26ab9` measures the earlier D8 compiler and is not the current-main executable.
+- Main's paired eval-basic run measured 169 passes and 164 failures: 163 HeapPtr-versus-Int assertions and a separate mapM empty-output failure. Numeric-entry investigation already found retained dictionary lambdas; blindly forcing/unwrapping heap values is not a repair. Pure evaluator expressions and GHC-valid IO executables need distinct contracts.
+- Reader `54dd469f` is isolated. v7 measured corrected W3/W4 and native/IO/merge controls; v9's eleven search-path controls and lint pass are owner-reported at their thin scope. RD3/RD4 false acceptance and LLVM boxed-Show remain open. Final combined preservation, release and corpus reach are unmeasured.
+- Kind/identity source remains isolated. Finish its current bounded grouped-comprehension brick, then converge. The unchanged grouped-column case exposes a real missing `groupWith` body; a source-owned transformer contrast cannot close that supplier gap.
+- Source audit confirms the installer can register success after compilation errors, invents nonexistent interface paths and records wrong dependency versions. Claude2 reports the old shared DB has 410 entries and no claimed interface artifacts; that read-only audit does not authorize modifying it.
+- Cabal dependency collection retains frontend artifacts but discards dependency Core. A package typecheck is therefore insufficient proof that its bodies link and run. The native CLI also depends on a checkout-relative RTS path.
+- Native roots are retained beyond their useful lifetime, including across self-tail loop backedges. The current GC/thunk machinery already has substantial implementation and controls; this calls for measured lifetime/sharing repairs, not a collector rewrite based on stale PRD wording.
+
+## Parallel ownership and next deliverables
+
+| Owner | Active brick | Acceptance and next handoff |
+| --- | --- | --- |
+| Root, HASKELUJAH/gpt_chirho | Current A9 baseline review, isolated integration and acceptance | Resolve actual kind/Reader producer seams, independently review failures, freeze one candidate with matching RTS, then land only its supported scope. |
+| Kind writer, row 688; sole scheduler | Close the current grouped typing/resource-budget brick; prepare fresh A9 baseline using the existing controllers | Preserve the real groupWith gap. Coherent source checkpoint, ordinary preservation and explicit collector/identity/default handoff precede another syntax family. |
+| Claude, row 692; Reader handoff | Trace constrained numeric entry from checker scheme through dictionary arguments to evaluator result | Name the public API/program contract and shared causal repair; preserve function/action/data and numeric ambiguity negatives. No blanket HeapPtr unwrap or expectation change. |
+| Claude2, row 703 | Truthful source-package installation and publication, then package execution | Actual input/check/save failures refuse without damaging prior published state; no fictitious .rhi/object claims. L0, own-library L0.5 and external-body L1 become executable acceptance. |
+| Native measurement worker, row 702 | O(1) RTS measurements and bounded allocating self-tail stress | Actual allocations and several collections required; compare N/4N peak roots/live memory with a fixed live set. No root-lifetime, CAF or collector change in this first checkpoint. |
+
+Assignments are delivered as broker #32492, #32493, #32495, #32500 and internal owner handoffs. Root verified both external workers actively reading their assigned sources; Claude2 returned the concrete package audit in #32497/#32499. New implementation work stays in owner worktrees under `haskelujah-workspaces-chirho/`.
+
+## Ordered convergence gates
+
+- [x] Read live Git/PRD/task records and identify source-specific evidence; preserve existing holds.
+- [x] Assign disjoint numeric, package and runtime work; keep one compiler/RTS/GHC scheduler.
+- [x] Prepare a fresh actual-main A9 baseline packet rather than relabel the historical D8 binary. Owner plan hash: `bc384fa6e60a59025f24873726da6c3c4409f88409c50625328c0679793354d5`; prepared, not launched at this record.
+- [ ] Execute the reviewed fresh A9 baseline at a granted window; retain exact compiler/RTS/toolchain/corpus/stdlib/cache identities. Attribute resource/protocol failures without converting them to type refusals.
+- [ ] Finish the current coherent kind brick, preserve ordinary-program behavior and expose all still-open valid/invalid disagreements. No new feature family ahead of convergence.
+- [ ] Integrate Reader with that checkpoint in a separate root worktree. The current pushed-tip preview has eight conflict paths: generic heads, dict context, backend compile/evidence join, module scanner, driver lib, the extracted class monolith and builtin-identity workflow. Move the seeded Monad default to the owning class child; preserve both identity and default authority.
+- [ ] Review the resolved type/evidence/superclass/default/supplier transport with both writers; compile and run the affected ordinary controls on the combined source. Textual merge success alone is insufficient.
+- [ ] Repair row 692 at its measured semantic boundary. Evaluate explicit-typed values, constrained ambiguity, genuine closures, data and IO twins; retain the separate mapM IO failure until causally repaired.
+- [ ] Close RD3/RD4 through complete typing obligations, not a partial Core instance view. Resolve boxed-Show through its actual representation/consumer contract. Attribute the five unmeasured eval-advanced numeric cases using a real parent comparison when that evidence is needed.
+- [ ] Complete package truth: strict load/check/save failures, genuine dependency versions, supported generated Cabal modules, staging/atomic visibility and tested recovery. Source capability is recorded honestly; prior cache/DB remains untouched by probes.
+- [ ] After the exact collector handoff, retain and link non-builtin dependency Core with package/module identity. Keep the kind writer's selected-import schemes and class/family/source fields intact. Prove an external body actually changes application output.
+- [ ] Measure root retention. If the bounded test confirms the gap, implement scoped frames with safe return-value and tail-argument transfer, then test escaping results through forced GC. Removing roots without transfer proof is unsafe.
+- [ ] Prove per-binding CAF sharing separately: repeated demands do not re-evaluate the RHS, same-spelling bindings remain distinct, recursive CAFs report a blackhole, and reusing an IO action repeats its effects. Reuse existing thunks; do not memoize effect results.
+- [ ] Freeze the integrated candidate and run the unchanged positive/negative compiler axes plus real execution workloads at the meaningful landing boundary, under existing authorization/resource rules. Attribute each mover to its GHC contract; keep Unsupported and unclassified resource failures distinct.
+- [ ] Package a relocatable CLI/RTS/store configuration and run the same application outside the checkout, including clean rebuild, edited-module rebuild, invalid input and failed/interrupted publication.
+- [ ] Publish only the acceptance scope actually established and release the next package/profile work from that evidence. No unexplained correctness failure in a claimed supported scenario.
+
+These gates express dependencies, not a global lock: source diagnosis, fixtures, package truth and runtime measurement proceed while the current type brick closes. Root integration can begin after a coherent checkpoint; it does not wait for all future Haskell features.
+
+## Real package ladder
+
+Use source-only scratch copies pinned by content tree hash; exclude old `dist-chirho` artifacts. That proves equality to today's cache, not independent Hackage authenticity. No shared store writes or network access during this unit's probes.
+
+1. L0: a useful three-module app on base; prove build, link, actual backend and output.
+2. L0.5: unchanged `haskell-say-1.0.0.0` own-library executable, exercising its library-to-executable link and supported Cabal generated-module behavior.
+3. L1: an external app that invokes that real package's body, with exact reference output. This must fail until dependency bodies are retained and linked.
+4. Expand by dependency seam: cross-package operators/fixity, dictionaries, numeric methods, transitive dependencies, then the PRD smoke packages and lens. Pin each exact version and demanded functionality before selecting it as acceptance.
+
+Each rung includes a type error and an unsatisfied dependency bound, a failed build with no runnable stale output, clean rebuild, and an edited-module rebuild. Capture GHC reference execution, not just `-fno-code`. Unsupported Cabal flags must be explicit; do not silently imply threaded RTS compatibility.
+
+## Work and verification discipline
+
+- Optimize time to an accepted, integrated useful program. Agent utilization, test totals and moved-file counts are not progress measures by themselves.
+- One coherent semantic brick per implementation writer; one prepared next brick. A shared-file seam needs an exact handoff, not another competing implementation.
+- Keep workers productive with bounded source/fixture/review work while the sole scheduler grants actual compiler windows. Do not launch more inference work merely to fill seats.
+- Use focused checks during repair and broad/adversarial checks on the combined candidate. Reuse the current runner/controller; new harness behavior needs a failing control, but routine pin changes do not justify a new protocol.
+- Stop elective structural extraction for now. Necessary separation inside an active repair still applies; stale oversized files remain debt, not permission to add another responsibility.
+- Preserve old failure receipts and scopes. Correct a wrong prediction directly; do not weaken its assertion or call a different positive control a repair.
+- Outgoing coherent source is committed/pushed with scoped checks and gitleaks. Main/SQLite remain root-only. An isolated push or a thin green packet is not a dependable release.
+
+The existing [landing workflow](../../../workflows-chirho/development-chirho/parity-review-chirho.md) and [execution oracles](../../../workflows-chirho/testing-chirho/execution-oracles-chirho.md) govern delivery. Primary reference distinctions: [GHC compilation phases](https://downloads.haskell.org/ghc/9.14.1/docs/users_guide/phases.html) and [Cabal build/run/test commands](https://cabal.readthedocs.io/en/stable/cabal-commands.html).
