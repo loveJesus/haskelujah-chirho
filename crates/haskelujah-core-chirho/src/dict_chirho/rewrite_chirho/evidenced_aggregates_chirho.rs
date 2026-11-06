@@ -118,7 +118,10 @@ impl DictPassCtxChirho {
         id_chirho: CoreIdChirho,
     ) -> Option<CoreExprChirho> {
         let (operator_chirho, unit_chirho) = self.aggregate_shape_chirho(id_chirho)?;
-        let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = self
+            .occurrence_evidence_chirho
+            .get(&id_chirho)?
+            .keys_chirho();
         if class_name_chirho != "Num" {
             return None;
         }
@@ -155,7 +158,10 @@ impl DictPassCtxChirho {
             return None;
         }
         let (operator_chirho, unit_chirho) = self.aggregate_shape_chirho(id_chirho)?;
-        let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = self
+            .occurrence_evidence_chirho
+            .get(&id_chirho)?
+            .keys_chirho();
         if class_name_chirho != "Num" || !is_own_dictionary_key_chirho(ty_key_chirho) {
             return None;
         }
@@ -205,7 +211,10 @@ impl DictPassCtxChirho {
         let (_, method_chirho) = ORDERING_FOLDS_CHIRHO
             .iter()
             .find(|(name_chirho, _)| *name_chirho == base_name_chirho)?;
-        let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = self
+            .occurrence_evidence_chirho
+            .get(&id_chirho)?
+            .keys_chirho();
         if class_name_chirho != "Ord" || !is_own_dictionary_key_chirho(ty_key_chirho) {
             return None;
         }
@@ -259,7 +268,10 @@ impl DictPassCtxChirho {
         let (_, method_chirho) = ORDERING_FOLDS_CHIRHO
             .iter()
             .find(|(name_chirho, _)| *name_chirho == base_name_chirho)?;
-        let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = self
+            .occurrence_evidence_chirho
+            .get(&id_chirho)?
+            .keys_chirho();
         if class_name_chirho != "Ord" || is_own_dictionary_key_chirho(ty_key_chirho) {
             return None;
         }
@@ -289,7 +301,10 @@ impl DictPassCtxChirho {
         let (_, helper_chirho) = EQUALITY_CONSUMERS_CHIRHO
             .iter()
             .find(|(name_chirho, _)| *name_chirho == base_name_chirho)?;
-        let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = self
+            .occurrence_evidence_chirho
+            .get(&id_chirho)?
+            .keys_chirho();
         if class_name_chirho != "Eq" || INT_SHAPED_KEYS_CHIRHO.contains(&ty_key_chirho.as_str()) {
             return None;
         }

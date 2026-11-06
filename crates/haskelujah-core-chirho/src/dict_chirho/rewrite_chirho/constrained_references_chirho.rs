@@ -22,6 +22,7 @@ use haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho;
 use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
 use super::{CoreExprChirho, CoreIdChirho, CoreLitChirho, DictPassCtxChirho};
+use crate::dict_chirho::OccurrenceEvidenceChirho;
 
 /// How deep a conditional dictionary's context may nest before the pass gives up on it.
 const CONDITIONAL_DICTIONARY_DEPTH_CHIRHO: usize = 16;
@@ -404,8 +405,10 @@ impl DictPassCtxChirho {
         {
             return Some(CoreExprChirho::VarChirho(*canonical_id_chirho));
         }
-        if let Some((class_name_chirho, ty_key_chirho)) =
-            self.occurrence_evidence_chirho.get(&head_id_chirho)
+        if let Some((class_name_chirho, ty_key_chirho)) = self
+            .occurrence_evidence_chirho
+            .get(&head_id_chirho)
+            .map(OccurrenceEvidenceChirho::keys_chirho)
         {
             // A recursive call proved only by its head keeps the enclosing
             // instance's own dictionary, the one its argument's key names.
@@ -509,8 +512,10 @@ impl DictPassCtxChirho {
         let (_method_name_chirho, canonical_id_chirho) = self
             .method_occurrence_canon_chirho
             .get(&occurrence_id_chirho)?;
-        let (class_name_chirho, proven_key_chirho) =
-            self.occurrence_evidence_chirho.get(&occurrence_id_chirho)?;
+        let (class_name_chirho, proven_key_chirho) = self
+            .occurrence_evidence_chirho
+            .get(&occurrence_id_chirho)?
+            .keys_chirho();
         let selector_id_chirho = self.proven_list_selector_chirho(
             *canonical_id_chirho,
             class_name_chirho,

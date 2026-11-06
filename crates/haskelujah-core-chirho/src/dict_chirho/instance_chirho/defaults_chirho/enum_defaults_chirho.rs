@@ -259,10 +259,12 @@ impl DictPassCtxChirho {
         let wanted_chirho: BTreeSet<(String, String)> = self
             .occurrence_evidence_chirho
             .iter()
-            .filter(|(_, (class_name_chirho, key_chirho))| {
-                class_name_chirho == "Enum" && !is_own_dictionary_key_chirho(key_chirho)
+            .filter(|(_, occurrence_chirho)| {
+                occurrence_chirho.class_name_chirho == "Enum"
+                    && !is_own_dictionary_key_chirho(&occurrence_chirho.ty_key_chirho)
             })
-            .filter_map(|(id_chirho, (_, key_chirho))| {
+            .filter_map(|(id_chirho, occurrence_chirho)| {
+                let key_chirho = &occurrence_chirho.ty_key_chirho;
                 let (name_chirho, _) = self.method_occurrence_canon_chirho.get(id_chirho)?;
                 let method_chirho = name_chirho.rsplit('.').next()?;
                 ENUMERATIONS_CHIRHO

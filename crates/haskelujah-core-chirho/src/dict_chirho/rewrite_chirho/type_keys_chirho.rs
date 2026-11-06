@@ -217,10 +217,12 @@ impl DictPassCtxChirho {
                             return Some(
                                 self.occurrence_evidence_chirho
                                     .get(id_chirho)
-                                    .filter(|(class_chirho, _)| class_chirho == "Num")
+                                    .filter(|occurrence_chirho| {
+                                        occurrence_chirho.class_name_chirho == "Num"
+                                    })
                                     .map_or_else(
                                         || "Int".to_string(),
-                                        |(_, key_chirho)| key_chirho.clone(),
+                                        |occurrence_chirho| occurrence_chirho.ty_key_chirho.clone(),
                                     ),
                             );
                         }

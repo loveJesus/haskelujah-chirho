@@ -52,7 +52,10 @@ fn only_the_marked_range_receives_its_enum_proof_chirho() {
     ]);
     assert_eq!(
         join_range_evidence_chirho(&result_chirho, &occurrences_chirho, &ranges_chirho),
-        HashMap::from([(range_chirho, ("Enum".to_string(), "Int".to_string()))]),
+        HashMap::from([(
+            range_chirho,
+            haskelujah_core_chirho::OccurrenceEvidenceChirho::legacy_chirho("Enum", "Int"),
+        )]),
     );
 }
 

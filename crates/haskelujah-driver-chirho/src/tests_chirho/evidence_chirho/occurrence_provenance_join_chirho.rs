@@ -382,6 +382,56 @@ fn join_literal_chirho(
     .remove(&CoreIdChirho(10))
 }
 
+/// A literal's record carries its minted wanted's class proof to the dictionary pass, and a
+/// legacy literal stays legacy (row 692, C10).
+#[test]
+fn a_literal_carries_its_wanted_class_proof_to_the_pass_chirho() {
+    use haskelujah_ast_chirho::name_chirho::{
+        ClassIdentityUnknownChirho, CompilerClassChirho, PredicateClassIdentityChirho,
+        PredicateClassProofChirho,
+    };
+    use haskelujah_typing_chirho::infer_chirho::LiteralEvidenceChirho;
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    let literal_chirho = supply_chirho.fresh_chirho();
+    for proof_chirho in [
+        PredicateClassProofChirho::ProvenChirho(PredicateClassIdentityChirho::CompilerChirho(
+            CompilerClassChirho::NumChirho,
+        )),
+        PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::LegacyChirho),
+    ] {
+        let mut result_chirho = infer_result_chirho(vec![]);
+        result_chirho.literal_evidence_by_origin_chirho = HashMap::from([(
+            literal_chirho,
+            LiteralEvidenceChirho {
+                class_name_chirho: "Num".to_string(),
+                ty_key_chirho: "Int".to_string(),
+                class_identity_chirho: proof_chirho.clone(),
+            },
+        )]);
+        let proofs_chirho = crate::evidence_join_chirho::join_occurrence_proofs_chirho(
+            &result_chirho,
+            &HashMap::from([(
+                CoreIdChirho(10),
+                ("fromInteger".to_string(), CoreIdChirho(1)),
+            )]),
+            &HashMap::from([(CoreIdChirho(10), SpanChirho::DUMMY_CHIRHO)]),
+            &HashMap::new(),
+            &HashMap::from([(
+                CoreIdChirho(10),
+                ProvenanceChirho::new_chirho(literal_chirho, OccurrenceRoleChirho::IntegerLiteral),
+            )]),
+        );
+        assert_eq!(
+            crate::evidence_join_chirho::occurrence_keys_chirho(&proofs_chirho)[&CoreIdChirho(10)],
+            haskelujah_core_chirho::OccurrenceEvidenceChirho::new_chirho(
+                "Num",
+                "Int",
+                proof_chirho
+            ),
+        );
+    }
+}
+
 #[test]
 fn a_generated_literal_takes_its_own_origins_evidence_chirho() {
     // Under the placeholder span the span map could only say what some other
@@ -539,6 +589,11 @@ fn an_origin_meets_class_proofs_in_both_capture_orders_chirho() {
             &HashMap::from([(CoreIdChirho(10), reference_chirho(origin_chirho))]),
         );
         assert_eq!(joined_chirho[&CoreIdChirho(10)].ty_key_chirho, "Int");
+        // The occurrence's own class proof is the same meet (row 692, C10).
+        assert_eq!(
+            &joined_chirho[&CoreIdChirho(10)].class_identity_chirho,
+            expected_chirho.class_identity_chirho()
+        );
         let goals_chirho =
             crate::evidence_join_chirho::occurrence_ground_goals_chirho(&joined_chirho);
         assert_eq!(goals_chirho[&CoreIdChirho(10)].len(), 1);

@@ -785,7 +785,10 @@ fn app_spine_head_id_chirho(expr_chirho: &CoreExprChirho) -> Option<CoreIdChirho
 fn evidence_occurrence_dispatches_to_prim_row_chirho() {
     let (module_chirho, names_chirho, canon_chirho) = occurrence_test_module_chirho();
     let mut evidence_chirho = HashMap::new();
-    evidence_chirho.insert(CoreIdChirho(50), ("Eq".to_string(), "Int".to_string()));
+    evidence_chirho.insert(
+        CoreIdChirho(50),
+        OccurrenceEvidenceChirho::legacy_chirho("Eq", "Int"),
+    );
     let result_chirho = dict_pass_module_full_with_method_occurrences_chirho(
         &module_chirho,
         names_chirho,

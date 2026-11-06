@@ -57,9 +57,10 @@ impl DictPassCtxChirho {
                     "Num" | "Enum" | "Bounded"
                 ) && free_ids_chirho.iter().any(|id_chirho| {
                     self.occurrence_evidence_chirho.get(id_chirho).is_some_and(
-                        |(class_chirho, key_chirho)| {
-                            class_chirho == &predicate_chirho.class_name_chirho
-                                && key_chirho == &own_key_chirho
+                        |occurrence_chirho| {
+                            occurrence_chirho.class_name_chirho
+                                == predicate_chirho.class_name_chirho
+                                && occurrence_chirho.ty_key_chirho == own_key_chirho
                         },
                     )
                 });
@@ -544,6 +545,7 @@ impl DictPassCtxChirho {
 #[cfg(test)]
 mod tests_chirho {
     use super::*;
+    use crate::dict_chirho::OccurrenceEvidenceChirho;
     use haskelujah_span_chirho::SpanChirho;
     use haskelujah_typing_chirho::ty_chirho::{SchemePredChirho, TyVarChirho};
 
@@ -632,16 +634,18 @@ mod tests_chirho {
             vec![0]
         );
 
-        pass_chirho
-            .occurrence_evidence_chirho
-            .insert(rhs_id_chirho, ("Num".to_string(), "$own:1".to_string()));
+        pass_chirho.occurrence_evidence_chirho.insert(
+            rhs_id_chirho,
+            OccurrenceEvidenceChirho::legacy_chirho("Num", "$own:1"),
+        );
         assert_eq!(
             pass_chirho.binding_dict_param_indices_chirho(&binding_chirho, &scheme_chirho),
             vec![0, 1]
         );
-        pass_chirho
-            .occurrence_evidence_chirho
-            .insert(rhs_id_chirho, ("Num".to_string(), "$own:0".to_string()));
+        pass_chirho.occurrence_evidence_chirho.insert(
+            rhs_id_chirho,
+            OccurrenceEvidenceChirho::legacy_chirho("Num", "$own:0"),
+        );
         assert_eq!(
             pass_chirho.binding_dict_param_indices_chirho(&binding_chirho, &scheme_chirho),
             vec![0]
@@ -654,9 +658,10 @@ mod tests_chirho {
             rhs_id_chirho,
             vec![keyed_proof_chirho("Integral", "$own:0")],
         );
-        pass_chirho
-            .occurrence_evidence_chirho
-            .insert(rhs_id_chirho, ("Enum".to_string(), "$own:1".to_string()));
+        pass_chirho.occurrence_evidence_chirho.insert(
+            rhs_id_chirho,
+            OccurrenceEvidenceChirho::legacy_chirho("Enum", "$own:1"),
+        );
         assert_eq!(
             pass_chirho.binding_dict_param_indices_chirho(
                 &binding_chirho,
@@ -665,9 +670,10 @@ mod tests_chirho {
             vec![0, 1]
         );
 
-        pass_chirho
-            .occurrence_evidence_chirho
-            .insert(rhs_id_chirho, ("Enum".to_string(), "$own:0".to_string()));
+        pass_chirho.occurrence_evidence_chirho.insert(
+            rhs_id_chirho,
+            OccurrenceEvidenceChirho::legacy_chirho("Enum", "$own:0"),
+        );
         assert_eq!(
             pass_chirho.binding_dict_param_indices_chirho(
                 &binding_chirho,
@@ -679,9 +685,10 @@ mod tests_chirho {
         pass_chirho
             .instance_dicts_chirho
             .insert(("Bounded".to_string(), "Int".to_string()), CoreIdChirho(92));
-        pass_chirho
-            .occurrence_evidence_chirho
-            .insert(rhs_id_chirho, ("Bounded".to_string(), "$own:1".to_string()));
+        pass_chirho.occurrence_evidence_chirho.insert(
+            rhs_id_chirho,
+            OccurrenceEvidenceChirho::legacy_chirho("Bounded", "$own:1"),
+        );
         assert_eq!(
             pass_chirho.binding_dict_param_indices_chirho(
                 &binding_chirho,
@@ -690,9 +697,10 @@ mod tests_chirho {
             vec![0, 1]
         );
 
-        pass_chirho
-            .occurrence_evidence_chirho
-            .insert(rhs_id_chirho, ("Bounded".to_string(), "$own:0".to_string()));
+        pass_chirho.occurrence_evidence_chirho.insert(
+            rhs_id_chirho,
+            OccurrenceEvidenceChirho::legacy_chirho("Bounded", "$own:0"),
+        );
         assert_eq!(
             pass_chirho.binding_dict_param_indices_chirho(
                 &binding_chirho,

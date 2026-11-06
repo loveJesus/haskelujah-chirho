@@ -42,6 +42,7 @@ mod print_evidence_tests_chirho;
 pub mod rewrite_chirho;
 mod show_chirho;
 mod type_keys_chirho;
+pub use type_keys_chirho::OccurrenceEvidenceChirho;
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
@@ -138,7 +139,7 @@ impl std::fmt::Display for DictPassDiagnosticChirho {
 #[derive(Default)]
 pub struct DictPassEvidenceChirho {
     pub method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
-    pub occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    pub occurrence_evidence_chirho: HashMap<CoreIdChirho, OccurrenceEvidenceChirho>,
     pub occurrence_applied_tys_chirho: HashMap<CoreIdChirho, TyChirho>,
     pub reference_evidence_chirho: HashMap<CoreIdChirho, Vec<ReferenceEvidenceChirho>>,
     pub derived_shows_chirho: HashMap<String, DerivedShowChirho>,
@@ -225,10 +226,10 @@ pub struct DictPassCtxChirho {
     /// Evidence-threading P1: occurrence id → (method name, canonical shared id)
     /// from `DesugarOutputChirho::method_occurrences_chirho`. Empty by default.
     method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
-    /// Evidence-threading P1: occurrence id → (class name, instance type key).
-    /// Populated by later phases (typing bridge / defaulting); when present the
-    /// occurrence dispatches directly to `$prim_{class}_{method}_{key}`.
-    occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    /// Evidence-threading P1: occurrence id → its proved class, instance type key and
+    /// class proof. Populated by later phases (typing bridge / defaulting); when present
+    /// the occurrence dispatches directly to `$prim_{class}_{method}_{key}`.
+    occurrence_evidence_chirho: HashMap<CoreIdChirho, OccurrenceEvidenceChirho>,
     /// The ground application each method occurrence's proof resolved to, where the checker
     /// recorded one (`BoxChirho Int`): the arguments a conditional instance's factory takes
     /// (`method_through_factory_chirho`, row 694, M1).
@@ -737,7 +738,7 @@ pub fn dict_pass_module_full_with_method_occurrences_chirho(
     newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
     extra_dict_param_names_chirho: HashSet<String>,
     method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
-    occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    occurrence_evidence_chirho: HashMap<CoreIdChirho, OccurrenceEvidenceChirho>,
 ) -> DictPassResultChirho {
     let max_id_chirho = find_max_id_chirho(module_chirho);
     let mut ctx_chirho =
@@ -767,7 +768,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
     extra_dict_param_names_chirho: HashSet<String>,
     method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
-    occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    occurrence_evidence_chirho: HashMap<CoreIdChirho, OccurrenceEvidenceChirho>,
     occurrence_applied_tys_chirho: HashMap<CoreIdChirho, TyChirho>,
     reference_evidence_chirho: HashMap<CoreIdChirho, Vec<ReferenceEvidenceChirho>>,
     derived_shows_chirho: HashMap<String, DerivedShowChirho>,

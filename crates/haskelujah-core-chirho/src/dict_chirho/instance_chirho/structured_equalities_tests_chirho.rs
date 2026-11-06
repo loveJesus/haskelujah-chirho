@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use super::DictPassCtxChirho;
+use crate::dict_chirho::OccurrenceEvidenceChirho;
 use crate::expr_chirho::{
     BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreLitChirho,
     InlineAnnotationChirho,
@@ -54,7 +55,7 @@ fn pass_chirho(consumer_chirho: &str, keys_chirho: &[&str]) -> DictPassCtxChirho
         let occurrence_chirho = CoreIdChirho(10 + index_chirho as u32);
         pass_chirho.occurrence_evidence_chirho.insert(
             occurrence_chirho,
-            ("Eq".to_string(), key_chirho.to_string()),
+            OccurrenceEvidenceChirho::legacy_chirho("Eq", *key_chirho),
         );
         pass_chirho.method_occurrence_canon_chirho.insert(
             occurrence_chirho,

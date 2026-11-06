@@ -6,6 +6,7 @@
 use std::collections::{HashMap, HashSet};
 
 use super::DictPassCtxChirho;
+use crate::dict_chirho::OccurrenceEvidenceChirho;
 use crate::expr_chirho::{CoreAltChirho, CoreExprChirho, CoreIdChirho};
 
 /// A concrete primop can have argument types different from its result key.
@@ -72,7 +73,10 @@ impl DictPassCtxChirho {
         // that proof, before any syntactic guess — the engine's prim row when
         // it has one, else the keyed selector path below with the proven key.
         // workflow: language-features-chirho/dictionary-evidence-chirho
-        let evidence_chirho = self.occurrence_evidence_chirho.get(&id_chirho);
+        let evidence_chirho = self
+            .occurrence_evidence_chirho
+            .get(&id_chirho)
+            .map(OccurrenceEvidenceChirho::keys_chirho);
         // A proof that is not the binding's own dictionary is never answered by
         // the ambient context dictionary below; unresolved, it takes its
         // canonical method's route with the caller's key.

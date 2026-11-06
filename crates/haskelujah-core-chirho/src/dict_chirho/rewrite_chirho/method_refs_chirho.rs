@@ -50,8 +50,10 @@ impl DictPassCtxChirho {
         {
             return None;
         }
-        let (class_name_chirho, ty_key_chirho) =
-            self.occurrence_evidence_chirho.get(&head_id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = self
+            .occurrence_evidence_chirho
+            .get(&head_id_chirho)?
+            .keys_chirho();
         if class_name_chirho != "Show" {
             return None;
         }
@@ -1150,8 +1152,10 @@ impl DictPassCtxChirho {
         {
             return None;
         }
-        let (class_name_chirho, ty_key_chirho) =
-            self.occurrence_evidence_chirho.get(&head_id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = self
+            .occurrence_evidence_chirho
+            .get(&head_id_chirho)?
+            .keys_chirho();
         let bare_own_chirho =
             haskelujah_typing_chirho::infer_chirho::own_dictionary_key_chirho(None);
         if class_name_chirho != "Show"

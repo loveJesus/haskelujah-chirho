@@ -34,8 +34,9 @@ pub use desugar_chirho::{
 };
 pub use dict_chirho::{
     DictPassDiagnosticChirho, DictPassEvidenceChirho, DictPassInputsChirho, DictPassResultChirho,
-    InstanceDeclarationChirho, InstanceRowKeyChirho, dict_pass_module_chirho,
-    dict_pass_module_full_chirho, dict_pass_module_full_with_evidence_chirho,
+    InstanceDeclarationChirho, InstanceRowKeyChirho, OccurrenceEvidenceChirho,
+    dict_pass_module_chirho, dict_pass_module_full_chirho,
+    dict_pass_module_full_with_evidence_chirho,
     dict_pass_module_full_with_extra_dict_param_names_chirho,
     dict_pass_module_full_with_method_occurrences_chirho, dict_pass_module_with_con_types_chirho,
     dict_pass_module_with_inputs_chirho,

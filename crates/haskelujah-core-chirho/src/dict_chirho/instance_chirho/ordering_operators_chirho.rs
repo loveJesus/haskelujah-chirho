@@ -121,7 +121,10 @@ impl DictPassCtxChirho {
     /// The `Ord` key the checker proved for an occurrence, unless it is the binding's own
     /// dictionary.
     fn proved_ordering_key_chirho(&self, id_chirho: CoreIdChirho) -> Option<&str> {
-        let (class_name_chirho, key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let (class_name_chirho, key_chirho) = self
+            .occurrence_evidence_chirho
+            .get(&id_chirho)?
+            .keys_chirho();
         (class_name_chirho == "Ord" && !is_own_dictionary_key_chirho(key_chirho))
             .then_some(key_chirho.as_str())
     }
@@ -129,11 +132,12 @@ impl DictPassCtxChirho {
     /// Whether the checker proved an occurrence at the binding's own `Ord` dictionary, whose
     /// slot the dictionary route selects (row 612).
     fn proved_at_own_ordering_chirho(&self, id_chirho: CoreIdChirho) -> bool {
-        self.occurrence_evidence_chirho.get(&id_chirho).is_some_and(
-            |(class_name_chirho, key_chirho)| {
-                class_name_chirho == "Ord" && is_own_dictionary_key_chirho(key_chirho)
-            },
-        )
+        self.occurrence_evidence_chirho
+            .get(&id_chirho)
+            .is_some_and(|occurrence_chirho| {
+                occurrence_chirho.class_name_chirho == "Ord"
+                    && is_own_dictionary_key_chirho(&occurrence_chirho.ty_key_chirho)
+            })
     }
 
     /// The program's own `$prim_Ord_<operator>_<key>` row, unless its instance leads with

@@ -32,8 +32,9 @@ impl DictPassCtxChirho {
         let mut keys_chirho = self
             .occurrence_evidence_chirho
             .values()
-            .filter_map(|(class_chirho, key_chirho)| {
-                (class_chirho == "Ord").then_some(key_chirho.clone())
+            .filter_map(|occurrence_chirho| {
+                (occurrence_chirho.class_name_chirho == "Ord")
+                    .then_some(occurrence_chirho.ty_key_chirho.clone())
             })
             .collect::<BTreeSet<_>>();
         for binding_chirho in &module_chirho.bindings_chirho {
