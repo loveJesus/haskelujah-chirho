@@ -3,7 +3,8 @@
 //! Which names get an occurrence id per reference (gpt_chirho #28091): the
 //! standard set, and the methods of each single-parameter class the compiling
 //! module declares, read off the lowered module the driver hands the desugarer.
-//! `>>=` and `>>` are minted for their indexed own proof alone (row 697).
+//! `>>=` and `>>` are minted for their indexed own proof (row 697), and they and `fmap` for a
+//! concrete head the module declares (row 699).
 //! workflow: language-features-chirho/own-class-method-occurrences-chirho
 //! workflow: monadic-dispatch-chirho
 
@@ -52,11 +53,12 @@ fn a_multi_parameter_class_and_the_inv_001_names_are_never_added_chirho() {
 #[test]
 fn imported_and_seeded_class_methods_keep_their_shared_id_chirho() {
     // A class imported from another module is not this module's to opt in, and
-    // a seeded standard class's methods outside the standard set stay out.
+    // a seeded standard class's methods outside the standard set stay out, except
+    // `fmap`, minted for its concrete-head proof alone (row 699, below).
     let names_chirho = method_occurrence_names_chirho(&lower_chirho(
         "module Main where\nimport NeedsChirho (NeedsChirho (..))\nmain :: IO ()\nmain = print (neededChirho [1 :: Int], fmap negate [1 :: Int], [1 :: Int] <> [2])\n",
     ));
-    for name_chirho in ["neededChirho", "fmap", "<>", "toList", "traverse", "pure"] {
+    for name_chirho in ["neededChirho", "<>", "toList", "traverse", "pure"] {
         assert!(
             !names_chirho.contains(name_chirho),
             "{name_chirho} must keep its shared id"
@@ -100,7 +102,9 @@ fn bind_and_then_admit_only_an_indexed_own_monad_proof_chirho() {
         );
     }
     // A ground key, a user monad, a bare superclass `$own`, a malformed index or another class
-    // proves nothing for them: the use keeps its canonical id and INV-001's path.
+    // proves nothing for them by its key alone, and no key alone proves `fmap`. A concrete head
+    // the module declares is judged by the checker's applied proof instead (row 699,
+    // `concrete_heads_chirho`); every other use keeps its canonical id and INV-001's path.
     for (name_chirho, class_chirho, key_chirho) in [
         (">>=", "Monad", "IO"),
         (">>", "Monad", "Maybe"),
@@ -109,6 +113,9 @@ fn bind_and_then_admit_only_an_indexed_own_monad_proof_chirho() {
         (">>", "Monad", "$own:"),
         (">>=", "Monad", "$own:first"),
         (">>=", "MonadChirho", "$own:0"),
+        ("fmap", "Functor", "Maybe"),
+        ("fmap", "Functor", "ReaderChirho"),
+        ("fmap", "Functor", "$own:0"),
     ] {
         assert!(
             !admits_operator_proof_chirho(name_chirho, class_chirho, key_chirho),
@@ -126,6 +133,21 @@ fn bind_and_then_admit_only_an_indexed_own_monad_proof_chirho() {
             class_chirho,
             key_chirho
         ));
+    }
+}
+
+#[test]
+fn fmap_is_minted_for_its_concrete_head_proof_alone_chirho() {
+    // Row 699, B2: each use of the seeded Functor's `fmap` gets an occurrence id, so the
+    // checker's proof at a concrete head the module declares reaches the dictionary pass. Every
+    // other proof is refused by the join, and the use keeps its canonical id. A module whose own
+    // class declares `fmap` mints it among its own methods, as before.
+    for source_chirho in [
+        "module Main where\nmain :: IO ()\nmain = print (1 :: Int)\n",
+        "module Main where\nimport Prelude hiding (fmap)\nclass MapsChirho f where\n  fmap :: (a -> b) -> f a -> f b\nmain :: IO ()\nmain = print (1 :: Int)\n",
+    ] {
+        let names_chirho = method_occurrence_names_chirho(&lower_chirho(source_chirho));
+        assert!(names_chirho.contains("fmap"), "{names_chirho:?}");
     }
 }
 

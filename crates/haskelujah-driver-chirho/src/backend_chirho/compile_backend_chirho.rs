@@ -104,6 +104,10 @@ pub(crate) fn compile_backend_chirho(
         &desugar_output_chirho.literal_occurrence_spans_chirho,
         &desugar_output_chirho.method_occurrence_spans_chirho,
         &desugar_output_chirho.occurrence_provenance_chirho,
+        // The module's own data, newtype and class declarations, which a concrete-head proof of
+        // `>>=`, `>>` or `fmap` is tied to (row 699).
+        // workflow: monadic-dispatch-chirho
+        &evidence_join_chirho::ModuleDeclarationsChirho::of_module_chirho(&module_chirho),
     );
     // Range syntax selected Enum itself, independently of a lexical namesake.
     // workflow: language-features-chirho/dictionary-evidence-chirho

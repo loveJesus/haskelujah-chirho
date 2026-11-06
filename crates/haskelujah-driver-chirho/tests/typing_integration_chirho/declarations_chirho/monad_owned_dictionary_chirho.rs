@@ -52,6 +52,12 @@
 //! module. The dictionary pass cannot see them, so the head stays on the prior path, and the
 //! module is never refused for it. RD3 and RD4's refusal belongs to the checker's superclass
 //! obligations (GHC-39999), whose completeness gate knows when an instance universe is closed.
+//!
+//! Row 699's B1 and B2 (#32333): a `>>=`, `>>` or `fmap` used at a concrete head this module
+//! declares takes the checker's identity-stamped proof for that head to the dictionary the pass
+//! registered for it. RD2's top-level `fmap` and W1's direct `>>` reach their written instances
+//! that way. W3 runs such a `>>` beside `main`'s own `fmap`, `pure` and `return`, which keep
+//! their own bindings. W1's `pure 'z'` stays a named gap: `pure` keeps INV-001's route.
 //! workflow: monadic-dispatch-chirho
 
 use haskelujah_driver::{compile_source_chirho, compile_source_with_search_path_chirho};
@@ -127,18 +133,27 @@ const READER_CONTEXTUAL_APPLICATIVE_CHIRHO: &str =
     include_str!("monad_owned_dictionary_chirho/reader_contextual_applicative_chirho.hs");
 
 /// W1: `StateChirho` writes `>>=` alone. `>>` runs at its own type, through a `Monad m` caller,
-/// and in a `do` block, with the effects in order. Predicted from GHC's default
-/// `m >> k = m >>= \_ -> k`; the GHC reference is pinned, not yet executed.
+/// and in a `do` block, with the effects in order, by GHC's default `m >> k = m >>= \_ -> k`.
+/// GHC 9.14.1 printed the output below (#32280,
+/// `tmp-chirho/ghc-contract-refresh-chirho/reader-generic-repair-r1-chirho`, summary 2b839776).
 const STATE_OMITTED_THEN_CHIRHO: &str = include_str!(
     "monad_owned_dictionary_chirho/written_monads_chirho/state_omitted_then_chirho.hs"
 );
 
 /// W2: another module, `ReaderBaseChirho`, holds the Reader's Functor and Applicative. Main
-/// writes the Monad and runs it. Predicted 7 under GHC, pinned, not yet executed.
+/// writes the Monad and runs it. GHC 9.14.1 printed 7 (#32280, the same summary).
 const READER_BASE_CHIRHO: &str =
     include_str!("monad_owned_dictionary_chirho/written_monads_chirho/ReaderBaseChirho.hs");
 const READER_EXTERNAL_MAIN_CHIRHO: &str = include_str!(
     "monad_owned_dictionary_chirho/written_monads_chirho/reader_external_main_chirho.hs"
+);
+
+/// W3 (sha256 78df2c43): `>>` at `TallyChirho Bool`, a concrete head this module declares, takes
+/// that head's registered dictionary and so GHC's `>>` default (row 699, B1). `main`'s own
+/// where-bound `fmap`, `pure` and `return` keep their own bindings. Predicted `3`, then
+/// `(200,1005,9)`; the GHC reference is pinned, not yet executed.
+const OWNED_METHOD_VALUES_CHIRHO: &str = include_str!(
+    "monad_owned_dictionary_chirho/written_monads_chirho/owned_method_values_chirho.hs"
 );
 
 #[test]
@@ -276,6 +291,14 @@ fn a_monad_that_writes_only_bind_runs_ghcs_then_everywhere_chirho() {
     assert_eq!(
         every_engine_chirho("StateOmittedThenChirho.hs", STATE_OMITTED_THEN_CHIRHO),
         as_ghc_everywhere_chirho("[1,2]\n[3,4,3]\n'z'\n[6,7]\n"),
+    );
+}
+
+#[test]
+fn a_concrete_head_takes_its_dictionary_beside_the_programs_own_method_values_chirho() {
+    assert_eq!(
+        every_engine_chirho("OwnedMethodValuesChirho.hs", OWNED_METHOD_VALUES_CHIRHO),
+        as_ghc_everywhere_chirho("3\n(200,1005,9)\n"),
     );
 }
 

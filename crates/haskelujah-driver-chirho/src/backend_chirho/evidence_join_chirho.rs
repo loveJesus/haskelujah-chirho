@@ -12,13 +12,15 @@
 
 use std::collections::{HashMap, HashSet};
 
-use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+use haskelujah_ast_chirho::decl_chirho::{DeclChirho, TyVarChirho};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::provenance_chirho::{
     OccurrenceRoleChirho, OriginIdChirho, ProvenanceChirho,
 };
 use haskelujah_core_chirho::CoreIdChirho;
+use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, PredChirho};
+use haskelujah_typing_chirho::infer_chirho::MethodOccurrenceRecordChirho;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 use crate::InferResultChirho;
@@ -174,6 +176,13 @@ const INV_001_NAMES_CHIRHO: [&str; 5] = [">>=", ">>", "return", "pure", "fail"];
 /// workflow: monadic-dispatch-chirho
 const OWN_PROOF_OPERATORS_CHIRHO: [&str; 2] = [">>=", ">>"];
 
+/// The seeded Functor's method minted for its concrete-head proof alone (row 699, B2). A use takes
+/// the checker's proof only at a concrete head this module declares
+/// (`admits_concrete_head_proof_chirho`); every other use keeps its canonical id and today's route.
+/// A module whose own class declares it keeps it among its own methods, unchanged.
+/// workflow: monadic-dispatch-chirho
+const CONCRETE_HEAD_METHODS_CHIRHO: [&str; 1] = ["fmap"];
+
 /// Whether `name_chirho` is one of the two operators that take only an indexed own proof.
 fn is_own_proof_operator_chirho(name_chirho: &str) -> bool {
     OWN_PROOF_OPERATORS_CHIRHO.contains(&name_chirho)
@@ -195,20 +204,25 @@ pub(crate) fn joins_provenance_role_chirho(
 }
 
 /// Whether a record for `name_chirho` proved at `class_chirho` and `key_chirho` may prove its
-/// occurrence. Every record may, except a `>>=` or `>>` record, which proves only the exact
+/// occurrence by its key alone. Every record may, except one for a name the join proves by
+/// provenance alone (`ModuleDeclarationsChirho`). A `>>=` or `>>` record proves only the exact
 /// predicate that types its use: `Monad` at an indexed own key (`$own:i`), the binding's own
-/// dictionary parameter for that predicate.
+/// dictionary parameter for that predicate. No key alone proves `fmap`.
 ///
-/// Three kinds of key prove nothing here, and the use keeps its canonical id and INV-001's
-/// path: a ground key (`IO`, `Maybe`), a user monad, and a bare `$own` that a superclass
-/// entailed. The bare superclass case is an unserved runtime boundary, not a compatible pass
-/// (row 697).
+/// Three kinds of key prove nothing here: a ground key (`IO`, `Maybe`), a user monad, and a bare
+/// `$own` that a superclass entailed. The bare superclass case is an unserved runtime boundary,
+/// not a compatible pass (row 697). A concrete head this module declares is judged apart, by the
+/// checker's applied proof (`admits_concrete_head_proof_chirho`, row 699); every other such use
+/// keeps its canonical id and INV-001's path.
 /// workflow: monadic-dispatch-chirho
 pub(crate) fn admits_operator_proof_chirho(
     name_chirho: &str,
     class_chirho: &str,
     key_chirho: &str,
 ) -> bool {
+    if CONCRETE_HEAD_METHODS_CHIRHO.contains(&name_chirho) {
+        return false;
+    }
     if !is_own_proof_operator_chirho(name_chirho) {
         return true;
     }
@@ -233,16 +247,34 @@ pub(crate) fn admits_operator_proof_chirho(
 /// ran `NeedsChirho Int`'s method on each list.
 ///
 /// Boundaries, each keeping its shared id: a seeded standard class's methods
-/// outside the standard set (`fmap`, `<>`, `toList`), a class imported from
-/// another module (its rows live in that module's Core), a multi-parameter
-/// class, and the INV-001 names. The exceptions are `>>=` and `>>`, minted for
-/// their indexed own proof alone (`OWN_PROOF_OPERATORS_CHIRHO`, row 697).
+/// outside the standard set (`<>`, `toList`), a class imported from another
+/// module (its rows live in that module's Core), a multi-parameter class, and the
+/// INV-001 names. The exceptions are `>>=` and `>>`, minted for their indexed own
+/// proof (`OWN_PROOF_OPERATORS_CHIRHO`, row 697), and they and `fmap` for a
+/// concrete head this module declares (`CONCRETE_HEAD_METHODS_CHIRHO`, row 699).
 /// Shadows stay the desugarer's: a lexical, top-level or field binding is found
 /// in scope before any occurrence is minted, and an occurrence the join proves
 /// nothing for is restored to its canonical id.
 /// workflow: language-features-chirho/own-class-method-occurrences-chirho
 pub(crate) fn method_occurrence_names_chirho(module_chirho: &ModuleChirho) -> HashSet<String> {
-    let own_methods_chirho = module_chirho
+    EVIDENCE_METHOD_NAMES_CHIRHO
+        .iter()
+        .map(|name_chirho| name_chirho.to_string())
+        .chain(own_class_methods_chirho(module_chirho))
+        .filter(|name_chirho| !INV_001_NAMES_CHIRHO.contains(&name_chirho.as_str()))
+        .chain(
+            OWN_PROOF_OPERATORS_CHIRHO
+                .iter()
+                .chain(CONCRETE_HEAD_METHODS_CHIRHO.iter())
+                .map(|name_chirho| name_chirho.to_string()),
+        )
+        .collect()
+}
+
+/// The methods of each single-parameter class the compiling module declares. Only visible binders
+/// are parameters: a fully kinded header may publish hidden ones (row 688).
+fn own_class_methods_chirho(module_chirho: &ModuleChirho) -> impl Iterator<Item = String> + '_ {
+    module_chirho
         .decls_chirho
         .iter()
         .flat_map(|decl_chirho| match decl_chirho {
@@ -250,21 +282,125 @@ pub(crate) fn method_occurrence_names_chirho(module_chirho: &ModuleChirho) -> Ha
                 type_vars_chirho,
                 methods_chirho,
                 ..
-            } if type_vars_chirho.len() == 1 => methods_chirho.as_slice(),
+            } if TyVarChirho::visible_binders_chirho(type_vars_chirho).len() == 1 => {
+                methods_chirho.as_slice()
+            }
             _ => &[],
         })
-        .map(|method_chirho| method_chirho.name_chirho.text_chirho().to_string());
-    EVIDENCE_METHOD_NAMES_CHIRHO
+        .map(|method_chirho| method_chirho.name_chirho.text_chirho().to_string())
+}
+
+/// The compiling module's own declarations a concrete-head proof is tied to (row 699): the type
+/// constructors its data and newtype declarations introduce, spelled as declared, and the methods
+/// of the single-parameter classes it declares, which keep their own-method join.
+/// workflow: monadic-dispatch-chirho
+#[derive(Debug, Default)]
+pub(crate) struct ModuleDeclarationsChirho {
+    data_types_chirho: HashSet<String>,
+    own_methods_chirho: HashSet<String>,
+}
+
+impl ModuleDeclarationsChirho {
+    /// What `module_chirho` declares.
+    pub(crate) fn of_module_chirho(module_chirho: &ModuleChirho) -> Self {
+        let data_types_chirho = module_chirho
+            .decls_chirho
+            .iter()
+            .filter_map(|decl_chirho| match decl_chirho {
+                DeclChirho::DataDeclChirho { name_chirho, .. }
+                | DeclChirho::NewtypeDeclChirho { name_chirho, .. } => {
+                    Some(name_chirho.text_chirho().to_string())
+                }
+                _ => None,
+            })
+            .collect();
+        Self {
+            data_types_chirho,
+            own_methods_chirho: own_class_methods_chirho(module_chirho).collect(),
+        }
+    }
+
+    /// Whether the join proves `name_chirho` by provenance alone, never by a span or by
+    /// position: `>>=` and `>>` (row 697), and `fmap` unless a class this module declares owns it
+    /// (row 699).
+    fn proved_by_provenance_alone_chirho(&self, name_chirho: &str) -> bool {
+        is_own_proof_operator_chirho(name_chirho)
+            || (CONCRETE_HEAD_METHODS_CHIRHO.contains(&name_chirho)
+                && !self.own_methods_chirho.contains(name_chirho))
+    }
+}
+
+/// Whether `record_chirho` proves its use at a concrete head this module declares (row 699, B1
+/// and B2). Every condition is the checker's or this module's own:
+/// - the record carries its use's origin, the identity the provenance join joined it by;
+/// - its class declares the method itself, as Functor declares `fmap` and Monad `>>=` and `>>`,
+///   never a constrained function's predicate;
+/// - the checker resolved its predicate to a ground application (`StateChirho [Int]`) whose head,
+///   spelled exactly, is a type constructor this module's data or newtype declaration
+///   introduces, and the record's key is that head;
+/// - exactly one instance of the class in the checker's environment matches that application, by
+///   the checker's own matcher, one instance registered twice counting once, and it requires no
+///   context.
+///
+/// The dictionary pass then serves the proof through the dictionary it registered for that class
+/// and head, and a head it registered none for keeps the canonical route. A key alone, an
+/// argument's shape, a builtin or imported head, a removed qualifier, a contextual or ambiguous
+/// instance and an identity-less record prove nothing here.
+/// workflow: monadic-dispatch-chirho
+pub(crate) fn admits_concrete_head_proof_chirho(
+    record_chirho: &MethodOccurrenceRecordChirho,
+    declarations_chirho: &ModuleDeclarationsChirho,
+    class_env_chirho: &ClassEnvChirho,
+) -> bool {
+    let Some(applied_chirho) = record_chirho.applied_ty_chirho.as_ref() else {
+        return false;
+    };
+    let declares_method_chirho = class_env_chirho
+        .classes_chirho
+        .get(&record_chirho.class_name_chirho)
+        .is_some_and(|class_chirho| {
+            class_chirho
+                .methods_chirho
+                .contains_key(&record_chirho.name_chirho)
+        });
+    if record_chirho.origin_chirho.is_none()
+        || !declares_method_chirho
+        || application_head_chirho(applied_chirho) != Some(record_chirho.ty_key_chirho.as_str())
+        || !declarations_chirho
+            .data_types_chirho
+            .contains(&record_chirho.ty_key_chirho)
+    {
+        return false;
+    }
+    let predicate_chirho =
+        PredChirho::new_chirho(&record_chirho.class_name_chirho, applied_chirho.clone());
+    let matches_chirho: Vec<_> = class_env_chirho
+        .instances_chirho
+        .get(&record_chirho.class_name_chirho)
+        .into_iter()
+        .flatten()
+        .filter_map(|instance_chirho| {
+            ClassEnvChirho::instance_sub_goals_chirho(instance_chirho, &predicate_chirho)
+                .map(|goals_chirho| (instance_chirho, goals_chirho))
+        })
+        .collect();
+    let Some(((first_chirho, _), rest_chirho)) = matches_chirho.split_first() else {
+        return false;
+    };
+    rest_chirho.iter().all(|(other_chirho, _)| {
+        ClassEnvChirho::instance_heads_alpha_equal_chirho(first_chirho, other_chirho)
+    }) && matches_chirho
         .iter()
-        .map(|name_chirho| name_chirho.to_string())
-        .chain(own_methods_chirho)
-        .filter(|name_chirho| !INV_001_NAMES_CHIRHO.contains(&name_chirho.as_str()))
-        .chain(
-            OWN_PROOF_OPERATORS_CHIRHO
-                .iter()
-                .map(|name_chirho| name_chirho.to_string()),
-        )
-        .collect()
+        .all(|(_, goals_chirho)| goals_chirho.is_empty())
+}
+
+/// The type constructor heading an application: `StateChirho` of `StateChirho [Int]`.
+fn application_head_chirho(ty_chirho: &TyChirho) -> Option<&str> {
+    match ty_chirho {
+        TyChirho::ConChirho(name_chirho) => Some(name_chirho.as_str()),
+        TyChirho::AppChirho(function_chirho, _) => application_head_chirho(function_chirho),
+        _ => None,
+    }
 }
 
 /// One record's proof for an occurrence, its class and type key, with the ground application
@@ -298,6 +434,10 @@ pub(crate) struct OccurrenceJoinChirho {
 /// Each occurrence also takes the ground application its proof's predicate resolved to,
 /// where the checker recorded one (row 694, M1): only from the very record that proves it,
 /// and from an origin's records only when every one proving that occurrence agrees.
+///
+/// `>>=`, `>>` and the seeded `fmap` are joined by provenance alone, and only by the proofs
+/// their rules admit: an indexed own proof for the first two (row 697), and for all three a
+/// concrete head `declarations_chirho` holds (row 699).
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 pub(crate) fn join_occurrence_evidence_chirho(
     infer_result_chirho: &InferResultChirho,
@@ -314,6 +454,7 @@ pub(crate) fn join_occurrence_evidence_chirho(
         haskelujah_span_chirho::SpanChirho,
     >,
     occurrence_provenance_chirho: &HashMap<CoreIdChirho, ProvenanceChirho>,
+    declarations_chirho: &ModuleDeclarationsChirho,
 ) -> OccurrenceJoinChirho {
     let mut applied_chirho: HashMap<CoreIdChirho, TyChirho> = HashMap::new();
     // Literal evidence joins by span, exactly: the checker solved this very
@@ -484,13 +625,21 @@ pub(crate) fn join_occurrence_evidence_chirho(
         if !record_is_authoritative_chirho(record_chirho) {
             continue;
         }
-        // `>>=` and `>>` keep only an indexed own proof, before the record contributes
-        // anything to its occurrence (row 697).
-        if !admits_operator_proof_chirho(
-            &record_chirho.name_chirho,
-            &record_chirho.class_name_chirho,
-            &record_chirho.ty_key_chirho,
-        ) {
+        // `>>=` and `>>` keep only an indexed own proof (row 697) or a concrete head this module
+        // declares, and `fmap` only such a head (row 699), before the record contributes
+        // anything to its occurrence.
+        if declarations_chirho.proved_by_provenance_alone_chirho(&record_chirho.name_chirho)
+            && !admits_operator_proof_chirho(
+                &record_chirho.name_chirho,
+                &record_chirho.class_name_chirho,
+                &record_chirho.ty_key_chirho,
+            )
+            && !admits_concrete_head_proof_chirho(
+                record_chirho,
+                declarations_chirho,
+                &infer_result_chirho.class_env_chirho,
+            )
+        {
             continue;
         }
         let Some(candidates_chirho) = occurrences_by_origin_chirho.get(&origin_chirho) else {
@@ -554,8 +703,9 @@ pub(crate) fn join_occurrence_evidence_chirho(
         if record_chirho.origin_chirho.is_some() {
             continue;
         }
-        // `>>=` and `>>` are proved by provenance alone, never by a span (row 697).
-        if is_own_proof_operator_chirho(&record_chirho.name_chirho) {
+        // `>>=`, `>>` and a seeded `fmap` are proved by provenance alone, never by a span
+        // (rows 697 and 699).
+        if declarations_chirho.proved_by_provenance_alone_chirho(&record_chirho.name_chirho) {
             continue;
         }
         if consumed_records_chirho.contains(&record_index_chirho) {
@@ -615,8 +765,9 @@ pub(crate) fn join_occurrence_evidence_chirho(
     // occurrence provenance, which is its own brick.
     // workflow: language-features-chirho/dictionary-evidence-chirho
     for (name_chirho, ids_chirho) in &occ_ids_by_name_chirho {
-        // `>>=` and `>>` are proved by provenance alone, never by position (row 697).
-        if is_own_proof_operator_chirho(name_chirho) {
+        // `>>=`, `>>` and a seeded `fmap` are proved by provenance alone, never by position
+        // (rows 697 and 699).
+        if declarations_chirho.proved_by_provenance_alone_chirho(name_chirho) {
             continue;
         }
         // Eligible here: an occurrence with NO identifying span at all, after the

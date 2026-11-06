@@ -10,8 +10,10 @@ flowchart TD
     SRC["Haskell source\ndo-block / operator use"] --> DESUGAR["desugar_chirho.rs\ndesugar_expr_chirho (ops ~3886-3900)\ndesugar_do_chirho (~4913)"]
     DESUGAR -->|"do stmts → >>= / >> chains (WI-002)\noperators → Var apps (WI-001)"| CORE["Core IR"]
     CORE --> DICTPASS["dict_chirho/rewrite_chirho/method_refs_chirho.rs\nrewrite_method_refs_with_locals_chirho"]
-    DICTPASS --> OCC{">>= or >> occurrence with the checker's\nindexed own proof $own:i? (row 697)"}
-    OCC -->|"yes"| OWNBIND["occurrence_head_replacement_chirho\n→ own_dict_chirho: $sel_Monad_>>= or >>\non that predicate's own dictionary"]
+    DICTPASS --> OCC{">>=, >> or fmap occurrence with an admitted proof?\n$own:i (row 697), or a concrete head\nthis module declares (row 699)"}
+    OCC -->|"$own:i"| OWNBIND["occurrence_head_replacement_chirho\n→ own_dict_chirho: $sel_Monad_>>= or >>\non that predicate's own dictionary"]
+    OCC -->|"concrete head"| HEADDICT["occurrence_head_replacement_chirho\n→ the selector on the dictionary\nregistered for (class, head)"]
+    HEADDICT -->|"none registered: canonical id"| ANNOTATED
     OCC -->|"no proof: canonical id"| ANNOTATED
     DICTPASS --> ANNOTATED["Explicit result annotation selects only its own return/pure head"]
     ANNOTATED -->|"resolved key and body"| PRIM
@@ -28,6 +30,7 @@ flowchart TD
     SEL -->|"no dict either: Var survives untouched"| FALLBACK["Var keeps original name\n(INV-001: IO by name at STG)"]
     OWNPURE --> ACTIONS
     OWNBIND --> ACTIONS
+    HEADDICT --> ACTIONS
     PRIM --> ACTIONS["prepare_io_actions_chirho\nIO action functions and lazy result packets"]
     FALLBACK --> ACTIONS
     ACTIONS --> STG["driver stg_lower_chirho.rs"]
@@ -57,18 +60,39 @@ The authority is the checker's own proof, carried by the existing occurrence rou
   on that predicate's own dictionary parameter, so two Monad predicates in one binding
   each keep their own.
 
+A use at a concrete head this module declares takes that head's dictionary (row 699, B1
+and B2). This covers `>>=`, `>>` and the seeded `fmap`, which is minted for this proof
+alone; a class this module declares that owns an `fmap` keeps its own-method join. The
+occurrence join admits the checker's proof only when all of these hold
+(`admits_concrete_head_proof_chirho`):
+- the record carries the use's origin, and its class declares the method itself;
+- the predicate resolved to a ground application (`StateChirho [Int]`) whose head,
+  spelled exactly, is one of this module's data or newtype declarations, and the
+  record's key is that head;
+- exactly one context-free instance of the class matches it, by the checker's own
+  matcher, one instance registered twice counting once.
+
+The dictionary pass then serves the proof through the dictionary registered for that
+class and head, such as row 699's generic-head alias. With none registered, the use keeps
+its canonical id.
+
 Every other use goes back to its canonical id:
-- A ground key (`IO`, `Maybe`, `[]`) or a user monad gets proven constructor dispatch,
-  else INV-001's name fallback, unchanged. An IO chain inside a helper that owns
-  another monad's dictionary stays IO's.
+- A ground key (`IO`, `Maybe`, `[]`) or any other head gets proven constructor dispatch,
+  else INV-001's name fallback, unchanged. So does a bare one-parameter head
+  (`Monad BoxChirho`), whose proof carries no applied type. An IO chain inside a helper
+  that owns another monad's dictionary stays IO's.
 - A bare `$own`, a use proved only through a superclass (such as `>>` under
   `MonadIO m`), is an unserved runtime boundary, not a compatible pass.
 - No provenance (generated code), or a span-only or position-only match, proves
   nothing.
 
-`return`, `pure` and `fail` keep their shared ids and their existing routes. A
-program's own or lexically bound `>>=` or `>>` resolves through scope and is never
-minted. The Reader gap was separate: a user instance of a class with a superclass
+`return`, `pure` and `fail` keep their shared ids and their existing routes. So `pure`
+at a concrete user head in `main` (W1's `pure 'z'`) still takes INV-001's IO `pure`, a
+named gap. Its authority would be the seeded Applicative's own `pure` method, on the
+dictionary registered for that head, under the same concrete-head rule. `return` is a
+constrained Prelude function, not a method, so no head authorizes replacing it. A
+program's own or lexically bound `>>=`, `>>`, `fmap`, `pure` or `return` resolves
+through scope and is never minted. The Reader gap was separate: a user instance of a class with a superclass
 registered no dictionary under the key its use site carries, so such a caller failed by
 that named missing dictionary. Since row 699 a one-parameter head is found under its
 constructor when every superclass template matches one context-free instance built here.

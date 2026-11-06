@@ -61,6 +61,7 @@ fn join_chirho(
         &HashMap::new(),
         &HashMap::new(),
         &provenance_chirho,
+        &Default::default(),
     )
     .evidence_chirho
 }
@@ -176,6 +177,7 @@ fn legacy_method_join_chirho(
         &HashMap::new(),
         &HashMap::from([(CoreIdChirho(10), genuine_chirho)]),
         &HashMap::new(),
+        &Default::default(),
     )
     .evidence_chirho
     .remove(&CoreIdChirho(10))
@@ -295,6 +297,7 @@ fn join_literal_chirho(
         &literal_spans_chirho,
         &HashMap::new(),
         &provenance_map_chirho,
+        &Default::default(),
     )
     .evidence_chirho
     .remove(&CoreIdChirho(10))
@@ -394,6 +397,7 @@ fn two_generated_literals_at_one_span_each_take_their_own_evidence_chirho() {
         &literal_spans_chirho,
         &HashMap::new(),
         &provenance_chirho,
+        &Default::default(),
     )
     .evidence_chirho;
     assert_eq!(
