@@ -285,7 +285,7 @@ impl InferCtxChirho {
                 .saturating_add(wanteds_chirho.len())
                 .saturating_add(1),
         )?;
-        let mut pending_chirho = vec![(wanted_body_chirho, given_body_chirho, 0usize, true)];
+        let mut pending_chirho = Vec::new();
         for wanted_chirho in wanteds_chirho {
             pending_chirho.push((
                 wanted_chirho.ty_chirho,
@@ -294,6 +294,10 @@ impl InferCtxChirho {
                 false,
             ));
         }
+        // The body is the determining obligation. Expose its actual constructor
+        // equalities before retrying context occurrences; every opaque equality
+        // remains pending until it closes under the original rigid givens.
+        pending_chirho.push((wanted_body_chirho, given_body_chirho, 0usize, true));
         self.solve_signature_probe_chirho(
             pending_chirho,
             SignatureProbeEvidenceChirho {
@@ -669,6 +673,30 @@ impl InferCtxChirho {
                 if self.ty_is_family_app_chirho(&left_chirho)
                     || self.ty_is_family_app_chirho(&right_chirho)
                 {
+                    if body_chirho {
+                        let left_support_chirho =
+                            copy_term_with_budget_chirho(&left_chirho, budget_chirho)?;
+                        let right_support_chirho =
+                            copy_term_with_budget_chirho(&right_chirho, budget_chirho)?;
+                        if let Some(rule_chirho) = self
+                            .given_equality_rule_chirho(left_support_chirho, right_support_chirho)
+                        {
+                            let mut present_chirho = false;
+                            for (left_chirho, right_chirho) in &body_support_chirho {
+                                if equal_chirho(left_chirho, &rule_chirho.0, budget_chirho)?
+                                    && equal_chirho(right_chirho, &rule_chirho.1, budget_chirho)?
+                                {
+                                    present_chirho = true;
+                                    break;
+                                }
+                            }
+                            if !present_chirho {
+                                budget_chirho.node_chirho(1)?;
+                                body_support_chirho.push(rule_chirho);
+                                progressed_chirho = true;
+                            }
+                        }
+                    }
                     budget_chirho.node_chirho(1)?;
                     deferred_chirho.push((left_chirho, right_chirho, depth_chirho, body_chirho));
                     continue;
@@ -756,32 +784,6 @@ impl InferCtxChirho {
                 });
             }
             if !progressed_chirho {
-                if body_support_chirho.is_empty() {
-                    // These are still obligations, never new givens. They may
-                    // justify congruence while deriving a context improvement,
-                    // but must all close under the actual givens afterwards.
-                    for (left_chirho, right_chirho, _, body_chirho) in &deferred_chirho {
-                        if *body_chirho
-                            && (self.ty_is_family_app_chirho(left_chirho)
-                                || self.ty_is_family_app_chirho(right_chirho))
-                        {
-                            let left_chirho =
-                                copy_term_with_budget_chirho(left_chirho, budget_chirho)?;
-                            let right_chirho =
-                                copy_term_with_budget_chirho(right_chirho, budget_chirho)?;
-                            if let Some(rule_chirho) =
-                                self.given_equality_rule_chirho(left_chirho, right_chirho)
-                            {
-                                budget_chirho.node_chirho(1)?;
-                                body_support_chirho.push(rule_chirho);
-                            }
-                        }
-                    }
-                    if !body_support_chirho.is_empty() {
-                        pending_chirho = deferred_chirho;
-                        continue;
-                    }
-                }
                 return Some(SignatureDeterminationChirho::SupportedChirho {
                     determined_chirho: false,
                 });

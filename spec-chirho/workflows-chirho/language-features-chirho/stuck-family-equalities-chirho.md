@@ -101,11 +101,18 @@ flowchart TD
     match_chirho -->|yes| apart_chirho{Every blocker surely apart?}
     apart_chirho -->|yes| rhs_chirho[Substitute RHS, then apply extra result arguments]
     apart_chirho -->|no or uncertain| stuck_chirho[Leave application stuck]
-    lookup_chirho -->|empty, ambiguous, held or budget exhausted| stuck_chirho
-    rhs_chirho --> target_chirho
+    lookup_chirho -->|empty, ambiguous, held or local proof cap| stuck_chirho
+    rhs_chirho --> settle_chirho[Settle actual matching work and materialized output on every outcome]
+    stuck_chirho --> settle_chirho
+    settle_chirho -->|remaining allowance| result_chirho[Return the reduced or original stuck application to the caller]
+    settle_chirho -->|shared allowance exhausted| exhausted_chirho[Refuse normalization without certifying equality]
 ```
 
 `TypeFamilyRegistryChirho` stores definitions once, with stable branch identities and module-owned export aliases. Open definitions require a cold coherence check. Re-importing the same verified rows keeps that proof; adding unverified rows invalidates it. A closed declaration's first held equation prevents every later fallback from bypassing it. Exact lookup never tries a different qualified, bare or builtin definition when the selected family stays stuck.
+
+Ordinary-family attempts borrow the existing continuation counters and return their remaining work and output on success, completed non-match, uncertainty and partial failure. This avoids reserving a full 100,000 work units for every tiny stuck application while retaining that per-attempt proof cap. Materialized ordinary names and vectors are charged before cloning. The outer 10,000,000-work, 16,384-output and depth-128 limits remain unchanged; recursive expansion still shares them. Apartness blockers retain their explicit 4,096-work reservations. Intrinsic family builders retain their existing 100,000-work reservation and are not covered by the ordinary matcher's new byte preflight.
+
+The source-signature ambiguity probe exposes the determining body obligation before its context obligations. An opaque body equality may supply congruence while finding a context assignment, but it remains an outstanding obligation; the proposed assignment still has to prove the original context under the actual rigid givens alone. Bounded equality checks deduplicate this existing support vector. Publishing that support immediately avoids repeated normalization and copying of unchanged deferred terms before useful information reaches the context solver. It does not infer family injectivity, discard an unclosed body equality or reset the shared allowance.
 
 The apartness unifier and one-way matcher have different jobs. Apartness freshens each branch's left and right sides together, binds both sides' variables, preserves shared stuck applications and compares the substituted results. Occurs failures, unknown heads and exhausted resources are uncertain. Matching binds only the equation's pattern variables. List, tuple and function sugar shares a canonical view, with arrow multiplicity and promoted-constructor identity preserved.
 

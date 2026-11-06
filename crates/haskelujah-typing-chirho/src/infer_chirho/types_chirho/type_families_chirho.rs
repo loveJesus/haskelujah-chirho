@@ -7,11 +7,13 @@
 use super::InferCtxChirho;
 use super::family_definitions_chirho::{IntrinsicTypeFamilyChirho, TypeFamilyReductionChirho};
 use super::family_reduction_chirho::{
-    FamilyReductionLimitsChirho, reduce_family_with_limits_chirho,
+    FamilyReductionDecisionChirho, FamilyReductionLimitsChirho, MatchFailureChirho,
+    decide_family_with_budget_chirho,
 };
 use super::family_registration_chirho::family_head_role_chirho;
 use super::strip_name_qualifier_chirho;
 use crate::ty_chirho::TyChirho;
+use haskelujah_ast_chirho::decl_chirho::GadtProjectionLimitChirho as MatchLimitChirho;
 use haskelujah_ast_chirho::lit_chirho::{
     parse_haskell_char_body_chirho, render_haskell_char_body_chirho,
 };
@@ -36,18 +38,23 @@ impl InferCtxChirho {
         steps_chirho: usize,
         nodes_chirho: usize,
     ) -> Option<TyChirho> {
+        let mut work_chirho = steps_chirho;
+        let mut output_chirho = nodes_chirho;
         reduce_family_in_context_chirho(
             self,
             name_chirho,
             arguments_chirho,
-            steps_chirho,
-            nodes_chirho,
+            &mut work_chirho,
+            &mut output_chirho,
         )
+        .flatten()
     }
 
     /// One budget covers the complete normalization tree, including nested redexes.
-    /// Each leaf reserves 100,000 steps from a 10,000,000-step whole-tree allowance;
-    /// the output/clone allowance also counts name bytes. Exhaustion conservatively
+    /// Ordinary family attempts settle consumed matching work and output, including
+    /// partial failures, against the same continuation allowance. Intrinsics retain
+    /// their explicit legacy reservation. The output/clone allowance also counts
+    /// name bytes. Exhaustion conservatively
     /// restores the original stuck input instead of expanding siblings forever.
     pub fn reduce_type_families_in_ty_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
         let mut work_chirho = 10_000_000usize;
@@ -499,31 +506,64 @@ fn reduce_family_in_context_chirho(
     context_chirho: &dyn super::equality_normalization_chirho::NormalizationContextChirho,
     name_chirho: &str,
     arguments_chirho: &[TyChirho],
-    steps_chirho: usize,
-    nodes_chirho: usize,
-) -> Option<TyChirho> {
-    let key_chirho = context_chirho.family_name_key_chirho(name_chirho)?;
-    let definition_chirho = context_chirho
+    work_chirho: &mut usize,
+    output_chirho: &mut usize,
+) -> Option<Option<TyChirho>> {
+    let Some(key_chirho) = context_chirho.family_name_key_chirho(name_chirho) else {
+        return Some(None);
+    };
+    let Some(definition_chirho) = context_chirho
         .catalogue_chirho()
-        .definition_chirho(&key_chirho)?;
-    match definition_chirho.reduction_chirho() {
-        TypeFamilyReductionChirho::IntrinsicChirho(intrinsic_chirho) => {
-            reduce_builtin_type_family_application_chirho(
-                intrinsic_chirho,
-                arguments_chirho,
-                context_chirho.promotion_present_chirho(),
-            )
-        }
-        _ => reduce_family_with_limits_chirho(
-            definition_chirho,
+        .definition_chirho(&key_chirho)
+    else {
+        return Some(None);
+    };
+    if let TypeFamilyReductionChirho::IntrinsicChirho(intrinsic_chirho) =
+        definition_chirho.reduction_chirho()
+    {
+        // Intrinsic builders have no matching ledger. Keep their existing explicit
+        // reservation; this change never treats their allocation as zero cost.
+        *work_chirho = work_chirho.checked_sub(100_000)?;
+        return Some(reduce_builtin_type_family_application_chirho(
+            intrinsic_chirho,
             arguments_chirho,
-            &|name_chirho| family_head_role_chirho(context_chirho.catalogue_chirho(), name_chirho),
-            FamilyReductionLimitsChirho {
-                steps_chirho,
-                nodes_chirho,
-                depth_chirho: 128,
-            },
-        ),
+            context_chirho.promotion_present_chirho(),
+        ));
+    }
+    *work_chirho = work_chirho.checked_sub(name_chirho.len().checked_add(1)?)?;
+    let initial_work_chirho = *work_chirho;
+    let loan_work_chirho = initial_work_chirho.min(100_000);
+    let initial_output_chirho = *output_chirho;
+    let mut limits_chirho = FamilyReductionLimitsChirho {
+        steps_chirho: loan_work_chirho,
+        nodes_chirho: initial_output_chirho,
+        depth_chirho: 128,
+    };
+    let result_chirho = decide_family_with_budget_chirho(
+        definition_chirho,
+        arguments_chirho,
+        &|head_chirho| family_head_role_chirho(context_chirho.catalogue_chirho(), head_chirho),
+        &mut limits_chirho,
+    );
+    // Settle before interpreting ANY verdict, including unknown/unsupported and
+    // typed failures. A failed or stuck match never refunds already-used work.
+    let used_work_chirho = loan_work_chirho.checked_sub(limits_chirho.steps_chirho)?;
+    let used_output_chirho = initial_output_chirho.checked_sub(limits_chirho.nodes_chirho)?;
+    *work_chirho = work_chirho.checked_sub(used_work_chirho)?;
+    *output_chirho = output_chirho.checked_sub(used_output_chirho)?;
+    match result_chirho {
+        Ok(FamilyReductionDecisionChirho::ReducedChirho(result_chirho)) => {
+            Some(Some(result_chirho))
+        }
+        Err(MatchFailureChirho::LimitChirho(MatchLimitChirho::OutputChirho)) => None,
+        Err(MatchFailureChirho::LimitChirho(MatchLimitChirho::WorkChirho))
+            if loan_work_chirho == initial_work_chirho =>
+        {
+            None
+        }
+        // A per-match proof cap, unsupported syntax or a local comparison depth
+        // refuses a reduction as before. It cannot certify a match or no-match.
+        _ => Some(None),
     }
 }
 
@@ -552,22 +592,20 @@ pub(super) fn reduce_families_with_context_chirho(
                         .definition_chirho(&key_chirho)
                         .is_some()
                 })
-            {
-                *work_chirho = work_chirho.checked_sub(100_000)?;
-                if let Some(reduced_chirho) = reduce_family_in_context_chirho(
+                && let Some(reduced_chirho) = reduce_family_in_context_chirho(
                     context_chirho,
                     name_chirho,
                     &[],
-                    100_000,
-                    *output_chirho,
-                ) {
-                    return context_chirho.reduce_families_bounded_chirho(
-                        &reduced_chirho,
-                        child_chirho,
-                        work_chirho,
-                        output_chirho,
-                    );
-                }
+                    work_chirho,
+                    output_chirho,
+                )?
+            {
+                return context_chirho.reduce_families_bounded_chirho(
+                    &reduced_chirho,
+                    child_chirho,
+                    work_chirho,
+                    output_chirho,
+                );
             }
             Some(TyChirho::ConChirho(name_chirho.clone()))
         }
@@ -605,22 +643,20 @@ pub(super) fn reduce_families_with_context_chirho(
                             .definition_chirho(&key_chirho)
                             .is_some()
                     })
-            {
-                *work_chirho = work_chirho.checked_sub(100_000)?;
-                if let Some(reduced_chirho) = reduce_family_in_context_chirho(
+                && let Some(reduced_chirho) = reduce_family_in_context_chirho(
                     context_chirho,
                     name_chirho,
                     &reduced_arguments_chirho,
-                    100_000,
-                    *output_chirho,
-                ) {
-                    return context_chirho.reduce_families_bounded_chirho(
-                        &reduced_chirho,
-                        child_chirho,
-                        work_chirho,
-                        output_chirho,
-                    );
-                }
+                    work_chirho,
+                    output_chirho,
+                )?
+            {
+                return context_chirho.reduce_families_bounded_chirho(
+                    &reduced_chirho,
+                    child_chirho,
+                    work_chirho,
+                    output_chirho,
+                );
             }
             let mut rebuilt_chirho =
                 clone_stuck_type_chirho(head_chirho, head_depth_chirho, output_chirho)?;

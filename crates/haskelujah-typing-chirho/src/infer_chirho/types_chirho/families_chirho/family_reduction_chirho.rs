@@ -13,6 +13,7 @@ use super::closed_family_apartness_chirho::{
 };
 use super::family_definitions_chirho::{TypeFamilyDefinitionChirho, TypeFamilyReductionChirho};
 use crate::ty_chirho::{MultChirho, TyChirho, TyVarChirho};
+use haskelujah_ast_chirho::decl_chirho::GadtProjectionLimitChirho as MatchLimitChirho;
 use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug)]
@@ -63,15 +64,36 @@ pub(super) fn decide_family_with_limits_chirho(
     classify_chirho: &impl Fn(&str) -> FamilyHeadRoleChirho,
     limits_chirho: FamilyReductionLimitsChirho,
 ) -> FamilyReductionDecisionChirho {
+    let mut limits_chirho = limits_chirho;
+    try_family_decision_chirho(
+        definition_chirho,
+        arguments_chirho,
+        classify_chirho,
+        &mut limits_chirho,
+        false,
+    )
+    .unwrap_or(FamilyReductionDecisionChirho::UnknownChirho)
+}
+
+/// Borrow one continuation allowance. Partial failures retain all consumed work
+/// and output; returned strings are preflighted against this same output counter.
+/// The value-taking compatibility API above keeps its original node-only contract.
+pub(super) fn decide_family_with_budget_chirho(
+    definition_chirho: &TypeFamilyDefinitionChirho,
+    arguments_chirho: &[TyChirho],
+    classify_chirho: &impl Fn(&str) -> FamilyHeadRoleChirho,
+    limits_chirho: &mut FamilyReductionLimitsChirho,
+) -> Result<FamilyReductionDecisionChirho, MatchFailureChirho> {
     try_family_decision_chirho(
         definition_chirho,
         arguments_chirho,
         classify_chirho,
         limits_chirho,
+        true,
     )
-    .unwrap_or(FamilyReductionDecisionChirho::UnknownChirho)
 }
 
+#[cfg(test)]
 pub(super) fn reduce_family_with_limits_chirho(
     definition_chirho: &TypeFamilyDefinitionChirho,
     arguments_chirho: &[TyChirho],
@@ -93,7 +115,8 @@ fn try_family_decision_chirho(
     definition_chirho: &TypeFamilyDefinitionChirho,
     arguments_chirho: &[TyChirho],
     classify_chirho: &impl Fn(&str) -> FamilyHeadRoleChirho,
-    limits_chirho: FamilyReductionLimitsChirho,
+    limits_chirho: &mut FamilyReductionLimitsChirho,
+    materialization_bytes_chirho: bool,
 ) -> Result<FamilyReductionDecisionChirho, MatchFailureChirho> {
     let reduction_chirho = definition_chirho.reduction_chirho();
     if matches!(
@@ -107,7 +130,11 @@ fn try_family_decision_chirho(
     }
     let (prefix_chirho, extras_chirho) =
         arguments_chirho.split_at(definition_chirho.arity_chirho());
-    let mut matcher_chirho = FamilyMatcherChirho::new_chirho(classify_chirho, limits_chirho);
+    let mut matcher_chirho = FamilyMatcherChirho::new_chirho(
+        classify_chirho,
+        limits_chirho,
+        materialization_bytes_chirho,
+    );
     if reduction_chirho == TypeFamilyReductionChirho::OpenChirho {
         for branch_chirho in definition_chirho.branches_chirho() {
             matcher_chirho.tick_chirho(0)?;
@@ -142,9 +169,7 @@ fn try_family_decision_chirho(
                     uncertain_chirho = true;
                     break;
                 }
-                Err(MatchFailureChirho::ExhaustedChirho) => {
-                    return Err(MatchFailureChirho::ExhaustedChirho);
-                }
+                Err(error_chirho) => return Err(error_chirho),
             }
         }
         if !supported_chirho {
@@ -263,30 +288,34 @@ enum ConversionModeChirho {
     ResultChirho,
 }
 
-enum MatchFailureChirho {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum MatchFailureChirho {
     UnsupportedChirho,
-    ExhaustedChirho,
+    LimitChirho(MatchLimitChirho),
 }
 
-struct FamilyMatcherChirho<'classifier_chirho, ClassifyChirho> {
+struct FamilyMatcherChirho<'classifier_chirho, 'limits_chirho, ClassifyChirho> {
     classify_chirho: &'classifier_chirho ClassifyChirho,
-    limits_chirho: FamilyReductionLimitsChirho,
+    limits_chirho: &'limits_chirho mut FamilyReductionLimitsChirho,
+    materialization_bytes_chirho: bool,
     nodes_chirho: Vec<MatchNodeChirho>,
     interned_chirho: HashMap<MatchNodeChirho, MatchNodeIdChirho>,
     nominal_names_chirho: HashMap<GenerativeIdentityChirho, String>,
     family_names_chirho: HashMap<String, String>,
 }
 
-impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
-    FamilyMatcherChirho<'classifier_chirho, ClassifyChirho>
+impl<'classifier_chirho, 'limits_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
+    FamilyMatcherChirho<'classifier_chirho, 'limits_chirho, ClassifyChirho>
 {
     fn new_chirho(
         classify_chirho: &'classifier_chirho ClassifyChirho,
-        limits_chirho: FamilyReductionLimitsChirho,
+        limits_chirho: &'limits_chirho mut FamilyReductionLimitsChirho,
+        materialization_bytes_chirho: bool,
     ) -> Self {
         Self {
             classify_chirho,
             limits_chirho,
+            materialization_bytes_chirho,
             nodes_chirho: Vec::new(),
             interned_chirho: HashMap::new(),
             nominal_names_chirho: HashMap::new(),
@@ -299,13 +328,17 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
             .limits_chirho
             .steps_chirho
             .checked_sub(work_chirho)
-            .ok_or(MatchFailureChirho::ExhaustedChirho)?;
+            .ok_or(MatchFailureChirho::LimitChirho(
+                MatchLimitChirho::WorkChirho,
+            ))?;
         Ok(())
     }
 
     fn tick_chirho(&mut self, depth_chirho: usize) -> Result<(), MatchFailureChirho> {
         if depth_chirho > self.limits_chirho.depth_chirho {
-            return Err(MatchFailureChirho::ExhaustedChirho);
+            return Err(MatchFailureChirho::LimitChirho(
+                MatchLimitChirho::DepthChirho,
+            ));
         }
         self.charge_chirho(1)
     }
@@ -314,17 +347,66 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
         depth_chirho
             .checked_add(1)
             .filter(|depth_chirho| *depth_chirho <= self.limits_chirho.depth_chirho)
-            .ok_or(MatchFailureChirho::ExhaustedChirho)
+            .ok_or(MatchFailureChirho::LimitChirho(
+                MatchLimitChirho::DepthChirho,
+            ))
     }
 
     fn output_chirho(&mut self, depth_chirho: usize) -> Result<(), MatchFailureChirho> {
         self.tick_chirho(depth_chirho)?;
-        self.limits_chirho.nodes_chirho = self
-            .limits_chirho
-            .nodes_chirho
-            .checked_sub(1)
-            .ok_or(MatchFailureChirho::ExhaustedChirho)?;
+        self.limits_chirho.nodes_chirho = self.limits_chirho.nodes_chirho.checked_sub(1).ok_or(
+            MatchFailureChirho::LimitChirho(MatchLimitChirho::OutputChirho),
+        )?;
         Ok(())
+    }
+
+    fn output_bytes_chirho(&mut self, bytes_chirho: usize) -> Result<(), MatchFailureChirho> {
+        if self.materialization_bytes_chirho {
+            self.limits_chirho.nodes_chirho = self
+                .limits_chirho
+                .nodes_chirho
+                .checked_sub(bytes_chirho)
+                .ok_or(MatchFailureChirho::LimitChirho(
+                    MatchLimitChirho::OutputChirho,
+                ))?;
+        }
+        Ok(())
+    }
+
+    fn materialized_name_chirho(&mut self, bytes_chirho: usize) -> Result<(), MatchFailureChirho> {
+        self.charge_chirho(bytes_chirho)?;
+        self.output_bytes_chirho(bytes_chirho)
+    }
+
+    fn preflight_node_clone_chirho(
+        &mut self,
+        node_chirho: MatchNodeIdChirho,
+    ) -> Result<(), MatchFailureChirho> {
+        if !self.materialization_bytes_chirho {
+            return Ok(());
+        }
+        let bytes_chirho = match &self.nodes_chirho[node_chirho] {
+            MatchNodeChirho::PatternVariableChirho(PatternVariableChirho::NamedChirho(
+                name_chirho,
+            ))
+            | MatchNodeChirho::TargetVariableChirho(PatternVariableChirho::NamedChirho(
+                name_chirho,
+            ))
+            | MatchNodeChirho::ConstructorChirho(GenerativeIdentityChirho::NominalChirho(
+                name_chirho,
+            )) => name_chirho.len(),
+            MatchNodeChirho::FamilyChirho {
+                identity_chirho,
+                arguments_chirho,
+            } => identity_chirho
+                .len()
+                .checked_add(arguments_chirho.len())
+                .ok_or(MatchFailureChirho::LimitChirho(
+                    MatchLimitChirho::OutputChirho,
+                ))?,
+            _ => 0,
+        };
+        self.materialized_name_chirho(bytes_chirho)
     }
 
     fn intern_chirho(
@@ -445,17 +527,18 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
                 let mut head_chirho = ty_chirho;
                 let mut arguments_chirho = Vec::new();
                 while let TyChirho::AppChirho(function_chirho, argument_chirho) = head_chirho {
-                    let spine_depth_chirho = depth_chirho
-                        .checked_add(arguments_chirho.len())
-                        .ok_or(MatchFailureChirho::ExhaustedChirho)?;
+                    let spine_depth_chirho =
+                        depth_chirho.checked_add(arguments_chirho.len()).ok_or(
+                            MatchFailureChirho::LimitChirho(MatchLimitChirho::DepthChirho),
+                        )?;
                     self.tick_chirho(spine_depth_chirho)?;
                     arguments_chirho.push(argument_chirho.as_ref());
                     head_chirho = function_chirho;
                 }
                 arguments_chirho.reverse();
-                let head_depth_chirho = depth_chirho
-                    .checked_add(arguments_chirho.len())
-                    .ok_or(MatchFailureChirho::ExhaustedChirho)?;
+                let head_depth_chirho = depth_chirho.checked_add(arguments_chirho.len()).ok_or(
+                    MatchFailureChirho::LimitChirho(MatchLimitChirho::DepthChirho),
+                )?;
                 self.tick_chirho(head_depth_chirho)?;
                 if let TyChirho::ConChirho(name_chirho) = head_chirho
                     && let FamilyHeadRoleChirho::FamilyChirho {
@@ -590,7 +673,7 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
             self.output_chirho(depth_chirho)?;
             match term_chirho {
                 TyChirho::ConChirho(name_chirho) | TyChirho::ForallVarChirho(name_chirho) => {
-                    self.charge_chirho(name_chirho.len())?
+                    self.materialized_name_chirho(name_chirho.len())?
                 }
                 TyChirho::VarChirho(_) => {}
                 TyChirho::AppChirho(left_chirho, right_chirho)
@@ -712,6 +795,7 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
     ) -> Result<TyChirho, MatchFailureChirho> {
         self.output_chirho(depth_chirho)?;
         let node_chirho = self.bound_node_chirho(node_chirho, bindings_chirho)?;
+        self.preflight_node_clone_chirho(node_chirho)?;
         match self.nodes_chirho[node_chirho].clone() {
             MatchNodeChirho::TargetVariableChirho(PatternVariableChirho::NumericChirho(
                 variable_chirho,
@@ -719,7 +803,9 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
             MatchNodeChirho::TargetVariableChirho(PatternVariableChirho::NamedChirho(
                 name_chirho,
             )) => {
-                self.charge_chirho(name_chirho.len())?;
+                if !self.materialization_bytes_chirho {
+                    self.charge_chirho(name_chirho.len())?;
+                }
                 Ok(TyChirho::ForallVarChirho(name_chirho))
             }
             MatchNodeChirho::OpaqueTargetChirho(term_chirho) => {
@@ -737,12 +823,12 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
                     .family_names_chirho
                     .get(&identity_chirho)
                     .ok_or(MatchFailureChirho::UnsupportedChirho)?;
-                self.charge_chirho(name_chirho.len())?;
+                self.materialized_name_chirho(name_chirho.len())?;
                 let mut result_chirho =
                     TyChirho::ConChirho(self.family_names_chirho[&identity_chirho].clone());
-                let head_depth_chirho = depth_chirho
-                    .checked_add(arguments_chirho.len())
-                    .ok_or(MatchFailureChirho::ExhaustedChirho)?;
+                let head_depth_chirho = depth_chirho.checked_add(arguments_chirho.len()).ok_or(
+                    MatchFailureChirho::LimitChirho(MatchLimitChirho::DepthChirho),
+                )?;
                 self.tick_chirho(head_depth_chirho)?;
                 for (index_chirho, argument_chirho) in arguments_chirho.into_iter().enumerate() {
                     let child_chirho = head_depth_chirho - index_chirho;
@@ -770,7 +856,12 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
         identity_chirho: &GenerativeIdentityChirho,
     ) -> Result<TyChirho, MatchFailureChirho> {
         let name_chirho = match identity_chirho {
-            GenerativeIdentityChirho::ListChirho => "[]".to_owned(),
+            GenerativeIdentityChirho::ListChirho => {
+                if self.materialization_bytes_chirho {
+                    self.materialized_name_chirho(2)?;
+                }
+                "[]".to_owned()
+            }
             GenerativeIdentityChirho::TupleChirho(0) => {
                 return Ok(TyChirho::TupleChirho(Vec::new()));
             }
@@ -779,9 +870,17 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
                     return Err(MatchFailureChirho::UnsupportedChirho);
                 }
                 self.charge_chirho(*arity_chirho)?;
+                self.output_bytes_chirho(arity_chirho.checked_mul(2).ok_or(
+                    MatchFailureChirho::LimitChirho(MatchLimitChirho::OutputChirho),
+                )?)?;
                 format!("({})", ",".repeat(arity_chirho - 1))
             }
-            GenerativeIdentityChirho::ArrowChirho(MultChirho::ManyChirho) => "->".to_owned(),
+            GenerativeIdentityChirho::ArrowChirho(MultChirho::ManyChirho) => {
+                if self.materialization_bytes_chirho {
+                    self.materialized_name_chirho(2)?;
+                }
+                "->".to_owned()
+            }
             GenerativeIdentityChirho::ArrowChirho(MultChirho::OneChirho) => {
                 return Err(MatchFailureChirho::UnsupportedChirho);
             }
@@ -790,7 +889,7 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
                     .nominal_names_chirho
                     .get(identity_chirho)
                     .ok_or(MatchFailureChirho::UnsupportedChirho)?;
-                self.charge_chirho(name_chirho.len())?;
+                self.materialized_name_chirho(name_chirho.len())?;
                 self.nominal_names_chirho[identity_chirho].clone()
             }
         };
@@ -806,9 +905,9 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
         let mut head_chirho = node_chirho;
         let mut arguments_chirho = Vec::new();
         loop {
-            let spine_depth_chirho = depth_chirho
-                .checked_add(arguments_chirho.len())
-                .ok_or(MatchFailureChirho::ExhaustedChirho)?;
+            let spine_depth_chirho = depth_chirho.checked_add(arguments_chirho.len()).ok_or(
+                MatchFailureChirho::LimitChirho(MatchLimitChirho::DepthChirho),
+            )?;
             self.tick_chirho(spine_depth_chirho)?;
             head_chirho = self.bound_node_chirho(head_chirho, bindings_chirho)?;
             if let MatchNodeChirho::ApplicationChirho(function_chirho, argument_chirho) =
@@ -821,10 +920,11 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
             }
         }
         arguments_chirho.reverse();
-        let head_depth_chirho = depth_chirho
-            .checked_add(arguments_chirho.len())
-            .ok_or(MatchFailureChirho::ExhaustedChirho)?;
+        let head_depth_chirho = depth_chirho.checked_add(arguments_chirho.len()).ok_or(
+            MatchFailureChirho::LimitChirho(MatchLimitChirho::DepthChirho),
+        )?;
         self.tick_chirho(head_depth_chirho)?;
+        self.preflight_node_clone_chirho(head_chirho)?;
         let (mut result_chirho, consumed_chirho) = match self.nodes_chirho[head_chirho].clone() {
             MatchNodeChirho::ConstructorChirho(GenerativeIdentityChirho::ListChirho)
                 if !arguments_chirho.is_empty() =>
@@ -845,7 +945,9 @@ impl<'classifier_chirho, ClassifyChirho: Fn(&str) -> FamilyHeadRoleChirho>
                 let child_chirho = head_depth_chirho
                     .checked_sub(arity_chirho)
                     .and_then(|depth_chirho| depth_chirho.checked_add(1))
-                    .ok_or(MatchFailureChirho::ExhaustedChirho)?;
+                    .ok_or(MatchFailureChirho::LimitChirho(
+                        MatchLimitChirho::DepthChirho,
+                    ))?;
                 for argument_chirho in &arguments_chirho[..arity_chirho] {
                     elements_chirho.push(self.materialize_chirho(
                         *argument_chirho,

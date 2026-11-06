@@ -181,6 +181,9 @@ mod closed_family_apartness_tests_chirho;
 mod family_constructor_origins_chirho;
 #[path = "infer_chirho/types_chirho/families_chirho/family_definitions_chirho.rs"]
 mod family_definitions_chirho;
+#[cfg(test)]
+#[path = "infer_chirho/types_chirho/families_chirho/family_reduction_budget_tests_chirho.rs"]
+mod family_reduction_budget_tests_chirho;
 #[path = "infer_chirho/types_chirho/families_chirho/family_reduction_chirho.rs"]
 mod family_reduction_chirho;
 #[cfg(test)]
