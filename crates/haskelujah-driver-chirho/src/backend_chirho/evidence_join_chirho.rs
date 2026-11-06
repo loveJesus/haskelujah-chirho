@@ -166,6 +166,64 @@ const EVIDENCE_METHOD_NAMES_CHIRHO: &[&str] = &[
 /// here opts them in, not even for a class this module declares itself.
 const INV_001_NAMES_CHIRHO: [&str; 5] = [">>=", ">>", "return", "pure", "fail"];
 
+/// The two INV-001 operators minted all the same (row 697). Their only accepted proof is the
+/// exact predicate the checker found for the use, an indexed own key joined by the use's own
+/// provenance (`admits_operator_proof_chirho`). Any other use goes back to its canonical id and
+/// INV-001's path. `return`, `pure` and `fail` stay unminted.
+/// workflow: monadic-dispatch-chirho
+const OWN_PROOF_OPERATORS_CHIRHO: [&str; 2] = [">>=", ">>"];
+
+/// Whether `name_chirho` is one of the two operators that take only an indexed own proof.
+fn is_own_proof_operator_chirho(name_chirho: &str) -> bool {
+    OWN_PROOF_OPERATORS_CHIRHO.contains(&name_chirho)
+}
+
+/// Whether provenance in `role_chirho` identifies a use of `name_chirho` to this join: a
+/// written reference, or the `>>=` (Bind) or `>>` (Then) a do statement selected (row 697).
+/// workflow: monadic-dispatch-chirho
+pub(crate) fn joins_provenance_role_chirho(
+    name_chirho: &str,
+    role_chirho: OccurrenceRoleChirho,
+) -> bool {
+    match role_chirho {
+        OccurrenceRoleChirho::Reference => true,
+        OccurrenceRoleChirho::Bind => name_chirho == ">>=",
+        OccurrenceRoleChirho::Then => name_chirho == ">>",
+        _ => false,
+    }
+}
+
+/// Whether a record for `name_chirho` proved at `class_chirho` and `key_chirho` may prove its
+/// occurrence. Every record may, except a `>>=` or `>>` record, which proves only the exact
+/// predicate that types its use: `Monad` at an indexed own key (`$own:i`), the binding's own
+/// dictionary parameter for that predicate.
+///
+/// Three kinds of key prove nothing here, and the use keeps its canonical id and INV-001's
+/// path: a ground key (`IO`, `Maybe`), a user monad, and a bare `$own` that a superclass
+/// entailed. The bare superclass case is an unserved runtime boundary, not a compatible pass
+/// (row 697).
+/// workflow: monadic-dispatch-chirho
+pub(crate) fn admits_operator_proof_chirho(
+    name_chirho: &str,
+    class_chirho: &str,
+    key_chirho: &str,
+) -> bool {
+    if !is_own_proof_operator_chirho(name_chirho) {
+        return true;
+    }
+    let bare_own_chirho = haskelujah_typing_chirho::infer_chirho::own_dictionary_key_chirho(None);
+    class_chirho == "Monad"
+        && key_chirho
+            .strip_prefix(bare_own_chirho.as_str())
+            .and_then(|rest_chirho| rest_chirho.strip_prefix(':'))
+            .is_some_and(|index_chirho| {
+                !index_chirho.is_empty()
+                    && index_chirho
+                        .bytes()
+                        .all(|byte_chirho| byte_chirho.is_ascii_digit())
+            })
+}
+
 /// The names whose every free reference the desugarer gives an occurrence id of
 /// its own, so the checker's proof for that one use reaches the dictionary pass:
 /// the standard set, and each method of a single-parameter class the compiling
@@ -176,10 +234,11 @@ const INV_001_NAMES_CHIRHO: [&str; 5] = [">>=", ">>", "return", "pure", "fail"];
 /// Boundaries, each keeping its shared id: a seeded standard class's methods
 /// outside the standard set (`fmap`, `<>`, `toList`), a class imported from
 /// another module (its rows live in that module's Core), a multi-parameter
-/// class, and the INV-001 names. Shadows stay the desugarer's: a lexical,
-/// top-level or field binding is found in scope before any occurrence is
-/// minted, and an occurrence the join proves nothing for is restored to its
-/// canonical id.
+/// class, and the INV-001 names. The exceptions are `>>=` and `>>`, minted for
+/// their indexed own proof alone (`OWN_PROOF_OPERATORS_CHIRHO`, row 697).
+/// Shadows stay the desugarer's: a lexical, top-level or field binding is found
+/// in scope before any occurrence is minted, and an occurrence the join proves
+/// nothing for is restored to its canonical id.
 /// workflow: language-features-chirho/own-class-method-occurrences-chirho
 pub(crate) fn method_occurrence_names_chirho(module_chirho: &ModuleChirho) -> HashSet<String> {
     let own_methods_chirho = module_chirho
@@ -199,6 +258,11 @@ pub(crate) fn method_occurrence_names_chirho(module_chirho: &ModuleChirho) -> Ha
         .map(|name_chirho| name_chirho.to_string())
         .chain(own_methods_chirho)
         .filter(|name_chirho| !INV_001_NAMES_CHIRHO.contains(&name_chirho.as_str()))
+        .chain(
+            OWN_PROOF_OPERATORS_CHIRHO
+                .iter()
+                .map(|name_chirho| name_chirho.to_string()),
+        )
         .collect()
 }
 
@@ -367,10 +431,9 @@ pub(crate) fn join_occurrence_evidence_chirho(
     let mut occurrences_by_origin_chirho: HashMap<OriginIdChirho, Vec<(CoreIdChirho, &String)>> =
         HashMap::new();
     for (occ_id_chirho, provenance_chirho) in occurrence_provenance_chirho {
-        if provenance_chirho.role_chirho != OccurrenceRoleChirho::Reference {
-            continue;
-        }
-        if let Some((name_chirho, _canon_chirho)) = method_occurrences_chirho.get(occ_id_chirho) {
+        if let Some((name_chirho, _canon_chirho)) = method_occurrences_chirho.get(occ_id_chirho)
+            && joins_provenance_role_chirho(name_chirho, provenance_chirho.role_chirho)
+        {
             occurrences_by_origin_chirho
                 .entry(provenance_chirho.origin_chirho)
                 .or_default()
@@ -388,6 +451,15 @@ pub(crate) fn join_occurrence_evidence_chirho(
             continue;
         };
         if !record_is_authoritative_chirho(record_chirho) {
+            continue;
+        }
+        // `>>=` and `>>` keep only an indexed own proof, before the record contributes
+        // anything to its occurrence (row 697).
+        if !admits_operator_proof_chirho(
+            &record_chirho.name_chirho,
+            &record_chirho.class_name_chirho,
+            &record_chirho.ty_key_chirho,
+        ) {
             continue;
         }
         let Some(candidates_chirho) = occurrences_by_origin_chirho.get(&origin_chirho) else {
@@ -429,6 +501,10 @@ pub(crate) fn join_occurrence_evidence_chirho(
         .enumerate()
     {
         if record_chirho.origin_chirho.is_some() {
+            continue;
+        }
+        // `>>=` and `>>` are proved by provenance alone, never by a span (row 697).
+        if is_own_proof_operator_chirho(&record_chirho.name_chirho) {
             continue;
         }
         if consumed_records_chirho.contains(&record_index_chirho) {
@@ -483,6 +559,10 @@ pub(crate) fn join_occurrence_evidence_chirho(
     // occurrence provenance, which is its own brick.
     // workflow: language-features-chirho/dictionary-evidence-chirho
     for (name_chirho, ids_chirho) in &occ_ids_by_name_chirho {
+        // `>>=` and `>>` are proved by provenance alone, never by position (row 697).
+        if is_own_proof_operator_chirho(name_chirho) {
+            continue;
+        }
         // Eligible here: an occurrence with NO identifying span at all, after the
         // identified ones are excluded. Anything carrying a genuine span belongs
         // to the span join, whether or not that join could use it: admitting a

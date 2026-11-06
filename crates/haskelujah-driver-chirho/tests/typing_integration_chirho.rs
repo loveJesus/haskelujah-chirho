@@ -29,6 +29,8 @@ mod lazy_fields_chirho;
 mod maybe_helper_schemes_chirho;
 #[path = "typing_integration_chirho/method_ownership_chirho.rs"]
 mod method_ownership_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/monad_owned_dictionary_chirho.rs"]
+mod monad_owned_dictionary_chirho;
 #[path = "typing_integration_chirho/operator_ownership_chirho.rs"]
 mod operator_ownership_chirho;
 #[path = "typing_integration_chirho/paren_infix_definitions_chirho.rs"]

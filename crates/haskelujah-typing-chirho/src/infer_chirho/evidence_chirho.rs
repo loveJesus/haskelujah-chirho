@@ -532,17 +532,8 @@ pub(super) fn concrete_evidence_key_chirho(
             Some(if nested_chirho { "String" } else { "[Char]" }.to_string())
         }
         TyChirho::ConChirho(name_chirho) => Some(name_chirho.clone()),
-        TyChirho::ListChirho(inner_chirho) => {
-            if matches!(
-                inner_chirho.as_ref(),
-                TyChirho::ConChirho(name_chirho) if name_chirho == "Char"
-            ) {
-                return Some(if nested_chirho { "String" } else { "[Char]" }.to_string());
-            }
-            Some(format!(
-                "[{}]",
-                concrete_evidence_key_chirho(inner_chirho, true)?
-            ))
+        TyChirho::ListChirho(element_chirho) => {
+            list_evidence_key_chirho(element_chirho, nested_chirho)
         }
         TyChirho::TupleChirho(items_chirho) => {
             let item_keys_chirho = items_chirho
@@ -551,7 +542,20 @@ pub(super) fn concrete_evidence_key_chirho(
                 .collect::<Option<Vec<_>>>()?;
             Some(format!("({})", item_keys_chirho.join(",")))
         }
+        TyChirho::AppChirho(fun_chirho, element_chirho)
+            if is_list_constructor_chirho(fun_chirho) =>
+        {
+            list_evidence_key_chirho(element_chirho, nested_chirho)
+        }
         TyChirho::AppChirho(fun_chirho, arg_chirho) => {
+            // A fully saturated tuple constructor keys as the tuple unification equates it
+            // with; a partly applied one keeps its applied spelling (row 697).
+            if let Some(items_chirho) = crate::unify_chirho::collect_tuple_app_chirho(ty_chirho) {
+                return concrete_evidence_key_chirho(
+                    &TyChirho::TupleChirho(items_chirho),
+                    nested_chirho,
+                );
+            }
             let key_chirho = format!(
                 "{} {}",
                 concrete_evidence_key_chirho(fun_chirho, false)?,
@@ -566,16 +570,41 @@ pub(super) fn concrete_evidence_key_chirho(
     }
 }
 
+/// The list constructor `[]`, which `m Int` leaves applied at `m := []`. Unification
+/// already equates the applied `[] t` with `[t]` (row 697).
+fn is_list_constructor_chirho(ty_chirho: &TyChirho) -> bool {
+    matches!(ty_chirho, TyChirho::ConChirho(name_chirho) if name_chirho == "[]")
+}
+
+/// A list's whole key, however the checker spells the list: `[Int]`, and `[Char]` for a
+/// top-level list of Char (`String` once nested). The applied constructor `[] Int` keys the
+/// same, so its rows are found by the name `[Int]` gives them. It had keyed `[] Int`, which
+/// names no row, and native `print` fell to its generic show (row 697).
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+fn list_evidence_key_chirho(element_chirho: &TyChirho, nested_chirho: bool) -> Option<String> {
+    if matches!(element_chirho, TyChirho::ConChirho(name_chirho) if name_chirho == "Char") {
+        return Some(if nested_chirho { "String" } else { "[Char]" }.to_string());
+    }
+    Some(format!(
+        "[{}]",
+        concrete_evidence_key_chirho(element_chirho, true)?
+    ))
+}
+
 /// The key of a type the dictionary registry names by its WHOLE spelling: a
 /// list whose every part is ground keeps it (`[Int]`, `[[Int]]`, `[Char]` for
 /// a top-level `String`), because list dictionaries and method rows are named
 /// per element (`$fOrd[Int]`, `$prim_Eq_==_[Int]`) and the head `[]` names none
-/// of them. Every other type, and any list over a variable, gets `None` here
+/// of them. A list written `[t]` and the applied constructor `[] t` both count
+/// (row 697). Every other type, and any list over a variable, gets `None` here
 /// and keeps its head key.
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 pub(super) fn ground_list_key_chirho(ty_chirho: &TyChirho) -> Option<String> {
     match ty_chirho {
         TyChirho::ListChirho(_) => concrete_evidence_key_chirho(ty_chirho, false),
+        TyChirho::AppChirho(fun_chirho, _) if is_list_constructor_chirho(fun_chirho) => {
+            concrete_evidence_key_chirho(ty_chirho, false)
+        }
         TyChirho::ConChirho(name_chirho) if name_chirho == "String" => {
             concrete_evidence_key_chirho(ty_chirho, false)
         }
