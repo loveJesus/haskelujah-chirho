@@ -536,9 +536,9 @@ fn a_source_module_marks_the_types_it_declares_complete_chirho() {
                 vec![ConDeclChirho::GadtChirho {
                     name_chirho: name_chirho("MkGadtChirho"),
                     signature_chirho:
-                        haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
+                        Box::new(haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
                             TypeChirho::ConChirho(name_chirho("GadtChirho")),
-                        ),
+                        )),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 }],
             ),

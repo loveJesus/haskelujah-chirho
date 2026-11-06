@@ -454,7 +454,7 @@ impl LowerCtxChirho {
         }
         ConDeclChirho::GadtChirho {
             name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
-            signature_chirho: self.lower_gadt_signature_chirho(node_chirho, base_chirho),
+            signature_chirho: Box::new(self.lower_gadt_signature_chirho(node_chirho, base_chirho)),
             span_chirho,
         }
     }

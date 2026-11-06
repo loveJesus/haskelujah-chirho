@@ -124,8 +124,9 @@ fn record_chirho(field_names_chirho: &[&str]) -> ConDeclChirho {
 fn gadt_chirho(ty_chirho: TypeChirho) -> ConDeclChirho {
     ConDeclChirho::GadtChirho {
         name_chirho: name_chirho("MkN"),
-        signature_chirho:
+        signature_chirho: Box::new(
             haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(ty_chirho),
+        ),
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     }
 }

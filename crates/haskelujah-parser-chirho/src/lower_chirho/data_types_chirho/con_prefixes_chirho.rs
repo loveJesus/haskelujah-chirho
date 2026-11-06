@@ -67,8 +67,8 @@ impl LowerCtxChirho {
                 cursor_chirho += 1;
             }
             if cursor_chirho == children_chirho.len()
-                && !token_at_chirho(children_chirho, cursor_chirho.saturating_sub(1))
-                    .is_some_and(|token_chirho| token_chirho.text_chirho() == ".")
+                && token_at_chirho(children_chirho, cursor_chirho.saturating_sub(1))
+                    .is_none_or(|token_chirho| token_chirho.text_chirho() != ".")
             {
                 prefix_chirho.unread_chirho = true;
             }

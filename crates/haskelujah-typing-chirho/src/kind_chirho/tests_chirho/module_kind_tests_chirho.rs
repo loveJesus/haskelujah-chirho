@@ -339,13 +339,14 @@ fn gadt_return_type_accepts_promoted_list_cons_chirho() {
         ],
         constructors_chirho: vec![ConDeclChirho::GadtChirho {
             name_chirho: mk_name_chirho("SLayer"),
-            signature_chirho:
+            signature_chirho: Box::new(
                 haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
                     mk_fun_chirho(
                         mk_app_chirho(t_chirho, l_chirho),
                         mk_fun_chirho(stack_ls_t_chirho, stack_cons_t_chirho),
                     ),
                 ),
+            ),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         deriving_chirho: vec![],

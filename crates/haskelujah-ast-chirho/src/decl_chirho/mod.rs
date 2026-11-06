@@ -500,7 +500,7 @@ pub enum ConDeclChirho {
         /// Constructor name.
         name_chirho: NameChirho,
         /// Canonical prefixes, argument details and written result after `::`.
-        signature_chirho: GadtConSignatureChirho,
+        signature_chirho: Box<GadtConSignatureChirho>,
         /// Span covering the whole constructor declaration.
         span_chirho: SpanChirho,
     },

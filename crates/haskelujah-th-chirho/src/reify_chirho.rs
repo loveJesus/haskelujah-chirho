@@ -829,10 +829,11 @@ mod tests_chirho {
             }
             let constructor_chirho = ConDeclChirho::GadtChirho {
                 name_chirho: mk_name_chirho("MkBoxChirho"),
-                signature_chirho:
+                signature_chirho: Box::new(
                     haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
                         ty_chirho,
                     ),
+                ),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             };
             projected_chirho.push(
@@ -869,7 +870,7 @@ mod tests_chirho {
         assert!(signature_chirho.check_written_signature_chirho().is_ok());
         let constructor_chirho = ConDeclChirho::GadtChirho {
             name_chirho: mk_name_chirho("MkBoxChirho"),
-            signature_chirho,
+            signature_chirho: Box::new(signature_chirho),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let error_chirho = ast_con_to_th_chirho(

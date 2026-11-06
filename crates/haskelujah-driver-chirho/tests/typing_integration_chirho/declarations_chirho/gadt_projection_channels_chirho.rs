@@ -42,7 +42,7 @@ fn fixture_chirho(
     };
     let constructor_chirho = ConDeclChirho::GadtChirho {
         name_chirho: name_chirho("MkBoxChirho"),
-        signature_chirho: signature_chirho.clone(),
+        signature_chirho: Box::new(signature_chirho.clone()),
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
     let module_chirho = ModuleChirho {

@@ -809,57 +809,63 @@ fn th_con_to_ast_chirho(con_chirho: &ThConChirho) -> Option<ConDeclChirho> {
             let con_name_chirho = names_chirho.first().map(th_name_to_ast_chirho)?;
             Some(ConDeclChirho::GadtChirho {
                 name_chirho: con_name_chirho,
-                signature_chirho: haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho {
-                    prefix_chirho: vec![],
-                    args_chirho:
-                        haskelujah_ast_chirho::decl_chirho::GadtConArgsChirho::PositionalChirho(
-                            bang_types_chirho
-                                .iter()
-                                .map(|field_chirho| {
-                                    haskelujah_ast_chirho::decl_chirho::GadtConFieldChirho {
-                                        strictness_chirho: th_gadt_strictness_chirho(
-                                            &field_chirho.bang_chirho,
-                                        ),
-                                        multiplicity_chirho: None,
-                                        ty_chirho: th_type_to_ast_chirho(&field_chirho.ty_chirho),
-                                        span_chirho: TH_SPAN_CHIRHO,
-                                    }
-                                })
-                                .collect(),
-                        ),
-                    result_ty_chirho: th_type_to_ast_chirho(ret_ty_chirho),
-                    malformed_chirho: None,
-                    span_chirho: TH_SPAN_CHIRHO,
-                },
+                signature_chirho: Box::new(
+                    haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho {
+                        prefix_chirho: vec![],
+                        args_chirho:
+                            haskelujah_ast_chirho::decl_chirho::GadtConArgsChirho::PositionalChirho(
+                                bang_types_chirho
+                                    .iter()
+                                    .map(|field_chirho| {
+                                        haskelujah_ast_chirho::decl_chirho::GadtConFieldChirho {
+                                            strictness_chirho: th_gadt_strictness_chirho(
+                                                &field_chirho.bang_chirho,
+                                            ),
+                                            multiplicity_chirho: None,
+                                            ty_chirho: th_type_to_ast_chirho(
+                                                &field_chirho.ty_chirho,
+                                            ),
+                                            span_chirho: TH_SPAN_CHIRHO,
+                                        }
+                                    })
+                                    .collect(),
+                            ),
+                        result_ty_chirho: th_type_to_ast_chirho(ret_ty_chirho),
+                        malformed_chirho: None,
+                        span_chirho: TH_SPAN_CHIRHO,
+                    },
+                ),
                 span_chirho: TH_SPAN_CHIRHO,
             })
         }
         ThConChirho::RecGadtCChirho(names_chirho, fields_chirho, ret_ty_chirho) => {
             Some(ConDeclChirho::GadtChirho {
                 name_chirho: names_chirho.first().map(th_name_to_ast_chirho)?,
-                signature_chirho: haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho {
-                    prefix_chirho: vec![],
-                    args_chirho:
-                        haskelujah_ast_chirho::decl_chirho::GadtConArgsChirho::RecordChirho(
-                            fields_chirho
-                                .iter()
-                                .map(|field_chirho| FieldDeclChirho {
-                                    names_chirho: vec![th_name_to_ast_chirho(
-                                        &field_chirho.name_chirho,
-                                    )],
-                                    strictness_chirho: th_gadt_strictness_chirho(
-                                        &field_chirho.bang_chirho,
-                                    ),
-                                    multiplicity_chirho: None,
-                                    ty_chirho: th_type_to_ast_chirho(&field_chirho.ty_chirho),
-                                    span_chirho: TH_SPAN_CHIRHO,
-                                })
-                                .collect(),
-                        ),
-                    result_ty_chirho: th_type_to_ast_chirho(ret_ty_chirho),
-                    malformed_chirho: None,
-                    span_chirho: TH_SPAN_CHIRHO,
-                },
+                signature_chirho: Box::new(
+                    haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho {
+                        prefix_chirho: vec![],
+                        args_chirho:
+                            haskelujah_ast_chirho::decl_chirho::GadtConArgsChirho::RecordChirho(
+                                fields_chirho
+                                    .iter()
+                                    .map(|field_chirho| FieldDeclChirho {
+                                        names_chirho: vec![th_name_to_ast_chirho(
+                                            &field_chirho.name_chirho,
+                                        )],
+                                        strictness_chirho: th_gadt_strictness_chirho(
+                                            &field_chirho.bang_chirho,
+                                        ),
+                                        multiplicity_chirho: None,
+                                        ty_chirho: th_type_to_ast_chirho(&field_chirho.ty_chirho),
+                                        span_chirho: TH_SPAN_CHIRHO,
+                                    })
+                                    .collect(),
+                            ),
+                        result_ty_chirho: th_type_to_ast_chirho(ret_ty_chirho),
+                        malformed_chirho: None,
+                        span_chirho: TH_SPAN_CHIRHO,
+                    },
+                ),
                 span_chirho: TH_SPAN_CHIRHO,
             })
         }

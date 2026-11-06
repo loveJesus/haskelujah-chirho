@@ -210,10 +210,11 @@ fn types_not_deriving_show_or_with_a_gadt_constructor_are_left_out_chirho() {
             "GadtChirho",
             vec![ConDeclChirho::GadtChirho {
                 name_chirho: var_name_chirho("MkGadtChirho"),
-                signature_chirho:
+                signature_chirho: Box::new(
                     haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
                         con_type_chirho("GadtChirho"),
                     ),
+                ),
                 span_chirho: gen_span_chirho(),
             }],
             &["Show"],

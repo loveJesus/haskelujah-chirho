@@ -24,7 +24,7 @@ fn first_gadt_chirho(source_chirho: &str) -> GadtConSignatureChirho {
     else {
         panic!("expected GADT constructor");
     };
-    signature_chirho.clone()
+    signature_chirho.as_ref().clone()
 }
 
 #[test]

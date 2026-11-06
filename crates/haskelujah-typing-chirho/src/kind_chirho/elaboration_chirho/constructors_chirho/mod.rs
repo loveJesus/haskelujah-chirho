@@ -452,7 +452,7 @@ impl TypeElaboratorChirho<'_> {
                             span_chirho,
                         )
                     })?;
-                    Some(signature_chirho.clone())
+                    Some(signature_chirho.as_ref().clone())
                 } else {
                     None
                 };
@@ -497,7 +497,7 @@ impl TypeElaboratorChirho<'_> {
                     name_chirho.span_chirho(),
                 )
             })?;
-        *signature_chirho = original_chirho;
+        **signature_chirho = original_chirho;
         self.elaborate_constructor_chirho(
             constructor_chirho,
             parent_chirho,

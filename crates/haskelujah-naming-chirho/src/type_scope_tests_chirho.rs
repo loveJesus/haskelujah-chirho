@@ -1136,7 +1136,7 @@ fn gadt_outer_forall_requires_every_variable_binder_chirho() {
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         constructors_chirho: vec![ConDeclChirho::GadtChirho {
             name_chirho: name_chirho("MkTChirho"),
-            signature_chirho:
+            signature_chirho: Box::new(
                 haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
                     TypeChirho::ForallChirho {
                         vars_chirho: vec![tyvar_chirho("bChirho")],
@@ -1150,6 +1150,7 @@ fn gadt_outer_forall_requires_every_variable_binder_chirho() {
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                 ),
+            ),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         deriving_chirho: vec![],
@@ -1171,10 +1172,11 @@ fn gadt_without_outer_forall_quantifies_independently_chirho() {
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         constructors_chirho: vec![ConDeclChirho::GadtChirho {
             name_chirho: name_chirho("MkTChirho"),
-            signature_chirho:
+            signature_chirho: Box::new(
                 haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
                     TypeChirho::VarChirho(name_chirho("aChirho")),
                 ),
+            ),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         deriving_chirho: vec![],
