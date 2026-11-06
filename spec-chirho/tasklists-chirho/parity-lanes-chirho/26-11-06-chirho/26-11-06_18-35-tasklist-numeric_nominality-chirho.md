@@ -9,7 +9,7 @@ The ordinary unifier currently accepts both `Int ~ Double` and `Double ~ Int` wi
 - [x] Publish the production-equal test-only checkpoint; preserve the original MR lambda witness separately because A9 does not contain MR.
 - [ ] Pin and execute the ten independent GHC typing controls before any functional claim.
 - [ ] Execute the original unifier against the negative controls and retain actual wrong acceptance.
-- [ ] Remove only the normal numeric widening arm and its misleading comment in a separate source checkpoint.
+- [x] Remove only the normal numeric widening arm and its misleading comment in a separate source checkpoint. The `0afac144` test-only checkpoint retains the original production behavior for the later measured negative control.
 - [ ] Execute symmetry/nested rejection and same-type/metavariable preservation units, plus the paired driver controls; surface any literal or numeric-pattern producer prerequisite before expanding scope.
 - [ ] Complete focused warning-free checking, lint attribution, outgoing secret scan and push with exact source/evidence pins. Broader preservation and integration remain separate.
 
