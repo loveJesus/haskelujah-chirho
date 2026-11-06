@@ -210,18 +210,35 @@ pub fn build_cabal_project_chirho(
     })
 }
 
+/// The library components' external dependencies, one per package name in first-listed order.
+/// Every bound any library places on a package is kept: repeated names are conjoined with `&&`,
+/// so a later, stricter bound is never dropped (row 703).
 pub(crate) fn collect_library_package_deps_chirho(
     package_chirho: &haskelujah_package_chirho::PackageDescChirho,
 ) -> Vec<haskelujah_package_chirho::DependencyChirho> {
-    let mut deps_chirho = Vec::new();
-    let mut seen_chirho = std::collections::HashSet::new();
+    let mut deps_chirho: Vec<haskelujah_package_chirho::DependencyChirho> = Vec::new();
+    let mut positions_chirho: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
     for lib_chirho in iter_package_libraries_chirho(package_chirho) {
         for dep_chirho in &lib_chirho.build_info_chirho.build_depends_chirho {
             if is_self_or_internal_library_dep_chirho(package_chirho, &dep_chirho.package_chirho) {
                 continue;
             }
-            if seen_chirho.insert(dep_chirho.package_chirho.clone()) {
-                deps_chirho.push(dep_chirho.clone());
+            match positions_chirho.get(&dep_chirho.package_chirho) {
+                Some(&position_chirho) => {
+                    let existing_chirho = &mut deps_chirho[position_chirho];
+                    if existing_chirho.constraint_chirho != dep_chirho.constraint_chirho {
+                        existing_chirho.constraint_chirho =
+                            haskelujah_package_chirho::VersionConstraintChirho::AndChirho(
+                                Box::new(existing_chirho.constraint_chirho.clone()),
+                                Box::new(dep_chirho.constraint_chirho.clone()),
+                            );
+                    }
+                }
+                None => {
+                    positions_chirho.insert(dep_chirho.package_chirho.clone(), deps_chirho.len());
+                    deps_chirho.push(dep_chirho.clone());
+                }
             }
         }
     }

@@ -25,7 +25,9 @@ pub mod source_store_chirho;
 mod source_store_tests_chirho;
 pub mod version_chirho;
 
-pub use builtin_packages_chirho::{BUILTIN_PACKAGE_NAMES_CHIRHO, is_builtin_package_chirho};
+pub use builtin_packages_chirho::{
+    BUILTIN_PACKAGE_NAMES_CHIRHO, is_builtin_package_chirho, is_trivial_constraint_chirho,
+};
 
 pub use cabal_chirho::{
     BuildInfoChirho, DependencyChirho, ExecutableChirho, LibraryChirho, PackageDescChirho,

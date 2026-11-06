@@ -87,7 +87,7 @@ mod tests_chirho {
                     &cabal_chirho(
                         "greet-chirho",
                         "1.0.0",
-                        "  exposed-modules: GreetChirho.HelloChirho\n  build-depends: base >=4 && <5\n",
+                        "  exposed-modules: GreetChirho.HelloChirho\n  build-depends: base\n",
                     ),
                 ),
                 ("src/GreetChirho/HelloChirho.hs", HELLO_MODULE_CHIRHO),
@@ -699,6 +699,162 @@ mod tests_chirho {
                 .contains(SOURCE_STORE_DIR_NAME_CHIRHO)
         );
         assert!(!misnamed_chirho.exists());
+    }
+
+    #[test]
+    fn nontrivial_bounds_on_compiler_provided_packages_are_refused_chirho() {
+        let scratch_chirho = ScratchChirho::new_chirho();
+        let store_chirho = scratch_chirho.store_chirho();
+        fs::create_dir_all(&store_chirho).unwrap();
+        let before_chirho = store_snapshot_chirho(&store_chirho);
+        for (name_chirho, bound_chirho) in [
+            ("future-base-chirho", ">=999"),
+            ("bounded-base-chirho", ">=4.7 && <5"),
+        ] {
+            let package_chirho = scratch_chirho.package_chirho(
+                name_chirho,
+                &[
+                    (
+                        &format!("{name_chirho}.cabal"),
+                        &cabal_chirho(
+                            name_chirho,
+                            "0.1",
+                            &format!("  exposed-modules: GreetChirho.HelloChirho\n  build-depends: base {bound_chirho}\n"),
+                        ),
+                    ),
+                    ("src/GreetChirho/HelloChirho.hs", HELLO_MODULE_CHIRHO),
+                ],
+            );
+            let message_chirho = assert_refused_unchanged_chirho(
+                scratch_chirho.install_dir_chirho(&package_chirho),
+                &store_chirho,
+                &before_chirho,
+            );
+            assert!(
+                message_chirho.contains("declares no base version"),
+                "{message_chirho}"
+            );
+        }
+    }
+
+    #[test]
+    fn every_library_bound_on_a_shared_dependency_is_kept_chirho() {
+        let scratch_chirho = ScratchChirho::new_chirho();
+        let store_chirho = scratch_chirho.store_chirho();
+        let dep_chirho = scratch_chirho.package_chirho(
+            "dep-chirho",
+            &[
+                ("dep-chirho.cabal", &cabal_chirho("dep-chirho", "2.1", "  exposed-modules: DepChirho.ValueChirho\n  build-depends: base\n")),
+                ("src/DepChirho/ValueChirho.hs", "module DepChirho.ValueChirho (depValueChirho) where\n\ndepValueChirho :: Int\ndepValueChirho = 42\n"),
+            ],
+        );
+        scratch_chirho.install_dir_chirho(&dep_chirho).unwrap();
+        // Neither library imports dep-chirho: the bounds alone must decide.
+        let two_libraries_chirho = |name_chirho: &str, second_bound_chirho: &str| {
+            let cabal_text_chirho = format!(
+                "cabal-version: 2.4\nname: {name_chirho}\nversion: 0.1\nbuild-type: Simple\n\nlibrary\n  exposed-modules: TwoMainChirho\n  build-depends: base, dep-chirho >=2\n  hs-source-dirs: src\n  default-language: Haskell2010\n\nlibrary second-chirho\n  exposed-modules: TwoSecondChirho\n  build-depends: base, dep-chirho {second_bound_chirho}\n  hs-source-dirs: src\n  default-language: Haskell2010\n"
+            );
+            scratch_chirho.package_chirho(
+                name_chirho,
+                &[
+                    (&format!("{name_chirho}.cabal"), &cabal_text_chirho),
+                    ("src/TwoMainChirho.hs", "module TwoMainChirho (mainValueChirho) where\n\nmainValueChirho :: Int\nmainValueChirho = 1\n"),
+                    ("src/TwoSecondChirho.hs", "module TwoSecondChirho (secondValueChirho) where\n\nsecondValueChirho :: Int\nsecondValueChirho = 2\n"),
+                ],
+            )
+        };
+        let before_chirho = store_snapshot_chirho(&store_chirho);
+        let message_chirho = assert_refused_unchanged_chirho(
+            scratch_chirho.install_dir_chirho(&two_libraries_chirho("strict-two-chirho", ">=999")),
+            &store_chirho,
+            &before_chirho,
+        );
+        assert!(
+            message_chirho.contains("does not satisfy"),
+            "{message_chirho}"
+        );
+        assert!(
+            message_chirho.contains(">=999"),
+            "the second library's bound is kept: {message_chirho}"
+        );
+
+        let result_chirho = scratch_chirho
+            .install_dir_chirho(&two_libraries_chirho("loose-two-chirho", ">=2.1"))
+            .unwrap();
+        assert_eq!(result_chirho.checked_module_count_chirho, 2);
+        assert!(result_chirho.record_chirho.dependencies_chirho.contains(
+            &ResolvedDependencyChirho::StoreChirho(
+                "dep-chirho".to_string(),
+                parse_version_chirho("2.1").unwrap()
+            )
+        ));
+    }
+
+    #[test]
+    fn a_demanded_dependency_that_no_longer_compiles_refuses_the_install_chirho() {
+        let scratch_chirho = ScratchChirho::new_chirho();
+        let store_chirho = scratch_chirho.store_chirho();
+        let library_package_chirho = |name_chirho: &str,
+                                      depends_chirho: &str,
+                                      module_chirho: &str,
+                                      text_chirho: &str| {
+            scratch_chirho.package_chirho(
+                name_chirho,
+                &[
+                    (&format!("{name_chirho}.cabal"), &cabal_chirho(name_chirho, "1.0", &format!("  exposed-modules: {module_chirho}\n  build-depends: {depends_chirho}\n"))),
+                    (&format!("src/{module_chirho}.hs"), text_chirho),
+                ],
+            )
+        };
+        scratch_chirho
+            .install_dir_chirho(&library_package_chirho(
+                "dep-b-chirho",
+                "base",
+                "DepBChirho",
+                "module DepBChirho (bValueChirho) where\n\nbValueChirho :: Int\nbValueChirho = 1\n",
+            ))
+            .unwrap();
+        scratch_chirho
+            .install_dir_chirho(&library_package_chirho("dep-a-chirho", "base, dep-b-chirho", "DepAChirho", "module DepAChirho (aValueChirho) where\n\nimport DepBChirho (bValueChirho)\n\naValueChirho :: Int\naValueChirho = bValueChirho + 1\n"))
+            .unwrap();
+        let user_chirho = library_package_chirho(
+            "user-chirho",
+            "base, dep-a-chirho",
+            "UserChirho",
+            "module UserChirho (userValueChirho) where\n\nimport DepAChirho (aValueChirho)\n\nuserValueChirho :: Int\nuserValueChirho = aValueChirho + 1\n",
+        );
+        // The transitive dependency stops compiling; the strict collector must not skip it.
+        fs::write(
+            store_chirho.join("dep-b-chirho-1.0/src/DepBChirho.hs"),
+            "module DepBChirho (bValueChirho) where\n\nbValueChirho :: Int\nbValueChirho = \"broken\"\n",
+        )
+        .unwrap();
+        let before_chirho = store_snapshot_chirho(&store_chirho);
+        let message_chirho = assert_refused_unchanged_chirho(
+            scratch_chirho.install_dir_chirho(&user_chirho),
+            &store_chirho,
+            &before_chirho,
+        );
+        assert!(message_chirho.contains("dep-b-chirho"), "{message_chirho}");
+
+        // So does a direct dependency whose module no longer compiles.
+        fs::write(
+            store_chirho.join("dep-b-chirho-1.0/src/DepBChirho.hs"),
+            "module DepBChirho (bValueChirho) where\n\nbValueChirho :: Int\nbValueChirho = 1\n",
+        )
+        .unwrap();
+        fs::write(
+            store_chirho.join("dep-a-chirho-1.0/src/DepAChirho.hs"),
+            "module DepAChirho (aValueChirho) where\n\naValueChirho :: Int\naValueChirho = True\n",
+        )
+        .unwrap();
+        let before_chirho = store_snapshot_chirho(&store_chirho);
+        let message_chirho = assert_refused_unchanged_chirho(
+            scratch_chirho.install_dir_chirho(&user_chirho),
+            &store_chirho,
+            &before_chirho,
+        );
+        assert!(message_chirho.contains("dep-a-chirho"), "{message_chirho}");
     }
 
     #[test]

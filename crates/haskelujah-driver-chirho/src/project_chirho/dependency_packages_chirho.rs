@@ -242,15 +242,62 @@ pub(crate) fn merge_local_dependency_package_index_chirho(
     Ok(merged_index_chirho)
 }
 
+/// How the dependency collector treats a demanded dependency it cannot find or compile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DependencyDemandChirho {
+    /// Warn and continue without it, as builds have done (row 634).
+    BestEffortChirho,
+    /// Every demanded direct and transitive dependency must be found and must compile; the
+    /// first failure is the error. Source install uses this, so nothing it records was skipped
+    /// (row 703).
+    RequiredChirho,
+}
+
 pub(crate) fn collect_local_dependency_frontend_artifacts_chirho(
     project_dir_chirho: &Path,
     root_deps_chirho: &[haskelujah_package_chirho::DependencyChirho],
 ) -> Result<FrontendSeedArtifactsChirho, String> {
+    collect_dependency_frontend_artifacts_with_demand_chirho(
+        project_dir_chirho,
+        root_deps_chirho,
+        DependencyDemandChirho::BestEffortChirho,
+    )
+}
+
+/// The collector in its strict mode: an error for any demanded dependency that is missing or
+/// fails to compile, never a warning and a skip (row 703).
+pub(crate) fn collect_required_dependency_frontend_artifacts_chirho(
+    project_dir_chirho: &Path,
+    root_deps_chirho: &[haskelujah_package_chirho::DependencyChirho],
+) -> Result<FrontendSeedArtifactsChirho, String> {
+    collect_dependency_frontend_artifacts_with_demand_chirho(
+        project_dir_chirho,
+        root_deps_chirho,
+        DependencyDemandChirho::RequiredChirho,
+    )
+}
+
+fn collect_dependency_frontend_artifacts_with_demand_chirho(
+    project_dir_chirho: &Path,
+    root_deps_chirho: &[haskelujah_package_chirho::DependencyChirho],
+    demand_chirho: DependencyDemandChirho,
+) -> Result<FrontendSeedArtifactsChirho, String> {
+    let builtin_deps_chirho = builtin_dependency_names_chirho();
     let Some(packages_dir_chirho) = find_dependency_packages_dir_chirho(project_dir_chirho) else {
+        if demand_chirho == DependencyDemandChirho::RequiredChirho
+            && let Some(dep_chirho) = root_deps_chirho
+                .iter()
+                .find(|dep_chirho| !builtin_deps_chirho.contains(&dep_chirho.package_chirho))
+        {
+            return Err(format!(
+                "dependency {} needs a package store, and none was found above {}",
+                dep_chirho.package_chirho,
+                project_dir_chirho.display()
+            ));
+        }
         return Ok(FrontendSeedArtifactsChirho::default());
     };
 
-    let builtin_deps_chirho = builtin_dependency_names_chirho();
     // Seed PrimState type family equations so dependency packages like
     // primitive can resolve PrimState (ST s) = s during compilation.
     let mut artifacts_chirho = FrontendSeedArtifactsChirho {
@@ -266,11 +313,15 @@ pub(crate) fn collect_local_dependency_frontend_artifacts_chirho(
             &dep_chirho.package_chirho,
             &packages_dir_chirho,
             &builtin_deps_chirho,
+            demand_chirho,
             &mut visited_chirho,
             &mut active_chirho,
             &mut artifacts_chirho,
             &mut source_map_chirho,
         ) {
+            if demand_chirho == DependencyDemandChirho::RequiredChirho {
+                return Err(error_chirho);
+            }
             eprintln!(
                 "warning: local dependency '{}' frontend compile skipped: {}",
                 dep_chirho.package_chirho, error_chirho
@@ -285,6 +336,7 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
     package_name_chirho: &str,
     packages_dir_chirho: &Path,
     builtin_deps_chirho: &std::collections::HashSet<String>,
+    demand_chirho: DependencyDemandChirho,
     visited_chirho: &mut std::collections::HashSet<String>,
     active_chirho: &mut std::collections::HashSet<String>,
     artifacts_chirho: &mut FrontendSeedArtifactsChirho,
@@ -303,12 +355,24 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
         find_local_dependency_package_dir_chirho(packages_dir_chirho, package_name_chirho)
     else {
         active_chirho.remove(package_name_chirho);
-        return Ok(());
+        return match demand_chirho {
+            DependencyDemandChirho::BestEffortChirho => Ok(()),
+            DependencyDemandChirho::RequiredChirho => Err(format!(
+                "dependency {package_name_chirho} has no package directory in {}",
+                packages_dir_chirho.display()
+            )),
+        };
     };
 
     let Some(cabal_path_chirho) = find_cabal_in_dir_chirho(&package_dir_chirho) else {
         active_chirho.remove(package_name_chirho);
-        return Ok(());
+        return match demand_chirho {
+            DependencyDemandChirho::BestEffortChirho => Ok(()),
+            DependencyDemandChirho::RequiredChirho => Err(format!(
+                "dependency {package_name_chirho} has no .cabal file in {}",
+                package_dir_chirho.display()
+            )),
+        };
     };
 
     let cabal_content_chirho = std::fs::read_to_string(&cabal_path_chirho).map_err(|e_chirho| {
@@ -325,11 +389,18 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
             &dep_chirho.package_chirho,
             packages_dir_chirho,
             builtin_deps_chirho,
+            demand_chirho,
             visited_chirho,
             active_chirho,
             artifacts_chirho,
             source_map_chirho,
         ) {
+            if demand_chirho == DependencyDemandChirho::RequiredChirho {
+                return Err(format!(
+                    "{package_name_chirho} depends on {}: {error_chirho}",
+                    dep_chirho.package_chirho
+                ));
+            }
             eprintln!(
                 "warning: transitive local dependency '{}' frontend compile skipped: {}",
                 dep_chirho.package_chirho, error_chirho

@@ -85,12 +85,16 @@ impl std::error::Error for SourceInstallErrorChirho {}
 #[derive(Debug, Clone)]
 pub struct SourceStoreChirho {
     root_chirho: PathBuf,
+    /// The canonical root, which names this store whatever spelling opened it.
+    identity_chirho: PathBuf,
 }
 
-/// Proof that this process holds a store's install lock; dropping it releases the lock.
+/// Proof that this process holds one store's install lock; dropping it releases the lock. A
+/// store refuses a lock taken on another store before it changes anything.
 #[derive(Debug)]
 pub struct StoreLockChirho {
     _file_chirho: File,
+    store_identity_chirho: PathBuf,
 }
 
 fn io_message_chirho(action_chirho: &str, path_chirho: &Path, error_chirho: io::Error) -> String {
@@ -139,9 +143,25 @@ impl SourceStoreChirho {
                 root_chirho.display()
             ));
         }
+        let identity_chirho = fs::canonicalize(root_chirho)
+            .map_err(|error_chirho| io_message_chirho("resolve", root_chirho, error_chirho))?;
         Ok(Self {
             root_chirho: root_chirho.to_path_buf(),
+            identity_chirho,
         })
+    }
+
+    /// Refuse a lock that another store handed out.
+    fn ensure_own_lock_chirho(&self, lock_chirho: &StoreLockChirho) -> Result<(), String> {
+        if lock_chirho.store_identity_chirho == self.identity_chirho {
+            Ok(())
+        } else {
+            Err(format!(
+                "the install lock given belongs to {}, not to {}",
+                lock_chirho.store_identity_chirho.display(),
+                self.identity_chirho.display()
+            ))
+        }
     }
 
     pub fn root_chirho(&self) -> &Path {
@@ -180,6 +200,7 @@ impl SourceStoreChirho {
         match file_chirho.try_lock() {
             Ok(()) => Ok(StoreLockChirho {
                 _file_chirho: file_chirho,
+                store_identity_chirho: self.identity_chirho.clone(),
             }),
             Err(TryLockError::WouldBlock) => Err(format!(
                 "another install holds the lock {}; wait for it to finish",
@@ -217,8 +238,9 @@ impl SourceStoreChirho {
     pub fn save_db_chirho(
         &self,
         db_chirho: &SourcePackageDbChirho,
-        _lock_chirho: &StoreLockChirho,
+        lock_chirho: &StoreLockChirho,
     ) -> Result<(), String> {
+        self.ensure_own_lock_chirho(lock_chirho)?;
         let meta_dir_chirho = self.meta_dir_chirho();
         ensure_real_dir_chirho(&meta_dir_chirho)?;
         let temp_path_chirho = meta_dir_chirho.join(SOURCE_DB_TEMP_FILE_NAME_CHIRHO);
@@ -262,7 +284,8 @@ impl SourceStoreChirho {
 
     /// Remove every leftover of earlier installs from the staging directory. Only an install
     /// holding the lock may sweep, so no live install loses its staging.
-    pub fn sweep_staging_chirho(&self, _lock_chirho: &StoreLockChirho) -> Result<usize, String> {
+    pub fn sweep_staging_chirho(&self, lock_chirho: &StoreLockChirho) -> Result<usize, String> {
+        self.ensure_own_lock_chirho(lock_chirho)?;
         let staging_root_chirho = self.staging_root_chirho();
         ensure_real_dir_chirho(&staging_root_chirho)?;
         let entries_chirho = fs::read_dir(&staging_root_chirho).map_err(|error_chirho| {
@@ -291,10 +314,8 @@ impl SourceStoreChirho {
 
     /// Create an empty staging directory for this install, on the store's own filesystem so
     /// that publishing is a single rename.
-    pub fn new_staging_dir_chirho(
-        &self,
-        _lock_chirho: &StoreLockChirho,
-    ) -> Result<PathBuf, String> {
+    pub fn new_staging_dir_chirho(&self, lock_chirho: &StoreLockChirho) -> Result<PathBuf, String> {
+        self.ensure_own_lock_chirho(lock_chirho)?;
         let staging_root_chirho = self.staging_root_chirho();
         ensure_real_dir_chirho(&staging_root_chirho)?;
         let nanos_chirho = std::time::SystemTime::now()

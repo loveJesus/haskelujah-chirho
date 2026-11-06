@@ -109,11 +109,39 @@ fn single_archive_root_chirho(archive_dir_chirho: &Path) -> Result<String, Strin
     Ok(root_name_chirho)
 }
 
+/// How large a staged source tree may grow: every entry, directories included, and the bytes of
+/// its files.
+#[derive(Debug, Clone, Copy)]
+struct SourceTreeLimitsChirho {
+    entries_chirho: usize,
+    bytes_chirho: u64,
+}
+
+/// The limits a release archive has, applied to every install input.
+const SOURCE_TREE_LIMITS_CHIRHO: SourceTreeLimitsChirho = SourceTreeLimitsChirho {
+    entries_chirho: MAX_ARCHIVE_ENTRIES_CHIRHO,
+    bytes_chirho: MAX_ARCHIVE_BYTES_CHIRHO,
+};
+
 /// Copy the package tree at `source_dir_chirho` into the new directory `dest_dir_chirho`,
 /// returning what was left out. Only the root may be reached through a link the caller named.
 fn copy_source_tree_chirho(
     source_dir_chirho: &Path,
     dest_dir_chirho: &Path,
+) -> Result<Vec<PathBuf>, String> {
+    copy_source_tree_within_chirho(
+        source_dir_chirho,
+        dest_dir_chirho,
+        SOURCE_TREE_LIMITS_CHIRHO,
+    )
+}
+
+/// The copy under explicit limits. Each entry counts as it is listed, before any directory is
+/// held in memory whole, so neither many files nor many directories pass the bound.
+fn copy_source_tree_within_chirho(
+    source_dir_chirho: &Path,
+    dest_dir_chirho: &Path,
+    limits_chirho: SourceTreeLimitsChirho,
 ) -> Result<Vec<PathBuf>, String> {
     let root_metadata_chirho = fs::metadata(source_dir_chirho)
         .map_err(|error_chirho| io_message_chirho("read", source_dir_chirho, error_chirho))?;
@@ -126,8 +154,14 @@ fn copy_source_tree_chirho(
     fs::create_dir(dest_dir_chirho)
         .map_err(|error_chirho| io_message_chirho("create", dest_dir_chirho, error_chirho))?;
     let mut excluded_paths_chirho = Vec::new();
-    let mut file_count_chirho = 0usize;
+    let mut entry_count_chirho = 0usize;
     let mut byte_count_chirho = 0u64;
+    let over_limit_chirho = || {
+        format!(
+            "the package exceeds {} entries or {} bytes",
+            limits_chirho.entries_chirho, limits_chirho.bytes_chirho
+        )
+    };
     let mut pending_dirs_chirho = vec![PathBuf::new()];
     while let Some(relative_dir_chirho) = pending_dirs_chirho.pop() {
         let listed_dir_chirho = source_dir_chirho.join(&relative_dir_chirho);
@@ -138,6 +172,10 @@ fn copy_source_tree_chirho(
             let entry_chirho = entry_chirho.map_err(|error_chirho| {
                 io_message_chirho("list", &listed_dir_chirho, error_chirho)
             })?;
+            entry_count_chirho += 1;
+            if entry_count_chirho > limits_chirho.entries_chirho {
+                return Err(over_limit_chirho());
+            }
             entries_chirho.push((entry_chirho.file_name(), entry_chirho.path()));
         }
         entries_chirho.sort();
@@ -176,14 +214,9 @@ fn copy_source_tree_chirho(
                 })?;
                 pending_dirs_chirho.push(relative_path_chirho);
             } else if file_type_chirho.is_file() {
-                file_count_chirho += 1;
                 byte_count_chirho = byte_count_chirho.saturating_add(metadata_chirho.len());
-                if file_count_chirho > MAX_ARCHIVE_ENTRIES_CHIRHO
-                    || byte_count_chirho > MAX_ARCHIVE_BYTES_CHIRHO
-                {
-                    return Err(format!(
-                        "the package exceeds {MAX_ARCHIVE_ENTRIES_CHIRHO} files or {MAX_ARCHIVE_BYTES_CHIRHO} bytes"
-                    ));
+                if byte_count_chirho > limits_chirho.bytes_chirho {
+                    return Err(over_limit_chirho());
                 }
                 fs::copy(&source_path_chirho, &dest_path_chirho).map_err(|error_chirho| {
                     io_message_chirho("copy", &source_path_chirho, error_chirho)
@@ -323,3 +356,7 @@ fn is_default_setup_script_chirho(text_chirho: &str, literate_chirho: bool) -> b
     }
     has_default_main_chirho
 }
+
+#[cfg(test)]
+#[path = "package_source_tree_tests_chirho.rs"]
+mod tests_chirho;
