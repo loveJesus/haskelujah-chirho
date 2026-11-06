@@ -19,3 +19,17 @@ flowchart TD
 `builtins_chirho/` and `evidence_chirho.rs` remain beside these homes. Existing conversion files move to `types_chirho/`, instance and signature files to `declarations_chirho/`, and equality and rigid-variable files to `solving_chirho/`. Existing term helpers move to `terms_chirho/`. The inline tests retain their function names and bodies under topic modules; the receipt maps every changed path.
 
 The split preserves inference behavior. Item accounting, string-aware comparison and mutation checks establish the move; canonical full inference dumps over the tracked Haskell corpus establish that schemes, predicates, substitutions, diagnostics and occurrence evidence retain their values and order. Semantic changes belong to later rows.
+
+Row 708's numeric controls separate ordinary nominal equality from numeric producers. `Int` and `Double` are distinct constructors; a literal's class predicate or an explicit `fromIntegral` conversion supplies numeric behavior. The production-equal test checkpoint precedes the narrow unifier correction, and neither checkpoint by itself proves general defaulting or runtime representation behavior.
+
+```mermaid
+flowchart TD
+    literal_chirho[Numeric literal] --> wanted_chirho[Existing Num or Fractional wanted]
+    conversion_chirho[Explicit fromIntegral application] --> scheme_chirho[Existing constrained callable scheme]
+    wanted_chirho --> solve_chirho[Ordinary inference and constraint solving]
+    scheme_chirho --> solve_chirho
+    signed_chirho[Signed value or nested type] --> unify_chirho[unify_chirho: structural nominal equality]
+    solve_chirho --> unify_chirho
+    unify_chirho --> equal_chirho[Equal constructor or metavariable substitution]
+    unify_chirho --> mismatch_chirho[Distinct constructors report mismatch]
+```

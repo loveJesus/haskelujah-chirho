@@ -35,6 +35,8 @@ mod maybe_helper_schemes_chirho;
 mod method_ownership_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/monad_owned_dictionary_chirho.rs"]
 mod monad_owned_dictionary_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/numeric_nominality_chirho/mod.rs"]
+mod numeric_nominality_chirho;
 #[path = "typing_integration_chirho/operator_ownership_chirho.rs"]
 mod operator_ownership_chirho;
 #[path = "typing_integration_chirho/paren_infix_definitions_chirho.rs"]

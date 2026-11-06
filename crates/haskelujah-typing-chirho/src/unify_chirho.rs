@@ -487,6 +487,83 @@ mod tests_chirho {
     use super::*;
 
     #[test]
+    fn numeric_nominality_rejects_int_double_in_both_directions_chirho() {
+        for (left_chirho, right_chirho) in [
+            (TyChirho::int_chirho(), TyChirho::double_chirho()),
+            (TyChirho::double_chirho(), TyChirho::int_chirho()),
+        ] {
+            assert!(matches!(
+                unify_chirho(&left_chirho, &right_chirho, SpanChirho::DUMMY_CHIRHO),
+                Err(UnifyErrorChirho::MismatchChirho { .. })
+            ));
+        }
+    }
+
+    #[test]
+    fn numeric_nominality_rejects_nested_numeric_mismatches_chirho() {
+        let int_chirho = TyChirho::int_chirho();
+        let double_chirho = TyChirho::double_chirho();
+        let cases_chirho = [
+            (
+                TyChirho::fun_chirho(int_chirho.clone(), TyChirho::bool_chirho()),
+                TyChirho::fun_chirho(double_chirho.clone(), TyChirho::bool_chirho()),
+            ),
+            (
+                TyChirho::fun_chirho(TyChirho::bool_chirho(), int_chirho.clone()),
+                TyChirho::fun_chirho(TyChirho::bool_chirho(), double_chirho.clone()),
+            ),
+            (
+                TyChirho::ListChirho(Box::new(int_chirho.clone())),
+                TyChirho::ListChirho(Box::new(double_chirho.clone())),
+            ),
+            (
+                TyChirho::TupleChirho(vec![TyChirho::bool_chirho(), int_chirho.clone()]),
+                TyChirho::TupleChirho(vec![TyChirho::bool_chirho(), double_chirho.clone()]),
+            ),
+            (
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                    Box::new(int_chirho),
+                ),
+                TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Maybe".to_string())),
+                    Box::new(double_chirho),
+                ),
+            ),
+        ];
+        for (left_chirho, right_chirho) in cases_chirho {
+            for (actual_chirho, expected_chirho) in
+                [(&left_chirho, &right_chirho), (&right_chirho, &left_chirho)]
+            {
+                assert!(matches!(
+                    unify_chirho(actual_chirho, expected_chirho, SpanChirho::DUMMY_CHIRHO),
+                    Err(UnifyErrorChirho::MismatchChirho { .. })
+                ));
+            }
+        }
+    }
+
+    #[test]
+    fn numeric_nominality_preserves_same_types_and_meta_substitution_chirho() {
+        for ty_chirho in [TyChirho::int_chirho(), TyChirho::double_chirho()] {
+            assert!(
+                unify_chirho(&ty_chirho, &ty_chirho, SpanChirho::DUMMY_CHIRHO)
+                    .unwrap()
+                    .is_empty_chirho()
+            );
+            let variable_chirho = TyChirho::VarChirho(TyVarChirho(27));
+            for (left_chirho, right_chirho) in [
+                (&variable_chirho, &ty_chirho),
+                (&ty_chirho, &variable_chirho),
+            ] {
+                let subst_chirho =
+                    unify_chirho(left_chirho, right_chirho, SpanChirho::DUMMY_CHIRHO).unwrap();
+                assert_eq!(subst_chirho.apply_ty_chirho(&variable_chirho), ty_chirho);
+            }
+        }
+    }
+
+    #[test]
     fn unify_identical_con_chirho() {
         let s_chirho = unify_chirho(
             &TyChirho::int_chirho(),
