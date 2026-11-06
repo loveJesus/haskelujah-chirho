@@ -132,3 +132,37 @@ fn documented_aliases_control_layout_and_ordinary_scoped_variables_chirho() {
     assert!(check_chirho(abstraction_chirho, &[]).is_err());
     assert!(check_chirho(abstraction_chirho, &["-XScopedTypeVariables"]).is_ok());
 }
+
+#[test]
+fn datatype_context_flag_does_not_license_a_polymorphic_field_chirho() {
+    let field_chirho = "{-# LANGUAGE Haskell2010, ExplicitForAll #-}\nmodule LegacyExplicitRankDisabledChirho where\nnewtype BoxChirho = BoxChirho (forall aChirho. aChirho -> aChirho)\n";
+    let head_chirho = "{-# LANGUAGE Haskell2010, ExplicitForAll #-}\nmodule DatatypeContextRankDisabledChirho where\ndata Eq aChirho => BoxChirho aChirho = BoxChirho (forall bChirho. bChirho -> bChirho)\n";
+    let outcomes_chirho = [
+        check_chirho(field_chirho, &[]).is_err(),
+        check_chirho(head_chirho, &[]).is_err(),
+    ];
+    assert_eq!(outcomes_chirho, [true, true]);
+}
+
+#[test]
+fn datatype_head_context_and_enabled_rank_field_remain_accepted_chirho() {
+    let head_chirho = "{-# LANGUAGE Haskell2010 #-}\nmodule DatatypeContextMonomorphicChirho where\ndata Eq aChirho => BoxChirho aChirho = BoxChirho aChirho\n";
+    let field_chirho = "{-# LANGUAGE Haskell2010, RankNTypes #-}\nmodule LegacyRankEnabledChirho where\nnewtype BoxChirho = BoxChirho (forall aChirho. aChirho -> aChirho)\n";
+    let outcomes_chirho = [
+        check_chirho(head_chirho, &[]).is_ok(),
+        check_chirho(field_chirho, &[]).is_ok(),
+    ];
+    assert_eq!(outcomes_chirho, [true, true]);
+}
+
+#[test]
+fn effective_rank_flag_overrides_default_edition_and_deferral_chirho() {
+    let source_chirho = "module ModernRankDefaultChirho where\nnewtype BoxChirho = BoxChirho (forall aChirho. aChirho -> aChirho)\n";
+    let outcomes_chirho = [
+        check_chirho(source_chirho, &[]).is_ok(),
+        check_chirho(source_chirho, &["-XNoRankNTypes"]).is_err(),
+        check_chirho(source_chirho, &["-XNoRankNTypes", "-fdefer-type-errors"]).is_err(),
+        check_chirho(source_chirho, &["-XNoRankNTypes", "-XRankNTypes"]).is_ok(),
+    ];
+    assert_eq!(outcomes_chirho, [true, true, true, true]);
+}
