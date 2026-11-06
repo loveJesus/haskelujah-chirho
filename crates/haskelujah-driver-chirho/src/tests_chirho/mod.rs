@@ -36,6 +36,8 @@ pub mod evidence_chirho;
 pub mod extensions_chirho;
 #[path = "features_chirho/install_chirho.rs"]
 pub mod install_chirho;
+#[path = "features_chirho/install_source_chirho.rs"]
+pub mod install_source_chirho;
 #[path = "features_chirho/linear_chirho.rs"]
 pub mod linear_chirho;
 #[path = "features_chirho/module_search_chirho.rs"]

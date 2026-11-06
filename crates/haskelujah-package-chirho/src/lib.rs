@@ -10,12 +10,22 @@
 //! - Version constraint parsing and satisfaction checking
 //! - Hackage index querying (tarball URL construction)
 //! - Dependency resolution types
+//! - Source package stores: the compiler-provided package list, Cabal-generated modules, the
+//!   strict source package database and atomic, locked store publication (row 703)
 
+pub mod builtin_packages_chirho;
 pub mod cabal_chirho;
+pub mod generated_modules_chirho;
 pub mod hackage_chirho;
 pub mod pkgdb_chirho;
 pub mod resolve_chirho;
+pub mod source_db_chirho;
+pub mod source_store_chirho;
+#[cfg(test)]
+mod source_store_tests_chirho;
 pub mod version_chirho;
+
+pub use builtin_packages_chirho::{BUILTIN_PACKAGE_NAMES_CHIRHO, is_builtin_package_chirho};
 
 pub use cabal_chirho::{
     BuildInfoChirho, DependencyChirho, ExecutableChirho, LibraryChirho, PackageDescChirho,
@@ -28,6 +38,14 @@ pub use pkgdb_chirho::{
 pub use resolve_chirho::{
     BuildPlanChirho, BuildStepChirho, PackageIndexChirho, PackageMetaChirho, ResolveErrorChirho,
     resolve_deps_chirho,
+};
+pub use source_db_chirho::{
+    CORE_CHECKED_SOURCE_CAPABILITY_CHIRHO, ResolvedDependencyChirho, SourceModuleChirho,
+    SourceModuleOriginChirho, SourcePackageDbChirho, SourcePackageRecordChirho,
+};
+pub use source_store_chirho::{
+    SOURCE_STORE_DIR_NAME_CHIRHO, SourceInstallErrorChirho, SourceInstallInputChirho,
+    SourceStoreChirho, StoreLockChirho, StoreStateAfterFailureChirho,
 };
 pub use version_chirho::{
     VersionChirho, VersionConstraintChirho, parse_version_chirho, parse_version_constraint_chirho,
