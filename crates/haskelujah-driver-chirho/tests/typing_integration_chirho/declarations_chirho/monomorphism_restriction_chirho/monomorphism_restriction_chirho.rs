@@ -31,11 +31,14 @@
 //!   A use may fix it; nothing defaults it.
 //!
 //! Open by name: the restriction's first brick covers top-level function-syntax and simple
-//! pattern bindings. Two controls stay RED until their own bricks land (gpt_chirho #32518):
+//! pattern bindings. Three controls stay RED until their own bricks land (gpt_chirho #32518):
 //! - The executable entry's `IO t` obligation needs an explicit program purpose from the
 //!   caller (`the_executable_entry_role_makes_a_bare_return_io_chirho`).
 //! - Non-simple pattern bindings are not yet restricted
 //!   (`a_pattern_binding_stays_restricted_despite_signatures_chirho`).
+//! - The standard seed's instance contexts and tuple instances carry no compiler proof, so a
+//!   structured residual such as `Show [t]` cannot reach `Show t` under the restriction's
+//!   proof gate (`a_restricted_list_reduces_through_its_instance_chirho`).
 //! workflow: language-features-chirho/fundep-generalization-chirho
 
 use super::{assert_prints_everywhere_chirho, rejected_like_ghc_chirho};
@@ -68,6 +71,9 @@ const SIGNED_SCC_MEMBER_CHIRHO: &str = include_str!("accepted_chirho/signed_scc_
 /// The executable entry's role, not a default, makes `main = return 5` IO.
 const EXECUTABLE_ENTRY_RETURN_CHIRHO: &str =
     include_str!("accepted_chirho/executable_entry_return_chirho.hs");
+/// `Show [t]` reduces through the list instance to `Show t`, which defaults to Integer.
+const RESTRICTED_LIST_SHOWN_CHIRHO: &str =
+    include_str!("accepted_chirho/restricted_list_shown_chirho.hs");
 
 /// One restricted type cannot be both Fractional and Int.
 const RESTRICTED_TWO_TYPES_CHIRHO: &str =
@@ -177,6 +183,15 @@ fn the_executable_entry_role_makes_a_bare_return_io_chirho() {
         "executable_entry_return_chirho.hs",
         EXECUTABLE_ENTRY_RETURN_CHIRHO,
         "",
+    );
+}
+
+#[test]
+fn a_restricted_list_reduces_through_its_instance_chirho() {
+    assert_prints_everywhere_chirho(
+        "restricted_list_shown_chirho.hs",
+        RESTRICTED_LIST_SHOWN_CHIRHO,
+        "[1,2,3]\n",
     );
 }
 
