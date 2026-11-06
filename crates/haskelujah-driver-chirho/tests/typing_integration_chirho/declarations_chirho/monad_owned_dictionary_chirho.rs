@@ -27,7 +27,8 @@
 //! A1, A2 and O1-O3 on GHC 9.14.1, and each printed exactly the output below (#31960):
 //! `tmp-chirho/ghc-contract-refresh-chirho/owned-monad-authority-r1-chirho/summary-chirho.json`
 //! (81fc2d5c) and `.../owned-monad-f40-r1-chirho/summary-chirho.json` (803257ec). U1 and U2
-//! have no GHC run yet.
+//! are measured in `.../owned-monad-unary-r1-chirho/summary-chirho.json` (33735a02), R1 and R2
+//! in `.../owned-monad-display-r1-chirho/summary-chirho.json` (c053a423).
 //!
 //! The first gate (5d564764) passed every one of these on the interpreter. Natively, two
 //! display consumers failed that the bind route never reaches. R1 and R2 reproduce each one
@@ -37,11 +38,19 @@
 //! - R2: `print` at a binding's own `Show` key reached the generic Int-only binding and
 //!   printed a Char as its code point. It now shows through that parameter's `show` (O2).
 //!
-//! The Reader probe stays out. A user instance of a class with a superclass registers no
-//! dictionary under the key its use site carries, which is a separate defect.
+//! Row 699 adds the Reader probes, RD1-RD4. A user instance of a class with a superclass, such
+//! as `Monad (ReaderChirho r)`, registers no dictionary under the constructor its use site
+//! carries: generic-head rule G6 refuses a class with superclasses, so the use site gets an
+//! explicit missing-dictionary error. RD1 and RD2 must print GHC's output on every engine, RD2
+//! through the instance's own callbacks and its superclass slots. GHC refuses RD3 and RD4,
+//! whose superclass dictionary cannot be built, and so must every engine, by name. Each Reader
+//! probe reports every engine's outcome, so one engine's failure hides no other.
 //! workflow: monadic-dispatch-chirho
 
-use super::assert_prints_everywhere_chirho;
+use haskelujah_driver::compile_source_chirho;
+use haskelujah_span_chirho::SourceMapChirho;
+
+use super::{as_ghc_everywhere_chirho, assert_prints_everywhere_chirho, every_engine_chirho};
 
 /// A1 (sha256 c2a75189, root's InnerIoUnderMaybeOwnerChirho, #31949): `keepChirho` owns a
 /// Monad dictionary, called at Maybe, but its `>>` is proved at IO.
@@ -70,24 +79,45 @@ const OWNED_THEN_OPERATOR_CHIRHO: &str =
     include_str!("monad_owned_dictionary_chirho/owned_then_operator_chirho.hs");
 
 /// U1 (sha256 e9fc38c2, root's unary PolymorphicMaybeMonadChirho): the parent failed with
-/// "no matching alternative" on b5 and frozen 47d. Predicted `Just 7`; no GHC run yet.
+/// "no matching alternative" on b5 and frozen 47d. GHC 9.14.1 prints `Just 7`.
 const POLYMORPHIC_MAYBE_MONAD_CHIRHO: &str =
     include_str!("monad_owned_dictionary_chirho/polymorphic_maybe_monad_chirho.hs");
 
 /// U2 (sha256 8043777a, root's unary PolymorphicIOMonadChirho): printed 7 on b5 and frozen
-/// 47d. Predicted 7; no GHC run yet.
+/// 47d. GHC 9.14.1 prints 7.
 const POLYMORPHIC_IO_MONAD_CHIRHO: &str =
     include_str!("monad_owned_dictionary_chirho/polymorphic_io_monad_chirho.hs");
 
-/// R1: `sameChirho :: mChirho Int -> mChirho Int` at a list. Predicted `[5,6]`; no GHC run
-/// yet.
+/// R1 (sha256 35acb0e1): `sameChirho :: mChirho Int -> mChirho Int` at a list. GHC 9.14.1
+/// prints `[5,6]`.
 const APPLIED_LIST_DISPLAY_CHIRHO: &str =
     include_str!("monad_owned_dictionary_chirho/applied_list_display_chirho.hs");
 
-/// R2: `print` inside `showOneChirho :: Show aChirho => aChirho -> IO ()` at Char. Predicted
-/// `'a'`; no GHC run yet.
+/// R2 (sha256 49d09506): `print` inside `showOneChirho :: Show aChirho => aChirho -> IO ()` at
+/// Char. GHC 9.14.1 prints `'a'`.
 const OWN_SHOW_PRINT_CHIRHO: &str =
     include_str!("monad_owned_dictionary_chirho/own_show_print_chirho.hs");
+
+/// RD1 (sha256 edfe0611, root's retained UnaryReaderMonadChirho): `sevenChirho :: Monad m =>
+/// m Int` at a written `Monad (ReaderChirho r)`, whose class has superclasses. Predicted 7.
+const UNARY_READER_MONAD_CHIRHO: &str =
+    include_str!("monad_owned_dictionary_chirho/unary_reader_monad_chirho.hs");
+
+/// RD2 (sha256 084f64ab): one `Monad m` helper at that Reader and at IO. Its `>>=` callback
+/// reads the environment, and it takes `fmap` and `pure` through Monad's superclass slots.
+/// Predicted 41, 11, then 7.
+const READER_SUPERCLASS_CALLBACKS_CHIRHO: &str =
+    include_str!("monad_owned_dictionary_chirho/reader_superclass_callbacks_chirho.hs");
+
+/// RD3 (sha256 b2e0aea9): `Monad (ReaderChirho r)` with no Applicative instance at all.
+/// Predicted GHC rejection: no Applicative instance for the superclass.
+const READER_MISSING_APPLICATIVE_CHIRHO: &str =
+    include_str!("monad_owned_dictionary_chirho/reader_missing_applicative_chirho.hs");
+
+/// RD4 (sha256 8cd77b7c): a context-free `Monad (ReaderChirho r)` over `instance Show r =>
+/// Applicative (ReaderChirho r)`. Predicted GHC rejection: `Show r` for the superclass.
+const READER_CONTEXTUAL_APPLICATIVE_CHIRHO: &str =
+    include_str!("monad_owned_dictionary_chirho/reader_contextual_applicative_chirho.hs");
 
 #[test]
 fn an_io_chain_under_a_maybe_owner_stays_io_everywhere_chirho() {
@@ -160,4 +190,48 @@ fn a_list_typed_through_a_constructor_variable_prints_as_its_list_everywhere_chi
 #[test]
 fn print_at_a_bindings_own_show_dictionary_shows_a_char_everywhere_chirho() {
     assert_prints_everywhere_chirho("OwnShowPrintChirho.hs", OWN_SHOW_PRINT_CHIRHO, "'a'\n");
+}
+
+#[test]
+fn a_monad_helper_at_a_written_reader_instance_matches_ghc_everywhere_chirho() {
+    assert_eq!(
+        every_engine_chirho("UnaryReaderMonadChirho.hs", UNARY_READER_MONAD_CHIRHO),
+        as_ghc_everywhere_chirho("7\n"),
+    );
+}
+
+#[test]
+fn reader_callbacks_and_superclass_methods_take_the_written_instance_everywhere_chirho() {
+    assert_eq!(
+        every_engine_chirho(
+            "ReaderSuperclassCallbacksChirho.hs",
+            READER_SUPERCLASS_CALLBACKS_CHIRHO,
+        ),
+        as_ghc_everywhere_chirho("41\n11\n7\n"),
+    );
+}
+
+#[test]
+fn a_reader_instance_whose_superclass_dictionary_cannot_be_built_is_refused_chirho() {
+    for (file_name_chirho, source_chirho) in [
+        (
+            "ReaderMissingApplicativeChirho.hs",
+            READER_MISSING_APPLICATIVE_CHIRHO,
+        ),
+        (
+            "ReaderContextualApplicativeChirho.hs",
+            READER_CONTEXTUAL_APPLICATIVE_CHIRHO,
+        ),
+    ] {
+        let compiled_chirho = compile_source_chirho(
+            source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            file_name_chirho,
+        );
+        assert!(
+            compiled_chirho.is_err(),
+            "{file_name_chirho}: compiled, though GHC refuses it; every engine: {:?}",
+            every_engine_chirho(file_name_chirho, source_chirho)
+        );
+    }
 }
