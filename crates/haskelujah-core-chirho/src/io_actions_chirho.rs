@@ -25,6 +25,12 @@ const RESULT_CON_CHIRHO: &str = "$IOResultChirho";
 /// Preserve the original Core and its reusable entry value. A separate wrapper
 /// executes only the requested entry; references to that binding still denote
 /// the action, including recursive references.
+///
+/// A free reference keeps the legacy spelling rule and becomes a primitive, except one to
+/// another program module's export (`CoreProvenanceChirho::imported_references_chirho`). That is
+/// the program's own value, so no primitive is manufactured for it: unlinked here, it stays a
+/// missing binding (#32361).
+/// workflow: testing-chirho/execution-oracles-chirho
 pub fn prepare_io_actions_chirho(
     module_chirho: &CoreModuleChirho,
     entry_name_chirho: &str,
@@ -34,9 +40,13 @@ pub fn prepare_io_actions_chirho(
         .iter()
         .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == entry_name_chirho)
         .map(|binding_chirho| binding_chirho.binder_chirho.id_chirho);
-    prepare_io_actions_for_entry_chirho(module_chirho, entry_id_chirho, entry_name_chirho, &|_| {
-        true
-    })
+    let imported_chirho = &module_chirho.provenance_chirho.imported_references_chirho;
+    prepare_io_actions_for_entry_chirho(
+        module_chirho,
+        entry_id_chirho,
+        entry_name_chirho,
+        &|id_chirho| !imported_chirho.contains_key(&id_chirho),
+    )
 }
 
 /// [`prepare_io_actions_chirho`] for the native backends (row 628). The entry is the module's

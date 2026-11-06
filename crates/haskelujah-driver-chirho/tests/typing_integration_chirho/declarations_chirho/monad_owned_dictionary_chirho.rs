@@ -157,6 +157,15 @@ const OWNED_METHOD_VALUES_CHIRHO: &str = include_str!(
     "monad_owned_dictionary_chirho/written_monads_chirho/owned_method_values_chirho.hs"
 );
 
+/// W4 (sha256 b030e89e): the program's own values spelled like the interpreter's IO primitives
+/// keep their bindings (#32355). Its top-level `seq` is applied, passed as a function and held in a
+/// constructor; a where-bound `undefined` is referenced bare; where-bound `pure`, `return` and
+/// `evaluate` are applied; and real IO runs beside them. Predicted from GHC's semantics; the GHC
+/// reference is pinned, not yet executed.
+const OWNED_IO_SPELLINGS_CHIRHO: &str = include_str!(
+    "monad_owned_dictionary_chirho/written_monads_chirho/owned_io_spellings_chirho.hs"
+);
+
 #[test]
 fn an_io_chain_under_a_maybe_owner_stays_io_everywhere_chirho() {
     assert_prints_everywhere_chirho(
@@ -300,6 +309,14 @@ fn a_concrete_head_takes_its_dictionary_beside_the_programs_own_method_values_ch
     assert_eq!(
         every_engine_chirho("OwnedMethodValuesChirho.hs", OWNED_METHOD_VALUES_CHIRHO),
         as_ghc_everywhere_chirho("3\n(200,1005,9)\n"),
+    );
+}
+
+#[test]
+fn the_programs_own_io_spelled_values_keep_their_bindings_everywhere_chirho() {
+    assert_eq!(
+        every_engine_chirho("OwnedIoSpellingsChirho.hs", OWNED_IO_SPELLINGS_CHIRHO),
+        as_ghc_everywhere_chirho("42\n17\n23\n7\n(1005,9,20)\nreal IO\n"),
     );
 }
 

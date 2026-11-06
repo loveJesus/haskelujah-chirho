@@ -27,7 +27,7 @@ flowchart TD
     HK -->|"typed method argument\n(e.g. empty :: [Int])"| TYPEDARG["try_rewrite_typed_method_arg_chirho\nreuse selected instance key"]
     TYPEDARG --> PRIM
     KEY -->|"other methods: no key / no body"| SEL["try_rewrite_method_var_chirho\n$sel_Class_method $dClass_Type\n(dict selector path — GPT-owned)"]
-    SEL -->|"no dict either: Var survives untouched"| FALLBACK["Var keeps original name\n(INV-001: IO by name at STG)"]
+    SEL -->|"no dict either: Var survives untouched"| FALLBACK["Var keeps original name\n(INV-001: IO by name at STG,\nonly for an id the program does not own)"]
     OWNPURE --> ACTIONS
     OWNBIND --> ACTIONS
     HEADDICT --> ACTIONS

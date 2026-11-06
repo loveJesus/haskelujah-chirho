@@ -12,6 +12,9 @@ use super::{
 #[cfg(test)]
 mod tests_chirho;
 
+#[cfg(test)]
+mod binding_ownership_tests_chirho;
+
 impl LowerCtxChirho {
     pub(super) fn emit_named_primitive_chirho(
         &mut self,
@@ -233,8 +236,15 @@ fn primop_name_to_kind_chirho(name_chirho: &str) -> Option<PrimOpKindChirho> {
 /// The IO facade every reference path of the lowering consults, moved from `stg_lower_chirho.rs`
 /// (#32355).
 impl LowerCtxChirho {
-    /// Check if a CoreId refers to a known I/O primop and return the name if so.
+    /// Check if a CoreId refers to a known I/O primop and return the name if so. A spelling is
+    /// consulted only for an id the program does not own (`program_owns_chirho`): every one of
+    /// the lowering's four reference paths asks here, so each keeps a bound value's own id and
+    /// lookup (#32355).
+    /// workflow: testing-chirho/execution-oracles-chirho
     pub(super) fn is_io_primop_chirho(&self, id_chirho: CoreIdChirho) -> Option<&str> {
+        if self.program_owns_chirho(id_chirho) {
+            return None;
+        }
         let name_chirho = self.id_names_chirho.get(&id_chirho)?;
         match name_chirho.as_str() {
             "putStrLn" | "putStr" | "putChar" | "print" | "interact" | "getLine" | "getChar"
@@ -246,6 +256,35 @@ impl LowerCtxChirho {
             | "throw" | "throwIO" | "try" | "bracket" | "finally" => Some(name_chirho.as_str()),
             _ => None,
         }
+    }
+
+    /// Whether the program owns `id_chirho`, so that no spelling may make it an IO primop. Each
+    /// is read from what the lowering already holds and from the module's provenance, never from
+    /// a name:
+    /// - a lambda parameter or a value captured into an argument slot;
+    /// - a let, where or case binder held in the environment;
+    /// - a top-level binding the compiler did not generate. The module must record what it
+    ///   generated (`CoreProvenanceChirho::compiler_bindings_chirho`, the only bindings a backend
+    ///   may recognize by spelling). A module without that record, such as the multi-module
+    ///   interpreter merge, keeps the legacy spelling route at top level;
+    /// - a reference to another program module's export (`imported_references_chirho`). Unlinked
+    ///   here, it stays a missing binding.
+    ///
+    /// A free id that no program binding owns keeps its builtin spelling, as before.
+    /// workflow: testing-chirho/execution-oracles-chirho
+    fn program_owns_chirho(&self, id_chirho: CoreIdChirho) -> bool {
+        let generated_chirho = &self.provenance_chirho.compiler_bindings_chirho;
+        let owns_binding_chirho = if self.top_level_ids_chirho.contains(&id_chirho) {
+            !generated_chirho.is_empty() && !generated_chirho.contains(&id_chirho)
+        } else {
+            self.env_chirho.contains_key(&id_chirho)
+        };
+        owns_binding_chirho
+            || self.arg_param_indices_chirho.contains_key(&id_chirho)
+            || self
+                .provenance_chirho
+                .imported_references_chirho
+                .contains_key(&id_chirho)
     }
 
     pub(super) fn io_primop_value_arity_chirho(name_chirho: &str) -> Option<u16> {

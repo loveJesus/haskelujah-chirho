@@ -144,6 +144,30 @@ fallback to addition. The emitter preserves supported aliases and gives an unkno
 primitive a named demand-time error. Its control distinguishes unsupported arithmetic
 from a real addition result; an unexecuted branch remains lazy.
 
+A spelling reaches an IO primitive only for an id the program does not own (#32355).
+The lowering has four reference paths: a bare reference, an application's head, an
+argument, and a constructor field. Each asks one facade, `is_io_primop_chirho`, which
+refuses its spelling for:
+- a lambda parameter or captured argument slot;
+- a let, where or case binder the lowering holds;
+- a top-level binding outside the module's record of what the compiler generated,
+  `CoreProvenanceChirho::compiler_bindings_chirho`. A module without that record keeps
+  the legacy spelling route at top level. The multi-module interpreter merge
+  (`project_chirho/multi_module_chirho.rs`) still builds its module with empty
+  provenance: a named producer seam;
+- another program module's export (`imported_references_chirho`).
+
+Such an id keeps its own lookup, or its named missing-binding error. A free canonical
+reference and a generated binding keep the primitive. The interpreter's IO-action
+preparation, `prepare_io_actions_chirho`, likewise manufactures no primitive for a program
+import (#32361). An unlinked import therefore fails closed by name instead of borrowing
+the Prelude's body; that refusal is not a claim that imports run. The native preparation
+keeps its positive `builtin_references_chirho` rule.
+
+The controls are `stg_lower_chirho/primitives_chirho/binding_ownership_tests_chirho.rs`
+(all four paths, the generated, free and imported cases, and a real import from its
+producer to both interpreter consumers), and W3 and W4 on every engine.
+
 Generated MaybeT helpers preserve the underlying monadic action. They accept the
 call-site Monad dictionary; pure is selected from its Applicative superclass,
 and bind from Monad itself. The same helper body is tested with IO, Maybe and

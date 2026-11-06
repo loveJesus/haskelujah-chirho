@@ -18,6 +18,7 @@ mod primitives_chirho;
 
 use haskelujah_core_chirho::expr_chirho::{
     AltConChirho, CoreExprChirho, CoreIdChirho, CoreLitChirho, CoreModuleChirho,
+    CoreProvenanceChirho,
 };
 use haskelujah_runtime_chirho::stack_chirho::PrimOpKindChirho;
 use haskelujah_runtime_chirho::value_chirho::CodePtrChirho;
@@ -59,6 +60,12 @@ struct LowerCtxChirho {
     id_names_chirho: HashMap<CoreIdChirho, String>,
     /// Newtype constructor names — these constructors are identity at runtime.
     newtype_cons_chirho: std::collections::HashSet<String>,
+    /// The module's own record of the bindings the compiler generated and the program's
+    /// imports: the IO facade lets a spelling reach only an id the program does not own (#32355).
+    provenance_chirho: CoreProvenanceChirho,
+    /// The module's top-level binders, as phase 1 allocates them; every other bound id is a
+    /// local binder (#32355).
+    top_level_ids_chirho: HashSet<CoreIdChirho>,
 }
 
 impl LowerCtxChirho {
@@ -72,6 +79,8 @@ impl LowerCtxChirho {
             next_con_tag_chirho: 0,
             id_names_chirho: HashMap::new(),
             newtype_cons_chirho: std::collections::HashSet::new(),
+            provenance_chirho: CoreProvenanceChirho::default(),
+            top_level_ids_chirho: HashSet::new(),
         }
     }
 
@@ -1190,6 +1199,10 @@ pub fn lower_module_to_stg_chirho(
 ) -> StgProgramChirho {
     let mut ctx_chirho = LowerCtxChirho::new_chirho();
     ctx_chirho.newtype_cons_chirho = newtype_cons_chirho;
+    // What the compiler generated and what the program imports decide which ids a spelling
+    // may reach (#32355).
+    // workflow: testing-chirho/execution-oracles-chirho
+    ctx_chirho.provenance_chirho = module_chirho.provenance_chirho.clone();
 
     // Populate the id→name map from the module's desugaring context
     ctx_chirho.id_names_chirho = module_chirho.names_chirho.clone();
@@ -1209,6 +1222,9 @@ pub fn lower_module_to_stg_chirho(
             binding_chirho.binder_chirho.id_chirho,
             ValueChirho::HeapPtrChirho(addr_chirho),
         );
+        ctx_chirho
+            .top_level_ids_chirho
+            .insert(binding_chirho.binder_chirho.id_chirho);
         ctx_chirho.id_names_chirho.insert(
             binding_chirho.binder_chirho.id_chirho,
             binding_chirho.binder_chirho.name_chirho.clone(),
