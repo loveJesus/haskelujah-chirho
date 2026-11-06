@@ -76,10 +76,16 @@ flowchart TD
 - "Could not deduce" is reported only when no instance could ever apply
   (`rigid_pred_certainly_undeducible_chirho`): fully visible class, simple argument shapes, and
   a bare rigid argument matched only by a variable-headed instance.
-- Given entailment through superclasses uses `is_transitive_superclass_chirho`, a walk shared
-  with context reduction and the fundep subclass guard. It visits each class once, so a
-  superclass cycle that UndecidableSuperClasses allows ends it (T16414; controls in
-  `rigid_tyvars_chirho/superclass_cycles_chirho.rs`).
+- Given entailment through superclasses is `superclass_entails_chirho` (row 694, #31909,
+  #31972): each class's superclass templates instantiated at the given's own arguments,
+  searched on demand. It ends at the first match and expands only classes that can still reach
+  the wanted class by name, a walk that visits each class once. A step bound and a type-size
+  bound end every cycle UndecidableSuperClasses allows, the changing `class C [a] => C a`
+  included. A stopped search is unknown, never "not entailed", so the certainly-unsolvable
+  verdict stays unproved, as its sub-goal depth bound leaves it. Context reduction and the
+  fundep subclass guard keep the name walk `is_transitive_superclass_chirho` (T16414; controls
+  in `rigid_tyvars_chirho/superclass_cycles_chirho.rs` and
+  `class_chirho/superclass_search_tests_chirho.rs`).
 
 ## Record construction and update by field set (2026-09-07)
 

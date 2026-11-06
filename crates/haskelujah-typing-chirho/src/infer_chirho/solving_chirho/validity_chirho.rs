@@ -5,7 +5,9 @@
 
 use super::InferCtxChirho;
 use super::UNSATISFIED_CONSTRAINT_CODE_CHIRHO;
-use crate::class_chirho::{ClassEnvChirho, InstDeclChirho, PredChirho};
+use crate::class_chirho::{
+    ClassEnvChirho, InstDeclChirho, PredChirho, SuperclassSearchExhaustedChirho,
+};
 use crate::ty_chirho::TyChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
@@ -253,13 +255,16 @@ impl InferCtxChirho {
                     .collect(),
             })
             .collect();
-        if self.pred_entailed_by_givens_chirho(pred_chirho, &self.given_preds_chirho)
-            || self
-                .pred_entailed_by_givens_chirho(&normalized_pred_chirho, &normalized_givens_chirho)
-        {
-            return false;
-        }
-        true
+        // Certainly unsolvable only when both searches end with nothing left: a proof clears
+        // it, and a superclass search a bound stopped leaves it unproved, as the sub-goal
+        // depth bound does (row 694, #31972).
+        matches!(
+            self.givens_entail_chirho(pred_chirho, &self.given_preds_chirho),
+            Ok(false)
+        ) && matches!(
+            self.givens_entail_chirho(&normalized_pred_chirho, &normalized_givens_chirho),
+            Ok(false)
+        )
     }
 
     /// The predicate to NAME when one is certainly unsolvable: the sub-goal that
@@ -313,15 +318,35 @@ impl InferCtxChirho {
         pred_chirho: &PredChirho,
         givens_chirho: &[PredChirho],
     ) -> bool {
-        // A given entails itself and every superclass its class's templates instantiate at its
-        // own arguments: `AskChirho Int m` gives `Monad m` (row 694, #31909). For a unary class
-        // this is the old rule, the same argument under a transitive superclass.
-        givens_chirho.iter().any(|given_chirho| {
-            pred_chirho == given_chirho
-                || self
-                    .class_env_chirho
-                    .superclass_closure_chirho(given_chirho)
-                    .contains(pred_chirho)
-        })
+        // Proved only: an unknown answer keeps the obligation, as an unproved one does.
+        matches!(
+            self.givens_entail_chirho(pred_chirho, givens_chirho),
+            Ok(true)
+        )
+    }
+
+    /// Whether `givens_chirho` entail `pred_chirho`: a given entails itself and every
+    /// superclass its class's templates instantiate at its own arguments, `AskChirho Int m`
+    /// giving `Monad m` (row 694, #31909); for a unary class this is the old rule, the same
+    /// argument under a transitive superclass. `Ok(true)` when one does, `Ok(false)` when every
+    /// search ended with nothing left, and the exhaustion when a bound stopped one and none
+    /// proved it (#31972).
+    pub(super) fn givens_entail_chirho(
+        &self,
+        pred_chirho: &PredChirho,
+        givens_chirho: &[PredChirho],
+    ) -> Result<bool, SuperclassSearchExhaustedChirho> {
+        let mut exhausted_chirho = None;
+        for given_chirho in givens_chirho {
+            match self
+                .class_env_chirho
+                .superclass_entails_chirho(given_chirho, pred_chirho)
+            {
+                Ok(true) => return Ok(true),
+                Ok(false) => {}
+                Err(exhaustion_chirho) => exhausted_chirho = Some(exhaustion_chirho),
+            }
+        }
+        exhausted_chirho.map_or(Ok(false), Err)
     }
 }

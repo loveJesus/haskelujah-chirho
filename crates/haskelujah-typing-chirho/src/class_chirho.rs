@@ -13,7 +13,7 @@
 //!   supporting instance resolution / context reduction
 
 use haskelujah_ast_chirho::expr_chirho::MatchArmChirho;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt;
 
 use haskelujah_span_chirho::SpanChirho;
@@ -22,7 +22,9 @@ use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
 use crate::unify_chirho::unify_chirho;
 
+mod superclass_search_chirho;
 mod tuple_instances_chirho;
+pub use superclass_search_chirho::SuperclassSearchExhaustedChirho;
 pub use tuple_instances_chirho::MAX_TUPLE_INSTANCE_ARITY_CHIRHO;
 
 /// A class predicate: `ClassName Type`, e.g. `Eq Int`, `Show a`.
@@ -310,31 +312,6 @@ impl ClassEnvChirho {
     /// Check if a class exists.
     pub fn has_class_chirho(&self, name_chirho: &str) -> bool {
         self.classes_chirho.contains_key(name_chirho)
-    }
-
-    /// Every superclass predicate `pred_chirho` entails, transitively: each class's superclass
-    /// templates instantiated at the predicate's own arguments, so `AskChirho Int m` entails
-    /// `Monad m`, never `Monad Int` (row 694, #31909). A predicate seen twice ends its branch,
-    /// as a superclass cycle may under UndecidableSuperClasses.
-    pub fn superclass_closure_chirho(&self, pred_chirho: &PredChirho) -> Vec<PredChirho> {
-        let mut closure_chirho = Vec::new();
-        let mut seen_chirho = HashSet::from([pred_chirho.clone()]);
-        let mut pending_chirho = vec![pred_chirho.clone()];
-        while let Some(current_chirho) = pending_chirho.pop() {
-            let Some(class_chirho) = self.classes_chirho.get(&current_chirho.class_name_chirho)
-            else {
-                continue;
-            };
-            for instantiated_chirho in
-                class_chirho.superclass_preds_at_chirho(&current_chirho.all_tys_chirho())
-            {
-                if seen_chirho.insert(instantiated_chirho.clone()) {
-                    closure_chirho.push(instantiated_chirho.clone());
-                    pending_chirho.push(instantiated_chirho);
-                }
-            }
-        }
-        closure_chirho
     }
 
     /// Get the superclasses of a class.
