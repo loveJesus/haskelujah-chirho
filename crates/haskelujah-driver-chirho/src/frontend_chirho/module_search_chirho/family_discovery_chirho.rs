@@ -301,10 +301,12 @@ fn propagate_headers_chirho(
 
 /// Atomically add only the checked module's import-reachable authoritative ASTs.
 /// The checked AST participates so a SOURCE companion can instance its family.
+/// On success, return the parsed source suppliers whose interfaces were admitted,
+/// excluding the checked root. This inventory proves no dependency Core is linked.
 pub(crate) fn register_discovered_type_families_chirho(
     checked_chirho: &ModuleChirho,
     context_chirho: DiscoveredFamilyContextChirho<'_>,
-) -> Result<(), DiagnosticBundleChirho> {
+) -> Result<BTreeSet<String>, DiagnosticBundleChirho> {
     let mut modules_chirho = context_chirho
         .modules_chirho
         .iter()
@@ -317,10 +319,12 @@ pub(crate) fn register_discovered_type_families_chirho(
         checked_name_chirho: &checked_name_chirho,
     };
     let mut work_chirho = DISCOVERY_WORK_CHIRHO;
-    let reached_chirho = reachable_chirho(&checked_name_chirho, &modules_chirho, &mut work_chirho)
-        .map_err(|error_chirho| {
-            family_frontend_diagnostics_chirho(error_chirho, checked_chirho.span_chirho)
-        })?;
+    let mut reached_chirho =
+        reachable_chirho(&checked_name_chirho, &modules_chirho, &mut work_chirho).map_err(
+            |error_chirho| {
+                family_frontend_diagnostics_chirho(error_chirho, checked_chirho.span_chirho)
+            },
+        )?;
     for name_chirho in &reached_chirho {
         // The checked AST overrides a candidate with the same declared name.
         if name_chirho == &checked_name_chirho {
@@ -712,7 +716,8 @@ pub(crate) fn register_discovered_type_families_chirho(
     }
     *context_chirho.registry_chirho = registry_chirho;
     *context_chirho.ifaces_chirho = ifaces_chirho;
-    Ok(())
+    reached_chirho.remove(&checked_name_chirho);
+    Ok(reached_chirho)
 }
 
 #[cfg(test)]

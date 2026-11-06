@@ -63,6 +63,7 @@ fn join_chirho(
         &HashMap::new(),
         &HashMap::new(),
         &provenance_chirho,
+        &Default::default(),
     )
     .evidence_chirho
 }
@@ -92,6 +93,7 @@ fn an_origin_keeps_only_the_applied_type_all_its_records_prove_chirho() {
             &HashMap::new(),
             &HashMap::new(),
             &HashMap::from([(CoreIdChirho(10), reference_chirho(origin_chirho))]),
+            &crate::evidence_join_chirho::ModuleDeclarationsChirho::default(),
         );
         assert_eq!(
             joined_chirho.evidence_chirho.get(&CoreIdChirho(10)),
@@ -251,6 +253,7 @@ fn legacy_method_join_chirho(
         &HashMap::new(),
         &HashMap::from([(CoreIdChirho(10), genuine_chirho)]),
         &HashMap::new(),
+        &Default::default(),
     )
     .evidence_chirho
     .remove(&CoreIdChirho(10))
@@ -373,6 +376,7 @@ fn join_literal_chirho(
         &literal_spans_chirho,
         &HashMap::new(),
         &provenance_map_chirho,
+        &Default::default(),
     )
     .evidence_chirho
     .remove(&CoreIdChirho(10))
@@ -472,6 +476,7 @@ fn two_generated_literals_at_one_span_each_take_their_own_evidence_chirho() {
         &literal_spans_chirho,
         &HashMap::new(),
         &provenance_chirho,
+        &Default::default(),
     )
     .evidence_chirho;
     assert_eq!(
@@ -529,6 +534,7 @@ fn an_origin_meets_class_proofs_in_both_capture_orders_chirho() {
             &HashMap::new(),
             &HashMap::new(),
             &HashMap::from([(CoreIdChirho(10), reference_chirho(origin_chirho))]),
+            &crate::evidence_join_chirho::ModuleDeclarationsChirho::default(),
         );
         assert_eq!(joined_chirho[&CoreIdChirho(10)].ty_key_chirho, "Int");
         let goals_chirho =

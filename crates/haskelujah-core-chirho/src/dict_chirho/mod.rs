@@ -46,6 +46,7 @@ mod type_keys_chirho;
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
+use haskelujah_ast_chirho::name_chirho::BuiltinClassScopeChirho;
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, PredChirho};
 use haskelujah_typing_chirho::deriving_chirho::DerivedShowChirho;
@@ -147,6 +148,8 @@ pub struct DictPassEvidenceChirho {
     pub ground_goals_chirho: HashMap<CoreIdChirho, Vec<PredChirho>>,
     pub instance_declarations_chirho: Vec<InstanceDeclarationChirho>,
     pub instance_row_keys_chirho: Vec<InstanceRowKeyChirho>,
+    /// This module's K01 scope; legacy entry points leave it empty.
+    pub builtin_classes_chirho: BuiltinClassScopeChirho,
 }
 
 /// The pass's inputs beyond the module itself.
@@ -335,6 +338,12 @@ pub struct DictPassCtxChirho {
     unserved_slots_chirho: RefCell<HashSet<(CoreIdChirho, String)>>,
     /// The S3 join: each paired module instance's row key.
     instance_rows_chirho: InstanceRowsChirho,
+    /// Naming's builtin class scope for this module (K01): the spellings it can write that name
+    /// a compiler class. It is the backend's own proof, carried in, and it is fresh for each
+    /// module. The legacy entry points leave it empty, so no admission carries from one module
+    /// to the next (row 699, gpt_chirho #32286).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    builtin_classes_chirho: BuiltinClassScopeChirho,
 }
 
 impl DictPassCtxChirho {
@@ -392,6 +401,7 @@ impl DictPassCtxChirho {
             ground_dicts_by_goal_chirho: HashMap::new(),
             unserved_slots_chirho: RefCell::new(HashSet::new()),
             instance_rows_chirho: InstanceRowsChirho::default(),
+            builtin_classes_chirho: BuiltinClassScopeChirho::default(),
         }
     }
 
@@ -755,7 +765,8 @@ pub fn dict_pass_module_full_with_method_occurrences_chirho(
 /// each method occurrence's applied type (row 694), the
 /// checker's per-reference evidence for constrained references, the
 /// constructor metadata of every type that derives Show (row 533) or Enum (row 669),
-/// and the occurrences of written infix and section Ord operators (row 610).
+/// the occurrences of written infix and section Ord operators (row 610), and the module's
+/// builtin class scope from naming (K01, row 699).
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 #[allow(clippy::too_many_arguments)]
 pub fn dict_pass_module_full_with_evidence_chirho(
@@ -773,6 +784,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     derived_shows_chirho: HashMap<String, DerivedShowChirho>,
     derived_enums_chirho: HashMap<String, Vec<String>>,
     operator_occurrences_chirho: HashSet<CoreIdChirho>,
+    builtin_classes_chirho: &BuiltinClassScopeChirho,
 ) -> DictPassResultChirho {
     dict_pass_module_with_inputs_chirho(
         module_chirho,
@@ -791,6 +803,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
                 derived_shows_chirho,
                 derived_enums_chirho,
                 operator_occurrences_chirho,
+                builtin_classes_chirho: builtin_classes_chirho.clone(),
                 ..DictPassEvidenceChirho::default()
             },
         },
@@ -815,6 +828,7 @@ pub fn dict_pass_module_with_inputs_chirho(
     ctx_chirho.newtype_info_chirho = inputs_chirho.newtype_info_chirho;
     ctx_chirho.extra_dict_param_names_chirho = inputs_chirho.extra_dict_param_names_chirho;
     let evidence_chirho = inputs_chirho.evidence_chirho;
+    ctx_chirho.builtin_classes_chirho = evidence_chirho.builtin_classes_chirho;
     ctx_chirho.method_occurrence_canon_chirho = evidence_chirho.method_occurrence_canon_chirho;
     ctx_chirho.occurrence_evidence_chirho = evidence_chirho.occurrence_evidence_chirho;
     ctx_chirho.occurrence_applied_tys_chirho = evidence_chirho.occurrence_applied_tys_chirho;

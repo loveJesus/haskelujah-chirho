@@ -21,6 +21,10 @@ use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
 
+#[cfg(test)]
+#[path = "multi_module_tests_chirho.rs"]
+mod tests_chirho;
+
 /// Compile multiple Haskell source files in dependency order.
 ///
 /// Each module is compiled with access to previously compiled module interfaces,
@@ -155,12 +159,34 @@ pub fn eval_modules_with_machine_chirho(
     ),
     String,
 > {
-    use haskelujah_core_chirho::expr_chirho::{
-        CoreExprChirho, CoreIdChirho, CoreModuleChirho as CoreModChirho,
-    };
-
     let results_chirho = compile_modules_chirho(sources_chirho, source_map_chirho)
         .map_err(|diag_chirho| format!("compilation error: {:?}", diag_chirho))?;
+    let (merged_core_chirho, newtype_cons_chirho) =
+        merge_interpreter_modules_chirho(results_chirho)?;
+    stg_lower_chirho::lower_and_run_chirho(
+        &merged_core_chirho,
+        entry_name_chirho,
+        newtype_cons_chirho,
+    )
+}
+
+/// The interpreter's one Core program from modules compiled in dependency order, the last its
+/// root. Each module's provenance moves with its ids: the same offset as its bodies, joined
+/// with the others, and through the same final remap. The root alone supplies the entry
+/// (#32375, as the native merge does for row 628).
+/// workflow: testing-chirho/execution-oracles-chirho
+pub(crate) fn merge_interpreter_modules_chirho(
+    results_chirho: Vec<CompileResultChirho>,
+) -> Result<
+    (
+        haskelujah_core_chirho::expr_chirho::CoreModuleChirho,
+        std::collections::HashSet<String>,
+    ),
+    String,
+> {
+    use haskelujah_core_chirho::expr_chirho::{
+        CoreExprChirho, CoreIdChirho, CoreModuleChirho as CoreModChirho, CoreProvenanceChirho,
+    };
 
     if results_chirho.is_empty() {
         return Err("no modules to evaluate".to_string());
@@ -399,8 +425,18 @@ pub fn eval_modules_with_machine_chirho(
         std::collections::HashMap::new();
     let mut merged_newtype_cons_chirho = std::collections::HashSet::new();
     let mut id_offset_chirho: u32 = 0;
+    let mut merged_provenance_chirho = CoreProvenanceChirho::default();
+    let root_index_chirho = results_chirho.len() - 1;
 
-    for result_chirho in &results_chirho {
+    for (index_chirho, result_chirho) in results_chirho.iter().enumerate() {
+        let moved_provenance_chirho = result_chirho
+            .core_chirho
+            .provenance_chirho
+            .offset_chirho(id_offset_chirho);
+        merged_provenance_chirho.absorb_chirho(&moved_provenance_chirho);
+        if index_chirho == root_index_chirho {
+            merged_provenance_chirho.entry_chirho = moved_provenance_chirho.entry_chirho;
+        }
         let mut bindings_chirho = result_chirho.core_chirho.bindings_chirho.clone();
 
         if id_offset_chirho > 0 {
@@ -414,10 +450,7 @@ pub fn eval_modules_with_machine_chirho(
         import_linker_chirho.add_module_chirho(
             &result_chirho.module_chirho.name_chirho.full_name_chirho(),
             &bindings_chirho,
-            &result_chirho
-                .core_chirho
-                .provenance_chirho
-                .offset_chirho(id_offset_chirho),
+            &moved_provenance_chirho,
         );
 
         // Merge names with offset
@@ -439,10 +472,23 @@ pub fn eval_modules_with_machine_chirho(
     // Phase 2: Build canonical name → definition CoreId (first wins).
     let mut def_name_to_id_chirho: std::collections::HashMap<String, CoreIdChirho> =
         std::collections::HashMap::new();
+    // A builtin reference links only to the compiler's own body of its name, never to a
+    // program's binding that shares the spelling (#32386, as the native merge does for row 628).
+    let mut compiler_name_to_id_chirho: std::collections::HashMap<String, CoreIdChirho> =
+        std::collections::HashMap::new();
     for binding_chirho in &merged_bindings_chirho {
+        let binder_chirho = &binding_chirho.binder_chirho;
         def_name_to_id_chirho
-            .entry(binding_chirho.binder_chirho.name_chirho.clone())
-            .or_insert(binding_chirho.binder_chirho.id_chirho);
+            .entry(binder_chirho.name_chirho.clone())
+            .or_insert(binder_chirho.id_chirho);
+        if merged_provenance_chirho
+            .compiler_bindings_chirho
+            .contains(&binder_chirho.id_chirho)
+        {
+            compiler_name_to_id_chirho
+                .entry(binder_chirho.name_chirho.clone())
+                .or_insert(binder_chirho.id_chirho);
+        }
     }
 
     // Phase 3: Build remap table for cross-module references.
@@ -531,19 +577,28 @@ pub fn eval_modules_with_machine_chirho(
         {
             continue;
         }
-        if let Some(&def_id_chirho) = def_name_to_id_chirho.get(name_chirho)
+        let definitions_chirho = if merged_provenance_chirho
+            .builtin_references_chirho
+            .contains(id_chirho)
+        {
+            &compiler_name_to_id_chirho
+        } else {
+            &def_name_to_id_chirho
+        };
+        if let Some(&def_id_chirho) = definitions_chirho.get(name_chirho)
             && def_id_chirho != *id_chirho
         {
             remap_chirho.insert(*id_chirho, def_id_chirho);
         }
     }
 
-    // Phase 4: Apply the remap to all bindings.
+    // Phase 4: Apply the remap to all bindings, and to the record that moved with them.
     if !remap_chirho.is_empty() {
         for binding_chirho in &mut merged_bindings_chirho {
             remap_expr_chirho(&mut binding_chirho.rhs_chirho, &remap_chirho);
         }
     }
+    merged_provenance_chirho.remap_chirho(&remap_chirho);
 
     let merged_core_chirho = CoreModChirho {
         name_chirho: results_chirho
@@ -557,15 +612,12 @@ pub fn eval_modules_with_machine_chirho(
         names_chirho: merged_names_chirho,
         specialize_pragmas_chirho: std::collections::HashMap::new(),
         foreign_exports_chirho: vec![],
-        // Only the STG interpreter reads this module, and it reads no native provenance.
-        provenance_chirho: Default::default(),
+        // What the compiler generated, the program's imports and builtin references, and the
+        // root's entry: the interpreter's IO facade reads the first two (#32375).
+        provenance_chirho: merged_provenance_chirho,
     };
 
-    stg_lower_chirho::lower_and_run_chirho(
-        &merged_core_chirho,
-        entry_name_chirho,
-        merged_newtype_cons_chirho,
-    )
+    Ok((merged_core_chirho, merged_newtype_cons_chirho))
 }
 
 /// Compile multiple Haskell source files with incremental recompilation avoidance.

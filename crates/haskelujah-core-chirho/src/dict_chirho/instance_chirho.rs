@@ -658,11 +658,20 @@ impl DictPassCtxChirho {
         {
             let con_name_chirho = format!("$Dict_{}", class_name_chirho);
             let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
+            let generic_head_chirho = generic_head_by_key_chirho
+                .get(&(class_name_chirho.clone(), type_key_chirho.clone()));
+            // A generic head's superclass slots hold the dictionaries its templates matched, as
+            // pass 1 registered them (row 699). If one was not, the head keeps its own-key slots
+            // and takes no alias.
+            let superclass_ids_chirho = generic_head_chirho
+                .and_then(|head_chirho| self.superclass_fields_chirho(head_chirho));
+            let alias_allowed_chirho = superclass_ids_chirho.is_some();
 
             // Superclass dictionary arguments: a multi-parameter instance's are its class's
             // templates at its whole head, and it is registered for its uses only when every one
-            // was built (row 694, #31909, #31948); a one-parameter instance's are named by its
-            // own key, as before.
+            // was built (row 694, #31909, #31948). A one-parameter generic head's are the
+            // dictionaries its templates matched (row 699). Any other one-parameter instance's
+            // are named by its own key, as before.
             let registered_head_chirho = match multi_heads_chirho
                 .get(&(class_name_chirho.clone(), type_key_chirho.clone()))
             {
@@ -677,20 +686,27 @@ impl DictPassCtxChirho {
                     built_chirho.then_some(inst_chirho)
                 }
                 None => {
-                    for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
-                        let super_dict_name_chirho =
-                            format!("$f{}{}", super_name_chirho, type_key_chirho);
-                        let super_dict_id_chirho =
-                            self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
-                        field_args_chirho.push(CoreExprChirho::VarChirho(super_dict_id_chirho));
-                    }
+                    let superclass_fields_chirho = superclass_ids_chirho.unwrap_or_else(|| {
+                        layout_chirho
+                            .super_slots_chirho
+                            .iter()
+                            .map(|(super_name_chirho, _)| {
+                                self.resolve_or_fresh_id_chirho(&format!(
+                                    "$f{super_name_chirho}{type_key_chirho}"
+                                ))
+                            })
+                            .collect()
+                    });
+                    field_args_chirho.extend(
+                        superclass_fields_chirho
+                            .into_iter()
+                            .map(CoreExprChirho::VarChirho),
+                    );
                     None
                 }
             };
 
             // Method implementation arguments (primitives)
-            let generic_head_chirho = generic_head_by_key_chirho
-                .get(&(class_name_chirho.clone(), type_key_chirho.clone()));
             let written_key_chirho =
                 generic_head_chirho.map(|head_chirho| head_chirho.written_key_chirho.as_str());
             for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
@@ -730,7 +746,7 @@ impl DictPassCtxChirho {
             // The alias is never a binder name and nothing exports this
             // registry, so a consumer module decides over its own instances;
             // it never displaces a key registered before or after it.
-            if let Some(alias_head_chirho) = generic_head_chirho {
+            if let Some(alias_head_chirho) = generic_head_chirho.filter(|_| alias_allowed_chirho) {
                 self.instance_dicts_chirho
                     .entry((
                         class_name_chirho.clone(),
@@ -774,6 +790,17 @@ impl DictPassCtxChirho {
         }
 
         if let Some(default_id_chirho) = self.method_default_row_chirho(
+            class_name_chirho,
+            method_name_chirho,
+            written_key_chirho.unwrap_or(type_key_chirho),
+            prim_name_chirho,
+        ) {
+            return default_id_chirho;
+        }
+
+        // The compiler's own Monad's `>>`, from this instance's `>>=` (row 699).
+        if let Some(default_id_chirho) = self.monad_default_row_chirho(
+            class_env_chirho,
             class_name_chirho,
             method_name_chirho,
             written_key_chirho.unwrap_or(type_key_chirho),
@@ -943,7 +970,7 @@ impl DictPassCtxChirho {
 mod conditional_chirho;
 mod constructor_orders_chirho;
 // The default rows for methods an instance does not write live together in
-// `instance_chirho/defaults_chirho/` (rows 606, 612, 626, 669 and 671).
+// `instance_chirho/defaults_chirho/` (rows 606, 612, 626, 669, 671 and 699).
 #[path = "instance_chirho/defaults_chirho/context_slots_chirho.rs"]
 mod context_slots_chirho;
 #[path = "instance_chirho/defaults_chirho/enum_defaults_chirho.rs"]
@@ -974,6 +1001,8 @@ mod instance_rows_tests_chirho;
 pub(in crate::dict_chirho) use instance_rows_chirho::InstanceRowsChirho;
 pub use instance_rows_chirho::{InstanceDeclarationChirho, InstanceRowKeyChirho};
 mod list_orders_chirho;
+#[path = "instance_chirho/defaults_chirho/monad_defaults_chirho.rs"]
+mod monad_defaults_chirho;
 mod newtype_dicts_chirho;
 pub use newtype_dicts_chirho::NewtypeInfoChirho;
 #[path = "instance_chirho/defaults_chirho/ordering_defaults_chirho.rs"]

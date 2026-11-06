@@ -8,6 +8,8 @@ mod additional_classes_instances_chirho;
 mod arithmetic_classes_chirho;
 mod effect_instances_chirho;
 mod higher_kinded_classes_chirho;
+mod monad_defaults_chirho;
+pub use monad_defaults_chirho::monad_then_default_arms_chirho;
 mod remaining_classes_chirho;
 mod scalar_container_instances_chirho;
 

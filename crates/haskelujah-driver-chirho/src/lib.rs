@@ -916,7 +916,7 @@ fn compile_source_with_search_context_chirho(
     let discovery_green_chirho = discovery_parser_chirho.parse_checked_chirho()?;
     let mut discovery_module_chirho = lower_module_chirho(&discovery_green_chirho, file_id_chirho);
     inject_prelude_import_chirho(&mut discovery_module_chirho);
-    register_discovered_type_families_chirho(
+    let parsed_modules_chirho = register_discovered_type_families_chirho(
         &discovery_module_chirho,
         DiscoveredFamilyContextChirho {
             imported_types_chirho: Some(&mut imported_types_chirho),
@@ -944,13 +944,14 @@ fn compile_source_with_search_context_chirho(
         warnings_chirho: _warnings_chirho,
     } = frontend_result_chirho;
 
+    // Only successful parsed admissions are source suppliers. Their Core is not linked here.
+    let source_suppliers_chirho = parsed_modules_chirho.into_iter().collect();
     compile_backend_chirho(
         module_chirho,
         infer_result_chirho,
         std::collections::HashSet::new(),
         &all_ifaces_chirho,
-        // Siblings lend their interfaces; their Core is not linked here.
-        &std::collections::HashSet::new(),
+        &source_suppliers_chirho,
     )
 }
 

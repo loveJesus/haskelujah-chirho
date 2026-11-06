@@ -11,6 +11,8 @@
 use haskelujah_ast_chirho::decl_chirho::ConstructorSignatureErrorChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use std::collections::BTreeMap;
+#[cfg(test)]
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 #[path = "module_search_chirho/boot_contract_chirho.rs"]
@@ -102,6 +104,8 @@ fn sibling_path_matches_declared_module_chirho(
 /// Scan same-directory peers whose file stem matches their declared module's
 /// final component. The caller selected the directory, while this final path
 /// check keeps unrelated test files in that directory from becoming imports.
+/// `parsed_chirho` gains each module whose parsed interface is admitted here: the
+/// program's known source suppliers, which says nothing of linked Core (#32406).
 ///
 /// Workflow: `spec-chirho/workflows-chirho/compiler-pipeline-chirho/
 /// module-search-authority-chirho.md`.
@@ -111,6 +115,7 @@ pub(crate) fn scan_sibling_module_ifaces_chirho(
     source_map_chirho: &mut SourceMapChirho,
     ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
     skip_file_chirho: &str,
+    parsed_chirho: &mut BTreeSet<String>,
 ) {
     let mut modules_chirho = DiscoveredSourceModulesChirho::new();
     scan_sibling_modules_with_sources_chirho(
@@ -120,19 +125,21 @@ pub(crate) fn scan_sibling_module_ifaces_chirho(
         skip_file_chirho,
         &mut modules_chirho,
     );
-    admit_scanned_test_ifaces_chirho(ifaces_chirho, &modules_chirho);
+    admit_scanned_test_ifaces_chirho(ifaces_chirho, &modules_chirho, parsed_chirho);
 }
 
 #[cfg(test)]
 fn admit_scanned_test_ifaces_chirho(
     ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
     modules_chirho: &DiscoveredSourceModulesChirho,
+    parsed_chirho: &mut BTreeSet<String>,
 ) {
     for source_chirho in modules_chirho.values() {
         if source_chirho.syntax_error_chirho.is_none()
             && let Ok(iface_chirho) =
                 build_iface_with_imports_chirho(&source_chirho.module_chirho, ifaces_chirho)
         {
+            parsed_chirho.insert(iface_chirho.name_chirho.clone());
             admit_home_iface_chirho(ifaces_chirho, iface_chirho);
         }
     }
@@ -320,7 +327,9 @@ impl ModuleSearchBoundsChirho {
     }
 }
 
-/// Recursively scan a source root for hierarchical module peers.
+/// Recursively scan a source root for hierarchical module peers. `parsed_chirho` gains each
+/// module whose parsed interface is admitted; a recovery stub, whose definers are unknown, is
+/// admitted but never named a source supplier (#32406).
 ///
 /// Workflow: `spec-chirho/workflows-chirho/compiler-pipeline-chirho/
 /// module-search-authority-chirho.md`.
@@ -331,6 +340,7 @@ pub(crate) fn scan_hierarchical_modules_chirho(
     source_map_chirho: &mut SourceMapChirho,
     ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
     skip_file_chirho: &str,
+    parsed_chirho: &mut BTreeSet<String>,
 ) {
     let mut modules_chirho = DiscoveredSourceModulesChirho::new();
     scan_hierarchical_modules_with_sources_chirho(
@@ -341,7 +351,7 @@ pub(crate) fn scan_hierarchical_modules_chirho(
         skip_file_chirho,
         &mut modules_chirho,
     );
-    admit_scanned_test_ifaces_chirho(ifaces_chirho, &modules_chirho);
+    admit_scanned_test_ifaces_chirho(ifaces_chirho, &modules_chirho, parsed_chirho);
 }
 
 pub(crate) fn scan_hierarchical_modules_with_sources_chirho(

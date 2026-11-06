@@ -18,6 +18,7 @@ flowchart TD
     type_scope_chirho["same selected type-constructor scope, before deriving"] --> deriving_chirho
     deriving_chirho --> roles_chirho["GND: separate schema, role and method coercion checks"]
     roles_chirho --> core_chirho["existing dictionary factories and evidence consumers"]
+    scope_chirho --> dict_chirho["core: fresh per-module K01 proof, declared Monad >> default, exact supported schema and this instance's body-backed >>= donor (row 699)"]
 ```
 
 ## Trust

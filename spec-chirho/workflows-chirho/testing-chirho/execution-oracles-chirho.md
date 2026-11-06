@@ -144,6 +144,54 @@ fallback to addition. The emitter preserves supported aliases and gives an unkno
 primitive a named demand-time error. Its control distinguishes unsupported arithmetic
 from a real addition result; an unexecuted branch remains lazy.
 
+A spelling reaches an IO primitive only for an id the program does not own (#32355).
+The lowering has four reference paths: a bare reference, an application's head, an
+argument, and a constructor field. Each asks one facade, `is_io_primop_chirho`, which
+refuses its spelling for:
+- a lambda parameter or captured argument slot;
+- a let, where or case binder the lowering holds;
+- a top-level binding outside the module's record of what the compiler generated,
+  `CoreProvenanceChirho::compiler_bindings_chirho`. An empty record grants nothing: a
+  binding missing from it stays the program's. Every producer that reaches the interpreter
+  keeps that record. The dictionary pass records every row it generates, including the
+  prelude rows spelled like IO primitives (`print`, `newIORef`, `runST`, `seq`, `force`,
+  ...), and the IO-action preparation records its wrappers. The multi-module interpreter
+  merge (`merge_interpreter_modules_chirho`) moves each module's provenance with its ids:
+  the same offset as its bodies, joined, and through the same final remap, with the root's
+  entry alone (#32375). Its generated `force` and `deepseq` therefore keep their
+  primitives; their Core bodies use `seq#`, which the interpreter has no primitive for;
+- another program module's export (`imported_references_chirho`).
+
+Such an id keeps its own lookup, or its named missing-binding error. A free canonical
+reference and a generated binding keep the primitive. The interpreter's IO-action
+preparation, `prepare_io_actions_chirho`, likewise manufactures no primitive for a program
+import (#32361). An unlinked import therefore fails closed by name instead of borrowing
+the Prelude's body; that refusal is not a claim that imports run. The native preparation
+keeps its positive `builtin_references_chirho` rule. A compile with a search path records
+such imports because it names the siblings its scans parse as known source suppliers
+(#32406). Before that, its producer recorded none, and the dictionary pass bound the
+reference to a generated Prelude row. A supplier is not linked Core, and a sibling that
+only forwards a Prelude value keeps the builtin.
+
+The controls are:
+- `stg_lower_chirho/primitives_chirho/binding_ownership_tests_chirho.rs`: all four paths,
+  the explicitly generated and the genuinely free cases, a program binding beside an empty
+  record, the imported cases, a real import from its producer to both interpreter
+  consumers, and a forwarded builtin that keeps the Prelude's body;
+- `project_chirho/multi_module_tests_chirho.rs`: the merge's exact transport (offsets,
+  record, final remap, root entry), a dependency's own `seq` and `undefined` beside the
+  generated `force` and `deepseq`, and an unimported namesake beside the root's Prelude
+  `undefined`, which still prints the dependency's 7 and then fails as the Prelude's does;
+- W3 and W4 on every engine (W4's GHC reference matches), and native symbol identity's B7,
+  a program's own top-level `undefined`, now on the interpreter too.
+
+The merge's linker (its Phase 2 and 3) links a builtin reference, as the module's
+provenance records it, only to a compiler body of its name (#32386), as the native merge
+does (row 628). A program namesake in another module supplies no link, so a free
+`undefined`, `error` or `throw`, which no generated row binds, stays the builtin. An import
+links through the shared import linker, and every other reference keeps the prior route to
+the first definition of its name.
+
 Generated MaybeT helpers preserve the underlying monadic action. They accept the
 call-site Monad dictionary; pure is selected from its Applicative superclass,
 and bind from Monad itself. The same helper body is tested with IO, Maybe and

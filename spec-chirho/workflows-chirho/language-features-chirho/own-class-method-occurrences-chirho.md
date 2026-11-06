@@ -35,16 +35,26 @@ flowchart TD
 ## Rule (gpt_chirho #28091)
 
 - Opted in: the standard set (`EVIDENCE_METHOD_NAMES_CHIRHO`) and every method of a
-  single-parameter class the compiling module declares.
-- Never opted in: `>>=`, `>>`, `return`, `pure` and `fail` (INV-001), even when the module's own
-  class declares one. They keep their dedicated dispatch machinery.
+  single-parameter class the compiling module declares. Only visible binders count as the
+  class's parameters: a fully kinded header may publish hidden ones (row 688).
+- Never opted in: `return` and `fail` (INV-001), even when the module's own class declares
+  one. They keep their dedicated dispatch machinery.
+- Opted in for one proof only, joined by provenance alone (`monadic-dispatch-chirho`):
+  - `>>=` and `>>`, for an indexed own proof (row 697);
+  - they, the seeded `fmap`, and `pure`, for a concrete head the module declares (row 699,
+    #32342).
+
+  A module whose own class declares `fmap` keeps it among its own methods, with their join.
+  INV-001's names are never among a module's own methods, so an own class's `pure` gains no
+  span or positional join.
 
 ## Boundaries
 
 Each of these keeps its shared id and today's verdict:
 
-- A seeded standard class's methods outside the standard set (`fmap`, `<>`, `toList`,
-  `traverse`). Switching about forty seeded classes at once is its own measured brick.
+- A seeded standard class's methods outside the standard set (`<>`, `toList`, `traverse`),
+  apart from `fmap`'s concrete-head proof (row 699). Switching about forty seeded classes at
+  once is its own measured brick.
   `toList` stays outside the evidence set: unit 517 routes the spellings an import of
   Data.List.NonEmpty or Data.Foldable exposes by scope instead (below).
 - A class imported from another module. Its rows live in that module's Core, and finding them

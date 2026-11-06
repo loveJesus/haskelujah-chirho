@@ -117,6 +117,7 @@ fn a_record_consumed_by_span_is_never_reused_by_position_chirho() {
         &HashMap::new(),
         &spans_chirho,
         &HashMap::new(),
+        &Default::default(),
     )
     .evidence_chirho;
 
@@ -156,6 +157,7 @@ fn two_occurrences_sharing_one_span_are_refused_chirho() {
         &HashMap::new(),
         &spans_chirho,
         &HashMap::new(),
+        &Default::default(),
     )
     .evidence_chirho;
 
@@ -184,6 +186,7 @@ fn unspanned_occurrences_still_take_their_records_in_order_chirho() {
         &HashMap::new(),
         &HashMap::new(),
         &HashMap::new(),
+        &Default::default(),
     )
     .evidence_chirho;
 
@@ -215,6 +218,7 @@ fn dummy_spans_are_not_an_identity_chirho() {
         &HashMap::new(),
         &spans_chirho,
         &HashMap::new(),
+        &Default::default(),
     )
     .evidence_chirho;
 
@@ -253,6 +257,7 @@ fn a_contested_genuine_span_is_refused_even_when_no_record_claims_it_chirho() {
         &HashMap::new(),
         &spans_chirho,
         &HashMap::new(),
+        &Default::default(),
     )
     .evidence_chirho;
 

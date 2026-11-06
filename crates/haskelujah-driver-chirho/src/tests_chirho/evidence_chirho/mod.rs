@@ -4,6 +4,7 @@
 //! identity comes from.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
+mod concrete_heads_chirho;
 mod do_operation_records_chirho;
 mod ground_dictionaries_chirho;
 mod occurrence_authority_chirho;

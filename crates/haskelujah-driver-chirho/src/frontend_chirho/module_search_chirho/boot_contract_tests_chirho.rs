@@ -93,6 +93,7 @@ impl BootStateChirho {
                 checked_path_chirho,
             },
         )
+        .map(|_parsed_chirho| ())
     }
 
     fn assert_atomic_failure_chirho(&mut self, checked_path_chirho: &Path, expected_chirho: &str) {

@@ -124,6 +124,10 @@ pub(crate) fn compile_backend_chirho(
         &desugar_output_chirho.literal_occurrence_spans_chirho,
         &desugar_output_chirho.method_occurrence_spans_chirho,
         &desugar_output_chirho.occurrence_provenance_chirho,
+        // The module's own data, newtype and class declarations, which a concrete-head proof of
+        // `>>=`, `>>` or `fmap` is tied to (row 699).
+        // workflow: monadic-dispatch-chirho
+        &evidence_join_chirho::ModuleDeclarationsChirho::of_module_chirho(&module_chirho),
     );
     let mut occurrence_evidence_chirho =
         evidence_join_chirho::occurrence_keys_chirho(&occurrence_proofs_chirho);
@@ -287,6 +291,8 @@ pub(crate) fn compile_backend_chirho(
                 ground_goals_chirho,
                 instance_declarations_chirho,
                 instance_row_keys_chirho: desugar_output_chirho.instance_row_keys_chirho,
+                // The same per-module K01 proof authorizes the declared Monad default.
+                builtin_classes_chirho: builtin_class_scope_chirho.clone(),
             },
         },
     );

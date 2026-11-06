@@ -48,6 +48,8 @@ flowchart TD
     success_chirho -- yes --> replace_chirho[Replace caller registry and interfaces atomically]
     success_chirho -- no --> preserve_chirho[Return diagnostics and preserve caller snapshots]
     replace_chirho --> checked_scope_chirho[Build the checked frontend's family scope]
+    replace_chirho --> suppliers_chirho[Return existing reached parsed admissions minus checked root]
+    suppliers_chirho --> backend_chirho[Preserve source supplier identity without claiming linked Core]
     checked_scope_chirho --> checked_frontend_chirho[Normal naming, kinds and type inference]
 ```
 
@@ -75,6 +77,7 @@ flowchart TD
 - Both full interfaces and panic-recovery stubs pass through the same authority and uniqueness checks. Recovery is not permission to weaken provenance.
 - An authoritative source-root module replaces a seeded fallback at that module's existing unique slot. Thus a genuine root-level `Prelude.hs` remains usable, while a nested fixture whose path does not declare `Prelude` never reaches admission.
 - The resolver's deliberate newest-interface precedence remains available to explicit callers. Filesystem discovery never supplies duplicate names, preventing first-match and last-match consumers from disagreeing.
+- Successful declaration publication returns its existing reached-module set, minus the checked root, only after every reached parsed AST has passed syntax/interface checks, final family-aware admission and atomic publication. The discovery map alone is not supplier authority. A panic-recovery stub carries no discovered AST and is never named by that return, because its definers are unknown and must not become builtin permission. The test-only scanner wrappers collect names at their successful parsed-interface admission point. Compiling with a search path hands the returned names to the backend as known source suppliers (#32406). An import of a sibling's own value then keeps that value's identity (rows 629 and 642), and a value the sibling only forwards keeps its builtin route. A supplier is not linked Core: this compile links no sibling body, so such a reference fails closed by name. Checking compiles no Core and discards the names.
 
 ## Proof boundary
 

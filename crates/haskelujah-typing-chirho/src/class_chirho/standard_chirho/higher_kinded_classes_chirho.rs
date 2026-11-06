@@ -202,7 +202,10 @@ impl ClassEnvChirho {
                 ]),
                 extra_vars_chirho: vec![],
                 fundeps_chirho: vec![],
-                defaults_chirho: HashMap::new(),
+                defaults_chirho: HashMap::from([(
+                    ">>".to_string(),
+                    super::monad_defaults_chirho::monad_then_default_arms_chirho(),
+                )]),
             },
         );
 

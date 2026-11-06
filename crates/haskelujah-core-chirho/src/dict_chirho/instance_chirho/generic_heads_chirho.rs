@@ -22,15 +22,39 @@
 //! by the one context-free instance that matches it; a field this pass cannot build refuses the
 //! module by name. A complete instance is registered in the conditional registry under that key
 //! with its record, where a use at a complete ground head finds it by matching.
+//!
+//! A one-parameter head whose class has superclasses is generic when each superclass template,
+//! instantiated at its whole head, is served by the one matching context-free instance whose
+//! dictionary this pass builds from rows in this Core input: an instance that is itself a
+//! generic head here (row 699). Its slots then hold those dictionaries, never one named by its
+//! own key, so `class S [a] => C a` takes `S [T x]`'s dictionary, not `S (T x)`'s.
+//!
+//! Any other template is a named gap: the head keeps its own-key slots as before and takes no
+//! alias, and nothing is refused here. In this pass no match, several matches, a match with a
+//! context, or an instance built elsewhere cannot be told apart from GHC's own error
+//! (GHC-39999). Interfaces carry no instances. Overlap pragmas are not kept. The compiler's
+//! catch-all `Typeable a` overlaps every derived `Typeable`. A derived context constrains every
+//! parameter, a phantom one included. That refusal belongs to the checker's instance
+//! obligations, which know when a class's instance universe is complete.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
+
+use std::cell::Cell;
 
 use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho, PredChirho};
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 use super::super::ConditionalDictChirho;
 use super::equality_defaults_chirho::equality_counterpart_chirho;
+use super::monad_defaults_chirho::monad_default_covers_chirho;
 use super::{DictLayoutChirho, DictPassCtxChirho};
 use crate::expr_chirho::{CoreExprChirho, CoreIdChirho, CoreLitChirho};
+
+/// How many superclass providers one generic-head query follows, across every slot and level.
+/// An acyclic hierarchy needs a handful: RealFloat's whole chain is ten. Under
+/// UndecidableSuperClasses a cycle may grow its templates without end, and its branches
+/// multiply, so a per-path depth bounds nothing. A query that runs out has a gap, never a proof
+/// (row 699).
+const SUPERCLASS_STEPS_CHIRHO: usize = 32;
 
 /// A generic head: the alias a use site finds it by, and the spelling of its
 /// rows.
@@ -40,27 +64,84 @@ pub(super) struct GenericHeadChirho {
     pub(super) constructor_chirho: String,
     /// The head as the desugarer wrote it into the rows (`SBoolChirho b`).
     pub(super) written_key_chirho: String,
+    /// The class and typed key of the dictionary that fills each superclass slot, in layout
+    /// order: the one matching instance, itself a generic head this pass builds here (row 699).
+    /// Empty for a class without superclasses.
+    pub(super) superclass_dictionaries_chirho: Vec<(String, String)>,
 }
 
 impl DictPassCtxChirho {
-    /// The instance's generic head: `generic_spine_chirho` (G1-G4, G6), then
-    /// G5, the slots confirmed. Every method of the class has a source row
-    /// that `resolve_or_missing_method_id_chirho` will take: the exact row for
+    /// The instance's generic head: `generic_spine_chirho` (G1-G4), G5, then
+    /// G6, every superclass slot served by a dictionary this pass builds here
+    /// (`superclass_provider_chirho`, row 699).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn generic_head_chirho(
+        &self,
+        class_env_chirho: &ClassEnvChirho,
+        class_name_chirho: &str,
+        inst_chirho: &InstDeclChirho,
+        layout_chirho: &DictLayoutChirho,
+        type_key_chirho: &str,
+    ) -> Option<GenericHeadChirho> {
+        self.generic_head_within_chirho(
+            class_env_chirho,
+            class_name_chirho,
+            inst_chirho,
+            layout_chirho,
+            type_key_chirho,
+            &Cell::new(SUPERCLASS_STEPS_CHIRHO),
+        )
+    }
+
+    /// `generic_head_chirho` within `budget_chirho`, the providers this query may still follow.
+    fn generic_head_within_chirho(
+        &self,
+        class_env_chirho: &ClassEnvChirho,
+        class_name_chirho: &str,
+        inst_chirho: &InstDeclChirho,
+        layout_chirho: &DictLayoutChirho,
+        type_key_chirho: &str,
+        budget_chirho: &Cell<usize>,
+    ) -> Option<GenericHeadChirho> {
+        let mut head_chirho = self.covered_head_chirho(
+            class_env_chirho,
+            class_name_chirho,
+            inst_chirho,
+            layout_chirho,
+            type_key_chirho,
+        )?;
+        head_chirho.superclass_dictionaries_chirho = (0..layout_chirho.super_slots_chirho.len())
+            .map(|index_chirho| {
+                self.superclass_provider_chirho(
+                    class_env_chirho,
+                    inst_chirho,
+                    layout_chirho,
+                    index_chirho,
+                    budget_chirho,
+                )
+            })
+            .collect::<Option<Vec<_>>>()?;
+        Some(head_chirho)
+    }
+
+    /// G1-G5: `generic_spine_chirho`, then the slots confirmed. Every method of the class has a
+    /// source row that `resolve_or_missing_method_id_chirho` will take: the exact row for
     /// the typed key `type_key_chirho`, or the row under ONE written spelling
     /// `T x1 .. xn` of distinct variable tokens, which correspond to the typed
     /// variables by position, a bijection. Coverage and lookup read the same
     /// spellings in the same order (agy_chirho #27369, gpt_chirho #27370), so a
     /// bare `T` row covers nothing. A missing row would make a stub reachable
-    /// and a second spelling is ambiguous; either refuses. An Eq method without
-    /// a source row is covered when its counterpart has one: the slot takes the
-    /// counterpart's default under the written spelling (row 606). The list head `[v]`
-    /// is the one exception to the missing row: its rows have one written
-    /// spelling, so a slot no row covers is a method the instance genuinely
-    /// omits, and its generated stub fails by name when forced, as GHC's
-    /// NoMethodError does (gpt_chirho #28111).
+    /// and a second spelling is ambiguous; either refuses. A method without a source row is
+    /// covered when the method its default reads has one: an Eq method by its counterpart
+    /// (row 606), Monad's `>>` by `>>=` (row 699). The slot then takes that default under the
+    /// written spelling. The list head `[v]` is the one exception to the missing row: its rows
+    /// have one written spelling, so a slot no row covers is a method the instance genuinely
+    /// omits, and its generated stub fails by name when forced, as GHC's NoMethodError does
+    /// (gpt_chirho #28111). The rows are this Core input's: G5 is evidence that the instance's
+    /// methods are available here, not of the module that defines it.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     /// workflow: language-features-chirho/own-class-method-occurrences-chirho
-    pub(super) fn generic_head_chirho(
+    fn covered_head_chirho(
         &self,
         class_env_chirho: &ClassEnvChirho,
         class_name_chirho: &str,
@@ -94,10 +175,22 @@ impl DictPassCtxChirho {
                 uncovered_chirho.push(method_name_chirho.as_str());
             }
         }
-        // An Eq method without a source row is covered by its counterpart's default (row 606).
+        // A method without a source row is covered by its default when the method that default
+        // reads has a row: an Eq method by its counterpart (row 606), and the compiler's own
+        // Monad's `>>` by `>>=` when its declared default is authorized in this module (row 699,
+        // `monad_default_covers_chirho`), never a namesake's.
+        let donor_covered_chirho =
+            |donor_chirho: &'static str| !uncovered_chirho.contains(&donor_chirho);
         let covered_by_default_chirho = |method_name_chirho: &str| {
             equality_counterpart_chirho(class_name_chirho, method_name_chirho)
-                .is_some_and(|counterpart_chirho| !uncovered_chirho.contains(&counterpart_chirho))
+                .is_some_and(donor_covered_chirho)
+                || monad_default_covers_chirho(
+                    class_env_chirho,
+                    &self.builtin_classes_chirho,
+                    class_name_chirho,
+                    method_name_chirho,
+                    donor_covered_chirho,
+                )
         };
         if !uncovered_chirho
             .iter()
@@ -108,7 +201,71 @@ impl DictPassCtxChirho {
         Some(GenericHeadChirho {
             constructor_chirho: constructor_chirho.to_string(),
             written_key_chirho: written_key_chirho.unwrap_or(type_key_chirho).to_string(),
+            superclass_dictionaries_chirho: Vec::new(),
         })
+    }
+
+    /// The class and typed key of the dictionary that serves the `index_chirho`-th superclass
+    /// slot of the one-parameter instance `inst_chirho` (row 699). Its class's template is
+    /// instantiated at the instance's whole head (`superclass_at_head_chirho`) and matched by
+    /// head among the instances in scope (`matching_instance_chirho`). It is served by the one
+    /// context-free match that is itself a generic head this pass builds here, under that
+    /// instance's own key.
+    ///
+    /// None is a named gap, never a refusal. It covers a template this pass cannot instantiate,
+    /// no match, several matches, a match with a context, one whose dictionary is its newtype
+    /// representation's, and one whose rows or own superclasses are not here. A query whose
+    /// `budget_chirho` is spent is a gap too.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    fn superclass_provider_chirho(
+        &self,
+        class_env_chirho: &ClassEnvChirho,
+        inst_chirho: &InstDeclChirho,
+        layout_chirho: &DictLayoutChirho,
+        index_chirho: usize,
+        budget_chirho: &Cell<usize>,
+    ) -> Option<(String, String)> {
+        budget_chirho.set(budget_chirho.get().checked_sub(1)?);
+        let template_chirho =
+            superclass_at_head_chirho(class_env_chirho, inst_chirho, layout_chirho, index_chirho)
+                .ok()?;
+        let (provider_chirho, key_chirho, goals_chirho) =
+            matching_instance_chirho(class_env_chirho, &template_chirho).ok()?;
+        if !goals_chirho.is_empty()
+            || self.takes_representation_dictionary_chirho(
+                &provider_chirho.class_name_chirho,
+                &key_chirho,
+            )
+        {
+            return None;
+        }
+        self.generic_head_within_chirho(
+            class_env_chirho,
+            &provider_chirho.class_name_chirho,
+            provider_chirho,
+            self.layouts_chirho
+                .get(&provider_chirho.class_name_chirho)?,
+            &key_chirho,
+            budget_chirho,
+        )?;
+        Some((provider_chirho.class_name_chirho.clone(), key_chirho))
+    }
+
+    /// The dictionaries that fill `head_chirho`'s superclass slots, in layout order, as pass 1
+    /// registered them: `$f<class><key>` for each provider (row 699). None when one was not
+    /// registered. The head then keeps its own-key slots and takes no alias.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(super) fn superclass_fields_chirho(
+        &self,
+        head_chirho: &GenericHeadChirho,
+    ) -> Option<Vec<CoreIdChirho>> {
+        head_chirho
+            .superclass_dictionaries_chirho
+            .iter()
+            .map(|(class_chirho, key_chirho)| {
+                self.existing_id_named_chirho(&format!("$f{class_chirho}{key_chirho}"))
+            })
+            .collect()
     }
 }
 
@@ -123,10 +280,11 @@ impl DictPassCtxChirho {
 /// - G4: no other instance of the class has that head constructor or a
 ///   variable head. A use site that kept only the constructor then has exactly
 ///   one candidate, and no specialized row is passed over.
-/// - G6: the class has no superclass. A superclass slot is named by the
-///   instance's own key and the class records superclass names without their
-///   arguments, so `class S [a] => C a` would fill the slot with `S`'s
-///   instance for `T` where GHC uses `S [T ..]` (gpt_chirho #27365, #27366).
+///
+/// G6, the superclasses, is not judged here but by `generic_head_chirho` once the slots are
+/// confirmed. A slot named by the instance's own key would answer for `S T` where GHC uses the
+/// class's template at the whole head, `S [T ..]` for `class S [a] => C a` (gpt_chirho #27365,
+/// #27366), so each slot takes the dictionary its template matches (row 699).
 fn generic_spine_chirho<'a>(
     class_env_chirho: &ClassEnvChirho,
     class_name_chirho: &str,
@@ -136,7 +294,6 @@ fn generic_spine_chirho<'a>(
         .classes_chirho()
         .get_chirho(class_name_chirho)?;
     if class_chirho.is_mptc_chirho()
-        || !class_chirho.supers_chirho.is_empty()
         || !inst_chirho.extra_head_tys_chirho.is_empty()
         || !inst_chirho.context_chirho.is_empty()
     {
@@ -247,42 +404,17 @@ impl DictPassCtxChirho {
     /// dictionary of `instance Monad (ReaderChirho r)`. The instance is found by matching its
     /// head, never by the predicate's spelling, and one instance seen twice is one. No match,
     /// several, one with a context, or one this pass built no dictionary for is the reason
-    /// returned (row 694, #31909).
+    /// returned, in the words a multi-parameter refusal names (row 694, #31909); a one-parameter
+    /// superclass slot reads each as a named gap (row 699).
     /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub(super) fn context_free_dictionary_chirho(
         &self,
         class_env_chirho: &ClassEnvChirho,
         predicate_chirho: &PredChirho,
     ) -> Result<CoreIdChirho, String> {
-        let mut matching_chirho: Vec<(String, bool)> = class_env_chirho
-            .instances_chirho()
-            .get_chirho(&predicate_chirho.class_name_chirho)
-            .into_iter()
-            .flatten()
-            .filter_map(|inst_chirho| {
-                ClassEnvChirho::instance_sub_goals_chirho(inst_chirho, predicate_chirho).map(
-                    |goals_chirho| {
-                        (
-                            head_key_chirho(
-                                &inst_chirho.head_ty_chirho,
-                                &inst_chirho.extra_head_tys_chirho,
-                            ),
-                            goals_chirho.is_empty(),
-                        )
-                    },
-                )
-            })
-            .collect();
-        matching_chirho.sort();
-        matching_chirho.dedup();
-        let [(key_chirho, context_free_chirho)] = matching_chirho.as_slice() else {
-            return Err(if matching_chirho.is_empty() {
-                format!("no instance matches `{predicate_chirho}`")
-            } else {
-                format!("several instances match `{predicate_chirho}`")
-            });
-        };
-        if !*context_free_chirho {
+        let (_instance_chirho, key_chirho, goals_chirho) =
+            matching_instance_chirho(class_env_chirho, predicate_chirho)?;
+        if !goals_chirho.is_empty() {
             return Err(format!(
                 "the instance matching `{predicate_chirho}` has a context, whose dictionaries this pass does not build here"
             ));
@@ -366,6 +498,49 @@ impl DictPassCtxChirho {
                 context_chirho: inst_chirho.context_chirho.clone(),
                 instance_chirho: Some(std::sync::Arc::clone(inst_chirho)),
             });
+    }
+}
+
+/// The one instance whose head matches `predicate_chirho`, its registry key, and the sub-goals
+/// its context leaves at that predicate. One instance seen twice is one. No match or several is
+/// the reason returned, in row 694's words (row 694's matching, shared by row 699).
+fn matching_instance_chirho<'a>(
+    class_env_chirho: &'a ClassEnvChirho,
+    predicate_chirho: &PredChirho,
+) -> Result<(&'a InstDeclChirho, String, Vec<PredChirho>), String> {
+    let mut matching_chirho: Vec<(String, Vec<PredChirho>, &InstDeclChirho)> = class_env_chirho
+        .instances_chirho()
+        .get_chirho(&predicate_chirho.class_name_chirho)
+        .into_iter()
+        .flatten()
+        .filter_map(|inst_chirho| {
+            ClassEnvChirho::instance_sub_goals_chirho(inst_chirho, predicate_chirho).map(
+                |goals_chirho| {
+                    (
+                        head_key_chirho(
+                            &inst_chirho.head_ty_chirho,
+                            &inst_chirho.extra_head_tys_chirho,
+                        ),
+                        goals_chirho,
+                        inst_chirho.as_ref(),
+                    )
+                },
+            )
+        })
+        .collect();
+    matching_chirho.sort_by(|left_chirho, right_chirho| {
+        (&left_chirho.0, left_chirho.1.is_empty())
+            .cmp(&(&right_chirho.0, right_chirho.1.is_empty()))
+    });
+    matching_chirho.dedup_by(|left_chirho, right_chirho| {
+        left_chirho.0 == right_chirho.0 && left_chirho.1.is_empty() == right_chirho.1.is_empty()
+    });
+    match matching_chirho.as_slice() {
+        [] => Err(format!("no instance matches `{predicate_chirho}`")),
+        [(key_chirho, goals_chirho, inst_chirho)] => {
+            Ok((*inst_chirho, key_chirho.clone(), goals_chirho.clone()))
+        }
+        _ => Err(format!("several instances match `{predicate_chirho}`")),
     }
 }
 

@@ -36,6 +36,7 @@ pub use definitions_chirho::{
     PredPartsChirho, QualTyChirho,
 };
 use instance_matching_chirho::match_consistently_chirho;
+pub use standard_chirho::monad_then_default_arms_chirho;
 pub use superclass_search_chirho::SuperclassSearchExhaustedChirho;
 pub use tuple_instances_chirho::MAX_TUPLE_INSTANCE_ARITY_CHIRHO;
 pub use views_chirho::{

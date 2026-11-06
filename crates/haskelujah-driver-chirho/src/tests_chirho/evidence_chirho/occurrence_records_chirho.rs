@@ -15,7 +15,8 @@ use haskelujah_ast_chirho::provenance_chirho::OriginIdChirho;
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
 
-fn frontend_chirho(source_chirho: &str) -> crate::FrontendResultChirho {
+/// The real front end over `source_chirho`: the checked module and the checker's result.
+pub(super) fn frontend_chirho(source_chirho: &str) -> crate::FrontendResultChirho {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
         &mut source_map_chirho,
@@ -32,7 +33,7 @@ fn frontend_chirho(source_chirho: &str) -> crate::FrontendResultChirho {
 }
 
 /// Each occurrence in the checked module, by origin, with the text it names.
-fn occurrence_texts_chirho(
+pub(super) fn occurrence_texts_chirho(
     result_chirho: &mut crate::FrontendResultChirho,
 ) -> HashMap<OriginIdChirho, String> {
     let mut texts_chirho = HashMap::new();
@@ -239,6 +240,7 @@ fn no_origin_owned_proof_reaches_a_legacy_consumer_at_its_span_chirho() {
         &HashMap::new(),
         &legacy_spans_chirho,
         &HashMap::new(),
+        &Default::default(),
     )
     .evidence_chirho;
     assert!(methods_chirho.is_empty(), "{methods_chirho:?}");
@@ -300,6 +302,7 @@ fn no_origin_owned_literal_proof_reaches_a_legacy_literal_at_its_span_chirho() {
         &legacy_chirho,
         &HashMap::new(),
         &HashMap::new(),
+        &Default::default(),
     )
     .evidence_chirho;
     assert!(joined_chirho.is_empty(), "{joined_chirho:?}");
@@ -374,6 +377,7 @@ fn a_qualified_print_beside_the_programs_own_print_keeps_its_own_show_proof_chir
             occurrence_chirho,
             ProvenanceChirho::new_chirho(*origin_chirho, OccurrenceRoleChirho::Reference),
         )]),
+        &Default::default(),
     )
     .evidence_chirho;
     assert_eq!(
