@@ -534,8 +534,8 @@ impl ClassEnvChirho {
                 class_name_chirho: "Eq".to_string(),
                 head_ty_chirho: TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_var_chirho))),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Eq",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::EqChirho,
                     TyChirho::VarChirho(a_var_chirho),
                 )],
             },
@@ -549,8 +549,8 @@ impl ClassEnvChirho {
                 class_name_chirho: "Show".to_string(),
                 head_ty_chirho: TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_var_chirho))),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Show",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ShowChirho,
                     TyChirho::VarChirho(a_var_chirho),
                 )],
             },
@@ -566,8 +566,8 @@ impl ClassEnvChirho {
                 class_name_chirho: "NFData".to_string(),
                 head_ty_chirho: TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_var_chirho))),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "NFData",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::NfDataChirho,
                     TyChirho::VarChirho(a_var_chirho),
                 )],
             },
@@ -586,8 +586,8 @@ impl ClassEnvChirho {
                     Box::new(TyChirho::VarChirho(a_var_chirho)),
                 ),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Show",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ShowChirho,
                     TyChirho::VarChirho(a_var_chirho),
                 )],
             },
@@ -627,10 +627,20 @@ impl ClassEnvChirho {
                         Box::new(TyChirho::VarChirho(b_var_chirho)),
                     ),
                     extra_head_tys_chirho: vec![],
-                    context_chirho: vec![
-                        PredChirho::new_chirho(class_chirho, TyChirho::VarChirho(a_var_chirho)),
-                        PredChirho::new_chirho(class_chirho, TyChirho::VarChirho(b_var_chirho)),
-                    ],
+                    // A context takes its class's compiler proof; without a compiler key it
+                    // stays legacy, a named gap rather than a guessed identity (row 692).
+                    context_chirho: [a_var_chirho, b_var_chirho]
+                        .map(|var_chirho| match class_identity_chirho {
+                            Some(identity_chirho) => PredChirho::compiler_chirho(
+                                identity_chirho,
+                                TyChirho::VarChirho(var_chirho),
+                            ),
+                            None => PredChirho::new_chirho(
+                                class_chirho,
+                                TyChirho::VarChirho(var_chirho),
+                            ),
+                        })
+                        .to_vec(),
                 },
             );
         }
@@ -643,8 +653,8 @@ impl ClassEnvChirho {
                 class_name_chirho: "Ord".to_string(),
                 head_ty_chirho: TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_var_chirho))),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Ord",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::OrdChirho,
                     TyChirho::VarChirho(a_var_chirho),
                 )],
             },
@@ -661,8 +671,8 @@ impl ClassEnvChirho {
                     Box::new(TyChirho::VarChirho(a_var_chirho)),
                 ),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Eq",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::EqChirho,
                     TyChirho::VarChirho(a_var_chirho),
                 )],
             },
@@ -679,8 +689,8 @@ impl ClassEnvChirho {
                     Box::new(TyChirho::VarChirho(a_var_chirho)),
                 ),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Ord",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::OrdChirho,
                     TyChirho::VarChirho(a_var_chirho),
                 )],
             },
@@ -694,8 +704,8 @@ impl ClassEnvChirho {
                 class_name_chirho: "Read".to_string(),
                 head_ty_chirho: TyChirho::ListChirho(Box::new(TyChirho::VarChirho(a_var_chirho))),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Read",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ReadChirho,
                     TyChirho::VarChirho(a_var_chirho),
                 )],
             },
@@ -712,8 +722,8 @@ impl ClassEnvChirho {
                     Box::new(TyChirho::VarChirho(a_var_chirho)),
                 ),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Read",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ReadChirho,
                     TyChirho::VarChirho(a_var_chirho),
                 )],
             },

@@ -6,8 +6,9 @@
 //! failed to type-check.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use super::{ClassEnvChirho, InstDeclChirho, PredChirho};
+use super::{ClassEnvChirho, PredChirho};
 use crate::ty_chirho::{TyChirho, TyVarChirho};
+use haskelujah_ast_chirho::name_chirho::CompilerClassChirho;
 
 /// The largest tuple GHC's base gives `Eq`, `Show` and `Ord` instances.
 pub const MAX_TUPLE_INSTANCE_ARITY_CHIRHO: usize = 15;
@@ -25,21 +26,28 @@ impl ClassEnvChirho {
                     TyChirho::VarChirho(TyVarChirho(TUPLE_COMPONENT_VAR_BASE_CHIRHO + index_chirho))
                 })
                 .collect::<Vec<_>>();
-            for class_chirho in ["Eq", "Show", "Ord"] {
-                self.add_instance_chirho(InstDeclChirho::legacy_chirho(
+            // Seeded like every standard instance: the class's compiler proof on the instance
+            // and on each component's context (row 692).
+            for class_chirho in [
+                CompilerClassChirho::EqChirho,
+                CompilerClassChirho::ShowChirho,
+                CompilerClassChirho::OrdChirho,
+            ] {
+                self.add_seed_instance_chirho(
+                    class_chirho,
                     crate::class_chirho::InstDeclPartsChirho {
                         kind_tys_chirho: Vec::new(),
-                        class_name_chirho: class_chirho.to_string(),
+                        class_name_chirho: class_chirho.legacy_name_chirho().to_string(),
                         head_ty_chirho: TyChirho::TupleChirho(components_chirho.clone()),
                         extra_head_tys_chirho: vec![],
                         context_chirho: components_chirho
                             .iter()
                             .map(|component_chirho| {
-                                PredChirho::new_chirho(class_chirho, component_chirho.clone())
+                                PredChirho::compiler_chirho(class_chirho, component_chirho.clone())
                             })
                             .collect(),
                     },
-                ));
+                );
             }
         }
     }
