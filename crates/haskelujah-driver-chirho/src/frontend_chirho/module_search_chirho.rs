@@ -9,6 +9,7 @@
 //! downstream consumers never disagree merely because one selects the first
 //! match while another selects the last.
 
+use std::collections::BTreeSet;
 use std::path::Path;
 
 use haskelujah_naming_chirho::iface_chirho::{
@@ -59,6 +60,8 @@ fn sibling_path_matches_declared_module_chirho(
 /// Scan same-directory peers whose file stem matches their declared module's
 /// final component. The caller selected the directory, while this final path
 /// check keeps unrelated test files in that directory from becoming imports.
+/// `parsed_chirho` gains each module whose parsed interface is admitted here: the
+/// program's known source suppliers, which says nothing of linked Core (#32406).
 ///
 /// Workflow: `spec-chirho/workflows-chirho/compiler-pipeline-chirho/
 /// module-search-authority-chirho.md`.
@@ -67,6 +70,7 @@ pub(crate) fn scan_sibling_module_ifaces_chirho(
     source_map_chirho: &mut SourceMapChirho,
     ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
     skip_file_chirho: &str,
+    parsed_chirho: &mut BTreeSet<String>,
 ) {
     if !search_dir_chirho.is_dir() {
         return;
@@ -113,6 +117,7 @@ pub(crate) fn scan_sibling_module_ifaces_chirho(
         if let Ok(iface_chirho) = iface_result_chirho
             && sibling_path_matches_declared_module_chirho(&path_chirho, &iface_chirho.name_chirho)
         {
+            parsed_chirho.insert(iface_chirho.name_chirho.clone());
             admit_authoritative_iface_chirho(ifaces_chirho, iface_chirho);
         }
     }
@@ -212,7 +217,9 @@ impl ModuleSearchBoundsChirho {
     }
 }
 
-/// Recursively scan a source root for hierarchical module peers.
+/// Recursively scan a source root for hierarchical module peers. `parsed_chirho` gains each
+/// module whose parsed interface is admitted; a recovery stub, whose definers are unknown, is
+/// admitted but never named a source supplier (#32406).
 ///
 /// Workflow: `spec-chirho/workflows-chirho/compiler-pipeline-chirho/
 /// module-search-authority-chirho.md`.
@@ -222,6 +229,7 @@ pub(crate) fn scan_hierarchical_modules_chirho(
     source_map_chirho: &mut SourceMapChirho,
     ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
     skip_file_chirho: &str,
+    parsed_chirho: &mut BTreeSet<String>,
 ) {
     let mut bounds_chirho = ModuleSearchBoundsChirho::new_chirho();
     scan_hierarchical_modules_bounded_chirho(
@@ -232,6 +240,7 @@ pub(crate) fn scan_hierarchical_modules_chirho(
         skip_file_chirho,
         0,
         &mut bounds_chirho,
+        parsed_chirho,
     );
 }
 
@@ -243,6 +252,7 @@ fn scan_hierarchical_modules_bounded_chirho(
     skip_file_chirho: &str,
     depth_chirho: usize,
     bounds_chirho: &mut ModuleSearchBoundsChirho,
+    parsed_chirho: &mut BTreeSet<String>,
 ) {
     let entries_chirho = match std::fs::read_dir(dir_chirho) {
         Ok(entries_chirho) => entries_chirho,
@@ -278,6 +288,7 @@ fn scan_hierarchical_modules_bounded_chirho(
                 skip_file_chirho,
                 depth_chirho + 1,
                 bounds_chirho,
+                parsed_chirho,
             );
             continue;
         }
@@ -342,6 +353,7 @@ fn scan_hierarchical_modules_bounded_chirho(
         }));
         match iface_result_chirho {
             Ok(Some(iface_chirho)) => {
+                parsed_chirho.insert(iface_chirho.name_chirho.clone());
                 admit_authoritative_iface_chirho(ifaces_chirho, iface_chirho);
             }
             Ok(None) => {}

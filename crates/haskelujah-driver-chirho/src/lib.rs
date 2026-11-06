@@ -386,11 +386,14 @@ fn check_source_file_with_search_path_chirho(
         );
     }
 
+    // Checking compiles no Core, so the scans' source suppliers are not consulted here.
+    let mut parsed_modules_chirho = std::collections::BTreeSet::new();
     scan_sibling_module_ifaces_chirho(
         search_dir_chirho,
         &mut sibling_source_map_chirho,
         &mut all_ifaces_chirho,
         &file_name_chirho,
+        &mut parsed_modules_chirho,
     );
     for _round_chirho in 0..5 {
         let prev_count_chirho = all_ifaces_chirho.len();
@@ -400,6 +403,7 @@ fn check_source_file_with_search_path_chirho(
             &mut sibling_source_map_chirho,
             &mut all_ifaces_chirho,
             &file_name_chirho,
+            &mut parsed_modules_chirho,
         );
         if all_ifaces_chirho.len() == prev_count_chirho {
             break;
@@ -607,11 +611,14 @@ pub fn compile_source_with_search_path_chirho(
         );
     }
 
+    // The modules the scans parse and admit: the program's known source suppliers (#32406).
+    let mut parsed_modules_chirho = std::collections::BTreeSet::new();
     scan_sibling_module_ifaces_chirho(
         search_dir_chirho,
         source_map_chirho,
         &mut all_ifaces_chirho,
         file_name_chirho,
+        &mut parsed_modules_chirho,
     );
 
     // Scan ALL subdirectories recursively for hierarchical module imports
@@ -625,6 +632,7 @@ pub fn compile_source_with_search_path_chirho(
             source_map_chirho,
             &mut all_ifaces_chirho,
             file_name_chirho,
+            &mut parsed_modules_chirho,
         );
         if all_ifaces_chirho.len() == prev_count_chirho {
             break;
@@ -647,13 +655,17 @@ pub fn compile_source_with_search_path_chirho(
         warnings_chirho: _warnings_chirho,
     } = frontend_result_chirho;
 
+    // Each parsed sibling is a known source supplier, so an import of its value keeps that
+    // value's identity (rows 629 and 642). That is not linked Core: no sibling body is linked
+    // here, so such a reference fails closed by name. A recovery stub supplies nothing.
+    let source_suppliers_chirho: std::collections::HashSet<String> =
+        parsed_modules_chirho.into_iter().collect();
     compile_backend_chirho(
         module_chirho,
         infer_result_chirho,
         std::collections::HashSet::new(),
         &all_ifaces_chirho,
-        // Siblings lend their interfaces; their Core is not linked here.
-        &std::collections::HashSet::new(),
+        &source_suppliers_chirho,
     )
 }
 

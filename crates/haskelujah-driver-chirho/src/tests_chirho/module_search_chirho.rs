@@ -17,6 +17,7 @@ use crate::module_search_chirho::{
 };
 use haskelujah_runtime_chirho::ExecutionModeChirho;
 use haskelujah_span_chirho::SourceMapChirho;
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 /// A scratch directory that removes itself when the test ends.
@@ -49,17 +50,25 @@ impl Drop for ScratchDirChirho {
 fn scan_chirho(dir_chirho: &Path) -> Vec<String> {
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let mut ifaces_chirho = Vec::new();
+    let mut parsed_chirho = BTreeSet::new();
     scan_hierarchical_modules_chirho(
         dir_chirho,
         dir_chirho,
         &mut source_map_chirho,
         &mut ifaces_chirho,
         "Main.hs",
+        &mut parsed_chirho,
     );
-    ifaces_chirho
+    let names_chirho: Vec<String> = ifaces_chirho
         .into_iter()
         .map(|iface_chirho| iface_chirho.name_chirho)
-        .collect()
+        .collect();
+    // Every module these fixtures admit parses, so each is named a known source supplier.
+    assert_eq!(
+        parsed_chirho,
+        names_chirho.iter().cloned().collect::<BTreeSet<_>>()
+    );
+    names_chirho
 }
 
 #[test]
@@ -182,17 +191,23 @@ fn sibling_file_stem_must_match_declared_module_chirho() {
     .expect("write mismatched sibling module");
     let mut source_map_chirho = SourceMapChirho::new_chirho();
     let mut ifaces_chirho = Vec::new();
+    let mut parsed_chirho = BTreeSet::new();
 
     scan_sibling_module_ifaces_chirho(
         root_chirho,
         &mut source_map_chirho,
         &mut ifaces_chirho,
         "MainChirho.hs",
+        &mut parsed_chirho,
     );
 
     assert!(
         ifaces_chirho.is_empty(),
         "a sibling filename that does not name the declared module is not authoritative"
+    );
+    assert!(
+        parsed_chirho.is_empty(),
+        "nor is it named a source supplier"
     );
 }
 

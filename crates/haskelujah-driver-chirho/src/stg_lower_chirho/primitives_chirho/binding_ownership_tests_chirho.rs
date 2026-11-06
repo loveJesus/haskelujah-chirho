@@ -4,9 +4,11 @@
 //! lowering's four reference paths asks the one IO facade, which lets a spelling reach only an id
 //! the program does not own. The four paths are a bare reference, the head of an application, an
 //! argument, and a constructor field. A free reference and a binding the compiler generated keep
-//! the builtin primitive, and an unlinked import fails closed by name. The last control follows a
-//! real import from its producer, the module's provenance, to both interpreter consumers (#32361).
-//! The multi-module merge's own controls sit beside it (`multi_module_tests_chirho.rs`, #32375).
+//! the builtin primitive, and an unlinked import fails closed by name. A control follows a real
+//! import from its producer, the module's provenance, to both interpreter consumers (#32361); the
+//! search-path compile names its parsed siblings as known source suppliers, never linked Core
+//! (#32406). A sibling that only forwards the Prelude's value keeps the builtin. The multi-module
+//! merge's own controls sit beside it (`multi_module_tests_chirho.rs`, #32375).
 //! workflow: testing-chirho/execution-oracles-chirho
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -473,4 +475,47 @@ fn a_real_import_spelled_like_io_stays_the_programs_own_unlinked_reference_chirh
     .expect("the canonical program compiles");
     assert_eq!(canonical_chirho.result_chirho.map(|_| ()), Ok(()));
     assert_eq!(canonical_chirho.machine_chirho.io_output_chirho, "x\n");
+}
+
+/// A program module that forwards the Prelude's own `putStrLn`.
+const FORWARD_PUT_MODULE_CHIRHO: &str =
+    "module ForwardPutChirho (putStrLn) where\n\nimport Prelude (putStrLn)\n";
+
+/// Main, which reaches the Prelude's `putStrLn` through that forwarding module.
+const FORWARDING_MAIN_CHIRHO: &str = "module Main where\n\nimport Prelude hiding (putStrLn)\nimport ForwardPutChirho (putStrLn)\n\nmain :: IO ()\nmain = putStrLn \"x\"\n";
+
+#[test]
+fn a_forwarded_builtin_keeps_its_builtin_through_a_known_source_supplier_chirho() {
+    // The sibling is a known source supplier, but the value it forwards is the Prelude's: no
+    // program identity is recorded, and the Prelude's own body runs (#32406).
+    let directory_chirho = tempfile::tempdir().expect("a scratch directory");
+    std::fs::write(
+        directory_chirho.path().join("ForwardPutChirho.hs"),
+        FORWARD_PUT_MODULE_CHIRHO,
+    )
+    .expect("the forwarding module");
+    let compiled_chirho = crate::compile_source_with_search_path_chirho(
+        FORWARDING_MAIN_CHIRHO,
+        &mut SourceMapChirho::new_chirho(),
+        "Main.hs",
+        directory_chirho.path(),
+    )
+    .unwrap_or_else(|refusal_chirho| panic!("GHC accepts the program: {refusal_chirho}"));
+    let provenance_chirho = &compiled_chirho.core_chirho.provenance_chirho;
+    assert!(
+        provenance_chirho
+            .imported_references_chirho
+            .values()
+            .all(|reference_chirho| reference_chirho.name_chirho != "putStrLn"),
+        "a forwarded builtin takes no program identity: {:?}",
+        provenance_chirho.imported_references_chirho
+    );
+    let outcome_chirho = lower_and_run_outcome_chirho(
+        &compiled_chirho.core_chirho,
+        Some("main"),
+        compiled_chirho.newtype_cons_chirho.clone(),
+    )
+    .expect("the module lowers");
+    assert_eq!(outcome_chirho.result_chirho.map(|_| ()), Ok(()));
+    assert_eq!(outcome_chirho.machine_chirho.io_output_chirho, "x\n");
 }

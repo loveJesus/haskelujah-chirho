@@ -35,6 +35,7 @@ flowchart TD
 - Both full interfaces and panic-recovery stubs pass through the same authority and uniqueness checks. Recovery is not permission to weaken provenance.
 - An authoritative source-root module replaces a seeded fallback at that module's existing unique slot. Thus a genuine root-level `Prelude.hs` remains usable, while a nested fixture whose path does not declare `Prelude` never reaches admission.
 - The resolver's deliberate newest-interface precedence remains available to explicit callers. Filesystem discovery never supplies duplicate names, preventing first-match and last-match consumers from disagreeing.
+- Each scan also names the modules whose PARSED interfaces it admits. A panic-recovery stub is admitted but never named, because its definers are unknown and must not become builtin permission. Compiling with a search path hands those names to the backend as known source suppliers (#32406). An import of a sibling's own value then keeps that value's identity (rows 629 and 642), and a value the sibling only forwards keeps its builtin route. A supplier is not linked Core: this compile links no sibling body, so such a reference fails closed by name. Checking compiles no Core and does not consult the names.
 
 ## Proof boundary
 
