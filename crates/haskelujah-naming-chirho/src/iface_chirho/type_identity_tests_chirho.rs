@@ -464,6 +464,86 @@ fn written_role_is_cloned_transport_metadata_outside_name_equality_and_hash_chir
 }
 
 #[test]
+fn scalar_primitive_proofs_come_only_from_the_selected_actual_providers_chirho() {
+    let mut interfaces_chirho = builtin_module_ifaces_chirho();
+    let mut opaque_chirho = iface_chirho("OpaqueChirho", "Int#", None);
+    opaque_chirho.exports_chirho.origin_chirho =
+        crate::iface_chirho::IfaceOriginChirho::BuiltinChirho;
+    interfaces_chirho.push(opaque_chirho);
+    let program_chirho = module_chirho(
+        "Main",
+        vec![],
+        vec![
+            import_chirho("GHC.Exts", Some("EChirho"), true),
+            import_chirho("GHC.Prim", Some("PChirho"), true),
+            import_chirho("OpaqueChirho", None, false),
+        ],
+    );
+    let scope_chirho = build_type_constructor_scope_chirho(&program_chirho, &interfaces_chirho);
+    for (name_chirho, constructor_chirho) in [
+        ("Int#", CompilerTypeConstructorChirho::IntHashChirho),
+        ("Word#", CompilerTypeConstructorChirho::WordHashChirho),
+    ] {
+        let proof_chirho =
+            TypeConstructorDeclarationChirho::compiler_data_chirho(constructor_chirho);
+        assert!(!proof_chirho.is_ordinary_data_chirho());
+        assert_eq!(proof_chirho.type_key_chirho(), name_chirho);
+        for qualifier_chirho in ["EChirho", "PChirho"] {
+            assert_eq!(
+                scope_chirho.declaration_chirho(&format!("{qualifier_chirho}.{name_chirho}")),
+                Some(&proof_chirho)
+            );
+        }
+    }
+    for name_chirho in [
+        "Int#",
+        "OpaqueChirho.Int#",
+        "EChirho.Float#",
+        "PChirho.Float#",
+    ] {
+        assert!(scope_chirho.declaration_chirho(name_chirho).is_none());
+    }
+}
+
+#[test]
+fn scalar_source_homonyms_and_hidden_imports_do_not_acquire_primitive_proofs_chirho() {
+    let interfaces_chirho = builtin_module_ifaces_chirho();
+    let mut imported_chirho = import_chirho("GHC.Exts", Some("EChirho"), false);
+    imported_chirho.spec_chirho = Some(ImportSpecChirho {
+        hiding_chirho: true,
+        items_chirho: vec![ImportItemChirho::TyConChirho {
+            name_chirho: name_chirho("Word#"),
+            members_chirho: ExportMembersChirho::NoneChirho,
+        }],
+    });
+    let program_chirho = module_chirho(
+        "Main",
+        vec![data_chirho(
+            "Int#",
+            Some(TypeConstructorRoleChirho::DataChirho),
+        )],
+        vec![imported_chirho],
+    );
+    let scope_chirho = build_type_constructor_scope_chirho(&program_chirho, &interfaces_chirho);
+    assert_eq!(
+        scope_chirho.declaration_chirho("Int#"),
+        Some(&source_chirho(
+            "Main",
+            "Int#",
+            TypeConstructorRoleChirho::DataChirho
+        ))
+    );
+    assert_eq!(
+        scope_chirho.declaration_chirho("EChirho.Int#"),
+        Some(&TypeConstructorDeclarationChirho::compiler_data_chirho(
+            CompilerTypeConstructorChirho::IntHashChirho
+        ))
+    );
+    assert!(scope_chirho.declaration_chirho("Word#").is_none());
+    assert!(scope_chirho.declaration_chirho("EChirho.Word#").is_none());
+}
+
+#[test]
 fn source_identity_keys_are_delimited_and_distinct_from_compiler_seeds_chirho() {
     let left_chirho = TypeConstructorIdentityChirho::SourceChirho {
         defining_module_chirho: "A.B".to_owned(),

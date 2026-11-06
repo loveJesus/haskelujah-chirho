@@ -843,6 +843,7 @@ fn name_weight_chirho(name_chirho: &NameChirho) -> Result<usize, GadtProjectionL
         family_key_chirho,
         type_variable_chirho,
         type_constructor_chirho,
+        type_constructor_opaque_chirho: _,
         span_chirho: _,
         origin_chirho: _,
         explicit_type_member_chirho: _,

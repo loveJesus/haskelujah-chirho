@@ -41,6 +41,33 @@ fn zero_bit_representation_term_chirho() -> TyChirho {
 }
 
 impl TypeElaboratorChirho<'_> {
+    // Workflow: spec-chirho/workflows-chirho/language-features-chirho/rank-n-visible-type-application-chirho.md
+    pub(super) fn primitive_scalar_kind_chirho(
+        &mut self,
+        constructor_chirho: CompilerTypeConstructorChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<Option<TyChirho>, ElaborationErrorChirho> {
+        let Some(representation_name_chirho) = constructor_chirho.scalar_representation_chirho()
+        else {
+            return Ok(None);
+        };
+        // The actual scalar producer owns its closed representation kind and
+        // its dependencies. An opaque occurrence of the legacy key owns none.
+        self.seed_representation_header_chirho(
+            CompilerRepresentationChirho::RuntimeTypeChirho,
+            span_chirho,
+        )?;
+        self.state_chirho.charge_chirho(128, 128, span_chirho)?;
+        Ok(Some(TyChirho::AppChirho(
+            Box::new(representation_term_chirho(
+                CompilerRepresentationChirho::RuntimeTypeChirho,
+            )),
+            Box::new(promoted_representation_term_chirho(
+                representation_name_chirho,
+            )),
+        )))
+    }
+
     pub(super) fn seed_representation_header_chirho(
         &mut self,
         representation_chirho: CompilerRepresentationChirho,

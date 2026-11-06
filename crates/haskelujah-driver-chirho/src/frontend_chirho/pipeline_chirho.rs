@@ -276,7 +276,27 @@ pub(crate) fn run_frontend_under_policy_chirho(
     let preferred_qualified_type_names_chirho =
         collect_preferred_qualified_type_names_chirho(&module_chirho, ifaces_chirho);
     let mut unary_variable_instance_heads_covered_chirho = true;
+    // A home dependency can see this module through a reached SOURCE edge and
+    // supply instances of its local classes. Cold discovery does not transport
+    // that ordinary instance universe yet; only actual external producers can
+    // establish this narrower no-back-edge certificate.
+    let mut local_class_prefix_instances_complete_chirho = true;
     for import_chirho in &module_chirho.imports_chirho {
+        local_class_prefix_instances_complete_chirho &=
+            haskelujah_naming_chirho::iface_chirho::select_import_iface_chirho(
+                ifaces_chirho,
+                import_chirho,
+            )
+            .is_some_and(|iface_chirho| {
+                matches!(
+                    iface_chirho.exposure_chirho,
+                    Some(
+                        haskelujah_naming_chirho::iface_chirho::IfaceExposureChirho::PackagesChirho(
+                            _
+                        )
+                    )
+                )
+            });
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
         unary_variable_instance_heads_covered_chirho &=
             haskelujah_naming_chirho::iface_chirho::select_import_iface_chirho(
@@ -492,6 +512,7 @@ pub(crate) fn run_frontend_under_policy_chirho(
             &module_chirho,
             InferenceImportContextChirho {
                 unary_variable_instance_heads_covered_chirho,
+                local_class_prefix_instances_complete_chirho,
                 imported_types_chirho: &merged_imported_types_chirho,
                 imported_type_synonyms_chirho: &merged_imported_type_synonyms_chirho,
                 imported_type_families_chirho: &merged_imported_type_families_chirho,

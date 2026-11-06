@@ -175,6 +175,16 @@ impl TypeElaboratorChirho<'_> {
                 span_chirho,
             } => {
                 let instance_scope_chirho = self.scope_undo_chirho.len();
+                self.state_chirho.charge_chirho(
+                    self.variables_chirho.len(),
+                    self.variables_chirho.len(),
+                    *span_chirho,
+                )?;
+                let outer_chirho = self
+                    .variables_chirho
+                    .values()
+                    .map(|record_chirho| record_chirho.variable_chirho)
+                    .collect::<Vec<_>>();
                 for constraint_chirho in context_chirho {
                     self.infer_constraint_chirho(constraint_chirho)?;
                 }
@@ -186,13 +196,49 @@ impl TypeElaboratorChirho<'_> {
                         span_chirho: *span_chirho,
                     };
                 self.infer_constraint_chirho(&mut head_chirho)?;
+                // Workflow: spec-chirho/workflows-chirho/language-features-chirho/rank-n-visible-type-application-chirho.md
+                // Close generated instance-head representations before ordinary
+                // method checking turns its kind dependencies into skolems.
+                // Actual source universals, outer dependencies and Unknown
+                // records keep the common solver's existing protection.
+                self.state_chirho.charge_chirho(
+                    self.variables_chirho.len(),
+                    self.variables_chirho.len(),
+                    *span_chirho,
+                )?;
+                let roots_chirho = self
+                    .variables_chirho
+                    .values()
+                    .map(|record_chirho| record_chirho.variable_chirho)
+                    .collect::<Vec<_>>();
+                let candidates_chirho = self
+                    .state_chirho
+                    .kind_dependency_closure_chirho(&roots_chirho, *span_chirho)?;
+                let protected_chirho = self
+                    .state_chirho
+                    .kind_dependency_closure_chirho(&outer_chirho, *span_chirho)?;
+                self.state_chirho.default_representation_variables_chirho(
+                    &candidates_chirho,
+                    &protected_chirho,
+                    *span_chirho,
+                )?;
                 if let haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
                     class_chirho: checked_class_chirho,
                     args_chirho,
-                    kind_args_chirho: hidden_chirho,
+                    kind_args_chirho: mut hidden_chirho,
                     ..
                 } = head_chirho
                 {
+                    // Publish the settled prefix, not the pre-default syntax
+                    // variables which ordinary instance matching would freshen.
+                    for argument_chirho in &mut hidden_chirho {
+                        let span_chirho = argument_chirho.span_chirho();
+                        let typed_chirho = self.at_kind_level_chirho(|this_chirho| {
+                            this_chirho.infer_type_chirho(argument_chirho)
+                        })?;
+                        *argument_chirho =
+                            self.surface_chirho(&typed_chirho.term_chirho, span_chirho)?;
+                    }
                     *class_chirho = checked_class_chirho;
                     *types_chirho = args_chirho;
                     *kind_args_chirho = hidden_chirho;

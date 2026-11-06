@@ -117,17 +117,12 @@ impl TypeElaboratorChirho<'_> {
         &mut self,
         syntax_chirho: &mut TypeChirho,
     ) -> Result<TyChirho, ElaborationErrorChirho> {
-        let span_chirho = syntax_chirho.span_chirho();
-        let term_chirho = self.check_value_type_chirho(syntax_chirho)?;
-        let Some(kind_chirho) = self.checked_term_kind_chirho(&term_chirho, span_chirho)? else {
-            return Ok(term_chirho);
-        };
+        // Retain the producer's checked kind. Re-projecting a bare legacy type
+        // key can borrow an unrelated qualified primitive supplier's authority.
+        let typed_chirho = self.infer_defaulted_value_type_chirho(syntax_chirho, false)?;
         self.check_inferred_kind_chirho(
             syntax_chirho,
-            ElaboratedTypeChirho {
-                term_chirho,
-                kind_chirho,
-            },
+            typed_chirho,
             &ElaborationStateChirho::type_universe_chirho(),
         )
         .map(|typed_chirho| typed_chirho.term_chirho)

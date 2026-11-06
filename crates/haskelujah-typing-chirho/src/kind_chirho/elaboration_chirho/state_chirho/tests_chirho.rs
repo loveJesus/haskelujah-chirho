@@ -153,6 +153,7 @@ fn adopted_latched_failure_is_fatal_without_another_argument_chirho() {
             &module_chirho,
             crate::infer_chirho::InferenceImportContextChirho {
                 unary_variable_instance_heads_covered_chirho: false,
+                local_class_prefix_instances_complete_chirho: false,
                 imported_types_chirho: &HashMap::new(),
                 imported_type_synonyms_chirho: &HashMap::new(),
                 imported_type_families_chirho: &checked_chirho.registry_chirho,

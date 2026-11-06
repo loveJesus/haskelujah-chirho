@@ -59,6 +59,8 @@ fn equal_name_chirho(left_chirho: &NameChirho, right_chirho: &NameChirho) -> boo
     let metadata_equal_chirho = left_chirho.type_variable_chirho()
         == right_chirho.type_variable_chirho()
         && left_chirho.type_constructor_chirho() == right_chirho.type_constructor_chirho()
+        && left_chirho.type_constructor_opaque_chirho()
+            == right_chirho.type_constructor_opaque_chirho()
         && left_chirho.promotion_chirho() == right_chirho.promotion_chirho()
         && left_chirho.family_key_chirho() == right_chirho.family_key_chirho();
     if !metadata_equal_chirho {
@@ -402,6 +404,7 @@ impl DeclarationScopeValidationChirho<'_> {
                 index_chirho,
             }) if declaration_chirho.as_ref() == self.identity_chirho => {
                 if name_chirho.type_constructor_chirho().is_some()
+                    || name_chirho.type_constructor_opaque_chirho()
                     || name_chirho.promotion_chirho().is_some()
                     || name_chirho.family_key_chirho().is_some()
                 {

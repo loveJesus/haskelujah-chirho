@@ -121,8 +121,6 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "Int#",
-            "Word#",
             "Float#",
             "Double#",
             "Char#",
@@ -149,7 +147,14 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
-        // GHC.Prim exposes these two primitive constructors; its historical
+        for constructor_chirho in [
+            CompilerTypeConstructorChirho::IntHashChirho,
+            CompilerTypeConstructorChirho::WordHashChirho,
+        ] {
+            let (key_chirho, type_chirho) = mk_data_type_chirho(constructor_chirho, &[]);
+            exports_chirho.types_chirho.insert(key_chirho, type_chirho);
+        }
+        // GHC.Prim exposes TYPE and CONSTRAINT; its historical
         // RuntimeRep/alias placeholders do not receive declaration authority.
         seed_representation_exports_chirho(
             &mut exports_chirho,

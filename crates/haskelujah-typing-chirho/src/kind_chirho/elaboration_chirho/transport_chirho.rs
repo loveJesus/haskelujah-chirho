@@ -65,6 +65,19 @@ impl TypeElaboratorChirho<'_> {
                     span_chirho,
                 ));
             }
+            if schema_chirho
+                .declaration_chirho
+                .as_ref()
+                .is_some_and(|proof_chirho| {
+                    matches!(&proof_chirho.identity_chirho,
+                    TypeConstructorIdentityChirho::CompilerChirho(constructor_chirho)
+                    if constructor_chirho.scalar_representation_chirho().is_some())
+                })
+            {
+                // A flat legacy key carries no occurrence's naming proof.
+                // Actual checked AST producers retain their complete kind.
+                return Ok(None);
+            }
         }
         Ok(schema_chirho)
     }
@@ -126,6 +139,9 @@ impl TypeElaboratorChirho<'_> {
         name_chirho: &NameChirho,
     ) -> Result<Option<TypeConstructorDeclarationChirho>, ElaborationErrorChirho> {
         let written_chirho = self.written_name_chirho(name_chirho)?;
+        if name_chirho.type_constructor_opaque_chirho() {
+            return Ok(None);
+        }
         let declaration_chirho = name_chirho
             .type_constructor_chirho()
             .or_else(|| self.type_scope_chirho.declaration_chirho(&written_chirho));
@@ -344,6 +360,9 @@ impl TypeElaboratorChirho<'_> {
                             self.state_chirho.name_chirho(&key_chirho, span_chirho)?,
                         );
                     }
+                }
+                if name_chirho.type_constructor_chirho().is_none() {
+                    name_chirho.mark_type_constructor_opaque_chirho();
                 }
                 TypeChirho::ConChirho(name_chirho)
             }

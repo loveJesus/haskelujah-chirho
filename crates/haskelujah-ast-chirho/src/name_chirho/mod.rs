@@ -77,6 +77,9 @@ pub struct RawNameChirho {
     /// Positive defining identity stamped while this name's source scope is
     /// available; importers never reinterpret an exported synonym's spelling.
     pub type_constructor_chirho: Option<TypeConstructorDeclarationChirho>,
+    /// A proofless generated occurrence remains opaque when rechecked in a
+    /// caller's scope. This is transport metadata, outside source Eq/Hash.
+    pub type_constructor_opaque_chirho: bool,
 }
 
 impl PartialEq for RawNameChirho {
@@ -127,6 +130,9 @@ impl fmt::Debug for RawNameChirho {
         if let Some(constructor_chirho) = &self.type_constructor_chirho {
             debug_chirho.field("type_constructor_chirho", constructor_chirho);
         }
+        if self.type_constructor_opaque_chirho {
+            debug_chirho.field("type_constructor_opaque_chirho", &true);
+        }
         debug_chirho.finish()
     }
 }
@@ -145,6 +151,7 @@ impl RawNameChirho {
             written_type_declaration_role_chirho: None,
             type_variable_chirho: None,
             type_constructor_chirho: None,
+            type_constructor_opaque_chirho: false,
         }
     }
 
@@ -165,6 +172,7 @@ impl RawNameChirho {
             written_type_declaration_role_chirho: None,
             type_variable_chirho: None,
             type_constructor_chirho: None,
+            type_constructor_opaque_chirho: false,
         }
     }
 
@@ -249,12 +257,32 @@ impl NameChirho {
         &mut self,
         constructor_chirho: Option<TypeConstructorDeclarationChirho>,
     ) {
+        let raw_chirho = match self {
+            Self::RawChirho(raw_chirho) => raw_chirho,
+            Self::ResolvedChirho(name_chirho) => &mut name_chirho.raw_chirho,
+        };
+        if constructor_chirho.is_some() {
+            raw_chirho.type_constructor_opaque_chirho = false;
+        }
+        raw_chirho.type_constructor_chirho = constructor_chirho;
+    }
+
+    pub fn type_constructor_opaque_chirho(&self) -> bool {
         match self {
-            Self::RawChirho(raw_chirho) => raw_chirho.type_constructor_chirho = constructor_chirho,
+            Self::RawChirho(raw_chirho) => raw_chirho.type_constructor_opaque_chirho,
             Self::ResolvedChirho(name_chirho) => {
-                name_chirho.raw_chirho.type_constructor_chirho = constructor_chirho
+                name_chirho.raw_chirho.type_constructor_opaque_chirho
             }
         }
+    }
+
+    pub fn mark_type_constructor_opaque_chirho(&mut self) {
+        let raw_chirho = match self {
+            Self::RawChirho(raw_chirho) => raw_chirho,
+            Self::ResolvedChirho(name_chirho) => &mut name_chirho.raw_chirho,
+        };
+        raw_chirho.type_constructor_chirho = None;
+        raw_chirho.type_constructor_opaque_chirho = true;
     }
 
     /// Return the source span covering this name occurrence.
@@ -431,6 +459,8 @@ pub enum CompilerTypeConstructorChirho {
     TypeUniverseChirho,
     ConstraintUniverseChirho,
     IntChirho,
+    IntHashChirho,
+    WordHashChirho,
     IntegerChirho,
     CharChirho,
     FloatChirho,
@@ -442,6 +472,16 @@ pub enum CompilerTypeConstructorChirho {
 }
 
 impl CompilerTypeConstructorChirho {
+    /// The closed representation belongs to this typed compiler producer.
+    /// Its legacy spelling alone supplies no positive primitive kind proof.
+    pub fn scalar_representation_chirho(self) -> Option<&'static str> {
+        match self {
+            Self::IntHashChirho => Some("IntRep"),
+            Self::WordHashChirho => Some("WordRep"),
+            _ => None,
+        }
+    }
+
     pub fn name_chirho(self) -> &'static str {
         match self {
             Self::RepresentationChirho(representation_chirho) => {
@@ -461,6 +501,8 @@ impl CompilerTypeConstructorChirho {
             Self::TypeUniverseChirho => "Type",
             Self::ConstraintUniverseChirho => "Constraint",
             Self::IntChirho => "Int",
+            Self::IntHashChirho => "Int#",
+            Self::WordHashChirho => "Word#",
             Self::IntegerChirho => "Integer",
             Self::CharChirho => "Char",
             Self::FloatChirho => "Float",
@@ -644,6 +686,12 @@ impl TypeConstructorDeclarationChirho {
                     TypeConstructorRoleChirho::ClassChirho
                 }
                 CompilerTypeConstructorChirho::EqualityChirho(_) => {
+                    TypeConstructorRoleChirho::UnknownChirho
+                }
+                // A checked primitive kind does not prove an ordinary data
+                // declaration or authorize constructor promotion/packing.
+                CompilerTypeConstructorChirho::IntHashChirho
+                | CompilerTypeConstructorChirho::WordHashChirho => {
                     TypeConstructorRoleChirho::UnknownChirho
                 }
                 CompilerTypeConstructorChirho::TypeUniverseChirho

@@ -480,6 +480,9 @@ impl TypeElaboratorChirho<'_> {
                         ),
                     ));
                 }
+                if name_chirho.type_constructor_opaque_chirho() {
+                    return Ok(None);
+                }
                 if let Some(proof_chirho) = self.declaration_chirho(name_chirho)? {
                     let key_chirho = self.declaration_key_chirho(&proof_chirho, span_chirho)?;
                     if matches!(

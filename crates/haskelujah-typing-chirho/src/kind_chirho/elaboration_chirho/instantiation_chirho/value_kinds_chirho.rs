@@ -267,6 +267,15 @@ impl TypeElaboratorChirho<'_> {
                 span_chirho,
             ));
         }
+        if scheme_chirho.declaration_chirho.as_ref().is_some_and(|proof_chirho| {
+            matches!(&proof_chirho.identity_chirho,
+                haskelujah_ast_chirho::name_chirho::TypeConstructorIdentityChirho::CompilerChirho(constructor_chirho)
+                if constructor_chirho.scalar_representation_chirho().is_some())
+        }) {
+            // Preserve Unknown when only the legacy primitive key survived.
+            // The source consumer must retain its actual ElaboratedType kind.
+            return Ok(None);
+        }
         if arguments_chirho.len() >= scheme_chirho.binders_chirho.len() {
             // A checked full application supplies every slot, including hidden
             // kinds. Interpret those slots simultaneously, without freshening

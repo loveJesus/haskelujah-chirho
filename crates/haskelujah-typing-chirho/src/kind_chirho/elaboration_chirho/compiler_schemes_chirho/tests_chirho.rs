@@ -10,6 +10,13 @@ use haskelujah_ast_chirho::promotion_chirho::PromotionScopeChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 
 fn with_elaborator_chirho(action_chirho: impl FnOnce(&mut TypeElaboratorChirho<'_>)) {
+    with_type_scope_chirho(&TypeConstructorScopeChirho::default(), action_chirho);
+}
+
+fn with_type_scope_chirho(
+    type_scope_chirho: &TypeConstructorScopeChirho,
+    action_chirho: impl FnOnce(&mut TypeElaboratorChirho<'_>),
+) {
     let span_chirho = SpanChirho::DUMMY_CHIRHO;
     let module_chirho = ModuleChirho {
         name_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
@@ -28,7 +35,6 @@ fn with_elaborator_chirho(action_chirho: impl FnOnce(&mut TypeElaboratorChirho<'
         origin_supply_chirho: Default::default(),
     };
     let registry_chirho = TypeFamilyEnvChirho::default();
-    let type_scope_chirho = TypeConstructorScopeChirho::default();
     let family_scope_chirho = TypeFamilyScopeChirho::default();
     let promotion_scope_chirho = PromotionScopeChirho::default();
     let builtin_classes_chirho = BuiltinClassScopeChirho::default();
@@ -36,7 +42,7 @@ fn with_elaborator_chirho(action_chirho: impl FnOnce(&mut TypeElaboratorChirho<'
         &module_chirho,
         ElaborationImportsChirho {
             registry_chirho: &registry_chirho,
-            type_scope_chirho: &type_scope_chirho,
+            type_scope_chirho,
             family_scope_chirho: &family_scope_chirho,
             promotion_scope_chirho: &promotion_scope_chirho,
             builtin_classes_chirho: &builtin_classes_chirho,
@@ -267,5 +273,197 @@ fn compiler_class_kind_depth_failure_remains_terminal_for_a_later_tiny_kind_chir
                 .is_err()
         );
         assert!(elaborator_chirho.state_chirho.failure_chirho().is_some());
+    });
+}
+
+#[test]
+fn scalar_primitive_producers_supply_closed_kinds_without_data_authority_chirho() {
+    use haskelujah_ast_chirho::name_chirho::CompilerRepresentationChirho;
+    with_elaborator_chirho(|elaborator_chirho| {
+        let span_chirho = SpanChirho::DUMMY_CHIRHO;
+        for (constructor_chirho, representation_chirho) in [
+            (CompilerTypeConstructorChirho::IntHashChirho, "IntRep"),
+            (CompilerTypeConstructorChirho::WordHashChirho, "WordRep"),
+        ] {
+            elaborator_chirho
+                .seed_compiler_header_chirho(constructor_chirho, span_chirho)
+                .unwrap();
+            let proof_chirho =
+                TypeConstructorDeclarationChirho::compiler_data_chirho(constructor_chirho);
+            assert!(!proof_chirho.is_ordinary_data_chirho());
+            let key_chirho = proof_chirho.type_key_chirho();
+            let schema_chirho = elaborator_chirho
+                .registry_chirho
+                .declaration_schemes_chirho()
+                .get_chirho(&key_chirho)
+                .unwrap()
+                .clone();
+            assert!(schema_chirho.binders_chirho.is_empty());
+            assert_eq!(schema_chirho.visible_arity_chirho, 0);
+            assert_eq!(schema_chirho.reduction_arity_chirho, 0);
+            let expected_kind_chirho = TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho(
+                    CompilerRepresentationChirho::RuntimeTypeChirho
+                        .type_key_chirho()
+                        .to_owned(),
+                )),
+                Box::new(TyChirho::ConChirho(
+                    PromotedKeyChirho::builtin_chirho(
+                        BUILTIN_CONSTRUCTOR_MODULE_CHIRHO,
+                        representation_chirho,
+                    )
+                    .as_str_chirho()
+                    .to_owned(),
+                )),
+            );
+            assert_eq!(schema_chirho.result_kind_chirho, expected_kind_chirho);
+            let mut name_chirho = NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                constructor_chirho.name_chirho(),
+                span_chirho,
+            ));
+            name_chirho.set_type_constructor_chirho(Some(proof_chirho));
+            let elaborated_chirho = elaborator_chirho
+                .infer_defaulted_value_type_chirho(&mut TypeChirho::ConChirho(name_chirho), false)
+                .unwrap();
+            assert_eq!(elaborated_chirho.kind_chirho, expected_kind_chirho);
+            assert_eq!(
+                elaborated_chirho.term_chirho,
+                TyChirho::ConChirho(key_chirho)
+            );
+            assert_eq!(
+                elaborator_chirho
+                    .state_chirho
+                    .value_representation_chirho(
+                        &elaborated_chirho.kind_chirho,
+                        &elaborator_chirho.registry_chirho,
+                        span_chirho,
+                    )
+                    .unwrap(),
+                state_chirho::ValueRepresentationChirho::FIXED_CHIRHO
+            );
+        }
+    });
+}
+
+#[test]
+fn opaque_scalar_syntax_does_not_borrow_a_registered_primitive_kind_chirho() {
+    with_elaborator_chirho(|elaborator_chirho| {
+        let span_chirho = SpanChirho::DUMMY_CHIRHO;
+        elaborator_chirho
+            .seed_compiler_header_chirho(CompilerTypeConstructorChirho::IntHashChirho, span_chirho)
+            .unwrap();
+        let mut syntax_chirho = TypeChirho::ConChirho(NameChirho::RawChirho(
+            RawNameChirho::unqualified_chirho("Int#", span_chirho),
+        ));
+        assert!(
+            elaborator_chirho
+                .scheme_chirho(&mut syntax_chirho)
+                .unwrap()
+                .is_none()
+        );
+        let elaborated_chirho = elaborator_chirho
+            .infer_type_chirho(&mut syntax_chirho)
+            .unwrap();
+        assert!(matches!(
+            elaborated_chirho.kind_chirho,
+            TyChirho::VarChirho(_)
+        ));
+        let TypeChirho::ConChirho(name_chirho) = syntax_chirho else {
+            panic!("opaque scalar syntax stays a constructor occurrence");
+        };
+        assert!(name_chirho.type_constructor_chirho().is_none());
+        assert!(
+            elaborator_chirho
+                .checked_term_kind_chirho(&elaborated_chirho.term_chirho, span_chirho)
+                .unwrap()
+                .is_none()
+        );
+        let TypeChirho::ConChirho(projected_chirho) = elaborator_chirho
+            .surface_chirho(&elaborated_chirho.term_chirho, span_chirho)
+            .unwrap()
+        else {
+            panic!("a proofless flat scalar stays an ordinary constructor occurrence");
+        };
+        assert!(projected_chirho.type_constructor_chirho().is_none());
+    });
+}
+
+#[test]
+fn opaque_scalar_projection_keeps_unknown_under_a_callers_actual_supplier_chirho() {
+    let span_chirho = SpanChirho::DUMMY_CHIRHO;
+    let mut projected_chirho = None;
+    with_elaborator_chirho(|elaborator_chirho| {
+        elaborator_chirho
+            .seed_compiler_header_chirho(CompilerTypeConstructorChirho::IntHashChirho, span_chirho)
+            .unwrap();
+        projected_chirho = Some(
+            elaborator_chirho
+                .surface_chirho(&TyChirho::ConChirho("Int#".to_owned()), span_chirho)
+                .unwrap(),
+        );
+    });
+    let mut scope_chirho = TypeConstructorScopeChirho::default();
+    scope_chirho.bind_chirho(
+        "Int#".to_owned(),
+        Some(TypeConstructorDeclarationChirho::compiler_data_chirho(
+            CompilerTypeConstructorChirho::IntHashChirho,
+        )),
+    );
+    let published_chirho =
+        crate::ty_chirho::declaration_syntax_chirho::PublishedSynonymSyntaxChirho::new_chirho(
+            Vec::new(),
+            projected_chirho.unwrap(),
+            Arc::from([]),
+        );
+    let unresolved_chirho =
+        crate::ty_chirho::declaration_syntax_chirho::PublishedSynonymSyntaxChirho::new_chirho(
+            Vec::new(),
+            TypeChirho::ConChirho(NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                "Int#",
+                span_chirho,
+            ))),
+            Arc::from([]),
+        );
+    assert_ne!(published_chirho, unresolved_chirho);
+    with_type_scope_chirho(&scope_chirho, |elaborator_chirho| {
+        elaborator_chirho
+            .seed_compiler_header_chirho(CompilerTypeConstructorChirho::IntHashChirho, span_chirho)
+            .unwrap();
+        let mut opaque_chirho = elaborator_chirho
+            .state_chirho
+            .copy_syntax_chirho(published_chirho.rhs_chirho())
+            .unwrap();
+        assert!(
+            elaborator_chirho
+                .scheme_chirho(&mut opaque_chirho)
+                .unwrap()
+                .is_none()
+        );
+        let typed_chirho = elaborator_chirho
+            .infer_type_chirho(&mut opaque_chirho)
+            .unwrap();
+        assert!(matches!(typed_chirho.kind_chirho, TyChirho::VarChirho(_)));
+        let TypeChirho::ConChirho(name_chirho) = opaque_chirho else {
+            panic!("opaque scalar projection retains its occurrence");
+        };
+        assert!(name_chirho.type_constructor_opaque_chirho());
+        assert!(name_chirho.type_constructor_chirho().is_none());
+
+        // A genuine source occurrence still resolves its selected supplier.
+        let mut actual_chirho = TypeChirho::ConChirho(NameChirho::RawChirho(
+            RawNameChirho::unqualified_chirho("Int#", span_chirho),
+        ));
+        let typed_chirho = elaborator_chirho
+            .infer_type_chirho(&mut actual_chirho)
+            .unwrap();
+        assert!(matches!(
+            typed_chirho.kind_chirho,
+            TyChirho::AppChirho(_, _)
+        ));
+        let TypeChirho::ConChirho(name_chirho) = actual_chirho else {
+            panic!("selected scalar keeps its actual occurrence");
+        };
+        assert!(!name_chirho.type_constructor_opaque_chirho());
+        assert!(name_chirho.type_constructor_chirho().is_some());
     });
 }

@@ -168,3 +168,55 @@ they are not constructor existentials. The field's outer kind remains open until
 with the actual parent result, including unboxed and checked-family results. Declared
 universals, parent parameter refinements and true escaping existentials retain their existing
 guards. Rich binder-kind free variables remain part of every scope check.
+
+## Instance heads and primitive scalar kinds
+
+```mermaid
+flowchart TD
+    instance_chirho[Infer the actual instance context and head] --> dependencies_chirho[Close the complete kind dependencies]
+    dependencies_chirho --> protect_chirho[Protect enclosing variables and written universals]
+    protect_chirho --> default_chirho[Default only generated representation metas in the same State]
+    default_chirho --> settled_chirho[Publish the settled complete hidden prefix]
+    settled_chirho --> methods_chirho[Open the complete class telescope for method checking]
+    supplier_chirho[Selected GHC.Exts or GHC.Prim primitive export] --> proof_chirho[Carry the existing compiler identity through naming]
+    proof_chirho --> catalogue_chirho[Register IntHash or WordHash in the same declaration catalogue]
+    catalogue_chirho --> result_chirho[Closed result kind TYPE IntRep or TYPE WordRep]
+    result_chirho --> methods_chirho
+    methods_chirho --> wanted_chirho[Retain full prefixes on ordinary class wanteds]
+    wanted_chirho --> apart_chirho[Use the existing checked apartness kernel for every complete instance prefix]
+    apart_chirho --> given_chirho[Keep the existing given-context check before reporting no instance]
+    opaque_chirho[Hidden import, opaque metadata or source homonym] --> ordinary_chirho[Keep its actual missing or source declaration proof]
+```
+
+Implicit instance-head arrows close their generated RuntimeRep metas before ordinary
+method checking opens rigid variables. The same bounded state computes the candidates
+and protects outer dependencies; source universals and Unknown records retain their
+existing status. An explicit polymorphic instance kind remains polymorphic.
+
+The two primitive scalar exports supply checked kinds through the ordinary compiler
+declaration producer. Their legacy type keys remain unchanged. Their declaration role
+stays Unknown: a closed primitive kind grants no ordinary-data promotion, constructor,
+allocation or dictionary-selection authority. Other opaque primitive interface entries
+do not gain a telescope by spelling. Representation dependencies come from the same
+existing typed producers; source aliases still require the selected naming proof.
+Class-method checking retains the producer's complete `ElaboratedTypeChirho`,
+including its checked kind. A later projection of a proofless flat primitive key
+returns Unknown; it cannot borrow a separately imported qualified supplier's kind
+or reconstruct occurrence proof from that key.
+The existing name carrier marks a generated proofless constructor opaque. That
+metadata survives bounded syntax copying and synonym publication and stays outside
+source-name equality/hashing. Re-elaboration preserves Unknown even when the caller
+can import a same-spelled primitive; only a genuine positive producer may replace it.
+
+Defaulted instance representations are re-projected before their hidden syntax leaves
+the producer. A variable spelling from the pre-default header cannot become a fresh
+polymorphic instance argument during ordinary registration. For a fully known class,
+the existing catalogue can certify that every complete instance kind prefix is surely
+apart from a wanted, independently of an opaque visible head. Incomplete registration,
+derived or Resource metadata, missing checked records and exhausted proof work remain
+Unknown. Normalization, derived-record scanning and apartness share one shrinking
+existing allowance; every outcome settles spent work and output. Ordinary primitive
+literal policy and legacy instance selection remain unchanged, and the existing given
+context can discharge the wanted before any diagnostic is reported.
+
+The optional hidden-prefix refutation also requires the frontend's actual selected-interface admission proof. External package interfaces cannot refer back to a newly declared local class; home or unknown interfaces do not establish that completeness while cold discovery omits ordinary instance records. A reached `SOURCE` cycle can therefore retain Unknown rather than incorrectly refute an instance supplied by the peer. This guard applies only to the new prefix certificate. Existing ordinary selection and lexical given matching remain authoritative. Recovering completeness for acyclic home graphs requires a real dependency producer, not an import-name exception.

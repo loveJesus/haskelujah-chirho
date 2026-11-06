@@ -108,17 +108,38 @@ pub(super) fn family_patterns_relation_with_limits_chirho(
     left_chirho: &[TyChirho],
     right_chirho: &[TyChirho],
     classify_chirho: &impl Fn(&str) -> FamilyHeadRoleChirho,
-    limits_chirho: FamilyUnificationLimitsChirho,
+    mut limits_chirho: FamilyUnificationLimitsChirho,
 ) -> FamilyPatternRelationChirho {
-    let mut kernel_chirho = ApartnessKernelChirho::new_chirho(classify_chirho, limits_chirho);
+    family_patterns_relation_with_budget_chirho(
+        left_chirho,
+        right_chirho,
+        classify_chirho,
+        &mut limits_chirho,
+    )
+}
+
+/// Share one existing proof allowance across alternatives. Unknown and partial
+/// failures retain their actual work and DAG-node debt before returning.
+pub(super) fn family_patterns_relation_with_budget_chirho(
+    left_chirho: &[TyChirho],
+    right_chirho: &[TyChirho],
+    classify_chirho: &impl Fn(&str) -> FamilyHeadRoleChirho,
+    limits_chirho: &mut FamilyUnificationLimitsChirho,
+) -> FamilyPatternRelationChirho {
+    let mut kernel_chirho = ApartnessKernelChirho::new_chirho(classify_chirho, *limits_chirho);
     let mut left_context_chirho = kernel_chirho.context_chirho();
     let mut right_context_chirho = kernel_chirho.context_chirho();
-    match kernel_chirho.unify_inputs_chirho(
+    let result_chirho = kernel_chirho.unify_inputs_chirho(
         left_chirho,
         right_chirho,
         &mut left_context_chirho,
         &mut right_context_chirho,
-    ) {
+    );
+    limits_chirho.steps_chirho = kernel_chirho.limits_chirho.steps_chirho;
+    limits_chirho.nodes_chirho = limits_chirho
+        .nodes_chirho
+        .saturating_sub(kernel_chirho.nodes_chirho.len());
+    match result_chirho {
         Ok(FamilyUnificationChirho::SurelyApartChirho) => {
             FamilyPatternRelationChirho::SurelyApartChirho
         }

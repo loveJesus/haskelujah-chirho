@@ -437,6 +437,7 @@ impl InferCtxChirho {
             module_default_types_chirho: Vec::new(),
             overloaded_strings_chirho: false,
             fully_known_class_names_chirho,
+            local_class_prefix_instances_complete_chirho: false,
             seeded_class_names_chirho,
             unmodeled_pattern_evidence_seen_chirho: false,
             context_constructors_chirho: HashSet::new(),

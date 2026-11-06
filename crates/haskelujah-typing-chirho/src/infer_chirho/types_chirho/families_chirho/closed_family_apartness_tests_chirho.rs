@@ -7,9 +7,51 @@
 use super::closed_family_apartness_chirho::{
     FamilyHeadRoleChirho, FamilyPatternRelationChirho, FamilyUnificationChirho,
     FamilyUnificationLimitsChirho, GenerativeIdentityChirho, family_branches_compatible_chirho,
-    family_patterns_relation_with_limits_chirho, family_patterns_unification_chirho,
-    family_patterns_with_limits_chirho,
+    family_patterns_relation_with_budget_chirho, family_patterns_relation_with_limits_chirho,
+    family_patterns_unification_chirho, family_patterns_with_limits_chirho,
 };
+
+#[test]
+fn repeated_apartness_checks_share_work_and_node_debt_chirho() {
+    let mut budget_chirho = FamilyUnificationLimitsChirho {
+        steps_chirho: 1024,
+        nodes_chirho: 256,
+        depth_chirho: 128,
+    };
+    let mut proved_chirho = 0;
+    for _index_chirho in 0..128 {
+        if family_patterns_relation_with_budget_chirho(
+            &[constructor_chirho("AChirho.TChirho")],
+            &[constructor_chirho("BChirho.TChirho")],
+            &classify_chirho,
+            &mut budget_chirho,
+        ) != FamilyPatternRelationChirho::SurelyApartChirho
+        {
+            break;
+        }
+        proved_chirho += 1;
+    }
+    assert!(proved_chirho > 0 && proved_chirho < 128);
+    assert!(budget_chirho.steps_chirho < 1024);
+    assert!(budget_chirho.nodes_chirho < 256);
+}
+
+#[test]
+fn an_unknown_apartness_result_keeps_its_used_allowance_chirho() {
+    let mut budget_chirho = FamilyUnificationLimitsChirho::default();
+    let before_chirho = budget_chirho;
+    assert_eq!(
+        family_patterns_relation_with_budget_chirho(
+            &[constructor_chirho("MissingChirho")],
+            &[constructor_chirho("BChirho.TChirho")],
+            &classify_chirho,
+            &mut budget_chirho,
+        ),
+        FamilyPatternRelationChirho::UnknownChirho
+    );
+    assert!(budget_chirho.steps_chirho < before_chirho.steps_chirho);
+    assert!(budget_chirho.nodes_chirho < before_chirho.nodes_chirho);
+}
 use crate::ty_chirho::{TyChirho, TyVarChirho};
 
 fn constructor_chirho(name_chirho: &str) -> TyChirho {

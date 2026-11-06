@@ -159,6 +159,9 @@ impl TypeElaboratorChirho<'_> {
                 });
             }
         }
+        let result_kind_chirho = self
+            .primitive_scalar_kind_chirho(constructor_chirho, span_chirho)?
+            .unwrap_or(type_chirho);
         self.registry_chirho
             .declaration_schemes_mut_chirho()
             .insert_chirho(DeclarationSchemeChirho {
@@ -173,7 +176,7 @@ impl TypeElaboratorChirho<'_> {
                 reduction_arity_chirho: binders_chirho.len(),
                 visible_arity_chirho: arity_chirho,
                 binders_chirho,
-                result_kind_chirho: type_chirho,
+                result_kind_chirho,
                 synonym_rhs_chirho: None,
                 synonym_syntax_chirho: None,
                 local_binders_chirho: std::sync::Arc::from([]),
