@@ -16,7 +16,7 @@ use haskelujah_span_chirho::SourceMapChirho;
 macro_rules! fixture_chirho {
     ($name_chirho:literal) => {
         include_str!(concat!(
-            "../../../tests/typing_integration_chirho/declarations_chirho/deriving_strategies_chirho/",
+            "../../../../tests/typing_integration_chirho/declarations_chirho/deriving_strategies_chirho/",
             $name_chirho
         ))
     };

@@ -245,7 +245,7 @@ fn gnd_r5t_associated_family_forward_undecidable_chirho() {
 
 /// P1: GHC 9.14.1 prints 7 then True. sha256 a68f213fb4e799407a14dd546b694952695b3ff0dfb9fde2dbde0a255a62ba45.
 const PARAMETRIC_NO_INLINE_SHOW_CHIRHO: &str = include_str!(
-    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/parametric_no_inline_show_chirho.hs"
+    "../../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/parametric_no_inline_show_chirho.hs"
 );
 
 #[test]
@@ -261,7 +261,7 @@ fn gnd_p1_parametric_no_inline_show_chirho() {
 
 /// P2: GHC 9.14.1 prints integer then boolean. sha256 76f2a192bcbf2dd58c0bf97e865fce5271cf12e92dff823f05df1b985ffc8fcd.
 const PARAMETRIC_USER_DICTIONARY_CHIRHO: &str = include_str!(
-    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/parametric_user_dictionary_chirho.hs"
+    "../../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/parametric_user_dictionary_chirho.hs"
 );
 
 #[test]
@@ -279,7 +279,7 @@ fn gnd_p2_parametric_user_dictionary_chirho() {
 /// superclass, never `ParentChirho Int`. GHC 9.14.1 prints `written` (root's
 /// gnd-superclass-r1-chirho, #31854). sha256 a2db4c2a0fbcaaf17902d6b4aa0390dac821d71708c4986dbedf9f5ce6245b22.
 const PARAMETRIC_WRITTEN_SUPERCLASS_CHIRHO: &str = include_str!(
-    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/parametric_written_superclass_chirho.hs"
+    "../../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/parametric_written_superclass_chirho.hs"
 );
 
 #[test]
@@ -297,7 +297,7 @@ fn gnd_s1_parametric_written_superclass_chirho() {
 /// through the parametric GND instances, with no helper. GHC 9.14.1 prints 7, True, integer,
 /// boolean (root's role-surfaces-and-direct-gnd-r1-chirho, #31865). sha256 60e765e782f0c8d3ee13fede12f020f70c622e226bd87f786c61e5a6eb4066dd.
 const DIRECT_PARAMETRIC_GND_METHODS_CHIRHO: &str = include_str!(
-    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/direct_parametric_gnd_methods_chirho.hs"
+    "../../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/direct_parametric_gnd_methods_chirho.hs"
 );
 
 #[test]
@@ -319,10 +319,10 @@ fn gnd_m1_direct_parametric_gnd_methods_chirho() {
 /// cdce7e412c011dc56559ef286accbee019ed976976c54144fdf374cb442e1263, W1 sha256
 /// 055f6d2c5d4f3b0183434109281bcffd028f41f3bf73028c8b95052a0f836a20.
 const CLASS_ARGUMENT_SUPERCLASS_CHIRHO: &str = include_str!(
-    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/class_argument_superclass_chirho.hs"
+    "../../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/class_argument_superclass_chirho.hs"
 );
 const WRITTEN_CLASS_ARGUMENT_SUPERCLASS_CHIRHO: &str = include_str!(
-    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/written_class_argument_superclass_chirho.hs"
+    "../../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/written_class_argument_superclass_chirho.hs"
 );
 
 #[test]
@@ -360,7 +360,7 @@ fn gnd_a1_and_w1_check_and_compile_chirho() {
 /// the whole head. GHC 9.14.1 prints `True` (mptc-superclass-r1-chirho, #31916). sha256
 /// e25a7df38fa334dbb454270977dad3ba5174e4f3260278ef729330a08af71ff9.
 const SECOND_ARGUMENT_SUPERCLASS_CHIRHO: &str = include_str!(
-    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/second_argument_superclass_chirho.hs"
+    "../../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/second_argument_superclass_chirho.hs"
 );
 
 #[test]
@@ -379,7 +379,7 @@ fn mptc_s2_second_argument_superclass_chirho() {
 /// (mptc-superclass-fallback-r1-chirho, #31936). sha256
 /// d824d8061ba8e711ca2920aa443882b5637db546904bde00f31a98cfea5f719b.
 const STOCK_SUPERCLASS_GROUND_NEWTYPE_CHIRHO: &str = include_str!(
-    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/stock_superclass_ground_newtype_chirho.hs"
+    "../../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/stock_superclass_ground_newtype_chirho.hs"
 );
 
 #[test]
@@ -398,7 +398,7 @@ fn mptc_g1_ground_newtype_stock_superclass_chirho() {
 /// (mptc-superclass-fallback-r1-chirho, #31936). sha256
 /// a075b01c9225219352697b4d1ac651178e1c2396c69b7e5991119deb099503ec.
 const NEWTYPE_SUPERCLASS_PARAMETRIC_CHIRHO: &str = include_str!(
-    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/newtype_superclass_parametric_chirho.hs"
+    "../../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/newtype_superclass_parametric_chirho.hs"
 );
 
 #[test]
@@ -500,7 +500,7 @@ fn gnd_q1_qualified_stock_with_shadowed_instance_chirho() {
 
 /// C1: GHC 9.14.1 prints 78. sha256 c7eae33b2c35720f26260d9cb232fc3b677305536bef471afcae2ad3b41f43c5.
 const CONTEXTUAL_REPRESENTATION_DEFAULT_CHIRHO: &str = include_str!(
-    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/contextual_representation_default_chirho.hs"
+    "../../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/contextual_representation_default_chirho.hs"
 );
 
 #[test]
@@ -516,7 +516,7 @@ fn gnd_c1_contextual_representation_default_chirho() {
 
 /// C2: GHC 9.14.1 prints 78. sha256 b46b09a3c2898eb221e8ba3357228239e11f598178412e7070d79740008a0481.
 const NESTED_GND_CONTEXT_DEPENDENCY_CHIRHO: &str = include_str!(
-    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/nested_gnd_context_dependency_chirho.hs"
+    "../../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/nested_gnd_context_dependency_chirho.hs"
 );
 
 #[test]
