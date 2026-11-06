@@ -60,6 +60,7 @@ pub(super) fn infer_result_chirho(
         ClassDeclChirho {
             name_chirho: "Show".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: haskelujah_typing_chirho::ty_chirho::TyVarChirho(0),
             methods_chirho,
             extra_vars_chirho: vec![],

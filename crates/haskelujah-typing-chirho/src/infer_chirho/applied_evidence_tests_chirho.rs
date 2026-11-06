@@ -21,6 +21,7 @@ fn int_chirho() -> TyChirho {
 
 fn show_record_chirho(applied_chirho: Option<TyChirho>) -> ReferenceEvidenceChirho {
     ReferenceEvidenceChirho {
+        applied_head_chirho: None,
         class_name_chirho: "Show".to_string(),
         ty_key_chirho: Some("BoxChirho".to_string()),
         applied_ty_chirho: applied_chirho,
@@ -79,4 +80,56 @@ fn captures_that_disagree_on_a_key_prove_nothing_chirho() {
         vec![vec![show_record_chirho(None)], vec![other_key_chirho]],
     )]));
     assert!(agreed_chirho.is_empty());
+}
+
+#[test]
+fn only_a_complete_ground_head_is_carried_chirho() {
+    // `AskChirho Int (BoxChirho Int)` keeps its whole head (row 694, #31909). A one-parameter
+    // head, or one naming a variable anywhere, carries none, so no instance is chosen for it by
+    // matching.
+    let head_chirho = vec![int_chirho(), box_of_chirho(int_chirho())];
+    assert_eq!(
+        applied_evidence_head_chirho(&head_chirho),
+        Some(head_chirho.clone())
+    );
+    assert_eq!(
+        applied_evidence_head_chirho(&[box_of_chirho(int_chirho())]),
+        None
+    );
+    assert_eq!(
+        applied_evidence_head_chirho(&[
+            int_chirho(),
+            box_of_chirho(TyChirho::VarChirho(TyVarChirho(3)))
+        ]),
+        None
+    );
+}
+
+#[test]
+fn only_a_head_every_capture_resolved_alike_survives_chirho() {
+    let head_record_chirho = |second_chirho: TyChirho| ReferenceEvidenceChirho {
+        applied_head_chirho: Some(vec![int_chirho(), second_chirho]),
+        class_name_chirho: "AskChirho".to_string(),
+        ty_key_chirho: Some("Int".to_string()),
+        applied_ty_chirho: None,
+    };
+    let bool_chirho = TyChirho::ConChirho("Bool".to_string());
+    let agreed_chirho = agreeing_references_chirho(HashMap::from([
+        (
+            1u32,
+            vec![
+                vec![head_record_chirho(bool_chirho.clone())],
+                vec![head_record_chirho(bool_chirho.clone())],
+            ],
+        ),
+        (
+            2u32,
+            vec![
+                vec![head_record_chirho(bool_chirho.clone())],
+                vec![head_record_chirho(int_chirho())],
+            ],
+        ),
+    ]));
+    assert_eq!(agreed_chirho[&1], vec![head_record_chirho(bool_chirho)]);
+    assert_eq!(agreed_chirho[&2][0].applied_head_chirho, None);
 }

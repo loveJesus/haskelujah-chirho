@@ -6,7 +6,7 @@
 //! asserts that refusal and its comment says what GHC does.
 //! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
-use crate::{compile_source_chirho, eval_source_with_machine_chirho};
+use crate::{compile_source_chirho, eval_source_with_machine_chirho, typecheck_source_chirho};
 use haskelujah_span_chirho::SourceMapChirho;
 
 /// What the interpreter prints for an accepted program.
@@ -308,6 +308,137 @@ fn gnd_m1_direct_parametric_gnd_methods_chirho() {
             DIRECT_PARAMETRIC_GND_METHODS_CHIRHO
         ),
         "7\nTrue\ninteger\nboolean\n"
+    );
+}
+
+/// A1 and W1 (#31897, #31909): T3955's shape over its own Reader, derived through GND and
+/// written. GHC 9.14.1 accepts both and prints 7 (mptc-superclass-r1-chirho, #31916). Here both
+/// check like GHC and compile without a refusal, through the multi-parameter superclass routes.
+/// Their output is not asserted: `>>=` at an abstract monad falls back to IO, an older gap with
+/// its own repair (#31929, #31936). A1 sha256
+/// cdce7e412c011dc56559ef286accbee019ed976976c54144fdf374cb442e1263, W1 sha256
+/// 055f6d2c5d4f3b0183434109281bcffd028f41f3bf73028c8b95052a0f836a20.
+const CLASS_ARGUMENT_SUPERCLASS_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/class_argument_superclass_chirho.hs"
+);
+const WRITTEN_CLASS_ARGUMENT_SUPERCLASS_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/written_class_argument_superclass_chirho.hs"
+);
+
+#[test]
+fn gnd_a1_and_w1_check_and_compile_chirho() {
+    for (file_name_chirho, source_chirho) in [
+        (
+            "ClassArgumentSuperclassChirho.hs",
+            CLASS_ARGUMENT_SUPERCLASS_CHIRHO,
+        ),
+        (
+            "WrittenClassArgumentSuperclassChirho.hs",
+            WRITTEN_CLASS_ARGUMENT_SUPERCLASS_CHIRHO,
+        ),
+    ] {
+        typecheck_source_chirho(
+            source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            file_name_chirho,
+        )
+        .unwrap_or_else(|error_chirho| {
+            panic!("{file_name_chirho}: GHC accepts it; the checker refused it: {error_chirho}")
+        });
+        compile_source_chirho(
+            source_chirho,
+            &mut SourceMapChirho::new_chirho(),
+            file_name_chirho,
+        )
+        .unwrap_or_else(|error_chirho| {
+            panic!("{file_name_chirho}: GHC accepts it; the compiler refused it: {error_chirho}")
+        });
+    }
+}
+
+/// S2 (#31909): the written instance's `Show b` field is `Show Bool`'s, its class's template at
+/// the whole head. GHC 9.14.1 prints `True` (mptc-superclass-r1-chirho, #31916). sha256
+/// e25a7df38fa334dbb454270977dad3ba5174e4f3260278ef729330a08af71ff9.
+const SECOND_ARGUMENT_SUPERCLASS_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/second_argument_superclass_chirho.hs"
+);
+
+#[test]
+fn mptc_s2_second_argument_superclass_chirho() {
+    assert_eq!(
+        interpreted_chirho(
+            "SecondArgumentSuperclassChirho.hs",
+            SECOND_ARGUMENT_SUPERCLASS_CHIRHO
+        ),
+        "True\n"
+    );
+}
+
+/// G1 (#31928): the GND `ShowLastChirho Bool AgeChirho` holds the newtype's own stock `Show`,
+/// never the representation's `Show Int`. GHC 9.14.1 prints `AgeChirho 5`
+/// (mptc-superclass-fallback-r1-chirho, #31936). sha256
+/// d824d8061ba8e711ca2920aa443882b5637db546904bde00f31a98cfea5f719b.
+const STOCK_SUPERCLASS_GROUND_NEWTYPE_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/stock_superclass_ground_newtype_chirho.hs"
+);
+
+#[test]
+fn mptc_g1_ground_newtype_stock_superclass_chirho() {
+    assert_eq!(
+        interpreted_chirho(
+            "StockSuperclassGroundNewtypeChirho.hs",
+            STOCK_SUPERCLASS_GROUND_NEWTYPE_CHIRHO
+        ),
+        "AgeChirho 5\n"
+    );
+}
+
+/// G3 (#31928): the factory's `Show (BoxChirho a)` field is the newtype's own GND factory applied
+/// to the representation dictionary's superclass field. GHC 9.14.1 prints `5`
+/// (mptc-superclass-fallback-r1-chirho, #31936). sha256
+/// a075b01c9225219352697b4d1ac651178e1c2396c69b7e5991119deb099503ec.
+const NEWTYPE_SUPERCLASS_PARAMETRIC_CHIRHO: &str = include_str!(
+    "../../../tests/typing_integration_chirho/declarations_chirho/gnd_methods_chirho/newtype_superclass_parametric_chirho.hs"
+);
+
+#[test]
+fn mptc_g3_parametric_newtype_own_superclass_chirho() {
+    assert_eq!(
+        interpreted_chirho(
+            "NewtypeSuperclassParametricChirho.hs",
+            NEWTYPE_SUPERCLASS_PARAMETRIC_CHIRHO
+        ),
+        "5\n"
+    );
+}
+
+/// R2 (#31909): a class-argument GND whose superclass constrains the class's first parameter,
+/// not the newtype's. No route builds that dictionary yet, so the module is refused by name.
+/// GHC 9.14.1 is predicted to accept it (unmeasured); this asserts only the refusal.
+const OFF_NEWTYPE_SUPERCLASS_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE GeneralizedNewtypeDeriving, MultiParamTypeClasses, FlexibleInstances, FlexibleContexts #-}
+module Main where
+
+class (Show r, Eq m) => FirstSuperChirho r m
+
+instance FirstSuperChirho Bool Int
+
+newtype AgeChirho = AgeChirho Int
+  deriving (Eq, FirstSuperChirho Bool)
+
+main :: IO ()
+main = putStrLn "ok"
+"#;
+
+#[test]
+fn gnd_class_argument_superclass_off_the_newtype_is_refused_by_name_chirho() {
+    assert_refused_chirho(
+        "OffNewtypeSuperclassChirho.hs",
+        OFF_NEWTYPE_SUPERCLASS_CHIRHO,
+        &[
+            "deriving FirstSuperChirho for AgeChirho through the newtype strategy",
+            "constrains another position than the newtype's",
+        ],
     );
 }
 

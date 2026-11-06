@@ -26,6 +26,14 @@ pub(super) fn applied_evidence_ty_chirho(ty_chirho: &TyChirho) -> Option<TyChirh
         .then(|| ty_chirho.clone())
 }
 
+/// The complete head evidence carries for a multi-parameter predicate resolved to
+/// `head_chirho`: the head itself when it has several arguments and names no type variable.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub(super) fn applied_evidence_head_chirho(head_chirho: &[TyChirho]) -> Option<Vec<TyChirho>> {
+    (head_chirho.len() > 1 && head_chirho.iter().all(ground_ty_chirho))
+        .then(|| head_chirho.to_vec())
+}
+
 /// Whether `ty_chirho` names no type variable, rigid or not.
 fn ground_ty_chirho(ty_chirho: &TyChirho) -> bool {
     match ty_chirho {
@@ -71,6 +79,12 @@ pub(super) fn agreeing_references_chirho<KeyChirho: Hash + Eq>(
                     other_chirho[index_chirho].applied_ty_chirho != record_chirho.applied_ty_chirho
                 }) {
                     record_chirho.applied_ty_chirho = None;
+                }
+                if rest_chirho.iter().any(|other_chirho| {
+                    other_chirho[index_chirho].applied_head_chirho
+                        != record_chirho.applied_head_chirho
+                }) {
+                    record_chirho.applied_head_chirho = None;
                 }
             }
             Some((key_chirho, agreed_chirho))

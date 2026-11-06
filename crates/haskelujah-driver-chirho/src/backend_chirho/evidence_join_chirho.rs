@@ -651,9 +651,11 @@ pub(crate) fn join_reference_evidence_chirho(
                                 key_chirho.to_string()
                             }
                         });
-                        // The applied type rides along unchanged: it is the checker's
-                        // structure, which the dictionary pass instantiates (row 694).
+                        // The applied type and a multi-parameter head ride along unchanged:
+                        // they are the checker's structure, which the dictionary pass
+                        // instantiates (row 694).
                         haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
+                            applied_head_chirho: record_chirho.applied_head_chirho.clone(),
                             class_name_chirho: record_chirho.class_name_chirho.clone(),
                             ty_key_chirho: key_chirho,
                             applied_ty_chirho: record_chirho.applied_ty_chirho.clone(),

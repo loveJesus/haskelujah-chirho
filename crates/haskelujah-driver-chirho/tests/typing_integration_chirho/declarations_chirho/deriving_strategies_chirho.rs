@@ -21,6 +21,10 @@
 //! factory (#31829). `parametric_newtype_show` prints through `print`, which reaches that
 //! factory only through its `Show` evidence; it passed before any factory existed, by the
 //! generic `showInt#` fallback, so it was never dictionary evidence.
+//!
+//! S2, G1 and G3 are root's measured multi-parameter superclass controls (#31916, #31936):
+//! GHC 9.14.1 prints `True`, `AgeChirho 5` and `5`. A1 and W1, measured too, are the interpreter
+//! suite's check and compile controls; their output waits on `>>=` at an abstract monad.
 //! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use super::{assert_prints_everywhere_chirho, rejected_like_ghc_chirho};
@@ -60,6 +64,12 @@ const PARAMETRIC_WRITTEN_SUPERCLASS_CHIRHO: &str =
     include_str!("gnd_methods_chirho/parametric_written_superclass_chirho.hs");
 const DIRECT_PARAMETRIC_GND_METHODS_CHIRHO: &str =
     include_str!("gnd_methods_chirho/direct_parametric_gnd_methods_chirho.hs");
+const SECOND_ARGUMENT_SUPERCLASS_CHIRHO: &str =
+    include_str!("gnd_methods_chirho/second_argument_superclass_chirho.hs");
+const STOCK_SUPERCLASS_GROUND_NEWTYPE_CHIRHO: &str =
+    include_str!("gnd_methods_chirho/stock_superclass_ground_newtype_chirho.hs");
+const NEWTYPE_SUPERCLASS_PARAMETRIC_CHIRHO: &str =
+    include_str!("gnd_methods_chirho/newtype_superclass_parametric_chirho.hs");
 
 #[test]
 fn deriving_newtype_show_prints_the_representation_everywhere_chirho() {
@@ -208,6 +218,36 @@ fn direct_parametric_gnd_methods_take_each_argument_everywhere_chirho() {
         "DirectParametricGndMethodsChirho.hs",
         DIRECT_PARAMETRIC_GND_METHODS_CHIRHO,
         "7\nTrue\ninteger\nboolean\n",
+    );
+}
+
+#[test]
+fn a_second_argument_superclass_prints_everywhere_chirho() {
+    // S2 (#31909): GHC 9.14.1 prints `True` (mptc-superclass-r1-chirho, #31916).
+    assert_prints_everywhere_chirho(
+        "SecondArgumentSuperclassChirho.hs",
+        SECOND_ARGUMENT_SUPERCLASS_CHIRHO,
+        "True\n",
+    );
+}
+
+#[test]
+fn a_ground_class_argument_gnd_holds_its_stock_show_everywhere_chirho() {
+    // G1 (#31928): GHC 9.14.1 prints `AgeChirho 5` (mptc-superclass-fallback-r1-chirho, #31936).
+    assert_prints_everywhere_chirho(
+        "StockSuperclassGroundNewtypeChirho.hs",
+        STOCK_SUPERCLASS_GROUND_NEWTYPE_CHIRHO,
+        "AgeChirho 5\n",
+    );
+}
+
+#[test]
+fn a_parametric_class_argument_gnd_holds_its_own_show_everywhere_chirho() {
+    // G3 (#31928): GHC 9.14.1 prints `5` (mptc-superclass-fallback-r1-chirho, #31936).
+    assert_prints_everywhere_chirho(
+        "NewtypeSuperclassParametricChirho.hs",
+        NEWTYPE_SUPERCLASS_PARAMETRIC_CHIRHO,
+        "5\n",
     );
 }
 

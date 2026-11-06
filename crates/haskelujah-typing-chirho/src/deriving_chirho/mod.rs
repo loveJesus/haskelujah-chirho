@@ -44,6 +44,7 @@
 //! whether the class's generator, an empty anyclass instance or the representation's
 //! instance (`newtype_route_chirho.rs`, GND) produces it (row 694).
 
+pub(crate) mod class_shapes_chirho;
 mod declaration_heads_chirho;
 mod enum_chirho;
 pub(crate) mod extension_policy_chirho;

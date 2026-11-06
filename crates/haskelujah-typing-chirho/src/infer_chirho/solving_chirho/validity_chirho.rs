@@ -313,14 +313,15 @@ impl InferCtxChirho {
         pred_chirho: &PredChirho,
         givens_chirho: &[PredChirho],
     ) -> bool {
+        // A given entails itself and every superclass its class's templates instantiate at its
+        // own arguments: `AskChirho Int m` gives `Monad m` (row 694, #31909). For a unary class
+        // this is the old rule, the same argument under a transitive superclass.
         givens_chirho.iter().any(|given_chirho| {
-            pred_chirho.ty_chirho == given_chirho.ty_chirho
-                && pred_chirho.extra_tys_chirho == given_chirho.extra_tys_chirho
-                && (pred_chirho.class_name_chirho == given_chirho.class_name_chirho
-                    || self.is_transitive_superclass_chirho(
-                        &pred_chirho.class_name_chirho,
-                        &given_chirho.class_name_chirho,
-                    ))
+            pred_chirho == given_chirho
+                || self
+                    .class_env_chirho
+                    .superclass_closure_chirho(given_chirho)
+                    .contains(pred_chirho)
         })
     }
 }

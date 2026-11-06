@@ -553,6 +553,7 @@ mod tests_chirho {
         key_chirho: &str,
     ) -> haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
         haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
+            applied_head_chirho: None,
             class_name_chirho: class_chirho.to_string(),
             ty_key_chirho: Some(key_chirho.to_string()),
             applied_ty_chirho: None,

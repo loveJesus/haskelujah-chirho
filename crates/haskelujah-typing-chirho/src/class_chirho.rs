@@ -13,13 +13,13 @@
 //!   supporting instance resolution / context reduction
 
 use haskelujah_ast_chirho::expr_chirho::MatchArmChirho;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::subst_chirho::SubstChirho;
-use crate::ty_chirho::{MultChirho, SchemeChirho, TyChirho, TyVarChirho};
+use crate::ty_chirho::{MultChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
 use crate::unify_chirho::unify_chirho;
 
 mod tuple_instances_chirho;
@@ -64,6 +64,55 @@ impl PredChirho {
         let mut tys_chirho = vec![self.ty_chirho.clone()];
         tys_chirho.extend(self.extra_tys_chirho.clone());
         tys_chirho
+    }
+}
+
+/// `ty_chirho` with each class variable replaced by the argument it is bound to.
+fn instantiate_template_ty_chirho(
+    ty_chirho: &TyChirho,
+    binding_chirho: &HashMap<TyVarChirho, TyChirho>,
+) -> TyChirho {
+    match ty_chirho {
+        TyChirho::VarChirho(var_chirho) => binding_chirho
+            .get(var_chirho)
+            .cloned()
+            .unwrap_or_else(|| ty_chirho.clone()),
+        TyChirho::AppChirho(function_chirho, argument_chirho) => TyChirho::AppChirho(
+            Box::new(instantiate_template_ty_chirho(
+                function_chirho,
+                binding_chirho,
+            )),
+            Box::new(instantiate_template_ty_chirho(
+                argument_chirho,
+                binding_chirho,
+            )),
+        ),
+        TyChirho::FunChirho(argument_chirho, result_chirho, mult_chirho) => TyChirho::FunChirho(
+            Box::new(instantiate_template_ty_chirho(
+                argument_chirho,
+                binding_chirho,
+            )),
+            Box::new(instantiate_template_ty_chirho(
+                result_chirho,
+                binding_chirho,
+            )),
+            *mult_chirho,
+        ),
+        TyChirho::ListChirho(element_chirho) => TyChirho::ListChirho(Box::new(
+            instantiate_template_ty_chirho(element_chirho, binding_chirho),
+        )),
+        TyChirho::TupleChirho(elements_chirho) => TyChirho::TupleChirho(
+            elements_chirho
+                .iter()
+                .map(|element_chirho| {
+                    instantiate_template_ty_chirho(element_chirho, binding_chirho)
+                })
+                .collect(),
+        ),
+        TyChirho::ConChirho(_)
+        | TyChirho::ForallVarChirho(_)
+        | TyChirho::ForallChirho { .. }
+        | TyChirho::RequiredForallChirho { .. } => ty_chirho.clone(),
     }
 }
 
@@ -129,6 +178,11 @@ pub struct ClassDeclChirho {
     pub name_chirho: String,
     /// Superclass constraints, e.g. `Eq a` for `class Eq a => Ord a`.
     pub supers_chirho: Vec<String>,
+    /// Each superclass as a predicate template over this class's own variables, every
+    /// argument kept: `Monad m` for `class Monad m => MonadReader r m` (row 694, #31909).
+    /// Empty means each name in `supers_chirho` constrains the class's first variable, the
+    /// unary shape of every seeded class.
+    pub super_templates_chirho: Vec<SchemePredChirho>,
     /// The class type variable (e.g. `a` in `class Eq a`).
     /// For single-parameter classes; use `vars_chirho` for MPTCs.
     pub var_chirho: TyVarChirho,
@@ -148,6 +202,49 @@ pub struct ClassDeclChirho {
 }
 
 impl ClassDeclChirho {
+    /// Each superclass as a template over this class's variables: the written templates, or
+    /// each name applied to the class's first variable when none were written.
+    pub fn superclass_templates_chirho(&self) -> Vec<SchemePredChirho> {
+        if !self.super_templates_chirho.is_empty() {
+            return self.super_templates_chirho.clone();
+        }
+        self.supers_chirho
+            .iter()
+            .map(|super_chirho| SchemePredChirho {
+                class_name_chirho: super_chirho.clone(),
+                ty_chirho: TyChirho::VarChirho(self.var_chirho),
+                extra_tys_chirho: vec![],
+            })
+            .collect()
+    }
+
+    /// Each superclass predicate this class entails at `arguments_chirho`, its own arguments in
+    /// order: the templates instantiated there (row 694, #31909).
+    pub fn superclass_preds_at_chirho(&self, arguments_chirho: &[TyChirho]) -> Vec<PredChirho> {
+        let binding_chirho: HashMap<TyVarChirho, TyChirho> = self
+            .all_vars_chirho()
+            .into_iter()
+            .zip(arguments_chirho.iter().cloned())
+            .collect();
+        self.superclass_templates_chirho()
+            .into_iter()
+            .map(|template_chirho| PredChirho {
+                class_name_chirho: template_chirho.class_name_chirho,
+                ty_chirho: instantiate_template_ty_chirho(
+                    &template_chirho.ty_chirho,
+                    &binding_chirho,
+                ),
+                extra_tys_chirho: template_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|extra_chirho| {
+                        instantiate_template_ty_chirho(extra_chirho, &binding_chirho)
+                    })
+                    .collect(),
+            })
+            .collect()
+    }
+
     /// Get all type variables for this class.
     /// For single-param classes, returns `[var_chirho]`.
     /// For MPTCs, returns `[var_chirho] ++ extra_vars_chirho`.
@@ -213,6 +310,31 @@ impl ClassEnvChirho {
     /// Check if a class exists.
     pub fn has_class_chirho(&self, name_chirho: &str) -> bool {
         self.classes_chirho.contains_key(name_chirho)
+    }
+
+    /// Every superclass predicate `pred_chirho` entails, transitively: each class's superclass
+    /// templates instantiated at the predicate's own arguments, so `AskChirho Int m` entails
+    /// `Monad m`, never `Monad Int` (row 694, #31909). A predicate seen twice ends its branch,
+    /// as a superclass cycle may under UndecidableSuperClasses.
+    pub fn superclass_closure_chirho(&self, pred_chirho: &PredChirho) -> Vec<PredChirho> {
+        let mut closure_chirho = Vec::new();
+        let mut seen_chirho = HashSet::from([pred_chirho.clone()]);
+        let mut pending_chirho = vec![pred_chirho.clone()];
+        while let Some(current_chirho) = pending_chirho.pop() {
+            let Some(class_chirho) = self.classes_chirho.get(&current_chirho.class_name_chirho)
+            else {
+                continue;
+            };
+            for instantiated_chirho in
+                class_chirho.superclass_preds_at_chirho(&current_chirho.all_tys_chirho())
+            {
+                if seen_chirho.insert(instantiated_chirho.clone()) {
+                    closure_chirho.push(instantiated_chirho.clone());
+                    pending_chirho.push(instantiated_chirho);
+                }
+            }
+        }
+        closure_chirho
     }
 
     /// Get the superclasses of a class.
@@ -470,6 +592,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Eq".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: eq_var_chirho,
             methods_chirho: HashMap::from([
                 ("==".to_string(), eq_method_chirho.clone()),
@@ -509,6 +632,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Ord".to_string(),
             supers_chirho: vec!["Eq".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: ord_var_chirho,
             methods_chirho: ord_methods_chirho,
             extra_vars_chirho: vec![],
@@ -521,6 +645,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Show".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: show_var_chirho,
             methods_chirho: HashMap::from([(
                 "show".to_string(),
@@ -546,6 +671,7 @@ impl ClassEnvChirho {
             // the Haskell 98 pair made `Num a` entail `Eq a` and gave every Num
             // dictionary two phantom superclass slots.
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: num_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -645,6 +771,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Fractional".to_string(),
             supers_chirho: vec!["Num".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: frac_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -694,6 +821,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Bits".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: bits_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -878,6 +1006,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "FiniteBits".to_string(),
             supers_chirho: vec!["Bits".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: finite_bits_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -928,6 +1057,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Functor".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: f_var_chirho,
             methods_chirho: HashMap::from([
                 // fmap :: (a -> b) -> f a -> f b
@@ -972,6 +1102,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Applicative".to_string(),
             supers_chirho: vec!["Functor".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: app_var_chirho,
             methods_chirho: HashMap::from([
                 // pure :: a -> f a
@@ -1035,6 +1166,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Monad".to_string(),
             supers_chirho: vec!["Applicative".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: m_var_chirho,
             methods_chirho: HashMap::from([
                 // (>>=) :: m a -> (a -> m b) -> m b
@@ -1107,6 +1239,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Foldable".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: foldable_t_chirho,
             methods_chirho: HashMap::from([(
                 "foldMap".to_string(),
@@ -1190,6 +1323,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Traversable".to_string(),
             supers_chirho: vec!["Functor".to_string(), "Foldable".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: trav_t_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -1247,6 +1381,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Read".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: read_var_chirho,
             methods_chirho: HashMap::from([(
                 "read".to_string(),
@@ -1269,6 +1404,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "IsOption".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: is_option_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -1334,6 +1470,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Enum".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: enum_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -1395,6 +1532,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Bounded".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: bounded_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -1424,6 +1562,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Floating".to_string(),
             supers_chirho: vec!["Fractional".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: floating_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -1560,6 +1699,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "RealFrac".to_string(),
             supers_chirho: vec!["Real".to_string(), "Fractional".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: realfrac_var_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![],
@@ -1582,6 +1722,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "RealFloat".to_string(),
             supers_chirho: vec!["RealFrac".to_string(), "Floating".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: realfloat_var_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![],
@@ -1604,6 +1745,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "MonadIO".to_string(),
             supers_chirho: vec!["Monad".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: monadio_var_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![],
@@ -1625,6 +1767,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "MonadFail".to_string(),
             supers_chirho: vec!["Monad".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: monad_fail_m_chirho,
             methods_chirho: HashMap::from([(
                 "fail".to_string(),
@@ -1665,6 +1808,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "MonadFix".to_string(),
             supers_chirho: vec!["Monad".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: monad_fix_m_chirho,
             methods_chirho: HashMap::from([(
                 "mfix".to_string(),
@@ -1696,6 +1840,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "FormatTime".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: format_time_var_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![],
@@ -1707,6 +1852,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "ParseTime".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: parse_time_var_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![],
@@ -1741,6 +1887,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Typeable".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: typeable_var_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![],
@@ -1761,6 +1908,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Data".to_string(),
             supers_chirho: vec!["Typeable".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: data_var_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![],
@@ -1774,6 +1922,7 @@ impl ClassEnvChirho {
             self.add_class_chirho(ClassDeclChirho {
                 name_chirho: class_name_chirho.to_string(),
                 supers_chirho: vec![],
+                super_templates_chirho: Vec::new(),
                 var_chirho: kn_var_chirho,
                 methods_chirho: HashMap::new(),
                 extra_vars_chirho: vec![],
@@ -1787,6 +1936,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "MonadZip".to_string(),
             supers_chirho: vec!["Monad".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: monadzip_var_chirho,
             methods_chirho: HashMap::from([(
                 "mzipWith".to_string(),
@@ -1833,6 +1983,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "RandomGen".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: randomgen_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -1888,6 +2039,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "SplitGen".to_string(),
             supers_chirho: vec!["RandomGen".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: splitgen_var_chirho,
             methods_chirho: HashMap::from([(
                 "splitGen".to_string(),
@@ -1913,6 +2065,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Contravariant".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: contravariant_var_chirho,
             methods_chirho: HashMap::from([(
                 "contramap".to_string(),
@@ -1956,6 +2109,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Coercible".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: coercible_var_a_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![coercible_var_b_chirho],
@@ -1977,6 +2131,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Real".to_string(),
             supers_chirho: vec!["Num".to_string(), "Ord".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: real_var_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![],
@@ -2002,6 +2157,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Integral".to_string(),
             supers_chirho: vec!["Real".to_string(), "Enum".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: integral_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -2082,6 +2238,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "NFData".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: nfdata_var_chirho,
             methods_chirho: HashMap::from([(
                 "rnf".to_string(),
@@ -2851,6 +3008,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Alternative".to_string(),
             supers_chirho: vec!["Applicative".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: alt_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -2908,6 +3066,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "MonadPlus".to_string(),
             supers_chirho: vec!["Monad".to_string(), "Alternative".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: mp_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -2965,6 +3124,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Semigroup".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: sg_var_chirho,
             methods_chirho: HashMap::from([(
                 "<>".to_string(),
@@ -2990,6 +3150,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Monoid".to_string(),
             supers_chirho: vec!["Semigroup".to_string()],
+            super_templates_chirho: Vec::new(),
             var_chirho: mon_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -3217,6 +3378,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "MonadTrans".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: mt_t_chirho,
             methods_chirho: HashMap::from([(
                 "lift".to_string(),
@@ -3240,6 +3402,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "IsString".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: is_string_var_chirho,
             methods_chirho: HashMap::from([(
                 "fromString".to_string(),
@@ -3279,6 +3442,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "IsList".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: is_list_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -3336,6 +3500,7 @@ impl ClassEnvChirho {
         self.add_class_chirho(ClassDeclChirho {
             name_chirho: "Generic".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: generic_var_chirho,
             methods_chirho: HashMap::from([
                 (
@@ -3718,6 +3883,7 @@ mod tests_chirho {
         let decl_chirho = ClassDeclChirho {
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: a_chirho,
             methods_chirho: HashMap::from([(
                 "convert".to_string(),
@@ -3768,6 +3934,7 @@ mod tests_chirho {
         env_chirho.add_class_chirho(ClassDeclChirho {
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: a_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![b_chirho],
@@ -3824,6 +3991,7 @@ mod tests_chirho {
         env_chirho.add_class_chirho(ClassDeclChirho {
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: a_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![b_chirho],
@@ -3873,6 +4041,7 @@ mod tests_chirho {
         env_chirho.add_class_chirho(ClassDeclChirho {
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: a_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![b_chirho],
@@ -3908,6 +4077,7 @@ mod tests_chirho {
         let decl_chirho = ClassDeclChirho {
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: a_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![b_chirho],
@@ -3931,6 +4101,7 @@ mod tests_chirho {
         env_chirho.add_class_chirho(ClassDeclChirho {
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: a_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![b_chirho],
@@ -3971,6 +4142,7 @@ mod tests_chirho {
         env_chirho.add_class_chirho(ClassDeclChirho {
             name_chirho: "Convert".to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: a_chirho,
             methods_chirho: HashMap::new(),
             extra_vars_chirho: vec![b_chirho],

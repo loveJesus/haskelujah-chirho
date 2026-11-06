@@ -47,6 +47,7 @@ use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
 
 use super::{DeclarationErrorChirho, UNMEASURED_GHC_CODE_CHIRHO, UNSUPPORTED_SHAPE_CHIRHO};
+use crate::deriving_chirho::class_shapes_chirho::LocalClassShapesChirho;
 use crate::deriving_chirho::extension_policy_chirho::DerivingExtensionsChirho;
 use crate::deriving_chirho::stock_identity_chirho::StockIdentityChirho;
 use crate::validity_chirho::render_type_chirho;
@@ -55,6 +56,8 @@ use crate::validity_chirho::render_type_chirho;
 struct DerivingJudgeChirho<'a> {
     extensions_chirho: DerivingExtensionsChirho,
     identity_chirho: StockIdentityChirho<'a>,
+    /// The module's own classes GND may derive with written arguments (T3955).
+    class_shapes_chirho: LocalClassShapesChirho,
 }
 
 /// Rules 7 to 16 over every deriving clause, standalone deriving declaration and written
@@ -65,12 +68,15 @@ pub(super) fn check_deriving_strategies_chirho(
     builtin_classes_chirho: &BuiltinClassScopeChirho,
     errors_chirho: &mut Vec<DeclarationErrorChirho>,
 ) {
+    let identity_chirho =
+        StockIdentityChirho::of_module_chirho(module_chirho, builtin_classes_chirho);
     let judge_chirho = DerivingJudgeChirho {
         extensions_chirho: DerivingExtensionsChirho::of_module_chirho(module_chirho),
-        identity_chirho: StockIdentityChirho::of_module_chirho(
+        class_shapes_chirho: LocalClassShapesChirho::of_module_chirho(
             module_chirho,
-            builtin_classes_chirho,
+            &identity_chirho,
         ),
+        identity_chirho,
     };
     for decl_chirho in &module_chirho.decls_chirho {
         match decl_chirho {
@@ -246,6 +252,14 @@ fn whole_head_target_chirho(head_chirho: &TypeChirho) -> Option<&str> {
 }
 
 impl DerivingJudgeChirho<'_> {
+    /// Whether GND may derive `derived_chirho` with its written class arguments: the module's
+    /// own methodless class whose last parameter's arity the module proves (T3955).
+    fn takes_class_arguments_chirho(&self, derived_chirho: &DerivedClassChirho) -> bool {
+        self.class_shapes_chirho
+            .class_argument_arity_chirho(derived_chirho, &self.identity_chirho)
+            .is_some()
+    }
+
     /// Rules 7 to 15 for one derived class of a newtype (`is_newtype_chirho`) or data type,
     /// from a deriving clause or, when `standalone_chirho`, a standalone declaration.
     fn check_class_chirho(
@@ -310,6 +324,7 @@ impl DerivingJudgeChirho<'_> {
                 && !extensions_chirho.any_class_chirho
                 && is_newtype_chirho
                 && derived_chirho.has_class_arguments_chirho()
+                && !self.takes_class_arguments_chirho(derived_chirho)
             {
                 errors_chirho.push(unsupported_chirho());
             }
@@ -331,7 +346,9 @@ impl DerivingJudgeChirho<'_> {
                 ),
                 class_chirho,
             ));
-        } else if strategy_chirho.is_newtype_chirho() && derived_chirho.has_class_arguments_chirho()
+        } else if strategy_chirho.is_newtype_chirho()
+            && derived_chirho.has_class_arguments_chirho()
+            && !self.takes_class_arguments_chirho(derived_chirho)
         {
             errors_chirho.push(unsupported_chirho());
         } else if strategy_chirho.is_anyclass_chirho() && !extensions_chirho.any_class_chirho {

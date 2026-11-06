@@ -13,8 +13,9 @@
 //! - the module's own class: the spelling is unqualified, or qualified with the module's own
 //!   name, and the module declares that class;
 //! - a builtin class: naming (K01) proves the spelling names one, the module declares nothing
-//!   of that bare name, and the entry's schema (its parameters and method schemes, everything
-//!   the proof reads) is the compiler's own seed (`ClassEnvChirho::seed_standard_chirho`).
+//!   of that bare name, and the entry's schema (its parameters, method schemes and superclass
+//!   templates, everything the proof and the dictionaries read) is the compiler's own seed
+//!   (`ClassEnvChirho::seed_standard_chirho`).
 //!
 //! Any other spelling is a named Unsupported gap, never GHC's verdict: an imported user class,
 //! a foreign class beside a local homonym, a builtin the module shadows, a carried homonym.
@@ -57,6 +58,11 @@ pub(super) fn class_authority_gap_chirho(
             entry_chirho.var_chirho == seed_chirho.var_chirho
                 && entry_chirho.extra_vars_chirho == seed_chirho.extra_vars_chirho
                 && entry_chirho.methods_chirho == seed_chirho.methods_chirho
+                // The superclass templates are read authority too (#31914): equal methods
+                // never vouch for a carried class whose superclasses differ.
+                && entry_chirho.supers_chirho == seed_chirho.supers_chirho
+                && entry_chirho.superclass_templates_chirho()
+                    == seed_chirho.superclass_templates_chirho()
         }
         _ => false,
     };

@@ -337,6 +337,7 @@ fn class_env_chirho(
         TypingClassChirho {
             name_chirho: class_chirho.to_string(),
             supers_chirho: vec![],
+            super_templates_chirho: Vec::new(),
             var_chirho: CLASS_VAR_CHIRHO,
             methods_chirho: HashMap::from([(
                 method_chirho.to_string(),
@@ -374,6 +375,7 @@ fn request_chirho(class_chirho: &str) -> GndRequestChirho {
     GndRequestChirho {
         newtype_chirho: "AgeChirho".to_string(),
         class_chirho: name_chirho(class_chirho),
+        class_arguments_chirho: vec![],
     }
 }
 

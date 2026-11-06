@@ -36,6 +36,10 @@ flowchart TD
   were joined by a per-name ordinal until 2026-09-19. See "Method occurrences" below; the
   lesson is that an invariant in this document is not evidence about the code, and the join it
   describes has to be read.
+- A multi-parameter predicate's reference record also carries its complete ground head
+  (`applied_head_chirho`, row 694, #31909). The pass serves it before any first-argument key,
+  from the one conditional-registry entry whose instance head matches (`head_dictionary_chirho`);
+  the flow is in `compiler-pipeline-chirho/deriving-strategies-chirho.md`.
 - A concrete head is evidence, and so is a signature's rigid variable (row 584). A literal there
   takes the binding's own key, as an occurrence at that variable does.
   - It takes `$own:k` for the predicate the signature declares. It takes the class-only `$own` for a class that no predicate names, such as a Num literal under `Fractional a`. The pass serves that through the superclass extraction.

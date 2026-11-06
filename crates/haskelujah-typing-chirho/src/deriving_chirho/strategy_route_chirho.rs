@@ -10,9 +10,11 @@
 //! generate get an empty instance, DeriveAnyClass takes any other class, then GND on a
 //! newtype. Which stock class a written class names is `stock_identity_chirho.rs`'s judgment
 //! from the builtin classes naming proved (K01), never its spelling, and a generated instance
-//! names its class as written. A class applied to arguments derives only as an anyclass
-//! instance over the full head `C args (T vs)`: the stock generators and the GND dictionary
-//! write one head type, so declaration validity refuses those routes for it.
+//! names its class as written. A class applied to arguments derives as an anyclass instance
+//! over the full head `C args (T vs)`, or through GND for the module's own methodless class
+//! whose last parameter's kind arity the module proves (`class_shapes_chirho.rs`, T3955):
+//! `C args rep' => C args N'`, every argument kept and both heads eta-reduced by that arity.
+//! The stock generators write one head type, so declaration validity refuses the rest.
 //! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use std::collections::HashMap;
@@ -22,7 +24,10 @@ use haskelujah_ast_chirho::decl_chirho::{
 };
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{BuiltinClassScopeChirho, NameChirho};
+use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
+
+use super::class_shapes_chirho::LocalClassShapesChirho;
 
 use super::extension_policy_chirho::DerivingExtensionsChirho;
 use super::stock_identity_chirho::{StockIdentityChirho, spell_generated_class_chirho};
@@ -60,6 +65,8 @@ pub(super) enum DerivationRouteChirho {
 pub(super) struct DerivingPolicyChirho<'a> {
     extensions_chirho: DerivingExtensionsChirho,
     identity_chirho: StockIdentityChirho<'a>,
+    /// The module's own classes, as GND with written class arguments reads them.
+    class_shapes_chirho: LocalClassShapesChirho,
 }
 
 impl<'a> DerivingPolicyChirho<'a> {
@@ -68,12 +75,15 @@ impl<'a> DerivingPolicyChirho<'a> {
         module_chirho: &ModuleChirho,
         builtin_classes_chirho: &'a BuiltinClassScopeChirho,
     ) -> Self {
+        let identity_chirho =
+            StockIdentityChirho::of_module_chirho(module_chirho, builtin_classes_chirho);
         Self {
             extensions_chirho: DerivingExtensionsChirho::of_module_chirho(module_chirho),
-            identity_chirho: StockIdentityChirho::of_module_chirho(
+            class_shapes_chirho: LocalClassShapesChirho::of_module_chirho(
                 module_chirho,
-                builtin_classes_chirho,
+                &identity_chirho,
             ),
+            identity_chirho,
         }
     }
 
@@ -160,7 +170,28 @@ impl<'a> DerivingPolicyChirho<'a> {
                     == DerivationRouteChirho::WrittenChirho {
                         defaults_only_chirho: true,
                     }
+                || (*route_chirho == DerivationRouteChirho::RepresentationChirho
+                    && self
+                        .class_shapes_chirho
+                        .class_argument_arity_chirho(derived_chirho, &self.identity_chirho)
+                        .is_some())
         })
+    }
+
+    /// How many trailing type variables the GND head for `derived_chirho` drops: the proven
+    /// arity of the module's own class's last parameter when the class takes written
+    /// arguments, else `eta_arity_chirho`.
+    pub(super) fn representation_eta_arity_chirho(
+        &self,
+        derived_chirho: &DerivedClassChirho,
+    ) -> usize {
+        if derived_chirho.has_class_arguments_chirho() {
+            self.class_shapes_chirho
+                .class_argument_arity_chirho(derived_chirho, &self.identity_chirho)
+                .unwrap_or(0)
+        } else {
+            self.eta_arity_chirho(&derived_chirho.class_chirho)
+        }
     }
 
     /// How many trailing type variables a GND head drops for `class_chirho`: the kind
@@ -278,7 +309,8 @@ pub(super) fn derive_class_chirho(
                 declared_chirho.type_vars_chirho,
                 constructor_chirho,
                 &derived_chirho.class_chirho,
-                policy_chirho.eta_arity_chirho(&derived_chirho.class_chirho),
+                &derived_chirho.class_arguments_chirho,
+                policy_chirho.representation_eta_arity_chirho(derived_chirho),
             ) {
                 Some(instance_chirho) => instances_chirho.push(instance_chirho),
                 None => warnings_chirho.push(format!(
@@ -304,6 +336,8 @@ pub struct GndRequestChirho {
     pub newtype_chirho: String,
     /// The class, as the deriving clause or standalone declaration writes it.
     pub class_chirho: NameChirho,
+    /// The class's written arguments before the newtype (`a` in `MonadReader a`).
+    pub class_arguments_chirho: Vec<TypeChirho>,
 }
 
 /// Every instance the module's declarations derive through the newtype strategy, in
@@ -333,6 +367,7 @@ pub fn newtype_strategy_requests_chirho(
                         requests_chirho.push(GndRequestChirho {
                             newtype_chirho: name_chirho.text_chirho().to_string(),
                             class_chirho: derived_chirho.class_chirho.clone(),
+                            class_arguments_chirho: derived_chirho.class_arguments_chirho.clone(),
                         });
                     }
                 }
@@ -359,6 +394,7 @@ pub fn newtype_strategy_requests_chirho(
                     requests_chirho.push(GndRequestChirho {
                         newtype_chirho: target_chirho.to_string(),
                         class_chirho: class_chirho.clone(),
+                        class_arguments_chirho: Vec::new(),
                     });
                 }
             }

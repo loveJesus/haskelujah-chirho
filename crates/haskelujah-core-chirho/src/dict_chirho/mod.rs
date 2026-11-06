@@ -78,6 +78,11 @@ pub(crate) struct ConditionalDictChirho {
     pub(crate) builder_chirho: CoreIdChirho,
     pub(crate) formals_chirho: Vec<TyVarChirho>,
     pub(crate) context_chirho: Vec<haskelujah_typing_chirho::class_chirho::PredChirho>,
+    /// For a multi-parameter instance, its record: a use at a complete ground head takes this
+    /// entry when the record's head matches, its context instantiated by that match
+    /// (`head_dictionary_chirho`, row 694, #31909). `None` for a one-parameter factory, whose
+    /// formals bind the applied type's arguments.
+    pub(crate) instance_chirho: Option<haskelujah_typing_chirho::class_chirho::InstDeclChirho>,
 }
 
 /// Result of the dictionary-passing transform.
@@ -188,7 +193,9 @@ pub struct DictPassCtxChirho {
     /// Conditional instance dict builders: `(class_name, type_constructor)` → the builder, a
     /// lambda that takes the instance's context dictionaries and returns the constructed
     /// class dict, with the head's formal binders and the context those parameters stand for.
-    /// A parametric GND instance (`Show a => Show (BoxChirho a)`) has one (row 694).
+    /// A parametric GND instance (`Show a => Show (BoxChirho a)`) has one (row 694). A
+    /// multi-parameter instance is keyed by its whole head key instead and carries its record,
+    /// by which a use at a complete ground head finds it (`head_dictionary_chirho`, #31909).
     conditional_dicts_chirho: HashMap<(String, String), ConditionalDictChirho>,
     /// Newtype info by type name: its constructor, its representation's key and the
     /// classes it derives with the newtype strategy. Used for GND (row 694):
@@ -324,11 +331,18 @@ impl DictPassCtxChirho {
     /// Prelude's `length` unbound in some runs (row 594).
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     fn resolve_or_fresh_id_chirho(&mut self, name_chirho: &str) -> CoreIdChirho {
+        self.existing_id_named_chirho(name_chirho)
+            .unwrap_or_else(|| self.fresh_id_chirho(name_chirho))
+    }
+
+    /// The id this pass already holds for `name_chirho`: a module-free reference's, else the
+    /// earliest generated binder's. `None` when it holds none, so a field that must never be an
+    /// unbound id says why instead of minting one (row 694, #31909).
+    fn existing_id_named_chirho(&self, name_chirho: &str) -> Option<CoreIdChirho> {
         if let Some(id_chirho) = self.module_free_id_named_chirho(name_chirho) {
-            return id_chirho;
+            return Some(id_chirho);
         }
-        let existing_chirho = self
-            .names_chirho
+        self.names_chirho
             .iter()
             .filter(|(id_chirho, existing_name_chirho)| {
                 existing_name_chirho.as_str() == name_chirho
@@ -338,8 +352,7 @@ impl DictPassCtxChirho {
                     && !self.imported_reference_ids_chirho.contains(id_chirho)
             })
             .map(|(id_chirho, _)| *id_chirho)
-            .min();
-        existing_chirho.unwrap_or_else(|| self.fresh_id_chirho(name_chirho))
+            .min()
     }
 
     /// Record top-level source bindings, the ids they use without binding, and the ids

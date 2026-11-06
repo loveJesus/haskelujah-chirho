@@ -8,7 +8,9 @@
 //! takes `k` type arguments (`Functor` takes one), GHC drops the last `k` variables from the
 //! head and the same `k` from the representation: `newtype App a = App (IO a)` derives
 //! `Functor IO => Functor App`. A representation that does not end in exactly those
-//! variables cannot be reduced, and nothing is derived (GHC rejects it, GHC-38996).
+//! variables cannot be reduced, and nothing is derived (GHC rejects it, GHC-38996). A class
+//! applied to written arguments keeps them all before both heads: `deriving (MonadReader a)`
+//! on `newtype T a x = T (Reader a x)` is `MonadReader a (Reader a) => MonadReader a (T a)`.
 //! workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho, TyVarChirho};
@@ -28,6 +30,7 @@ pub(super) fn derive_newtype_instance_chirho(
     type_vars_chirho: &[TyVarChirho],
     constructor_chirho: &ConDeclChirho,
     class_name_chirho: &NameChirho,
+    class_arguments_chirho: &[TypeChirho],
     eta_arity_chirho: usize,
 ) -> Option<DeclChirho> {
     let kept_count_chirho = type_vars_chirho.len().checked_sub(eta_arity_chirho)?;
@@ -45,11 +48,22 @@ pub(super) fn derive_newtype_instance_chirho(
     Some(DeclChirho::InstanceDeclChirho {
         context_chirho: vec![ConstraintChirho::ClassChirho {
             class_chirho: class_name_chirho.clone(),
-            args_chirho: vec![representation_chirho],
+            args_chirho: class_arguments_chirho
+                .iter()
+                .cloned()
+                .chain(std::iter::once(representation_chirho))
+                .collect(),
             span_chirho: gen_span_chirho(),
         }],
         class_chirho: class_name_chirho.clone(),
-        types_chirho: vec![instance_type_chirho(type_name_chirho, kept_vars_chirho)],
+        types_chirho: class_arguments_chirho
+            .iter()
+            .cloned()
+            .chain(std::iter::once(instance_type_chirho(
+                type_name_chirho,
+                kept_vars_chirho,
+            )))
+            .collect(),
         // The dictionary pass gives this instance the representation's method rows.
         methods_chirho: vec![],
         assoc_tf_instances_chirho: vec![],

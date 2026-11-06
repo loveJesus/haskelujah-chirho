@@ -20,14 +20,14 @@ flowchart TD
     scope_chirho --> identity_chirho["stock_identity_chirho.rs StockIdentityChirho: an explicit stock takes a generator only on K01's proof; an unwritten strategy keeps the legacy route, which takes a written name K01 cannot judge; a spelling the module declares itself is never a builtin stock class"]
     identity_chirho --> validity_chirho
     identity_chirho --> route_chirho
-    lower_chirho --> validity_chirho["Declaration validity deriving_strategy_chirho.rs, rules 7-15: GHC-87139, 10333, 26557, 38178, 00158, 82023, 73993 (non-unary class application), 00158 (stock on a non-stock class), Unsupported (newtype strategy with class arguments)"]
+    lower_chirho --> validity_chirho["Declaration validity deriving_strategy_chirho.rs, rules 7-15: GHC-87139, 10333, 26557, 38178, 00158, 82023, 73993 (non-unary class application), 00158 (stock on a non-stock class), Unsupported (newtype strategy with class arguments, outside the module-owned methodless shapes)"]
     standalone_chirho --> validity_chirho
     lower_chirho --> route_chirho["strategy_route_chirho.rs DerivingPolicyChirho::route_chirho: written stock, anyclass or newtype; an unwritten strategy keeps the legacy policy"]
     standalone_chirho --> route_chirho
     scope_chirho["Pipeline: build_builtin_class_scope_chirho before deriving (K01)"] --> route_chirho
     route_chirho -->|stock| stock_chirho["declaration_heads_chirho.rs derive_stock_class_chirho: the proven class's generator; spell_generated_class_chirho names the instance's class as written"]
     route_chirho -->|anyclass| empty_chirho["derive_anyclass_chirho: an empty instance over the full head C args (T vs), using the class defaults"]
-    route_chirho -->|newtype| gnd_chirho["newtype_route_chirho.rs derive_newtype_instance_chirho: C rep => C N, eta-reduced by the builtin class's parameter arity, no methods"]
+    route_chirho -->|newtype| gnd_chirho["newtype_route_chirho.rs derive_newtype_instance_chirho: C args rep => C args N, the written class arguments first, eta-reduced by the builtin class's parameter arity or the local class shape's, no methods"]
     route_chirho --> inventory_chirho["newtype_strategy_classes_chirho: each newtype's newtype-routed classes"]
     stock_chirho --> metadata_chirho["Show and Enum metadata: only entries the same judgment names as stock Show or Enum"]
     inventory_chirho --> info_chirho["Driver build_newtype_info_chirho, with the module's real K01 scope: NewtypeInfoChirho.newtype_derived_classes_chirho"]
@@ -50,6 +50,17 @@ flowchart TD
     erase_chirho --> merge_chirho["Native merge: the union of every module's erased set, refusing a spelling another module declares as a constructor"]
     alias_chirho --> erase_chirho
     erase_chirho --> backends_chirho["Interpreter, LLVM and Cranelift all receive the field itself"]
+    shapes_chirho["class_shapes_chirho.rs LocalClassShapesChirho: a module-owned methodless class with one parameter more than the clause writes, its last parameter's arity proven by a kind annotation or a K01 superclass (T3955's MonadReader a)"] --> validity_chirho
+    shapes_chirho --> route_chirho
+    templates_chirho["Typing class_instance_chirho.rs: each superclass as a template over the class's own variables; superclass_closure_chirho entails at a given's own arguments, so AskChirho Int m gives Monad m"] --> multi_written_chirho
+    templates_chirho --> multi_factory_chirho
+    multi_written_chirho["generate_instance_dicts_chirho: a written multi-parameter instance's superclass fields are the templates at its whole head, each the one context-free instance matching it (context_free_dictionary_chirho), else a named lazy error"] --> registry_chirho
+    eligible_chirho --> multi_factory_chirho["multi_head_gnd_factory_chirho: C x.. (N a..) over the representation's C; methodless; each superclass at the newtype's position is the newtype's own dictionary (parametric_superclass_chirho); any other shape refuses the module"]
+    multi_factory_chirho --> registry_chirho["register_multi_head_chirho: conditional_dicts_chirho by the whole head key, with the instance record"]
+    multi_factory_chirho --> refuse_chirho
+    head_evidence_chirho["Typing evidence_chirho.rs: a multi-parameter predicate's complete ground head, applied_head_chirho"] --> head_use_chirho
+    registry_chirho --> head_use_chirho["head_dictionary_chirho at a reference, before any first-argument key: the one entry whose instance matches the whole head, its dictionary or its factory applied to its context at that match"]
+    head_use_chirho --> backends_chirho
 ```
 
 ## Rules
@@ -63,10 +74,26 @@ flowchart TD
   builtin class scope naming proved: `Functor`, `Applicative` and `Monad` drop one. A local or
   imported source class keeps the full head, as before.
 - A class keeps its written arguments. The anyclass route derives `C args (T vs)` through the
-  ordinary multi-parameter instance path. The stock generators and the GND dictionary write one
-  head type, so declaration validity refuses a class applied to arguments there: GHC-73993 for a
-  stock class, which takes none, and Unsupported for the newtype strategy. GHC accepts the
-  latter (W3 prints `MeterChirho 12`), so it is a compatibility gap, not GHC coverage.
+  ordinary multi-parameter instance path. The stock generators write one head type, so
+  declaration validity refuses a stock class applied to arguments (GHC-73993). The newtype
+  strategy derives `C args rep => C args N` for a class the module declares itself with no
+  method, one parameter more than the clause writes, and a last parameter whose arity a kind
+  annotation or a K01 superclass proves (T3955's `MonadReader a`, #31897); any other class with
+  arguments is Unsupported there. GHC accepts those too (W3 prints `MeterChirho 12`), so they
+  are a compatibility gap, not GHC coverage.
+- A class records each superclass as a template over its own variables (`Monad m` for
+  `class Monad m => AskChirho r m`, #31909), and a given entails a superclass only at its own
+  arguments: `AskChirho Int m` gives `Monad m`, never `Monad Int`, and `ShowSecondChirho a b`
+  never gives `Show a`. A written multi-parameter instance's superclass fields are the templates
+  at its whole head, each the dictionary of the one context-free instance matching it
+  (`Show Bool` for `ShowSecondChirho Int Bool`, S2); none, several, or one with a context is an
+  explicit error naming why, which fails only if forced. A multi-parameter GND instance's
+  factory holds only superclass fields, each at the newtype's position and the newtype's own
+  dictionary there (G1's stock `Show AgeChirho`, G3's factory over the representation's
+  superclass field); any other shape refuses the module by name. Both are registered by their
+  whole head key with their instance record, and a reference whose evidence carries a complete
+  ground head takes the one entry matching it before any first-argument key. S2, G1 and G3
+  print GHC's output on every engine; A1, W1 and T3955 check like GHC.
 - An explicit `stock` runs the generator of the builtin class K01 proved for the written
   spelling, and names the instance's class as written, so `deriving stock (P.Eq)` under a
   qualified Prelude import is the Prelude's `Eq`. `deriving stock (Eq)` beside a local
@@ -148,8 +175,14 @@ flowchart TD
   context; GADT signatures and roles of imported types are Unknown, not read.
 
 - A standalone `deriving via` keeps its existing route.
-- The newtype strategy for a class applied to arguments (W3) waits for a dictionary key that
-  names every head type.
+- The newtype strategy for a class applied to arguments that has methods (W3) waits for
+  multi-parameter method coercion. A class-argument GND superclass at another position than
+  the newtype's is refused by name.
+- A1 and W1 compile, but their output goes through `>>=` at an abstract monad, which falls
+  back to IO (a separate repair, #31936), and a one-parameter `Monad m` use at
+  `ReaderChirho Int` keeps the generic-instance-key gap.
+- Inferred-scheme context reduction (`schemes_chirho.rs`) and the instance-method givens check
+  still compare superclasses at the first argument.
 - Typing still keys classes by unqualified name, so a module with a local `class Eq` and the
   Prelude's `Eq` in one program is not yet told apart past deriving (S2's end-to-end run).
 - Generated method bodies name their helpers unqualified, so a module that hides or qualifies the
