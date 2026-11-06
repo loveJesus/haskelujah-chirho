@@ -181,6 +181,54 @@ pub fn extract_tarball_chirho(
     Ok(())
 }
 
+/// The most entries an untrusted release archive may hold.
+pub const MAX_ARCHIVE_ENTRIES_CHIRHO: usize = 50_000;
+/// The most bytes an untrusted release archive may unpack to.
+pub const MAX_ARCHIVE_BYTES_CHIRHO: u64 = 512 * 1024 * 1024;
+
+/// Extract an untrusted `.tar.gz` release archive into `dest_chirho` (row 703). Only regular
+/// files and directories are accepted: links, devices and other special entries are refused, as
+/// is any entry that would land outside `dest_chirho` and any archive past the entry or byte
+/// limits. PAX global headers carry metadata only and are skipped. An error can leave a
+/// partial extraction behind, so callers extract into a staging directory they discard.
+pub fn extract_tarball_bounded_chirho(
+    tarball_chirho: &[u8],
+    dest_chirho: &Path,
+) -> Result<(), HackageErrorChirho> {
+    let decoder_chirho = flate2::read::GzDecoder::new(tarball_chirho);
+    let mut archive_chirho = tar::Archive::new(decoder_chirho);
+    let mut entry_count_chirho = 0usize;
+    let mut total_bytes_chirho = 0u64;
+    for entry_result_chirho in archive_chirho.entries()? {
+        let mut entry_chirho = entry_result_chirho?;
+        let entry_type_chirho = entry_chirho.header().entry_type();
+        if entry_type_chirho.is_pax_global_extensions() {
+            continue;
+        }
+        let entry_path_chirho = entry_chirho.path()?.display().to_string();
+        if !(entry_type_chirho.is_file() || entry_type_chirho.is_dir()) {
+            return Err(HackageErrorChirho::InvalidArchiveChirho(format!(
+                "entry {entry_path_chirho} is {entry_type_chirho:?}; a release archive may hold only files and directories"
+            )));
+        }
+        entry_count_chirho += 1;
+        total_bytes_chirho = total_bytes_chirho.saturating_add(entry_chirho.size());
+        if entry_count_chirho > MAX_ARCHIVE_ENTRIES_CHIRHO
+            || total_bytes_chirho > MAX_ARCHIVE_BYTES_CHIRHO
+        {
+            return Err(HackageErrorChirho::InvalidArchiveChirho(format!(
+                "archive exceeds {MAX_ARCHIVE_ENTRIES_CHIRHO} entries or {MAX_ARCHIVE_BYTES_CHIRHO} bytes"
+            )));
+        }
+        if !entry_chirho.unpack_in(dest_chirho)? {
+            return Err(HackageErrorChirho::InvalidArchiveChirho(format!(
+                "entry {entry_path_chirho} would land outside the extraction directory"
+            )));
+        }
+    }
+    Ok(())
+}
+
 /// Extract a `.tar.gz` byte buffer and find the `.cabal` file content.
 pub fn extract_cabal_from_tarball_chirho(
     tarball_chirho: &[u8],
@@ -259,19 +307,27 @@ pub fn fetch_package_chirho(
 /// Create a minimal `.tar.gz` in memory containing one file.
 /// Useful for testing without network access.
 pub fn create_test_tarball_chirho(file_path_chirho: &str, content_chirho: &str) -> Vec<u8> {
+    create_test_tarball_files_chirho(&[(file_path_chirho, content_chirho)])
+}
+
+/// Create a `.tar.gz` in memory holding the given regular files, in order.
+/// Useful for testing without network access.
+pub fn create_test_tarball_files_chirho(files_chirho: &[(&str, &str)]) -> Vec<u8> {
     use flate2::Compression;
     use flate2::write::GzEncoder;
 
     let mut encoder_chirho = GzEncoder::new(Vec::new(), Compression::default());
     {
         let mut builder_chirho = tar::Builder::new(&mut encoder_chirho);
-        let data_chirho = content_chirho.as_bytes();
-        let mut header_chirho = tar::Header::new_gnu();
-        header_chirho.set_path(file_path_chirho).unwrap();
-        header_chirho.set_size(data_chirho.len() as u64);
-        header_chirho.set_mode(0o644);
-        header_chirho.set_cksum();
-        builder_chirho.append(&header_chirho, data_chirho).unwrap();
+        for (file_path_chirho, content_chirho) in files_chirho {
+            let data_chirho = content_chirho.as_bytes();
+            let mut header_chirho = tar::Header::new_gnu();
+            header_chirho.set_path(file_path_chirho).unwrap();
+            header_chirho.set_size(data_chirho.len() as u64);
+            header_chirho.set_mode(0o644);
+            header_chirho.set_cksum();
+            builder_chirho.append(&header_chirho, data_chirho).unwrap();
+        }
         builder_chirho.finish().unwrap();
     }
     encoder_chirho.finish().unwrap()

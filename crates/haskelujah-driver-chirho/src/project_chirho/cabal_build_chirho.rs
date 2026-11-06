@@ -315,7 +315,9 @@ pub(crate) fn package_module_cpp_options_map_chirho(
     module_cpp_options_chirho
 }
 
-fn compile_module_files_with_frontend_seed_chirho(
+/// Read, preprocess and compile module files to Core with seeded dependency artifacts. Source
+/// install (row 703) compiles a staged library through this same path.
+pub(crate) fn compile_module_files_with_frontend_seed_chirho(
     module_files_chirho: &[(String, PathBuf)],
     module_cpp_options_chirho: &std::collections::HashMap<PathBuf, Vec<String>>,
     source_map_chirho: &mut SourceMapChirho,
