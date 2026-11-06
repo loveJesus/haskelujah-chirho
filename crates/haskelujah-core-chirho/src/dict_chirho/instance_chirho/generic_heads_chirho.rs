@@ -313,7 +313,7 @@ impl DictPassCtxChirho {
         for (index_chirho, (super_name_chirho, _)) in
             layout_chirho.super_slots_chirho.iter().enumerate()
         {
-            let built_chirho = superclass_at_head_chirho(
+            let field_chirho = superclass_at_head_chirho(
                 class_env_chirho,
                 inst_chirho,
                 layout_chirho,
@@ -322,7 +322,7 @@ impl DictPassCtxChirho {
             .and_then(|superclass_chirho| {
                 self.context_free_dictionary_chirho(class_env_chirho, &superclass_chirho)
             });
-            fields_chirho.push(match built_chirho {
+            fields_chirho.push(match field_chirho {
                 Ok(dictionary_chirho) => CoreExprChirho::VarChirho(dictionary_chirho),
                 Err(reason_chirho) => {
                     built_chirho = false;
