@@ -310,6 +310,49 @@ fn a_source_namesake_never_acquires_a_compiler_class_identity_chirho() {
     assert!(predicate_chirho.kind_tys_chirho.is_empty());
 }
 
+/// Diagnostic for the program-purpose regression (row 692, gpt_chirho #32611): the namesake
+/// module with a signed `main`, as a value module and as a program, judged by the test
+/// above's two assertions. With the unsigned program above, the first of the three to fail
+/// names the handoff.
+const SIGNED_NAMESAKE_SOURCE_CHIRHO: &str = "{-# LANGUAGE FlexibleContexts #-}\nmodule Main where\nclass Typeable a\nprobeChirho :: Typeable Int => ()\nprobeChirho = ()\nmain :: IO ()\nmain = pure ()\n";
+
+fn assert_source_namesake_stays_unproven_chirho(result_chirho: FrontendResultChirho) {
+    use haskelujah_ast_chirho::name_chirho::{
+        ClassIdentityUnknownChirho, PredicateClassProofChirho,
+    };
+    let scheme_chirho = result_chirho
+        .infer_result_chirho
+        .env_chirho
+        .lookup_chirho("probeChirho")
+        .expect("source context retained");
+    let predicate_chirho = scheme_chirho
+        .preds_chirho
+        .iter()
+        .find(|predicate_chirho| predicate_chirho.class_name_chirho == "Typeable")
+        .expect("source predicate retained");
+    assert_eq!(
+        predicate_chirho.class_identity_chirho(),
+        &PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::MissingUnitChirho)
+    );
+    assert!(predicate_chirho.kind_tys_chirho.is_empty());
+}
+
+#[test]
+fn a_source_namesake_stays_unproven_in_a_signed_value_module_chirho() {
+    assert_source_namesake_stays_unproven_chirho(
+        frontend_chirho(SIGNED_NAMESAKE_SOURCE_CHIRHO)
+            .expect("source class context remains representable"),
+    );
+}
+
+#[test]
+fn a_source_namesake_stays_unproven_in_a_signed_program_chirho() {
+    assert_source_namesake_stays_unproven_chirho(
+        program_frontend_chirho(SIGNED_NAMESAKE_SOURCE_CHIRHO)
+            .expect("source class context remains representable"),
+    );
+}
+
 #[test]
 fn a_constraint_tuple_alias_preserves_every_predicate_telescope_chirho() {
     let result_chirho = program_frontend_chirho("{-# LANGUAGE ConstraintKinds, PolyKinds, FlexibleContexts #-}\nmodule Main where\nimport Data.Typeable (Typeable)\ntype ContextChirho a = (Typeable a, Eq Int)\nprobeChirho :: ContextChirho Maybe => ()\nprobeChirho = ()\nmain = pure ()\n").expect("constraint tuple alias checks");

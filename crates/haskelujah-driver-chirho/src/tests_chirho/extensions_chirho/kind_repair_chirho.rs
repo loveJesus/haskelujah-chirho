@@ -76,6 +76,23 @@ fn source_constructor_inferred_kinds_stay_invisible_chirho() {
     program_frontend_chirho("{-# LANGUAGE PolyKinds, KindSignatures, TypeApplications #-}\nmodule Main where\ndata PhantomChirho (a :: k) = MkChirho\nvalueChirho :: PhantomChirho Maybe\nvalueChirho = MkChirho @Maybe\nmain = pure ()\n").expect("source constructor skips its inferred kind parameter");
 }
 
+/// Diagnostic for the program-purpose regression (row 692, gpt_chirho #32611): the module
+/// above with a signed `main`, checked as a value module and as a program. With the unsigned
+/// program above, the first of the three to fail names the handoff.
+const SIGNED_PHANTOM_SOURCE_CHIRHO: &str = "{-# LANGUAGE PolyKinds, KindSignatures, TypeApplications #-}\nmodule Main where\ndata PhantomChirho (a :: k) = MkChirho\nvalueChirho :: PhantomChirho Maybe\nvalueChirho = MkChirho @Maybe\nmain :: IO ()\nmain = pure ()\n";
+
+#[test]
+fn source_constructor_inferred_kinds_stay_invisible_signed_value_chirho() {
+    frontend_chirho(SIGNED_PHANTOM_SOURCE_CHIRHO)
+        .expect("signed value module: source constructor skips its inferred kind parameter");
+}
+
+#[test]
+fn source_constructor_inferred_kinds_stay_invisible_signed_program_chirho() {
+    program_frontend_chirho(SIGNED_PHANTOM_SOURCE_CHIRHO)
+        .expect("signed program: source constructor skips its inferred kind parameter");
+}
+
 #[test]
 fn constructor_visible_type_application_checks_parameter_kinds_chirho() {
     let error_chirho = program_frontend_chirho("{-# LANGUAGE TypeApplications #-}\nmodule Main where\nvalueChirho = Nothing @Maybe\nmain = pure ()\n").err().expect("Maybe cannot fill a Type constructor parameter");
