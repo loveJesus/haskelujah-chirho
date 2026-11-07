@@ -124,11 +124,14 @@ Frozen row 709 Phase A confirmed that ordinary `(++)` at `[[Char]]` was emitted 
 
 ```mermaid
 flowchart TD
-    builtin_value_chirho[Actual builtin Prelude export marks ListAppend] --> export_copy_chirho[Selected value metadata survives export filtering and real reexports]
+    builtin_value_chirho[Actual builtin Prelude export marks ListAppend] --> declared_forward_chirho[Data.List clones that actual declared export]
+    builtin_value_chirho --> export_copy_chirho[Selected value metadata survives export filtering and real reexports]
+    declared_forward_chirho --> export_copy_chirho
     source_value_chirho[Source or unknown stub has no compiler proof] --> export_copy_chirho
     export_copy_chirho --> select_iface_chirho[Existing interface selector chooses actual package or home exposure]
     select_iface_chirho --> import_shape_chirho[Existing import spec qualifier and namespace select supplied values]
     import_shape_chirho --> suppliers_chirho[Existing ImportSuppliers carries source compiler or unproven origin]
+    import_shape_chirho --> selected_scheme_chirho[Selected certificate preserves existing Prelude append scheme]
     suppliers_chirho --> written_reference_chirho[One written reference resolver for prefix infix and both sections]
     written_reference_chirho --> source_owned_chirho{Lexical or source-owned binding?}
     source_owned_chirho -->|yes| source_body_chirho[Preserve actual source ID and body]
@@ -145,6 +148,6 @@ flowchart TD
 
 Selected complete source interfaces are admitted by the existing exact `(name, exposure)` replacement helper before generic fragment merging. This applies to seeded source views and freshly checked home exports converted to package exposure; other package views survive. It prevents a fallback interface from retaining builtin exports/proof that the selected source actually replaces. The existing generic fragment merger remains available for genuine fragments.
 
-All four source append forms enter the same identity route. The dictionary pass reuses one generic lazy append implementation and generates a two-argument forwarding entry from typed compiler-value provenance. The forwarding target is the actual compiler-owned append ID, so a source binding named `append` cannot capture it. Existing native list-case normalization handles literal buffers when the generic body demands their spine. Explicitly string-specific generated `++#` operations, native backend contracts and the strict RTS packer remain unchanged.
+All four source append forms enter the same identity route. The dictionary pass reuses one generic lazy append implementation and generates a two-argument forwarding entry from typed compiler-value provenance, yielding first to every actually bound input ID regardless of spelling. The forwarding target is the actual compiler-owned append ID, so a source binding named `append` cannot capture it. Data.List forwards the actual certified Prelude export, and the existing selected-import scheme consumer preserves its existing Prelude type without adding a name-based agreement-table exception. Existing native list-case normalization handles literal buffers when the generic body demands their spine. Explicitly string-specific generated `++#` operations, native backend contracts and the strict RTS packer remain unchanged.
 
 Acceptance includes typed String, `[Int]` and `[[Char]]` append in prefix/infix/both sections; an undemanded tail and element must remain lazy. Local, top-level, qualified/imported and source Prelude namesakes retain their own bodies. A real source re-export of builtin append retains its positive origin. Hiding, NoImplicitPrelude, unknown qualifier and stub boundaries cannot acquire a compiler body. Metadata controls separately check typed provenance transport, source/exposure precedence and rejection of fake builtin-bit/alias authority. These are source/semantic controls, not a passing package-ladder claim; unchanged ladder execution with exact source/binary/RTS identities remains required.

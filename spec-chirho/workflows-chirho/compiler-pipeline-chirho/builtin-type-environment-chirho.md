@@ -96,7 +96,9 @@ The pre-edit GHC controls distinguish the actual builtin `id @Int` / invalid `id
 
 ```mermaid
 flowchart TD
-    import_chirho["Qualified import of builtin module M exposes x"] --> keyed_chirho{"M.x key in the builtin schemes?"}
+    import_chirho["Selected import exposes value x"] --> certificate_chirho{"Selected value has a consistent ListAppend certificate?"}
+    certificate_chirho -->|Yes| certified_scheme_chirho[Existing Prelude append scheme, preserved through real forwarding]
+    certificate_chirho -->|No| keyed_chirho{"M.x key in the builtin schemes?"}
     keyed_chirho -->|Yes| key_scheme_chirho[That scheme]
     keyed_chirho -->|No| origin_chirho{"Selected interface's origin is IfaceOriginChirho::BuiltinChirho?"}
     origin_chirho -->|"No: source, or merged with a source copy"| placeholder_chirho
@@ -113,7 +115,8 @@ flowchart TD
   - Natively it failed "no native Show instance for a boxed value".
   - Beside a local binder, every engine failed "no matching alternative".
 - **The rule.** Phase 3.9 passes the interface it actually selected to the driver's `qualified_import_alias_scheme_chirho`.
-  - That interface must be proven builtin. Only then does `qualified_builtin_alias_scheme_chirho` give the alias the bare builtin scheme of its name, and only when the generated table lists `(module, name)`.
+  - Row 709 first preserves the existing Prelude append scheme when the selected available value carries `CompilerValueChirho::ListAppendChirho` with no source definer. Data.List clones the actual Prelude export; real source re-exports may preserve that same certificate. A name, module origin, missing export or absent certificate cannot create this route. Import-list/hiding and namespace selection occur before this consumer.
+  - For remaining aliases, that interface must be proven builtin. Only then does `qualified_builtin_alias_scheme_chirho` give the alias the bare builtin scheme of its name, and only when the generated table lists `(module, name)`.
   - Otherwise the alias keeps the placeholder.
   - Row 598 already links the alias to the bare name at runtime, so the type now describes what runs.
 - **Interface origin.** `IfaceExportsChirho::origin_chirho` is an `IfaceOriginChirho`, and its default `SourceChirho` fails closed.

@@ -165,6 +165,57 @@ main = mapM_ putStrLn (["a"] F.++ ["b"])
 }
 
 #[test]
+fn declared_data_list_append_agrees_with_implicit_prelude_and_qualified_forms_chirho() {
+    source_chirho(
+        r#"module Main where
+import Data.List ((++))
+import qualified Data.List as ListChirho
+reportChirho :: [String] -> IO ()
+reportChirho rowsChirho = mapM_ putStrLn rowsChirho
+main :: IO ()
+main = do
+  print ([1 :: Int] ++ [2])
+  putStrLn ((ListChirho.++) "a" "b")
+  reportChirho (["a"] ListChirho.++ ["b"])
+  reportChirho ((ListChirho.++) ["a"] ["b"])
+  reportChirho ((["a"] ListChirho.++) ["b"])
+  reportChirho ((ListChirho.++ ["b"]) ["a"])
+"#,
+        "[1,2]\nab\na\nb\na\nb\na\nb\na\nb\n",
+    );
+}
+
+#[test]
+fn selected_source_data_list_append_keeps_its_own_operator_chirho() {
+    project_chirho(
+        &[
+            (
+                "Data.List",
+                r#"module Data.List ((++)) where
+import Prelude hiding ((++))
+(++) :: Int -> Int -> Int
+leftChirho ++ rightChirho = leftChirho - rightChirho
+"#,
+            ),
+            (
+                "Main",
+                r#"module Main where
+import qualified Data.List as ListChirho
+main :: IO ()
+main = do
+  print ([1 :: Int] ++ [2])
+  print (9 ListChirho.++ 2)
+  print ((ListChirho.++) 9 2)
+  print ((9 ListChirho.++) 2)
+  print ((ListChirho.++ 2) 9)
+"#,
+            ),
+        ],
+        "[1,2]\n7\n7\n7\n7\n",
+    );
+}
+
+#[test]
 fn selected_source_prelude_replaces_fallback_but_explicit_base_keeps_its_exposure_chirho() {
     project_chirho(
         &[
@@ -207,6 +258,18 @@ main = putStrLn ("a" P.++ "b")
         r#"module Main where
 main :: IO ()
 main = putStrLn ("a" UnknownAppendChirho.++ "b")
+"#,
+        r#"module Main where
+import qualified Data.List as ListChirho hiding ((++))
+main :: IO ()
+main = putStrLn ("a" ListChirho.++ "b")
+"#,
+        r#"module Main where
+import qualified Data.List as ListChirho
+rowsChirho :: [Int]
+rowsChirho = [1] ListChirho.++ ["wrong element Chirho"]
+main :: IO ()
+main = print rowsChirho
 "#,
     ] {
         let text_chirho = format!("{HEADER_CHIRHO}{body_chirho}");

@@ -46,7 +46,7 @@ fn selected_export_origin_reaches_core_but_unknown_or_hidden_exports_do_not_chir
             forwarded_chirho
                 .exports_chirho
                 .values_chirho
-                .get_mut("(++)")
+                .get_mut("++")
                 .unwrap()
                 .compiler_value_chirho = None;
         }
@@ -93,7 +93,7 @@ fn authoritative_source_admission_replaces_only_its_actual_exposure_chirho() {
     let value_chirho = replacement_chirho
         .exports_chirho
         .values_chirho
-        .get_mut("(++)")
+        .get_mut("++")
         .unwrap();
     value_chirho.compiler_value_chirho = None;
     value_chirho.defining_module_chirho = Some("Prelude".to_string());
@@ -104,11 +104,11 @@ fn authoritative_source_admission_replaces_only_its_actual_exposure_chirho() {
     );
     assert_eq!(ifaces_chirho.len(), 2);
     assert_eq!(
-        ifaces_chirho[0].exports_chirho.values_chirho["(++)"].compiler_value_chirho,
+        ifaces_chirho[0].exports_chirho.values_chirho["++"].compiler_value_chirho,
         None
     );
     assert!(
-        ifaces_chirho[1].exports_chirho.values_chirho["(++)"]
+        ifaces_chirho[1].exports_chirho.values_chirho["++"]
             .compiler_value_chirho
             .is_some()
     );
