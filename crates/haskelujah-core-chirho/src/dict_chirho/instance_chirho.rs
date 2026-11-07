@@ -889,10 +889,19 @@ impl DictPassCtxChirho {
             ))],
         };
 
-        let fresh_ty_var_seed_chirho = self.next_id_chirho + 10_000;
+        const TYPE_VARIABLE_SEED_EXHAUSTED_CHIRHO: &str =
+            "Dictionary type-variable seed exhausted Chirho";
+        let fresh_ty_var_seed_chirho = self
+            .next_id_chirho
+            .checked_add(10_000)
+            .expect(TYPE_VARIABLE_SEED_EXHAUSTED_CHIRHO);
         for arg_idx_chirho in (0..arity_chirho).rev() {
             let arg_ty_chirho = TyChirho::VarChirho(TyVarChirho(
-                fresh_ty_var_seed_chirho + arg_idx_chirho as u32,
+                fresh_ty_var_seed_chirho
+                    .checked_add(
+                        u32::try_from(arg_idx_chirho).expect(TYPE_VARIABLE_SEED_EXHAUSTED_CHIRHO),
+                    )
+                    .expect(TYPE_VARIABLE_SEED_EXHAUSTED_CHIRHO),
             ));
             let arg_binder_chirho =
                 self.fresh_binder_chirho(&format!("missing_arg_{arg_idx_chirho}"), arg_ty_chirho);

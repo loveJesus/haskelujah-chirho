@@ -290,3 +290,176 @@ fn a_source_binding_is_never_replaced_by_a_compiler_value_payload_chirho() {
         CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(77))
     ));
 }
+
+#[test]
+fn dictionary_generation_does_not_overwrite_independent_input_id_domains_chirho() {
+    use haskelujah_core::ImportedReferenceChirho;
+    use haskelujah_core::dict_chirho::{DictPassEvidenceChirho, DictPassInputsChirho};
+
+    for (index_chirho, domain_chirho) in [
+        "module_names_chirho",
+        "caller_names_chirho",
+        "entry_chirho",
+        "compiler_bindings_chirho",
+        "builtin_references_chirho",
+        "compiler_value_references_chirho",
+        "imported_references_chirho",
+        "method_occurrence_key_chirho",
+        "method_occurrence_canonical_chirho",
+        "occurrence_evidence_chirho",
+        "occurrence_applied_tys_chirho",
+        "reference_evidence_chirho",
+        "ground_goals_chirho",
+        "operator_occurrences_chirho",
+        "expression_reference_chirho",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let reserved_chirho = CoreIdChirho(31 + index_chirho as u32 * 3);
+        let mut input_chirho = module_chirho(&[], None);
+        let mut names_chirho = HashMap::new();
+        let mut evidence_chirho = DictPassEvidenceChirho::default();
+        match domain_chirho {
+            "module_names_chirho" => {
+                input_chirho
+                    .names_chirho
+                    .insert(reserved_chirho, "existing_module_name_chirho".to_string());
+            }
+            "caller_names_chirho" => {
+                names_chirho.insert(reserved_chirho, "existing_caller_name_chirho".to_string());
+            }
+            "entry_chirho" => input_chirho.provenance_chirho.entry_chirho = Some(reserved_chirho),
+            "compiler_bindings_chirho" => {
+                input_chirho
+                    .provenance_chirho
+                    .compiler_bindings_chirho
+                    .insert(reserved_chirho);
+            }
+            "builtin_references_chirho" => {
+                input_chirho
+                    .provenance_chirho
+                    .builtin_references_chirho
+                    .insert(reserved_chirho);
+            }
+            "compiler_value_references_chirho" => {
+                input_chirho
+                    .provenance_chirho
+                    .compiler_value_references_chirho
+                    .insert(reserved_chirho, CompilerValueChirho::ListAppendChirho);
+            }
+            "imported_references_chirho" => {
+                input_chirho
+                    .provenance_chirho
+                    .imported_references_chirho
+                    .insert(
+                        reserved_chirho,
+                        ImportedReferenceChirho {
+                            name_chirho: "external_value_chirho".to_string(),
+                            defining_modules_chirho: vec!["OtherChirho".to_string()],
+                        },
+                    );
+            }
+            "method_occurrence_key_chirho" => {
+                evidence_chirho.method_occurrence_canon_chirho.insert(
+                    reserved_chirho,
+                    ("method_chirho".to_string(), CoreIdChirho(1)),
+                );
+            }
+            "method_occurrence_canonical_chirho" => {
+                evidence_chirho.method_occurrence_canon_chirho.insert(
+                    CoreIdChirho(1),
+                    ("method_chirho".to_string(), reserved_chirho),
+                );
+            }
+            "occurrence_evidence_chirho" => {
+                evidence_chirho
+                    .occurrence_evidence_chirho
+                    .insert(reserved_chirho, ("Eq".to_string(), "Int".to_string()));
+            }
+            "occurrence_applied_tys_chirho" => {
+                evidence_chirho
+                    .occurrence_applied_tys_chirho
+                    .insert(reserved_chirho, TyChirho::int_chirho());
+            }
+            "reference_evidence_chirho" => {
+                evidence_chirho
+                    .reference_evidence_chirho
+                    .insert(reserved_chirho, Vec::new());
+            }
+            "ground_goals_chirho" => {
+                evidence_chirho
+                    .ground_goals_chirho
+                    .insert(reserved_chirho, Vec::new());
+            }
+            "operator_occurrences_chirho" => {
+                evidence_chirho
+                    .operator_occurrences_chirho
+                    .insert(reserved_chirho);
+            }
+            "expression_reference_chirho" => {
+                let mut binding_chirho = binding_chirho("input_reference_chirho", 1);
+                binding_chirho.rhs_chirho = CoreExprChirho::VarChirho(reserved_chirho);
+                input_chirho.bindings_chirho.push(binding_chirho);
+            }
+            _ => unreachable!("closed input-domain fixture Chirho"),
+        }
+        let original_names_chirho = names_chirho.clone();
+        let result_chirho = haskelujah_core::dict_chirho::dict_pass_module_with_inputs_chirho(
+            &input_chirho,
+            DictPassInputsChirho {
+                names_chirho,
+                type_env_chirho: &haskelujah_typing_chirho::env_chirho::TyEnvChirho::new_chirho(),
+                class_env_chirho:
+                    &haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho(),
+                con_types_chirho: HashMap::new(),
+                newtype_info_chirho: HashMap::new(),
+                extra_dict_param_names_chirho: Default::default(),
+                evidence_chirho,
+            },
+        );
+        assert!(
+            result_chirho.unsupported_chirho.is_empty(),
+            "{domain_chirho}"
+        );
+        for (id_chirho, name_chirho) in &original_names_chirho {
+            assert_eq!(
+                result_chirho.names_chirho.get(id_chirho),
+                Some(name_chirho),
+                "{domain_chirho}"
+            );
+        }
+        let owners_chirho = result_chirho
+            .module_chirho
+            .bindings_chirho
+            .iter()
+            .filter(|binding_chirho| binding_chirho.binder_chirho.id_chirho == reserved_chirho)
+            .collect::<Vec<_>>();
+        if domain_chirho == "compiler_value_references_chirho" {
+            assert_eq!(
+                owners_chirho.len(),
+                1,
+                "one certified body, without another ID owner"
+            );
+            assert_eq!(
+                owners_chirho[0].binder_chirho.name_chirho,
+                CompilerValueChirho::ListAppendChirho.core_name_chirho()
+            );
+        } else {
+            assert!(
+                owners_chirho.is_empty(),
+                "{domain_chirho} was given a generated body"
+            );
+            if let Some(name_chirho) = result_chirho.names_chirho.get(&reserved_chirho) {
+                let original_chirho = original_names_chirho
+                    .get(&reserved_chirho)
+                    .or_else(|| input_chirho.names_chirho.get(&reserved_chirho));
+                assert_eq!(
+                    Some(name_chirho),
+                    original_chirho,
+                    "{domain_chirho} became a generated local binder"
+                );
+            }
+        }
+    }
+}
