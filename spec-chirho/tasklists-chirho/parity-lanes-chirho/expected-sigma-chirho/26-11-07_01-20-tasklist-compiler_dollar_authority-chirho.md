@@ -11,8 +11,8 @@ https://downloads.haskell.org/ghc/9.14.1/docs/users_guide/exts/impredicative_typ
 - [x] Read the actual b2639be6 CompilerValueChirho and selected-export pipeline.
 - [x] Name producer, carrier, consumer, dependency direction and denial gaps before code.
 - [x] Prepare a finite compile-only GHC plan and literal invocation through unchanged e994/run_owned2a80/b3f, without execution or a new lifecycle.
-- [ ] Obtain source/method review and one separately named bounded reference grant; classify actual reasons and resource outcomes.
-- [ ] Select a coherent implementation base containing the existing 709/711 carrier and the measured sigma repair; preserve the separate 710/C10/reader ownership.
+- [x] Obtain source/method review and one separately named bounded reference grant; classify actual reasons and resource outcomes, retaining the dispatch fault below.
+- [x] Prepare the source-only coherent base assembly `0531709dcb328576901b38b15e441fac963f997c` on `b2639be6`, with only the checked-substitution leaf and its three tests. Its source review and any compiler execution remain pending; separate 710/C10/reader ownership is preserved.
 - [ ] After reference disposition, implement only the agreed actual-binding proof transport and certified Core body.
 - [ ] Run truthful producer/consumer negatives and actual original-source and first-class-body behavior under named grants before any acceptance claim.
 
@@ -41,9 +41,9 @@ flowchart TD
     certified_body_chirho --> ordinary_stg_chirho[Ordinary bound STG function]
 ```
 
-## Finite oracle plan, unexecuted
+## Finite oracle plan at preparation
 
-Ten compile-only rows: unchanged original T11339b; minimal implicit Prelude, explicit Prelude, qualified Prelude, direct reexport and qualified reexport; a qualified same-scheme source clone; an ordinary source alias; a hidden unimported dollar; and the same clone with an explicit ImpredicativeTypes license. Predictions are seven ACCEPT and three REJECT, all unmeasured. Any different actual result revises the proposed boundary before code. New minimal controls use explicit Haskell2010/RankNTypes and the named impredicativity flag; the original keeps its original source pragmas and all.T option exactly.
+Ten compile-only rows: unchanged original T11339b; minimal implicit Prelude, explicit Prelude, qualified Prelude, direct reexport and qualified reexport; a qualified same-scheme source clone; an ordinary source alias; a hidden unimported dollar; and the same clone with an explicit ImpredicativeTypes license. Predictions at preparation were seven ACCEPT and three REJECT, all then unmeasured. Any different actual result revises the proposed boundary before code. New minimal controls use explicit Haskell2010/RankNTypes and the named impredicativity flag; the original keeps its original source pragmas and all.T option exactly.
 
 A provisional/stub compiler interface has no honest equivalent as a GHC source-module row. Missing, stub, conflicting, ambiguous and unsupported-fallback certificates therefore remain named product structural controls rather than fabricated GHC refusals.
 
@@ -51,7 +51,17 @@ The existing e994 executor is unchanged and loads unchanged run_owned2a80/b3f by
 
 Plan SHA-256: 2580f36ab944ffcafe12a57145ed1b284dafd67dd5d2c570498f1e61593b0cdf.
 Invocation SHA-256: 3574b3803487959800c61830ba44f62bf7178d3a0055f069118ccea7c7af27bd.
-All24 inputs are pinned; output is absent.
+At preparation all24 inputs were pinned and output was absent. The completed execution and its explicit dispatch fault are recorded below.
 
 Prepared record:
 /Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-checked-inference-substitution-chirho/tmp-chirho/dollar-authority-chirho/reference-readiness-r1-chirho/owned-invocation-chirho.json
+
+## Actual reference grant 32943 Chirho
+
+The unchanged e994 executor completed version plus all ten compile-only rows once. The semantic fold classifies seven ACCEPT: unchanged original T11339b, implicit/explicit/qualified Prelude dollar, genuine bare/qualified reexports, and the explicitly ImpredicativeTypes-licensed source clone. The qualified source clone and ordinary alias are genuine semantic REJECT with GHC-83865 at the rank-polymorphic constructor argument; hidden dollar is semantic REJECT with GHC-88464, not in scope after hiding. No timeout, reduction/resource bound, panic or process fault supplies a semantic refusal. All ten names occur once; all24 inputs, eleven receipts,22 raw streams and46 original output files were independently rehashed unchanged. This is finite GHC binding-authority evidence, with no product repair, runtime-body or broad compatibility claim.
+
+Dispatch fault: the named internal deadline was `1794033838.992967`, but the actual executor argv received `1794033858.524237`,19.531270027 seconds later. Each of the eleven actual starts plus its unchanged full cap and30-second reserve independently fitted the ORIGINAL named deadline; the minimum margin was503.281503916 seconds. No rerun occurred. The wrong argument remains a dispatch fault, and the execution is not described as protocol-flawless. Future dispatch must derive the exact executor argument from the saved named grant rather than recomputing or transcribing it. Original summaries and argv remain immutable.
+
+The semantic fold is `b7529756d0ce688c3c686a5817ec95c71c089ce54a51b30229b5efc5030c727e`; its evidence manifest is `db2b2c41f7f1625d4a8efd70ed068dd8fd82fb28aa04a6717f0a6bca70b4c93f`. The original independent postflight retaining the deadline discrepancy is `b21d73fd137d8283760c12401fd6e048227a3f293dd76642fde31b89c1c7be54`.
+
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-checked-inference-substitution-chirho/tmp-chirho/dollar-authority-chirho/reference-readiness-r1-chirho/reference-exec-r1-chirho/semantic-fold-chirho.json
