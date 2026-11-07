@@ -133,3 +133,35 @@ fn eval_indexed_qualified_bind_changes_its_index_chirho() {
 
     assert_eq!(eval_output_chirho(source_chirho), "42\n");
 }
+
+/// A RebindableSyntax bind after a do-let that defines `>>=` is typed through that local
+/// operation, found in its lexical scope and never by a lookup made before the let (row 710,
+/// #32802). Prelude's monadic `>>=` would give the block a type `m b`, which can never be `Int`,
+/// so a successful check is the discriminating outcome.
+#[test]
+fn typecheck_rebindable_do_let_operation_in_its_lexical_scope_chirho() {
+    let source_chirho = concat!(
+        "{-# LANGUAGE RebindableSyntax #-}\n",
+        "module RebindableDoLetChirho where\n",
+        "import Prelude\n",
+        "resultChirho :: Int\n",
+        "resultChirho = do\n",
+        "  let valueChirho >>= nextChirho = nextChirho valueChirho\n",
+        "  countChirho <- 41\n",
+        "  countChirho + 1\n",
+        "main :: IO ()\n",
+        "main = print resultChirho\n",
+    );
+    let mut source_map_chirho = SourceMapChirho::new_chirho();
+    let result_chirho = compile_source_chirho(
+        source_chirho,
+        &mut source_map_chirho,
+        "RebindableDoLetChirho.hs",
+    );
+
+    assert!(
+        result_chirho.is_ok(),
+        "the do-let's own >>= must type the bind: {:?}",
+        result_chirho.err()
+    );
+}
