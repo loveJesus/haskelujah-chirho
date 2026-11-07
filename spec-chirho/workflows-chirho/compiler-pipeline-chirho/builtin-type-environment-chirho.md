@@ -224,6 +224,7 @@ flowchart TD
 ```
 
 - **One file per module.** Every statement that names a module sits in that module's family file, in the order the tables were written. The merge appends a repeated module's constructors and methods in push order, and its values are first-wins, so each module's merged interface is the same whatever order the families run in.
+- **Typed seeds stay uncontested.** A type keeps its declaration through the merge only when every copy of the module that exports it carries the same declaration. An untyped copy clears a typed one, and `normalize_builtin_type_exports_chirho` only adds an untyped entry where none exists. So a compiler-owned type is seeded by its typed producer, and no other copy lists it by spelling: `Data.Data` and `Data.Typeable` export `Proxy` this way (row 711 E3).
 - **Modules by name, never by position.** The returned vector follows the family order.
   - Every reader finds a module by its name (`find`, `rev().find`, `position`, `any`) or loops per module, and none reads a position.
   - Before row 648 the vector followed the order the tables were written. A reversed vector passed the naming, typing_integration and native-symbol suites.

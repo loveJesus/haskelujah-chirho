@@ -118,10 +118,10 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TypeableChirho,
         );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        for name_chirho in &["TypeRep", "Proxy"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
-            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        }
+        // Proxy comes only from the typed Data.Typeable copy: an untyped copy here would clear
+        // its declaration when the copies merge.
+        let (k_chirho, v_chirho) = mk_type_chirho("TypeRep", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Typeable".to_string(),
@@ -232,6 +232,12 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
+        // Data.Data re-exports Data.Typeable's Proxy(..): the compiler type from its typed producer.
+        let (k_chirho, v_chirho) =
+            mk_data_type_chirho(CompilerTypeConstructorChirho::ProxyChirho, &["Proxy"]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
+        let (k_chirho, v_chirho) = mk_val_chirho("Proxy");
+        exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
             exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Data".to_string(),
@@ -513,10 +519,10 @@ pub(super) fn push_reflection_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::TypeableChirho,
         );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        for name_chirho in &["TypeRep", "Proxy"] {
-            let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
-            exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        }
+        // Proxy comes only from the typed Data.Typeable copy: an untyped copy here would clear
+        // its declaration when the copies merge.
+        let (k_chirho, v_chirho) = mk_type_chirho("TypeRep", &[]);
+        exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for name_chirho in &[
             "typeOf",
             "typeRep",

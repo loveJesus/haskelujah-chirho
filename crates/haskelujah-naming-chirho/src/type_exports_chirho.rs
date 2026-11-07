@@ -279,8 +279,8 @@ pub(crate) fn normalize_builtin_type_exports_chirho(modules_chirho: &mut [Module
             "Data.Proxy" => {
                 ensure_type_export_chirho(module_chirho, "Proxy", &["Proxy"]);
             }
+            // Data.Data's Proxy comes from its typed producer (reflection_chirho.rs), never by spelling.
             "Data.Data" => {
-                ensure_type_export_chirho(module_chirho, "Proxy", &["Proxy"]);
                 ensure_type_export_chirho(module_chirho, ":~:", &["Refl"]);
             }
             "Language.Haskell.TH" => {
