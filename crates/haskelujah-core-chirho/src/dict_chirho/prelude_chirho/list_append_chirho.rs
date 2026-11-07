@@ -96,7 +96,9 @@ impl DictPassCtxChirho {
             .provenance_chirho
             .compiler_value_references_chirho
         {
-            if self.module_source_binder_ids_chirho.contains(&id_chirho) {
+            // Actual input bindings retain ownership even when their spelling
+            // also looks compiler-internal. A payload cannot replace a body.
+            if self.module_bound_ids_chirho.contains(&id_chirho) {
                 continue;
             }
             match value_chirho {
