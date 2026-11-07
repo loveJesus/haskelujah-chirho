@@ -33,3 +33,5 @@ flowchart TD
     unify_chirho --> equal_chirho[Equal constructor or metavariable substitution]
     unify_chirho --> mismatch_chirho[Distinct constructors report mismatch]
 ```
+
+The row 708 source correction has a paired measured control: the original unifier accepted three invalid signed numeric values, and the corrected unifier rejects them while the seven valid literal/conversion/polymorphism controls remain checkable. The full typing library and scoped lint gate passed; a fresh frozen candidate preserved both existing compiler-axis raw streams byte-for-byte against the pin-matched actual-A9 baseline. See the numeric-nominality tasklist for exact commits, overlapping test scopes and receipt hashes. Canonical integration and wider runtime/defaulting behavior remain separate.
