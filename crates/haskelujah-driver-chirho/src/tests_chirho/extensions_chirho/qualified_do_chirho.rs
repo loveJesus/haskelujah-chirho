@@ -90,3 +90,20 @@ fn typecheck_t21206_rank_n_qualified_do_chirho() {
         result_chirho.err()
     );
 }
+
+/// A `($)` bind, GHC T17594f's shape: `(>>=) = ($)` types `M.do { x <- k; x + 1 }` as
+/// `k (\x -> x + 1)`, by the operation's own scheme and never a monadic shape (row 710).
+#[test]
+fn eval_dollar_qualified_bind_types_by_its_own_scheme_chirho() {
+    let source_chirho = concat!(
+        "{-# LANGUAGE QualifiedDo #-}\n",
+        "module DollarBindChirho where\n",
+        "(>>=) :: (a -> b) -> a -> b\n",
+        "(>>=) = ($)\n",
+        "main = print (DollarBindChirho.do\n",
+        "  valueChirho <- (\\continueChirho -> continueChirho (41 :: Int))\n",
+        "  valueChirho + 1)\n",
+    );
+
+    assert_eq!(eval_output_chirho(source_chirho), "42\n");
+}
