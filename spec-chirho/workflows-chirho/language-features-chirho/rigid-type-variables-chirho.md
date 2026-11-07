@@ -154,3 +154,24 @@ constructor's result type is still dropped, so a type-changing update through a 
   unification variables, not skolems.
 - IO defaulting of a lone Monad/Functor-constrained variable still applies to argument-less
   top-level bindings.
+
+
+## Checked-inference substitution transport Chirho
+
+When a checking fallback infers an expression, the returned actual type is already current for that inference phase. Its substitution transports inputs that were external to the inference, including the expected type. The generic fallback and list-representation fallback apply that substitution once to the expected input before unifying, then commit only the new unifier delta. The returned composed substitution still transports original signature and predicate inputs. The actual type is not substituted again, and the previous inference substitution is not replayed into the committed context.
+
+```mermaid
+flowchart TD
+    external_expected_chirho[External expected type] --> transported_expected_chirho[Apply returned inference substitution once]
+    inferred_expression_chirho[Infer expression] --> current_actual_chirho[Already-current actual type]
+    inferred_expression_chirho --> inferred_substitution_chirho[Returned inference substitution]
+    inferred_substitution_chirho --> transported_expected_chirho
+    current_actual_chirho --> new_equality_chirho[Unify current actual with transported expected]
+    transported_expected_chirho --> new_equality_chirho
+    new_equality_chirho --> current_context_chirho[Commit only the new equality delta]
+    new_equality_chirho --> returned_substitution_chirho[Compose new delta with returned inference substitution]
+    inferred_substitution_chirho --> returned_substitution_chirho
+    current_context_chirho --> escape_check_chirho[Existing captured-meta escape and cycle guards]
+```
+
+The regression controls infer monomorphic sections sharing an enclosing metavariable, then use the real captured-meta escape consumer. Left/right sections cover the generic fallback; an ordinary list-application expected representation covers the non-list list fallback. Existing rigid escape, occurs checks, nominality, substitution metadata, TypeLam/RequiredForall, application QuickLook and resource limits are preserved. No global alias coalescing or substitution-composition rule changes here. Actual before/after gate results are recorded in the checked-inference tasklist; source preparation alone is not acceptance.

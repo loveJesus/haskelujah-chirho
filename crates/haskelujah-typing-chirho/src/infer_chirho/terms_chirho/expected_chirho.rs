@@ -31,6 +31,9 @@ impl InferCtxChirho {
         }
     }
 
+    /// Inferred fallbacks return a current actual type; their substitution
+    /// transports the external expected input before the new equality check.
+    /// workflow: language-features-chirho/rigid-type-variables-chirho
     pub(super) fn infer_expr_against_expected_chirho(
         &mut self,
         expr_chirho: &ExprChirho,
@@ -430,9 +433,10 @@ impl InferCtxChirho {
                 let expected_norm_chirho = self.normalize_ty_chirho(expected_ty_chirho);
                 let TyChirho::ListChirho(expected_elem_ty_chirho) = expected_norm_chirho else {
                     let (s_chirho, actual_ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                    let expected_sub_chirho = s_chirho.apply_ty_chirho(expected_ty_chirho);
                     match self.unify_normalized_chirho(
                         &actual_ty_chirho,
-                        expected_ty_chirho,
+                        &expected_sub_chirho,
                         span_chirho,
                     ) {
                         Ok(su_chirho) => {
@@ -499,9 +503,10 @@ impl InferCtxChirho {
                 }
                 let (s_chirho, actual_ty_chirho) = self.infer_expr_chirho(expr_chirho);
                 self.do_last_expected_chirho = None;
+                let expected_sub_chirho = s_chirho.apply_ty_chirho(expected_ty_chirho);
                 match self.unify_normalized_chirho(
                     &actual_ty_chirho,
-                    expected_ty_chirho,
+                    &expected_sub_chirho,
                     span_chirho,
                 ) {
                     Ok(su_chirho) => {
