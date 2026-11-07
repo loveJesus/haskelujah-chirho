@@ -5,7 +5,10 @@
 //! the entire path, and roots active evaluations across allocating callbacks.
 
 use super::failure_chirho::{internal_failure_chirho, user_failure_chirho};
-use super::{NATIVE_ALLOC_THUNK_CHIRHO, haskelujah_alloc_chirho, native_gc_runtime_lock_chirho};
+use super::{
+    NATIVE_ALLOC_THUNK_CHIRHO, NativeGcRuntimeChirho, haskelujah_alloc_chirho,
+    native_gc_runtime_lock_chirho,
+};
 
 const UNEVALUATED_CHIRHO: u64 = 0;
 const BLACKHOLE_CHIRHO: u64 = 1;
@@ -107,10 +110,7 @@ pub extern "C" fn haskelujah_enter_thunk_chirho(mut value_chirho: u64) -> u64 {
     }
     let mut runtime_chirho = native_gc_runtime_lock_chirho();
     for raw_chirho in path_chirho {
-        unsafe {
-            raw_chirho.add(1).write(value_chirho);
-            raw_chirho.write(INDIRECTION_CHIRHO);
-        }
+        publish_thunk_result_chirho(&mut runtime_chirho, raw_chirho, value_chirho, true);
         runtime_chirho
             .active_thunks_chirho
             .remove(&(raw_chirho as usize));
@@ -125,8 +125,48 @@ pub extern "C" fn haskelujah_update_thunk_chirho(thunk_chirho: u64, value_chirho
     let Some(raw_chirho) = thunk_address_chirho(thunk_chirho) else {
         internal_failure_chirho(b"update of a non-thunk");
     };
+    let mut runtime_chirho = native_gc_runtime_lock_chirho();
+    publish_thunk_result_chirho(&mut runtime_chirho, raw_chirho, value_chirho, false);
+}
+
+// Workflow: testing-chirho/native-root-lifetimes-chirho.md. The allocation
+// registry, not a value's spelling or low tag, authorizes this publication.
+// The collector shares this lock; publication and retirement have no native
+// allocation/safepoint between them. An active callback may still read its
+// original environment after explicit update, so only its completed entry path
+// may retire those captures. Inactive explicit updates can retire immediately.
+fn publish_thunk_result_chirho(
+    runtime_chirho: &mut NativeGcRuntimeChirho,
+    raw_chirho: *mut u64,
+    value_chirho: u64,
+    callback_completed_chirho: bool,
+) {
+    let address_chirho = raw_chirho as usize;
+    let Some(record_chirho) = runtime_chirho
+        .allocations_by_ptr_chirho
+        .get(&address_chirho)
+    else {
+        internal_failure_chirho(b"thunk update allocation not registered");
+    };
+    let word_size_chirho = std::mem::size_of::<u64>();
+    if record_chirho.kind_chirho != NATIVE_ALLOC_THUNK_CHIRHO
+        || record_chirho.size_chirho < PREFIX_WORDS_CHIRHO * word_size_chirho
+        || record_chirho.size_chirho % word_size_chirho != 0
+    {
+        internal_failure_chirho(b"invalid thunk update allocation");
+    }
+    let capture_count_chirho = record_chirho.size_chirho / word_size_chirho - PREFIX_WORDS_CHIRHO;
     unsafe {
+        // Publish the live edge before removing obsolete edges. This preserves
+        // aliases where the returned result is itself one of the old captures.
         raw_chirho.add(1).write(value_chirho);
         raw_chirho.write(INDIRECTION_CHIRHO);
+        if callback_completed_chirho
+            || !runtime_chirho
+                .active_thunks_chirho
+                .contains(&address_chirho)
+        {
+            std::ptr::write_bytes(raw_chirho.add(PREFIX_WORDS_CHIRHO), 0, capture_count_chirho);
+        }
     }
 }
