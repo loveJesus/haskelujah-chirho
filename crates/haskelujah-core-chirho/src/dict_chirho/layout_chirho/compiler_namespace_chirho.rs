@@ -20,6 +20,7 @@ use haskelujah_ast_chirho::name_chirho::{
     CompilerClassChirho, PredicateClassIdentityChirho, PredicateClassProofChirho,
 };
 use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho};
+use haskelujah_typing_chirho::ty_chirho::SchemePredChirho;
 
 use crate::dict_chirho::{DictLayoutChirho, DictPassCtxChirho};
 use crate::expr_chirho::{CoreExprChirho, CoreIdChirho, CoreLitChirho};
@@ -480,22 +481,16 @@ impl DictPassCtxChirho {
         }
     }
 
-    /// The selector a proof's own dictionary is projected by: a displaced compiler class's own
-    /// (none when this pass could not lay it out), else the spelled selector the method's name
-    /// registers.
-    pub(in crate::dict_chirho) fn proof_selector_chirho(
+    /// The class name a scheme predicate's dictionary is decided and keyed under: a displaced
+    /// compiler class's reserved namespace, laid out or not, else the predicate's own spelling
+    /// (row 692, gpt #32675). The definition and its callers read this one decision.
+    pub(in crate::dict_chirho) fn predicate_namespace_chirho(
         &self,
-        proof_chirho: &PredicateClassProofChirho,
-        method_name_chirho: &str,
-    ) -> Option<CoreIdChirho> {
-        match self.displaced_identity_chirho(proof_chirho) {
-            Some(identity_chirho) => {
-                self.compiler_selector_chirho(identity_chirho, method_name_chirho)
-            }
-            None => self
-                .method_selectors_chirho
-                .get(method_name_chirho)
-                .map(|(_class_chirho, selector_chirho)| *selector_chirho),
+        predicate_chirho: &SchemePredChirho,
+    ) -> String {
+        match self.displaced_identity_chirho(predicate_chirho.class_identity_chirho()) {
+            Some(identity_chirho) => compiler_namespace_name_chirho(identity_chirho),
+            None => predicate_chirho.class_name_chirho.clone(),
         }
     }
 

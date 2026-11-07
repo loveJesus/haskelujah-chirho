@@ -27,10 +27,20 @@ impl DictPassCtxChirho {
                 _ => return None,
             }
         } else {
-            format!("{}", predicate_chirho.ty_chirho)
+            // Every class argument, in the registry's own key (row 692, gpt #32675).
+            super::instance_chirho::generic_heads_chirho::head_key_chirho(
+                &predicate_chirho.ty_chirho,
+                &predicate_chirho.extra_tys_chirho,
+            )
         };
+        // The predicate's own namespace: a displaced compiler class resolves only in its own,
+        // and with no dictionary there the binding keeps its parameter rather than take the
+        // source class's (row 692, gpt #32675). The caller reads this same decision.
         self.instance_dicts_chirho
-            .get(&(predicate_chirho.class_name_chirho.clone(), key_chirho))
+            .get(&(
+                self.predicate_namespace_chirho(predicate_chirho),
+                key_chirho,
+            ))
             .copied()
     }
 

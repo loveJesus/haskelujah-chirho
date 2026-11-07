@@ -236,25 +236,25 @@ impl DictPassCtxChirho {
             self.binding_dict_param_indices_chirho(binding_chirho, scheme_chirho);
 
         for (pred_index_chirho, pred_chirho) in scheme_chirho.preds_chirho.iter().enumerate() {
-            evidence_classes_chirho.insert(pred_chirho.class_name_chirho.clone());
+            // Keyed by the predicate's own namespace, so a fallback by class never crosses
+            // between a displaced compiler class and the source class that took its spelling
+            // (row 692, gpt #32675). Every other predicate keeps its spelling.
+            let namespace_chirho = self.predicate_namespace_chirho(pred_chirho);
+            evidence_classes_chirho.insert(namespace_chirho.clone());
             let resolved_chirho = (!dict_param_indices_chirho.contains(&pred_index_chirho))
                 .then(|| self.resolved_pred_dictionary_chirho(pred_chirho, scheme_chirho))
                 .flatten();
 
             if let Some(inst_id_chirho) = resolved_chirho {
                 // Ground predicate with known instance — use concrete dict
-                dict_vars_chirho.insert(pred_chirho.class_name_chirho.clone(), inst_id_chirho);
+                dict_vars_chirho.insert(namespace_chirho, inst_id_chirho);
             } else {
                 // Unresolved — abstract over a dictionary lambda parameter
-                let dict_name_chirho = format!("$d{}", pred_chirho.class_name_chirho);
-                let dict_ty_chirho =
-                    TyChirho::ConChirho(format!("$Dict_{}", pred_chirho.class_name_chirho));
+                let dict_name_chirho = format!("$d{namespace_chirho}");
+                let dict_ty_chirho = TyChirho::ConChirho(format!("$Dict_{namespace_chirho}"));
                 let dict_binder_chirho =
                     self.fresh_binder_chirho(&dict_name_chirho, dict_ty_chirho);
-                dict_vars_chirho.insert(
-                    pred_chirho.class_name_chirho.clone(),
-                    dict_binder_chirho.id_chirho,
-                );
+                dict_vars_chirho.insert(namespace_chirho, dict_binder_chirho.id_chirho);
                 // Also by predicate index, which is how the checker's
                 // own-parameter evidence names this parameter (two predicates
                 // of one class are two parameters).
