@@ -85,13 +85,14 @@ impl DictPassCtxChirho {
         for (identity_chirho, method_chirho, type_key_chirho, kind_chirho) in builtins_chirho {
             let class_chirho = identity_chirho.legacy_name_chirho();
             // Named in its class's namespace: the legacy spelling, or the reserved one when a
-            // source class has taken that spelling (row 692, C10).
-            let prim_name_chirho = format!(
-                "$prim_{}_{}_{}",
-                self.compiler_rows_class_name_chirho(identity_chirho),
-                method_chirho,
-                type_key_chirho
-            );
+            // source class has taken that spelling. A displaced class this pass could not lay
+            // out has none, and the spelling is the source class's (row 692, C10).
+            let Some(namespace_chirho) = self.compiler_rows_class_name_chirho(identity_chirho)
+            else {
+                continue;
+            };
+            let prim_name_chirho =
+                format!("$prim_{namespace_chirho}_{method_chirho}_{type_key_chirho}");
 
             // Skip if this binding already exists (user may have provided one)
             let already_exists_chirho = self
@@ -499,10 +500,14 @@ impl DictPassCtxChirho {
                 // A displaced compiler class's own instances fill its namespace, and nothing
                 // else does; its spelling keeps the source class (row 692, C10).
                 // workflow: language-features-chirho/dictionary-evidence-chirho
-                if let Some((identity_chirho, compiler_layout_chirho)) =
-                    self.compiler_layout_for_chirho(inst_chirho.class_identity_chirho())
+                if let Some(identity_chirho) =
+                    self.displaced_identity_chirho(inst_chirho.class_identity_chirho())
                 {
-                    if identity_chirho.legacy_name_chirho() == class_name_chirho {
+                    // Laid out or not, a displaced class's instance never enters the spelling.
+                    if identity_chirho.legacy_name_chirho() == class_name_chirho
+                        && let Some(compiler_layout_chirho) =
+                            self.compiler_layouts_chirho.get(&identity_chirho)
+                    {
                         let namespace_chirho = compiler_layout_chirho.class_name_chirho.clone();
                         let compiler_layout_chirho = compiler_layout_chirho.clone();
                         compiler_entries_chirho.insert(
@@ -561,6 +566,12 @@ impl DictPassCtxChirho {
             .get(&CompilerClassChirho::ShowChirho)
         {
             Some(layout_chirho) => Some((layout_chirho.clone(), true)),
+            None if self
+                .displaced_compiler_classes_chirho
+                .contains_key(&CompilerClassChirho::ShowChirho) =>
+            {
+                None
+            }
             None => self
                 .layouts_chirho
                 .get("Show")

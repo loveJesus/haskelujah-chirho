@@ -7,8 +7,10 @@
 //! out from its validated compiler record and named under one namespace derived from its
 //! identity. Only an occurrence whose proof is that compiler class dispatches through it; every
 //! other proof, an undisplaced compiler class, a source class or an unknown one, keeps the
-//! spelled route it has always taken. Where no source class displaces a compiler class nothing
-//! here exists, and every name stays as it was.
+//! spelled route it has always taken. A displaced compiler request this pass cannot serve, a
+//! class it could not lay out included, is refused by name and never served from the spelling
+//! (gpt #32666). Where no source class displaces a compiler class nothing here exists, and every
+//! name stays as it was.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use std::collections::{HashMap, HashSet};
@@ -20,7 +22,7 @@ use haskelujah_ast_chirho::name_chirho::{
 use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho};
 
 use crate::dict_chirho::{DictLayoutChirho, DictPassCtxChirho};
-use crate::expr_chirho::{CoreExprChirho, CoreIdChirho};
+use crate::expr_chirho::{CoreExprChirho, CoreIdChirho, CoreLitChirho};
 
 /// The class name a displaced compiler class's own layout, selectors, dictionaries and rows are
 /// spelled under. No source class can spell it, since a class name never begins with `$`.
@@ -113,6 +115,8 @@ impl DictPassCtxChirho {
             if let Some(superclasses_chirho) = &superclasses_chirho {
                 pending_chirho.extend(superclasses_chirho.iter().copied());
             }
+            self.displaced_compiler_classes_chirho
+                .insert(identity_chirho, record_chirho.clone());
             displaced_chirho.push((identity_chirho, record_chirho, superclasses_chirho));
         }
         let displaced_identities_chirho: HashSet<CompilerClassChirho> = displaced_chirho
@@ -325,42 +329,34 @@ impl DictPassCtxChirho {
         }
     }
 
-    /// The displaced compiler class a proof dispatches through, with its layout.
-    pub(in crate::dict_chirho) fn compiler_layout_for_chirho(
+    /// The compiler class a proof proves when a source class displaces it, whether or not this
+    /// pass could lay it out.
+    pub(in crate::dict_chirho) fn displaced_identity_chirho(
         &self,
         proof_chirho: &PredicateClassProofChirho,
-    ) -> Option<(CompilerClassChirho, &DictLayoutChirho)> {
-        let identity_chirho = compiler_identity_chirho(proof_chirho)?;
-        self.compiler_layouts_chirho
-            .get(&identity_chirho)
-            .map(|layout_chirho| (identity_chirho, layout_chirho))
+    ) -> Option<CompilerClassChirho> {
+        compiler_identity_chirho(proof_chirho).filter(|identity_chirho| {
+            self.displaced_compiler_classes_chirho
+                .contains_key(identity_chirho)
+        })
     }
 
-    /// The class name a proved occurrence's dictionaries and rows are spelled under: the
-    /// reserved namespace of a displaced compiler class, else the occurrence's own spelling.
-    pub(in crate::dict_chirho) fn dispatch_class_name_chirho<'name_chirho>(
-        &'name_chirho self,
-        class_name_chirho: &'name_chirho str,
-        proof_chirho: &PredicateClassProofChirho,
-    ) -> &'name_chirho str {
-        self.compiler_layout_for_chirho(proof_chirho)
-            .map_or(class_name_chirho, |(_, layout_chirho)| {
-                layout_chirho.class_name_chirho.as_str()
-            })
-    }
-
-    /// The row a proved occurrence names for `method_name_chirho` at `ty_key_chirho`.
-    pub(in crate::dict_chirho) fn dispatch_row_name_chirho(
+    /// Whether `method_name_chirho`, by any spelling, is one of the displaced compiler class's
+    /// own methods, read from its compiler record.
+    fn displaced_method_chirho(
         &self,
-        class_name_chirho: &str,
-        proof_chirho: &PredicateClassProofChirho,
+        identity_chirho: CompilerClassChirho,
         method_name_chirho: &str,
-        ty_key_chirho: &str,
-    ) -> String {
-        format!(
-            "$prim_{}_{method_name_chirho}_{ty_key_chirho}",
-            self.dispatch_class_name_chirho(class_name_chirho, proof_chirho)
-        )
+    ) -> bool {
+        self.displaced_compiler_classes_chirho
+            .get(&identity_chirho)
+            .is_some_and(|record_chirho| {
+                method_spellings_chirho(method_name_chirho)
+                    .into_iter()
+                    .any(|spelling_chirho| {
+                        record_chirho.methods_chirho.contains_key(spelling_chirho)
+                    })
+            })
     }
 
     /// The selector of a displaced compiler class's method, by any spelling of its name. A
@@ -380,11 +376,32 @@ impl DictPassCtxChirho {
             })
     }
 
+    /// The dictionary a displaced compiler class's proof names at `ty_key_chirho`: its own
+    /// namespace's, or the binding's own dictionary for an own key. None when this pass has none.
+    pub(in crate::dict_chirho) fn compiler_dictionary_chirho(
+        &self,
+        identity_chirho: CompilerClassChirho,
+        ty_key_chirho: &str,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> Option<CoreIdChirho> {
+        let layout_chirho = self.compiler_layouts_chirho.get(&identity_chirho)?;
+        self.evidence_dict_for_class_chirho(
+            &layout_chirho.class_name_chirho,
+            Some(ty_key_chirho),
+            dict_vars_chirho,
+            evidence_classes_chirho,
+            local_instance_dicts_chirho,
+        )
+    }
+
     /// A displaced compiler class's method at a proved key: its own selector applied to the
     /// dictionary the key names in its namespace, or to the binding's own dictionary for an own
     /// key. This is the selector form a literal's wrapper keeps, so every backend sees the shape
-    /// it already handles. None for any other proof, or when that class has no such selector or
-    /// dictionary; the caller's spelled route then stays as it was.
+    /// it already handles. When this pass cannot serve it, its named refusal: never the source
+    /// class's spelled route (gpt #32666). None when the proof is not a displaced compiler
+    /// class, or the occurrence is not one of that class's methods; the caller's route stands.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub(in crate::dict_chirho) fn compiler_method_head_chirho(
         &self,
@@ -395,30 +412,69 @@ impl DictPassCtxChirho {
         evidence_classes_chirho: &HashSet<String>,
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
     ) -> Option<CoreExprChirho> {
-        let (identity_chirho, layout_chirho) = self.compiler_layout_for_chirho(proof_chirho)?;
-        let selector_chirho = self.compiler_selector_chirho(identity_chirho, method_name_chirho)?;
-        let dictionary_chirho = self.evidence_dict_for_class_chirho(
-            &layout_chirho.class_name_chirho,
-            Some(ty_key_chirho),
-            dict_vars_chirho,
-            evidence_classes_chirho,
-            local_instance_dicts_chirho,
-        )?;
-        Some(CoreExprChirho::AppChirho {
-            fun_chirho: Box::new(CoreExprChirho::VarChirho(selector_chirho)),
-            arg_chirho: Box::new(CoreExprChirho::VarChirho(dictionary_chirho)),
-        })
+        let identity_chirho = self.displaced_identity_chirho(proof_chirho)?;
+        if !self.displaced_method_chirho(identity_chirho, method_name_chirho) {
+            return None;
+        }
+        let served_chirho = self
+            .compiler_selector_chirho(identity_chirho, method_name_chirho)
+            .zip(self.compiler_dictionary_chirho(
+                identity_chirho,
+                ty_key_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_instance_dicts_chirho,
+            ))
+            .map(
+                |(selector_chirho, dictionary_chirho)| CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(CoreExprChirho::VarChirho(selector_chirho)),
+                    arg_chirho: Box::new(CoreExprChirho::VarChirho(dictionary_chirho)),
+                },
+            );
+        Some(served_chirho.unwrap_or_else(|| {
+            self.displaced_refusal_chirho(
+                identity_chirho,
+                &format!("method `{method_name_chirho}`"),
+                ty_key_chirho,
+            )
+        }))
     }
 
-    /// The selector a proof's own dictionary is projected by: a displaced compiler class's
-    /// own, else the spelled selector the method's name registers.
+    /// The named refusal of a displaced compiler class's request this pass cannot serve. The
+    /// module is refused by name through the pass's unsupported list, and the request itself
+    /// becomes an error naming it: never the source class's spelled route (gpt #32666).
+    pub(in crate::dict_chirho) fn displaced_refusal_chirho(
+        &self,
+        identity_chirho: CompilerClassChirho,
+        request_chirho: &str,
+        ty_key_chirho: &str,
+    ) -> CoreExprChirho {
+        let message_chirho = format!(
+            "the compiler's `{}` {request_chirho} at `{ty_key_chirho}` has no dictionary this pass can build while the program's own class takes the spelling `{}`",
+            identity_chirho.legacy_name_chirho(),
+            identity_chirho.legacy_name_chirho()
+        );
+        self.displaced_refusals_chirho
+            .borrow_mut()
+            .insert(message_chirho.clone());
+        CoreExprChirho::PrimOpChirho {
+            name_chirho: "error".to_string(),
+            args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
+                message_chirho,
+            ))],
+        }
+    }
+
+    /// The selector a proof's own dictionary is projected by: a displaced compiler class's own
+    /// (none when this pass could not lay it out), else the spelled selector the method's name
+    /// registers.
     pub(in crate::dict_chirho) fn proof_selector_chirho(
         &self,
         proof_chirho: &PredicateClassProofChirho,
         method_name_chirho: &str,
     ) -> Option<CoreIdChirho> {
-        match self.compiler_layout_for_chirho(proof_chirho) {
-            Some((identity_chirho, _)) => {
+        match self.displaced_identity_chirho(proof_chirho) {
+            Some(identity_chirho) => {
                 self.compiler_selector_chirho(identity_chirho, method_name_chirho)
             }
             None => self
@@ -428,17 +484,23 @@ impl DictPassCtxChirho {
         }
     }
 
-    /// The class name a compiler class's builtin rows are spelled under: its reserved namespace
-    /// when a source class displaces it, its legacy spelling otherwise.
+    /// The class name a compiler class's builtin rows are spelled under: its legacy spelling
+    /// when no source class displaces it, its reserved namespace when one does. None for a
+    /// displaced class this pass could not lay out: its rows have no namespace to live in, and
+    /// the spelling is the source class's.
     pub(in crate::dict_chirho) fn compiler_rows_class_name_chirho(
         &self,
         identity_chirho: CompilerClassChirho,
-    ) -> String {
-        self.compiler_layouts_chirho
-            .get(&identity_chirho)
-            .map_or_else(
-                || identity_chirho.legacy_name_chirho().to_string(),
-                |layout_chirho| layout_chirho.class_name_chirho.clone(),
-            )
+    ) -> Option<String> {
+        match self.compiler_layouts_chirho.get(&identity_chirho) {
+            Some(layout_chirho) => Some(layout_chirho.class_name_chirho.clone()),
+            None if self
+                .displaced_compiler_classes_chirho
+                .contains_key(&identity_chirho) =>
+            {
+                None
+            }
+            None => Some(identity_chirho.legacy_name_chirho().to_string()),
+        }
     }
 }

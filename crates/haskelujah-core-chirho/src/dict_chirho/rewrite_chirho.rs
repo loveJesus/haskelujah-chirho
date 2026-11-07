@@ -807,6 +807,9 @@ impl DictPassCtxChirho {
         }
         let mut unsupported_chirho = self.unsupported_dictionaries_chirho;
         unsupported_chirho.extend(self.gnd_unbuilt_uses_chirho.into_inner());
+        // A displaced compiler request this pass could not serve refuses the module by name
+        // (row 692, C10, gpt #32666).
+        unsupported_chirho.extend(self.displaced_refusals_chirho.into_inner());
         DictPassResultChirho {
             module_chirho,
             names_chirho: self.names_chirho,

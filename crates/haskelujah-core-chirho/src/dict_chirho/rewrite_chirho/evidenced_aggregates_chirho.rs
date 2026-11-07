@@ -123,11 +123,11 @@ impl DictPassCtxChirho {
         if class_name_chirho != "Num" {
             return None;
         }
-        // A displaced compiler Num folds through its own dictionary's methods: the spelled rows
-        // are the source class's (row 692, C10).
+        // A displaced compiler Num folds through its own dictionary's methods, or their named
+        // refusals: the spelled rows are the source class's (row 692, C10, gpt #32666).
         // workflow: language-features-chirho/dictionary-evidence-chirho
         if self
-            .compiler_layout_for_chirho(&evidence_chirho.class_identity_chirho)
+            .displaced_identity_chirho(&evidence_chirho.class_identity_chirho)
             .is_some()
         {
             let (no_vars_chirho, no_classes_chirho, no_locals_chirho) =

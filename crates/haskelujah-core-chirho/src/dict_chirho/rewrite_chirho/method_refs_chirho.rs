@@ -80,7 +80,7 @@ impl DictPassCtxChirho {
         // workflow: language-features-chirho/dictionary-evidence-chirho
         if let Some(evidence_chirho) = self.print_show_evidence_chirho(head_id_chirho)
             && self
-                .compiler_layout_for_chirho(&evidence_chirho.class_identity_chirho)
+                .displaced_identity_chirho(&evidence_chirho.class_identity_chirho)
                 .is_some()
         {
             return self.compiler_method_head_chirho(

@@ -49,7 +49,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 
 use haskelujah_ast_chirho::name_chirho::CompilerClassChirho;
 use haskelujah_span_chirho::SpanChirho;
-use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, PredChirho};
+use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, ClassEnvChirho, PredChirho};
 use haskelujah_typing_chirho::deriving_chirho::DerivedShowChirho;
 use haskelujah_typing_chirho::env_chirho::TyEnvChirho;
 use haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho;
@@ -259,6 +259,13 @@ pub struct DictPassCtxChirho {
     compiler_layouts_chirho: HashMap<CompilerClassChirho, DictLayoutChirho>,
     /// Row 692, C10: those classes' method selectors, by identity and method name.
     compiler_selectors_chirho: HashMap<(CompilerClassChirho, String), CoreIdChirho>,
+    /// Row 692, C10: every compiler class a source class displaces, with its compiler record,
+    /// laid out or not. A compiler proof of one never takes the spelled route (gpt #32666).
+    displaced_compiler_classes_chirho:
+        HashMap<CompilerClassChirho, std::sync::Arc<ClassDeclChirho>>,
+    /// Row 692, C10: the named refusals of displaced compiler requests this pass cannot serve,
+    /// returned with the unsupported dictionaries.
+    displaced_refusals_chirho: RefCell<BTreeSet<String>>,
     /// Conditional instance dict builders: `(class_name, type_constructor)` → the builder, a
     /// lambda that takes the instance's context dictionaries and returns the constructed
     /// class dict, with the head's formal binders and the context those parameters stand for.
@@ -376,6 +383,8 @@ impl DictPassCtxChirho {
             super_selectors_chirho: HashMap::new(),
             compiler_layouts_chirho: HashMap::new(),
             compiler_selectors_chirho: HashMap::new(),
+            displaced_compiler_classes_chirho: HashMap::new(),
+            displaced_refusals_chirho: RefCell::new(BTreeSet::new()),
             conditional_dicts_chirho: HashMap::new(),
             newtype_info_chirho: HashMap::new(),
             gnd_default_rows_chirho: HashMap::new(),

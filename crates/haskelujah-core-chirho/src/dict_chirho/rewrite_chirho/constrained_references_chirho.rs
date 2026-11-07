@@ -69,19 +69,38 @@ impl DictPassCtxChirho {
             let evidence_key_chirho = proof_chirho
                 .as_ref()
                 .and_then(|proof_chirho| proof_chirho.ty_key_chirho.clone());
-            // A displaced compiler class's ground proof takes its own namespace's dictionary
-            // (row 692, C10).
-            let dictionary_class_chirho = proof_chirho
+            // A displaced compiler class's ground proof takes its own namespace's dictionary, or
+            // its named refusal; never a spelled route, since that spelling is the source class's
+            // (row 692, C10, gpt #32666).
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            if let Some(identity_chirho) = proof_chirho
                 .as_ref()
                 .and_then(|proof_chirho| proof_chirho.ground_pred_chirho.as_ref())
-                .map_or(class_name_chirho.as_str(), |predicate_chirho| {
-                    self.dispatch_class_name_chirho(
-                        class_name_chirho,
-                        predicate_chirho.class_identity_chirho(),
+                .and_then(|predicate_chirho| {
+                    self.displaced_identity_chirho(predicate_chirho.class_identity_chirho())
+                })
+            {
+                let key_chirho = evidence_key_chirho.as_deref().unwrap_or_default();
+                let dict_arg_chirho = self
+                    .compiler_dictionary_chirho(
+                        identity_chirho,
+                        key_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_instance_dicts_chirho,
                     )
-                });
+                    .map(CoreExprChirho::VarChirho)
+                    .unwrap_or_else(|| {
+                        self.displaced_refusal_chirho(identity_chirho, "dictionary", key_chirho)
+                    });
+                result_chirho = CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(result_chirho),
+                    arg_chirho: Box::new(dict_arg_chirho),
+                };
+                continue;
+            }
             let evidence_dict_chirho = self.evidence_dict_for_class_chirho(
-                dictionary_class_chirho,
+                class_name_chirho,
                 evidence_key_chirho.as_deref(),
                 dict_vars_chirho,
                 evidence_classes_chirho,
@@ -430,6 +449,14 @@ impl DictPassCtxChirho {
                 local_instance_dicts_chirho,
             ) {
                 return Some(head_chirho);
+            }
+            // Any other occurrence under a displaced compiler proof keeps its own binding: the
+            // routes below are spelled, and that spelling is the source class's (gpt #32666).
+            if self
+                .displaced_identity_chirho(&evidence_chirho.class_identity_chirho)
+                .is_some()
+            {
+                return Some(CoreExprChirho::VarChirho(*canonical_id_chirho));
             }
             // A recursive call proved only by its head keeps the enclosing
             // instance's own dictionary, the one its argument's key names.

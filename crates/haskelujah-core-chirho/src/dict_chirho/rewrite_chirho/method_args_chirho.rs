@@ -90,6 +90,14 @@ impl DictPassCtxChirho {
         {
             return head_chirho;
         }
+        // Any other occurrence under a displaced compiler proof keeps its own binding: the
+        // routes below are spelled, and that spelling is the source class's (gpt #32666).
+        if evidence_record_chirho.is_some_and(|record_chirho| {
+            self.displaced_identity_chirho(&record_chirho.class_identity_chirho)
+                .is_some()
+        }) {
+            return CoreExprChirho::VarChirho(self.canonical_id_chirho(id_chirho));
+        }
         let evidence_chirho = evidence_record_chirho.map(OccurrenceEvidenceChirho::keys_chirho);
         // A proof that is not the binding's own dictionary is never answered by
         // the ambient context dictionary below; unresolved, it takes its

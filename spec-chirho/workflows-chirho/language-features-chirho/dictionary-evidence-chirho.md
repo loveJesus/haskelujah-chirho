@@ -1195,6 +1195,7 @@ spell it.
 flowchart TD
     proof_chirho[Occurrence or reference proof] --> compiler_chirho{Compiler class displaced by a source class?}
     compiler_chirho -->|yes| namespace_chirho[$compiler_C selector and dictionary]
+    namespace_chirho -->|cannot serve| refusal_chirho[Named refusal: unsupported list and error head]
     compiler_chirho -->|no| spelled_chirho[Spelled route, unchanged]
     record_chirho[compiler_class_record_chirho] --> layout_chirho[Compiler layout, proven superclasses]
     layout_chirho --> namespace_chirho
@@ -1202,8 +1203,13 @@ flowchart TD
     dictionaries_chirho --> namespace_chirho
 ```
 
-The following are not covered:
+A displaced compiler request this pass cannot serve is refused by name and never borrows the
+source class's spelled route (gpt #32666). The refusal goes into the pass's unsupported list,
+which refuses the module, and the request's head becomes an error naming it. This applies to:
+- a class whose superclass templates are not all proven, so it has no layout;
+- a key with no compiler ground dictionary (conditional/context or GND instances);
 - the evidenced structured Show/Eq/Ord/Enum row generators;
-- conditional (context) instances and GND factories of a displaced class;
-- imported or qualified compiler-class instances in a displaced module (they have no P0 proof).
-These keep the spelled route.
+- an imported or qualified compiler-class instance in a displaced module, which has no P0 proof.
+Any other occurrence under a displaced compiler proof keeps its own binding, such as the
+Prelude's `sum`. Source and unknown requests keep their established route. The conditional,
+GND and structured generators still build into the spelling as before, for those requests.
