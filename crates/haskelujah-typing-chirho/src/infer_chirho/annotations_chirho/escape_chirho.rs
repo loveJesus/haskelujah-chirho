@@ -485,7 +485,12 @@ impl InferCtxChirho {
         };
         let mut public_chirho = SubstChirho::empty_chirho();
         let mut escaped_chirho = Some(false);
+        let mut observed_stage_chirho = "captured-variable-charge";
+        let mut observed_variable_chirho = None;
+        let mut observed_shape_chirho = "unobserved";
         for variable_chirho in captured_chirho.variables_chirho {
+            observed_stage_chirho = "captured-variable-charge";
+            observed_variable_chirho = Some(variable_chirho.0);
             if captured_chirho.budget_chirho.work_chirho(1).is_none() {
                 escaped_chirho = None;
                 break;
@@ -496,6 +501,12 @@ impl InferCtxChirho {
             else {
                 continue;
             };
+            observed_stage_chirho = "committed-substitution-reach";
+            observed_shape_chirho = if matches!(image_chirho, TyChirho::VarChirho(_)) {
+                "meta"
+            } else {
+                "non-meta"
+            };
             escaped_chirho = reaches_skolem_chirho(
                 image_chirho,
                 &self.equality_substitutions_chirho,
@@ -505,6 +516,7 @@ impl InferCtxChirho {
                 0,
             );
             if escaped_chirho == Some(true) {
+                observed_stage_chirho = "normalize-public-image";
                 escaped_chirho = self
                     .normalize_signature_public_image_chirho(
                         image_chirho,
@@ -512,6 +524,13 @@ impl InferCtxChirho {
                     )
                     .ok()
                     .and_then(|normalized_chirho| {
+                        observed_stage_chirho = "normalized-image-reach";
+                        observed_shape_chirho =
+                            if matches!(&normalized_chirho, TyChirho::VarChirho(_)) {
+                                "meta"
+                            } else {
+                                "non-meta"
+                            };
                         let escaping_chirho = reaches_skolem_chirho(
                             &normalized_chirho,
                             &SubstChirho::empty_chirho(),
@@ -530,15 +549,14 @@ impl InferCtxChirho {
                 break;
             }
         }
-        if escaped_chirho == Some(false)
-            && !public_chirho.is_empty_chirho()
-            && self
-                .project_signature_environment_chirho(
-                    skolems_chirho,
-                    &mut captured_chirho.budget_chirho,
-                )
-                .is_none()
-        {
+        if escaped_chirho == Some(false) && !public_chirho.is_empty_chirho() && {
+            observed_stage_chirho = "project-signature-environment";
+            self.project_signature_environment_chirho(
+                skolems_chirho,
+                &mut captured_chirho.budget_chirho,
+            )
+            .is_none()
+        } {
             escaped_chirho = None;
         }
         match escaped_chirho {
@@ -551,7 +569,19 @@ impl InferCtxChirho {
                         span_chirho,
                     ))
             }
-            None => self.note_type_normalization_exhausted_chirho(),
+            None => {
+                if !self.type_normalization_exhausted_chirho.get()
+                    && std::env::var_os("HASKELUJAH_TRACE_NORMALIZATION_EXHAUSTION_CHIRHO")
+                        .is_some()
+                {
+                    let (work_chirho, output_chirho) =
+                        captured_chirho.budget_chirho.remaining_chirho();
+                    eprintln!(
+                        "normalization-stage-chirho: {observed_stage_chirho}; variable={observed_variable_chirho:?}; shape={observed_shape_chirho}; work={work_chirho}; output={output_chirho}"
+                    );
+                }
+                self.note_type_normalization_exhausted_chirho();
+            }
         }
         public_chirho
     }
