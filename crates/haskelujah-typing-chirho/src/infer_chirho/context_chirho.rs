@@ -18,6 +18,32 @@ use haskelujah_span_chirho::SpanChirho;
 use std::collections::{HashMap, HashSet};
 
 impl InferCtxChirho {
+    /// Private diagnostic leaf: observe the first existing resource latch only.
+    /// All acceptance rules, allowances and the sticky flag remain unchanged.
+    #[track_caller]
+    pub(super) fn note_type_normalization_exhausted_chirho(&self) {
+        let first_chirho = !self.type_normalization_exhausted_chirho.get();
+        self.type_normalization_exhausted_chirho.set(true);
+        if !first_chirho
+            || std::env::var_os("HASKELUJAH_TRACE_NORMALIZATION_EXHAUSTION_CHIRHO").is_none()
+        {
+            return;
+        }
+        let caller_chirho = std::panic::Location::caller();
+        let path_chirho: String = caller_chirho.file().chars().take(256).collect();
+        eprintln!(
+            "normalization-exhaustion-chirho: first caller {}:{}:{}",
+            path_chirho,
+            caller_chirho.line(),
+            caller_chirho.column()
+        );
+        let backtrace_chirho = std::backtrace::Backtrace::force_capture().to_string();
+        for line_chirho in backtrace_chirho.lines().take(20) {
+            let bounded_chirho: String = line_chirho.chars().take(200).collect();
+            eprintln!("normalization-exhaustion-chirho: {bounded_chirho}");
+        }
+    }
+
     pub(super) fn has_non_deferrable_failure_chirho(&self) -> bool {
         self.non_deferrable_diagnostics_chirho.has_errors_chirho()
             || self.elaboration_state_chirho.failure_chirho().is_some()

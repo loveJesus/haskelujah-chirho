@@ -480,7 +480,7 @@ impl InferCtxChirho {
         span_chirho: SpanChirho,
     ) -> SubstChirho {
         let Some(mut captured_chirho) = captured_chirho else {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
             return SubstChirho::empty_chirho();
         };
         let mut public_chirho = SubstChirho::empty_chirho();
@@ -551,7 +551,7 @@ impl InferCtxChirho {
                         span_chirho,
                     ))
             }
-            None => self.type_normalization_exhausted_chirho.set(true),
+            None => self.note_type_normalization_exhausted_chirho(),
         }
         public_chirho
     }

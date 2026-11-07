@@ -336,7 +336,7 @@ impl InferCtxChirho {
                     ),
                 );
             } else {
-                self.type_normalization_exhausted_chirho.set(true);
+                self.note_type_normalization_exhausted_chirho();
             }
             QuantifiedVariablesChirho::default()
         })

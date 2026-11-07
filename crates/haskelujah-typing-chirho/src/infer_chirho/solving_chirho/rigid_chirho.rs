@@ -40,7 +40,7 @@ impl InferCtxChirho {
         match crate::skolem_chirho::contains_skolem_chirho(term_chirho) {
             Ok(found_chirho) => found_chirho,
             Err(_) => {
-                self.type_normalization_exhausted_chirho.set(true);
+                self.note_type_normalization_exhausted_chirho();
                 true
             }
         }
@@ -67,7 +67,7 @@ impl InferCtxChirho {
         for record_chirho in scheme_chirho.vars_chirho.records_chirho() {
             let var_chirho = &record_chirho.variable_chirho;
             if budget_chirho.node_chirho(1).is_none() {
-                self.type_normalization_exhausted_chirho.set(true);
+                self.note_type_normalization_exhausted_chirho();
                 return (self.fresh_var_chirho(), Vec::new());
             }
             if let Some(existing_chirho) = self.skolem_bindings_chirho.lookup_chirho(var_chirho) {
@@ -77,7 +77,7 @@ impl InferCtxChirho {
                         &mut budget_chirho,
                     )
                 else {
-                    self.type_normalization_exhausted_chirho.set(true);
+                    self.note_type_normalization_exhausted_chirho();
                     return (self.fresh_var_chirho(), Vec::new());
                 };
                 instantiation_chirho.insert_chirho(*var_chirho, existing_chirho);
@@ -88,7 +88,7 @@ impl InferCtxChirho {
                 &instantiation_chirho,
                 &mut budget_chirho,
             ) else {
-                self.type_normalization_exhausted_chirho.set(true);
+                self.note_type_normalization_exhausted_chirho();
                 return (self.fresh_var_chirho(), Vec::new());
             };
             instantiation_chirho.insert_chirho(*var_chirho, image_chirho.image_chirho.clone());
@@ -101,7 +101,7 @@ impl InferCtxChirho {
             &instantiation_chirho,
             &mut budget_chirho,
         ) else {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
             return (self.fresh_var_chirho(), Vec::new());
         };
         self.expose_qualified_parts_chirho(body_chirho, givens_chirho)
@@ -275,7 +275,7 @@ impl InferCtxChirho {
             )
             .is_none()
             {
-                self.type_normalization_exhausted_chirho.set(true);
+                self.note_type_normalization_exhausted_chirho();
                 return None;
             }
         }
@@ -296,11 +296,11 @@ impl InferCtxChirho {
         let (Ok(opened_left_chirho), Ok(opened_right_chirho)) =
             (opened_left_chirho, opened_right_chirho)
         else {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
             return None;
         };
         if supply_exhausted_chirho {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
             return None;
         }
         let unifier_chirho = self
@@ -312,7 +312,7 @@ impl InferCtxChirho {
             .ok()?;
         let Ok(outcome_chirho) = split_refinement_unifier_chirho(&unifier_chirho, &opened_chirho)
         else {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
             return None;
         };
         for (skolem_chirho, ty_chirho) in outcome_chirho.refinements_chirho {

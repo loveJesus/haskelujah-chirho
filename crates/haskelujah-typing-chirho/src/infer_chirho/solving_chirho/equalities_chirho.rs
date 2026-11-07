@@ -103,7 +103,7 @@ impl InferCtxChirho {
             &mut super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho(),
         )
         .unwrap_or_else(|| {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
             TyChirho::ConChirho("%normalization:resource-exhausted".to_owned())
         })
     }

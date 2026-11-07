@@ -69,7 +69,7 @@ impl InferCtxChirho {
                 &subst_chirho,
                 &mut budget_chirho,
             ) else {
-                self.type_normalization_exhausted_chirho.set(true);
+                self.note_type_normalization_exhausted_chirho();
                 return (self.fresh_var_chirho(), Vec::new());
             };
             let v_chirho = &record_chirho.variable_chirho;
@@ -92,7 +92,7 @@ impl InferCtxChirho {
             &subst_chirho,
             &mut budget_chirho,
         ) else {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
             return (self.fresh_var_chirho(), Vec::new());
         };
         self.expose_qualified_parts_chirho(body_chirho, predicates_chirho)
@@ -118,7 +118,7 @@ impl InferCtxChirho {
         } = body_chirho
         {
             if budget_chirho.node_chirho(1).is_none() {
-                self.type_normalization_exhausted_chirho.set(true);
+                self.note_type_normalization_exhausted_chirho();
                 return None;
             }
             groups_chirho.push(vars_chirho);
@@ -136,7 +136,7 @@ impl InferCtxChirho {
                 &prefix_chirho,
                 &mut budget_chirho,
             ) else {
-                self.type_normalization_exhausted_chirho.set(true);
+                self.note_type_normalization_exhausted_chirho();
                 return None;
             };
             let argument_chirho = if specified_chirho && cursor_chirho < explicit_tys_chirho.len() {
@@ -178,7 +178,7 @@ impl InferCtxChirho {
             &prefix_chirho,
             &mut budget_chirho,
         ) else {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
             return None;
         };
         Some(self.expose_qualified_parts_chirho(body_chirho, predicates_chirho))

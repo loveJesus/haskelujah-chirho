@@ -354,7 +354,7 @@ impl InferCtxChirho {
                         },
                     );
                     let Some(kind_chirho) = kind_chirho else {
-                        self.type_normalization_exhausted_chirho.set(true);
+                        self.note_type_normalization_exhausted_chirho();
                         return;
                     };
                     let specificity_chirho = if binder_chirho.visibility_chirho == crate::ty_chirho::declarations_chirho::TelescopeVisibilityChirho::InferredChirho { haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::InferredChirho } else { haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho };

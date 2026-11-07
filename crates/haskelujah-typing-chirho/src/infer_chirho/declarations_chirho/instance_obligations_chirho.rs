@@ -909,7 +909,7 @@ impl InferCtxChirho {
             body_chirho: opened_body_chirho,
         }) = opened_chirho
         else {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
             return (
                 Vec::new(),
                 TyChirho::VarChirho(TyVarChirho(0)),
@@ -929,7 +929,7 @@ impl InferCtxChirho {
                 let Some(kind_chirho) = crate::subst_chirho::SubstChirho::empty_chirho()
                     .apply_bounded_chirho(kind_chirho, &mut charge_chirho)
                 else {
-                    self.type_normalization_exhausted_chirho.set(true);
+                    self.note_type_normalization_exhausted_chirho();
                     return (
                         Vec::new(),
                         TyChirho::VarChirho(TyVarChirho(0)),

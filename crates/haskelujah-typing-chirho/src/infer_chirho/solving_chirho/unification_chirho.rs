@@ -28,7 +28,7 @@ impl InferCtxChirho {
             result_chirho,
             Err(UnifyErrorChirho::ResourceExhaustedChirho { .. })
         ) {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
         }
         result_chirho
     }
@@ -314,7 +314,7 @@ impl InferCtxChirho {
     pub(super) fn report_unify_error_chirho(&mut self, err_chirho: &UnifyErrorChirho) {
         match err_chirho {
             UnifyErrorChirho::ResourceExhaustedChirho { .. } => {
-                self.type_normalization_exhausted_chirho.set(true);
+                self.note_type_normalization_exhausted_chirho();
             }
             UnifyErrorChirho::MismatchChirho {
                 expected_chirho,

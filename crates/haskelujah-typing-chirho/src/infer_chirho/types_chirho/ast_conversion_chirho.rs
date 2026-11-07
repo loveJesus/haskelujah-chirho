@@ -562,7 +562,7 @@ impl InferCtxChirho {
             .node_chirho(binder_chirho.text_chirho().len().saturating_add(2))
             .is_none()
         {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
         }
         let name_chirho = binder_chirho.text_chirho().to_owned();
         self.tyvar_source_names_chirho
@@ -578,7 +578,7 @@ impl InferCtxChirho {
                 .node_chirho(declaration_chirho.len().saturating_add(64))
                 .is_none()
             {
-                self.type_normalization_exhausted_chirho.set(true);
+                self.note_type_normalization_exhausted_chirho();
             }
             let key_chirho = format!(
                 "%quantifier:{}:{declaration_chirho}:{index_chirho}",
@@ -653,13 +653,13 @@ impl InferCtxChirho {
                 let Some(free_chirho) =
                     SubstChirho::free_variables_bounded_chirho(kind_chirho, &mut charge_chirho)
                 else {
-                    self.type_normalization_exhausted_chirho.set(true);
+                    self.note_type_normalization_exhausted_chirho();
                     return None;
                 };
                 let mut mapping_chirho = SubstChirho::empty_chirho();
                 for source_chirho in free_chirho {
                     if charge_chirho(1, declaration_chirho.len().saturating_add(64)).is_none() {
-                        self.type_normalization_exhausted_chirho.set(true);
+                        self.note_type_normalization_exhausted_chirho();
                         return None;
                     }
                     let key_chirho = format!(
@@ -689,7 +689,7 @@ impl InferCtxChirho {
             _ => return None,
         };
         if result_chirho.is_none() {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
         }
         result_chirho.map(std::sync::Arc::new)
     }

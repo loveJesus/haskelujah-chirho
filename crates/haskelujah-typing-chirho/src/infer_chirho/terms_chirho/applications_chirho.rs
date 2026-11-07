@@ -421,7 +421,7 @@ impl InferCtxChirho {
             Ok(Some(prepared_chirho)) => prepared_chirho,
             Ok(None) => return None,
             Err(()) => {
-                self.type_normalization_exhausted_chirho.set(true);
+                self.note_type_normalization_exhausted_chirho();
                 return Some((SubstChirho::empty_chirho(), self.fresh_var_chirho()));
             }
         };
@@ -436,7 +436,7 @@ impl InferCtxChirho {
                 )
                 .is_none()
         {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
         }
         // No delta capability is stored in Scheme or the inference context.
         // From this point on, unfilled variables are ordinary monotypes.
@@ -450,7 +450,7 @@ impl InferCtxChirho {
         ) {
             Some(result_chirho) => Some(result_chirho),
             None => {
-                self.type_normalization_exhausted_chirho.set(true);
+                self.note_type_normalization_exhausted_chirho();
                 Some((SubstChirho::empty_chirho(), self.fresh_var_chirho()))
             }
         }

@@ -148,7 +148,7 @@ impl InferCtxChirho {
                         },
                     ));
                 } else {
-                    self.type_normalization_exhausted_chirho.set(true);
+                    self.note_type_normalization_exhausted_chirho();
                     return Vec::new();
                 }
             }
@@ -309,7 +309,7 @@ impl InferCtxChirho {
             prepared_chirho.is_none(),
             span_chirho,
         ) {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
             self.restore_type_pattern_aliases_chirho(mark_chirho);
             self.record_body_kind_error_chirho(error_chirho);
             return SubstChirho::empty_chirho();

@@ -57,7 +57,7 @@ impl InferCtxChirho {
             })
             .is_err()
             {
-                self.type_normalization_exhausted_chirho.set(true);
+                self.note_type_normalization_exhausted_chirho();
             }
         }
         skolems_chirho
@@ -130,7 +130,7 @@ impl InferCtxChirho {
             })
             .is_err()
             {
-                self.type_normalization_exhausted_chirho.set(true);
+                self.note_type_normalization_exhausted_chirho();
             }
         }
         names_scope_chirho

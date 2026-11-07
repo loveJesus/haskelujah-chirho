@@ -594,7 +594,7 @@ impl InferCtxChirho {
         let mut budget_chirho =
             super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
         if budget_chirho.node_chirho(vars_chirho.len()).is_none() {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
             return None;
         }
         let mut substitution_chirho = SubstChirho::empty_chirho();
@@ -608,7 +608,7 @@ impl InferCtxChirho {
                     &substitution_chirho,
                     &mut budget_chirho,
                 ) else {
-                    self.type_normalization_exhausted_chirho.set(true);
+                    self.note_type_normalization_exhausted_chirho();
                     return None;
                 };
                 let fresh_chirho = self.fresh_var_chirho();
@@ -625,7 +625,7 @@ impl InferCtxChirho {
             &substitution_chirho,
             &mut budget_chirho,
         ) else {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
             return None;
         };
         if let (Some(expected_chirho), Some(actual_chirho)) =
@@ -654,7 +654,7 @@ impl InferCtxChirho {
                 &mut budget_chirho,
             )
         else {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
             return None;
         };
         if budget_chirho
@@ -666,7 +666,7 @@ impl InferCtxChirho {
             )
             .is_none()
         {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
             return None;
         }
         let remaining_chirho = if consumed_chirho == vars_chirho.len() {
@@ -685,7 +685,7 @@ impl InferCtxChirho {
             },
         );
         if result_chirho.is_none() {
-            self.type_normalization_exhausted_chirho.set(true);
+            self.note_type_normalization_exhausted_chirho();
         }
         result_chirho
     }

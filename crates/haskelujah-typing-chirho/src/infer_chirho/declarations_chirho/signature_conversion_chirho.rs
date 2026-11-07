@@ -223,7 +223,7 @@ impl InferCtxChirho {
                     Some(kind_chirho) => {
                         record_chirho.kind_chirho = Some(std::sync::Arc::new(kind_chirho))
                     }
-                    None => self.type_normalization_exhausted_chirho.set(true),
+                    None => self.note_type_normalization_exhausted_chirho(),
                 }
             }
             mapped_records_chirho.push(record_chirho);
@@ -241,7 +241,7 @@ impl InferCtxChirho {
                 );
                 match free_chirho {
                     Some(free_chirho) => free_in_ty_chirho.extend(free_chirho),
-                    None => self.type_normalization_exhausted_chirho.set(true),
+                    None => self.note_type_normalization_exhausted_chirho(),
                 }
             }
         }
