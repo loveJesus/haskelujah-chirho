@@ -50,6 +50,10 @@ fn runtime_snapshot_chirho() -> Result<RtsSnapshotChirho, String> {
                 let output_chirho = run_bounded_chirho(
                     Command::new("cargo").current_dir(root_chirho).args([
                         "build",
+                        "--locked",
+                        "--offline",
+                        "-j",
+                        "2",
                         "-p",
                         "haskelujah-rts",
                         "--quiet",
