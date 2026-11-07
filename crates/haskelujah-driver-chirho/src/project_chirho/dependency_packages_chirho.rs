@@ -465,19 +465,31 @@ fn compile_local_dependency_package_frontend_recursive_chirho(
         });
     }
 
-    for iface_chirho in &mut compiled_artifacts_chirho.ifaces_chirho {
+    // Checked home exports become authoritative package exports. First merge
+    // only the retained fragments, then replace each exact admitted exposure;
+    // a fallback must not keep exports/proof absent from the checked source.
+    let mut checked_ifaces_chirho = Vec::new();
+    let mut retained_ifaces_chirho = Vec::new();
+    for mut iface_chirho in std::mem::take(&mut compiled_artifacts_chirho.ifaces_chirho) {
         if iface_chirho.exposure_chirho
             == Some(haskelujah_naming_chirho::iface_chirho::IfaceExposureChirho::HomeChirho)
         {
             iface_chirho.exposure_chirho = (!package_chirho.name_chirho.is_empty()).then(|| haskelujah_naming_chirho::iface_chirho::IfaceExposureChirho::packages_from_producer_chirho(&[&package_chirho.name_chirho]));
+            checked_ifaces_chirho.push(iface_chirho);
+        } else {
+            retained_ifaces_chirho.push(iface_chirho);
         }
     }
-
-    artifacts_chirho.interface_sources_chirho = compiled_artifacts_chirho.interface_sources_chirho;
-    artifacts_chirho.ifaces_chirho =
-        haskelujah_naming_chirho::iface_chirho::merge_module_ifaces_chirho(
-            compiled_artifacts_chirho.ifaces_chirho,
+    let mut admitted_ifaces_chirho =
+        haskelujah_naming_chirho::iface_chirho::merge_module_ifaces_chirho(retained_ifaces_chirho);
+    for iface_chirho in checked_ifaces_chirho {
+        crate::module_search_chirho::admit_authoritative_iface_chirho(
+            &mut admitted_ifaces_chirho,
+            iface_chirho,
         );
+    }
+    artifacts_chirho.interface_sources_chirho = compiled_artifacts_chirho.interface_sources_chirho;
+    artifacts_chirho.ifaces_chirho = admitted_ifaces_chirho;
     artifacts_chirho
         .imported_types_chirho
         .extend(compiled_artifacts_chirho.imported_types_chirho);
@@ -667,9 +679,26 @@ fn compile_module_sources_once_chirho(
     let mut results_chirho: Vec<CompileResultChirho> = Vec::new();
     let mut ifaces_chirho: Vec<ModuleIfaceChirho> =
         haskelujah_naming_chirho::builtin_module_ifaces_chirho();
-    ifaces_chirho.extend(seed_ifaces_chirho);
+    let mut selected_source_ifaces_chirho = Vec::new();
+    for iface_chirho in seed_ifaces_chirho {
+        if iface_chirho.exports_chirho.origin_chirho
+            == haskelujah_naming_chirho::IfaceOriginChirho::SourceChirho
+        {
+            selected_source_ifaces_chirho.push(iface_chirho);
+        } else {
+            ifaces_chirho.push(iface_chirho);
+        }
+    }
     let mut ifaces_chirho =
         haskelujah_naming_chirho::iface_chirho::merge_module_ifaces_chirho(ifaces_chirho);
+    // This producer holds selected source snapshots, not partial builtin
+    // fragments. Authoritative replacement preserves unrelated package views.
+    for iface_chirho in selected_source_ifaces_chirho {
+        crate::module_search_chirho::admit_authoritative_iface_chirho(
+            &mut ifaces_chirho,
+            iface_chirho,
+        );
+    }
     let mut all_warnings_chirho: Vec<String> = Vec::new();
     let mut imported_types_chirho = initial_imported_types_chirho;
     let mut imported_type_synonyms_chirho = initial_imported_type_synonyms_chirho;

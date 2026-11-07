@@ -163,6 +163,8 @@ pub struct DesugarCtxChirho {
     imported_reference_ids_chirho: HashMap<ImportedReferenceChirho, CoreIdChirho>,
     /// Each imported user reference's identity, for the output's provenance (row 629).
     imported_references_chirho: BTreeMap<CoreIdChirho, ImportedReferenceChirho>,
+    compiler_value_references_chirho:
+        BTreeMap<CoreIdChirho, haskelujah_ast_chirho::name_chirho::CompilerValueChirho>,
     /// Active LANGUAGE extensions (e.g. "OverloadedStrings").
     extensions_chirho: Vec<String>,
     /// Name of the module currently being desugared.
@@ -217,6 +219,7 @@ impl DesugarCtxChirho {
             import_suppliers_chirho: ImportSuppliersChirho::default(),
             imported_reference_ids_chirho: HashMap::new(),
             imported_references_chirho: BTreeMap::new(),
+            compiler_value_references_chirho: BTreeMap::new(),
             extensions_chirho: Vec::new(),
             current_module_name_chirho: None,
             con_strictness_chirho: HashMap::new(),
@@ -581,7 +584,6 @@ impl DesugarCtxChirho {
             "<=" => Some("<=#"),
             ">" => Some(">#"),
             ">=" => Some(">=#"),
-            "++" => Some("++#"),
             "^" => Some("^#"),
             "**" => Some("**#"),
             _ => None,
@@ -761,7 +763,6 @@ fn builtin_primop_name_chirho(op_chirho: &str) -> Option<&'static str> {
         "<=" => Some("<=#"),
         ">" => Some(">#"),
         ">=" => Some(">=#"),
-        "++" => Some("++#"),
         _ => None,
     }
 }

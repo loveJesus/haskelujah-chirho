@@ -4,7 +4,9 @@
 //! takes the entry symbol, and provenance moves with a module's ids through the merge.
 //! workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+
+use haskelujah_ast_chirho::name_chirho::CompilerValueChirho;
 
 use haskelujah_core::{
     BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreLitChirho, CoreModuleChirho,
@@ -148,6 +150,10 @@ fn provenance_moves_with_the_merge_chirho() {
         entry_chirho: Some(CoreIdChirho(4)),
         compiler_bindings_chirho: ids_chirho(&[1, 2]),
         builtin_references_chirho: ids_chirho(&[9]),
+        compiler_value_references_chirho: BTreeMap::from([(
+            CoreIdChirho(9),
+            CompilerValueChirho::ListAppendChirho,
+        )]),
         ..Default::default()
     };
     let moved_chirho = dependency_chirho.offset_chirho(100);
@@ -157,6 +163,12 @@ fn provenance_moves_with_the_merge_chirho() {
         ids_chirho(&[101, 102])
     );
     assert_eq!(moved_chirho.builtin_references_chirho, ids_chirho(&[109]));
+    assert_eq!(
+        moved_chirho
+            .compiler_value_references_chirho
+            .get(&CoreIdChirho(109)),
+        Some(&CompilerValueChirho::ListAppendChirho)
+    );
 
     // Joining another module never takes its entry.
     let mut program_chirho = CoreProvenanceChirho {
@@ -170,6 +182,10 @@ fn provenance_moves_with_the_merge_chirho() {
         ids_chirho(&[101, 102])
     );
     assert_eq!(program_chirho.builtin_references_chirho, ids_chirho(&[109]));
+    assert_eq!(
+        program_chirho.compiler_value_references_chirho,
+        moved_chirho.compiler_value_references_chirho
+    );
 
     // Linking and deduplication renames reach every role.
     let renames_chirho = HashMap::from([
@@ -184,4 +200,93 @@ fn provenance_moves_with_the_merge_chirho() {
         ids_chirho(&[1, 101])
     );
     assert_eq!(program_chirho.builtin_references_chirho, ids_chirho(&[90]));
+    assert_eq!(
+        program_chirho
+            .compiler_value_references_chirho
+            .get(&CoreIdChirho(90)),
+        Some(&CompilerValueChirho::ListAppendChirho)
+    );
+}
+
+#[test]
+fn builtin_bit_and_reserved_spelling_do_not_authorize_a_compiler_value_body_chirho() {
+    for (certified_chirho, builtin_bit_chirho) in
+        [(false, false), (false, true), (true, false), (true, true)]
+    {
+        let mut input_chirho = module_chirho(&[], None);
+        let id_chirho = CoreIdChirho(77);
+        input_chirho.names_chirho.insert(
+            id_chirho,
+            CompilerValueChirho::ListAppendChirho
+                .core_name_chirho()
+                .to_string(),
+        );
+        if builtin_bit_chirho {
+            input_chirho
+                .provenance_chirho
+                .builtin_references_chirho
+                .insert(id_chirho);
+        }
+        if certified_chirho {
+            input_chirho
+                .provenance_chirho
+                .compiler_value_references_chirho
+                .insert(id_chirho, CompilerValueChirho::ListAppendChirho);
+        }
+        let result_chirho = haskelujah_core::dict_chirho::dict_pass_module_chirho(
+            &input_chirho,
+            input_chirho.names_chirho.clone(),
+            &haskelujah_typing_chirho::env_chirho::TyEnvChirho::new_chirho(),
+            &haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho(),
+        );
+        assert_eq!(
+            result_chirho
+                .module_chirho
+                .provenance_chirho
+                .compiler_bindings_chirho
+                .contains(&id_chirho),
+            certified_chirho
+        );
+        assert_eq!(
+            result_chirho
+                .module_chirho
+                .bindings_chirho
+                .iter()
+                .any(|binding_chirho| binding_chirho.binder_chirho.id_chirho == id_chirho),
+            certified_chirho
+        );
+    }
+}
+
+#[test]
+fn a_source_binding_is_never_replaced_by_a_compiler_value_payload_chirho() {
+    let mut input_chirho = module_chirho(&[("$list_append_chirho", 77)], None);
+    let id_chirho = CoreIdChirho(77);
+    input_chirho
+        .provenance_chirho
+        .compiler_value_references_chirho
+        .insert(id_chirho, CompilerValueChirho::ListAppendChirho);
+    let result_chirho = haskelujah_core::dict_chirho::dict_pass_module_chirho(
+        &input_chirho,
+        input_chirho.names_chirho.clone(),
+        &haskelujah_typing_chirho::env_chirho::TyEnvChirho::new_chirho(),
+        &haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho(),
+    );
+    assert!(
+        !result_chirho
+            .module_chirho
+            .provenance_chirho
+            .compiler_bindings_chirho
+            .contains(&id_chirho)
+    );
+    let binding_chirho = result_chirho
+        .module_chirho
+        .bindings_chirho
+        .iter()
+        .find(|binding_chirho| binding_chirho.binder_chirho.id_chirho == id_chirho)
+        .unwrap();
+    assert!(matches!(
+        binding_chirho.rhs_chirho,
+        CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(77))
+    ));
 }

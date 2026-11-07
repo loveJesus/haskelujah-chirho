@@ -333,6 +333,7 @@ impl DictPassCtxChirho {
 
         // Generate Prelude function bindings (not, id, const)
         self.generate_prelude_bindings_chirho();
+        self.generate_certified_value_bindings_chirho(module_chirho);
 
         // A type that derives Enum gets GHC's bounded `enumFrom` and `enumFromThen` before any
         // dictionary is filled, so its own pair fills those two slots (rows 669, 671).
