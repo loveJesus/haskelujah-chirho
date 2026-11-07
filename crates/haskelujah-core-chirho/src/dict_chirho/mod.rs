@@ -263,6 +263,9 @@ pub struct DictPassCtxChirho {
     /// laid out or not. A compiler proof of one never takes the spelled route (gpt #32666).
     displaced_compiler_classes_chirho:
         HashMap<CompilerClassChirho, std::sync::Arc<ClassDeclChirho>>,
+    /// Row 692, C10: each compiler-owned helper whose dictionary slots name a displaced class,
+    /// with that class; its references are refused by name (gpt #32683).
+    displaced_compiler_helpers_chirho: HashMap<CoreIdChirho, CompilerClassChirho>,
     /// Row 692, C10: the named refusals of displaced compiler requests this pass cannot serve,
     /// returned with the unsupported dictionaries.
     displaced_refusals_chirho: RefCell<BTreeSet<String>>,
@@ -384,6 +387,7 @@ impl DictPassCtxChirho {
             compiler_layouts_chirho: HashMap::new(),
             compiler_selectors_chirho: HashMap::new(),
             displaced_compiler_classes_chirho: HashMap::new(),
+            displaced_compiler_helpers_chirho: HashMap::new(),
             displaced_refusals_chirho: RefCell::new(BTreeSet::new()),
             conditional_dicts_chirho: HashMap::new(),
             newtype_info_chirho: HashMap::new(),

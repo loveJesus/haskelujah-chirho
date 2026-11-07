@@ -16,7 +16,14 @@ impl DictPassCtxChirho {
         scheme_chirho: &SchemeChirho,
     ) -> Option<CoreIdChirho> {
         let key_chirho = if matches!(predicate_chirho.ty_chirho, TyChirho::VarChirho(_)) {
-            if !Self::is_defaultable_pred_chirho(predicate_chirho, scheme_chirho) {
+            // A displaced compiler class is never defaulted from its spelling: its non-ground
+            // predicate keeps its parameter (row 692, gpt #32683). The legacy policy below is
+            // unchanged for every other predicate.
+            if self
+                .displaced_identity_chirho(predicate_chirho.class_identity_chirho())
+                .is_some()
+                || !Self::is_defaultable_pred_chirho(predicate_chirho, scheme_chirho)
+            {
                 return None;
             }
             match predicate_chirho.class_name_chirho.as_str() {
@@ -55,7 +62,8 @@ impl DictPassCtxChirho {
                 self.resolved_pred_dictionary_chirho(predicate_chirho, scheme_chirho)
                     .is_none()
             })
-            .map(|predicate_chirho| predicate_chirho.class_name_chirho.clone())
+            // Each retained slot by its namespace, in scheme order (row 692, gpt #32683).
+            .map(|predicate_chirho| self.predicate_namespace_chirho(predicate_chirho))
             .collect()
     }
 }

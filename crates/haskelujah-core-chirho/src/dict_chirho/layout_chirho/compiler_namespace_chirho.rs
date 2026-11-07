@@ -93,8 +93,9 @@ impl DictPassCtxChirho {
     /// Lay out each displaced compiler class the pass meets: the instances' class proofs, the
     /// occurrence, reference and ground-goal proofs, and `table_identities_chirho`, closing over
     /// their superclasses. A displaced class keeps a namespace only when each of its
-    /// superclasses is proven and either undisplaced or itself kept; otherwise its compiler
-    /// proofs keep the spelled route, as before.
+    /// superclasses is proven and either undisplaced or itself kept. Otherwise it is still
+    /// recorded as displaced, its compiler proofs are refused by name, and none is ever served
+    /// from the spelling (gpt #32666, #32683).
     pub(in crate::dict_chirho) fn build_compiler_layouts_chirho(
         &mut self,
         class_env_chirho: &ClassEnvChirho,
@@ -199,12 +200,13 @@ impl DictPassCtxChirho {
             self.reference_evidence_chirho
                 .values()
                 .flatten()
-                .filter_map(|reference_chirho| reference_chirho.ground_pred_chirho.as_ref())
-                .chain(self.ground_goals_chirho.values().flatten())
-                .filter_map(|predicate_chirho| {
-                    compiler_identity_chirho(predicate_chirho.class_identity_chirho())
+                .filter_map(|reference_chirho| {
+                    compiler_identity_chirho(&reference_chirho.class_identity_chirho)
                 }),
         );
+        met_chirho.extend(self.ground_goals_chirho.values().flatten().filter_map(
+            |predicate_chirho| compiler_identity_chirho(predicate_chirho.class_identity_chirho()),
+        ));
         met_chirho
     }
 
@@ -465,11 +467,16 @@ impl DictPassCtxChirho {
         request_chirho: &str,
         ty_key_chirho: &str,
     ) -> CoreExprChirho {
-        let message_chirho = format!(
+        self.named_displaced_refusal_chirho(format!(
             "the compiler's `{}` {request_chirho} at `{ty_key_chirho}` has no dictionary this pass can build while the program's own class takes the spelling `{}`",
             identity_chirho.legacy_name_chirho(),
             identity_chirho.legacy_name_chirho()
-        );
+        ))
+    }
+
+    /// One named refusal: recorded for the module's unsupported list, and the error the refused
+    /// request becomes.
+    fn named_displaced_refusal_chirho(&self, message_chirho: String) -> CoreExprChirho {
         self.displaced_refusals_chirho
             .borrow_mut()
             .insert(message_chirho.clone());
@@ -479,6 +486,65 @@ impl DictPassCtxChirho {
                 message_chirho,
             ))],
         }
+    }
+
+    /// The class name a reference's evidence for one predicate is paired with a callee's slot
+    /// by: its namespace, read from its own class proof as `predicate_namespace_chirho` reads a
+    /// scheme predicate's (row 692, gpt #32683).
+    pub(in crate::dict_chirho) fn reference_namespace_chirho(
+        &self,
+        reference_chirho: &haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho,
+    ) -> String {
+        match self.displaced_identity_chirho(&reference_chirho.class_identity_chirho) {
+            Some(identity_chirho) => compiler_namespace_name_chirho(identity_chirho),
+            None => reference_chirho.class_name_chirho.clone(),
+        }
+    }
+
+    /// The dictionary slots of a compiler-owned helper the pass writes (the Prelude's
+    /// `fromIntegral`, MaybeT's return and bind), named by their compiler classes. Its body
+    /// reaches those classes' selectors by spelling, so a displaced class among them makes the
+    /// helper unservable here. It is recorded, and its references are refused by name (row 692,
+    /// gpt #32683).
+    pub(in crate::dict_chirho) fn register_compiler_helper_slots_chirho(
+        &mut self,
+        helper_chirho: CoreIdChirho,
+        classes_chirho: &[CompilerClassChirho],
+    ) {
+        if let Some(identity_chirho) = classes_chirho.iter().copied().find(|identity_chirho| {
+            self.displaced_compiler_classes_chirho
+                .contains_key(identity_chirho)
+        }) {
+            self.displaced_compiler_helpers_chirho
+                .insert(helper_chirho, identity_chirho);
+        }
+        self.dict_param_bindings_chirho.insert(
+            helper_chirho,
+            classes_chirho
+                .iter()
+                .map(|identity_chirho| identity_chirho.legacy_name_chirho().to_string())
+                .collect(),
+        );
+    }
+
+    /// The named refusal of a reference to a compiler-owned helper whose slots name a displaced
+    /// class, or None.
+    pub(in crate::dict_chirho) fn displaced_helper_refusal_chirho(
+        &self,
+        written_id_chirho: CoreIdChirho,
+    ) -> Option<CoreExprChirho> {
+        let canonical_chirho = self.canonical_id_chirho(written_id_chirho);
+        let identity_chirho = *self
+            .displaced_compiler_helpers_chirho
+            .get(&canonical_chirho)?;
+        let helper_chirho = self
+            .names_chirho
+            .get(&canonical_chirho)
+            .map_or("a compiler helper", String::as_str);
+        Some(self.named_displaced_refusal_chirho(format!(
+            "the compiler-owned helper `{helper_chirho}` reaches the compiler's `{}` selectors by spelling, which the program's own class takes here",
+            identity_chirho.legacy_name_chirho()
+        )))
     }
 
     /// The class name a scheme predicate's dictionary is decided and keyed under: a displaced

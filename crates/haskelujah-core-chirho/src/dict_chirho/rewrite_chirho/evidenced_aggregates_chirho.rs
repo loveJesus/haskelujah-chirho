@@ -67,20 +67,14 @@ impl DictPassCtxChirho {
         // exponent is the compiler's own code, so a displaced Integral borrows nothing.
         let (no_vars_chirho, no_classes_chirho, no_locals_chirho) =
             (HashMap::new(), HashSet::new(), HashMap::new());
-        let compiler_divide_chirho =
-            fractional_chirho
-                .ground_pred_chirho
-                .as_ref()
-                .and_then(|predicate_chirho| {
-                    self.compiler_method_head_chirho(
-                        predicate_chirho.class_identity_chirho(),
-                        "/",
-                        "Double",
-                        &no_vars_chirho,
-                        &no_classes_chirho,
-                        &no_locals_chirho,
-                    )
-                });
+        let compiler_divide_chirho = self.compiler_method_head_chirho(
+            &fractional_chirho.class_identity_chirho,
+            "/",
+            "Double",
+            &no_vars_chirho,
+            &no_classes_chirho,
+            &no_locals_chirho,
+        );
         let divide_chirho = match compiler_divide_chirho {
             Some(head_chirho) => head_chirho,
             None => CoreExprChirho::VarChirho(

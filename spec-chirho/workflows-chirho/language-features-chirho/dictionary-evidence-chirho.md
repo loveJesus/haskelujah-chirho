@@ -1213,3 +1213,26 @@ which refuses the module, and the request's head becomes an error naming it. Thi
 Any other occurrence under a displaced compiler proof keeps its own binding, such as the
 Prelude's `sum`. Source and unknown requests keep their established route. The conditional,
 GND and structured generators still build into the spelling as before, for those requests.
+
+Proof transport and the definition ABI (gpt #32675, #32681, #32683):
+- Method records and reference records carry the class proof of the predicate they captured,
+  ground or not, beside any ground goal. An own-dictionary or instance-context position keeps
+  its proof, and merged captures meet it (Unknown absorbs).
+- The early aggregates (sum/product, maximum/minimum, the equality consumers, `(^^)`) give a
+  displaced proof the compiler's head or its named refusal before any spelled row. `(^^)` reads
+  each predicate's own proof.
+- A definition decides each predicate's dictionary in that predicate's namespace, by the
+  registry's head key over every class argument. A displaced predicate with a type-variable head
+  is never defaulted from its spelling; it keeps its parameter.
+- The callee's slot list names each retained slot by its namespace, in scheme order. Callers
+  pair reference evidence with slots by namespace, and the no-evidence route looks dictionaries
+  up in the slot's namespace.
+- The pass's own helpers with dictionary slots (the Prelude's `fromIntegral`, MaybeT's return
+  and bind) register their slots by compiler class. Their bodies reach selectors by spelling, so
+  a displaced class among their slots refuses their references by name.
+
+Instance identity: a source instance keeps `Unknown(Legacy)` (P0). `Unknown(MissingUnit)` would
+be the truthful tag, but validity apartness (`infer_chirho/solving_chirho/validity_chirho.rs`)
+admits only Seed, Source or `Unknown(Legacy)`. One MissingUnit instance would end apartness
+refusals for its whole class. The prerequisite is for validity to admit MissingUnit first.
+Neither tag is a positive identity.

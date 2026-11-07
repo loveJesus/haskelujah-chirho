@@ -80,12 +80,12 @@ impl DictPassCtxChirho {
         binding_chirho: &CoreBindingChirho,
         scheme_chirho: &SchemeChirho,
     ) -> Vec<String> {
+        // Each retained slot by its namespace, from the same indices the definition abstracts
+        // over, in order and undeduplicated (row 692, gpt #32683).
         self.binding_dict_param_indices_chirho(binding_chirho, scheme_chirho)
             .into_iter()
             .map(|predicate_index_chirho| {
-                scheme_chirho.preds_chirho[predicate_index_chirho]
-                    .class_name_chirho
-                    .clone()
+                self.predicate_namespace_chirho(&scheme_chirho.preds_chirho[predicate_index_chirho])
             })
             .collect()
     }
@@ -558,6 +558,10 @@ mod tests_chirho {
             ground_pred_chirho: None,
             applied_head_chirho: None,
             class_name_chirho: class_chirho.to_string(),
+            class_identity_chirho:
+                haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                    haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+                ),
             ty_key_chirho: Some(key_chirho.to_string()),
             applied_ty_chirho: None,
         }

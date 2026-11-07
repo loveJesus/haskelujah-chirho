@@ -29,6 +29,10 @@ fn keyed_proof_chirho(
         ground_pred_chirho: None,
         applied_head_chirho: None,
         class_name_chirho: class_chirho.to_string(),
+        class_identity_chirho:
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+            ),
         ty_key_chirho: Some(key_chirho.to_string()),
         applied_ty_chirho: None,
     }

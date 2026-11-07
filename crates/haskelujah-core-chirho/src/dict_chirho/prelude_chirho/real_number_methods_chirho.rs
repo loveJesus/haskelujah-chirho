@@ -67,9 +67,13 @@ impl DictPassCtxChirho {
             arg_chirho: Box::new(integer_value_chirho),
         };
         let from_integral_id_chirho = self.resolve_or_fresh_id_chirho("fromIntegral");
-        self.dict_param_bindings_chirho.insert(
+        // Its slots, by compiler class: a displaced one refuses its references (row 692).
+        self.register_compiler_helper_slots_chirho(
             from_integral_id_chirho,
-            vec!["Integral".to_string(), "Num".to_string()],
+            &[
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::IntegralChirho,
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::NumChirho,
+            ],
         );
         self.generated_bindings_chirho.push(CoreBindingChirho {
             binder_chirho: BinderChirho {

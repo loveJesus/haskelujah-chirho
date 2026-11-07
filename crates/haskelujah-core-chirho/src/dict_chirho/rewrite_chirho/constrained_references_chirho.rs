@@ -54,6 +54,9 @@ impl DictPassCtxChirho {
         evidence_classes_chirho: &HashSet<String>,
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
     ) -> CoreExprChirho {
+        if let Some(refusal_chirho) = self.displaced_helper_refusal_chirho(written_id_chirho) {
+            return refusal_chirho;
+        }
         let mut reference_evidence_chirho = self
             .reference_evidence_chirho
             .get(&written_id_chirho)
@@ -62,10 +65,8 @@ impl DictPassCtxChirho {
         let mut result_chirho =
             CoreExprChirho::VarChirho(self.canonical_id_chirho(written_id_chirho));
         for class_name_chirho in classes_chirho {
-            let proof_chirho = Self::take_reference_evidence_chirho(
-                &mut reference_evidence_chirho,
-                class_name_chirho,
-            );
+            let proof_chirho = self
+                .take_reference_evidence_chirho(&mut reference_evidence_chirho, class_name_chirho);
             let evidence_key_chirho = proof_chirho
                 .as_ref()
                 .and_then(|proof_chirho| proof_chirho.ty_key_chirho.clone());
@@ -73,14 +74,14 @@ impl DictPassCtxChirho {
             // its named refusal; never a spelled route, since that spelling is the source class's
             // (row 692, C10, gpt #32666).
             // workflow: language-features-chirho/dictionary-evidence-chirho
-            if let Some(identity_chirho) = proof_chirho
-                .as_ref()
-                .and_then(|proof_chirho| proof_chirho.ground_pred_chirho.as_ref())
-                .and_then(|predicate_chirho| {
-                    self.displaced_identity_chirho(predicate_chirho.class_identity_chirho())
-                })
-            {
-                let key_chirho = evidence_key_chirho.as_deref().unwrap_or_default();
+            if let Some(identity_chirho) = proof_chirho.as_ref().and_then(|proof_chirho| {
+                self.displaced_identity_chirho(&proof_chirho.class_identity_chirho)
+            }) {
+                // Its own key, or, with none, the call's argument key, in its own namespace.
+                let key_chirho = evidence_key_chirho
+                    .as_deref()
+                    .or(syntactic_type_key_chirho)
+                    .unwrap_or_default();
                 let dict_arg_chirho = self
                     .compiler_dictionary_chirho(
                         identity_chirho,
@@ -205,6 +206,11 @@ impl DictPassCtxChirho {
         dict_vars_chirho: &HashMap<String, CoreIdChirho>,
         evidence_classes_chirho: &HashSet<String>,
     ) -> Option<CoreExprChirho> {
+        // A compiler helper with a displaced slot refuses by name (row 692, gpt #32683). Every
+        // other slot names its own namespace, so the lookups below never cross it.
+        if let Some(refusal_chirho) = self.displaced_helper_refusal_chirho(written_id_chirho) {
+            return Some(refusal_chirho);
+        }
         let slots_chirho: Vec<Option<CoreIdChirho>> = classes_chirho
             .iter()
             .map(|class_name_chirho| {
@@ -699,13 +705,16 @@ impl DictPassCtxChirho {
 
     /// Take the evidence for the next predicate of `class_name` from a
     /// reference's evidence list (scheme order), if the checker recorded one.
+    /// Paired by namespace, so a displaced compiler slot takes only its compiler proof and a
+    /// source slot only its source one (row 692, gpt #32683); spellings are unchanged otherwise.
     pub(super) fn take_reference_evidence_chirho(
+        &self,
         evidence_chirho: &mut Vec<ReferenceEvidenceChirho>,
         class_name_chirho: &str,
     ) -> Option<ReferenceEvidenceChirho> {
-        let position_chirho = evidence_chirho
-            .iter()
-            .position(|proof_chirho| proof_chirho.class_name_chirho == class_name_chirho)?;
+        let position_chirho = evidence_chirho.iter().position(|proof_chirho| {
+            self.reference_namespace_chirho(proof_chirho) == class_name_chirho
+        })?;
         Some(evidence_chirho.remove(position_chirho))
     }
 
