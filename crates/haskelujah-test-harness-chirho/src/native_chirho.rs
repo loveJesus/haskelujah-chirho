@@ -121,11 +121,17 @@ pub fn native_project_round_trip_chirho(
 ) -> Result<(i32, String), String> {
     let directory_chirho = tempfile::tempdir().map_err(|error_chirho| error_chirho.to_string())?;
     for (module_chirho, source_chirho) in modules_chirho {
-        std::fs::write(
-            directory_chirho.path().join(format!("{module_chirho}.hs")),
-            source_chirho,
+        let source_path_chirho = directory_chirho
+            .path()
+            .join(format!("{}.hs", module_chirho.replace('.', "/")));
+        std::fs::create_dir_all(
+            source_path_chirho
+                .parent()
+                .expect("temporary project source has a parent Chirho"),
         )
         .map_err(|error_chirho| error_chirho.to_string())?;
+        std::fs::write(source_path_chirho, source_chirho)
+            .map_err(|error_chirho| error_chirho.to_string())?;
     }
     let others_chirho: Vec<&str> = modules_chirho
         .iter()
