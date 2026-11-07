@@ -5,7 +5,7 @@
 use super::cabal_build_chirho::{
     collect_library_package_deps_chirho, package_module_cpp_options_map_chirho,
 };
-use super::module_discovery_chirho::discover_library_modules_chirho;
+use super::module_discovery_chirho::library_modules_chirho;
 use super::package_install_chirho::find_cabal_in_dir_chirho;
 use super::project_dir_chirho::{
     ProjectCompileResultChirho, extract_imports_chirho,
@@ -527,7 +527,7 @@ impl DependencyWalkChirho<'_> {
         }
 
         let source_files_chirho =
-            discover_library_modules_chirho(&package_chirho, &package_dir_chirho);
+            library_modules_chirho(&package_chirho, &package_dir_chirho, self.demand_chirho)?;
         let source_file_cpp_options_chirho =
             package_module_cpp_options_map_chirho(&package_chirho, &package_dir_chirho);
         let mut module_sources_chirho = Vec::new();

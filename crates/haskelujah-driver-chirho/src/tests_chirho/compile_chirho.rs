@@ -5911,7 +5911,7 @@ library
 }
 
 #[test]
-fn cabal_project_missing_module_skipped_chirho() {
+fn cabal_project_missing_module_is_refused_chirho() {
     use crate::compile_cabal_project_chirho;
     use std::io::Write;
 
@@ -5941,11 +5941,15 @@ library
 
     let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
 
-    let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
-        .expect("should compile what exists");
-
-    // Only Exists should be compiled (DoesNotExist not found on disk)
-    assert_eq!(result_chirho.module_results_chirho.len(), 1);
+    // A declared library module without its source is refused by name, never compiled around
+    // (row 703): a builtin module of the same name could otherwise stand in for it.
+    let error_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
+        .expect_err("a declared library module without its source must be refused");
+    assert!(
+        error_chirho.contains("declared source modules are missing")
+            && error_chirho.contains("DoesNotExist"),
+        "{error_chirho}"
+    );
 
     let _ = std::fs::remove_dir_all(&temp_dir_chirho);
 }

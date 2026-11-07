@@ -11,7 +11,7 @@ use super::dependency_packages_chirho::{
 };
 use super::module_discovery_chirho::{
     discover_modules_chirho, discover_modules_for_library_chirho,
-    is_self_or_internal_library_dep_chirho, iter_package_libraries_chirho,
+    is_self_or_internal_library_dep_chirho, iter_package_libraries_chirho, require_modules_chirho,
 };
 use super::project_dir_chirho::ProjectCompileResultChirho;
 use super::{
@@ -62,7 +62,8 @@ pub struct CabalBuildResultChirho {
 ///
 /// This function:
 /// 1. Reads and parses the `.cabal` file
-/// 2. Discovers exposed and internal modules from `hs-source-dirs`
+/// 2. Discovers exposed and internal modules from `hs-source-dirs`, refusing a declared library or
+///    executable module that is missing (test-suite modules stay best effort)
 /// 3. Resolves external dependencies against the provided package index
 /// 4. Compiles all discovered modules in dependency order
 pub fn compile_cabal_project_chirho(
@@ -103,8 +104,8 @@ pub fn compile_cabal_project_chirho(
         resolve_deps_chirho(&all_deps_chirho, &merged_index_chirho, &builtins_chirho)
             .map_err(|e_chirho| format!("dependency resolution failed: {}", e_chirho))?;
 
-    // Discover Haskell source files.
-    let source_files_chirho = discover_modules_chirho(&package_chirho, project_dir_chirho);
+    // Discover Haskell source files; a declared library or executable module must exist.
+    let source_files_chirho = require_modules_chirho(&package_chirho, project_dir_chirho)?;
     let module_cpp_options_chirho =
         package_module_cpp_options_map_chirho(&package_chirho, project_dir_chirho);
 
@@ -186,11 +187,11 @@ pub fn build_cabal_project_chirho(
         .collect();
     let dependency_result_count_chirho = linked_results_chirho.len();
     for executable_chirho in &package_chirho.executables_chirho {
-        let target_modules_chirho = discover_executable_modules_chirho(
+        let target_modules_chirho = require_executable_modules_chirho(
             &package_chirho,
             executable_chirho,
             project_dir_chirho,
-        );
+        )?;
         let target_module_cpp_options_chirho = module_cpp_options_map_for_module_files_chirho(
             &target_modules_chirho,
             &executable_chirho.build_info_chirho.cpp_options_chirho,
@@ -372,16 +373,41 @@ pub(crate) fn collect_package_deps_chirho(
     deps_chirho
 }
 
+/// The package as one executable's build sees it: its libraries and that executable only.
+fn executable_target_package_chirho(
+    package_chirho: &haskelujah_package_chirho::PackageDescChirho,
+    executable_chirho: &haskelujah_package_chirho::ExecutableChirho,
+) -> haskelujah_package_chirho::PackageDescChirho {
+    let mut target_package_chirho = package_chirho.clone();
+    target_package_chirho.executables_chirho = vec![executable_chirho.clone()];
+    target_package_chirho.test_suites_chirho.clear();
+    target_package_chirho.benchmarks_chirho.clear();
+    target_package_chirho
+}
+
 fn discover_executable_modules_chirho(
     package_chirho: &haskelujah_package_chirho::PackageDescChirho,
     executable_chirho: &haskelujah_package_chirho::ExecutableChirho,
     project_dir_chirho: &Path,
 ) -> Vec<(String, PathBuf)> {
-    let mut target_package_chirho = package_chirho.clone();
-    target_package_chirho.executables_chirho = vec![executable_chirho.clone()];
-    target_package_chirho.test_suites_chirho.clear();
-    target_package_chirho.benchmarks_chirho.clear();
-    discover_modules_chirho(&target_package_chirho, project_dir_chirho)
+    discover_modules_chirho(
+        &executable_target_package_chirho(package_chirho, executable_chirho),
+        project_dir_chirho,
+    )
+}
+
+/// One executable's modules for its build. A missing declared library or executable module, or a
+/// missing `main-is`, is the error, so the build never links a builtin namesake in its place.
+/// workflow: development-chirho/package-source-install-chirho
+fn require_executable_modules_chirho(
+    package_chirho: &haskelujah_package_chirho::PackageDescChirho,
+    executable_chirho: &haskelujah_package_chirho::ExecutableChirho,
+    project_dir_chirho: &Path,
+) -> Result<Vec<(String, PathBuf)>, String> {
+    require_modules_chirho(
+        &executable_target_package_chirho(package_chirho, executable_chirho),
+        project_dir_chirho,
+    )
 }
 
 fn module_cpp_options_map_for_module_files_chirho(
