@@ -247,7 +247,10 @@ fn method_reference_and_literal_captures_retain_their_own_context_chirho() {
         );
         let literal_chirho =
             LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO, Some(literal_origin_chirho));
-        ctx_chirho.capture_literal_evidence_chirho(&literal_chirho, "Num", &skolem_chirho("a%1"));
+        ctx_chirho.capture_literal_evidence_chirho(
+            &literal_chirho,
+            &PredChirho::new_chirho("Num", skolem_chirho("a%1")),
+        );
     });
     assert!(ctx_chirho.active_instance_context_chirho.is_none());
     let subst_chirho = SubstChirho::empty_chirho();

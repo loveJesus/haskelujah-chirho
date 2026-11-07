@@ -54,8 +54,7 @@ fn top_level_generalization_gives_method_and_literal_the_same_owner_chirho() {
     );
     ctx_chirho.capture_literal_evidence_chirho(
         &LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO, Some(literal_origin_chirho)),
-        "Num",
-        &ty_chirho,
+        &PredChirho::new_chirho("Num", ty_chirho.clone()),
     );
     ctx_chirho.deferred_preds_chirho.push((
         PredChirho::new_chirho("Num", ty_chirho.clone()),
