@@ -49,6 +49,12 @@ const INFIX_CONSTRAINED_UNDER_NAMESAKE_CHIRHO: &str =
 /// The Prelude's `fromIntegral`, a helper this pass writes over the compiler's Num.
 const FROM_INTEGRAL_UNDER_NAMESAKE_CHIRHO: &str =
     include_str!("from_integral_under_namesake_chirho.hs");
+/// The Prelude's `sum` and `product` at the binding's own compiler Num dictionary.
+const OWN_SCOPE_SUM_PRODUCT_UNDER_NAMESAKE_CHIRHO: &str =
+    include_str!("../displaced_own_scope_chirho/own_scope_sum_product_under_namesake_chirho.hs");
+/// The Prelude's `print` at the binding's own compiler Show dictionary.
+const OWN_SCOPE_PRINT_UNDER_NAMESAKE_SHOW_CHIRHO: &str =
+    include_str!("../displaced_own_scope_chirho/own_scope_print_under_namesake_show_chirho.hs");
 
 #[test]
 fn a_user_instance_of_the_compiler_num_keeps_its_own_body_chirho() {
@@ -217,5 +223,27 @@ fn a_compiler_helper_over_a_displaced_class_is_refused_by_name_chirho() {
         message_chirho.contains("the compiler-owned helper `fromIntegral`")
             && message_chirho.contains("which the program's own class takes here"),
         "refused, but not by the displaced compiler helper: {message_chirho}"
+    );
+}
+
+/// gpt #32692: an own-key aggregate takes the own-scope route with the binding's indexed
+/// dictionary; the ground route, which has no scope, never refuses it first.
+#[test]
+fn an_own_scope_sum_and_product_keep_the_compilers_num_chirho() {
+    assert_prints_everywhere_chirho(
+        "own_scope_sum_product_under_namesake_chirho.hs",
+        OWN_SCOPE_SUM_PRODUCT_UNDER_NAMESAKE_CHIRHO,
+        "12\n6.5\n",
+    );
+}
+
+/// gpt #32692: an own-key `print` shows through the compiler's own `show` selector on the
+/// binding's indexed dictionary; the method-name selector is the source class's.
+#[test]
+fn an_own_scope_print_keeps_the_compilers_show_chirho() {
+    assert_prints_everywhere_chirho(
+        "own_scope_print_under_namesake_show_chirho.hs",
+        OWN_SCOPE_PRINT_UNDER_NAMESAKE_SHOW_CHIRHO,
+        "7\n[True,False]\n",
     );
 }
