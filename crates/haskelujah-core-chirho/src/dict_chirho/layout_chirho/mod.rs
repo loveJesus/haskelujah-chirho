@@ -11,11 +11,12 @@ use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, ClassEnvChirho};
 use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
-use super::{DictLayoutChirho, DictPassCtxChirho};
+use super::{DictLayoutChirho, DictPassCtxChirho, SuperclassSlotChirho};
 use crate::expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
     CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
 };
+use haskelujah_ast_chirho::name_chirho::{ClassIdentityUnknownChirho, PredicateClassProofChirho};
 
 mod builtin_rows_chirho;
 mod compiler_namespace_chirho;
@@ -45,12 +46,29 @@ impl DictPassCtxChirho {
     ) -> DictLayoutChirho {
         let mut slot_chirho = 0usize;
 
-        let super_slots_chirho: Vec<(String, usize)> = super_namespaces_chirho
+        // Each slot carries the proof of the superclass template the record states for it, read
+        // only when the templates match the supers one for one; otherwise no identity is claimed
+        // (row 692, C10, gpt #32919).
+        let templates_chirho = decl_chirho.superclass_templates_chirho();
+        let templates_match_chirho = templates_chirho.len() == super_namespaces_chirho.len();
+        let super_slots_chirho: Vec<SuperclassSlotChirho> = super_namespaces_chirho
             .into_iter()
-            .map(|super_name_chirho| {
+            .enumerate()
+            .map(|(position_chirho, super_name_chirho)| {
                 let pos_chirho = slot_chirho;
                 slot_chirho += 1;
-                (super_name_chirho, pos_chirho)
+                let class_proof_chirho = templates_chirho
+                    .get(position_chirho)
+                    .filter(|_| templates_match_chirho)
+                    .map(|template_chirho| template_chirho.class_identity_chirho().clone())
+                    .unwrap_or(PredicateClassProofChirho::UnknownChirho(
+                        ClassIdentityUnknownChirho::LegacyChirho,
+                    ));
+                SuperclassSlotChirho {
+                    namespace_chirho: super_name_chirho,
+                    index_chirho: pos_chirho,
+                    class_proof_chirho,
+                }
             })
             .collect();
 
@@ -189,7 +207,9 @@ impl DictPassCtxChirho {
 
         // Generate superclass selectors:
         // $sel_Ord_super_Eq = \$dict -> case $dict of $DictOrd f0 f1 ... -> f0
-        for (super_name_chirho, slot_idx_chirho) in &layout_chirho.super_slots_chirho {
+        for slot_chirho in &layout_chirho.super_slots_chirho {
+            let super_name_chirho = &slot_chirho.namespace_chirho;
+            let slot_idx_chirho = &slot_chirho.index_chirho;
             let sel_name_chirho = format!(
                 "$sel_{}_super_{}",
                 layout_chirho.class_name_chirho, super_name_chirho

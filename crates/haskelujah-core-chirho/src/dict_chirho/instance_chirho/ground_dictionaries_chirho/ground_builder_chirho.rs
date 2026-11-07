@@ -28,8 +28,9 @@ use super::ground_selection_chirho::{
     select_ground_instance_chirho,
 };
 use super::instance_rows_chirho::RowKeyAbsenceChirho;
-use crate::dict_chirho::{DictLayoutChirho, DictPassDiagnosticChirho};
+use crate::dict_chirho::{DictLayoutChirho, DictPassDiagnosticChirho, SuperclassSlotChirho};
 use crate::expr_chirho::{CoreBindingChirho, CoreExprChirho, CoreIdChirho, InlineAnnotationChirho};
+use haskelujah_ast_chirho::name_chirho::CompilerClassChirho;
 use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho, PredChirho};
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
@@ -251,6 +252,49 @@ impl DictPassCtxChirho {
             .or_else(|| self.registry_dictionary_chirho(goal_chirho))
     }
 
+    /// The dictionary a displaced compiler superclass slot holds for `goal_chirho`: the class's
+    /// own validated template for that slot, instantiated at the goal's whole head and proving
+    /// the slot's class, served by its namespace's dictionary at that superclass's registry key;
+    /// otherwise its named refusal. The spelling's instances are never consulted (row 692, C10,
+    /// gpt #32919).
+    fn displaced_ground_superclass_chirho(
+        &self,
+        class_env_chirho: &ClassEnvChirho,
+        goal_chirho: &PredChirho,
+        slot_chirho: &SuperclassSlotChirho,
+        identity_chirho: CompilerClassChirho,
+    ) -> Result<CoreIdChirho, GroundRefusalChirho> {
+        let refusal_chirho = || {
+            GroundRefusalChirho::NoGroundDictionaryChirho(format!(
+                "the compiler's `{}` superclass of `{goal_chirho}`, while the program's own class takes its spelling",
+                identity_chirho.legacy_name_chirho()
+            ))
+        };
+        let superclass_chirho = class_env_chirho
+            .classes_chirho()
+            .get_chirho(&goal_chirho.class_name_chirho)
+            .and_then(|class_chirho| {
+                class_chirho.superclass_preds_at_chirho(
+                    &goal_chirho.kind_tys_chirho,
+                    &goal_chirho.all_tys_chirho(),
+                )
+            })
+            .and_then(|superclasses_chirho| {
+                superclasses_chirho
+                    .into_iter()
+                    .nth(slot_chirho.index_chirho)
+            })
+            .filter(|superclass_chirho| {
+                superclass_chirho.class_identity_chirho() == &slot_chirho.class_proof_chirho
+            })
+            .ok_or_else(refusal_chirho)?;
+        self.compiler_superclass_id_chirho(
+            identity_chirho,
+            &goal_registry_key_chirho(&superclass_chirho),
+        )
+        .ok_or_else(refusal_chirho)
+    }
+
     /// The dictionary an existing generator filed under exactly this goal's spelling.
     fn registry_dictionary_chirho(&self, goal_chirho: &PredChirho) -> Option<CoreIdChirho> {
         self.instance_dicts_chirho
@@ -413,15 +457,28 @@ impl DictPassCtxChirho {
             )?);
         }
         let mut field_args_chirho = Vec::with_capacity(layout_chirho.field_count_chirho);
-        for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
-            let super_goal_chirho =
-                PredChirho::new_chirho(super_name_chirho, goal_chirho.ty_chirho.clone());
-            let super_id_chirho = self.ground_dictionary_chirho(
-                class_env_chirho,
-                &super_goal_chirho,
-                depth_chirho + 1,
-                build_chirho,
-            )?;
+        for slot_chirho in &layout_chirho.super_slots_chirho {
+            let super_id_chirho =
+                match self.displaced_identity_chirho(&slot_chirho.class_proof_chirho) {
+                    Some(identity_chirho) => self.displaced_ground_superclass_chirho(
+                        class_env_chirho,
+                        &goal_chirho,
+                        slot_chirho,
+                        identity_chirho,
+                    )?,
+                    None => {
+                        let super_goal_chirho = PredChirho::new_chirho(
+                            &slot_chirho.namespace_chirho,
+                            goal_chirho.ty_chirho.clone(),
+                        );
+                        self.ground_dictionary_chirho(
+                            class_env_chirho,
+                            &super_goal_chirho,
+                            depth_chirho + 1,
+                            build_chirho,
+                        )?
+                    }
+                };
             field_args_chirho.push(CoreExprChirho::VarChirho(super_id_chirho));
         }
         for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {

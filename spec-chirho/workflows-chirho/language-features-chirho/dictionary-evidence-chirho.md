@@ -1191,6 +1191,7 @@ spell it.
   selectors, evidenced `print` and reference dictionaries. It is tried before the enclosing
   source instance's own dictionary.
 - Every other proof (undisplaced compiler, source, unknown) keeps the spelled route unchanged.
+- Superclass slots carry proof (gpt #32919). Each layout slot is a `SuperclassSlotChirho`: its namespace, its index and the class proof of the record's own superclass template. Once the compiler layouts exist, a spelled layout's slot whose template proves a kept displaced compiler class takes that class's namespace, even when the class itself is undisplaced: the compiler `Real` keeps `$compiler_Num`, so `$fRealInt`'s Num field is `$f$compiler_NumInt`. Every filler judges by the proof. The one-parameter, conditional, list-order and GND representation fillers go through `superclass_field_chirho`; the ground builder instantiates the template at the goal's whole head; a multi-parameter instance uses the template's head key. A displaced superclass this pass cannot serve is refused by name, and the parametric GND route refuses it outright. A `$compiler_` spelling is never itself proof. Control: `an_undisplaced_compiler_real_keeps_the_compilers_num_superclass_chirho`.
 
 ```mermaid
 flowchart TD

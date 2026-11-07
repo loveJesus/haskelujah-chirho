@@ -66,12 +66,25 @@ use crate::expr_chirho::{
 #[derive(Debug, Clone)]
 pub struct DictLayoutChirho {
     pub class_name_chirho: String,
-    /// Superclass dictionary positions: `(superclass_name, slot_index)`.
-    pub super_slots_chirho: Vec<(String, usize)>,
+    /// Superclass dictionary slots, in declared order.
+    pub super_slots_chirho: Vec<SuperclassSlotChirho>,
     /// Method positions: `(method_name, slot_index)`.
     pub method_slots_chirho: Vec<(String, usize)>,
     /// Total number of fields (super dicts + methods).
     pub field_count_chirho: usize,
+}
+
+/// One superclass slot of a dictionary layout (row 692, C10): the namespace its dictionaries and
+/// selector are spelled under, its position in the dictionary, and the class proof of the
+/// superclass template the class's own validated record states for it. The namespace is an ABI
+/// name only: a reader judges the superclass by this proof, so a reserved `$compiler_` spelling
+/// is never itself proof (gpt #32919).
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+#[derive(Debug, Clone)]
+pub struct SuperclassSlotChirho {
+    pub namespace_chirho: String,
+    pub index_chirho: usize,
+    pub class_proof_chirho: haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
 }
 
 /// One conditional instance's dictionary factory (row 694): the binding that takes the

@@ -196,8 +196,15 @@ fn build_layouts_from_class_env_chirho() {
     // (row 612). Every Ord dictionary and selector follows this order.
     let ord_layout_chirho = ctx_chirho.layouts_chirho.get("Ord").unwrap();
     assert_eq!(
-        ord_layout_chirho.super_slots_chirho,
-        vec![("Eq".to_string(), 0)]
+        ord_layout_chirho
+            .super_slots_chirho
+            .iter()
+            .map(|slot_chirho| (
+                slot_chirho.namespace_chirho.as_str(),
+                slot_chirho.index_chirho
+            ))
+            .collect::<Vec<_>>(),
+        vec![("Eq", 0)]
     );
     assert_eq!(
         ord_layout_chirho.method_slots_chirho,
@@ -223,7 +230,7 @@ fn build_layouts_from_class_env_chirho() {
         integral_layout_chirho
             .super_slots_chirho
             .iter()
-            .map(|(name_chirho, _)| name_chirho.as_str())
+            .map(|slot_chirho| slot_chirho.namespace_chirho.as_str())
             .collect::<Vec<_>>(),
         vec!["Real", "Enum"]
     );

@@ -194,10 +194,9 @@ impl DictPassCtxChirho {
         let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
 
         // Superclass dict arguments
-        for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
-            let super_dict_name_chirho = format!("$f{}{}", super_name_chirho, list_type_key_chirho);
-            let super_dict_id_chirho = self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
-            field_args_chirho.push(CoreExprChirho::VarChirho(super_dict_id_chirho));
+        for slot_chirho in &layout_chirho.super_slots_chirho {
+            field_args_chirho
+                .push(self.superclass_field_chirho(slot_chirho, &list_type_key_chirho));
         }
 
         // Method arguments: find the user's $prim_ bindings.
@@ -531,10 +530,9 @@ impl DictPassCtxChirho {
         let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
 
         // Superclass dicts (Eq has none)
-        for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
-            let super_dict_name_chirho = format!("$f{}{}", super_name_chirho, list_type_key_chirho);
-            let super_dict_id_chirho = self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
-            field_args_chirho.push(CoreExprChirho::VarChirho(super_dict_id_chirho));
+        for slot_chirho in &layout_chirho.super_slots_chirho {
+            field_args_chirho
+                .push(self.superclass_field_chirho(slot_chirho, &list_type_key_chirho));
         }
 
         // Method implementations
@@ -584,10 +582,9 @@ impl DictPassCtxChirho {
         let con_name_chirho = "$Dict_Show".to_string();
         let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
 
-        for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
-            let super_dict_name_chirho = format!("$f{}{}", super_name_chirho, list_type_key_chirho);
-            let super_dict_id_chirho = self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
-            field_args_chirho.push(CoreExprChirho::VarChirho(super_dict_id_chirho));
+        for slot_chirho in &layout_chirho.super_slots_chirho {
+            field_args_chirho
+                .push(self.superclass_field_chirho(slot_chirho, &list_type_key_chirho));
         }
 
         for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {

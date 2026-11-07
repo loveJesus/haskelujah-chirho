@@ -22,7 +22,7 @@ use haskelujah_ast_chirho::name_chirho::{
 use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho};
 use haskelujah_typing_chirho::ty_chirho::SchemePredChirho;
 
-use crate::dict_chirho::{DictLayoutChirho, DictPassCtxChirho};
+use crate::dict_chirho::{DictLayoutChirho, DictPassCtxChirho, SuperclassSlotChirho};
 use crate::expr_chirho::{CoreExprChirho, CoreIdChirho, CoreLitChirho};
 
 /// The class name a displaced compiler class's own layout, selectors, dictionaries and rows are
@@ -173,6 +173,21 @@ impl DictPassCtxChirho {
             );
             self.compiler_layouts_chirho
                 .insert(identity_chirho, layout_chirho);
+        }
+        // A spelled layout's superclass slot whose validated template proves a kept displaced
+        // compiler class takes that class's namespace, even when the class itself is undisplaced:
+        // the compiler's `Real` keeps the compiler's `Num`. A refused one keeps its spelling, and
+        // its proof makes every filler refuse it by name. This runs before any selector or
+        // dictionary is generated (row 692, C10, gpt #32919).
+        for layout_chirho in self.layouts_chirho.values_mut() {
+            for slot_chirho in &mut layout_chirho.super_slots_chirho {
+                if let Some(identity_chirho) =
+                    compiler_identity_chirho(&slot_chirho.class_proof_chirho)
+                    && kept_chirho.contains(&identity_chirho)
+                {
+                    slot_chirho.namespace_chirho = compiler_namespace_name_chirho(identity_chirho);
+                }
+            }
         }
     }
 
@@ -456,6 +471,46 @@ impl DictPassCtxChirho {
                 ty_key_chirho,
             )
         }))
+    }
+
+    /// The dictionary a displaced compiler class's namespace holds at `ty_key_chirho`, found by
+    /// its generated name: only when this pass kept that class and generated the dictionary, so a
+    /// field never becomes a fresh unbound id (row 692, C10).
+    pub(in crate::dict_chirho) fn compiler_superclass_id_chirho(
+        &self,
+        identity_chirho: CompilerClassChirho,
+        ty_key_chirho: &str,
+    ) -> Option<CoreIdChirho> {
+        if !self.compiler_layouts_chirho.contains_key(&identity_chirho) {
+            return None;
+        }
+        self.existing_id_named_chirho(&format!(
+            "$f{}{ty_key_chirho}",
+            compiler_namespace_name_chirho(identity_chirho)
+        ))
+    }
+
+    /// The field a superclass slot holds at `ty_key_chirho`, judged by the slot's class proof,
+    /// never its spelling (row 692, C10, gpt #32919): a displaced compiler superclass takes its
+    /// own namespace's dictionary, or its named refusal; any other slot keeps its spelled
+    /// dictionary, as before.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(in crate::dict_chirho) fn superclass_field_chirho(
+        &mut self,
+        slot_chirho: &SuperclassSlotChirho,
+        ty_key_chirho: &str,
+    ) -> CoreExprChirho {
+        let Some(identity_chirho) = self.displaced_identity_chirho(&slot_chirho.class_proof_chirho)
+        else {
+            let spelled_chirho = format!("$f{}{ty_key_chirho}", slot_chirho.namespace_chirho);
+            return CoreExprChirho::VarChirho(self.resolve_or_fresh_id_chirho(&spelled_chirho));
+        };
+        match self.compiler_superclass_id_chirho(identity_chirho, ty_key_chirho) {
+            Some(id_chirho) => CoreExprChirho::VarChirho(id_chirho),
+            None => {
+                self.displaced_refusal_chirho(identity_chirho, "superclass slot", ty_key_chirho)
+            }
+        }
     }
 
     /// The named refusal of a displaced compiler class's request this pass cannot serve. The

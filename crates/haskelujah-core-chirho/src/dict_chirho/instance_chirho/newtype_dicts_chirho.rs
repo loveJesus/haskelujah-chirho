@@ -498,11 +498,22 @@ impl DictPassCtxChirho {
         let parameters_chirho = self.context_parameters_chirho(&inst_chirho.context_chirho);
         let representation_chirho = parameters_chirho[representation_index_chirho].id_chirho;
         let mut fields_chirho = Vec::new();
-        for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
+        for slot_chirho in &layout_chirho.super_slots_chirho {
+            // This route finds a superclass by its spelling's instances, so a displaced compiler
+            // superclass is refused by name here, never served by the program's own class (row
+            // 692, C10, gpt #32919).
+            if let Some(identity_chirho) =
+                self.displaced_identity_chirho(&slot_chirho.class_proof_chirho)
+            {
+                return Err(format!(
+                    "its superclass is the compiler's `{}`, which the program's own class displaces, and this route reaches a superclass only by its spelling",
+                    identity_chirho.legacy_name_chirho()
+                ));
+            }
             fields_chirho.push(self.parametric_superclass_chirho(
                 class_env_chirho,
                 class_name_chirho,
-                super_name_chirho,
+                &slot_chirho.namespace_chirho,
                 newtype_chirho,
                 representation_chirho,
                 building_chirho,
@@ -909,7 +920,31 @@ impl DictPassCtxChirho {
 
         // Superclass dictionaries: the newtype's own where it has one, else the
         // representation's, which has the newtype's representation.
-        for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
+        for slot_chirho in &layout_chirho.super_slots_chirho {
+            // A displaced compiler superclass: the newtype's own namespace dictionary, else the
+            // representation's, else its named refusal; never the spelling (row 692, C10).
+            if let Some(identity_chirho) =
+                self.displaced_identity_chirho(&slot_chirho.class_proof_chirho)
+            {
+                let served_chirho = self
+                    .compiler_superclass_id_chirho(identity_chirho, &type_key_chirho)
+                    .or_else(|| {
+                        self.compiler_superclass_id_chirho(
+                            identity_chirho,
+                            &pair_chirho.representation_key_chirho,
+                        )
+                    });
+                field_args_chirho.push(match served_chirho {
+                    Some(id_chirho) => CoreExprChirho::VarChirho(id_chirho),
+                    None => self.displaced_refusal_chirho(
+                        identity_chirho,
+                        "superclass slot",
+                        &type_key_chirho,
+                    ),
+                });
+                continue;
+            }
+            let super_name_chirho = &slot_chirho.namespace_chirho;
             let super_dict_name_chirho = format!("$f{super_name_chirho}{type_key_chirho}");
             let super_id_chirho = if self
                 .instance_dicts_chirho

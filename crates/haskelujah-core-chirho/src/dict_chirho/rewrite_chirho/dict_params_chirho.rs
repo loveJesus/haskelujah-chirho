@@ -410,7 +410,7 @@ impl DictPassCtxChirho {
                         layout_chirho
                             .super_slots_chirho
                             .iter()
-                            .map(|(super_name_chirho, _)| super_name_chirho.clone())
+                            .map(|slot_chirho| slot_chirho.namespace_chirho.clone())
                             .collect::<Vec<_>>()
                     })
                     .unwrap_or_default();

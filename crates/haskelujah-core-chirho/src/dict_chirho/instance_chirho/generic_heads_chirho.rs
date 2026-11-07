@@ -24,6 +24,7 @@
 //! with its record, where a use at a complete ground head finds it by matching.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
+use haskelujah_ast_chirho::name_chirho::{PredicateClassIdentityChirho, PredicateClassProofChirho};
 use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho, PredChirho};
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
@@ -312,9 +313,8 @@ impl DictPassCtxChirho {
     ) -> (Vec<CoreExprChirho>, bool) {
         let mut fields_chirho = Vec::new();
         let mut built_chirho = true;
-        for (index_chirho, (super_name_chirho, _)) in
-            layout_chirho.super_slots_chirho.iter().enumerate()
-        {
+        for (index_chirho, slot_chirho) in layout_chirho.super_slots_chirho.iter().enumerate() {
+            let super_name_chirho = &slot_chirho.namespace_chirho;
             let field_chirho = superclass_at_head_chirho(
                 class_env_chirho,
                 inst_chirho,
@@ -322,7 +322,27 @@ impl DictPassCtxChirho {
                 index_chirho,
             )
             .and_then(|superclass_chirho| {
-                self.context_free_dictionary_chirho(class_env_chirho, &superclass_chirho)
+                match self.displaced_identity_chirho(&slot_chirho.class_proof_chirho) {
+                    // A displaced compiler superclass: its namespace's dictionary at the
+                    // template's whole-head key, never the spelling's instances (row 692, C10).
+                    Some(identity_chirho) => self
+                        .compiler_superclass_id_chirho(
+                            identity_chirho,
+                            &head_key_chirho(
+                                &superclass_chirho.ty_chirho,
+                                &superclass_chirho.extra_tys_chirho,
+                            ),
+                        )
+                        .ok_or_else(|| {
+                            format!(
+                                "the compiler's `{}` has no dictionary at `{superclass_chirho}` while the program's own class takes its spelling",
+                                identity_chirho.legacy_name_chirho()
+                            )
+                        }),
+                    None => {
+                        self.context_free_dictionary_chirho(class_env_chirho, &superclass_chirho)
+                    }
+                }
             });
             fields_chirho.push(match field_chirho {
                 Ok(dictionary_chirho) => CoreExprChirho::VarChirho(dictionary_chirho),
@@ -397,19 +417,20 @@ pub(super) fn superclass_at_head_chirho(
         .classes_chirho()
         .get_chirho(&inst_chirho.class_name_chirho)
         .ok_or_else(|| "its class is not in the class environment".to_string())?;
-    let (slot_chirho, _) = layout_chirho
+    let slot_chirho = layout_chirho
         .super_slots_chirho
         .get(index_chirho)
         .ok_or_else(|| "its class's layout has no such superclass slot".to_string())?;
+    let namespace_chirho = &slot_chirho.namespace_chirho;
     if layout_chirho
         .super_slots_chirho
         .iter()
-        .filter(|(other_chirho, _)| other_chirho == slot_chirho)
+        .filter(|other_chirho| other_chirho.namespace_chirho == *namespace_chirho)
         .count()
         != 1
     {
         return Err(format!(
-            "its class names `{slot_chirho}` for more than one superclass"
+            "its class names `{namespace_chirho}` for more than one superclass"
         ));
     }
     let head_chirho: Vec<TyChirho> = std::iter::once(inst_chirho.head_ty_chirho.clone())
@@ -421,11 +442,23 @@ pub(super) fn superclass_at_head_chirho(
     if superclasses_chirho.len() != layout_chirho.super_slots_chirho.len() {
         return Err("its class's superclass templates do not match its layout".to_string());
     }
+    // A compiler-proven slot is matched by its template's identity, since its namespace may be
+    // the compiler's own; any other slot by its spelling, as before (row 692, C10, gpt #32919).
+    let compiler_slot_chirho = matches!(
+        slot_chirho.class_proof_chirho,
+        PredicateClassProofChirho::ProvenChirho(PredicateClassIdentityChirho::CompilerChirho(_))
+    );
     superclasses_chirho
         .into_iter()
         .nth(index_chirho)
-        .filter(|superclass_chirho| superclass_chirho.class_name_chirho == *slot_chirho)
-        .ok_or_else(|| format!("its class's template for `{slot_chirho}` names another class"))
+        .filter(|superclass_chirho| {
+            if compiler_slot_chirho {
+                superclass_chirho.class_identity_chirho() == &slot_chirho.class_proof_chirho
+            } else {
+                superclass_chirho.class_name_chirho == *namespace_chirho
+            }
+        })
+        .ok_or_else(|| format!("its class's template for `{namespace_chirho}` names another class"))
 }
 
 /// How a diagnostic names an instance: its class and whole head (`ShowSecondChirho Int Bool`).

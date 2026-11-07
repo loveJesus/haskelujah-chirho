@@ -55,6 +55,10 @@ const OWN_SCOPE_SUM_PRODUCT_UNDER_NAMESAKE_CHIRHO: &str =
 /// The Prelude's `print` at the binding's own compiler Show dictionary.
 const OWN_SCOPE_PRINT_UNDER_NAMESAKE_SHOW_CHIRHO: &str =
     include_str!("../displaced_own_scope_chirho/own_scope_print_under_namesake_show_chirho.hs");
+/// The compiler's undisplaced `Real` reaches the compiler's `Num` through its superclass slot.
+const OWN_SCOPE_REAL_SUPERCLASS_UNDER_NAMESAKE_CHIRHO: &str = include_str!(
+    "../displaced_own_scope_chirho/own_scope_real_superclass_under_namesake_chirho.hs"
+);
 
 #[test]
 fn a_user_instance_of_the_compiler_num_keeps_its_own_body_chirho() {
@@ -245,5 +249,17 @@ fn an_own_scope_print_keeps_the_compilers_show_chirho() {
         "own_scope_print_under_namesake_show_chirho.hs",
         OWN_SCOPE_PRINT_UNDER_NAMESAKE_SHOW_CHIRHO,
         "7\n[True,False]\n",
+    );
+}
+
+/// gpt #32919: the compiler's `Real`, though no program class displaces it, keeps the compiler's
+/// `Num` as its superclass slot, so `foldr (Prelude.+) 0` under `Real a` sums through the
+/// compiler's `+` and literal, never the program's own `Num`, whose Int instance adds one.
+#[test]
+fn an_undisplaced_compiler_real_keeps_the_compilers_num_superclass_chirho() {
+    assert_prints_everywhere_chirho(
+        "own_scope_real_superclass_under_namesake_chirho.hs",
+        OWN_SCOPE_REAL_SUPERCLASS_UNDER_NAMESAKE_CHIRHO,
+        "6\n",
     );
 }
