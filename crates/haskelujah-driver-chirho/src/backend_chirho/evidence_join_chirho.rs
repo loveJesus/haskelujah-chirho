@@ -14,7 +14,7 @@ use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::name_chirho::{ClassIdentityUnknownChirho, PredicateClassProofChirho};
+use haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::provenance_chirho::{
     OccurrenceRoleChirho, OriginIdChirho, ProvenanceChirho,
@@ -73,14 +73,6 @@ impl JoinedProofChirho {
             applied_ty_chirho: None,
         }
     }
-}
-
-/// The class proof a finalized ground goal carries, or an explicit legacy unknown without one.
-fn ground_class_proof_chirho(ground_pred_chirho: Option<&PredChirho>) -> PredicateClassProofChirho {
-    ground_pred_chirho.map_or(
-        PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::LegacyChirho),
-        |predicate_chirho| predicate_chirho.class_identity_chirho().clone(),
-    )
 }
 
 /// This module's value binders own their spelling even when a class declares a namesake.
@@ -1003,7 +995,7 @@ pub(crate) fn join_range_evidence_chirho(
                 OccurrenceEvidenceChirho::new_chirho(
                     "Enum",
                     key_chirho,
-                    ground_class_proof_chirho(proof_chirho.ground_pred_chirho.as_ref()),
+                    proof_chirho.class_identity_chirho.clone(),
                 ),
             ))
         })

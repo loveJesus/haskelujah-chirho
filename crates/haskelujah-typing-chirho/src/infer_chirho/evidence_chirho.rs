@@ -110,6 +110,10 @@ pub fn is_own_dictionary_key_chirho(key_chirho: &str) -> bool {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReferenceEvidenceChirho {
     pub class_name_chirho: String,
+    /// The class proof of the predicate captured at this position, ground or not (row 692,
+    /// gpt #32681). An own-dictionary or instance-context position keeps it as a ground one
+    /// does. It is no ground goal; Unknown stays absorbing.
+    pub class_identity_chirho: haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
     pub ty_key_chirho: Option<String>,
     /// Full closed goal, preserving every class argument; never a partial MPTC goal.
     pub ground_pred_chirho: Option<PredChirho>,
@@ -457,6 +461,7 @@ impl InferCtxChirho {
                         .is_some_and(is_own_dictionary_key_chirho);
                     ReferenceEvidenceChirho {
                         class_name_chirho: class_name_chirho.clone(),
+                        class_identity_chirho: predicate_chirho.class_identity_chirho().clone(),
                         ty_key_chirho,
                         ground_pred_chirho: if own_chirho {
                             None

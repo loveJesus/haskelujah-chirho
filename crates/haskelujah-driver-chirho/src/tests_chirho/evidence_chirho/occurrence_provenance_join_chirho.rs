@@ -119,6 +119,10 @@ fn a_reference_join_preserves_the_complete_checked_record_chirho() {
     });
     let record_chirho = ReferenceEvidenceChirho {
         class_name_chirho: "PolyChirho".to_string(),
+        class_identity_chirho:
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+            ),
         ty_key_chirho: Some("Int".to_string()),
         applied_ty_chirho: Some(TyChirho::int_chirho()),
         applied_head_chirho: Some(vec![TyChirho::int_chirho(), TyChirho::bool_chirho()]),
@@ -291,6 +295,10 @@ fn legacy_reference_join_chirho(
             ground_pred_chirho: None,
             applied_head_chirho: None,
             class_name_chirho: "Show".to_string(),
+            class_identity_chirho:
+                haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                    haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+                ),
             ty_key_chirho: Some(key_chirho.to_string()),
             applied_ty_chirho: None,
         }]
