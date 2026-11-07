@@ -676,8 +676,92 @@ impl InferCtxChirho {
     }
 
     /// Apply a substitution to the type environment and deferred predicates.
+    #[track_caller]
     pub(super) fn apply_subst_all_chirho(&mut self, subst_chirho: &SubstChirho) {
+        fn diagnostic_alias_path_chirho(
+            substitutions_chirho: &SubstChirho,
+            start_chirho: TyVarChirho,
+            stop_chirho: Option<TyVarChirho>,
+        ) -> (Vec<u32>, &'static str, bool) {
+            let mut path_chirho = Vec::with_capacity(257);
+            let mut current_chirho = start_chirho;
+            for _step_chirho in 0..=256 {
+                if path_chirho.contains(&current_chirho.0) {
+                    return (path_chirho, "repeated-meta", false);
+                }
+                path_chirho.push(current_chirho.0);
+                if stop_chirho == Some(current_chirho) {
+                    return (path_chirho, "reaches-domain", true);
+                }
+                if path_chirho.len() == 257 {
+                    break;
+                }
+                match substitutions_chirho.lookup_chirho(&current_chirho) {
+                    Some(TyChirho::VarChirho(next_chirho)) if *next_chirho != current_chirho => {
+                        current_chirho = *next_chirho;
+                    }
+                    Some(TyChirho::VarChirho(_)) => return (path_chirho, "self-image", false),
+                    Some(_) => return (path_chirho, "non-meta-image", false),
+                    None => return (path_chirho, "unmapped-meta", false),
+                }
+            }
+            (path_chirho, "observation-limit", false)
+        }
+
         for (var_chirho, ty_chirho) in subst_chirho.iter_chirho() {
+            if std::env::var_os("HASKELUJAH_TRACE_NORMALIZATION_EXHAUSTION_CHIRHO").is_some()
+                && let TyChirho::VarChirho(next_chirho) = ty_chirho
+                && next_chirho != var_chirho
+            {
+                let (retained_chirho, retained_status_chirho, closes_chirho) =
+                    diagnostic_alias_path_chirho(
+                        &self.equality_substitutions_chirho,
+                        *next_chirho,
+                        Some(*var_chirho),
+                    );
+                if closes_chirho {
+                    let (incoming_chirho, incoming_status_chirho, _) =
+                        diagnostic_alias_path_chirho(subst_chirho, *next_chirho, None);
+                    let caller_chirho = std::panic::Location::caller();
+                    let path_chirho: String = caller_chirho.file().chars().take(256).collect();
+                    let old_entry_chirho = self
+                        .equality_substitutions_chirho
+                        .lookup_image_chirho(var_chirho);
+                    let old_meta_chirho = old_entry_chirho.and_then(|entry_chirho| {
+                        if let TyChirho::VarChirho(variable_chirho) = &entry_chirho.image_chirho {
+                            Some(variable_chirho.0)
+                        } else {
+                            None
+                        }
+                    });
+                    eprintln!(
+                        "DIAGNOSTIC_UNKNOWN_CHIRHO: first retained alias-cycle insertion {} -> {}; old_meta={old_meta_chirho:?}; old_present={}; old_kind={}; old_source={}; caller={path_chirho}:{}:{}",
+                        var_chirho.0,
+                        next_chirho.0,
+                        old_entry_chirho.is_some(),
+                        old_entry_chirho
+                            .is_some_and(|entry_chirho| entry_chirho.kind_chirho.is_some()),
+                        old_entry_chirho
+                            .is_some_and(|entry_chirho| entry_chirho.source_chirho.is_some()),
+                        caller_chirho.line(),
+                        caller_chirho.column()
+                    );
+                    eprintln!(
+                        "diagnostic-retained-path-chirho: status={retained_status_chirho}; nodes={}; first={:?}; last={:?}",
+                        retained_chirho.len(),
+                        &retained_chirho[..retained_chirho.len().min(16)],
+                        &retained_chirho[retained_chirho.len().saturating_sub(16)..]
+                    );
+                    eprintln!(
+                        "diagnostic-incoming-path-chirho: status={incoming_status_chirho}; nodes={}; first={:?}; last={:?}; batch_entries={}",
+                        incoming_chirho.len(),
+                        &incoming_chirho[..incoming_chirho.len().min(16)],
+                        &incoming_chirho[incoming_chirho.len().saturating_sub(16)..],
+                        subst_chirho.len_chirho()
+                    );
+                    std::process::exit(86);
+                }
+            }
             if self.equality_pattern_depth_chirho > 0 {
                 if self.equality_substitution_events_chirho.len() < 16_384 {
                     self.equality_substitution_events_chirho.push(*var_chirho);
