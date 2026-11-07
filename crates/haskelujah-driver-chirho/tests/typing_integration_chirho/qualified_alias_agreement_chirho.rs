@@ -17,7 +17,9 @@ use std::path::{Path, PathBuf};
 
 use haskelujah_ast_chirho::name_chirho::CompilerValueChirho;
 use haskelujah_driver::qualified_import_alias_scheme_chirho;
-use haskelujah_naming_chirho::iface_chirho::{IfaceExportsChirho, merge_module_ifaces_chirho};
+use haskelujah_naming_chirho::iface_chirho::{
+    IfaceExportsChirho, IfaceExposureChirho, merge_module_ifaces_chirho, select_import_iface_chirho,
+};
 use haskelujah_naming_chirho::{
     IfaceOriginChirho, ModuleIfaceChirho, build_iface_with_imports_chirho,
     builtin_module_ifaces_chirho,
@@ -752,7 +754,9 @@ fn every_builtin_interface_is_builtin_and_the_default_is_source_chirho() {
 #[test]
 fn a_merge_stays_builtin_only_when_every_copy_is_chirho() {
     let seeded_chirho = seeded_iface_chirho("Data.List");
-    let source_chirho = source_iface_chirho(SOURCE_DATA_LIST_CHIRHO, &[]);
+    let mut source_chirho = source_iface_chirho(SOURCE_DATA_LIST_CHIRHO, &[]);
+    // This tests fragments of the SAME admitted exposure, not separate views.
+    source_chirho.exposure_chirho = seeded_chirho.exposure_chirho.clone();
     let merged_origin_chirho = |copies_chirho: Vec<ModuleIfaceChirho>| {
         let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
         assert_eq!(merged_chirho.len(), 1);
@@ -783,11 +787,36 @@ fn only_a_builtin_interface_reads_the_table_chirho() {
         qualified_import_alias_scheme_chirho(&seeded_chirho, "reverse", &schemes_chirho).as_ref(),
         schemes_chirho.get("reverse")
     );
-    let source_chirho = source_iface_chirho(SOURCE_DATA_LIST_CHIRHO, &[]);
+    let mut source_chirho = source_iface_chirho(SOURCE_DATA_LIST_CHIRHO, &[]);
+    let mut source_fragment_chirho = source_chirho.clone();
+    source_fragment_chirho.exposure_chirho = seeded_chirho.exposure_chirho.clone();
+    let caller_chirho = lower_module_chirho(
+        &ParserChirho::new_chirho(
+            "module CallerChirho where\nimport Data.List\nimport \"base\" Data.List\n",
+            FileIdChirho::SYNTHETIC_CHIRHO,
+        )
+        .parse_chirho(),
+        FileIdChirho::SYNTHETIC_CHIRHO,
+    );
+    let selected_source_fragment_chirho = |copies_chirho| {
+        let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
+        assert_eq!(merged_chirho.len(), 1, "same-exposure fragments must join");
+        let selected_chirho =
+            select_import_iface_chirho(&merged_chirho, &caller_chirho.imports_chirho[0])
+                .expect("the actual ordinary import selects the merged view");
+        assert_eq!(
+            selected_chirho.exports_chirho.origin_chirho,
+            IfaceOriginChirho::SourceChirho
+        );
+        selected_chirho.clone()
+    };
     let sourced_chirho = [
-        merge_module_ifaces_chirho(vec![seeded_chirho.clone(), source_chirho.clone()]).remove(0),
-        merge_module_ifaces_chirho(vec![source_chirho.clone(), seeded_chirho]).remove(0),
-        source_chirho,
+        selected_source_fragment_chirho(vec![
+            seeded_chirho.clone(),
+            source_fragment_chirho.clone(),
+        ]),
+        selected_source_fragment_chirho(vec![source_fragment_chirho, seeded_chirho.clone()]),
+        source_chirho.clone(),
         source_iface_chirho(
             REEXPORTING_DATA_LIST_CHIRHO,
             &[seeded_iface_chirho("GHC.List")],
@@ -809,6 +838,50 @@ fn only_a_builtin_interface_reads_the_table_chirho() {
                 qualified_import_alias_scheme_chirho(iface_chirho, name_chirho, &schemes_chirho),
                 None,
                 "a source Data.List must not read the table for {name_chirho}"
+            );
+        }
+    }
+
+    // Different exposures remain distinct. Select the actual home source for
+    // an ordinary import, and the preserved builtin for an explicit base edge.
+    source_chirho.exposure_chirho = Some(IfaceExposureChirho::HomeChirho);
+    for copies_chirho in [
+        vec![seeded_chirho.clone(), source_chirho.clone()],
+        vec![source_chirho, seeded_chirho],
+    ] {
+        let views_chirho = merge_module_ifaces_chirho(copies_chirho);
+        assert_eq!(views_chirho.len(), 2);
+        let source_view_chirho =
+            select_import_iface_chirho(&views_chirho, &caller_chirho.imports_chirho[0])
+                .expect("ordinary import selects the admitted source view");
+        let builtin_view_chirho =
+            select_import_iface_chirho(&views_chirho, &caller_chirho.imports_chirho[1])
+                .expect("explicit base import preserves its builtin view");
+        assert_eq!(
+            source_view_chirho.exports_chirho.origin_chirho,
+            IfaceOriginChirho::SourceChirho
+        );
+        assert_eq!(
+            builtin_view_chirho.exports_chirho.origin_chirho,
+            IfaceOriginChirho::BuiltinChirho
+        );
+        for name_chirho in ["reverse", "lookup"] {
+            assert_eq!(
+                qualified_import_alias_scheme_chirho(
+                    source_view_chirho,
+                    name_chirho,
+                    &schemes_chirho
+                ),
+                None
+            );
+            assert_eq!(
+                qualified_import_alias_scheme_chirho(
+                    builtin_view_chirho,
+                    name_chirho,
+                    &schemes_chirho
+                )
+                .as_ref(),
+                schemes_chirho.get(name_chirho)
             );
         }
     }
