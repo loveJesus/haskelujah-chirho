@@ -28,14 +28,14 @@ use crate::expr_chirho::{CoreIdChirho, ImportedReferenceChirho};
 /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ImportSuppliersChirho {
-    suppliers_chirho: HashMap<(Option<String>, String), BTreeSet<ImportSupplierOriginChirho>>,
+    suppliers_chirho:
+        HashMap<(Option<String>, String), BTreeSet<Option<ImportSupplierOriginChirho>>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum ImportSupplierOriginChirho {
     SourceChirho(String),
     CompilerChirho(CompilerValueChirho),
-    UnprovenChirho,
 }
 
 impl ImportSuppliersChirho {
@@ -46,7 +46,10 @@ impl ImportSuppliersChirho {
             .iter()
             .filter(|(_, origins_chirho)| {
                 origins_chirho.iter().any(|origin_chirho| {
-                    matches!(origin_chirho, ImportSupplierOriginChirho::SourceChirho(_))
+                    matches!(
+                        origin_chirho,
+                        Some(ImportSupplierOriginChirho::SourceChirho(_))
+                    )
                 })
             })
             .map(|((_, name_chirho), _)| name_chirho.as_str())
@@ -66,9 +69,9 @@ impl ImportSuppliersChirho {
                 name_chirho.to_string(),
             ))
             .or_default()
-            .insert(ImportSupplierOriginChirho::SourceChirho(
+            .insert(Some(ImportSupplierOriginChirho::SourceChirho(
                 module_chirho.to_string(),
-            ));
+            )));
     }
 
     /// Positive origin copied from the actual selected exported value.
@@ -84,7 +87,9 @@ impl ImportSuppliersChirho {
                 name_chirho.to_string(),
             ))
             .or_default()
-            .insert(ImportSupplierOriginChirho::CompilerChirho(value_chirho));
+            .insert(Some(ImportSupplierOriginChirho::CompilerChirho(
+                value_chirho,
+            )));
     }
 
     /// A selected but unproven namesake must block a conflicting builtin proof.
@@ -95,7 +100,7 @@ impl ImportSuppliersChirho {
                 name_chirho.to_string(),
             ))
             .or_default()
-            .insert(ImportSupplierOriginChirho::UnprovenChirho);
+            .insert(None);
     }
 
     fn compiler_reference_chirho(
@@ -111,7 +116,7 @@ impl ImportSuppliersChirho {
             return None;
         }
         match origins_chirho.first()? {
-            ImportSupplierOriginChirho::CompilerChirho(value_chirho) => Some(*value_chirho),
+            Some(ImportSupplierOriginChirho::CompilerChirho(value_chirho)) => Some(*value_chirho),
             _ => None,
         }
     }
@@ -132,7 +137,9 @@ impl ImportSuppliersChirho {
             defining_modules_chirho: suppliers_chirho
                 .iter()
                 .map(|origin_chirho| {
-                    if let ImportSupplierOriginChirho::SourceChirho(module_chirho) = origin_chirho {
+                    if let Some(ImportSupplierOriginChirho::SourceChirho(module_chirho)) =
+                        origin_chirho
+                    {
                         Some(module_chirho.clone())
                     } else {
                         None
