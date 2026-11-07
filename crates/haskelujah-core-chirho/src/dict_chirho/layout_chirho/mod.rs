@@ -19,9 +19,6 @@ use crate::expr_chirho::{
 
 mod builtin_rows_chirho;
 mod compiler_namespace_chirho;
-pub(in crate::dict_chirho) use compiler_namespace_chirho::{
-    compiler_identity_chirho, compiler_namespace_name_chirho,
-};
 
 impl DictPassCtxChirho {
     pub fn build_layouts_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
