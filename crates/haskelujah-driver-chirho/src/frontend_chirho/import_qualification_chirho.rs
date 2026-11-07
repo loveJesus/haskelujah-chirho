@@ -8,15 +8,41 @@
 use super::*;
 
 /// The scheme a qualified import gives `name_chirho` when the interface it selected has no
-/// `module.name` key (row 608). Only an interface proven builtin reads the generated GHC agreement
-/// table. A source module's interface, whatever its name, and any interface of unknown origin
-/// keep today's placeholder.
+/// `module.name` key (row 608). A selected certified value preserves its producer's scheme,
+/// including through real re-exports. Other aliases read the generated GHC agreement table
+/// only from an interface proven builtin; source/unknown spellings supply no authority.
 /// workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
 pub fn qualified_import_alias_scheme_chirho(
     iface_chirho: &ModuleIfaceChirho,
     name_chirho: &str,
     builtins_chirho: &std::collections::HashMap<String, haskelujah_typing_chirho::SchemeChirho>,
 ) -> Option<haskelujah_typing_chirho::SchemeChirho> {
+    let selected_value_chirho = iface_chirho
+        .exports_chirho
+        .values_chirho
+        .get(name_chirho)
+        .or_else(|| {
+            iface_chirho
+                .exports_chirho
+                .values_chirho
+                .get(&format!("({name_chirho})"))
+        });
+    if let Some(value_chirho) = selected_value_chirho
+        && value_chirho.defining_module_chirho.is_none()
+        && value_chirho.availability_chirho
+            == haskelujah_naming_chirho::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho
+        && let Some(compiler_value_chirho) = value_chirho.compiler_value_chirho
+    {
+        return match compiler_value_chirho {
+            haskelujah_ast_chirho::name_chirho::CompilerValueChirho::ListAppendChirho => {
+                haskelujah_typing_chirho::infer_chirho::qualified_builtin_alias_scheme_chirho(
+                    "Prelude",
+                    "++",
+                    builtins_chirho,
+                )
+            }
+        };
+    }
     if iface_chirho.exports_chirho.origin_chirho
         != haskelujah_naming_chirho::IfaceOriginChirho::BuiltinChirho
     {

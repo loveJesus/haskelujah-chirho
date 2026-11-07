@@ -6,7 +6,8 @@
 //! the bare builtin scheme of `name` prints to the same `type` under the normalization contract in
 //! `test-data-chirho/qualified-alias-agreement-chirho/README-chirho.md`. That one contract is
 //! [`normalized_type_chirho`], here. The tests hold the table to it: every entry still agrees with
-//! today's bare scheme, names an unkeyed builtin export, and is the whole of Phase 3.9's decision.
+//! today's bare scheme and names an unkeyed builtin export. Phase 3.9 also preserves a selected
+//! compiler value's actual scheme through certified re-exports (row 709).
 //! The two ignored tests are the generator's Rust steps: `generate_chirho.py` runs them, and no
 //! gate does.
 //! workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
@@ -14,6 +15,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 
+use haskelujah_ast_chirho::name_chirho::CompilerValueChirho;
 use haskelujah_driver::qualified_import_alias_scheme_chirho;
 use haskelujah_naming_chirho::iface_chirho::{IfaceExportsChirho, merge_module_ifaces_chirho};
 use haskelujah_naming_chirho::{
@@ -613,9 +615,9 @@ fn every_entry_is_an_unkeyed_builtin_export_that_still_agrees_chirho() {
 }
 
 #[test]
-fn phase_3_9_reads_the_table_and_nothing_else_chirho() {
+fn ordinary_aliases_use_the_table_and_certified_values_keep_their_scheme_chirho() {
     // Over every unkeyed export of every builtin interface, Phase 3.9's decision gives the bare
-    // scheme exactly for the table's entries, so no curated exception list stands beside it.
+    // scheme only for a table entry or the actual selected compiler-value certificate.
     let schemes_chirho = builtin_value_schemes_chirho();
     let table_chirho: BTreeSet<(&str, &str)> = QUALIFIED_ALIAS_AGREEMENT_CHIRHO
         .iter()
@@ -632,9 +634,18 @@ fn phase_3_9_reads_the_table_and_nothing_else_chirho() {
                 qualified_import_alias_scheme_chirho(&iface_chirho, &name_chirho, &schemes_chirho);
             let listed_chirho =
                 table_chirho.contains(&(module_chirho.as_str(), name_chirho.as_str()));
+            let certified_chirho = iface_chirho
+                .exports_chirho
+                .values_chirho
+                .get(&name_chirho)
+                .is_some_and(|value_chirho| {
+                    value_chirho.compiler_value_chirho
+                        == Some(CompilerValueChirho::ListAppendChirho)
+                        && value_chirho.defining_module_chirho.is_none()
+                });
             assert_eq!(
                 decision_chirho.is_some(),
-                listed_chirho,
+                listed_chirho || certified_chirho,
                 "{module_chirho}.{name_chirho}"
             );
             if let Some(scheme_chirho) = decision_chirho {
@@ -644,6 +655,74 @@ fn phase_3_9_reads_the_table_and_nothing_else_chirho() {
         }
     }
     assert!(decided_chirho > table_chirho.len());
+}
+
+#[test]
+fn selected_append_certificates_keep_the_prelude_scheme_but_namesakes_do_not_chirho() {
+    let schemes_chirho = builtin_value_schemes_chirho();
+    let prelude_chirho = seeded_iface_chirho("Prelude");
+    let data_list_chirho = seeded_iface_chirho("Data.List");
+    let forwarded_chirho = source_iface_chirho(
+        "module ForwardAppendChirho ((++)) where\nimport Prelude ((++))\n",
+        &[prelude_chirho],
+    );
+    for iface_chirho in [&data_list_chirho, &forwarded_chirho] {
+        assert_eq!(
+            qualified_import_alias_scheme_chirho(iface_chirho, "++", &schemes_chirho).as_ref(),
+            schemes_chirho.get("++"),
+        );
+    }
+
+    let owned_chirho = source_iface_chirho(
+        "module Data.List ((++)) where\nimport Prelude hiding ((++))\n(++) :: Int -> Int -> Int\nleftChirho ++ rightChirho = leftChirho - rightChirho\n",
+        &[],
+    );
+    let hidden_chirho = source_iface_chirho(
+        "module HiddenAppendChirho () where\nimport Prelude ((++))\n",
+        &[seeded_iface_chirho("Prelude")],
+    );
+    let mut unknown_chirho = data_list_chirho.clone();
+    unknown_chirho.exposure_chirho = None;
+    unknown_chirho.exports_chirho.origin_chirho = IfaceOriginChirho::SourceChirho;
+    unknown_chirho
+        .exports_chirho
+        .values_chirho
+        .get_mut("++")
+        .unwrap()
+        .compiler_value_chirho = None;
+    let mut missing_chirho = data_list_chirho.clone();
+    missing_chirho.exports_chirho.values_chirho.remove("++");
+    let mut unavailable_chirho = data_list_chirho.clone();
+    unavailable_chirho
+        .exports_chirho
+        .values_chirho
+        .get_mut("++")
+        .unwrap()
+        .availability_chirho =
+        haskelujah_naming_chirho::iface_chirho::IfaceValueAvailabilityChirho::FieldLabelOnlyChirho;
+    let mut conflicting_chirho = data_list_chirho;
+    conflicting_chirho.exports_chirho.origin_chirho = IfaceOriginChirho::SourceChirho;
+    conflicting_chirho
+        .exports_chirho
+        .values_chirho
+        .get_mut("++")
+        .unwrap()
+        .defining_module_chirho = Some("Data.List".to_string());
+    for iface_chirho in [
+        owned_chirho,
+        hidden_chirho,
+        unknown_chirho,
+        missing_chirho,
+        unavailable_chirho,
+        conflicting_chirho,
+    ] {
+        assert_eq!(
+            qualified_import_alias_scheme_chirho(&iface_chirho, "++", &schemes_chirho),
+            None,
+            "{} supplied no consistent selected append certificate",
+            iface_chirho.name_chirho,
+        );
+    }
 }
 
 #[test]

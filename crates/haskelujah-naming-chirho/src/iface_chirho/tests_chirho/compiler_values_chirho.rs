@@ -13,10 +13,31 @@ fn prelude_chirho() -> ModuleIfaceChirho {
 }
 
 #[test]
+fn data_list_forwards_the_actual_prelude_append_export_chirho() {
+    let prelude_chirho = prelude_chirho();
+    let data_list_chirho = crate::builtin_module_ifaces_chirho()
+        .into_iter()
+        .find(|iface_chirho| iface_chirho.name_chirho == "Data.List")
+        .unwrap();
+    assert_eq!(
+        data_list_chirho.exports_chirho.values_chirho["++"],
+        prelude_chirho.exports_chirho.values_chirho["++"],
+    );
+    assert_eq!(
+        data_list_chirho.exports_chirho.values_chirho["++"].compiler_value_chirho,
+        Some(CompilerValueChirho::ListAppendChirho),
+    );
+    assert_eq!(
+        data_list_chirho.exports_chirho.values_chirho["reverse"].compiler_value_chirho,
+        None,
+    );
+}
+
+#[test]
 fn a_real_forwarded_builtin_keeps_its_value_origin_even_in_a_source_interface_chirho() {
     let mut forwarded_chirho = prelude_chirho();
     assert_eq!(
-        forwarded_chirho.exports_chirho.values_chirho["(++)"].compiler_value_chirho,
+        forwarded_chirho.exports_chirho.values_chirho["++"].compiler_value_chirho,
         Some(CompilerValueChirho::ListAppendChirho),
     );
     forwarded_chirho.name_chirho = "ForwardAppendChirho".to_string();
@@ -24,7 +45,7 @@ fn a_real_forwarded_builtin_keeps_its_value_origin_even_in_a_source_interface_ch
     let merged_chirho =
         merge_module_ifaces_chirho(vec![forwarded_chirho.clone(), forwarded_chirho]);
     assert_eq!(
-        merged_chirho[0].exports_chirho.values_chirho["(++)"].compiler_value_chirho,
+        merged_chirho[0].exports_chirho.values_chirho["++"].compiler_value_chirho,
         Some(CompilerValueChirho::ListAppendChirho),
     );
 }
@@ -38,7 +59,7 @@ fn conflicting_source_or_unknown_fragments_cannot_keep_a_builtin_value_claim_chi
         let value_chirho = source_chirho
             .exports_chirho
             .values_chirho
-            .get_mut("(++)")
+            .get_mut("++")
             .unwrap();
         value_chirho.defining_module_chirho = source_definer_chirho;
         value_chirho.compiler_value_chirho = None;
@@ -48,7 +69,7 @@ fn conflicting_source_or_unknown_fragments_cannot_keep_a_builtin_value_claim_chi
         ] {
             let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
             assert_eq!(
-                merged_chirho[0].exports_chirho.values_chirho["(++)"].compiler_value_chirho,
+                merged_chirho[0].exports_chirho.values_chirho["++"].compiler_value_chirho,
                 None,
             );
         }
@@ -63,15 +84,15 @@ fn parenthesized_and_canonical_operator_fragments_share_one_proof_boundary_chirh
     let mut value_chirho = source_chirho
         .exports_chirho
         .values_chirho
-        .remove("(++)")
+        .remove("++")
         .unwrap();
-    value_chirho.name_chirho = "++".to_string();
+    value_chirho.name_chirho = "(++)".to_string();
     value_chirho.compiler_value_chirho = None;
     value_chirho.defining_module_chirho = Some("OwnPreludeChirho".to_string());
     source_chirho
         .exports_chirho
         .values_chirho
-        .insert("++".to_string(), value_chirho);
+        .insert("(++)".to_string(), value_chirho);
     for copies_chirho in [
         vec![builtin_chirho.clone(), source_chirho.clone()],
         vec![source_chirho.clone(), builtin_chirho.clone()],

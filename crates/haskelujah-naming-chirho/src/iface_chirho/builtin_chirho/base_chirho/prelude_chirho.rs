@@ -10,8 +10,10 @@ use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 use haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho;
 
 /// Push the interfaces for `Prelude` and the list, character, `Maybe` and `Either` modules.
+/// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
 pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
     // Data.List
+    let data_list_index_chirho = modules_chirho.len();
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
@@ -641,6 +643,12 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             if *name_chirho == "(++)" {
                 v_chirho.compiler_value_chirho =
                     Some(haskelujah_ast_chirho::name_chirho::CompilerValueChirho::ListAppendChirho);
+                // Data.List declares this same Prelude value as a re-export;
+                // forward the actual producer record rather than minting proof.
+                modules_chirho[data_list_index_chirho]
+                    .exports_chirho
+                    .values_chirho
+                    .insert(k_chirho.clone(), v_chirho.clone());
             }
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
