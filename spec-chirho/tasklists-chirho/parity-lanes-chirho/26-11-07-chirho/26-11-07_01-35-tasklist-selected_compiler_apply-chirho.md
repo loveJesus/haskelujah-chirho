@@ -1,0 +1,17 @@
+<!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
+
+# Selected compiler apply authority Chirho
+
+Row 714. Kind is the implementation writer and sole compiler scheduler; root owns integration, this tasklist and the canonical ledger. The immediate product failures are the original Bazaar sigma witnesses and first-class `$` reaching no STG binding. Row710 is not required to expose the latter. Existing main native repair stays independently preserved.
+
+- [x] Locate the actual shared route: builtin interface value certificate -> selected import payload -> lexical TyEnv value entry -> application plan, plus the existing selected supplier -> actual Core reference ID -> certified generated body route. Reuse CompilerValueChirho and existing entries; typing does not depend on Core.
+- [x] Prepare a finite compile-only GHC reference plan, `2580f36a` / invocation `3574b380`, covering the original source, implicit/explicit/qualified Prelude, direct/qualified reexports, same-scheme source clone, ordinary alias, hidden import and explicit ImpredicativeTypes. Predictions remain unmeasured; stub/ambiguous certificate negatives are product controls rather than invented GHC equivalents.
+- [ ] Execute and fold the named reference window, preserving resource outcomes and actual reasons.
+- [ ] Review the source-only assembly preview from b263 plus the coherent e6dd substitution leaf. Keep authorship, explicit file scope, before evidence and exact conflict decisions. Import no row710, SQLite, diagnostic observer or broad history.
+- [ ] Carry a positively selected certificate alongside the scheme in the existing lexical value entry and its application lookup. Local bindings, source aliases, masks, hidden names and unsupported qualifier fallback cannot gain it.
+- [ ] License the special apply/Quick Look path only for the selected compiler certificate. Do not make RankNTypes globally enable impredicativity, alter class entailment, or infer authority from `$` spelling or a matching scheme.
+- [ ] Generate the ordinary lazy Core body through the existing certified body producer, and close infix spelling and unproven supplier bypasses through that same route. No runtime-specific lookup or second registry.
+- [ ] Measure real before/after original sources, finite positive/negative certificate contrasts, first-class application runtime and appropriate typing/Core/changed-span gates. Do not count a direct unit pass as original-source acceptance.
+- [ ] Complete preservation and measured convergence with the independently landed main native source before any landing. Keep package, C10, reader and broader kind debts named; no full compiler acceptance follows from this unit.
+
+Architecture decision at brick 1: extend existing producer-owned certificate and lexical entry. Any new parallel map, spelling-based privilege, source alias upgrade or consumer-manufactured identity is outside this plan. The intended end state is valid selected compiler apply behavior with ordinary source functions retaining their own semantics.
