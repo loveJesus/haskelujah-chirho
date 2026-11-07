@@ -190,11 +190,7 @@ impl InferCtxChirho {
                     self.install_pattern_givens_chirho(predicates_chirho);
                     if let Some(field_names_chirho) = self
                         .con_field_names_chirho
-                        .get(con_chirho.text_chirho())
-                        .or_else(|| {
-                            self.con_field_names_chirho
-                                .get(&con_chirho.full_name_chirho())
-                        })
+                        .get(&con_chirho.full_name_chirho())
                     {
                         for (field_name_chirho, field_ty_chirho) in
                             field_names_chirho.iter().zip(field_tys_chirho)
@@ -228,7 +224,7 @@ impl InferCtxChirho {
                         .collect();
                     if let Some(all_fields_chirho) = self
                         .con_field_names_chirho
-                        .get(con_chirho.text_chirho())
+                        .get(&con_chirho.full_name_chirho())
                         .cloned()
                     {
                         for field_name_chirho in &all_fields_chirho {

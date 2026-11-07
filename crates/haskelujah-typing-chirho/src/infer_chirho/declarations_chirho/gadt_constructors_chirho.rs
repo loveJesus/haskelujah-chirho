@@ -11,6 +11,23 @@ use haskelujah_ast_chirho::name_chirho::NameChirho;
 use std::collections::HashMap;
 
 impl InferCtxChirho {
+    /// Both keys name the same actual local declaration. Qualified pattern
+    /// consumers never borrow a field vector from an unrelated bare namesake.
+    /// Workflow: compiler-pipeline-chirho/value-scope-resolution-chirho.
+    pub(crate) fn bind_constructor_field_names_chirho(
+        &mut self,
+        module_name_chirho: &str,
+        constructor_name_chirho: &str,
+        fields_chirho: Vec<String>,
+    ) {
+        self.con_field_names_chirho.insert(
+            format!("{module_name_chirho}.{constructor_name_chirho}"),
+            fields_chirho.clone(),
+        );
+        self.con_field_names_chirho
+            .insert(constructor_name_chirho.to_string(), fields_chirho);
+    }
+
     /// The declaration gateway already checked the actual parent header. Retain an H98
     /// prefix through the same scheme, source-correspondence and selector consumers as GADTs.
     pub(super) fn bind_written_h98_constructor_chirho(
@@ -342,19 +359,18 @@ impl InferCtxChirho {
             self.strict_positional_constructors_chirho
                 .insert(name_chirho.text_chirho().to_string());
         }
+        self.bind_constructor_field_names_chirho(
+            module_name_chirho,
+            name_chirho.text_chirho(),
+            signature_chirho
+                .record_fields_chirho()
+                .unwrap_or_default()
+                .iter()
+                .flat_map(|field_chirho| &field_chirho.names_chirho)
+                .map(|name_chirho| name_chirho.text_chirho().to_string())
+                .collect(),
+        );
         if let Some(fields_chirho) = signature_chirho.record_fields_chirho() {
-            self.con_field_names_chirho.insert(
-                name_chirho.text_chirho().to_string(),
-                fields_chirho
-                    .iter()
-                    .flat_map(|field_chirho| {
-                        field_chirho
-                            .names_chirho
-                            .iter()
-                            .map(|name_chirho| name_chirho.text_chirho().to_string())
-                    })
-                    .collect(),
-            );
             self.con_strict_fields_chirho.insert(
                 name_chirho.text_chirho().to_string(),
                 records_chirho::strict_field_names_chirho(fields_chirho),

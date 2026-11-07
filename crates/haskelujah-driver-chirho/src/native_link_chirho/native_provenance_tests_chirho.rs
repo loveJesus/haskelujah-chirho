@@ -138,6 +138,7 @@ fn ifaces_chirho() -> Vec<ModuleIfaceChirho> {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 defining_module_chirho: (origin_chirho == IfaceOriginChirho::SourceChirho)
                     .then(|| "SharedChirho".into()),
+                constructor_fields_chirho: None,
                 compiler_value_chirho: None,
             },
         );

@@ -471,6 +471,7 @@ fn module_re_export_chirho() {
                     name_chirho: "innerFn".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    constructor_fields_chirho: None,
                     compiler_value_chirho: None,
                 },
             );
@@ -493,6 +494,7 @@ fn module_re_export_chirho() {
                     name_chirho: "MkInner".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    constructor_fields_chirho: None,
                     compiler_value_chirho: None,
                 },
             );
@@ -581,6 +583,7 @@ fn module_alias_re_export_chirho() {
                     name_chirho: "innerFn".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    constructor_fields_chirho: None,
                     compiler_value_chirho: None,
                 },
             );
@@ -639,6 +642,7 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
                     name_chirho: "leftFn".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    constructor_fields_chirho: None,
                     compiler_value_chirho: None,
                 },
             );
@@ -650,6 +654,7 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
                     name_chirho: "hiddenLeft".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    constructor_fields_chirho: None,
                     compiler_value_chirho: None,
                 },
             );
@@ -669,6 +674,7 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
                     name_chirho: "rightFn".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    constructor_fields_chirho: None,
                     compiler_value_chirho: None,
                 },
             );
@@ -754,6 +760,7 @@ fn explicit_export_list_reexports_imported_value_chirho() {
                     name_chirho: "choice".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    constructor_fields_chirho: None,
                     compiler_value_chirho: None,
                 },
             );

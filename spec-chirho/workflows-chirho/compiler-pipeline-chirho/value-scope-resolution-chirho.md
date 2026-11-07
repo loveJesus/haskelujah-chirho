@@ -219,3 +219,23 @@ flowchart TD
 - **The rule:** `crates/haskelujah-core-chirho/src/desugar_chirho/references_chirho/syntax_methods_chirho.rs`, called from the three literal sites in `desugar_chirho.rs`.
 - **The id choice:** two unit tests in `desugar_chirho/references_chirho/provenance_tests_chirho.rs`.
 - **GHC-measured programs:** the row 660 tables in `crates/haskelujah-driver-chirho/tests/dictionary_evidence_chirho/fractional_literals_chirho.rs`. 14 movers, the 3 RebindableSyntax holds and 6 ordinary holds are exact on the interpreter, LLVM and true Cranelift.
+
+
+## Selected constructor fields Chirho
+
+```mermaid
+flowchart TD
+    declaration_chirho[Actual constructor AST and positive owner declaration] --> fields_chirho[Optional ConstructorFields on the exported value]
+    fields_chirho --> selection_chirho[Existing export, re-export and import selection]
+    selection_chirho --> physical_chirho[Exact selected physical field order in the existing typing map]
+    physical_chirho --> pattern_chirho[Field/type correspondence and wildcard pattern binding]
+    fields_chirho --> future_chirho[Future source lexical admission, separate lease]
+    conflict_chirho[Weak or conflicting fragment account] --> unknown_chirho[No positive field authority]
+    legacy_chirho[Ownerless builtin string tables] --> compatibility_chirho[Explicit legacy typing-only behavior]
+```
+
+Row 712 publishes complete ordered labels only from the real ordinary/newtype/GADT constructor declaration and its existing positive declaration owner. A known empty label sequence is distinct from absent metadata. Callable selector availability remains separate: an existential field can be a valid pattern label while having no callable selector. Clones/filtering/re-exports retain the selected constructor payload; fragment conflicts enter an absorbing Blocked account instead of unioning labels or reopening legacy absence. Hidden labels do not change the constructor's physical order.
+
+The frontend gives a selected positive payload precedence over the former type-wide-to-every-constructor approximation. Qualified requests use exact selected full-name keys, and local AST producers publish their explicit module-qualified key as well as the ordinary bare key. A missing qualified payload cannot borrow an unrelated bare constructor.
+
+Full field authority remains OPEN. Builtin record tables such as `Identity`, `SelectT` and generic wrappers still lack actual declaration owners. Their existing ownerless/raw typing-only compatibility path is retained without manufacturing positive metadata, and future lexical admission must not consume that legacy path as proof. TH data conversion also lacks the existing written-role stamp required by the owner producer; its preexisting raw typing compatibility path remains unproven, and repairing that producer is separate work. Wildcard eligibility under label hiding awaits the finite GHC reference packet. Physical order and eligible omitted binders must not be conflated by filtering the current field vector. The source-only controls and reference predictions are unrun until their scheduler grants.

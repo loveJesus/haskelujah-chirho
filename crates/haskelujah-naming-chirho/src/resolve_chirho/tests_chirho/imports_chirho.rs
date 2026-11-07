@@ -11,6 +11,7 @@ fn mk_lib_iface_chirho() -> ModuleIfaceChirho {
             name_chirho: "sort".to_string(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             defining_module_chirho: None,
+            constructor_fields_chirho: None,
             compiler_value_chirho: None,
         },
     );
@@ -21,6 +22,7 @@ fn mk_lib_iface_chirho() -> ModuleIfaceChirho {
             name_chirho: "map".to_string(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             defining_module_chirho: None,
+            constructor_fields_chirho: None,
             compiler_value_chirho: None,
         },
     );
@@ -31,6 +33,7 @@ fn mk_lib_iface_chirho() -> ModuleIfaceChirho {
             name_chirho: "Red".to_string(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             defining_module_chirho: None,
+            constructor_fields_chirho: None,
             compiler_value_chirho: None,
         },
     );
@@ -41,6 +44,7 @@ fn mk_lib_iface_chirho() -> ModuleIfaceChirho {
             name_chirho: "Blue".to_string(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             defining_module_chirho: None,
+            constructor_fields_chirho: None,
             compiler_value_chirho: None,
         },
     );
@@ -233,6 +237,7 @@ fn import_type_all_includes_constructor_members_chirho() {
             name_chirho: "Wrap".to_string(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             defining_module_chirho: None,
+            constructor_fields_chirho: None,
             compiler_value_chirho: None,
         },
     );
@@ -243,6 +248,7 @@ fn import_type_all_includes_constructor_members_chirho() {
             name_chirho: "unwrap".to_string(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             defining_module_chirho: None,
+            constructor_fields_chirho: None,
             compiler_value_chirho: None,
         },
     );
@@ -392,6 +398,7 @@ fn import_prefers_latest_iface_for_same_module_name_chirho() {
                     name_chirho: "oldOnly".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    constructor_fields_chirho: None,
                     compiler_value_chirho: None,
                 },
             )]
@@ -416,6 +423,7 @@ fn import_prefers_latest_iface_for_same_module_name_chirho() {
                     name_chirho: "newOnly".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    constructor_fields_chirho: None,
                     compiler_value_chirho: None,
                 },
             )]

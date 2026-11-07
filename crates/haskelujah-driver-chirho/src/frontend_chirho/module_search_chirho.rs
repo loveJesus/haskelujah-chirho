@@ -530,6 +530,7 @@ fn scan_hierarchical_modules_bounded_chirho(
                             name_chirho,
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                             defining_module_chirho: None,
+                            constructor_fields_chirho: None,
                             compiler_value_chirho: None,
                         },
                     );
