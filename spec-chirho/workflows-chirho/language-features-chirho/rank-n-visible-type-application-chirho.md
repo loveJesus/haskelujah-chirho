@@ -220,3 +220,20 @@ literal policy and legacy instance selection remain unchanged, and the existing 
 context can discharge the wanted before any diagnostic is reported.
 
 The optional hidden-prefix refutation also requires the frontend's actual selected-interface admission proof. External package interfaces cannot refer back to a newly declared local class; home or unknown interfaces do not establish that completeness while cold discovery omits ordinary instance records. A reached `SOURCE` cycle can therefore retain Unknown rather than incorrectly refute an instance supplied by the peer. This guard applies only to the new prefix certificate. Existing ordinary selection and lexical given matching remain authoritative. Recovering completeness for acyclic home graphs requires a real dependency producer, not an import-name exception.
+
+## General ordinary expected sigma
+
+```mermaid
+flowchart TD
+    expected_chirho[Normalize the actual expected type] --> route_chirho{Existing expression entry}
+    route_chirho -->|Named or application spine| quicklook_chirho[Retain existing Quick Look checking]
+    route_chirho -->|Explicit type lambda| binder_chirho[Consume its own written binder]
+    route_chirho -->|Other expression and invisible forall| rigid_chirho[Open the existing quantified records through the rigid signature scope]
+    rigid_chirho --> givens_chirho[Keep written qualified predicates in the same scope]
+    givens_chirho --> shape_chirho[Check the expression against the opened body]
+    shape_chirho --> escape_chirho[Run existing captured-meta escape and wanted checks]
+    escape_chirho --> publish_chirho[Publish only the existing safe public substitution]
+    publish_chirho --> sigma_chirho[Return the original expected sigma shape]
+```
+
+Ordinary list, section and other expression shapes receive the opened body rather than attempting to unify a monotype directly with a qualified universal. The complete quantifier records and body travel through the existing `SchemeChirho`; no predicate is reconstructed from its spelling. Nested qualified prefixes use the existing given scope. Explicit `RequiredForallChirho` consumption, named/application Quick Look, ordinary monotype restrictions and all existing resource bounds keep their established paths. The direct before-state controls and the exact source witnesses are separate evidence scopes; this producer alone does not establish their final verdicts or broad preservation.

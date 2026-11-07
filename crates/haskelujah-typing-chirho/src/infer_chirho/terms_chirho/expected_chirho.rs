@@ -6,7 +6,7 @@
 use super::InferCtxChirho;
 use super::build_infix_app_expr_chirho;
 use crate::subst_chirho::SubstChirho;
-use crate::ty_chirho::TyChirho;
+use crate::ty_chirho::{SchemeChirho, TyChirho};
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
 use haskelujah_span_chirho::SpanChirho;
 
@@ -59,6 +59,42 @@ impl InferCtxChirho {
             self.infer_application_spine_chirho(expr_chirho, Some(expected_ty_chirho), span_chirho)
         {
             return result_chirho;
+        }
+        // Named and application spines retain their existing Quick Look entries;
+        // an explicit type lambda consumes its own written binder. Other
+        // expressions check an invisible sigma universally before inspecting
+        // their shape, with qualified predicates and escape checks in scope.
+        // workflow: language-features-chirho/rank-n-visible-type-application-chirho
+        if !matches!(
+            expr_chirho,
+            ExprChirho::TypeLamChirho { .. }
+                | ExprChirho::AppChirho { .. }
+                | ExprChirho::InfixChirho { .. }
+        ) && let TyChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+        } = normalized_expected_chirho
+        {
+            let scheme_chirho = SchemeChirho {
+                vars_chirho,
+                preds_chirho: Vec::new(),
+                ty_chirho: *body_chirho,
+            };
+            let ((substitution_chirho, _), public_chirho) = self.with_rigid_signature_chirho(
+                &scheme_chirho,
+                span_chirho,
+                |context_chirho, opened_chirho| {
+                    context_chirho.infer_expr_against_expected_chirho(
+                        expr_chirho,
+                        opened_chirho,
+                        span_chirho,
+                    )
+                },
+            );
+            let substitution_chirho =
+                self.publish_signature_solution_chirho(substitution_chirho, &public_chirho);
+            let checked_chirho = substitution_chirho.apply_ty_chirho(expected_ty_chirho);
+            return (substitution_chirho, checked_chirho);
         }
         match expr_chirho {
             ExprChirho::TypeLamChirho {
