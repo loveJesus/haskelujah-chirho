@@ -8,6 +8,7 @@ use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::expr_chirho::StmtChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
+use haskelujah_ast_chirho::stmt_operation_chirho::SelectedOperationChirho;
 use std::collections::HashSet;
 
 /// Pattern binders are not references. Retained view/splice expressions are.
@@ -317,7 +318,10 @@ fn collect_guarded_arm_refs_chirho(
     }
 }
 
-/// A do statement, a comprehension qualifier, or a guard qualifier.
+/// A do statement, a comprehension qualifier, or a guard qualifier. The operations a do statement
+/// SELECTED are references like any other, so a local or self-qualified `>>=` is generalized
+/// before the binding whose block uses it (row 710).
+/// workflow: language-features-chirho/qualified-do-chirho
 fn collect_stmt_refs_chirho(
     stmt_chirho: &StmtChirho,
     refs_chirho: &mut std::collections::HashSet<String>,
@@ -326,19 +330,38 @@ fn collect_stmt_refs_chirho(
         StmtChirho::BindChirho {
             pat_chirho,
             expr_chirho,
+            bind_chirho,
+            fail_chirho,
             ..
         } => {
             collect_pattern_refs_chirho(pat_chirho, refs_chirho);
-            collect_expr_refs_chirho(expr_chirho, refs_chirho)
+            collect_expr_refs_chirho(expr_chirho, refs_chirho);
+            collect_selected_refs_chirho(&[bind_chirho, fail_chirho], refs_chirho);
         }
-        StmtChirho::ExprChirho { expr_chirho, .. } => {
-            collect_expr_refs_chirho(expr_chirho, refs_chirho)
+        StmtChirho::ExprChirho {
+            expr_chirho,
+            then_chirho,
+        } => {
+            collect_expr_refs_chirho(expr_chirho, refs_chirho);
+            collect_selected_refs_chirho(&[then_chirho], refs_chirho);
         }
         StmtChirho::LetChirho { binds_chirho, .. } => {
             for b_chirho in binds_chirho {
                 collect_local_bind_refs_chirho(b_chirho, refs_chirho);
             }
         }
+    }
+}
+
+/// The selected operations a statement carries, keyed as a variable reference is.
+fn collect_selected_refs_chirho(
+    selected_chirho: &[&Option<SelectedOperationChirho>],
+    refs_chirho: &mut std::collections::HashSet<String>,
+) {
+    for operation_chirho in selected_chirho.iter().copied().flatten() {
+        refs_chirho.insert(canonical_value_name_text_chirho(
+            operation_chirho.name_chirho.text_chirho(),
+        ));
     }
 }
 
