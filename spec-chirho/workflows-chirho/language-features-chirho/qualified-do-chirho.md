@@ -41,3 +41,36 @@ get a `fail` its monad might not have. See `tasklists-chirho/26-09-24_12-35-task
   graded or plain-function operator records NO evidence rather than wrong evidence, and keeps the
   dispatch it has today. That evidence reaches no consumer yet: the join drops every role but
   Reference.
+
+## Row 710, in progress: each statement typed through its selected operation
+
+Today's checker unifies every statement with one block-wide `m a` and never types a statement
+through the operation it selected, so a QualifiedDo bind of a plain local `a -> (a -> b) -> b`
+yields `Num (m (m a))`. The restriction refuses that (E0204) where GHC 9.14.1 prints 5 (row 692
+#32742, reference #32778). Row 710 types the translation Core already desugars:
+
+```mermaid
+flowchart TD
+    deps_chirho[Dependency analysis records each selected >>=, >> and fail as a reference: collect_stmt_refs_chirho] --> arm_chirho[Do arm in terms_chirho/do_blocks_chirho.rs]
+    arm_chirho --> bind_chirho["x <- e; s : instantiate the selected >>= ONCE through the reference path; unify it with te -> (tx -> ts) -> tr"]
+    arm_chirho --> then_chirho["e; s : the selected >> with te -> ts -> tr"]
+    arm_chirho --> fail_chirho["failable x : the selected fail with String -> ts"]
+    arm_chirho --> lets_chirho["let ds; s : let ds in s; final e : e"]
+    bind_chirho --> wanted_chirho[Its predicates are ordinary wanteds, and its occurrence record comes from that same instantiation, keyed by the selection's origin]
+    then_chirho --> wanted_chirho
+    fail_chirho --> wanted_chirho
+    arm_chirho --> expected_chirho[An expected block type from do_last_expected unifies with the outer tr; expected_chirho.rs stays with its owner]
+```
+
+- There is no block-wide `m` and no monadic flag. `do {e}` is `e`, and lets plus a final
+  expression are `let ... in e`.
+- The observational second instantiation and its ignored unifier go. A plain local bind, a `($)`
+  bind (GHC T17594f) and an indexed or graded bind type by their own schemes.
+- A statement that carries NO selection (hand-built ASTs, Template Haskell conversion, the
+  RecursiveDo knot) keeps today's shape-only typing, statement by statement: `e :: m a`, the rest
+  `:: m b`, the block `:: m b`. It gets no wanted, no evidence and no proof, and no spelling
+  lookup. Any change to that policy waits for root's word.
+- Controls: the c06 qualified non-Monad record control and its execution (5); a `($)` bind; an
+  indexed or graded qualified bind; IO and refutable-Maybe MonadFail; an unsigned polymorphic Monad
+  do; both let-only positives; the DoBindExact refusal and its pure twin. See
+  `tasklists-chirho/26-11-06_22-25-tasklist-selected_do_typing-chirho.md`.
