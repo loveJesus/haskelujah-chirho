@@ -46,28 +46,44 @@ impl DictPassCtxChirho {
     ) -> DictLayoutChirho {
         let mut slot_chirho = 0usize;
 
-        // Each slot carries the proof of the superclass template the record states for it, read
-        // only when the templates match the supers one for one; otherwise no identity is claimed
-        // (row 692, C10, gpt #32919).
+        // Each slot carries the proof of the superclass template the record states for it (row
+        // 692, C10, gpt #32919). This count check is no fresh validation: it only reads the
+        // alignment the producers give, since the seed derives a class's supers and templates from
+        // one ordered identity list and a source class derives its supers from its templates, so
+        // neither yields a same-count misaligned pair (gpt #32935). With unequal counts no
+        // identity is claimed.
         let templates_chirho = decl_chirho.superclass_templates_chirho();
         let templates_match_chirho = templates_chirho.len() == super_namespaces_chirho.len();
+        let unary_declaration_chirho =
+            decl_chirho.all_vars_chirho().len() == 1 && decl_chirho.kind_vars_chirho.is_empty();
         let super_slots_chirho: Vec<SuperclassSlotChirho> = super_namespaces_chirho
             .into_iter()
             .enumerate()
             .map(|(position_chirho, super_name_chirho)| {
                 let pos_chirho = slot_chirho;
                 slot_chirho += 1;
-                let class_proof_chirho = templates_chirho
+                let template_chirho = templates_chirho
                     .get(position_chirho)
-                    .filter(|_| templates_match_chirho)
+                    .filter(|_| templates_match_chirho);
+                let class_proof_chirho = template_chirho
                     .map(|template_chirho| template_chirho.class_identity_chirho().clone())
                     .unwrap_or(PredicateClassProofChirho::UnknownChirho(
                         ClassIdentityUnknownChirho::LegacyChirho,
                     ));
+                // The whole child key is the superclass head only for a one-parameter class
+                // without a kind prefix whose template is exactly its own variable (gpt #32942).
+                let identity_head_chirho = unary_declaration_chirho
+                    && template_chirho.is_some_and(|template_chirho| {
+                        template_chirho.kind_tys_chirho.is_empty()
+                            && template_chirho.extra_tys_chirho.is_empty()
+                            && template_chirho.ty_chirho
+                                == TyChirho::VarChirho(decl_chirho.var_chirho)
+                    });
                 SuperclassSlotChirho {
                     namespace_chirho: super_name_chirho,
                     index_chirho: pos_chirho,
                     class_proof_chirho,
+                    identity_head_chirho,
                 }
             })
             .collect();

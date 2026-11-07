@@ -926,6 +926,16 @@ impl DictPassCtxChirho {
             if let Some(identity_chirho) =
                 self.displaced_identity_chirho(&slot_chirho.class_proof_chirho)
             {
+                // Both keys here are reused from the child or its representation, so a
+                // transformed superclass head is refused by name (gpt #32942).
+                if !slot_chirho.identity_head_chirho {
+                    field_args_chirho.push(self.displaced_refusal_chirho(
+                        identity_chirho,
+                        "superclass at a transformed head",
+                        &type_key_chirho,
+                    ));
+                    continue;
+                }
                 let served_chirho = self
                     .compiler_superclass_id_chirho(identity_chirho, &type_key_chirho)
                     .or_else(|| {

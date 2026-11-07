@@ -59,6 +59,10 @@ const OWN_SCOPE_PRINT_UNDER_NAMESAKE_SHOW_CHIRHO: &str =
 const OWN_SCOPE_REAL_SUPERCLASS_UNDER_NAMESAKE_CHIRHO: &str = include_str!(
     "../displaced_own_scope_chirho/own_scope_real_superclass_under_namesake_chirho.hs"
 );
+/// A source class whose superclass is the compiler's `Typeable` at a transformed head.
+const TRANSFORMED_SUPERCLASS_HEAD_UNDER_NAMESAKE_CHIRHO: &str = include_str!(
+    "../displaced_own_scope_chirho/transformed_superclass_head_under_namesake_chirho.hs"
+);
 
 #[test]
 fn a_user_instance_of_the_compiler_num_keeps_its_own_body_chirho() {
@@ -261,5 +265,27 @@ fn an_undisplaced_compiler_real_keeps_the_compilers_num_superclass_chirho() {
         "own_scope_real_superclass_under_namesake_chirho.hs",
         OWN_SCOPE_REAL_SUPERCLASS_UNDER_NAMESAKE_CHIRHO,
         "6\n",
+    );
+}
+
+/// gpt #32942, the reachable boundary: a source class whose superclass is the compiler's
+/// `Typeable` at `Maybe a` while the program's own `Typeable` takes the spelling. No route may
+/// serve that superclass at the child's key `Int`, so the module is refused by name. GHC accepts
+/// the program and prints `weird`: this is a named gap, not parity.
+#[test]
+fn a_compiler_superclass_at_a_transformed_head_is_refused_by_name_chirho() {
+    let message_chirho = match compile_source_chirho(
+        TRANSFORMED_SUPERCLASS_HEAD_UNDER_NAMESAKE_CHIRHO,
+        &mut SourceMapChirho::new_chirho(),
+        "transformed_superclass_head_under_namesake_chirho.hs",
+    ) {
+        Ok(_) => panic!("served, where it must be refused by name"),
+        Err(error_chirho) => error_chirho.to_string(),
+    };
+    assert!(
+        message_chirho.contains("the compiler's `Typeable` superclass at a transformed head")
+            && message_chirho
+                .contains("while the program's own class takes the spelling `Typeable`"),
+        "refused, but not by the transformed-head refusal: {message_chirho}"
     );
 }

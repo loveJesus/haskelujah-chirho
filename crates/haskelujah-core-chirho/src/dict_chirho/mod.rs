@@ -85,6 +85,12 @@ pub struct SuperclassSlotChirho {
     pub namespace_chirho: String,
     pub index_chirho: usize,
     pub class_proof_chirho: haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
+    /// The witness that this superclass's dictionary sits at the child's whole key, read from
+    /// the actual producer template (gpt #32942): the declaring class has exactly one type
+    /// parameter and no kind prefix, and the template has no kind or extra type arguments and its
+    /// head is exactly that declaration's own type variable. Only a slot with this witness may be
+    /// served at a key reused from the child or its representation.
+    pub identity_head_chirho: bool,
 }
 
 /// One conditional instance's dictionary factory (row 694): the binding that takes the

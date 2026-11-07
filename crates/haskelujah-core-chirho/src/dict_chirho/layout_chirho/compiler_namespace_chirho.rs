@@ -505,6 +505,15 @@ impl DictPassCtxChirho {
             let spelled_chirho = format!("$f{}{ty_key_chirho}", slot_chirho.namespace_chirho);
             return CoreExprChirho::VarChirho(self.resolve_or_fresh_id_chirho(&spelled_chirho));
         };
+        // The child's key names this superclass only with the identity-head witness; a
+        // transformed head is refused by name, never served at the wrong key (gpt #32942).
+        if !slot_chirho.identity_head_chirho {
+            return self.displaced_refusal_chirho(
+                identity_chirho,
+                "superclass at a transformed head",
+                ty_key_chirho,
+            );
+        }
         match self.compiler_superclass_id_chirho(identity_chirho, ty_key_chirho) {
             Some(id_chirho) => CoreExprChirho::VarChirho(id_chirho),
             None => {
