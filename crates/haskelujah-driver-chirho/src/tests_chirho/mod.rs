@@ -13,6 +13,8 @@
 #[path = "suites_chirho/bench_chirho.rs"]
 pub mod bench_chirho;
 pub mod compile_chirho;
+#[path = "features_chirho/declared_modules_chirho.rs"]
+pub mod declared_modules_chirho;
 #[path = "suites_chirho/diff_chirho.rs"]
 pub mod diff_chirho;
 #[path = "evaluation_chirho/eval_advanced_chirho.rs"]

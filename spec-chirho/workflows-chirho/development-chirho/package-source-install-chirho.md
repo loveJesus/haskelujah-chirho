@@ -82,6 +82,39 @@ library's first source directory, where builds discover it too.
   and executable bounds. `collect_package_deps_chirho`, which `compile_cabal_project_chirho` keeps,
   still drops a later executable's bound on a package the library already names.
 
+## Declared source modules (required discovery)
+
+A component's declared modules are found by one probe, `find_module_file_chirho`: the first
+`<Module/Path>.hs`, `.lhs` or `.hsc` in its `hs-source-dirs`, in order. Its found-only faces skip
+what the probe misses, as builds once did everywhere. Its required faces refuse it by name, so a
+builtin module of the same name never stands in for a missing declared one:
+
+```mermaid
+flowchart TD
+  probe["find_module_file_chirho: first hit in hs-source-dirs"] --> found{"found?"}
+  found -- yes --> set["module set, in declaration order, deduplicated"]
+  found -- no --> generated{"the package's own Paths_ or PackageInfo_?"}
+  generated -- yes --> exempt["not a source obligation: install writes Paths_, builds generate neither"]
+  generated -- no --> face{"face"}
+  face -- found-only --> skipped["skipped: option maps, best-effort seeds, tests"]
+  face -- required --> refused["error: declared source modules are missing, each named"]
+```
+
+- `build_cabal_project_chirho` takes each executable's modules from
+  `require_executable_modules_chirho`: its package's libraries, its own other modules and its
+  `main-is`, which is searched in `hs-source-dirs` only.
+- `compile_cabal_project_chirho`, the library-only build, uses `require_modules_chirho`: libraries
+  and executables are required, and test-suite and benchmark modules stay best effort, since a
+  default build does not select them.
+- `DependencyWalkChirho::compile_package_chirho` reads a dependency library through
+  `library_modules_chirho` under its demand. The linked and install collectors are required; the
+  best-effort seed collector keeps found-only.
+- Install's `inventory_library_modules_chirho` keeps its own refusal, writes `Paths_` and refuses
+  `PackageInfo_`. An installed package therefore holds its `Paths_` module, while a plain store
+  copy or a project build has neither generated module, and an import of one fails as an unknown
+  module.
+- A failed build links nothing, so `build-run` never runs an executable an earlier build left.
+
 ## Builtin versions (concrete missing metadata)
 
 The compiler declares no version for the packages it provides. The `MIN_VERSION_*` values its C
