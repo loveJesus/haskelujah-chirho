@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::ty_chirho::TyVarChirho;
+use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use std::collections::HashSet;
 
 #[test]
@@ -384,4 +385,113 @@ fn constructor_prefix_resource_failure_remains_terminal_chirho() {
             .non_deferrable_diagnostics_chirho
             .has_errors_chirho()
     );
+}
+
+fn name_chirho(text_chirho: &str) -> NameChirho {
+    NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+        text_chirho,
+        SpanChirho::DUMMY_CHIRHO,
+    ))
+}
+
+fn variable_chirho(text_chirho: &str) -> ExprChirho {
+    ExprChirho::VarChirho(name_chirho(text_chirho))
+}
+
+fn assert_closed_chirho(context_chirho: &InferCtxChirho) {
+    assert!(context_chirho.skolem_bindings_chirho.is_empty_chirho());
+    assert!(!context_chirho.type_normalization_exhausted_chirho.get());
+}
+
+fn check_section_with_an_enclosing_meta_chirho(right_section_chirho: bool, list_chirho: bool) {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let enclosing_chirho = context_chirho.fresh_var_chirho();
+    let operator_chirho = if right_section_chirho {
+        TyChirho::fun_chirho(
+            TyChirho::bool_chirho(),
+            TyChirho::fun_chirho(enclosing_chirho.clone(), enclosing_chirho.clone()),
+        )
+    } else {
+        TyChirho::fun_chirho(
+            enclosing_chirho.clone(),
+            TyChirho::fun_chirho(TyChirho::bool_chirho(), enclosing_chirho.clone()),
+        )
+    };
+    context_chirho.env_chirho.bind_chirho(
+        "keepChirho".into(),
+        SchemeChirho::mono_chirho(operator_chirho),
+    );
+    context_chirho.env_chirho.bind_chirho(
+        "conditionChirho".into(),
+        SchemeChirho::mono_chirho(TyChirho::bool_chirho()),
+    );
+    let expected_chirho = TyChirho::fun_chirho(enclosing_chirho.clone(), enclosing_chirho);
+    let expected_chirho = if list_chirho {
+        TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("[]".into())),
+            Box::new(expected_chirho),
+        )
+    } else {
+        expected_chirho
+    };
+    let captured_chirho = context_chirho
+        .capture_signature_metas_chirho(&SchemeChirho::mono_chirho(expected_chirho.clone()));
+    assert!(captured_chirho.is_some());
+    let expression_chirho = if right_section_chirho {
+        ExprChirho::RightSectionChirho {
+            arg_chirho: Box::new(variable_chirho("conditionChirho")),
+            op_chirho: name_chirho("keepChirho"),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }
+    } else {
+        ExprChirho::LeftSectionChirho {
+            op_chirho: name_chirho("keepChirho"),
+            arg_chirho: Box::new(variable_chirho("conditionChirho")),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }
+    };
+    let expression_chirho = if list_chirho {
+        ExprChirho::ListChirho {
+            elements_chirho: vec![expression_chirho],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }
+    } else {
+        expression_chirho
+    };
+    let (substitution_chirho, actual_chirho) = context_chirho.infer_expr_against_expected_chirho(
+        &expression_chirho,
+        &expected_chirho,
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    assert_eq!(
+        actual_chirho,
+        substitution_chirho.apply_ty_chirho(&expected_chirho)
+    );
+    context_chirho.check_annotation_escape_chirho(
+        captured_chirho,
+        &std::collections::HashSet::new(),
+        SpanChirho::DUMMY_CHIRHO,
+    );
+    assert!(!context_chirho.diagnostics_chirho.has_errors_chirho());
+    assert!(
+        !context_chirho
+            .non_deferrable_diagnostics_chirho
+            .has_errors_chirho()
+    );
+    assert_closed_chirho(&context_chirho);
+}
+
+#[test]
+fn checking_a_left_section_keeps_enclosing_meta_escape_analysis_usable_chirho() {
+    check_section_with_an_enclosing_meta_chirho(false, false);
+}
+
+#[test]
+fn checking_a_right_section_keeps_enclosing_meta_escape_analysis_usable_chirho() {
+    check_section_with_an_enclosing_meta_chirho(true, false);
+}
+
+#[test]
+fn checking_a_list_section_keeps_enclosing_meta_escape_analysis_usable_chirho() {
+    check_section_with_an_enclosing_meta_chirho(false, true);
 }
