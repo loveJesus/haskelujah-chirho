@@ -225,17 +225,30 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    declaration_chirho[Actual constructor AST and positive owner declaration] --> fields_chirho[Optional ConstructorFields on the exported value]
+    declaration_chirho[Actual constructor AST and positive parent owner] --> fields_chirho[Complete physical labels on exported constructor]
+    declaration_chirho --> label_owners_chirho[Actual finite owner set on exported labels]
     fields_chirho --> selection_chirho[Existing export, re-export and import selection]
-    selection_chirho --> physical_chirho[Exact selected physical field order in the existing typing map]
-    physical_chirho --> pattern_chirho[Field/type correspondence and wildcard pattern binding]
-    fields_chirho --> future_chirho[Future source lexical admission, separate lease]
-    conflict_chirho[Weak or conflicting fragment account] --> unknown_chirho[No positive field authority]
-    legacy_chirho[Ownerless builtin string tables] --> compatibility_chirho[Explicit legacy typing-only behavior]
+    label_owners_chirho --> selection_chirho
+    selection_chirho --> scope_chirho[Same field map value: physical sequence plus eligible selected labels]
+    scope_chirho --> type_chirho[Typing: physical field/type zip; eligible omitted binders]
+    type_chirho --> finish_chirho[InferResult finish to existing DesugarInputs]
+    finish_chirho --> core_chirho[Core: full physical layout; eligible omitted binders]
+    core_chirho --> demanded_chirho{Named field demands lost positioning proof?}
+    demanded_chirho -->|Yes| refuse_chirho[Typed pre-Core field-account input failure]
+    demanded_chirho -->|No| output_chirho[Core output]
+    conflict_chirho[Weak or conflicting fragment] --> blocked_chirho[Absorbing Blocked in same payload]
+    blocked_chirho --> scope_chirho
+    legacy_chirho[Ownerless builtin or raw TH] --> compatibility_chirho[Explicit LegacyUnproven compatibility]
+    compatibility_chirho --> type_chirho
+    label_owners_chirho --> future_chirho[Future lexical admission: only positive actual-owner evidence]
 ```
 
-Row 712 publishes complete ordered labels only from the real ordinary/newtype/GADT constructor declaration and its existing positive declaration owner. A known empty label sequence is distinct from absent metadata. Callable selector availability remains separate: an existential field can be a valid pattern label while having no callable selector. Clones/filtering/re-exports retain the selected constructor payload; fragment conflicts enter an absorbing Blocked account instead of unioning labels or reopening legacy absence. Hidden labels do not change the constructor's physical order.
+Row712 publishes complete ordered labels only from the real ordinary/newtype/GADT constructor declaration and its existing positive owner. The same exported value payload also carries the actual finite owner set for field labels, including shared/DuplicateRecordFields declarations and standalone forwarding. Label selection must include that actual owner; same spelling, availability, defining-module text or a type-wide member list does not grant it. Fragment conflicts enter absorbing Blocked state rather than unioning labels or reopening legacy absence. Callable selector availability stays separate from field labels.
 
-The frontend gives a selected positive payload precedence over the former type-wide-to-every-constructor approximation. Qualified requests use exact selected full-name keys, and local AST producers publish their explicit module-qualified key as well as the ordinary bare key. A missing qualified payload cannot borrow an unrelated bare constructor.
+The existing typing/Core map value separates complete physical order from eligible omitted wildcard binders. Full physical labels keep their indices through field/type correspondence, construction, updates and matching. Only omitted wildcard pattern binders consume the eligible subset. The final map flows from inference through the existing driver/Core handoff; there is no parallel field registry. Exact qualified requests never borrow an unrelated bare namesake. Actual local declarations, including positional/fieldless empty labels, replace imported accounts consistently under bare and their real module-qualified keys. Empty labels do not imply zero runtime constructor arity.
 
-Full field authority remains OPEN. Builtin record tables such as `Identity`, `SelectT` and generic wrappers still lack actual declaration owners. Their existing ownerless/raw typing-only compatibility path is retained without manufacturing positive metadata, and future lexical admission must not consume that legacy path as proof. TH data conversion also lacks the existing written-role stamp required by the owner producer; its preexisting raw typing compatibility path remains unproven, and repairing that producer is separate work. Wildcard eligibility under label hiding awaits the finite GHC reference packet. Physical order and eligible omitted binders must not be conflated by filtering the current field vector. The source-only controls and reference predictions are unrun until their scheduler grants.
+The existing borrowed pre-Core cursor refuses a named-field demand when selected positioning evidence was lost, using a truthful typed field-account input cause. This retains existing constructor/projection/resource causes, codes and messages. Unused wildcard and empty positional syntax do not demand a named position. Physical metadata is positioning evidence, not general lexical label admission.
+
+Actual compile-only GHC9.14.1 references32870/32887 establish selected versus hidden wildcard policy, including qualified-only imports. A constructor-only wildcard remains valid when unused or preserving an outer binder; a hidden/sibling selector does not become an omitted binder. The new Haskelujah source/evaluation controls are prepared, unrun until their own scheduler grants; earlier76d2 is compilation-only evidence. Selected-positive controls avoid assuming an unmeasured duplicate-pattern-binder policy.
+
+Full field authority and lexical admission remain OPEN. Builtin record tables such as Identity/SelectT/generic wrappers still lack actual declaration owners, and TH data conversion lacks the written-role stamp required by the owner producer. Their existing ownerless/raw LegacyUnproven compatibility remains explicit; future lexical admission must never consume it as positive proof. General source lexical admission, Do typing710, TH producer repair and native behavior are separate work.

@@ -109,7 +109,7 @@ impl DesugarCtxChirho {
             },
         );
         check_module_projection_chirho(module_chirho, &mut projection_budget_chirho, 3)?;
-        let expanded_rows_chirho = input_chirho::check_executable_patterns_chirho(
+        let needs_context_chirho = input_chirho::check_executable_patterns_chirho(
             module_chirho,
             &mut projection_budget_chirho,
             None,
@@ -123,9 +123,10 @@ impl DesugarCtxChirho {
 
         // Pass -0.5: Collect pattern synonym definitions for expansion during desugaring
         self.collect_pat_syns_chirho(module_chirho);
-        if expanded_rows_chirho {
+        if needs_context_chirho {
             // The original syntax gate precedes metadata collection. The SAME
-            // remaining allowance now reserves complete matcher-owned columns.
+            // remaining allowance now checks named field accounts and reserves
+            // complete matcher-owned columns.
             input_chirho::check_executable_patterns_chirho(
                 module_chirho,
                 &mut projection_budget_chirho,

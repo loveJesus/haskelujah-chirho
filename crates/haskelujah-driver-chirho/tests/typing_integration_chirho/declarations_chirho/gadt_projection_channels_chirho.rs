@@ -82,15 +82,14 @@ fn assert_depth_refusal_chirho(error_chirho: ConstructorSignatureErrorChirho) {
 fn core_source_error_chirho(
     error_chirho: haskelujah_core_chirho::DesugarInputErrorChirho,
 ) -> ConstructorSignatureErrorChirho {
-    match error_chirho {
-        haskelujah_core_chirho::DesugarInputErrorChirho::ConstructorChirho(error_chirho) => {
+    error_chirho
+        .constructor_error_chirho()
+        .or_else(|| {
             error_chirho
-        }
-        haskelujah_core_chirho::DesugarInputErrorChirho::ProjectionChirho(error_chirho) => {
-            ConstructorSignatureErrorChirho::ProjectionChirho(error_chirho)
-        }
-        other_chirho => panic!("expected the source/resource error, found {other_chirho}"),
-    }
+                .projection_error_chirho()
+                .map(ConstructorSignatureErrorChirho::ProjectionChirho)
+        })
+        .unwrap_or_else(|| panic!("expected the source/resource error, found {error_chirho}"))
 }
 
 fn th_source_error_chirho(

@@ -31,6 +31,10 @@ use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
 use std::collections::{HashMap, HashSet};
+
+#[path = "infer_chirho/terms_chirho/constructor_patterns_chirho/field_scope_chirho.rs"]
+mod constructor_field_scope_chirho;
+pub use constructor_field_scope_chirho::ConstructorFieldScopeChirho;
 use std::sync::Arc;
 
 #[path = "infer_chirho/annotations_chirho/mod.rs"]
@@ -385,6 +389,8 @@ pub struct InferResultChirho {
     pub subst_chirho: SubstChirho,
     /// The type environment after inference (with all top-level bindings).
     pub env_chirho: TyEnvChirho,
+    /// Final constructor scopes, transported unchanged to the Core reader.
+    pub constructor_field_scopes_chirho: HashMap<String, ConstructorFieldScopeChirho>,
     /// The class environment after inference.
     pub class_env_chirho: ClassEnvChirho,
     /// Actual local instance declarations and their source spans, in registration
@@ -602,7 +608,7 @@ pub struct InferCtxChirho {
     con_strict_fields_chirho: HashMap<String, Vec<String>>,
     /// Record constructor field names: maps constructor name → ordered list of field names.
     /// Used for RecordWildCards expansion (`Foo{..}` fills in missing fields).
-    con_field_names_chirho: HashMap<String, Vec<String>>,
+    con_field_names_chirho: HashMap<String, ConstructorFieldScopeChirho>,
     /// Module-local numeric default declaration candidates from `default (...)`.
     module_default_types_chirho: Vec<TyChirho>,
     /// Whether the current module enables OverloadedStrings.
@@ -746,7 +752,7 @@ pub fn infer_module_with_imports_and_type_synonyms_chirho(
     module_chirho: &ModuleChirho,
     imported_types_chirho: &HashMap<String, SchemeChirho>,
     imported_type_synonyms_chirho: &HashMap<String, (Vec<String>, TypeChirho)>,
-    imported_record_field_names_chirho: &HashMap<String, Vec<String>>,
+    imported_record_field_names_chirho: &HashMap<String, ConstructorFieldScopeChirho>,
     safe_unqualified_imported_type_names_chirho: &HashSet<String>,
     preferred_qualified_type_names_chirho: &HashMap<String, String>,
 ) -> InferResultChirho {
@@ -767,7 +773,7 @@ pub fn infer_module_with_imports_type_synonyms_and_families_chirho(
     imported_types_chirho: &HashMap<String, SchemeChirho>,
     imported_type_synonyms_chirho: &HashMap<String, (Vec<String>, TypeChirho)>,
     imported_type_families_chirho: &TypeFamilyEnvChirho,
-    imported_record_field_names_chirho: &HashMap<String, Vec<String>>,
+    imported_record_field_names_chirho: &HashMap<String, ConstructorFieldScopeChirho>,
     safe_unqualified_imported_type_names_chirho: &HashSet<String>,
     preferred_qualified_type_names_chirho: &HashMap<String, String>,
 ) -> InferResultChirho {
@@ -792,7 +798,7 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     imported_type_synonyms_chirho: &HashMap<String, (Vec<String>, TypeChirho)>,
     imported_type_families_chirho: &TypeFamilyEnvChirho,
     imported_class_env_chirho: &ClassEnvChirho,
-    imported_record_field_names_chirho: &HashMap<String, Vec<String>>,
+    imported_record_field_names_chirho: &HashMap<String, ConstructorFieldScopeChirho>,
     safe_unqualified_imported_type_names_chirho: &HashSet<String>,
     preferred_qualified_type_names_chirho: &HashMap<String, String>,
 ) -> InferResultChirho {
@@ -836,7 +842,8 @@ pub struct InferenceImportContextChirho<'imports_chirho> {
     pub imported_class_env_chirho: &'imports_chirho ClassEnvChirho,
     /// Exact admitted spellings that are field labels without callable selectors.
     pub unavailable_selectors_chirho: &'imports_chirho HashSet<String>,
-    pub imported_record_field_names_chirho: &'imports_chirho HashMap<String, Vec<String>>,
+    pub imported_record_field_names_chirho:
+        &'imports_chirho HashMap<String, ConstructorFieldScopeChirho>,
     pub safe_unqualified_imported_type_names_chirho: &'imports_chirho HashSet<String>,
     pub preferred_qualified_type_names_chirho: &'imports_chirho HashMap<String, String>,
     /// `None` when naming did not run; see `InferCtxChirho::promotion_scope_chirho`.

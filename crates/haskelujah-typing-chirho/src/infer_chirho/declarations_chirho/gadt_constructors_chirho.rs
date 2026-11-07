@@ -10,22 +10,39 @@ use haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 use std::collections::HashMap;
 
+/// The real parent declaration supplies the owner; a result spelling never does.
+#[derive(Clone, Copy)]
+pub(crate) struct LocalConstructorFieldContextChirho<'owner_chirho> {
+    pub(crate) module_name_chirho: &'owner_chirho str,
+    pub(crate) owner_declaration_chirho:
+        Option<&'owner_chirho haskelujah_ast_chirho::name_chirho::TypeConstructorDeclarationChirho>,
+}
+
 impl InferCtxChirho {
     /// Both keys name the same actual local declaration. Qualified pattern
     /// consumers never borrow a field vector from an unrelated bare namesake.
     /// Workflow: compiler-pipeline-chirho/value-scope-resolution-chirho.
     pub(crate) fn bind_constructor_field_names_chirho(
         &mut self,
-        module_name_chirho: &str,
+        field_context_chirho: LocalConstructorFieldContextChirho<'_>,
         constructor_name_chirho: &str,
         fields_chirho: Vec<String>,
     ) {
+        let module_name_chirho = field_context_chirho.module_name_chirho;
+        let scope_chirho = match field_context_chirho.owner_declaration_chirho {
+            Some(owner_chirho) => super::ConstructorFieldScopeChirho::selected_chirho(
+                owner_chirho.clone(),
+                fields_chirho.clone(),
+                fields_chirho,
+            ),
+            None => super::ConstructorFieldScopeChirho::legacy_unproven_chirho(fields_chirho),
+        };
         self.con_field_names_chirho.insert(
             format!("{module_name_chirho}.{constructor_name_chirho}"),
-            fields_chirho.clone(),
+            scope_chirho.clone(),
         );
         self.con_field_names_chirho
-            .insert(constructor_name_chirho.to_string(), fields_chirho);
+            .insert(constructor_name_chirho.to_string(), scope_chirho);
     }
 
     /// The declaration gateway already checked the actual parent header. Retain an H98
@@ -41,7 +58,7 @@ impl InferCtxChirho {
         type_constructor_scope_chirho: Option<
             &haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho,
         >,
-        module_name_chirho: &str,
+        field_context_chirho: LocalConstructorFieldContextChirho<'_>,
         projection_budget_chirho: &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
     ) -> bool {
         use haskelujah_ast_chirho::decl_chirho::{
@@ -229,7 +246,7 @@ impl InferCtxChirho {
             (&signature_chirho, &source_binders_chirho),
             seed_chirho,
             type_constructor_scope_chirho,
-            module_name_chirho,
+            field_context_chirho,
             projection_budget_chirho,
         );
         true
@@ -243,7 +260,7 @@ impl InferCtxChirho {
         type_constructor_scope_chirho: Option<
             &haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho,
         >,
-        module_name_chirho: &str,
+        field_context_chirho: LocalConstructorFieldContextChirho<'_>,
         projection_budget_chirho: &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
     ) {
         let source_binders_chirho = signature_chirho
@@ -263,7 +280,7 @@ impl InferCtxChirho {
             (signature_chirho, &source_binders_chirho),
             seed_chirho,
             type_constructor_scope_chirho,
-            module_name_chirho,
+            field_context_chirho,
             projection_budget_chirho,
         );
     }
@@ -281,9 +298,10 @@ impl InferCtxChirho {
         type_constructor_scope_chirho: Option<
             &haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho,
         >,
-        module_name_chirho: &str,
+        field_context_chirho: LocalConstructorFieldContextChirho<'_>,
         projection_budget_chirho: &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
     ) {
+        let module_name_chirho = field_context_chirho.module_name_chirho;
         let (signature_chirho, written_chirho) = source_chirho;
         let ty_chirho = match signature_chirho.try_as_type_chirho(projection_budget_chirho) {
             Ok(ty_chirho) => ty_chirho,
@@ -360,7 +378,7 @@ impl InferCtxChirho {
                 .insert(name_chirho.text_chirho().to_string());
         }
         self.bind_constructor_field_names_chirho(
-            module_name_chirho,
+            field_context_chirho,
             name_chirho.text_chirho(),
             signature_chirho
                 .record_fields_chirho()

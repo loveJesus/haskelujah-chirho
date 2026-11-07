@@ -6,7 +6,9 @@
 //! after an implicit `import Prelude` is injected unless the module opts out.
 
 use super::*;
-use haskelujah_naming_chirho::iface_chirho::ConstructorFieldsChirho;
+
+#[path = "constructor_fields_chirho.rs"]
+mod constructor_field_scopes_chirho;
 
 /// What one module is checked against: the interfaces name resolution reads and the
 /// environment imported with them.
@@ -275,10 +277,11 @@ pub(crate) fn run_frontend_under_policy_chirho(
     }
     let mut unavailable_selectors_chirho = std::collections::HashSet::new();
     let mut selected_imported_value_schemes_chirho = Vec::new();
-    let mut merged_imported_record_field_names_chirho: std::collections::HashMap<
-        String,
-        Vec<String>,
-    > = std::collections::HashMap::new();
+    let merged_imported_record_field_names_chirho =
+        constructor_field_scopes_chirho::selected_import_field_scopes_chirho(
+            &module_chirho,
+            ifaces_chirho,
+        );
     let builtin_value_schemes_chirho =
         haskelujah_typing_chirho::infer_chirho::builtin_value_schemes_chirho();
     for (builtin_name_chirho, builtin_scheme_chirho) in &builtin_value_schemes_chirho {
@@ -364,54 +367,6 @@ pub(crate) fn run_frontend_under_policy_chirho(
                 budget_chirho: &mut qualification_budget_chirho,
                 span_chirho: import_chirho.module_chirho.span_chirho(),
             };
-            // Actual selected constructor payloads carry physical field order.
-            // Ownerless/raw tables retain their legacy typing-only behavior;
-            // those strings never become positive constructor-field authority.
-            // Workflow: compiler-pipeline-chirho/value-scope-resolution-chirho.
-            for (name_chirho, namespace_chirho, _) in &names_chirho {
-                if namespace_chirho
-                    != &haskelujah_naming_chirho::env_chirho::NamespaceChirho::ValueChirho
-                {
-                    continue;
-                }
-                let selected_fields_chirho = iface_chirho
-                    .exports_chirho
-                    .values_chirho
-                    .get(name_chirho)
-                    .and_then(|value_chirho| value_chirho.constructor_fields_chirho.as_ref());
-                let fields_chirho = match selected_fields_chirho {
-                    Some(ConstructorFieldsChirho::KnownChirho { labels_chirho, .. }) => {
-                        Some(labels_chirho.clone())
-                    }
-                    Some(ConstructorFieldsChirho::BlockedChirho) => None,
-                    // Ownerless/raw interfaces keep the old typing-only approximation.
-                    // A lost positive payload never reaches this absence branch.
-                    None => iface_chirho
-                        .exports_chirho
-                        .types_chirho
-                        .values()
-                        .find(|type_chirho| {
-                            type_chirho.declaration_chirho.is_none()
-                                && type_chirho.constructors_chirho.contains(name_chirho)
-                                && !type_chirho.methods_chirho.is_empty()
-                        })
-                        .map(|type_chirho| type_chirho.methods_chirho.clone()),
-                };
-                let qualified_constructor_chirho = format!("{qualifier_chirho}.{name_chirho}");
-                // Selected absence or blockage replaces an earlier account too.
-                merged_imported_record_field_names_chirho.remove(&qualified_constructor_chirho);
-                if !import_chirho.qualified_chirho {
-                    merged_imported_record_field_names_chirho.remove(name_chirho);
-                }
-                if let Some(fields_chirho) = fields_chirho {
-                    merged_imported_record_field_names_chirho
-                        .insert(qualified_constructor_chirho, fields_chirho.clone());
-                    if !import_chirho.qualified_chirho {
-                        merged_imported_record_field_names_chirho
-                            .insert(name_chirho.clone(), fields_chirho);
-                    }
-                }
-            }
             for (name_chirho, ns_chirho, _span_chirho) in &names_chirho {
                 if ns_chirho == &haskelujah_naming_chirho::env_chirho::NamespaceChirho::TypeChirho {
                     let module_qualified_name_chirho =

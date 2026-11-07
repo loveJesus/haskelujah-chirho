@@ -80,9 +80,11 @@ impl InferCtxChirho {
             .con_field_names_chirho
             .iter()
             .filter(|(_con_chirho, names_chirho)| {
-                updated_keys_chirho
-                    .iter()
-                    .all(|key_chirho| names_chirho.contains(key_chirho))
+                updated_keys_chirho.iter().all(|key_chirho| {
+                    names_chirho
+                        .physical_labels_chirho()
+                        .is_some_and(|labels_chirho| labels_chirho.contains(key_chirho))
+                })
             })
             .map(|(con_chirho, _names_chirho)| con_chirho)
             .collect();
@@ -170,6 +172,7 @@ impl InferCtxChirho {
         let declared_chirho: HashSet<&String> = constructors_chirho
             .iter()
             .filter_map(|con_chirho| self.con_field_names_chirho.get(con_chirho))
+            .filter_map(|scope_chirho| scope_chirho.physical_labels_chirho())
             .flat_map(|names_chirho| names_chirho.iter())
             .collect();
         let mut reported_chirho = false;
@@ -250,11 +253,26 @@ impl InferCtxChirho {
         fields_chirho: &[haskelujah_ast_chirho::pat_chirho::PatFieldChirho],
     ) {
         let con_name_chirho = con_chirho.full_name_chirho();
-        if !self.is_local_constructor_chirho(&con_name_chirho) {
+        if self.report_blocked_field_account_chirho(
+            &con_name_chirho,
+            !fields_chirho.is_empty(),
+            con_chirho.span_chirho(),
+        ) {
             return;
         }
-        let Some(declared_fields_chirho) =
-            self.con_field_names_chirho.get(&con_name_chirho).cloned()
+        let Some(scope_chirho) = self.con_field_names_chirho.get(&con_name_chirho) else {
+            return;
+        };
+        if !self.is_local_constructor_chirho(&con_name_chirho)
+            && scope_chirho.proven_wildcard_labels_chirho().is_none()
+        {
+            return;
+        }
+        let Some(declared_fields_chirho) = self
+            .con_field_names_chirho
+            .get(&con_name_chirho)
+            .and_then(|scope_chirho| scope_chirho.physical_labels_chirho())
+            .map(|labels_chirho| labels_chirho.to_vec())
         else {
             return;
         };
@@ -265,6 +283,30 @@ impl InferCtxChirho {
                 .iter()
                 .map(|field_chirho| (&field_chirho.name_chirho, field_chirho.span_chirho)),
         );
+    }
+
+    /// An absorbing loss of declaration evidence cannot reopen positional
+    /// guessing for named fields. Empty record syntax still uses known arity.
+    pub(super) fn report_blocked_field_account_chirho(
+        &mut self,
+        constructor_chirho: &str,
+        has_named_fields_chirho: bool,
+        span_chirho: SpanChirho,
+    ) -> bool {
+        if !has_named_fields_chirho
+            || !self
+                .con_field_names_chirho
+                .get(constructor_chirho)
+                .is_some_and(|scope_chirho| scope_chirho.is_blocked_chirho())
+        {
+            return false;
+        }
+        self.diagnostics_chirho.push_chirho(DiagnosticChirho::error_with_code_chirho(
+            ErrorCodeChirho::error_chirho(RECORD_FIELD_CODE_CHIRHO),
+            format!("named record field requires an unambiguous constructor field account for `{constructor_chirho}`"),
+            span_chirho,
+        ));
+        true
     }
 
     /// Shared field-set rule for record construction and matching. Callers
@@ -300,7 +342,11 @@ impl InferCtxChirho {
         if is_placeholder_import_scheme_chirho(&scheme_chirho) {
             return None;
         }
-        let mut field_names_chirho = self.con_field_names_chirho.get(con_name_chirho).cloned()?;
+        let mut field_names_chirho = self
+            .con_field_names_chirho
+            .get(con_name_chirho)
+            .and_then(|scope_chirho| scope_chirho.physical_labels_chirho())
+            .map(|labels_chirho| labels_chirho.to_vec())?;
         let instantiated_chirho = self.instantiate_chirho(&scheme_chirho, span_chirho);
         let mut remaining_ty_chirho = self.open_constructor_forall_chirho(instantiated_chirho);
         let mut field_tys_chirho = Vec::new();
@@ -349,7 +395,15 @@ impl InferCtxChirho {
         con_name_chirho: &str,
         fields_chirho: &[haskelujah_ast_chirho::expr_chirho::FieldAssignChirho],
     ) -> bool {
-        if fields_chirho.is_empty() || !self.is_local_constructor_chirho(con_name_chirho) {
+        let known_empty_chirho = self
+            .con_field_names_chirho
+            .get(con_name_chirho)
+            .filter(|scope_chirho| scope_chirho.proven_wildcard_labels_chirho().is_some())
+            .and_then(|scope_chirho| scope_chirho.physical_labels_chirho())
+            .is_some_and(|labels_chirho| labels_chirho.is_empty());
+        if fields_chirho.is_empty()
+            || !(self.is_local_constructor_chirho(con_name_chirho) || known_empty_chirho)
+        {
             return false;
         }
         for field_chirho in fields_chirho {

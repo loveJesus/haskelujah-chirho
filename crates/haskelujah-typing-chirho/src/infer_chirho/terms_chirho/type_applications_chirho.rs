@@ -90,13 +90,10 @@ impl InferCtxChirho {
 
         let mut field_names_chirho = self
             .con_field_names_chirho
-            .get(con_text_chirho)
-            .cloned()
-            .or_else(|| {
-                self.con_field_names_chirho
-                    .get(&con_full_name_chirho)
-                    .cloned()
-            })?;
+            .get(&con_full_name_chirho)
+            .and_then(|scope_chirho| scope_chirho.physical_labels_chirho())
+            .filter(|labels_chirho| !labels_chirho.is_empty())
+            .map(|labels_chirho| labels_chirho.to_vec())?;
         let instantiated_chirho = self.instantiate_chirho(&scheme_chirho, con_chirho.span_chirho());
         let mut remaining_ty_chirho = self.open_constructor_forall_chirho(instantiated_chirho);
         let mut field_tys_chirho = Vec::new();

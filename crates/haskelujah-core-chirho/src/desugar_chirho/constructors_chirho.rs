@@ -100,7 +100,11 @@ impl DesugarCtxChirho {
         con_name_chirho: &str,
         explicit_fields_chirho: &[haskelujah_ast_chirho::expr_chirho::FieldAssignChirho],
     ) -> Vec<CoreExprChirho> {
-        let all_field_names_chirho = self.con_field_names_chirho.get(con_name_chirho).cloned();
+        let all_field_names_chirho = self
+            .con_field_names_chirho
+            .get(con_name_chirho)
+            .and_then(|scope_chirho| scope_chirho.physical_labels_chirho())
+            .map(|labels_chirho| labels_chirho.to_vec());
         if let Some(all_fields_chirho) = all_field_names_chirho {
             let explicit_map_chirho: HashMap<String, &ExprChirho> = explicit_fields_chirho
                 .iter()
@@ -143,7 +147,12 @@ impl DesugarCtxChirho {
         con_name_chirho: &str,
         explicit_fields_chirho: &[haskelujah_ast_chirho::expr_chirho::FieldAssignChirho],
     ) -> Vec<CoreExprChirho> {
-        let Some(all_fields_chirho) = self.con_field_names_chirho.get(con_name_chirho).cloned()
+        let Some(all_fields_chirho) = self
+            .con_field_names_chirho
+            .get(con_name_chirho)
+            .and_then(|scope_chirho| scope_chirho.physical_labels_chirho())
+            .filter(|labels_chirho| !labels_chirho.is_empty())
+            .map(|labels_chirho| labels_chirho.to_vec())
         else {
             if explicit_fields_chirho.is_empty()
                 && let Some(arity_chirho) = self.con_arities_chirho.get(con_name_chirho).copied()

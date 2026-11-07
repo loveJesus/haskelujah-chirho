@@ -28,7 +28,7 @@ mod constructor_fields_chirho;
 mod selection_chirho;
 mod type_identity_chirho;
 pub use constructor_fields_chirho::ConstructorFieldsChirho;
-pub(crate) use constructor_fields_chirho::publish_source_constructor_fields_chirho;
+pub(crate) use constructor_fields_chirho::publish_source_constructor_values_chirho;
 pub use selection_chirho::{IfaceExposureChirho, select_import_iface_chirho};
 pub use type_identity_chirho::build_type_constructor_scope_chirho;
 #[cfg(test)]
@@ -809,9 +809,9 @@ pub fn merge_module_ifaces_chirho(
                             || value_chirho.constructor_fields_chirho.is_some())
                     {
                         alternate_value_chirho.constructor_fields_chirho =
-                            Some(ConstructorFieldsChirho::BlockedChirho);
+                            Some(ConstructorFieldsChirho::blocked_chirho());
                         value_chirho.constructor_fields_chirho =
-                            Some(ConstructorFieldsChirho::BlockedChirho);
+                            Some(ConstructorFieldsChirho::blocked_chirho());
                     }
                 }
                 existing_chirho

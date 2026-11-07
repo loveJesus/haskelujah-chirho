@@ -674,6 +674,7 @@ impl InferCtxChirho {
             non_deferrable_diagnostics_chirho: self.non_deferrable_diagnostics_chirho,
             subst_chirho: SubstChirho::empty_chirho(),
             env_chirho: self.env_chirho,
+            constructor_field_scopes_chirho: self.con_field_names_chirho,
             class_env_chirho: self.class_env_chirho,
             source_instances_chirho: self
                 .local_instances_chirho

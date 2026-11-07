@@ -243,14 +243,19 @@ impl DesugarCtxChirho {
             span_chirho,
         } = pat_chirho
         {
-            let con_name_chirho = con_chirho.text_chirho();
-            if let Some(all_fields_chirho) = self.con_field_names_chirho.get(con_name_chirho) {
+            let con_name_chirho = con_chirho.full_name_chirho();
+            if let Some(scope_chirho) = self.con_field_names_chirho.get(&con_name_chirho)
+                && let Some(all_fields_chirho) = scope_chirho.physical_labels_chirho()
+            {
+                let eligible_fields_chirho = scope_chirho
+                    .wildcard_binding_labels_chirho()
+                    .unwrap_or_default();
                 let explicit_names_chirho: HashSet<String> = fields_chirho
                     .iter()
                     .map(|f_chirho| f_chirho.name_chirho.text_chirho().to_string())
                     .collect();
                 let mut expanded_fields_chirho = fields_chirho.clone();
-                for field_name_chirho in all_fields_chirho {
+                for field_name_chirho in eligible_fields_chirho {
                     if !explicit_names_chirho.contains(field_name_chirho) {
                         // Create a Var pattern binding the field name as a variable
                         let name_chirho = haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(

@@ -871,6 +871,11 @@ impl InferCtxChirho {
             } => {
                 let con_text_chirho = con_chirho.text_chirho();
                 let con_full_name_chirho = con_chirho.full_name_chirho();
+                self.report_blocked_field_account_chirho(
+                    &con_full_name_chirho,
+                    !fields_chirho.is_empty(),
+                    *span_chirho,
+                );
                 let scheme_opt_chirho = self
                     .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
                         &con_full_name_chirho,
@@ -980,7 +985,7 @@ impl InferCtxChirho {
                                 return (combined_chirho, result_ty_chirho);
                             }
                             if self.report_fields_on_positional_constructor_chirho(
-                                con_text_chirho,
+                                &con_full_name_chirho,
                                 fields_chirho,
                             ) {
                                 let result_ty_chirho =

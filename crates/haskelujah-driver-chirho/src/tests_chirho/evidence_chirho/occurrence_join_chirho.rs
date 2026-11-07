@@ -78,6 +78,7 @@ pub(super) fn infer_result_chirho(
         source_instances_chirho: Vec::new(),
         subst_chirho: haskelujah_typing_chirho::subst_chirho::SubstChirho::empty_chirho(),
         env_chirho: haskelujah_typing_chirho::env_chirho::TyEnvChirho::new_chirho(),
+        constructor_field_scopes_chirho: HashMap::new(),
         class_env_chirho,
         type_families_chirho: Default::default(),
         diagnostics_chirho: haskelujah_diagnostics_chirho::DiagnosticBundleChirho::empty_chirho(),
