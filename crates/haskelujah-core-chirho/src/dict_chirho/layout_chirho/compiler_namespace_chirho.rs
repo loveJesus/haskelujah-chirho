@@ -341,6 +341,21 @@ impl DictPassCtxChirho {
         })
     }
 
+    /// Whether an occurrence's proof is a displaced compiler class. Routes that read spelled rows
+    /// from syntax rather than evidence leave such an occurrence to the evidence route, which
+    /// serves it from the compiler namespace or refuses it by name (gpt #32666).
+    pub(in crate::dict_chirho) fn displaced_occurrence_chirho(
+        &self,
+        id_chirho: CoreIdChirho,
+    ) -> bool {
+        self.occurrence_evidence_chirho
+            .get(&id_chirho)
+            .is_some_and(|evidence_chirho| {
+                self.displaced_identity_chirho(&evidence_chirho.class_identity_chirho)
+                    .is_some()
+            })
+    }
+
     /// Whether `method_name_chirho`, by any spelling, is one of the displaced compiler class's
     /// own methods, read from its compiler record.
     fn displaced_method_chirho(
