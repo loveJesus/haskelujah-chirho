@@ -31,6 +31,7 @@ use haskelujah_typing_chirho::infer_chirho::{
     QUALIFIED_ALIAS_AGREEMENT_CHIRHO, builtin_value_schemes_chirho,
 };
 
+#[path = "qualified_alias_agreement_chirho/surface_projection_chirho.rs"]
 mod surface_projection_chirho;
 use surface_projection_chirho::CheckedSurfaceChirho;
 
