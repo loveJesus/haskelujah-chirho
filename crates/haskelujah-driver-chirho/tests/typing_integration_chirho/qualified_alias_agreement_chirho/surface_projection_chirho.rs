@@ -283,6 +283,33 @@ fn project_arguments_chirho<'argument_chirho>(
         .iter()
         .map(|binder_chirho| binder_chirho.variable_chirho)
         .collect::<std::collections::HashSet<_>>();
+    // Opt-in diagnostic leaf (#32888): with HASKELUJAH_SURFACE_PROJECTION_DIAGNOSTIC_CHIRHO set,
+    // report the operands of every check below. The result is never changed.
+    if std::env::var_os("HASKELUJAH_SURFACE_PROJECTION_DIAGNOSTIC_CHIRHO").is_some() {
+        eprintln!(
+            "surface projection diagnostic Chirho: held={} owner={:?} checked_role={:?} selected_role={:?} declaration_equal={} checked_declaration={:?} selected_declaration={:?} identity={:?} selected_type_key={:?} visible_arity={} required={} reduction_arity={} binders={} unique={} arguments={} visibilities={:?}",
+            checked_chirho.held_chirho,
+            checked_chirho.owner_chirho,
+            checked_chirho.role_chirho,
+            declaration_chirho.role_chirho,
+            checked_chirho.declaration_chirho.as_ref() == Some(declaration_chirho),
+            checked_chirho.declaration_chirho,
+            declaration_chirho,
+            checked_chirho.identity_chirho,
+            declaration_chirho.type_key_chirho(),
+            checked_chirho.visible_arity_chirho,
+            required_chirho,
+            checked_chirho.reduction_arity_chirho,
+            checked_chirho.binders_chirho.len(),
+            unique_chirho.len(),
+            arguments_chirho.len(),
+            checked_chirho
+                .binders_chirho
+                .iter()
+                .map(|binder_chirho| binder_chirho.visibility_chirho)
+                .collect::<Vec<_>>(),
+        );
+    }
     if checked_chirho.held_chirho
         || checked_chirho.owner_chirho.is_some()
         || checked_chirho.role_chirho == TypeConstructorRoleChirho::UnknownChirho
