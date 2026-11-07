@@ -115,8 +115,8 @@ mod bindings_chirho;
 mod conditionals_chirho;
 #[path = "infer_chirho/terms_chirho/constructor_patterns_chirho/mod.rs"]
 mod constructor_patterns_chirho;
-#[path = "infer_chirho/terms_chirho/do_operations_chirho.rs"]
-mod do_operations_chirho;
+#[path = "infer_chirho/terms_chirho/do_blocks_chirho.rs"]
+mod do_blocks_chirho;
 #[path = "infer_chirho/terms_chirho/expected_chirho.rs"]
 mod expected_chirho;
 #[path = "infer_chirho/terms_chirho/expressions_chirho.rs"]
