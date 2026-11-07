@@ -461,6 +461,11 @@ pub struct MethodOccurrenceRecordChirho {
     pub ordinal_chirho: u32,
     pub class_name_chirho: String,
     pub ty_key_chirho: String,
+    /// The class proof of the predicate captured at this occurrence, ground or not (row 692,
+    /// C10). An own-dictionary or instance-context record keeps it as a ground one does, so the
+    /// dictionary pass never takes a compiler class's method for a namesake's. It is no ground
+    /// goal; Unknown stays absorbing.
+    pub class_identity_chirho: haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
     /// The complete closed goal after final substitution and normalization.
     /// Missing argument captures or an own dictionary never supply this proof.
     pub ground_pred_chirho: Option<PredChirho>,

@@ -36,6 +36,10 @@ pub(super) fn record_chirho(
         name_chirho: name_chirho.to_string(),
         ordinal_chirho,
         class_name_chirho: "Show".to_string(),
+        class_identity_chirho:
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+            ),
         ty_key_chirho: ty_key_chirho.to_string(),
         span_chirho,
         origin_chirho: None,

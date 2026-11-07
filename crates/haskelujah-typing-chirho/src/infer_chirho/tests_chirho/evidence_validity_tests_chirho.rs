@@ -85,6 +85,10 @@ fn occurrence_record_defaults_unresolved_standard_class_chirho() {
             name_chirho: "+".to_string(),
             ordinal_chirho: 0,
             class_name_chirho: "Num".to_string(),
+            class_identity_chirho:
+                haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                    haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+                ),
             ty_key_chirho: "Int".to_string(),
             ground_pred_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,

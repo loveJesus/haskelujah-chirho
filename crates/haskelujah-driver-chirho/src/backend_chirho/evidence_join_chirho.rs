@@ -59,8 +59,8 @@ impl JoinedProofChirho {
         }
     }
 
-    /// The proof one occurrence record makes under its engine key. Its class proof is its
-    /// finalized ground goal's; a record without one proves no class identity.
+    /// The proof one occurrence record makes under its engine key. Its class proof is the one
+    /// the checker captured for that predicate, ground or not (row 692, gpt #32675).
     fn from_record_chirho(
         record_chirho: &MethodOccurrenceRecordChirho,
         ty_key_chirho: String,
@@ -68,9 +68,7 @@ impl JoinedProofChirho {
         Self {
             class_name_chirho: record_chirho.class_name_chirho.clone(),
             ty_key_chirho,
-            class_identity_chirho: ground_class_proof_chirho(
-                record_chirho.ground_pred_chirho.as_ref(),
-            ),
+            class_identity_chirho: record_chirho.class_identity_chirho.clone(),
             ground_preds_chirho: record_chirho.ground_pred_chirho.iter().cloned().collect(),
             applied_ty_chirho: None,
         }

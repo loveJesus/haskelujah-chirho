@@ -577,6 +577,9 @@ fn an_origin_meets_class_proofs_in_both_capture_orders_chirho() {
             .into_iter()
             .map(|predicate_chirho| {
                 let mut record_chirho = identified_record_chirho("Int", Some(origin_chirho));
+                // The checker captures the class proof with the predicate it grounds.
+                record_chirho.class_identity_chirho =
+                    predicate_chirho.class_identity_chirho().clone();
                 record_chirho.ground_pred_chirho = Some(predicate_chirho);
                 record_chirho
             })

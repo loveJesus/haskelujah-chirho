@@ -532,6 +532,9 @@ impl InferCtxChirho {
                             name_chirho: name_chirho.clone(),
                             ordinal_chirho: *ordinal_chirho,
                             class_name_chirho: class_chirho.clone(),
+                            class_identity_chirho: resolved_predicate_chirho
+                                .class_identity_chirho()
+                                .clone(),
                             ty_key_chirho: key_chirho,
                             ground_pred_chirho: None,
                             span_chirho: *span_chirho,
@@ -575,6 +578,9 @@ impl InferCtxChirho {
                                 name_chirho: name_chirho.clone(),
                                 ordinal_chirho: *ordinal_chirho,
                                 class_name_chirho: class_chirho.clone(),
+                                class_identity_chirho: resolved_predicate_chirho
+                                    .class_identity_chirho()
+                                    .clone(),
                                 ty_key_chirho: key_chirho,
                                 ground_pred_chirho: None,
                                 span_chirho: *span_chirho,
@@ -600,6 +606,9 @@ impl InferCtxChirho {
                             name_chirho: name_chirho.clone(),
                             ordinal_chirho: *ordinal_chirho,
                             class_name_chirho: class_chirho.clone(),
+                            class_identity_chirho: resolved_predicate_chirho
+                                .class_identity_chirho()
+                                .clone(),
                             ty_key_chirho: key_chirho,
                             ground_pred_chirho: None,
                             span_chirho: *span_chirho,
@@ -626,6 +635,9 @@ impl InferCtxChirho {
                         name_chirho: name_chirho.clone(),
                         ordinal_chirho: *ordinal_chirho,
                         class_name_chirho: class_chirho.clone(),
+                        class_identity_chirho: resolved_predicate_chirho
+                            .class_identity_chirho()
+                            .clone(),
                         ty_key_chirho: key_chirho,
                         ground_pred_chirho: evidence_chirho::ground_pred_chirho(
                             self,
