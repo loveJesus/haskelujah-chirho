@@ -2839,7 +2839,7 @@ import Utils.Containers.Internal.StrictPair\n\
 data EqMiniChirho a = EqMiniChirho { runEqMiniChirho :: a -> StrictPair Bool a }\n\
 \n\
 unwrapEqMiniChirho :: EqMiniChirho a -> a -> StrictPair Bool a\n\
-unwrapEqMiniChirho fChirho xChirho = case runEqMiniChirho fChirho xChirho of\n\
+unwrapEqMiniChirho fChirho xChirho = case runEqMiniChirho fChirho xChirho of\n  \
   rChirho@(eChirho :*: xPrimeChirho) -> if eChirho then True :*: xPrimeChirho else rChirho\n",
         )
         .unwrap();
