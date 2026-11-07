@@ -42,6 +42,42 @@ fn eval_do_let_multi_chirho() {
     }
 }
 
+/// An unsigned do function that only binds infers `Monad m =>` from its selected `>>=`, as GHC
+/// does; nothing else in its body asks for Monad (row 710). At the list monad it runs.
+#[test]
+fn an_unsigned_bind_only_do_function_infers_its_monad_constraint_chirho() {
+    let source_chirho = concat!(
+        "module BindOnlyChirho where\n",
+        "thenChirho firstChirho secondChirho = do\n",
+        "  _ <- firstChirho\n",
+        "  secondChirho\n",
+        "main = print (thenChirho [1, 2 :: Int] [3 :: Int])\n",
+    );
+    let checked_chirho = crate::typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "BindOnlyChirho.hs",
+    )
+    .expect("GHC accepts the program");
+    let scheme_chirho = checked_chirho
+        .infer_result_chirho
+        .env_chirho
+        .lookup_chirho("thenChirho")
+        .expect("thenChirho is checked");
+    assert!(
+        format!("{scheme_chirho}").contains("Monad"),
+        "the selected >>= must constrain the monad: {scheme_chirho}"
+    );
+    let (_, machine_chirho) = crate::eval_source_with_machine_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        "BindOnlyChirho.hs",
+        None,
+    )
+    .expect("the program runs");
+    assert_eq!(machine_chirho.io_output_chirho, "[3,3]\n");
+}
+
 #[test]
 fn eval_do_bind_uses_bound_var_chirho() {
     use crate::eval_source_chirho;

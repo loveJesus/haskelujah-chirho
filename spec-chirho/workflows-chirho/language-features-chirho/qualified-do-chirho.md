@@ -63,7 +63,8 @@ flowchart TD
   instantiation and its ignored unifier are gone. A plain local bind, a `($)` bind (GHC T17594f),
   an indexed or graded bind and a rank-N bind (GHC T21206) type by their own schemes.
 - A block in which some statement carries NO selection (hand-built ASTs, Template Haskell
-  conversion, the RecursiveDo knot) keeps the shape-only typing as a whole: no wanted, no evidence,
+  conversion, the RecursiveDo knot), or whose selected operation is not in scope (resolution keeps
+  naming the missing method, qualified), keeps the shape-only typing as a whole: no wanted, no evidence,
   no proof, no spelling lookup. Any change to that policy waits for root's word.
 - Checking mode: a `let` after a bind sits inside a lambda that the application checker types.
   The checking-mode arm for `let` lives in the reserved expected_chirho.rs, so such a tail is

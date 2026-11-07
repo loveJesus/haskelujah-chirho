@@ -20,7 +20,8 @@
 //! through the application checker, with no block-wide monad. Each statement is cloned once.
 //!
 //! A block in which some statement carries NO selection (a hand-built AST, Template Haskell
-//! conversion, the RecursiveDo knot), or whose last statement is not an expression, keeps the
+//! conversion, the RecursiveDo knot), whose selected operation is not in scope (so resolution
+//! still names it, qualified), or whose last statement is not an expression, keeps the
 //! typing it had before row 710: shape-only, with no wanted, no evidence, no proof and no spelling
 //! lookup. Changing that policy waits for root's word.
 //! workflow: language-features-chirho/qualified-do-chirho
@@ -58,8 +59,9 @@ impl InferCtxChirho {
             .iter()
             .take_while(|stmt_chirho| matches!(stmt_chirho, StmtChirho::LetChirho { .. }))
             .count();
-        let Some(translated_chirho) = translate_do_chirho(&stmts_chirho[leading_lets_chirho..])
-        else {
+        let translated_chirho = translate_do_chirho(&stmts_chirho[leading_lets_chirho..])
+            .filter(|_| self.selections_resolve_chirho(stmts_chirho));
+        let Some(translated_chirho) = translated_chirho else {
             return self.infer_shape_only_do_chirho(stmts_chirho, expected_chirho, span_chirho);
         };
         let type_pattern_scope_mark_chirho = self.type_pattern_alias_undo_chirho.len();
@@ -83,6 +85,31 @@ impl InferCtxChirho {
         self.restore_type_pattern_aliases_chirho(type_pattern_scope_mark_chirho);
         self.env_chirho.pop_scope_chirho();
         (subst_chirho, ty_chirho)
+    }
+
+    /// Whether every operation the block selected is in scope. A block with one that is not keeps the
+    /// shape-only typing, so the missing name stays loud where it always has been, in resolution,
+    /// under its qualified spelling.
+    fn selections_resolve_chirho(&self, stmts_chirho: &[StmtChirho]) -> bool {
+        stmts_chirho
+            .iter()
+            .flat_map(|stmt_chirho| match stmt_chirho {
+                StmtChirho::BindChirho {
+                    bind_chirho,
+                    fail_chirho,
+                    ..
+                } => [bind_chirho.as_ref(), fail_chirho.as_ref()],
+                StmtChirho::ExprChirho { then_chirho, .. } => [then_chirho.as_ref(), None],
+                StmtChirho::LetChirho { .. } => [None, None],
+            })
+            .flatten()
+            .all(|selected_chirho| {
+                self.lookup_value_scheme_with_qualified_suffix_fallback_chirho(
+                    &selected_chirho.name_chirho.full_name_chirho(),
+                    selected_chirho.name_chirho.text_chirho(),
+                )
+                .is_some()
+            })
     }
 
     /// The typing every block had before row 710, kept for a block the translation does not cover
