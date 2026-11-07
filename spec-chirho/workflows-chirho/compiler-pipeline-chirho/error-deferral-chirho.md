@@ -109,3 +109,21 @@ The shared edition tables and explicit implication graph follow [GHC 9.14.1 DynF
   - a CPP module's header options on the source path;
   - double- versus single-quoted switches.
 - The three earlier `typed_hole_*` tests in `extensions_chirho.rs` keep their sources and expectations and now ask for `-fdefer-typed-holes` explicitly. Their unsigned `main = 42` keeps any inherited row 692 numeric-entry failure as it was.
+
+## Checked consumer search options Chirho
+
+`compile_source_with_search_path_and_options_chirho` applies caller options to the checked consumer while retaining the same filesystem sibling/hierarchical discovery and reached-module admission. The existing `compile_source_with_search_path_chirho` and file-oriented entry keep their default-options behavior. Providers retain their own source headers and default route; caller flags are not propagated session-wide. This does not add CPP preprocessing or a Program/Value/IO-entry contract.
+
+The existing `FrontendPolicyChirho` resolves caller options before the actual consumer header. That policy reaches BOTH the early discovery parser/lowerer and the final existing option-aware frontend. Interfaces, inferred types, synonyms, families and the fresh empty imported class environment follow the same producer and backend path; tests do not reconstruct certificate-bearing interfaces.
+
+```mermaid
+flowchart TD
+    caller_options_chirho[Checked consumer caller options] --> actual_header_chirho[Then the actual consumer header]
+    actual_header_chirho --> resolved_policy_chirho[Existing FrontendPolicy]
+    resolved_policy_chirho --> root_discovery_chirho[Root discovery parser and lowerer]
+    root_discovery_chirho --> existing_admission_chirho[Existing reached-module admission]
+    provider_headers_chirho[Provider own headers and default route] --> existing_admission_chirho
+    existing_admission_chirho --> existing_frontend_chirho[Same imports into option-aware frontend]
+    resolved_policy_chirho --> existing_frontend_chirho
+    existing_frontend_chirho --> existing_backend_chirho[Same compilation result and backend]
+```

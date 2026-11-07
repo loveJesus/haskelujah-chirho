@@ -605,6 +605,26 @@ pub fn compile_source_with_search_path_chirho(
     file_name_chirho: &str,
     search_dir_chirho: &Path,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
+    compile_source_with_search_path_and_options_chirho(
+        source_chirho,
+        source_map_chirho,
+        file_name_chirho,
+        search_dir_chirho,
+        &FrontendOptionsChirho::default(),
+    )
+}
+
+/// Compile the checked consumer under caller options, retaining the existing
+/// filesystem supplier/admission path. Providers keep their own headers and
+/// default options; this does not add CPP or session-wide provider options.
+/// workflow: compiler-pipeline-chirho/error-deferral-chirho
+pub fn compile_source_with_search_path_and_options_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    file_name_chirho: &str,
+    search_dir_chirho: &Path,
+    options_chirho: &FrontendOptionsChirho,
+) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
     compile_source_with_search_context_chirho(
         source_chirho,
         source_map_chirho,
@@ -612,6 +632,7 @@ pub fn compile_source_with_search_path_chirho(
             file_name_chirho,
             search_dir_chirho,
             checked_path_chirho: None,
+            options_chirho,
         },
     )
 }
@@ -845,6 +866,7 @@ pub fn compile_source_file_with_search_path_chirho(
             file_name_chirho: &file_name_chirho,
             search_dir_chirho,
             checked_path_chirho: Some(checked_path_chirho),
+            options_chirho: &FrontendOptionsChirho::default(),
         },
     )
 }
@@ -858,6 +880,7 @@ fn compile_source_with_search_context_chirho(
         file_name_chirho,
         search_dir_chirho,
         checked_path_chirho,
+        options_chirho,
     } = context_chirho;
     let source_file_chirho = SourceFileChirho::from_source_map_chirho(
         source_map_chirho,
@@ -912,9 +935,27 @@ fn compile_source_with_search_context_chirho(
         }
     }
 
-    let discovery_parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
+    let discovery_policy_chirho = FrontendPolicyChirho::resolve_chirho(
+        &options_chirho.ghc_options_chirho,
+        [
+            haskelujah_parser_chirho::pragma_chirho::header_pragmas_chirho(
+                source_chirho,
+                file_id_chirho,
+            ),
+        ],
+    );
+    let discovery_parser_chirho = ParserChirho::with_extensions_chirho(
+        source_chirho,
+        file_id_chirho,
+        &discovery_policy_chirho.extensions_chirho,
+    );
     let discovery_green_chirho = discovery_parser_chirho.parse_checked_chirho()?;
-    let mut discovery_module_chirho = lower_module_chirho(&discovery_green_chirho, file_id_chirho);
+    let mut discovery_module_chirho =
+        haskelujah_parser_chirho::lower_chirho::lower_module_with_extensions_chirho(
+            &discovery_green_chirho,
+            file_id_chirho,
+            &discovery_policy_chirho.extensions_chirho,
+        );
     inject_prelude_import_chirho(&mut discovery_module_chirho);
     register_discovered_type_families_chirho(
         &discovery_module_chirho,
@@ -928,13 +969,19 @@ fn compile_source_with_search_context_chirho(
         },
     )?;
 
-    let frontend_result_chirho = run_frontend_with_type_synonyms_and_type_families_chirho(
+    let imported_class_env_chirho =
+        haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho();
+    let frontend_result_chirho = run_frontend_with_options_chirho(
         source_chirho,
         file_id_chirho,
-        &all_ifaces_chirho,
-        &imported_types_chirho,
-        &imported_type_synonyms_chirho,
-        &imported_type_families_chirho,
+        FrontendImportsChirho {
+            ifaces_chirho: &all_ifaces_chirho,
+            types_chirho: &imported_types_chirho,
+            type_synonyms_chirho: &imported_type_synonyms_chirho,
+            type_families_chirho: &imported_type_families_chirho,
+            class_env_chirho: &imported_class_env_chirho,
+        },
+        options_chirho,
     )?;
 
     let FrontendResultChirho {
@@ -982,4 +1029,5 @@ struct SourceSearchContextChirho<'source_chirho> {
     file_name_chirho: &'source_chirho str,
     search_dir_chirho: &'source_chirho Path,
     checked_path_chirho: Option<&'source_chirho Path>,
+    options_chirho: &'source_chirho FrontendOptionsChirho,
 }
