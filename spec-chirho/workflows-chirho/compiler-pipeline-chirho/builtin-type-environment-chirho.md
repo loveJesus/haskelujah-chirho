@@ -119,6 +119,8 @@ flowchart TD
   - For remaining aliases, that interface must be proven builtin. Only then does `qualified_builtin_alias_scheme_chirho` give the alias the bare builtin scheme of its name, and only when the generated table lists `(module, name)`.
   - Otherwise the alias keeps the placeholder.
   - Row 598 already links the alias to the bare name at runtime, so the type now describes what runs.
+
+The agreement test's surface printer receives the actual public elaboration catalogue plus the selected interface's positive type declaration. It looks up that declaration's existing key through `declaration_schemes_chirho().get_chirho()`, validates the same declaration/role, non-held published telescope, full argument/binder arity and required-slot count, then omits only inferred/specified slots from the surface rendering. A missing declaration, unknown/held entry or partial hidden application is an error rather than accidental agreement. A source namesake with two required parameters keeps both. This is a test-helper projection of the existing typed representation; it changes neither the frozen GHC table nor a typing producer. The original raw U5 Proxy mismatch remains historical evidence until the candidate helper is executed under its own scheduler grant.
 - **Interface origin.** `IfaceExportsChirho::origin_chirho` is an `IfaceOriginChirho`, and its default `SourceChirho` fails closed.
   - Only `builtin_module_ifaces_chirho` marks `BuiltinChirho`, in one loop over its finished vector.
   - `merge_module_ifaces_chirho` keeps `BuiltinChirho` only when every merged copy carries it, in either order.

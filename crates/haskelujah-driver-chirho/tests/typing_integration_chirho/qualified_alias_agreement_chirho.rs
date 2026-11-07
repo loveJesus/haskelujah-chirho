@@ -30,115 +30,11 @@ use haskelujah_span_chirho::FileIdChirho;
 use haskelujah_typing_chirho::infer_chirho::{
     QUALIFIED_ALIAS_AGREEMENT_CHIRHO, builtin_value_schemes_chirho,
 };
-use haskelujah_typing_chirho::{SchemeChirho, TyChirho};
+
+mod surface_projection_chirho;
+use surface_projection_chirho::CheckedSurfaceChirho;
 
 const SYMBOL_CHARS_CHIRHO: &str = "!#$%&*+./<=>?@\\^|-~:";
-
-/// A builtin type printed as Haskell type text, ready for the normalizer.
-fn ty_text_chirho(ty_chirho: &TyChirho, top_chirho: bool) -> String {
-    let wrap_chirho = |text_chirho: String| {
-        if top_chirho {
-            text_chirho
-        } else {
-            format!("({text_chirho})")
-        }
-    };
-    match ty_chirho {
-        TyChirho::VarChirho(var_chirho) => format!("t{}", var_chirho.0),
-        TyChirho::ConChirho(name_chirho) | TyChirho::ForallVarChirho(name_chirho) => {
-            name_chirho.clone()
-        }
-        TyChirho::ListChirho(inner_chirho) => format!("[{}]", ty_text_chirho(inner_chirho, true)),
-        TyChirho::TupleChirho(elements_chirho) => format!(
-            "({})",
-            elements_chirho
-                .iter()
-                .map(|element_chirho| ty_text_chirho(element_chirho, true))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-        TyChirho::FunChirho(arg_chirho, result_chirho, _) => {
-            let arg_text_chirho = match **arg_chirho {
-                TyChirho::FunChirho(..) => format!("({})", ty_text_chirho(arg_chirho, true)),
-                _ => ty_text_chirho(arg_chirho, true),
-            };
-            wrap_chirho(format!(
-                "{arg_text_chirho} -> {}",
-                ty_text_chirho(result_chirho, true)
-            ))
-        }
-        TyChirho::AppChirho(..) => {
-            let mut args_chirho = Vec::new();
-            let mut head_chirho = ty_chirho;
-            while let TyChirho::AppChirho(fun_chirho, arg_chirho) = head_chirho {
-                args_chirho.push(ty_text_chirho(arg_chirho, false));
-                head_chirho = fun_chirho;
-            }
-            args_chirho.reverse();
-            wrap_chirho(format!(
-                "{} {}",
-                ty_text_chirho(head_chirho, false),
-                args_chirho.join(" ")
-            ))
-        }
-        TyChirho::QualChirho {
-            context_chirho,
-            body_chirho,
-        } => wrap_chirho(format!(
-            "({}) => {}",
-            context_chirho
-                .iter()
-                .map(|term_chirho| ty_text_chirho(term_chirho, true))
-                .collect::<Vec<_>>()
-                .join(", "),
-            ty_text_chirho(body_chirho, true)
-        )),
-        TyChirho::ForallChirho {
-            vars_chirho,
-            body_chirho,
-        }
-        | TyChirho::RequiredForallChirho {
-            vars_chirho,
-            body_chirho,
-        } => format!(
-            "(forall {}. {})",
-            vars_chirho
-                .iter()
-                .map(|var_chirho| format!("t{}", var_chirho.0))
-                .collect::<Vec<_>>()
-                .join(" "),
-            ty_text_chirho(body_chirho, true)
-        ),
-    }
-}
-
-/// A builtin scheme printed as `(C1 a, C2 b) => body`.
-fn scheme_text_chirho(scheme_chirho: &SchemeChirho) -> String {
-    let body_chirho = ty_text_chirho(&scheme_chirho.ty_chirho, true);
-    if scheme_chirho.preds_chirho.is_empty() {
-        return body_chirho;
-    }
-    let preds_chirho: Vec<String> = scheme_chirho
-        .preds_chirho
-        .iter()
-        .map(|pred_chirho| {
-            std::iter::once(pred_chirho.class_name_chirho.clone())
-                .chain(std::iter::once(ty_text_chirho(
-                    &pred_chirho.ty_chirho,
-                    false,
-                )))
-                .chain(
-                    pred_chirho
-                        .extra_tys_chirho
-                        .iter()
-                        .map(|extra_chirho| ty_text_chirho(extra_chirho, false)),
-                )
-                .collect::<Vec<_>>()
-                .join(" ")
-        })
-        .collect();
-    format!("({}) => {body_chirho}", preds_chirho.join(", "))
-}
 
 /// Split type text into tokens: brackets, commas, symbol runs, and names. A name keeps its
 /// module qualifiers (`Data.Map.Internal.Map`, `Prelude..`) until the contract strips them.
@@ -471,6 +367,8 @@ fn write_qualified_alias_table_chirho() {
     let work_chirho = generator_dir_chirho("QUALIFIED_ALIAS_WORK_CHIRHO");
     let evidence_chirho = generator_dir_chirho("QUALIFIED_ALIAS_EVIDENCE_CHIRHO");
     let schemes_chirho = builtin_value_schemes_chirho();
+    let ifaces_chirho = builtin_module_ifaces_chirho();
+    let surface_chirho = CheckedSurfaceChirho::builtin_chirho(&ifaces_chirho);
     let answers_chirho = std::fs::read_to_string(work_chirho.join("ghc-types-chirho.tsv")).unwrap();
     let mut counts_chirho: BTreeMap<&str, usize> = BTreeMap::new();
     let mut table_chirho = Vec::new();
@@ -489,7 +387,15 @@ fn write_qualified_alias_table_chirho() {
             (false, None) => "no bare scheme",
             (false, Some(scheme_chirho)) => {
                 let ghc_type_chirho = normalized_type_chirho(ghc_chirho);
-                let bare_type_chirho = normalized_type_chirho(&scheme_text_chirho(scheme_chirho));
+                let iface_chirho = ifaces_chirho
+                    .iter()
+                    .find(|iface_chirho| iface_chirho.name_chirho == module_chirho)
+                    .expect("the queried module is an actual builtin interface Chirho");
+                let bare_type_chirho = normalized_type_chirho(
+                    &surface_chirho
+                        .scheme_text_chirho(scheme_chirho, iface_chirho)
+                        .expect("agreement requires a checked surface projection Chirho"),
+                );
                 if ghc_type_chirho == bare_type_chirho {
                     table_chirho.push(table_line_chirho(
                         module_chirho,
@@ -598,6 +504,8 @@ fn every_entry_is_an_unkeyed_builtin_export_that_still_agrees_chirho() {
     // A later edit to a bare builtin scheme fails here instead of mistyping an alias.
     let schemes_chirho = builtin_value_schemes_chirho();
     let exports_chirho = builtin_exports_chirho();
+    let ifaces_chirho = builtin_module_ifaces_chirho();
+    let surface_chirho = CheckedSurfaceChirho::builtin_chirho(&ifaces_chirho);
     for (module_chirho, name_chirho, ghc_type_chirho) in QUALIFIED_ALIAS_AGREEMENT_CHIRHO {
         assert_eq!(
             exports_chirho.get(&(module_chirho.to_string(), name_chirho.to_string())),
@@ -608,7 +516,19 @@ fn every_entry_is_an_unkeyed_builtin_export_that_still_agrees_chirho() {
             .get(*name_chirho)
             .unwrap_or_else(|| panic!("{name_chirho} has no bare builtin scheme"));
         assert_eq!(
-            normalized_type_chirho(&scheme_text_chirho(scheme_chirho)),
+            normalized_type_chirho(
+                &surface_chirho
+                    .scheme_text_chirho(
+                        scheme_chirho,
+                        ifaces_chirho
+                            .iter()
+                            .find(|iface_chirho| iface_chirho.name_chirho == *module_chirho)
+                            .expect("agreement row has its actual builtin interface Chirho"),
+                    )
+                    .unwrap_or_else(|error_chirho| panic!(
+                        "{module_chirho}.{name_chirho}: {error_chirho}"
+                    ))
+            ),
             *ghc_type_chirho,
             "{module_chirho}.{name_chirho}: the bare scheme no longer prints to GHC 9.14.1's type; \
              regenerate with generate_chirho.py"
