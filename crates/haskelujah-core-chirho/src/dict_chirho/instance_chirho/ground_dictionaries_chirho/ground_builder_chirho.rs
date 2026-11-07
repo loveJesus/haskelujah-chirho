@@ -462,7 +462,7 @@ impl DictPassCtxChirho {
                 match self.displaced_identity_chirho(&slot_chirho.class_proof_chirho) {
                     Some(identity_chirho) => self.displaced_ground_superclass_chirho(
                         class_env_chirho,
-                        &goal_chirho,
+                        goal_chirho,
                         slot_chirho,
                         identity_chirho,
                     )?,

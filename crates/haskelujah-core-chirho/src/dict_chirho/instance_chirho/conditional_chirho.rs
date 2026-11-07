@@ -195,8 +195,7 @@ impl DictPassCtxChirho {
 
         // Superclass dict arguments
         for slot_chirho in &layout_chirho.super_slots_chirho {
-            field_args_chirho
-                .push(self.superclass_field_chirho(slot_chirho, &list_type_key_chirho));
+            field_args_chirho.push(self.superclass_field_chirho(slot_chirho, list_type_key_chirho));
         }
 
         // Method arguments: find the user's $prim_ bindings.
@@ -531,8 +530,7 @@ impl DictPassCtxChirho {
 
         // Superclass dicts (Eq has none)
         for slot_chirho in &layout_chirho.super_slots_chirho {
-            field_args_chirho
-                .push(self.superclass_field_chirho(slot_chirho, &list_type_key_chirho));
+            field_args_chirho.push(self.superclass_field_chirho(slot_chirho, list_type_key_chirho));
         }
 
         // Method implementations
@@ -583,8 +581,7 @@ impl DictPassCtxChirho {
         let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
 
         for slot_chirho in &layout_chirho.super_slots_chirho {
-            field_args_chirho
-                .push(self.superclass_field_chirho(slot_chirho, &list_type_key_chirho));
+            field_args_chirho.push(self.superclass_field_chirho(slot_chirho, list_type_key_chirho));
         }
 
         for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {

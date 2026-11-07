@@ -932,12 +932,12 @@ impl DictPassCtxChirho {
                     field_args_chirho.push(self.displaced_refusal_chirho(
                         identity_chirho,
                         "superclass at a transformed head",
-                        &type_key_chirho,
+                        type_key_chirho,
                     ));
                     continue;
                 }
                 let served_chirho = self
-                    .compiler_superclass_id_chirho(identity_chirho, &type_key_chirho)
+                    .compiler_superclass_id_chirho(identity_chirho, type_key_chirho)
                     .or_else(|| {
                         self.compiler_superclass_id_chirho(
                             identity_chirho,
@@ -949,7 +949,7 @@ impl DictPassCtxChirho {
                     None => self.displaced_refusal_chirho(
                         identity_chirho,
                         "superclass slot",
-                        &type_key_chirho,
+                        type_key_chirho,
                     ),
                 });
                 continue;
