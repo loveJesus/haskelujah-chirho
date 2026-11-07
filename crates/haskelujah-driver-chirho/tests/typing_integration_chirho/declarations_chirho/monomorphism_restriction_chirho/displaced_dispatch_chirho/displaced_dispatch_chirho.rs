@@ -40,6 +40,15 @@ const POWER_UNDER_NAMESAKE_FRACTIONAL_CHIRHO: &str =
 /// The early extremum route: the Prelude's `maximum` under a program's own `Ord`.
 const MAXIMUM_UNDER_NAMESAKE_ORD_CHIRHO: &str =
     include_str!("maximum_under_namesake_ord_chirho.hs");
+/// A reference to a compiler-constrained function at the binding's own dictionary.
+const POLYMORPHIC_REFERENCE_UNDER_NAMESAKE_CHIRHO: &str =
+    include_str!("polymorphic_reference_under_namesake_chirho.hs");
+/// An infix use of a compiler-constrained function, served with no reference evidence.
+const INFIX_CONSTRAINED_UNDER_NAMESAKE_CHIRHO: &str =
+    include_str!("infix_constrained_under_namesake_chirho.hs");
+/// The Prelude's `fromIntegral`, a helper this pass writes over the compiler's Num.
+const FROM_INTEGRAL_UNDER_NAMESAKE_CHIRHO: &str =
+    include_str!("from_integral_under_namesake_chirho.hs");
 
 #[test]
 fn a_user_instance_of_the_compiler_num_keeps_its_own_body_chirho() {
@@ -166,4 +175,47 @@ fn a_displaced_compiler_maximum_without_a_namespace_default_fails_by_name_chirho
             "failed, but not by the compiler's own named row: {error_chirho}"
         ),
     }
+}
+
+/// gpt #32681: a constrained reference at the binding's own dictionary takes that dictionary
+/// through its carried class proof. `doubleChirho`'s compiler selectors only work on the
+/// compiler's dictionary, so passing the source's would not print these.
+#[test]
+fn a_polymorphic_reference_passes_its_own_compiler_dictionary_chirho() {
+    assert_prints_everywhere_chirho(
+        "polymorphic_reference_under_namesake_chirho.hs",
+        POLYMORPHIC_REFERENCE_UNDER_NAMESAKE_CHIRHO,
+        "20\n6.0\n",
+    );
+}
+
+/// gpt #32683: with no reference evidence (an infix use), the callee's slots name its compiler
+/// namespace, so the dictionary chosen by the call's key is the compiler's.
+#[test]
+fn an_infix_constrained_call_takes_its_slots_namespace_chirho() {
+    assert_prints_everywhere_chirho(
+        "infix_constrained_under_namesake_chirho.hs",
+        INFIX_CONSTRAINED_UNDER_NAMESAKE_CHIRHO,
+        "42\n",
+    );
+}
+
+/// gpt #32683, a compatibility gap: GHC prints `3.0`. The pass writes `fromIntegral` with
+/// selectors named by spelling, which the program's own `Num` owns here, so its references are
+/// refused by name instead of answering through the program's class.
+#[test]
+fn a_compiler_helper_over_a_displaced_class_is_refused_by_name_chirho() {
+    let message_chirho = match compile_source_chirho(
+        FROM_INTEGRAL_UNDER_NAMESAKE_CHIRHO,
+        &mut SourceMapChirho::new_chirho(),
+        "from_integral_under_namesake_chirho.hs",
+    ) {
+        Ok(_) => panic!("served, where it must be refused by name"),
+        Err(error_chirho) => error_chirho.to_string(),
+    };
+    assert!(
+        message_chirho.contains("the compiler-owned helper `fromIntegral`")
+            && message_chirho.contains("which the program's own class takes here"),
+        "refused, but not by the displaced compiler helper: {message_chirho}"
+    );
 }
