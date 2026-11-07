@@ -3,7 +3,7 @@
 //! Type signatures, newtypes and GADT equations.
 //! Moved from `infer_chirho.rs` in row 661.
 
-use super::test_support_chirho::dummy_name_chirho;
+use super::test_support_chirho::{assert_restricted_binding_refused_chirho, dummy_name_chirho};
 use super::*;
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
 use haskelujah_ast_chirho::expr_chirho::RhsChirho;
@@ -319,9 +319,10 @@ fn infer_newtype_record_constructor_with_function_field_chirho() {
     );
 }
 
-#[test]
-fn infer_writer_newtype_composition_with_tuple_payload_chirho() {
-    let module_chirho = ModuleChirho {
+/// The writer unit's module: `newtype WriterT w m a = WriterT { runWriterTChirho :: m (a, w) }`
+/// and the point-free `writerChirho = WriterT . return`, under `extensions_chirho`.
+fn writer_module_chirho(extensions_chirho: Vec<String>) -> ModuleChirho {
+    ModuleChirho {
         name_chirho: dummy_name_chirho("WriterModuleChirho"),
         exports_chirho: None,
         imports_chirho: vec![],
@@ -384,14 +385,22 @@ fn infer_writer_newtype_composition_with_tuple_payload_chirho() {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
         ],
-        extensions_chirho: vec![],
+        extensions_chirho,
         inline_pragmas_chirho: std::collections::HashMap::new(),
         specialize_pragmas_chirho: std::collections::HashMap::new(),
         foreign_exports_chirho: vec![],
         deriving_via_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
         origin_supply_chirho: Default::default(),
-    };
+    }
+}
+
+/// Unrestricted, the point-free writer generalizes to `Monad m => (a, w) -> WriterT w m a`,
+/// keeping its tuple payload. GHC accepts it (row 692 p04 oracle,
+/// `WriterComposeNoMrTwinChirho`).
+#[test]
+fn infer_writer_newtype_composition_with_tuple_payload_chirho() {
+    let module_chirho = writer_module_chirho(vec!["NoMonomorphismRestriction".to_string()]);
 
     let result_chirho = infer_module_chirho(&module_chirho);
     assert!(
@@ -416,6 +425,16 @@ fn infer_writer_newtype_composition_with_tuple_payload_chirho() {
         },
         other_chirho => panic!("expected function type, got {other_chirho}"),
     }
+}
+
+/// The unit's original program, restricted: the point-free binding keeps `Monad m`, which has
+/// no default. GHC refuses it (row 692 p04 oracle, `WriterComposeExactChirho`, GHC-39999).
+#[test]
+fn a_restricted_point_free_writer_keeps_an_unresolved_monad_chirho() {
+    assert_restricted_binding_refused_chirho(
+        &infer_module_chirho(&writer_module_chirho(vec![])),
+        "Monad ",
+    );
 }
 
 #[test]
