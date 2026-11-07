@@ -230,7 +230,8 @@ flowchart TD
     fields_chirho --> selection_chirho[Existing export, re-export and import selection]
     label_owners_chirho --> selection_chirho
     selection_chirho --> scope_chirho[Same field map value: physical sequence plus eligible selected labels]
-    scope_chirho --> type_chirho[Typing: physical field/type zip; eligible omitted binders]
+    scope_chirho --> import_context_chirho[Existing InferenceImportContext carries selected accounts]
+    import_context_chirho --> type_chirho[Typing: physical field/type zip; eligible omitted binders]
     type_chirho --> finish_chirho[InferResult finish to existing DesugarInputs]
     finish_chirho --> core_chirho[Core: full physical layout; eligible omitted binders]
     core_chirho --> demanded_chirho{Named field demands lost positioning proof?}
@@ -246,6 +247,8 @@ flowchart TD
 Row712 publishes complete ordered labels only from the real ordinary/newtype/GADT constructor declaration and its existing positive owner. The same exported value payload also carries the actual finite owner set for field labels, including shared/DuplicateRecordFields declarations and standalone forwarding. Label selection must include that actual owner; same spelling, availability, defining-module text or a type-wide member list does not grant it. Fragment conflicts enter absorbing Blocked state rather than unioning labels or reopening legacy absence. Callable selector availability stays separate from field labels.
 
 The existing typing/Core map value separates complete physical order from eligible omitted wildcard binders. Full physical labels keep their indices through field/type correspondence, construction, updates and matching. Only omitted wildcard pattern binders consume the eligible subset. The final map flows from inference through the existing driver/Core handoff; there is no parallel field registry. Exact qualified requests never borrow an unrelated bare namesake. Actual local declarations, including positional/fieldless empty labels, replace imported accounts consistently under bare and their real module-qualified keys. Empty labels do not imply zero runtime constructor arity.
+
+Compatibility callers use the existing two-argument inference/context entry instead of a second eight-argument positional forwarding API. Its convenience route keeps an unseeded ClassEnv::new_chirho(), false imported-completeness flags, empty selected/unavailable sets and absent naming scopes; callers with a supplied class environment borrow that exact environment. This changes API assembly, without granting naming or class proof from absence. The10d6 one-hit Clippy result stays retained; the follow-up source and fresh gates are separate evidence.
 
 The existing borrowed pre-Core cursor refuses a named-field demand when selected positioning evidence was lost, using a truthful typed field-account input cause. This retains existing constructor/projection/resource causes, codes and messages. Unused wildcard and empty positional syntax do not demand a named position. Physical metadata is positioning evidence, not general lexical label admission.
 
