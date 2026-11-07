@@ -43,6 +43,7 @@ use haskelujah_core_chirho::{NATIVE_ENTRY_SYMBOL_CHIRHO, NativeSymbolsChirho};
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
+use crate::lower_chirho::root_frames_chirho::NativeRootFrameEmitterChirho;
 use crate::lower_chirho::{
     LowerCtxChirho, PapWrapperKeyChirho, TailLowerOutcomeChirho, VarEnvChirho,
     emit_partial_application_closure_with_alloc_ref_chirho, ensure_i64_chirho,
@@ -572,6 +573,11 @@ fn compile_core_to_object_inner_chirho(
                     arg_vals_chirho.push(arg_val_chirho);
                 }
 
+                let root_frame_chirho = NativeRootFrameEmitterChirho::begin_chirho(
+                    &mut obj_module_chirho,
+                    &mut builder_chirho,
+                    &arg_vals_chirho,
+                )?;
                 // Build target function signature: (i64, ...) -> i64
                 let mut target_sig_chirho = builder_chirho.func.signature.clone();
                 target_sig_chirho.params.clear();
@@ -593,6 +599,7 @@ fn compile_core_to_object_inner_chirho(
                     &arg_vals_chirho,
                 );
                 let result_chirho = builder_chirho.inst_results(call_inst_chirho)[0];
+                root_frame_chirho.finish_chirho(&mut builder_chirho);
                 builder_chirho.ins().return_(&[result_chirho]);
                 builder_chirho.finalize();
             }
@@ -1478,6 +1485,11 @@ fn define_pap_wrapper_body_chirho(
             builder_chirho.func,
         );
         let block_params_chirho = builder_chirho.block_params(entry_block_chirho).to_vec();
+        let root_frame_chirho = NativeRootFrameEmitterChirho::begin_chirho(
+            module_chirho,
+            &mut builder_chirho,
+            &block_params_chirho,
+        )?;
         let env_val_chirho = block_params_chirho[0];
         let ptr_mask_chirho = builder_chirho.ins().iconst(cl_types_chirho::I64, !1_i64);
         let env_ptr_chirho = builder_chirho.ins().band(env_val_chirho, ptr_mask_chirho);
@@ -1544,6 +1556,7 @@ fn define_pap_wrapper_body_chirho(
         } else {
             builder_chirho.ins().iconst(cl_types_chirho::I64, 0)
         };
+        root_frame_chirho.finish_chirho(&mut builder_chirho);
         builder_chirho.ins().return_(&[result_chirho]);
         builder_chirho.finalize();
     }
@@ -1631,6 +1644,11 @@ fn define_function_body_chirho(
             builder_chirho.append_block_param(loop_block_chirho, cl_types_chirho::I64);
         }
         let entry_params_chirho = builder_chirho.block_params(entry_block_chirho).to_vec();
+        let root_frame_chirho = NativeRootFrameEmitterChirho::begin_chirho(
+            module_chirho,
+            &mut builder_chirho,
+            &entry_params_chirho,
+        )?;
         builder_chirho
             .ins()
             .jump(loop_block_chirho, &entry_params_chirho);
@@ -1743,6 +1761,7 @@ fn define_function_body_chirho(
             builder_chirho.func,
         )?;
         let mut ctx_chirho = LowerCtxChirho {
+            root_frame_chirho,
             runtime_calls_chirho,
             env_chirho: &mut env_chirho,
             next_var_idx_chirho: &mut next_var_idx_chirho,
@@ -1788,6 +1807,9 @@ fn define_function_body_chirho(
             TailLowerOutcomeChirho::ValueChirho(result_val_chirho) => {
                 let result_i64_chirho =
                     ensure_i64_chirho(&mut builder_chirho, result_val_chirho, false);
+                ctx_chirho
+                    .root_frame_chirho
+                    .finish_chirho(&mut builder_chirho);
                 builder_chirho.ins().return_(&[result_i64_chirho]);
             }
             TailLowerOutcomeChirho::TerminatedChirho => {}

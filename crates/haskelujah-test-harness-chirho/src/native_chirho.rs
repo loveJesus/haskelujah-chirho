@@ -14,6 +14,11 @@ use haskelujah_span_chirho::SourceMapChirho;
 
 use crate::process_chirho::{run_bounded_chirho, run_bounded_with_memory_chirho};
 
+mod runtime_measurement_chirho;
+pub use runtime_measurement_chirho::{
+    NativeRuntimeCountersChirho, NativeRuntimeMeasurementChirho, measure_native_runtime_chirho,
+};
+
 #[derive(Clone, Copy, Debug)]
 pub enum NativeBackendChirho {
     LlvmChirho,
@@ -50,6 +55,9 @@ fn runtime_snapshot_chirho() -> Result<RtsSnapshotChirho, String> {
                 let output_chirho = run_bounded_chirho(
                     Command::new("cargo").current_dir(root_chirho).args([
                         "build",
+                        "--locked",
+                        "--offline",
+                        "-j2",
                         "-p",
                         "haskelujah-rts",
                         "--quiet",
@@ -180,7 +188,24 @@ pub fn native_artifact_round_trip_chirho(
     deadline_chirho: Duration,
 ) -> Result<(i32, String), String> {
     let directory_chirho = tempfile::tempdir().map_err(|error_chirho| error_chirho.to_string())?;
-    let executable_chirho = directory_chirho.path().join("main-chirho");
+    native_artifact_in_directory_chirho(
+        artifact_chirho,
+        input_chirho,
+        deadline_chirho,
+        directory_chirho.path(),
+        false,
+    )
+}
+
+// The measurement path shares this exact linker, RTS snapshot and bounded-child runner.
+fn native_artifact_in_directory_chirho(
+    artifact_chirho: NativeArtifactChirho,
+    input_chirho: &str,
+    deadline_chirho: Duration,
+    directory_chirho: &Path,
+    measure_chirho: bool,
+) -> Result<(i32, String), String> {
+    let executable_chirho = directory_chirho.join("main-chirho");
     let mut linker_chirho = Command::new(match &artifact_chirho {
         NativeArtifactChirho::LlvmIrChirho(_) => "clang",
         NativeArtifactChirho::CraneliftObjectChirho(_) => "cc",
@@ -192,13 +217,13 @@ pub fn native_artifact_round_trip_chirho(
                 "-target",
                 &haskelujah_backend_llvm_chirho::native_target_chirho(),
             ]);
-            let source_path_chirho = directory_chirho.path().join("main-chirho.ll");
+            let source_path_chirho = directory_chirho.join("main-chirho.ll");
             std::fs::write(&source_path_chirho, ir_chirho)
                 .map_err(|error_chirho| error_chirho.to_string())?;
             linker_chirho.arg("-O0").arg(source_path_chirho);
         }
         NativeArtifactChirho::CraneliftObjectChirho(object_bytes_chirho) => {
-            let object_path_chirho = directory_chirho.path().join("main-chirho.o");
+            let object_path_chirho = directory_chirho.join("main-chirho.o");
             std::fs::write(&object_path_chirho, object_bytes_chirho)
                 .map_err(|error_chirho| error_chirho.to_string())?;
             linker_chirho.arg(object_path_chirho);
@@ -209,11 +234,32 @@ pub fn native_artifact_round_trip_chirho(
     }
     // The snapshot stays alive until this function returns, after the link.
     let runtime_chirho = runtime_snapshot_chirho()?;
+    if measure_chirho {
+        // Retain the exact linked RTS bytes alongside source, object/IR and executable.
+        std::fs::copy(
+            runtime_chirho.link_dir_chirho().join("libhaskelujah_rts.a"),
+            directory_chirho.join("libhaskelujah_rts-chirho.a"),
+        )
+        .map_err(|error_chirho| error_chirho.to_string())?;
+    }
     linker_chirho
         .arg("-L")
         .arg(runtime_chirho.link_dir_chirho())
         .arg("-lhaskelujah_rts");
     let linked_chirho = run_bounded_chirho(&mut linker_chirho, &[], Duration::from_secs(60))?;
+    if measure_chirho {
+        runtime_measurement_chirho::retain_streams_chirho(
+            directory_chirho,
+            "link-chirho",
+            &linked_chirho.stdout,
+            &linked_chirho.stderr,
+        )?;
+        std::fs::write(
+            directory_chirho.join("link-status-chirho.txt"),
+            linked_chirho.status.to_string(),
+        )
+        .map_err(|error_chirho| error_chirho.to_string())?;
+    }
     if !linked_chirho.status.success() {
         return Err(format!(
             "native linking failed: {}",
@@ -227,12 +273,32 @@ pub fn native_artifact_round_trip_chirho(
         ));
     }
     let mut command_chirho = Command::new(&executable_chirho);
+    command_chirho.env_remove(runtime_measurement_chirho::REPORT_ENV_CHIRHO);
+    if measure_chirho {
+        command_chirho.env(
+            runtime_measurement_chirho::REPORT_ENV_CHIRHO,
+            directory_chirho.join("runtime-report-chirho.txt"),
+        );
+    }
     let output_chirho = run_bounded_with_memory_chirho(
         &mut command_chirho,
         input_chirho.as_bytes(),
         deadline_chirho,
         Some(2 * 1024 * 1024 * 1024),
     )?;
+    if measure_chirho {
+        runtime_measurement_chirho::retain_streams_chirho(
+            directory_chirho,
+            "run-chirho",
+            &output_chirho.stdout,
+            &output_chirho.stderr,
+        )?;
+        std::fs::write(
+            directory_chirho.join("run-status-chirho.txt"),
+            output_chirho.status.to_string(),
+        )
+        .map_err(|error_chirho| error_chirho.to_string())?;
+    }
     let code_chirho = output_chirho.status.code().ok_or_else(|| {
         format!(
             "native program terminated by signal: {}\nstdout:\n{}\nstderr:\n{}",

@@ -42,6 +42,7 @@ use std::collections::{BTreeSet, HashMap};
 mod failures_chirho;
 mod lazy_chirho;
 mod ordering_chirho;
+pub(crate) mod root_frames_chirho;
 use lazy_chirho::lower_lazy_value_chirho;
 
 pub type PapWrapperKeyChirho = (CoreIdChirho, usize);
@@ -69,6 +70,7 @@ impl VarEnvChirho {
 
 /// Lowering context threading mutable state through a single function body.
 pub struct LowerCtxChirho<'a> {
+    pub(crate) root_frame_chirho: root_frames_chirho::NativeRootFrameEmitterChirho,
     pub(crate) runtime_calls_chirho:
         crate::codegen_chirho::runtime_calls_chirho::RuntimeCallsChirho,
     /// SSA value environment for variables.
@@ -221,6 +223,18 @@ pub fn lower_lit_chirho(
 /// Lambda abstractions (`LamChirho`) must be peeled off before calling this
 /// function; reaching `LamChirho` here returns a zero placeholder.
 pub fn lower_expr_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    expr_chirho: &CoreExprChirho,
+) -> ClValueChirho {
+    let value_chirho = lower_expr_inner_chirho(builder_chirho, ctx_chirho, expr_chirho);
+    ctx_chirho
+        .root_frame_chirho
+        .handoff_chirho(builder_chirho, value_chirho);
+    value_chirho
+}
+
+fn lower_expr_inner_chirho(
     builder_chirho: &mut FuncBuilderChirho,
     ctx_chirho: &mut LowerCtxChirho<'_>,
     expr_chirho: &CoreExprChirho,
@@ -1882,6 +1896,9 @@ fn lower_app_chirho(
                     .ins()
                     .call(*func_ref_chirho, &direct_arg_vals_chirho);
                 let direct_result_chirho = builder_chirho.inst_results(direct_call_inst_chirho)[0];
+                ctx_chirho
+                    .root_frame_chirho
+                    .handoff_chirho(builder_chirho, direct_result_chirho);
                 return lower_indirect_app_chirho(
                     builder_chirho,
                     ctx_chirho,
@@ -1993,6 +2010,9 @@ fn lower_self_tail_call_chirho(
         tco_self_id_chirho,
         &mut jump_arg_vals_chirho,
     );
+    ctx_chirho
+        .root_frame_chirho
+        .reset_chirho(builder_chirho, &jump_arg_vals_chirho);
     builder_chirho
         .ins()
         .jump(tco_loop_block_chirho, &jump_arg_vals_chirho);
@@ -2143,6 +2163,7 @@ fn lower_known_function_value_chirho(
 
 fn lower_indirect_call_with_sig_chirho(
     builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &LowerCtxChirho<'_>,
     fun_ptr_i64_chirho: ClValueChirho,
     arg_vals_chirho: &[ClValueChirho],
 ) -> ClValueChirho {
@@ -2163,7 +2184,11 @@ fn lower_indirect_call_with_sig_chirho(
         builder_chirho
             .ins()
             .call_indirect(sig_ref_chirho, fun_ptr_i64_chirho, arg_vals_chirho);
-    builder_chirho.inst_results(call_inst_chirho)[0]
+    let result_chirho = builder_chirho.inst_results(call_inst_chirho)[0];
+    ctx_chirho
+        .root_frame_chirho
+        .handoff_chirho(builder_chirho, result_chirho);
+    result_chirho
 }
 
 fn lower_indirect_app_values_chirho(
@@ -2188,6 +2213,7 @@ fn lower_indirect_app_values_chirho(
     let Some(is_heap_ptr_ref_chirho) = ctx_chirho.is_heap_ptr_ref_chirho else {
         return lower_indirect_call_with_sig_chirho(
             builder_chirho,
+            ctx_chirho,
             fun_ptr_i64_chirho,
             arg_vals_chirho,
         );
@@ -2210,8 +2236,12 @@ fn lower_indirect_app_values_chirho(
     );
 
     builder_chirho.switch_to_block(direct_block_chirho);
-    let direct_result_chirho =
-        lower_indirect_call_with_sig_chirho(builder_chirho, fun_ptr_i64_chirho, arg_vals_chirho);
+    let direct_result_chirho = lower_indirect_call_with_sig_chirho(
+        builder_chirho,
+        ctx_chirho,
+        fun_ptr_i64_chirho,
+        arg_vals_chirho,
+    );
     builder_chirho
         .ins()
         .jump(join_block_chirho, &[direct_result_chirho]);
@@ -2228,6 +2258,7 @@ fn lower_indirect_app_values_chirho(
     let first_arg_chirho = arg_vals_chirho[0];
     let closure_result_chirho = lower_indirect_call_with_sig_chirho(
         builder_chirho,
+        ctx_chirho,
         closure_fun_bits_chirho,
         &[fun_ptr_i64_chirho, first_arg_chirho],
     );
@@ -3222,6 +3253,19 @@ fn lower_show_or_default_int_expr_ptr_chirho(
     ctx_chirho: &mut LowerCtxChirho<'_>,
     expr_chirho: &CoreExprChirho,
 ) -> Option<ClValueChirho> {
+    let value_chirho =
+        lower_show_or_default_int_expr_ptr_inner_chirho(builder_chirho, ctx_chirho, expr_chirho)?;
+    ctx_chirho
+        .root_frame_chirho
+        .handoff_chirho(builder_chirho, value_chirho);
+    Some(value_chirho)
+}
+
+fn lower_show_or_default_int_expr_ptr_inner_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    expr_chirho: &CoreExprChirho,
+) -> Option<ClValueChirho> {
     lower_show_expr_ptr_chirho(builder_chirho, ctx_chirho, expr_chirho).or_else(|| {
         let show_int_ref_chirho = ctx_chirho.show_int_ref_chirho?;
         let arg_val_chirho = lower_expr_chirho(builder_chirho, ctx_chirho, expr_chirho);
@@ -3258,6 +3302,9 @@ fn lower_show_constructor_app_chirho(
             &[result_ptr_chirho, space_ptr_chirho],
         );
         result_ptr_chirho = builder_chirho.inst_results(with_space_call_chirho)[0];
+        ctx_chirho
+            .root_frame_chirho
+            .handoff_chirho(builder_chirho, result_ptr_chirho);
         let shown_arg_ptr_chirho =
             lower_show_or_default_int_expr_ptr_chirho(builder_chirho, ctx_chirho, arg_expr_chirho)?;
         let append_arg_call_chirho = builder_chirho.ins().call(
@@ -3265,6 +3312,9 @@ fn lower_show_constructor_app_chirho(
             &[result_ptr_chirho, shown_arg_ptr_chirho],
         );
         result_ptr_chirho = builder_chirho.inst_results(append_arg_call_chirho)[0];
+        ctx_chirho
+            .root_frame_chirho
+            .handoff_chirho(builder_chirho, result_ptr_chirho);
     }
 
     Some(result_ptr_chirho)
@@ -3353,6 +3403,9 @@ fn lower_show_tuple2_expr_ptr_chirho(
         &[result_ptr_chirho, shown_first_chirho],
     );
     result_ptr_chirho = builder_chirho.inst_results(append_first_call_chirho)[0];
+    ctx_chirho
+        .root_frame_chirho
+        .handoff_chirho(builder_chirho, result_ptr_chirho);
     let comma_ptr_chirho = builder_chirho
         .ins()
         .global_value(cl_types_chirho::I64, comma_global_chirho);
@@ -3361,6 +3414,9 @@ fn lower_show_tuple2_expr_ptr_chirho(
         &[result_ptr_chirho, comma_ptr_chirho],
     );
     result_ptr_chirho = builder_chirho.inst_results(append_comma_call_chirho)[0];
+    ctx_chirho
+        .root_frame_chirho
+        .handoff_chirho(builder_chirho, result_ptr_chirho);
     let shown_second_chirho =
         lower_show_or_default_int_expr_ptr_chirho(builder_chirho, ctx_chirho, &args_chirho[1])?;
     let append_second_call_chirho = builder_chirho.ins().call(
@@ -3368,6 +3424,9 @@ fn lower_show_tuple2_expr_ptr_chirho(
         &[result_ptr_chirho, shown_second_chirho],
     );
     result_ptr_chirho = builder_chirho.inst_results(append_second_call_chirho)[0];
+    ctx_chirho
+        .root_frame_chirho
+        .handoff_chirho(builder_chirho, result_ptr_chirho);
     let rparen_ptr_chirho = builder_chirho
         .ins()
         .global_value(cl_types_chirho::I64, rparen_global_chirho);
@@ -3405,6 +3464,9 @@ fn lower_show_direct_list_expr_ptr_chirho(
                 &[result_ptr_chirho, comma_ptr_chirho],
             );
             result_ptr_chirho = builder_chirho.inst_results(append_comma_call_chirho)[0];
+            ctx_chirho
+                .root_frame_chirho
+                .handoff_chirho(builder_chirho, result_ptr_chirho);
         }
         let shown_elem_chirho = lower_show_or_default_int_expr_ptr_chirho(
             builder_chirho,
@@ -3416,6 +3478,9 @@ fn lower_show_direct_list_expr_ptr_chirho(
             &[result_ptr_chirho, shown_elem_chirho],
         );
         result_ptr_chirho = builder_chirho.inst_results(append_elem_call_chirho)[0];
+        ctx_chirho
+            .root_frame_chirho
+            .handoff_chirho(builder_chirho, result_ptr_chirho);
     }
     let rbracket_ptr_chirho = builder_chirho
         .ins()
@@ -3486,6 +3551,18 @@ fn lookup_nonrec_toplevel_rhs_cloned_chirho(
 }
 
 fn lower_show_expr_ptr_chirho(
+    builder_chirho: &mut FuncBuilderChirho,
+    ctx_chirho: &mut LowerCtxChirho<'_>,
+    expr_chirho: &CoreExprChirho,
+) -> Option<ClValueChirho> {
+    let value_chirho = lower_show_expr_ptr_inner_chirho(builder_chirho, ctx_chirho, expr_chirho)?;
+    ctx_chirho
+        .root_frame_chirho
+        .handoff_chirho(builder_chirho, value_chirho);
+    Some(value_chirho)
+}
+
+fn lower_show_expr_ptr_inner_chirho(
     builder_chirho: &mut FuncBuilderChirho,
     ctx_chirho: &mut LowerCtxChirho<'_>,
     expr_chirho: &CoreExprChirho,
