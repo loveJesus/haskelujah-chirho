@@ -579,6 +579,45 @@ impl InferCtxChirho {
                     eprintln!(
                         "normalization-stage-chirho: {observed_stage_chirho}; variable={observed_variable_chirho:?}; shape={observed_shape_chirho}; work={work_chirho}; output={output_chirho}"
                     );
+                    let mut aliases_chirho = Vec::with_capacity(257);
+                    let mut edges_chirho = 0_usize;
+                    let mut alias_status_chirho = "no-current-meta";
+                    if let Some(mut variable_chirho) = observed_variable_chirho {
+                        alias_status_chirho = "observation-limit";
+                        for _step_chirho in 0..=256 {
+                            if aliases_chirho.contains(&variable_chirho) {
+                                alias_status_chirho = "repeated-meta";
+                                break;
+                            }
+                            aliases_chirho.push(variable_chirho);
+                            if edges_chirho == 256 {
+                                break;
+                            }
+                            match self
+                                .equality_substitutions_chirho
+                                .lookup_chirho(&TyVarChirho(variable_chirho))
+                            {
+                                Some(TyChirho::VarChirho(next_chirho)) => {
+                                    edges_chirho += 1;
+                                    variable_chirho = next_chirho.0;
+                                }
+                                Some(_) => {
+                                    alias_status_chirho = "non-meta-image";
+                                    break;
+                                }
+                                None => {
+                                    alias_status_chirho = "unmapped-meta";
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    eprintln!(
+                        "normalization-aliases-chirho: status={alias_status_chirho}; edges={edges_chirho}; nodes={}; first={:?}; last={:?}",
+                        aliases_chirho.len(),
+                        &aliases_chirho[..aliases_chirho.len().min(16)],
+                        &aliases_chirho[aliases_chirho.len().saturating_sub(16)..]
+                    );
                 }
                 self.note_type_normalization_exhausted_chirho();
             }
