@@ -7,7 +7,9 @@
 //! instance (gpt #32666).
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use haskelujah_driver::compile_source_chirho;
+use haskelujah_driver::{
+    FrontendOptionsChirho, compile_source_chirho, eval_source_outcome_with_options_chirho,
+};
 use haskelujah_span_chirho::SourceMapChirho;
 
 use super::assert_prints_everywhere_chirho;
@@ -24,6 +26,20 @@ const PRELUDE_SUM_UNDER_NAMESAKE_CHIRHO: &str =
 const BOX_UNDER_NAMESAKE_CHIRHO: &str = include_str!("box_under_namesake_chirho.hs");
 /// The compiler's `Show [Maybe Int]` while the program's own `Show` takes the spelling.
 const SHOW_LIST_UNDER_NAMESAKE_CHIRHO: &str = include_str!("show_list_under_namesake_chirho.hs");
+/// A compiler-qualified polymorphic binding: its own dictionary serves `+` and a literal.
+const OWN_DICTIONARY_METHOD_UNDER_NAMESAKE_CHIRHO: &str =
+    include_str!("own_dictionary_method_under_namesake_chirho.hs");
+/// A constraint at a ground type, whose dictionary the definition decides.
+const GROUND_CONSTRAINED_DEFINITION_UNDER_NAMESAKE_CHIRHO: &str =
+    include_str!("ground_constrained_definition_under_namesake_chirho.hs");
+/// The early equality route: the Prelude's `elem` at Double under a program's own `Eq`.
+const ELEM_UNDER_NAMESAKE_EQ_CHIRHO: &str = include_str!("elem_under_namesake_eq_chirho.hs");
+/// The early power route: the Prelude's `(^^)` under a program's own `Fractional`.
+const POWER_UNDER_NAMESAKE_FRACTIONAL_CHIRHO: &str =
+    include_str!("power_under_namesake_fractional_chirho.hs");
+/// The early extremum route: the Prelude's `maximum` under a program's own `Ord`.
+const MAXIMUM_UNDER_NAMESAKE_ORD_CHIRHO: &str =
+    include_str!("maximum_under_namesake_ord_chirho.hs");
 
 #[test]
 fn a_user_instance_of_the_compiler_num_keeps_its_own_body_chirho() {
@@ -79,4 +95,75 @@ fn a_displaced_compiler_show_it_cannot_build_is_refused_by_name_chirho() {
             && message_chirho.contains("while the program's own class takes the spelling `Show`"),
         "refused, but not by the displaced compiler request: {message_chirho}"
     );
+}
+
+/// gpt #32675, route 2: a compiler method at the binding's own dictionary keeps its class proof,
+/// so `+` and the literal use the compiler's selectors on that dictionary.
+#[test]
+fn a_compiler_own_dictionary_method_keeps_its_proof_under_a_namesake_chirho() {
+    assert_prints_everywhere_chirho(
+        "own_dictionary_method_under_namesake_chirho.hs",
+        OWN_DICTIONARY_METHOD_UNDER_NAMESAKE_CHIRHO,
+        "42\n2.5\n",
+    );
+}
+
+/// gpt #32675, route 3: the definition decides a ground compiler predicate's dictionary in the
+/// compiler namespace, and its callers read the same decision.
+#[test]
+fn a_ground_constrained_definition_decides_in_the_compiler_namespace_chirho() {
+    assert_prints_everywhere_chirho(
+        "ground_constrained_definition_under_namesake_chirho.hs",
+        GROUND_CONSTRAINED_DEFINITION_UNDER_NAMESAKE_CHIRHO,
+        "42\n",
+    );
+}
+
+/// gpt #32675, route 1, equality: `elem` compares through the compiler's `==` at Double.
+#[test]
+fn the_early_equality_route_keeps_the_compilers_eq_under_a_namesake_chirho() {
+    assert_prints_everywhere_chirho(
+        "elem_under_namesake_eq_chirho.hs",
+        ELEM_UNDER_NAMESAKE_EQ_CHIRHO,
+        "True\n",
+    );
+}
+
+/// gpt #32675, route 1, power: `(^^)` divides through the compiler's `/` at Double.
+#[test]
+fn the_early_power_route_keeps_the_compilers_fractional_under_a_namesake_chirho() {
+    assert_prints_everywhere_chirho(
+        "power_under_namesake_fractional_chirho.hs",
+        POWER_UNDER_NAMESAKE_FRACTIONAL_CHIRHO,
+        "0.5\n",
+    );
+}
+
+/// gpt #32675, route 1, extremum. GHC prints `3`. The compiler namespace holds no default `max`
+/// row (the default helpers read spelled donor rows), so `maximum` is served from the
+/// compiler's own dictionary, whose `max` fails by name. It never orders through the program's
+/// own `compare`, which would print `1`. When the namespace gains GHC's defaults, this control
+/// becomes `assert_prints_everywhere_chirho` with GHC's output.
+#[test]
+fn a_displaced_compiler_maximum_without_a_namespace_default_fails_by_name_chirho() {
+    let outcome_chirho = eval_source_outcome_with_options_chirho(
+        MAXIMUM_UNDER_NAMESAKE_ORD_CHIRHO,
+        &mut SourceMapChirho::new_chirho(),
+        "maximum_under_namesake_ord_chirho.hs",
+        None,
+        &FrontendOptionsChirho::for_program_chirho("main"),
+    )
+    .and_then(|outcome_chirho| outcome_chirho.into_result_chirho());
+    match outcome_chirho {
+        Ok((_, machine_chirho)) => panic!(
+            "served `{}`: the named failure no longer holds, so compare with GHC's `3`",
+            machine_chirho.io_output_chirho
+        ),
+        Err(error_chirho) => assert!(
+            error_chirho
+                .to_string()
+                .contains("missing method Ord.max for Int"),
+            "failed, but not by the compiler's own named row: {error_chirho}"
+        ),
+    }
 }
