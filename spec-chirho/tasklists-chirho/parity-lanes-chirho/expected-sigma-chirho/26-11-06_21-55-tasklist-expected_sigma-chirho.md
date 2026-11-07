@@ -8,7 +8,7 @@ Scope: one ordinary expected-expression entry for an outer invisible `forall`, u
 - [x] Execute the exact five GHC 9.14.1 compile-only references: tc092, T11339b and T11339c accept; T11339 rejects with GHC-16675; CapturedAnnotationChirho rejects with GHC-25897. Actual method: unchanged `run_owned_chirho` (`2a80fda8`), not execution of `dab3`.
 - [x] Create isolated branch `gpt-expected-sigma-688-chirho` from combined source `28360838bdedec2148eaa276ede3909e751264d8`; preserve the original source and receipts.
 - [x] Adapt the already-landed 708 nominality prerequisite: remove only the normal-mode Int/Double empty-substitution arm and port the three exact direct controls from `0afac144`. No strict-kind, representation or resource-policy change.
-- [ ] Pin expected-expression positive and escape controls before the sigma repair.
+- [x] Pin five direct expected-expression controls before the sigma repair: qualified empty list, qualified section, captured-meta refusal, monomorphic-body refusal and explicit type-lambda binder preservation. Existing whole-typing QuickLook/RequiredForall controls remain required after the repair.
 - [ ] Measure the before state with the unchanged controls and retain every result.
 - [ ] Add general ordinary invisible-forall checking while preserving named/application QuickLook and explicit type-lambda/RequiredForall contracts.
 - [ ] Run focused and whole typing checks, the five source witnesses and changed-span lint under separate actual scheduler grants.

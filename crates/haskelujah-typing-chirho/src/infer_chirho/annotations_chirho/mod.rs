@@ -15,6 +15,8 @@ mod body_types_chirho;
 pub(super) use body_types_chirho::ValueParameterScopeChirho;
 mod escape_chirho;
 #[cfg(test)]
+mod expected_sigma_tests_chirho;
+#[cfg(test)]
 mod tests_chirho;
 
 impl InferCtxChirho {
