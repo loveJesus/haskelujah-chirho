@@ -241,20 +241,20 @@ impl<'a> SolverChirho<'a> {
         // accept the existing version anyway (like cabal --allow-newer). A strict build checks
         // this bound against the version already selected like any other.
         let allow_newer_chirho = self.mode_chirho == ResolveModeChirho::BestEffortChirho;
-        if let Some(existing_chirho) = self.selected_chirho.get(name_chirho) {
-            if self.done_chirho.contains(name_chirho) {
-                if constraint_chirho.satisfied_by_chirho(existing_chirho)
-                    || (allow_newer_chirho && constraint_chirho.is_upper_bound_only_chirho())
-                {
-                    return Ok(());
-                } else {
-                    return Err(ResolveErrorChirho::ConflictChirho {
-                        package_chirho: name_chirho.to_string(),
-                        selected_chirho: existing_chirho.clone(),
-                        required_by_chirho: parent_chirho.to_string(),
-                        constraint_chirho: constraint_chirho.clone(),
-                    });
-                }
+        if let Some(existing_chirho) = self.selected_chirho.get(name_chirho)
+            && self.done_chirho.contains(name_chirho)
+        {
+            if constraint_chirho.satisfied_by_chirho(existing_chirho)
+                || (allow_newer_chirho && constraint_chirho.is_upper_bound_only_chirho())
+            {
+                return Ok(());
+            } else {
+                return Err(ResolveErrorChirho::ConflictChirho {
+                    package_chirho: name_chirho.to_string(),
+                    selected_chirho: existing_chirho.clone(),
+                    required_by_chirho: parent_chirho.to_string(),
+                    constraint_chirho: constraint_chirho.clone(),
+                });
             }
         }
 
