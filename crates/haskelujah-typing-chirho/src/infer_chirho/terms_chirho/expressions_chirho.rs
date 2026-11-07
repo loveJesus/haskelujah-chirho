@@ -142,7 +142,7 @@ impl InferCtxChirho {
                         } else {
                             let mut diag_chirho = DiagnosticChirho::error_with_code_chirho(
                                 ErrorCodeChirho::error_chirho(UNBOUND_VAR_CODE_CHIRHO),
-                                format!("unbound variable: `{text_chirho}`"),
+                                format!("unbound variable: `{full_name_chirho}`"),
                                 span_chirho,
                             );
                             // Add "did you mean?" suggestions from the type env.

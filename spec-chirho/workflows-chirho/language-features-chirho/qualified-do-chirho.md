@@ -62,10 +62,13 @@ flowchart TD
 - There is no block-wide `m` and no monadic flag on the translated path. The observational second
   instantiation and its ignored unifier are gone. A plain local bind, a `($)` bind (GHC T17594f),
   an indexed or graded bind and a rank-N bind (GHC T21206) type by their own schemes.
-- A block in which some statement carries NO selection (hand-built ASTs, Template Haskell
-  conversion, the RecursiveDo knot), or whose selected operation is not in scope (resolution keeps
-  naming the missing method, qualified), keeps the shape-only typing as a whole: no wanted, no evidence,
-  no proof, no spelling lookup. Any change to that policy waits for root's word.
+- A block in which some statement carries NO selection keeps the shape-only typing as a whole: no
+  wanted, no evidence, no proof, no spelling lookup. Real producers never mix the two: lowering
+  selects every statement of a parsed block after the RecursiveDo knot (the knot bind included),
+  while the knot's inner block, Template Haskell conversion and hand-built ASTs select none. Any
+  change to that policy waits for root's word.
+- A selected operation that is not in scope is an ordinary unbound reference, reported under its
+  qualified name, for example M.>>=.
 - Checking mode: a `let` after a bind sits inside a lambda that the application checker types.
   The checking-mode arm for `let` lives in the reserved expected_chirho.rs, so such a tail is
   inferred, then unified with the rigid type, rather than checked. This is named for kind's sigma
