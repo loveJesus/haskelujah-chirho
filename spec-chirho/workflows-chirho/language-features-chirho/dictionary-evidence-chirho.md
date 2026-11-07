@@ -12,7 +12,7 @@ before any heuristic. Programs without a record keep today's path and today's ve
 ```mermaid
 flowchart TD
     lit_chirho[Literal inferred: infer_expr_chirho pushes Num / Fractional / IsString wanted]
-    lit_chirho --> capture_chirho[capture_literal_evidence_chirho: the literal's origin and span, class, literal type; a literal with neither identity is skipped]
+    lit_chirho --> capture_chirho[capture_literal_evidence_chirho: the literal's origin and span, class, literal type; a literal with neither identity is skipped; apply_subst_all keeps its minted wanted current as it does a reference's, row 692 C10]
     solve_chirho[Module solved: unification + Report defaulting composed]
     capture_chirho --> finalize_chirho[finalize_literal_evidence_chirho: type resolved to a concrete head → key; a signature's rigid variable → its own key; open variables and instance-method skolems yield nothing; a key seen twice must agree]
     solve_chirho --> finalize_chirho
@@ -45,6 +45,7 @@ flowchart TD
   takes the binding's own key, as an occurrence at that variable does.
   - It takes `$own:k` for the predicate the signature declares. It takes the class-only `$own` for a class that no predicate names, such as a Num literal under `Fractional a`. The pass serves that through the superclass extraction.
   - A literal still on a unification variable, or on an instance method's skolem, produces no record and takes today's fallback.
+  - An instance method's literal follows that method's own substitution events (row 692, C10): `apply_subst_all_chirho` maps the literal capture's minted wanted, proof and arguments kept, as it maps reference captures, because the module's composition never holds an instance method's local solution. Before this, the literal `1` in a program's own `instance Num Int` (`fromInteger v = Prelude.fromInteger v + 1`) published no record, and Core's spelled fallback re-entered that very method. Control: `an_instance_method_literal_publishes_its_local_compiler_proof_chirho` (driver `tests_chirho/evidence_chirho/occurrence_records_chirho.rs`).
   - Before row 584, a rigid literal produced no record either, and the fallback keyed it `Int`, not the binding's parameter. The interpreter masked this, because its float primops accept an Int operand. The natives read the Int's bits as a Double: `incChirho x = x + 1` under `Num a` printed 2.5 at Double, where GHC prints 3.5.
   - Controls: `literals_at_a_signature_variable_take_its_dictionary_everywhere_chirho`, which includes two predicates of one class, and `a_fractional_signatures_literal_takes_its_dictionary_chirho`, in `tests/dictionary_evidence_chirho/fractional_literals_chirho.rs`.
 - A literal in a locally generalized binding may reach that same rigid variable through its one

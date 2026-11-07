@@ -828,6 +828,17 @@ impl InferCtxChirho {
                     .mapped_chirho(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho));
             }
         }
+        // A literal's minted wanted follows the same substitution events, proof and arguments
+        // kept, so a literal inside an instance method reaches finalization at the solution that
+        // method's check found: the module's composition never holds an instance method's own
+        // (row 692, C10).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        for (_span_chirho, _origin_chirho, wanted_chirho, _context_chirho) in
+            &mut self.literal_captures_chirho
+        {
+            *wanted_chirho =
+                wanted_chirho.mapped_chirho(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho));
+        }
         if !self.occurrence_default_hints_chirho.is_empty() {
             let mut updated_hints_chirho = HashMap::new();
             // DETERMINISM: substitution can map two distinct vars onto the SAME
