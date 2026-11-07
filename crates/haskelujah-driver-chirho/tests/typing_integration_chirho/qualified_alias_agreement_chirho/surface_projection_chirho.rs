@@ -328,8 +328,10 @@ fn application_scheme_chirho(
 #[test]
 fn checked_compiler_hidden_and_source_required_arguments_keep_their_surface_meaning_chirho() {
     let ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    // NoPolyKinds states this fixture's premise: its parameters are its only binders, both
+    // Required. Under the GHC2021 default its phantom kinds would add two inferred binders.
     let (surface_chirho, source_iface_chirho) = CheckedSurfaceChirho::from_source_chirho(
-        "module SourceSurfaceChirho where\ndata Proxy leftChirho rightChirho = SourceProxyChirho\n",
+        "{-# LANGUAGE NoPolyKinds #-}\nmodule SourceSurfaceChirho where\ndata Proxy leftChirho rightChirho = SourceProxyChirho\n",
         &ifaces_chirho,
     );
     let builtin_iface_chirho = ifaces_chirho
