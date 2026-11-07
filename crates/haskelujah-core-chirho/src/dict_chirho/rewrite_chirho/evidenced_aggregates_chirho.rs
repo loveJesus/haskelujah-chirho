@@ -135,7 +135,9 @@ impl DictPassCtxChirho {
         let (operator_chirho, unit_chirho) = self.aggregate_shape_chirho(id_chirho)?;
         let evidence_chirho = self.occurrence_evidence_chirho.get(&id_chirho)?;
         let (class_name_chirho, ty_key_chirho) = evidence_chirho.keys_chirho();
-        if class_name_chirho != "Num" {
+        // An own key is the own-scope route's (`own_aggregate_chirho`), with the binding's
+        // dictionaries; this route has none to serve it (row 692, gpt #32692).
+        if class_name_chirho != "Num" || is_own_dictionary_key_chirho(ty_key_chirho) {
             return None;
         }
         // A displaced compiler Num folds through its own dictionary's methods, or their named
@@ -397,7 +399,12 @@ impl DictPassCtxChirho {
             .find(|(name_chirho, _)| *name_chirho == base_name_chirho)?;
         let evidence_chirho = self.occurrence_evidence_chirho.get(&id_chirho)?;
         let (class_name_chirho, ty_key_chirho) = evidence_chirho.keys_chirho();
-        if class_name_chirho != "Eq" || INT_SHAPED_KEYS_CHIRHO.contains(&ty_key_chirho.as_str()) {
+        // An own key has no row here and no dictionaries in scope; it keeps its route (row 692,
+        // gpt #32692).
+        if class_name_chirho != "Eq"
+            || INT_SHAPED_KEYS_CHIRHO.contains(&ty_key_chirho.as_str())
+            || is_own_dictionary_key_chirho(ty_key_chirho)
+        {
             return None;
         }
         // A displaced compiler Eq compares through its own `==`, or its named refusal; the

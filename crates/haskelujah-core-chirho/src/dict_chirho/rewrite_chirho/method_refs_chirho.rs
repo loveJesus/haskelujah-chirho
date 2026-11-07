@@ -83,6 +83,13 @@ impl DictPassCtxChirho {
                 .displaced_identity_chirho(&evidence_chirho.class_identity_chirho)
                 .is_some()
         {
+            // An own key is the own-scope route's (`own_print_show_chirho`), with the binding's
+            // dictionaries; this route has none to serve it (gpt #32692).
+            if haskelujah_typing_chirho::infer_chirho::is_own_dictionary_key_chirho(
+                &evidence_chirho.ty_key_chirho,
+            ) {
+                return None;
+            }
             return self.compiler_method_head_chirho(
                 &evidence_chirho.class_identity_chirho,
                 "show",
@@ -1174,10 +1181,8 @@ impl DictPassCtxChirho {
         {
             return None;
         }
-        let (class_name_chirho, ty_key_chirho) = self
-            .occurrence_evidence_chirho
-            .get(&head_id_chirho)?
-            .keys_chirho();
+        let evidence_chirho = self.occurrence_evidence_chirho.get(&head_id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = evidence_chirho.keys_chirho();
         let bare_own_chirho =
             haskelujah_typing_chirho::infer_chirho::own_dictionary_key_chirho(None);
         if class_name_chirho != "Show"
@@ -1185,6 +1190,22 @@ impl DictPassCtxChirho {
             || !haskelujah_typing_chirho::infer_chirho::is_own_dictionary_key_chirho(ty_key_chirho)
         {
             return None;
+        }
+        // A displaced compiler Show shows through its own selector on the binding's indexed own
+        // dictionary, or its named refusal; the method-name selector is the source class's
+        // (row 692, gpt #32692).
+        if self
+            .displaced_identity_chirho(&evidence_chirho.class_identity_chirho)
+            .is_some()
+        {
+            return self.compiler_method_head_chirho(
+                &evidence_chirho.class_identity_chirho,
+                "show",
+                ty_key_chirho,
+                dict_vars_chirho,
+                &HashSet::new(),
+                &HashMap::new(),
+            );
         }
         let dict_id_chirho = *dict_vars_chirho.get(ty_key_chirho)?;
         let (selector_class_chirho, show_selector_id_chirho) =
