@@ -22,7 +22,6 @@ use haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho;
 use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
 
 use super::{CoreExprChirho, CoreIdChirho, CoreLitChirho, DictPassCtxChirho};
-use crate::dict_chirho::OccurrenceEvidenceChirho;
 
 /// How deep a conditional dictionary's context may nest before the pass gives up on it.
 const CONDITIONAL_DICTIONARY_DEPTH_CHIRHO: usize = 16;
@@ -70,8 +69,19 @@ impl DictPassCtxChirho {
             let evidence_key_chirho = proof_chirho
                 .as_ref()
                 .and_then(|proof_chirho| proof_chirho.ty_key_chirho.clone());
+            // A displaced compiler class's ground proof takes its own namespace's dictionary
+            // (row 692, C10).
+            let dictionary_class_chirho = proof_chirho
+                .as_ref()
+                .and_then(|proof_chirho| proof_chirho.ground_pred_chirho.as_ref())
+                .map_or(class_name_chirho.as_str(), |predicate_chirho| {
+                    self.dispatch_class_name_chirho(
+                        class_name_chirho,
+                        predicate_chirho.class_identity_chirho(),
+                    )
+                });
             let evidence_dict_chirho = self.evidence_dict_for_class_chirho(
-                class_name_chirho,
+                dictionary_class_chirho,
                 evidence_key_chirho.as_deref(),
                 dict_vars_chirho,
                 evidence_classes_chirho,
@@ -319,7 +329,7 @@ impl DictPassCtxChirho {
     /// proven key, the enclosing binding's own parameter for
     /// `OWN_DICTIONARY_KEY_CHIRHO`, and nothing when nothing was proved.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
-    pub(super) fn evidence_dict_for_class_chirho(
+    pub(in crate::dict_chirho) fn evidence_dict_for_class_chirho(
         &self,
         class_name_chirho: &str,
         ty_key_chirho: Option<&str>,
@@ -405,11 +415,22 @@ impl DictPassCtxChirho {
         {
             return Some(CoreExprChirho::VarChirho(*canonical_id_chirho));
         }
-        if let Some((class_name_chirho, ty_key_chirho)) = self
-            .occurrence_evidence_chirho
-            .get(&head_id_chirho)
-            .map(OccurrenceEvidenceChirho::keys_chirho)
-        {
+        if let Some(evidence_chirho) = self.occurrence_evidence_chirho.get(&head_id_chirho) {
+            let (class_name_chirho, ty_key_chirho) = evidence_chirho.keys_chirho();
+            // A displaced compiler class's method takes its own selector and dictionary before
+            // any spelled route, the enclosing source instance's own dictionary included: that
+            // spelling is the source class's (row 692, C10).
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            if let Some(head_chirho) = self.compiler_method_head_chirho(
+                &evidence_chirho.class_identity_chirho,
+                method_name_chirho,
+                ty_key_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_instance_dicts_chirho,
+            ) {
+                return Some(head_chirho);
+            }
             // A recursive call proved only by its head keeps the enclosing
             // instance's own dictionary, the one its argument's key names.
             // workflow: language-features-chirho/own-class-method-occurrences-chirho

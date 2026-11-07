@@ -1161,3 +1161,49 @@ The controls distinguish two independent Num and Show dictionaries, source-owned
 numeric arguments, result-only Num literals and qualified Prelude methods. Imported
 result-only dictionaries still lack exported parameter inventory and remain separately
 measured; this change adds no ABI metadata channel.
+
+## Displaced compiler classes (row 692, C10, 2026-11-06)
+
+A program may declare its own class under a compiler class's spelling (`class Num a`). That
+source class then owns everything spelled under `Num`: the layout, the selectors (the
+method-name map), the dictionaries (`$fNumInt`) and the rows (`$prim_Num_fromInteger_Int`).
+The compiler class keeps its own under one reserved namespace derived from its validated
+identity, `$compiler_Num` (`layout_chirho/compiler_namespace_chirho.rs`). No source class can
+spell it.
+
+- Displacement is proof-based. The record active under the spelling is not the validated
+  `compiler_class_record_chirho(id)` (Arc::ptr_eq). It is computed only for the identities the
+  pass meets: instance, occurrence, reference and ground-goal proofs, and the builtin table.
+- The compiler layout comes from that record. Superclasses are named by their proven templates,
+  and a class whose superclasses are not all proven gets no namespace.
+- Its selectors are kept by (identity, method), never in the method-name map.
+- Its builtin rows are named in the namespace. The table's class column is the identity
+  (`layout_chirho/builtin_rows_chirho.rs`).
+- Its dictionaries take only same-class compiler-proven instances. A field takes, in order:
+  1. the namespace's own row;
+  2. the legacy-spelled row a compiler producer wrote, when no source instance of the
+     displacing class can own it;
+  3. a named failure.
+- Only a compiler proof of a displaced class dispatches through the namespace. It always uses
+  the selector form, `$sel_$compiler_Num_fromInteger $f$compiler_NumInt`, which literal wrappers
+  already keep. That applies to occurrence heads, method vars, evidenced aggregates, own
+  selectors, evidenced `print` and reference dictionaries. It is tried before the enclosing
+  source instance's own dictionary.
+- Every other proof (undisplaced compiler, source, unknown) keeps the spelled route unchanged.
+
+```mermaid
+flowchart TD
+    proof_chirho[Occurrence or reference proof] --> compiler_chirho{Compiler class displaced by a source class?}
+    compiler_chirho -->|yes| namespace_chirho[$compiler_C selector and dictionary]
+    compiler_chirho -->|no| spelled_chirho[Spelled route, unchanged]
+    record_chirho[compiler_class_record_chirho] --> layout_chirho[Compiler layout, proven superclasses]
+    layout_chirho --> namespace_chirho
+    seeds_chirho[Same-class compiler-proven instances] --> dictionaries_chirho[$f$compiler_C dictionaries]
+    dictionaries_chirho --> namespace_chirho
+```
+
+The following are not covered:
+- the evidenced structured Show/Eq/Ord/Enum row generators;
+- conditional (context) instances and GND factories of a displaced class;
+- imported or qualified compiler-class instances in a displaced module (they have no P0 proof).
+These keep the spelled route.

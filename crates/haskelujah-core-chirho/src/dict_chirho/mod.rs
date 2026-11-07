@@ -47,6 +47,7 @@ pub use type_keys_chirho::OccurrenceEvidenceChirho;
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
+use haskelujah_ast_chirho::name_chirho::CompilerClassChirho;
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, PredChirho};
 use haskelujah_typing_chirho::deriving_chirho::DerivedShowChirho;
@@ -252,6 +253,12 @@ pub struct DictPassCtxChirho {
     /// Superclass selector CoreIds: `(subclass, superclass)` → selector id.
     /// Used to extract a superclass dictionary from a subclass dictionary.
     super_selectors_chirho: HashMap<(String, String), CoreIdChirho>,
+    /// Row 692, C10: the layout of each compiler class a source class displaces, under the
+    /// class's reserved namespace (`layout_chirho::compiler_namespace_chirho`). Empty when no
+    /// source class takes a compiler class's spelling.
+    compiler_layouts_chirho: HashMap<CompilerClassChirho, DictLayoutChirho>,
+    /// Row 692, C10: those classes' method selectors, by identity and method name.
+    compiler_selectors_chirho: HashMap<(CompilerClassChirho, String), CoreIdChirho>,
     /// Conditional instance dict builders: `(class_name, type_constructor)` → the builder, a
     /// lambda that takes the instance's context dictionaries and returns the constructed
     /// class dict, with the head's formal binders and the context those parameters stand for.
@@ -367,6 +374,8 @@ impl DictPassCtxChirho {
             operator_occurrences_chirho: HashSet::new(),
             context_leading_rows_chirho: HashMap::new(),
             super_selectors_chirho: HashMap::new(),
+            compiler_layouts_chirho: HashMap::new(),
+            compiler_selectors_chirho: HashMap::new(),
             conditional_dicts_chirho: HashMap::new(),
             newtype_info_chirho: HashMap::new(),
             gnd_default_rows_chirho: HashMap::new(),

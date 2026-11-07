@@ -73,10 +73,24 @@ impl DictPassCtxChirho {
         // that proof, before any syntactic guess — the engine's prim row when
         // it has one, else the keyed selector path below with the proven key.
         // workflow: language-features-chirho/dictionary-evidence-chirho
-        let evidence_chirho = self
-            .occurrence_evidence_chirho
-            .get(&id_chirho)
-            .map(OccurrenceEvidenceChirho::keys_chirho);
+        let evidence_record_chirho = self.occurrence_evidence_chirho.get(&id_chirho);
+        // A displaced compiler class's method takes its own selector and dictionary before any
+        // spelled route (row 692, C10).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        if let Some(record_chirho) = evidence_record_chirho
+            && let Some(name_chirho) = self.names_chirho.get(&id_chirho)
+            && let Some(head_chirho) = self.compiler_method_head_chirho(
+                &record_chirho.class_identity_chirho,
+                name_chirho,
+                &record_chirho.ty_key_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_instance_dicts_chirho,
+            )
+        {
+            return head_chirho;
+        }
+        let evidence_chirho = evidence_record_chirho.map(OccurrenceEvidenceChirho::keys_chirho);
         // A proof that is not the binding's own dictionary is never answered by
         // the ambient context dictionary below; unresolved, it takes its
         // canonical method's route with the caller's key.

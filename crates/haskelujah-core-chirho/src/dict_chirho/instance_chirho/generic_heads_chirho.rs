@@ -372,7 +372,10 @@ impl DictPassCtxChirho {
 /// The registry key of a head: its first type as it displays, then each further type of a
 /// multi-parameter head, joined by `_` (`Int_Bool` for `ShowSecondChirho Int Bool`). Every
 /// instance dictionary is named by it (`$fShowSecondChirhoInt_Bool`).
-pub(super) fn head_key_chirho(first_chirho: &TyChirho, extras_chirho: &[TyChirho]) -> String {
+pub(in crate::dict_chirho) fn head_key_chirho(
+    first_chirho: &TyChirho,
+    extras_chirho: &[TyChirho],
+) -> String {
     std::iter::once(first_chirho)
         .chain(extras_chirho)
         .map(ToString::to_string)

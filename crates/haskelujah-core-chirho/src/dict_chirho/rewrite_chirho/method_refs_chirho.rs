@@ -36,10 +36,11 @@ impl DictPassCtxChirho {
         Some((*head_id_chirho, args_chirho))
     }
 
-    /// The `$prim_Show_show_<key>` a `print` occurrence's solved `Show` predicate
-    /// names, or None for any other occurrence.
-    /// Workflow: `spec-chirho/workflows-chirho/print-show-evidence-chirho.md`.
-    fn evidenced_print_show_chirho(&self, head_id_chirho: CoreIdChirho) -> Option<CoreIdChirho> {
+    /// A `print` occurrence's solved `Show` evidence, or None for any other occurrence.
+    fn print_show_evidence_chirho(
+        &self,
+        head_id_chirho: CoreIdChirho,
+    ) -> Option<&crate::dict_chirho::OccurrenceEvidenceChirho> {
         let (reference_name_chirho, _canonical_id_chirho) =
             self.method_occurrence_canon_chirho.get(&head_id_chirho)?;
         if reference_name_chirho
@@ -50,13 +51,17 @@ impl DictPassCtxChirho {
         {
             return None;
         }
-        let (class_name_chirho, ty_key_chirho) = self
-            .occurrence_evidence_chirho
-            .get(&head_id_chirho)?
-            .keys_chirho();
-        if class_name_chirho != "Show" {
-            return None;
-        }
+        let evidence_chirho = self.occurrence_evidence_chirho.get(&head_id_chirho)?;
+        (evidence_chirho.class_name_chirho == "Show").then_some(evidence_chirho)
+    }
+
+    /// The `$prim_Show_show_<key>` a `print` occurrence's solved `Show` predicate
+    /// names, or None for any other occurrence.
+    /// Workflow: `spec-chirho/workflows-chirho/print-show-evidence-chirho.md`.
+    fn evidenced_print_show_chirho(&self, head_id_chirho: CoreIdChirho) -> Option<CoreIdChirho> {
+        let ty_key_chirho = &self
+            .print_show_evidence_chirho(head_id_chirho)?
+            .ty_key_chirho;
         // Only a row with an actual body counts (row 556): the name table can hold
         // dangling placeholder ids, and a generated missing-method body is not the row.
         self.lookup_dispatch_body_name_id_chirho(&format!("$prim_Show_show_{ty_key_chirho}"))
@@ -70,6 +75,23 @@ impl DictPassCtxChirho {
         head_id_chirho: CoreIdChirho,
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
     ) -> Option<CoreExprChirho> {
+        // A displaced compiler Show prints through its own dictionary's `show`, never the
+        // source class's spelled row (row 692, C10).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        if let Some(evidence_chirho) = self.print_show_evidence_chirho(head_id_chirho)
+            && self
+                .compiler_layout_for_chirho(&evidence_chirho.class_identity_chirho)
+                .is_some()
+        {
+            return self.compiler_method_head_chirho(
+                &evidence_chirho.class_identity_chirho,
+                "show",
+                &evidence_chirho.ty_key_chirho,
+                &HashMap::new(),
+                &HashSet::new(),
+                local_instance_dicts_chirho,
+            );
+        }
         match self.evidenced_print_show_chirho(head_id_chirho) {
             Some(show_prim_id_chirho) => Some(CoreExprChirho::VarChirho(show_prim_id_chirho)),
             None => {

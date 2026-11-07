@@ -118,12 +118,35 @@ impl DictPassCtxChirho {
         id_chirho: CoreIdChirho,
     ) -> Option<CoreExprChirho> {
         let (operator_chirho, unit_chirho) = self.aggregate_shape_chirho(id_chirho)?;
-        let (class_name_chirho, ty_key_chirho) = self
-            .occurrence_evidence_chirho
-            .get(&id_chirho)?
-            .keys_chirho();
+        let evidence_chirho = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = evidence_chirho.keys_chirho();
         if class_name_chirho != "Num" {
             return None;
+        }
+        // A displaced compiler Num folds through its own dictionary's methods: the spelled rows
+        // are the source class's (row 692, C10).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        if self
+            .compiler_layout_for_chirho(&evidence_chirho.class_identity_chirho)
+            .is_some()
+        {
+            let (no_vars_chirho, no_classes_chirho, no_locals_chirho) =
+                (HashMap::new(), HashSet::new(), HashMap::new());
+            let method_head_chirho = |method_chirho: &str| {
+                self.compiler_method_head_chirho(
+                    &evidence_chirho.class_identity_chirho,
+                    method_chirho,
+                    ty_key_chirho,
+                    &no_vars_chirho,
+                    &no_classes_chirho,
+                    &no_locals_chirho,
+                )
+            };
+            return self.aggregate_fold_chirho(
+                method_head_chirho(operator_chirho)?,
+                method_head_chirho("fromInteger")?,
+                unit_chirho,
+            );
         }
         // Only rows with an actual body count: the global name table can hold
         // dangling placeholder ids, and a generated missing-method body is not
@@ -158,10 +181,8 @@ impl DictPassCtxChirho {
             return None;
         }
         let (operator_chirho, unit_chirho) = self.aggregate_shape_chirho(id_chirho)?;
-        let (class_name_chirho, ty_key_chirho) = self
-            .occurrence_evidence_chirho
-            .get(&id_chirho)?
-            .keys_chirho();
+        let evidence_chirho = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = evidence_chirho.keys_chirho();
         if class_name_chirho != "Num" || !is_own_dictionary_key_chirho(ty_key_chirho) {
             return None;
         }
@@ -171,11 +192,12 @@ impl DictPassCtxChirho {
             dict_vars_chirho,
             evidence_classes_chirho,
         )?;
+        // The proof's own selectors: a displaced compiler Num's, else the spelled ones (row 692).
         let selected_chirho = |method_chirho: &str| {
-            let (_class_chirho, selector_id_chirho) =
-                self.method_selectors_chirho.get(method_chirho)?;
+            let selector_id_chirho =
+                self.proof_selector_chirho(&evidence_chirho.class_identity_chirho, method_chirho)?;
             Some(CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(*selector_id_chirho)),
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(selector_id_chirho)),
                 arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
             })
         };
@@ -211,10 +233,8 @@ impl DictPassCtxChirho {
         let (_, method_chirho) = ORDERING_FOLDS_CHIRHO
             .iter()
             .find(|(name_chirho, _)| *name_chirho == base_name_chirho)?;
-        let (class_name_chirho, ty_key_chirho) = self
-            .occurrence_evidence_chirho
-            .get(&id_chirho)?
-            .keys_chirho();
+        let evidence_chirho = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = evidence_chirho.keys_chirho();
         if class_name_chirho != "Ord" || !is_own_dictionary_key_chirho(ty_key_chirho) {
             return None;
         }
@@ -224,13 +244,14 @@ impl DictPassCtxChirho {
             dict_vars_chirho,
             evidence_classes_chirho,
         )?;
-        let (_class_chirho, selector_id_chirho) =
-            self.method_selectors_chirho.get(*method_chirho)?;
+        // The proof's own selector: a displaced compiler Ord's, else the spelled one (row 692).
+        let selector_id_chirho =
+            self.proof_selector_chirho(&evidence_chirho.class_identity_chirho, method_chirho)?;
         let fold_id_chirho = self.lookup_body_backed_name_id_chirho(ORDERING_FOLD1_CHIRHO)?;
         Some(CoreExprChirho::AppChirho {
             fun_chirho: Box::new(CoreExprChirho::VarChirho(fold_id_chirho)),
             arg_chirho: Box::new(CoreExprChirho::AppChirho {
-                fun_chirho: Box::new(CoreExprChirho::VarChirho(*selector_id_chirho)),
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(selector_id_chirho)),
                 arg_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
             }),
         })

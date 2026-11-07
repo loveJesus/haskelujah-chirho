@@ -315,6 +315,10 @@ impl DictPassCtxChirho {
 
         // Build layouts from the class environment
         self.build_layouts_chirho(class_env_chirho);
+        // A compiler class whose spelling a source class takes keeps its own namespace, laid
+        // out from its compiler record (row 692, C10).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        self.build_compiler_layouts_chirho(class_env_chirho, Self::builtin_row_classes_chirho());
 
         // Context-leading rows, before any binding is rewritten.
         // workflow: language-features-chirho/own-class-method-occurrences-chirho
