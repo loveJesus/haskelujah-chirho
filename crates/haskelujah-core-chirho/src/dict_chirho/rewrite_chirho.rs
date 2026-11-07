@@ -311,6 +311,7 @@ impl DictPassCtxChirho {
         type_env_chirho: &TyEnvChirho,
         class_env_chirho: &ClassEnvChirho,
     ) -> CoreModuleChirho {
+        self.reserve_input_ids_chirho(module_chirho);
         self.seed_body_backed_bindings_chirho(module_chirho);
 
         // Build layouts from the class environment

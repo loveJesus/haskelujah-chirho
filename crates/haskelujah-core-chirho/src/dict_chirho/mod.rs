@@ -57,6 +57,9 @@ use crate::expr_chirho::{
     BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreModuleChirho,
 };
 
+const CORE_ID_EXHAUSTED_CHIRHO: &str =
+    "Core identifier space exhausted in dictionary generation Chirho";
+
 /// Layout of a typeclass dictionary.
 ///
 /// Maps each method name to its position in the dictionary product type.
@@ -398,9 +401,41 @@ impl DictPassCtxChirho {
     /// Generate a fresh CoreId and record its name.
     fn fresh_id_chirho(&mut self, name_chirho: &str) -> CoreIdChirho {
         let id_chirho = CoreIdChirho(self.next_id_chirho);
-        self.next_id_chirho += 1;
+        self.next_id_chirho = self
+            .next_id_chirho
+            .checked_add(1)
+            .expect(CORE_ID_EXHAUSTED_CHIRHO);
         self.names_chirho.insert(id_chirho, name_chirho.to_string());
         id_chirho
+    }
+
+    /// Reserve every actual Core-ID input before any generated binder exists.
+    /// Other namespaces (type variables, spans and nominal declaration IDs) do
+    /// not share this allocator. One cold scan keeps fresh allocation O(1).
+    /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
+    fn reserve_input_ids_chirho(&mut self, module_chirho: &CoreModuleChirho) {
+        let mut maximum_chirho = find_max_id_chirho(module_chirho);
+        for id_chirho in self
+            .names_chirho
+            .keys()
+            .chain(self.method_occurrence_canon_chirho.keys())
+            .chain(
+                self.method_occurrence_canon_chirho
+                    .values()
+                    .map(|(_, canonical_chirho)| canonical_chirho),
+            )
+            .chain(self.occurrence_evidence_chirho.keys())
+            .chain(self.occurrence_applied_tys_chirho.keys())
+            .chain(self.reference_evidence_chirho.keys())
+            .chain(self.ground_goals_chirho.keys())
+            .chain(self.operator_occurrences_chirho.iter())
+        {
+            maximum_chirho = maximum_chirho.max(id_chirho.0);
+        }
+        let after_inputs_chirho = maximum_chirho
+            .checked_add(1)
+            .expect(CORE_ID_EXHAUSTED_CHIRHO);
+        self.next_id_chirho = self.next_id_chirho.max(after_inputs_chirho);
     }
 
     /// The id a generated binding or reference takes for `name_chirho`, which may already
@@ -739,9 +774,7 @@ pub fn dict_pass_module_full_with_method_occurrences_chirho(
     method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
     occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
 ) -> DictPassResultChirho {
-    let max_id_chirho = find_max_id_chirho(module_chirho);
-    let mut ctx_chirho =
-        DictPassCtxChirho::new_chirho(max_id_chirho + 1, names_chirho, con_types_chirho);
+    let mut ctx_chirho = DictPassCtxChirho::new_chirho(0, names_chirho, con_types_chirho);
     ctx_chirho.newtype_info_chirho = newtype_info_chirho;
     ctx_chirho.extra_dict_param_names_chirho = extra_dict_param_names_chirho;
     ctx_chirho.method_occurrence_canon_chirho = method_occurrence_canon_chirho;
@@ -806,9 +839,8 @@ pub fn dict_pass_module_with_inputs_chirho(
     module_chirho: &CoreModuleChirho,
     inputs_chirho: DictPassInputsChirho<'_>,
 ) -> DictPassResultChirho {
-    let max_id_chirho = find_max_id_chirho(module_chirho);
     let mut ctx_chirho = DictPassCtxChirho::new_chirho(
-        max_id_chirho + 1,
+        0,
         inputs_chirho.names_chirho,
         inputs_chirho.con_types_chirho,
     );
@@ -883,79 +915,31 @@ fn collect_binders_chirho(
     });
 }
 
-/// Find the highest CoreIdChirho used in a module.
+/// Find the highest actual Core ID in a module, including metadata-only IDs.
 fn find_max_id_chirho(module_chirho: &CoreModuleChirho) -> u32 {
-    let mut max_chirho = 0u32;
+    let mut maximum_chirho = 0u32;
     for binding_chirho in &module_chirho.bindings_chirho {
-        max_chirho = max_chirho.max(binding_chirho.binder_chirho.id_chirho.0);
-        max_in_expr_chirho(&binding_chirho.rhs_chirho, &mut max_chirho);
+        maximum_chirho = maximum_chirho.max(binding_chirho.binder_chirho.id_chirho.0);
+        crate::transform_chirho::max_expr_id_chirho(
+            &binding_chirho.rhs_chirho,
+            &mut maximum_chirho,
+        );
     }
-    max_chirho
+    let provenance_chirho = &module_chirho.provenance_chirho;
+    for id_chirho in module_chirho
+        .names_chirho
+        .keys()
+        .chain(provenance_chirho.entry_chirho.iter())
+        .chain(provenance_chirho.compiler_bindings_chirho.iter())
+        .chain(provenance_chirho.builtin_references_chirho.iter())
+        .chain(provenance_chirho.compiler_value_references_chirho.keys())
+        .chain(provenance_chirho.imported_references_chirho.keys())
+    {
+        maximum_chirho = maximum_chirho.max(id_chirho.0);
+    }
+    maximum_chirho
 }
 
-fn max_in_expr_chirho(expr_chirho: &CoreExprChirho, max_chirho: &mut u32) {
-    match expr_chirho {
-        CoreExprChirho::VarChirho(id_chirho) => {
-            *max_chirho = (*max_chirho).max(id_chirho.0);
-        }
-        CoreExprChirho::LitChirho(_) => {}
-        CoreExprChirho::AppChirho {
-            fun_chirho,
-            arg_chirho,
-        } => {
-            max_in_expr_chirho(fun_chirho, max_chirho);
-            max_in_expr_chirho(arg_chirho, max_chirho);
-        }
-        CoreExprChirho::LamChirho {
-            binder_chirho,
-            body_chirho,
-        } => {
-            *max_chirho = (*max_chirho).max(binder_chirho.id_chirho.0);
-            max_in_expr_chirho(body_chirho, max_chirho);
-        }
-        CoreExprChirho::LetChirho {
-            binds_chirho,
-            body_chirho,
-            ..
-        } => {
-            for (b_chirho, rhs_chirho) in binds_chirho {
-                *max_chirho = (*max_chirho).max(b_chirho.id_chirho.0);
-                max_in_expr_chirho(rhs_chirho, max_chirho);
-            }
-            max_in_expr_chirho(body_chirho, max_chirho);
-        }
-        CoreExprChirho::CaseChirho {
-            scrutinee_chirho,
-            bind_chirho,
-            alts_chirho,
-            ..
-        } => {
-            max_in_expr_chirho(scrutinee_chirho, max_chirho);
-            *max_chirho = (*max_chirho).max(bind_chirho.id_chirho.0);
-            for alt_chirho in alts_chirho {
-                for b_chirho in &alt_chirho.binders_chirho {
-                    *max_chirho = (*max_chirho).max(b_chirho.id_chirho.0);
-                }
-                max_in_expr_chirho(&alt_chirho.rhs_chirho, max_chirho);
-            }
-        }
-        CoreExprChirho::TyLamChirho { body_chirho, .. } => {
-            max_in_expr_chirho(body_chirho, max_chirho);
-        }
-        CoreExprChirho::TyAppChirho {
-            expr_chirho: inner_chirho,
-            ..
-        } => {
-            max_in_expr_chirho(inner_chirho, max_chirho);
-        }
-        CoreExprChirho::PrimOpChirho { args_chirho, .. }
-        | CoreExprChirho::ConAppChirho { args_chirho, .. } => {
-            for arg_chirho in args_chirho {
-                max_in_expr_chirho(arg_chirho, max_chirho);
-            }
-        }
-    }
-}
 #[cfg(test)]
 #[path = "dict_pass_tests_chirho.rs"]
 mod tests_chirho;

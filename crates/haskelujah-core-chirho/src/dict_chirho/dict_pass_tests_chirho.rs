@@ -299,6 +299,141 @@ fn max_id_finder_chirho() {
     assert_eq!(find_max_id_chirho(&module_chirho), 42);
 }
 
+fn reservation_test_module_chirho() -> CoreModuleChirho {
+    CoreModuleChirho {
+        name_chirho: "ReservationChirho".to_string(),
+        bindings_chirho: Vec::new(),
+        names_chirho: HashMap::new(),
+        specialize_pragmas_chirho: HashMap::new(),
+        foreign_exports_chirho: Vec::new(),
+        provenance_chirho: Default::default(),
+    }
+}
+
+fn assert_exhaustion_panic_chirho(
+    error_chirho: Box<dyn std::any::Any + Send>,
+    expected_marker_chirho: &str,
+) {
+    let message_chirho = error_chirho
+        .downcast_ref::<String>()
+        .map(String::as_str)
+        .or_else(|| error_chirho.downcast_ref::<&str>().copied());
+    assert!(
+        message_chirho
+            .is_some_and(|message_chirho| { message_chirho.contains(expected_marker_chirho) })
+    );
+}
+
+#[test]
+fn input_reservation_keeps_the_callers_allocator_floor_chirho() {
+    let floor_chirho = 1_000_000;
+    let names_chirho = HashMap::from([(CoreIdChirho(43), "existing_input_chirho".to_string())]);
+    let mut ctx_chirho =
+        DictPassCtxChirho::new_chirho(floor_chirho, names_chirho.clone(), HashMap::new());
+    ctx_chirho.transform_module_chirho(
+        &reservation_test_module_chirho(),
+        &TyEnvChirho::new_chirho(),
+        &ClassEnvChirho::new_chirho(),
+    );
+    assert!(!ctx_chirho.generated_bindings_chirho.is_empty());
+    for binding_chirho in &ctx_chirho.generated_bindings_chirho {
+        let mut local_ids_chirho = HashSet::new();
+        collect_binders_chirho(&binding_chirho.rhs_chirho, &mut local_ids_chirho);
+        local_ids_chirho.insert(binding_chirho.binder_chirho.id_chirho);
+        assert!(
+            local_ids_chirho
+                .iter()
+                .all(|id_chirho| id_chirho.0 >= floor_chirho)
+        );
+    }
+    for (id_chirho, name_chirho) in names_chirho {
+        assert_eq!(ctx_chirho.names_chirho.get(&id_chirho), Some(&name_chirho));
+    }
+}
+
+#[test]
+fn exhausted_input_id_space_stops_before_any_generation_chirho() {
+    let mut module_chirho = reservation_test_module_chirho();
+    module_chirho
+        .names_chirho
+        .insert(CoreIdChirho(u32::MAX), "last_input_chirho".to_string());
+    let mut ctx_chirho =
+        DictPassCtxChirho::new_chirho(1, module_chirho.names_chirho.clone(), HashMap::new());
+    let names_chirho = ctx_chirho.names_chirho.clone();
+    let caught_chirho = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        ctx_chirho.transform_module_chirho(
+            &module_chirho,
+            &TyEnvChirho::new_chirho(),
+            &ClassEnvChirho::new_chirho(),
+        );
+    }));
+    assert_exhaustion_panic_chirho(
+        caught_chirho.expect_err("exhausted input IDs must refuse"),
+        "Core identifier space exhausted",
+    );
+    assert!(ctx_chirho.generated_bindings_chirho.is_empty());
+    assert_eq!(ctx_chirho.names_chirho, names_chirho);
+}
+
+#[test]
+fn exhausted_fresh_id_space_never_wraps_or_inserts_a_name_chirho() {
+    let names_chirho = HashMap::from([(CoreIdChirho(43), "existing_input_chirho".to_string())]);
+    let mut ctx_chirho =
+        DictPassCtxChirho::new_chirho(u32::MAX, names_chirho.clone(), HashMap::new());
+    let caught_chirho = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        ctx_chirho.fresh_id_chirho("unallocated_chirho");
+    }));
+    assert_exhaustion_panic_chirho(
+        caught_chirho.expect_err("exhausted fresh IDs must refuse"),
+        "Core identifier space exhausted",
+    );
+    assert_eq!(ctx_chirho.names_chirho, names_chirho);
+    assert_eq!(ctx_chirho.next_id_chirho, u32::MAX);
+}
+
+#[test]
+fn exhausted_show_list_cursor_never_reaches_a_wrapped_worker_id_chirho() {
+    let mut ctx_chirho =
+        DictPassCtxChirho::new_chirho(u32::MAX - 1, HashMap::new(), HashMap::new());
+    let caught_chirho = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        ctx_chirho.generate_show_key_binding_chirho("show_list_probe_chirho", "[Int]");
+    }));
+    assert_exhaustion_panic_chirho(
+        caught_chirho.expect_err("the shared show-list cursor must not wrap"),
+        "Core identifier space exhausted",
+    );
+    assert!(ctx_chirho.generated_bindings_chirho.is_empty());
+    assert_eq!(ctx_chirho.next_id_chirho, u32::MAX);
+    assert!(
+        ctx_chirho
+            .names_chirho
+            .keys()
+            .all(|id_chirho| id_chirho.0 >= u32::MAX - 1)
+    );
+}
+
+#[test]
+fn exhausted_missing_method_type_seed_never_allocates_argument_ids_chirho() {
+    let names_chirho = HashMap::from([(CoreIdChirho(43), "existing_input_chirho".to_string())]);
+    let mut ctx_chirho =
+        DictPassCtxChirho::new_chirho(u32::MAX - 5_000, names_chirho.clone(), HashMap::new());
+    let caught_chirho = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        ctx_chirho.missing_method_row_chirho(
+            None,
+            "missing_probe_chirho",
+            "unused probe Chirho".to_string(),
+            1,
+            None,
+        );
+    }));
+    assert_exhaustion_panic_chirho(
+        caught_chirho.expect_err("the separate type-variable seed must not wrap"),
+        "Dictionary type-variable seed exhausted",
+    );
+    assert!(ctx_chirho.generated_bindings_chirho.is_empty());
+    assert_eq!(ctx_chirho.names_chirho, names_chirho);
+}
+
 #[test]
 fn instance_dicts_generated_for_ground_instances_chirho() {
     let mut class_env_chirho = ClassEnvChirho::new_chirho();

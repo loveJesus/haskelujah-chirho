@@ -2368,12 +2368,7 @@ impl DictPassCtxChirho {
             let _acc_chirho = self.fresh_binder_chirho("acc", list_a_chirho.clone());
 
             // reverse xs = go [] xs where go acc [] = acc; go acc (h:t) = go (h:acc) t
-            let go_id_chirho = {
-                let id_chirho = CoreIdChirho(self.next_id_chirho);
-                self.next_id_chirho += 1;
-                self.names_chirho.insert(id_chirho, "$rev_go".to_string());
-                id_chirho
-            };
+            let go_id_chirho = self.fresh_id_chirho("$rev_go");
 
             let go_acc_chirho = self.fresh_binder_chirho("acc", list_a_chirho.clone());
             let go_ys_chirho = self.fresh_binder_chirho("ys", list_a_chirho.clone());

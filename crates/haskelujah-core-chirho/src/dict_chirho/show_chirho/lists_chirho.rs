@@ -28,7 +28,10 @@ impl DictPassCtxChirho {
         value_chirho: CoreExprChirho,
     ) -> CoreExprChirho {
         let element_ty_chirho = TyChirho::VarChirho(TyVarChirho(self.next_id_chirho));
-        self.next_id_chirho += 1;
+        self.next_id_chirho = self
+            .next_id_chirho
+            .checked_add(1)
+            .expect(super::super::CORE_ID_EXHAUSTED_CHIRHO);
         let list_ty_chirho = TyChirho::ListChirho(Box::new(element_ty_chirho.clone()));
         let worker_chirho = self.fresh_binder_chirho(
             &format!("$show_list_tail_{}_chirho", self.next_id_chirho),
