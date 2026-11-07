@@ -186,7 +186,7 @@ fn an_explicit_type_lambda_still_consumes_its_own_binder_chirho() {
     assert_closed_chirho(&context_chirho);
 }
 
-fn check_section_with_an_enclosing_meta_chirho(right_section_chirho: bool) {
+fn check_section_with_an_enclosing_meta_chirho(right_section_chirho: bool, list_chirho: bool) {
     let mut context_chirho = InferCtxChirho::new_chirho();
     let enclosing_chirho = context_chirho.fresh_var_chirho();
     let operator_chirho = if right_section_chirho {
@@ -209,6 +209,14 @@ fn check_section_with_an_enclosing_meta_chirho(right_section_chirho: bool) {
         SchemeChirho::mono_chirho(TyChirho::bool_chirho()),
     );
     let expected_chirho = TyChirho::fun_chirho(enclosing_chirho.clone(), enclosing_chirho);
+    let expected_chirho = if list_chirho {
+        TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("[]".into())),
+            Box::new(expected_chirho),
+        )
+    } else {
+        expected_chirho
+    };
     let captured_chirho = context_chirho
         .capture_signature_metas_chirho(&SchemeChirho::mono_chirho(expected_chirho.clone()));
     assert!(captured_chirho.is_some());
@@ -224,6 +232,14 @@ fn check_section_with_an_enclosing_meta_chirho(right_section_chirho: bool) {
             arg_chirho: Box::new(variable_chirho("conditionChirho")),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }
+    };
+    let expression_chirho = if list_chirho {
+        ExprChirho::ListChirho {
+            elements_chirho: vec![expression_chirho],
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }
+    } else {
+        expression_chirho
     };
     let (substitution_chirho, actual_chirho) = context_chirho.infer_expr_against_expected_chirho(
         &expression_chirho,
@@ -250,10 +266,15 @@ fn check_section_with_an_enclosing_meta_chirho(right_section_chirho: bool) {
 
 #[test]
 fn checking_a_left_section_keeps_enclosing_meta_escape_analysis_usable_chirho() {
-    check_section_with_an_enclosing_meta_chirho(false);
+    check_section_with_an_enclosing_meta_chirho(false, false);
 }
 
 #[test]
 fn checking_a_right_section_keeps_enclosing_meta_escape_analysis_usable_chirho() {
-    check_section_with_an_enclosing_meta_chirho(true);
+    check_section_with_an_enclosing_meta_chirho(true, false);
+}
+
+#[test]
+fn checking_a_list_section_keeps_enclosing_meta_escape_analysis_usable_chirho() {
+    check_section_with_an_enclosing_meta_chirho(false, true);
 }
