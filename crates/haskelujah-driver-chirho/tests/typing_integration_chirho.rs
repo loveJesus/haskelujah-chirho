@@ -23,6 +23,8 @@ mod closed_family_equations_chirho;
 mod declaration_validity_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/deriving_strategies_chirho.rs"]
 mod deriving_strategies_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/monomorphism_restriction_chirho/displaced_dispatch_chirho/displaced_dispatch_chirho.rs"]
+mod displaced_dispatch_chirho;
 #[path = "typing_integration_chirho/dollar_ownership_chirho.rs"]
 mod dollar_ownership_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/equality_scopes_chirho.rs"]
@@ -51,6 +53,8 @@ mod method_ownership_chirho;
 mod monad_owned_dictionary_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/monomorphism_restriction_chirho/monomorphism_restriction_chirho.rs"]
 mod monomorphism_restriction_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/monomorphism_restriction_chirho/namesake_defaulting_chirho/namesake_defaulting_chirho.rs"]
+mod namesake_defaulting_chirho;
 #[path = "typing_integration_chirho/operator_ownership_chirho.rs"]
 mod operator_ownership_chirho;
 #[path = "typing_integration_chirho/paren_infix_definitions_chirho.rs"]
