@@ -60,6 +60,10 @@ pub struct IfaceValueChirho {
     /// whose text cannot say where a value is defined.
     /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
     pub defining_module_chirho: Option<String>,
+    /// Positive value identity from its actual builtin producer, preserved by
+    /// export filtering and source re-exports. Unknown/source/stub values have
+    /// none; `defining_module_chirho == None` supplies no builtin authority.
+    pub compiler_value_chirho: Option<haskelujah_ast_chirho::name_chirho::CompilerValueChirho>,
 }
 
 /// An exported type with its available constructors.
@@ -762,12 +766,44 @@ pub fn merge_module_ifaces_chirho(
                     &existing_chirho.exports_chirho,
                     &module_chirho.exports_chirho,
                 );
-            for (name_chirho, value_chirho) in module_chirho.exports_chirho.values_chirho {
+            for (name_chirho, mut value_chirho) in module_chirho.exports_chirho.values_chirho {
+                // Operator keys may be parenthesized or canonical. They name
+                // one value, so a differently spelled conflicting fragment
+                // cannot leave one positive marker for a later hash lookup.
+                let canonical_chirho =
+                    crate::type_exports_chirho::canonical_value_name_chirho(&name_chirho);
+                let alternate_chirho = if canonical_chirho == name_chirho {
+                    format!("({name_chirho})")
+                } else {
+                    canonical_chirho
+                };
+                if let Some(alternate_value_chirho) = existing_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .get_mut(&alternate_chirho)
+                    && (alternate_value_chirho.compiler_value_chirho
+                        != value_chirho.compiler_value_chirho
+                        || alternate_value_chirho.defining_module_chirho
+                            != value_chirho.defining_module_chirho)
+                {
+                    alternate_value_chirho.compiler_value_chirho = None;
+                    value_chirho.compiler_value_chirho = None;
+                }
                 existing_chirho
                     .exports_chirho
                     .values_chirho
                     .entry(name_chirho)
                     .and_modify(|existing_value_chirho| {
+                        // Fragment union cannot turn an unproven/replaced source
+                        // value into a builtin. Real re-exports carry identical
+                        // explicit markers and preserve them through this join.
+                        if existing_value_chirho.compiler_value_chirho
+                            != value_chirho.compiler_value_chirho
+                            || existing_value_chirho.defining_module_chirho
+                                != value_chirho.defining_module_chirho
+                        {
+                            existing_value_chirho.compiler_value_chirho = None;
+                        }
                         if value_chirho.availability_chirho
                             == IfaceValueAvailabilityChirho::FieldLabelOnlyChirho
                         {

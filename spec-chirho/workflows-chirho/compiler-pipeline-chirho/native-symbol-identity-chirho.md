@@ -116,3 +116,35 @@ Row 629 owns namesakes that resolve by bare name before the backend: interfaces,
   - `check` rejects a two-level chain and a project Prelude: its single-file stub interfaces carry no types for re-exported values.
   - The frontend does not reject an ambiguous unqualified name; only the link refuses it.
   - Class methods and constructors still link through their class and type.
+
+
+## Polymorphic list append Chirho
+
+Frozen row 709 Phase A confirmed that ordinary `(++)` at `[[Char]]` was emitted as string-only `++#`: the actual Core and Cranelift binary passed cons cells holding String pointers into `haskelujah_append_str_chirho`. ASCII literal, replicate-only and the String header append passed; list-of-String append without replicate failed with the same named character-encoding error as the package ladder. The candidate below is source-only until its own scheduler gate; old RED evidence remains immutable.
+
+```mermaid
+flowchart TD
+    builtin_value_chirho[Actual builtin Prelude export marks ListAppend] --> export_copy_chirho[Selected value metadata survives export filtering and real reexports]
+    source_value_chirho[Source or unknown stub has no compiler proof] --> export_copy_chirho
+    export_copy_chirho --> select_iface_chirho[Existing interface selector chooses actual package or home exposure]
+    select_iface_chirho --> import_shape_chirho[Existing import spec qualifier and namespace select supplied values]
+    import_shape_chirho --> suppliers_chirho[Existing ImportSuppliers carries source compiler or unproven origin]
+    suppliers_chirho --> written_reference_chirho[One written reference resolver for prefix infix and both sections]
+    written_reference_chirho --> source_owned_chirho{Lexical or source-owned binding?}
+    source_owned_chirho -->|yes| source_body_chirho[Preserve actual source ID and body]
+    source_owned_chirho -->|no| certified_value_chirho{Unique positive compiler value origin?}
+    certified_value_chirho -->|no| unproven_reference_chirho[Keep unproven reference without compiler body permission]
+    certified_value_chirho -->|yes| typed_core_chirho[Carry ID to CompilerValue in existing Core provenance]
+    typed_core_chirho --> transport_ids_chirho[Offset absorb and remap preserve typed identity]
+    transport_ids_chirho --> generated_entry_chirho[Generate forwarding entry to actual compiler-owned lazy append body]
+    generated_entry_chirho --> compiler_binding_chirho[Publish compiler binding provenance only with actual RHS]
+    compiler_binding_chirho --> ordinary_lowering_chirho[Existing engines lower ordinary lazy list operations]
+```
+
+`RawName.origin_chirho` is occurrence identity, never a binding certificate. An absent source definer, free spelling, generic builtin bit or reserved alias cannot synthesize a compiler value origin. The positive enum is minted only by the actual builtin export producer and is copied with that selected `IfaceValue`. Source re-exports preserve real metadata; unknown/stub values do not invent it. If conflicting fragments disagree about a value's marker or source definer, their generic union loses the marker. A module merely having Source origin does not erase a genuine forwarded builtin's marker.
+
+Selected complete source interfaces are admitted by the existing exact `(name, exposure)` replacement helper before generic fragment merging. This applies to seeded source views and freshly checked home exports converted to package exposure; other package views survive. It prevents a fallback interface from retaining builtin exports/proof that the selected source actually replaces. The existing generic fragment merger remains available for genuine fragments.
+
+All four source append forms enter the same identity route. The dictionary pass reuses one generic lazy append implementation and generates a two-argument forwarding entry from typed compiler-value provenance. The forwarding target is the actual compiler-owned append ID, so a source binding named `append` cannot capture it. Existing native list-case normalization handles literal buffers when the generic body demands their spine. Explicitly string-specific generated `++#` operations, native backend contracts and the strict RTS packer remain unchanged.
+
+Acceptance includes typed String, `[Int]` and `[[Char]]` append in prefix/infix/both sections; an undemanded tail and element must remain lazy. Local, top-level, qualified/imported and source Prelude namesakes retain their own bodies. A real source re-export of builtin append retains its positive origin. Hiding, NoImplicitPrelude, unknown qualifier and stub boundaries cannot acquire a compiler body. Metadata controls separately check typed provenance transport, source/exposure precedence and rejection of fake builtin-bit/alias authority. These are source/semantic controls, not a passing package-ladder claim; unchanged ladder execution with exact source/binary/RTS identities remains required.

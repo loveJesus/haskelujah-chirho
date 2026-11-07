@@ -60,7 +60,7 @@ use crate::read_haskell_source_file_chirho;
 /// Replace only the same admitted exposure; preserve same-name package views.
 /// The shared import selector gives a home candidate precedence for ordinary
 /// imports, while an explicit package import keeps its own producer.
-fn admit_authoritative_iface_chirho(
+pub(crate) fn admit_authoritative_iface_chirho(
     ifaces_chirho: &mut Vec<ModuleIfaceChirho>,
     iface_chirho: ModuleIfaceChirho,
 ) {
@@ -530,6 +530,7 @@ fn scan_hierarchical_modules_bounded_chirho(
                             name_chirho,
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                             defining_module_chirho: None,
+                            compiler_value_chirho: None,
                         },
                     );
                 }

@@ -519,6 +519,7 @@ impl DesugarCtxChirho {
                     .collect(),
                 provenance_chirho: crate::expr_chirho::CoreProvenanceChirho {
                     imported_references_chirho: self.imported_references_chirho.clone(),
+                    compiler_value_references_chirho: self.compiler_value_references_chirho.clone(),
                     ..Default::default()
                 },
             },

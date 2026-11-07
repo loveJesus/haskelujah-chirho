@@ -472,6 +472,7 @@ fn scan_package_hs_files_chirho(
                                     name_chirho: name_chirho.clone(),
                                     span_chirho,
                                     defining_module_chirho: None,
+                                    compiler_value_chirho: None,
                                 },
                             );
                         } else {
@@ -482,6 +483,7 @@ fn scan_package_hs_files_chirho(
                                     name_chirho: name_chirho.clone(),
                                     span_chirho,
                                     defining_module_chirho: None,
+                                    compiler_value_chirho: None,
                                 },
                             );
                         }

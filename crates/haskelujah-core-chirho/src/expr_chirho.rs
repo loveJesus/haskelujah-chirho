@@ -230,6 +230,10 @@ pub struct CoreProvenanceChirho {
     /// References no program binding owns that name a builtin or runtime function. A free
     /// reference outside this set is a missing binding, and fails closed.
     pub builtin_references_chirho: BTreeSet<CoreIdChirho>,
+    /// Positive selected-export identity for compiler value references. Unlike
+    /// a builtin bit or spelling, this payload authorizes a specific lazy body.
+    pub compiler_value_references_chirho:
+        BTreeMap<CoreIdChirho, haskelujah_ast_chirho::name_chirho::CompilerValueChirho>,
     /// References to a user module's exported value, each with the identity its import gives
     /// it (row 629). The multi-module link reads these; nothing generates a body for them.
     pub imported_references_chirho: BTreeMap<CoreIdChirho, ImportedReferenceChirho>,
@@ -266,6 +270,11 @@ impl CoreProvenanceChirho {
                 .iter()
                 .map(shift_chirho)
                 .collect(),
+            compiler_value_references_chirho: self
+                .compiler_value_references_chirho
+                .iter()
+                .map(|(id_chirho, value_chirho)| (shift_chirho(id_chirho), *value_chirho))
+                .collect(),
             imported_references_chirho: self
                 .imported_references_chirho
                 .iter()
@@ -283,6 +292,12 @@ impl CoreProvenanceChirho {
             .extend(other_chirho.compiler_bindings_chirho.iter().copied());
         self.builtin_references_chirho
             .extend(other_chirho.builtin_references_chirho.iter().copied());
+        self.compiler_value_references_chirho.extend(
+            other_chirho
+                .compiler_value_references_chirho
+                .iter()
+                .map(|(id_chirho, value_chirho)| (*id_chirho, *value_chirho)),
+        );
         self.imported_references_chirho.extend(
             other_chirho
                 .imported_references_chirho
@@ -306,6 +321,11 @@ impl CoreProvenanceChirho {
             .iter()
             .map(|id_chirho| follow_chirho(*id_chirho))
             .collect();
+        self.compiler_value_references_chirho =
+            std::mem::take(&mut self.compiler_value_references_chirho)
+                .into_iter()
+                .map(|(id_chirho, value_chirho)| (follow_chirho(id_chirho), value_chirho))
+                .collect();
         self.imported_references_chirho = std::mem::take(&mut self.imported_references_chirho)
             .into_iter()
             .map(|(id_chirho, reference_chirho)| (follow_chirho(id_chirho), reference_chirho))

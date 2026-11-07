@@ -394,6 +394,7 @@ fn ensure_type_export_chirho(
                 name_chirho: canonical_constructor_chirho,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 defining_module_chirho: None,
+                compiler_value_chirho: None,
             });
     }
 }
@@ -544,6 +545,7 @@ pub(crate) fn collect_all_definitions_chirho(
                             name_chirho: value_name_chirho.clone(),
                             span_chirho: *span_chirho,
                             defining_module_chirho: defining_module_chirho.clone(),
+                            compiler_value_chirho: None,
                         },
                     );
                 }
@@ -585,6 +587,7 @@ pub(crate) fn collect_all_definitions_chirho(
                             name_chirho: value_name_chirho.clone(),
                             span_chirho: *span_chirho,
                             defining_module_chirho: defining_module_chirho.clone(),
+                            compiler_value_chirho: None,
                         },
                     );
                 }
@@ -640,6 +643,7 @@ pub(crate) fn collect_all_definitions_chirho(
                             name_chirho: method_name_chirho.clone(),
                             span_chirho: *span_chirho,
                             defining_module_chirho: defining_module_chirho.clone(),
+                            compiler_value_chirho: None,
                         },
                     );
                 }
@@ -708,6 +712,7 @@ pub(crate) fn collect_all_definitions_chirho(
                         name_chirho: value_name_chirho,
                         span_chirho: *span_chirho,
                         defining_module_chirho: defining_module_chirho.clone(),
+                        compiler_value_chirho: None,
                     },
                 );
             }
@@ -726,6 +731,7 @@ pub(crate) fn collect_all_definitions_chirho(
                             name_chirho: value_name_chirho,
                             span_chirho: *span_chirho,
                             defining_module_chirho: defining_module_chirho.clone(),
+                            compiler_value_chirho: None,
                         },
                     );
                 }

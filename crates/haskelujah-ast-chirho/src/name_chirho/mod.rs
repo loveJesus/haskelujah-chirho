@@ -191,6 +191,23 @@ impl RawNameChirho {
     }
 }
 
+/// Positive identity attached by an actual builtin value export producer.
+/// Re-exports preserve it with the value. Spelling or absent source ownership
+/// never creates this authority. Workflow: native-symbol-identity-chirho.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum CompilerValueChirho {
+    ListAppendChirho,
+}
+
+impl CompilerValueChirho {
+    /// Reserved Core spelling; consumers also require the certified reference ID.
+    pub fn core_name_chirho(self) -> &'static str {
+        match self {
+            Self::ListAppendChirho => "$list_append_chirho",
+        }
+    }
+}
+
 /// A unique identifier assigned during name resolution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct DefIdChirho(pub u32);
