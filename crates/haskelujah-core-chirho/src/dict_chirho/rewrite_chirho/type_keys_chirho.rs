@@ -211,106 +211,102 @@ impl DictPassCtxChirho {
                 // the checker solved for this literal occurrence (`1 / 2 :: Double`,
                 // a signature, or defaulting give Double); with no evidence, Int.
                 // workflow: language-features-chirho/dictionary-evidence-chirho
-                if let CoreExprChirho::VarChirho(id_chirho) = fun_chirho.as_ref() {
-                    if let Some(name_chirho) = self.names_chirho.get(id_chirho) {
-                        if name_chirho == "fromInteger" {
-                            return Some(
-                                self.occurrence_evidence_chirho
-                                    .get(id_chirho)
-                                    .filter(|occurrence_chirho| {
-                                        occurrence_chirho.class_name_chirho == "Num"
-                                    })
-                                    .map_or_else(
-                                        || "Int".to_string(),
-                                        |occurrence_chirho| occurrence_chirho.ty_key_chirho.clone(),
-                                    ),
-                            );
+                if let CoreExprChirho::VarChirho(id_chirho) = fun_chirho.as_ref()
+                    && let Some(name_chirho) = self.names_chirho.get(id_chirho)
+                {
+                    if name_chirho == "fromInteger" {
+                        return Some(
+                            self.occurrence_evidence_chirho
+                                .get(id_chirho)
+                                .filter(|occurrence_chirho| {
+                                    occurrence_chirho.class_name_chirho == "Num"
+                                })
+                                .map_or_else(
+                                    || "Int".to_string(),
+                                    |occurrence_chirho| occurrence_chirho.ty_key_chirho.clone(),
+                                ),
+                        );
+                    }
+                    // Well-known Prelude function return types:
+                    // These functions have fixed return types regardless
+                    // of their argument types, so we can infer the result
+                    // type for dict selection without full type inference.
+                    match name_chirho.as_str() {
+                        // :: [a] -> Int
+                        "length" | "sum" | "product" => {
+                            return Some("Int".to_string());
                         }
-                        // Well-known Prelude function return types:
-                        // These functions have fixed return types regardless
-                        // of their argument types, so we can infer the result
-                        // type for dict selection without full type inference.
-                        match name_chirho.as_str() {
-                            // :: [a] -> Int
-                            "length" | "sum" | "product" => {
-                                return Some("Int".to_string());
+                        // :: [a] -> [a]  (element type from arg)
+                        "take" | "drop" | "reverse" | "sort" | "init" | "tail" | "nub"
+                        | "cycle" => {
+                            if let Some(arg_ty_chirho) = self.infer_type_key_chirho(arg_chirho) {
+                                return Some(arg_ty_chirho);
                             }
-                            // :: [a] -> [a]  (element type from arg)
-                            "take" | "drop" | "reverse" | "sort" | "init" | "tail" | "nub"
-                            | "cycle" => {
-                                if let Some(arg_ty_chirho) = self.infer_type_key_chirho(arg_chirho)
-                                {
-                                    return Some(arg_ty_chirho);
+                            return None;
+                        }
+                        // :: [a] -> a  (element type from list arg)
+                        "head" | "last" | "minimum" | "maximum" => {
+                            if let Some(arg_ty_chirho) = self.infer_type_key_chirho(arg_chirho) {
+                                // Strip outer list: [Int] → Int
+                                if arg_ty_chirho.starts_with('[') && arg_ty_chirho.ends_with(']') {
+                                    return Some(
+                                        arg_ty_chirho[1..arg_ty_chirho.len() - 1].to_string(),
+                                    );
                                 }
-                                return None;
+                                return Some(arg_ty_chirho);
                             }
-                            // :: [a] -> a  (element type from list arg)
-                            "head" | "last" | "minimum" | "maximum" => {
-                                if let Some(arg_ty_chirho) = self.infer_type_key_chirho(arg_chirho)
-                                {
-                                    // Strip outer list: [Int] → Int
-                                    if arg_ty_chirho.starts_with('[')
-                                        && arg_ty_chirho.ends_with(']')
-                                    {
-                                        return Some(
-                                            arg_ty_chirho[1..arg_ty_chirho.len() - 1].to_string(),
-                                        );
-                                    }
-                                    return Some(arg_ty_chirho);
-                                }
-                                return None;
-                            }
-                            // :: a -> Bool
-                            "null" | "even" | "odd" | "elem" | "notElem" => {
-                                return Some("Bool".to_string());
-                            }
-                            // :: a -> Int
-                            "fromEnum" | "ord" => {
-                                return Some("Int".to_string());
-                            }
-                            // :: Int -> Char
-                            "chr" => {
-                                return Some("Char".to_string());
-                            }
-                            // :: Int -> a (for toEnum, we don't know the
-                            // result type without context, so skip)
-                            _ => {}
+                            return None;
                         }
-                        // Constructor applications: App(Just, x) → Maybe <x-type>
-                        match name_chirho.as_str() {
-                            "Identity" | "Const" | "Sum" | "Product" | "All" | "Any" | "Min"
-                            | "Max" | "First" | "Last" | "Down" | "Endo" => {
-                                return Some(name_chirho.clone());
-                            }
-                            "Just" => {
-                                let inner_chirho = self
-                                    .infer_type_key_chirho(arg_chirho)
-                                    .unwrap_or_else(|| "Int".to_string());
-                                let inner_key_chirho = if inner_chirho == "[Char]" {
-                                    "String"
-                                } else {
-                                    &inner_chirho
-                                };
-                                return Some(format!("Maybe {}", inner_key_chirho));
-                            }
-                            "Left" => {
-                                let inner_chirho = self
-                                    .infer_type_key_chirho(arg_chirho)
-                                    .unwrap_or_else(|| "Int".to_string());
-                                return Some(format!("Either {} Int", inner_chirho));
-                            }
-                            "Right" => {
-                                let inner_chirho = self
-                                    .infer_type_key_chirho(arg_chirho)
-                                    .unwrap_or_else(|| "Int".to_string());
-                                return Some(format!("Either Int {}", inner_chirho));
-                            }
-                            _ => {}
+                        // :: a -> Bool
+                        "null" | "even" | "odd" | "elem" | "notElem" => {
+                            return Some("Bool".to_string());
                         }
-                        // Check if the name is a known constructor and return its type
-                        if let Some(type_name_chirho) = self.con_types_chirho.get(name_chirho) {
-                            return Some(type_name_chirho.clone());
+                        // :: a -> Int
+                        "fromEnum" | "ord" => {
+                            return Some("Int".to_string());
                         }
+                        // :: Int -> Char
+                        "chr" => {
+                            return Some("Char".to_string());
+                        }
+                        // :: Int -> a (for toEnum, we don't know the
+                        // result type without context, so skip)
+                        _ => {}
+                    }
+                    // Constructor applications: App(Just, x) → Maybe <x-type>
+                    match name_chirho.as_str() {
+                        "Identity" | "Const" | "Sum" | "Product" | "All" | "Any" | "Min"
+                        | "Max" | "First" | "Last" | "Down" | "Endo" => {
+                            return Some(name_chirho.clone());
+                        }
+                        "Just" => {
+                            let inner_chirho = self
+                                .infer_type_key_chirho(arg_chirho)
+                                .unwrap_or_else(|| "Int".to_string());
+                            let inner_key_chirho = if inner_chirho == "[Char]" {
+                                "String"
+                            } else {
+                                &inner_chirho
+                            };
+                            return Some(format!("Maybe {}", inner_key_chirho));
+                        }
+                        "Left" => {
+                            let inner_chirho = self
+                                .infer_type_key_chirho(arg_chirho)
+                                .unwrap_or_else(|| "Int".to_string());
+                            return Some(format!("Either {} Int", inner_chirho));
+                        }
+                        "Right" => {
+                            let inner_chirho = self
+                                .infer_type_key_chirho(arg_chirho)
+                                .unwrap_or_else(|| "Int".to_string());
+                            return Some(format!("Either Int {}", inner_chirho));
+                        }
+                        _ => {}
+                    }
+                    // Check if the name is a known constructor and return its type
+                    if let Some(type_name_chirho) = self.con_types_chirho.get(name_chirho) {
+                        return Some(type_name_chirho.clone());
                     }
                 }
                 // Detect App(App(Var((,)), a), b) → tuple type
