@@ -2,7 +2,7 @@
 
 # Nominal numeric equality Chirho
 
-The ordinary unifier currently accepts both `Int ~ Double` and `Double ~ Int` with an empty substitution. This equates distinct type constructors without a conversion. Row 708 removes that one compatibility arm; numeric literals, explicit conversion and defaulting retain their own obligations.
+Before this repair, the ordinary unifier accepted both `Int ~ Double` and `Double ~ Int` with an empty substitution. This equated distinct type constructors without a conversion. Row 708 removes that one compatibility arm; numeric literals, explicit conversion and defaulting retain their own obligations.
 
 - [x] Pin an isolated A9 source baseline (`075a9c95`, crates `a9a38e3d`) and census the normal-unifier consumers. Root owns canonical metadata and SQLite.
 - [x] Name the source footprint before editing: bounded direct unifier units; one numeric-nominality driver child, ten Haskell fixtures and its two-line root mount. No new API, registry or runtime representation route.
@@ -16,7 +16,7 @@ The ordinary unifier currently accepts both `Int ~ Double` and `Double ~ Int` wi
 The driver controls compile source without running a program. Acceptance of an unannotated numeric binding establishes that it can be checked, not a particular inferred default type. The original MR lambda failure depends on restricted generalization and is not replaced by a prediction about this A9-only patch.
 
 - [x] Run independent main-relative preservation: fresh frozen `1b71c06d` CLI against the source-equal, pin-matched retained actual-A9 baseline on both unchanged compiler axes.
-- [ ] Root review, source integration and canonical landing. The broader kind engine and runtime/defaulting gaps remain separate open work.
+- [x] Root review, source integration and canonical landing. Main `4cec50ac` is pushed and has the exact measured crates tree `a98c1766`; no compiler rerun on canonical main is claimed. The broader kind engine and runtime/defaulting gaps remain separate open work.
 
 ## Measured checkpoint
 
