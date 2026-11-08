@@ -20,8 +20,14 @@ fn has_qualifier_chirho(name_chirho: &str) -> bool {
 }
 
 fn same_tycon_name_chirho(left_name_chirho: &str, right_name_chirho: &str) -> bool {
-    // A promoted-constructor key is opaque (row 686): only the whole key identifies it.
-    if is_promoted_key_chirho(left_name_chirho) || is_promoted_key_chirho(right_name_chirho) {
+    // Constructor and promoted keys are opaque transport, never written qualifiers.
+    // Recognizing their namespace supplies no declaration or identity proof.
+    // Workflow: compiler-pipeline-chirho/inference-layout-chirho#opaque-constructor-transport-chirho.
+    if is_promoted_key_chirho(left_name_chirho)
+        || is_promoted_key_chirho(right_name_chirho)
+        || left_name_chirho.starts_with("%constructor:")
+        || right_name_chirho.starts_with("%constructor:")
+    {
         return left_name_chirho == right_name_chirho;
     }
     left_name_chirho == right_name_chirho

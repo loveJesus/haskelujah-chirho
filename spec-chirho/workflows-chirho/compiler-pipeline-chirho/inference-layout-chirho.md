@@ -35,3 +35,19 @@ flowchart TD
 ```
 
 The row 708 source correction has a paired measured control: the original unifier accepted three invalid signed numeric values, and the corrected unifier rejects them while the seven valid literal/conversion/polymorphism controls remain checkable. The full typing library and scoped lint gate passed; a fresh frozen candidate preserved both existing compiler-axis raw streams byte-for-byte against the pin-matched actual-A9 baseline. Main `4cec50ac` contains that exact measured crates tree. See the numeric-nominality tasklist for exact commits, overlapping test scopes and receipt hashes. Wider runtime/defaulting behavior remains open.
+
+## Opaque constructor transport Chirho
+
+Unit719 keeps a producer's length-delimited constructor key intact in the existing `same_tycon_name_chirho` comparison. A dot inside the defining module is part of the opaque key, so two different declarations cannot agree through their last written qualifier component. The reserved `%constructor:` namespace, like promoted keys, selects complete-key equality only; recognizing it supplies no declaration role, identity, generativity or class proof. The existing compatibility route for legacy written qualified names and the ordinary numeric rule stay unchanged. Checked-kind unification already compares complete constructor names.
+
+```mermaid
+flowchart TD
+    declaration_chirho[Actual selected declaration] --> key_chirho[Producer constructor key]
+    key_chirho --> comparison_chirho[Ordinary Con comparison]
+    written_chirho[Legacy written type name] --> comparison_chirho
+    comparison_chirho --> opaque_chirho{Either name is an opaque constructor or promoted key?}
+    opaque_chirho -->|yes| complete_chirho[Complete equality or mismatch]
+    opaque_chirho -->|no| legacy_chirho[Existing written qualifier comparison]
+```
+
+The production-equal BEFORE at `1bdf91c1` has a direct unifier RED on the first plain pair of actual keys from `AlphaChirho.SharedChirho` and `OtherChirho.SharedChirho`; its reverse and nested arms are not reached after that panic. The source control also records a wrong-definer `compile_modules_chirho` acceptance, while same-producer substitution and direct/forwarded source aliases hold. The correction above is source-only until its separate AFTER gates run. No GHC reference, native behavior or whole-union acceptance follows from either the BEFORE measurements or the source edit.
