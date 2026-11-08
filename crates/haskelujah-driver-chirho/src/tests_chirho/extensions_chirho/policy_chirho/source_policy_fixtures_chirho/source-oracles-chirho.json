@@ -1,0 +1,118 @@
+{
+  "status_chirho": "GHC_VERIFIED_EXPECTATIONS_PRODUCT_RUST_CONTROLS_UNRUN",
+  "source_base_chirho": "784022accfd888864710037ce6679b0a052827ac",
+  "GHC_version_chirho": "9.14.1",
+  "profile_chirho": "ExplicitGHC2021 initial default; originalsource LANGUAGE/OPTIONS retained; fno-code/library; no runtime/import providers/stack mutation.",
+  "new_reference_fold_chirho": {
+    "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-source-policy-721-chirho/tmp-chirho/source-policy-721-chirho/reference-fold-r1-chirho/verified-oracles-chirho.json",
+    "sha256_chirho": "d7b14bbe642276ef7a03d667d7cc6e5a362cdd64a3904629485d0429ab509091"
+  },
+  "original_reference_fold_chirho": {
+    "path_chirho": "/private/tmp/haskelujah-resume-26-11-08-chirho/union-chirho/combined-primary-go-chirho/quality-readiness-chirho/release-corpus-chirho/execution-chirho/review-chirho/mover-triage-chirho/reader-negative3-ghc-f965-r1-chirho/reason-fold-chirho.json",
+    "sha256_chirho": "f730be4c3fd8a463ca13ae6aa2760bbf19d88d9d5f27aa189dbd97b8209958a4"
+  },
+  "controls_chirho": [
+    {
+      "fixture_relative_path_chirho": "positive_chirho/explicit_forall_top_chirho/ExplicitForallTopChirho.hs",
+      "source_sha256_chirho": "ef513452fe48a3e305016fcddab42b779626035792565f8c9afcc7fc0cb1dda8",
+      "GHC_verdict_chirho": "ACCEPT",
+      "diagnostic_codes_chirho": [],
+      "receipt_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-source-policy-721-chirho/tmp-chirho/source-policy-721-chirho/positive-references-r1-chirho/reference-exec-r1-chirho/ExplicitForallTopChirho-command-chirho/receipt-chirho.json",
+      "receipt_sha256_chirho": "d0b14f54c0ff10a6b5651f932edd9e49dd526782554769d5103af3017ebfea51"
+    },
+    {
+      "fixture_relative_path_chirho": "positive_chirho/rank_n_field_chirho/RankNFieldChirho.hs",
+      "source_sha256_chirho": "feff102a263865fd262b338da61de758f2a93ee98065fcbf154db1e1ef038dd5",
+      "GHC_verdict_chirho": "ACCEPT",
+      "diagnostic_codes_chirho": [],
+      "receipt_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-source-policy-721-chirho/tmp-chirho/source-policy-721-chirho/positive-references-r1-chirho/reference-exec-r1-chirho/RankNFieldChirho-command-chirho/receipt-chirho.json",
+      "receipt_sha256_chirho": "1ae3081db7dcdf32f4cb192a0ee1b2cd61aa3f2f3deef498b61b53ce635bade5"
+    },
+    {
+      "fixture_relative_path_chirho": "positive_chirho/datatype_head_context_chirho/DatatypeHeadContextChirho.hs",
+      "source_sha256_chirho": "a2aa20a565952ee26aa1dae27676d7d6605ad602e125af0248f90430fccd4184",
+      "GHC_verdict_chirho": "ACCEPT",
+      "diagnostic_codes_chirho": [],
+      "receipt_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-source-policy-721-chirho/tmp-chirho/source-policy-721-chirho/positive-references-r1-chirho/reference-exec-r1-chirho/DatatypeHeadContextChirho-command-chirho/receipt-chirho.json",
+      "receipt_sha256_chirho": "61db1976d85c69078fd4dd84a4eaabf96b8a81290334298c8a94691f3bebaf47"
+    },
+    {
+      "fixture_relative_path_chirho": "positive_chirho/universal_pattern_result_chirho/UniversalPatternResultChirho.hs",
+      "source_sha256_chirho": "3a6cd674bffb00fdae1bb9e2c3bcdaf53c4e58d64ae2868763559b2b600b95c7",
+      "GHC_verdict_chirho": "ACCEPT",
+      "diagnostic_codes_chirho": [],
+      "receipt_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-source-policy-721-chirho/tmp-chirho/source-policy-721-chirho/positive-references-r1-chirho/reference-exec-r1-chirho/UniversalPatternResultChirho-command-chirho/receipt-chirho.json",
+      "receipt_sha256_chirho": "098c6b91cf03d236b5c8011f77780fc38bb1d0ba44d91af128ea4315054dffc6"
+    },
+    {
+      "fixture_relative_path_chirho": "positive_chirho/existential_argument_chirho/ExistentialArgumentChirho.hs",
+      "source_sha256_chirho": "d0ec6062a151c1a5a4eefa61753a43f63f848be60bc25fac299010eb4bb34b9e",
+      "GHC_verdict_chirho": "ACCEPT",
+      "diagnostic_codes_chirho": [],
+      "receipt_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-source-policy-721-chirho/tmp-chirho/source-policy-721-chirho/positive-references-r1-chirho/reference-exec-r1-chirho/ExistentialArgumentChirho-command-chirho/receipt-chirho.json",
+      "receipt_sha256_chirho": "071cd170bfa0106c3e0ffb7832c206fd02be9f06d19c872c9816274208cbe3d8"
+    },
+    {
+      "fixture_relative_path_chirho": "negative_chirho/scoped_record_no_rank_chirho/ScopedRecordNoRankChirho.hs",
+      "source_sha256_chirho": "2220b2bb6a47493c86e6a33bfb3e6510eb5beecb599135c06b465edfa61f82be",
+      "GHC_verdict_chirho": "SEMANTIC_REJECT",
+      "diagnostic_codes_chirho": [
+        "[GHC-91510]"
+      ],
+      "receipt_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-source-policy-721-chirho/tmp-chirho/source-policy-721-chirho/negative-and-identifier-references-r1-chirho/reference-exec-r1-chirho/ScopedRecordNoRankChirho-command-chirho/receipt-chirho.json",
+      "receipt_sha256_chirho": "3c1d627cd02af6c774d631641bb299013b04dfb76bc430094d7cd596f7a73b02"
+    },
+    {
+      "fixture_relative_path_chirho": "negative_chirho/modern_no_rank_chirho/ModernNoRankChirho.hs",
+      "source_sha256_chirho": "b9641d475b64e5682685731b166cfa5e673149875211c81ba008c23ba4db1fbe",
+      "GHC_verdict_chirho": "SEMANTIC_REJECT",
+      "diagnostic_codes_chirho": [
+        "[GHC-91510]"
+      ],
+      "receipt_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-source-policy-721-chirho/tmp-chirho/source-policy-721-chirho/negative-and-identifier-references-r1-chirho/reference-exec-r1-chirho/ModernNoRankChirho-command-chirho/receipt-chirho.json",
+      "receipt_sha256_chirho": "b6fcee93a9aa6e63a4a25aa310cdae1f1530f0c1e1e9270d2d788e02d74bac18"
+    },
+    {
+      "fixture_relative_path_chirho": "negative_chirho/disabled_forall_top_chirho/DisabledForallTopChirho.hs",
+      "source_sha256_chirho": "faa0268faba747676161e43993f6f7646e75597e7a4c5179fdd06377a9e5e00d",
+      "GHC_verdict_chirho": "SEMANTIC_REJECT",
+      "diagnostic_codes_chirho": [
+        "[GHC-25955]"
+      ],
+      "receipt_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-source-policy-721-chirho/tmp-chirho/source-policy-721-chirho/negative-and-identifier-references-r1-chirho/reference-exec-r1-chirho/DisabledForallTopChirho-command-chirho/receipt-chirho.json",
+      "receipt_sha256_chirho": "209a384e9c434a53479d88ed5545cf2a0d5def48fd21053eae900140eaa4c1af"
+    },
+    {
+      "fixture_relative_path_chirho": "frozen_chirho/pattern_existential_chirho/PatSynExistential.hs",
+      "source_sha256_chirho": "97cd44817d8b316e20c3770547dbb3a8e126b606110806b739f785c13668e2a5",
+      "GHC_verdict_chirho": "SEMANTIC_REJECT",
+      "diagnostic_codes_chirho": [
+        "GHC-33973"
+      ],
+      "receipt_path_chirho": "/private/tmp/haskelujah-resume-26-11-08-chirho/union-chirho/combined-primary-go-chirho/quality-readiness-chirho/release-corpus-chirho/execution-chirho/review-chirho/mover-triage-chirho/reader-negative3-ghc-f965-r1-chirho/reference-exec-r1-chirho/PatSynExistential-chirho-command-chirho/receipt-chirho.json",
+      "receipt_sha256_chirho": "52f7bfb1e75a1c2ada6ea909e5520c86db52bf58f2bfdcfd65ee187ea21a07a4"
+    },
+    {
+      "fixture_relative_path_chirho": "frozen_chirho/legacy_forall_syntax_chirho/tcfail183.hs",
+      "source_sha256_chirho": "1fd287957943268074b9506c36245bfb12a2d9af1a4c00b5147aade2662b92fe",
+      "GHC_verdict_chirho": "SEMANTIC_REJECT",
+      "diagnostic_codes_chirho": [
+        "GHC-25955"
+      ],
+      "receipt_path_chirho": "/private/tmp/haskelujah-resume-26-11-08-chirho/union-chirho/combined-primary-go-chirho/quality-readiness-chirho/release-corpus-chirho/execution-chirho/review-chirho/mover-triage-chirho/reader-negative3-ghc-f965-r1-chirho/reference-exec-r1-chirho/tcfail183-chirho-command-chirho/receipt-chirho.json",
+      "receipt_sha256_chirho": "e3e42a6e995b4a6bc584f3e8601618092bf12d9555ade4ffcd03a7a15850d536"
+    },
+    {
+      "fixture_relative_path_chirho": "frozen_chirho/legacy_rank_n_field_chirho/tcfail184.hs",
+      "source_sha256_chirho": "bb1bbb16b467a48ba0c3665ccb609fa4cd494402102cc2b2052d87bcac167ab2",
+      "GHC_verdict_chirho": "SEMANTIC_REJECT",
+      "diagnostic_codes_chirho": [
+        "GHC-91510"
+      ],
+      "receipt_path_chirho": "/private/tmp/haskelujah-resume-26-11-08-chirho/union-chirho/combined-primary-go-chirho/quality-readiness-chirho/release-corpus-chirho/execution-chirho/review-chirho/mover-triage-chirho/reader-negative3-ghc-f965-r1-chirho/reference-exec-r1-chirho/tcfail184-chirho-command-chirho/receipt-chirho.json",
+      "receipt_sha256_chirho": "dd1bcf8a212ca61236e9d7cb3adebaa5015935147d49a2efcf5faf8ef3a1b16d"
+    }
+  ],
+  "excluded_identifier_probe_chirho": "GHC-58481 parse refusal; oracle-only, never a claimed positive or product test.",
+  "assertion_boundary_chirho": "Same public file/SourceMap/Batch API as CLIcheck; negatives require the permission/escape reason in one error diagnostic metadata+notes and reject resource/budget findings. Rendered source snippets never satisfy reason tokens. No full prose matching."
+}

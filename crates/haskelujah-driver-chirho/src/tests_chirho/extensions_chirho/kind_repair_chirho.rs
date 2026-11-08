@@ -5,6 +5,9 @@
 
 use super::ordinary_elaboration_chirho::{frontend_chirho, program_frontend_chirho};
 
+#[path = "policy_chirho/source_policy_chirho.rs"]
+mod source_policy_chirho;
+
 #[test]
 fn promoted_constructor_annotation_survives_open_equation_lowering_chirho() {
     frontend_chirho(include_str!(
