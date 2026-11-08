@@ -6,19 +6,12 @@
 //! transitively (`AskChirho Int m` gives `Monad m`). Under UndecidableSuperClasses a cycle can
 //! change its arguments (`class C [a] => C a` gives `C [a]`, `C [[a]]`, ...), so no predicate
 //! ever repeats and a closure that collects them all never ends. The search here ends at the
-//! first match, expands only predicates whose records can still reach the wanted class, and
-//! stops at a step bound and a type-size bound. A stopped search proves nothing either way: its
-//! answer is `SuperclassSearchExhaustedChirho`, an unknown, never "not entailed".
+//! first match, expands only predicates whose class can still reach the wanted class by name,
+//! and stops at a step bound and a type-size bound. A stopped search proves nothing either
+//! way: its answer is `SuperclassSearchExhaustedChirho`, an unknown, never "not entailed".
 //!
-//! Class identity (row 692, C10 Q, gpt #33150): a compiler class and a program class with equal
-//! text never discharge each other's constraints, directly or through a superclass. Each equality
-//! needs agreeing proofs: two proofs name one identity, and a single compiler proof meets an
-//! unproven side only while its compiler record is the active record of the shared spelling. A
-//! compiler proof expands its own compiler record by identity, never the record that holds its
-//! spelling. An unproven edge out of a compiler record stands only while its spelling is held by
-//! a compiler record. The reachability walk reads the same records, so a displaced compiler class
-//! and the program class holding its spelling are never merged by name. Unproven predicates keep
-//! the spelling rule they had.
+//! MUTANT M2 (gpt #33157), never landed: R2 is disabled. The search is 81df0c74's own, by spelling;
+//! only the shared identity helper context reduction delegates to remains.
 //! workflow: language-features-chirho/rigid-type-variables-chirho
 
 use std::collections::HashSet;
@@ -52,18 +45,14 @@ impl ClassEnvChirho {
         given_chirho: &PredChirho,
         wanted_chirho: &PredChirho,
     ) -> Result<bool, SuperclassSearchExhaustedChirho> {
-        if self.same_predicate_chirho(given_chirho, wanted_chirho) {
+        if given_chirho == wanted_chirho {
             return Ok(true);
         }
         let target_chirho = wanted_chirho.class_name_chirho.as_str();
-        if !self.predicate_reaches_chirho(given_chirho, target_chirho) {
+        if !self.class_reaches_chirho(&given_chirho.class_name_chirho, target_chirho) {
             return Ok(false);
         }
-        // Keyed with the proof: equal text under two identities is two predicates here.
-        let mut seen_chirho = HashSet::from([(
-            given_chirho.clone(),
-            given_chirho.class_identity_chirho().clone(),
-        )]);
+        let mut seen_chirho = HashSet::from([given_chirho.clone()]);
         let mut pending_chirho = vec![given_chirho.clone()];
         let mut steps_chirho = 0usize;
         let mut stopped_chirho = false;
@@ -72,10 +61,10 @@ impl ClassEnvChirho {
                 return Err(SuperclassSearchExhaustedChirho);
             }
             steps_chirho += 1;
-            let Some(class_chirho) = self.record_for_chirho(
-                &current_chirho.class_name_chirho,
-                current_chirho.class_identity_chirho(),
-            ) else {
+            let Some(class_chirho) = self
+                .classes_chirho()
+                .get_chirho(&current_chirho.class_name_chirho)
+            else {
                 continue;
             };
             let Some(superclasses_chirho) = class_chirho.superclass_preds_at_chirho(
@@ -85,20 +74,11 @@ impl ClassEnvChirho {
                 stopped_chirho = true;
                 continue;
             };
-            let compiler_record_chirho =
-                compiler_identity_chirho(class_chirho.class_identity_chirho()).is_some();
             for derived_chirho in superclasses_chirho {
-                if compiler_record_chirho
-                    && compiler_identity_chirho(derived_chirho.class_identity_chirho()).is_none()
-                    && !self
-                        .spelling_holds_compiler_record_chirho(&derived_chirho.class_name_chirho)
-                {
-                    continue;
-                }
-                if self.same_predicate_chirho(&derived_chirho, wanted_chirho) {
+                if derived_chirho == *wanted_chirho {
                     return Ok(true);
                 }
-                if !self.predicate_reaches_chirho(&derived_chirho, target_chirho) {
+                if !self.class_reaches_chirho(&derived_chirho.class_name_chirho, target_chirho) {
                     continue;
                 }
                 if derived_chirho
@@ -108,8 +88,7 @@ impl ClassEnvChirho {
                     stopped_chirho = true;
                     continue;
                 }
-                let proof_chirho = derived_chirho.class_identity_chirho().clone();
-                if seen_chirho.insert((derived_chirho.clone(), proof_chirho)) {
+                if seen_chirho.insert(derived_chirho.clone()) {
                     pending_chirho.push(derived_chirho);
                 }
             }
@@ -137,88 +116,19 @@ impl ClassEnvChirho {
         Arc::ptr_eq(producer_chirho, active_chirho).then_some(producer_chirho)
     }
 
-    /// Equal text and arguments, with agreeing class proofs: two proofs name one identity, a
-    /// single compiler proof meets an unproven side only while its compiler record is the active
-    /// record of the shared spelling, and two unproven sides keep the spelling rule.
-    fn same_predicate_chirho(&self, left_chirho: &PredChirho, right_chirho: &PredChirho) -> bool {
-        if left_chirho != right_chirho {
-            return false;
-        }
-        match (
-            left_chirho.class_identity_chirho(),
-            right_chirho.class_identity_chirho(),
-        ) {
-            (
-                PredicateClassProofChirho::ProvenChirho(left_identity_chirho),
-                PredicateClassProofChirho::ProvenChirho(right_identity_chirho),
-            ) => left_identity_chirho == right_identity_chirho,
-            (
-                PredicateClassProofChirho::ProvenChirho(
-                    PredicateClassIdentityChirho::CompilerChirho(_),
-                ),
-                _,
-            ) => self.active_compiler_record_chirho(left_chirho).is_some(),
-            (
-                _,
-                PredicateClassProofChirho::ProvenChirho(
-                    PredicateClassIdentityChirho::CompilerChirho(_),
-                ),
-            ) => self.active_compiler_record_chirho(right_chirho).is_some(),
-            _ => true,
-        }
-    }
-
-    /// The record a predicate of this spelling and proof expands: a compiler proof selects its own
-    /// compiler record by identity, and with no unique compiler record nothing is expanded (a
-    /// named conservative refusal). Any other proof reads the active record of its spelling.
-    fn record_for_chirho(
-        &self,
-        spelling_chirho: &str,
-        proof_chirho: &PredicateClassProofChirho,
-    ) -> Option<&Arc<ClassDeclChirho>> {
-        match compiler_identity_chirho(proof_chirho) {
-            Some(identity_chirho) => self.compiler_class_record_chirho(identity_chirho),
-            None => self.classes_chirho().get_chirho(spelling_chirho),
-        }
-    }
-
-    /// Whether the record active under `spelling_chirho` is the compiler record its own proof
-    /// selects: that spelling is held by the compiler, not displaced by a program class.
-    fn spelling_holds_compiler_record_chirho(&self, spelling_chirho: &str) -> bool {
-        let Some(active_chirho) = self.classes_chirho().get_chirho(spelling_chirho) else {
-            return false;
-        };
-        let Some(identity_chirho) = compiler_identity_chirho(active_chirho.class_identity_chirho())
-        else {
-            return false;
-        };
-        self.compiler_class_record_chirho(identity_chirho)
-            .is_some_and(|producer_chirho| Arc::ptr_eq(producer_chirho, active_chirho))
-    }
-
-    /// Whether `predicate_chirho`'s class is `target_chirho` or reaches it through superclass
-    /// templates, walking the records the expansion itself reads. Each record is visited once,
-    /// so a cycle ends the walk.
-    fn predicate_reaches_chirho(&self, predicate_chirho: &PredChirho, target_chirho: &str) -> bool {
-        let mut visited_chirho: HashSet<*const ClassDeclChirho> = HashSet::new();
-        let mut pending_chirho = vec![(
-            predicate_chirho.class_name_chirho.clone(),
-            predicate_chirho.class_identity_chirho().clone(),
-        )];
-        while let Some((spelling_chirho, proof_chirho)) = pending_chirho.pop() {
-            if spelling_chirho == target_chirho {
+    /// Whether the class `from_chirho` is `target_chirho` or has it among its transitive
+    /// superclasses, by name. Each class is visited once, so a cycle ends the walk.
+    fn class_reaches_chirho(&self, from_chirho: &str, target_chirho: &str) -> bool {
+        let mut visited_chirho = HashSet::from([from_chirho.to_string()]);
+        let mut pending_chirho = vec![from_chirho.to_string()];
+        while let Some(class_name_chirho) = pending_chirho.pop() {
+            if class_name_chirho == target_chirho {
                 return true;
             }
-            let Some(record_chirho) = self.record_for_chirho(&spelling_chirho, &proof_chirho)
-            else {
-                continue;
-            };
-            if !visited_chirho.insert(Arc::as_ptr(record_chirho)) {
-                continue;
-            }
-            for template_chirho in record_chirho.superclass_templates_chirho() {
-                let proof_chirho = template_chirho.class_identity_chirho().clone();
-                pending_chirho.push((template_chirho.class_name_chirho, proof_chirho));
+            for super_chirho in self.superclasses_chirho(&class_name_chirho) {
+                if visited_chirho.insert(super_chirho.clone()) {
+                    pending_chirho.push(super_chirho);
+                }
             }
         }
         false
