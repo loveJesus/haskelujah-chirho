@@ -103,6 +103,16 @@ impl DictPassCtxChirho {
                 continue;
             }
 
+            // Special case: Num fromInteger at Double → the Int-to-Double conversion in this
+            // row's namespace, never an identity over an Int's payload (row 692, C10, #33179).
+            if identity_chirho == CompilerClassChirho::NumChirho
+                && method_chirho == "fromInteger"
+                && type_key_chirho == "Double"
+            {
+                self.generate_from_integer_double_row_chirho(&prim_name_chirho);
+                continue;
+            }
+
             // Special case: Show [Int] → generate a recursive Core function
             // that pattern-matches the list and uses showInt#/++# to build the
             // string. This avoids the showList# primop which can't force thunks.

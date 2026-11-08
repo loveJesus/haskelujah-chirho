@@ -1180,6 +1180,13 @@ spell it.
 - Its selectors are kept by (identity, method), never in the method-name map.
 - Its builtin rows are named in the namespace. The table's class column is the identity
   (`layout_chirho/builtin_rows_chirho.rs`).
+- `fromInteger` at Double has one body, `fromIntegral# n`, typed `Int -> Double`. The builtin
+  row generator writes it in either namespace through `generate_from_integer_double_row_chirho`
+  (`prelude_chirho/floating_methods_chirho.rs`) (#33179).
+  - It was an identity row, which read an Int's payload as a Double's bits, so LLVM made
+    `fromInteger 1` the smallest subnormal under a displaced Num.
+  - It also had a late Prelude twin under the spelled name that shared the identity's id. That
+    twin is gone.
 - Its dictionaries take only same-class compiler-proven instances. A field takes, in order:
   1. the namespace's own row;
   2. the legacy-spelled row a compiler producer wrote, when no source instance of the

@@ -9,6 +9,8 @@
 //!   Double value with π's bits, in its dictionary row and under its Prelude name.
 //! - **`atan2` (row 580)** calls `atan2#`, the RTS's one transcription of GHC's RealFloat
 //!   default, which every engine makes. It is not libm's `atan2`.
+//! - **`fromInteger` at Double (row 692, C10, #33179)** is `fromIntegral# n`, typed
+//!   `Int -> Double`. It is the builtin row's one body, in whichever namespace its class has.
 //!
 //! Each Prelude name yields to a program's own top-level binding of that name.
 //! workflow: testing-chirho/native-fail-loud-chirho
@@ -30,6 +32,37 @@ fn log_chirho(id_chirho: CoreIdChirho) -> CoreExprChirho {
 }
 
 impl DictPassCtxChirho {
+    /// Generate `<prim_name_chirho> = \n -> fromIntegral# n`, typed `Int -> Double`: the
+    /// compiler's `fromInteger` at Double. The builtin row generator calls it for that row in
+    /// its class's namespace, the spelling `Num` or a displaced compiler Num's reserved one, so
+    /// both routes share this one body (row 692, C10, #33179).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(in crate::dict_chirho) fn generate_from_integer_double_row_chirho(
+        &mut self,
+        prim_name_chirho: &str,
+    ) {
+        let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
+        let n_chirho = self.fresh_binder_chirho("n", TyChirho::int_chirho());
+        let rhs_chirho = CoreExprChirho::LamChirho {
+            binder_chirho: n_chirho.clone(),
+            body_chirho: Box::new(primop_chirho(
+                "fromIntegral#",
+                vec![CoreExprChirho::VarChirho(n_chirho.id_chirho)],
+            )),
+        };
+        self.generated_bindings_chirho.push(CoreBindingChirho {
+            binder_chirho: BinderChirho {
+                id_chirho: prim_id_chirho,
+                name_chirho: prim_name_chirho.to_string(),
+                ty_chirho: TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::double_chirho()),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+            rhs_chirho,
+            is_rec_chirho: false,
+            inline_chirho: InlineAnnotationChirho::NoneChirho,
+        });
+    }
+
     /// Generate `$prim_Floating_pi_Double = 3.141592653589793` and its Prelude alias `pi`.
     /// workflow: testing-chirho/native-fail-loud-chirho
     pub(super) fn generate_floating_pi_prelude_chirho(&mut self) {

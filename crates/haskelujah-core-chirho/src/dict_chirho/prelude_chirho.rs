@@ -8762,33 +8762,8 @@ impl DictPassCtxChirho {
             });
         }
 
-        // $prim_Num_fromInteger_Double = \n -> fromIntegral# n
-        {
-            let prim_name_chirho = "$prim_Num_fromInteger_Double";
-            let prim_id_chirho = self.resolve_or_fresh_id_chirho(prim_name_chirho);
-            let n_chirho = self.fresh_binder_chirho("n", TyChirho::int_chirho());
-            let rhs_chirho = CoreExprChirho::LamChirho {
-                binder_chirho: n_chirho.clone(),
-                body_chirho: Box::new(CoreExprChirho::PrimOpChirho {
-                    name_chirho: "fromIntegral#".to_string(),
-                    args_chirho: vec![CoreExprChirho::VarChirho(n_chirho.id_chirho)],
-                }),
-            };
-            self.generated_bindings_chirho.push(CoreBindingChirho {
-                binder_chirho: BinderChirho {
-                    id_chirho: prim_id_chirho,
-                    name_chirho: prim_name_chirho.to_string(),
-                    ty_chirho: TyChirho::fun_chirho(
-                        TyChirho::int_chirho(),
-                        double_ty_chirho.clone(),
-                    ),
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                },
-                rhs_chirho,
-                is_rec_chirho: false,
-                inline_chirho: InlineAnnotationChirho::NoneChirho,
-            });
-        }
+        // `$prim_Num_fromInteger_Double` is the builtin row's, in its class's namespace
+        // (`generate_from_integer_double_row_chirho`, row 692, C10, #33179).
 
         // ── Num Double: binary arithmetic ops ──
         // $prim_Num_+_Double = \a b -> +.# a b
