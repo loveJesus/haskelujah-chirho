@@ -26,6 +26,10 @@ flowchart TD
   VisibilityChirho --> DerivingChirho[Visible parameters form derived instance heads]
   FieldsChirho --> SortsChirho[Judge sorts at type-required and constraint positions]
   SortsChirho --> ResultChirho
+  LowerChirho --> FamilyHeaderChirho[Check complete standalone family header with original allowance]
+  FamilyHeaderChirho --> FamilyPublishChirho[Publish quantified owner-free telescope before equations]
+  FamilyPublishChirho --> FamilyEquationsChirho[Instantiate each equation independently]
+  FamilyEquationsChirho --> ResultChirho
 ```
 
 The standalone conversion swaps the kind-name cache instead of cloning the
@@ -49,6 +53,8 @@ while naming and field conversion keep every binder in scope. Deriving filters
 at its entry boundaries, borrowing ordinary binder slices and copying only a
 slice that actually contains invisible binders. This is linear in the head, not
 in the growing module environment.
+
+Complete data/newtype headers are checked before their recursive bodies when the written contract permits it. Classes with standalone signatures or effective CUSKs and a kind annotation on every written binder use the same complete-header scheduling. So does a type or data family with a standalone kind signature: its header steps run at the spans the family body used, and its telescope is published, with the signature's implicit kind variables quantified as specified binders, before its own equations are checked, so each equation instantiates the family's kind independently. A family body runs those header steps only while its header is still provisional, so a family without a standalone signature keeps the shared provisional header and checks them there as before. A written invisible class binder also requires effective TypeAbstractions; a complete signature cannot enable syntax whose flag is off. These checks run before inferred catalogue binders exist and use the original shared allowance. Inferred headers stay shared through the declaration SCC. Local polymorphic kinds, constructor result checks and canonical publication use the same owner-aware state. No name spelling can supply a missing binder correspondence.
 
 When interpreting source as a kind, `forall a ->` retains a visible argument
 classified by the binder's kind; `forall a.` does not. This differs from inferring
