@@ -87,6 +87,7 @@ impl InferCtxChirho {
                             })
                             .map(|declaration_chirho| declaration_chirho.type_key_chirho())
                     })
+                    .or_else(|| self.naming_selected_builtin_class_key_chirho(class_chirho))
                     .unwrap_or_else(|| class_chirho.full_name_chirho());
                 let hidden_chirho = kind_args_chirho
                     .iter()
@@ -141,6 +142,35 @@ impl InferCtxChirho {
                 term_chirho
             }
         }
+    }
+
+    /// Row 692, C10 Q (gpt #33150): a QUALIFIED written class (`P.Num`, `Prelude.Ord`) names a
+    /// builtin class only through the naming-selected scope this module's elaboration adopted, the
+    /// scope kind elaboration resolved the same spelling through. The key is the selected compiler
+    /// identity's own declaration key, whose header kind elaboration seeded for every selected class,
+    /// so the predicate decodes to that compiler class with its proof. An unqualified spelling, a
+    /// spelling naming did not select and a context without that scope keep the spelling fallback;
+    /// no prefix, written name or scheme equality grants the identity.
+    /// workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
+    fn naming_selected_builtin_class_key_chirho(
+        &self,
+        class_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
+    ) -> Option<String> {
+        class_chirho.qualifier_chirho()?;
+        let selected_chirho = self
+            .elaboration_state_chirho
+            .source_policy_chirho
+            .as_ref()?
+            .builtin_classes_chirho
+            .class_chirho(&class_chirho.full_name_chirho())?;
+        Some(
+            haskelujah_ast_chirho::name_chirho::TypeConstructorDeclarationChirho::compiler_data_chirho(
+                haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho::ClassChirho(
+                    selected_chirho.identity_chirho,
+                ),
+            )
+            .type_key_chirho(),
+        )
     }
 
     pub(super) fn constraint_head_proof_chirho(
