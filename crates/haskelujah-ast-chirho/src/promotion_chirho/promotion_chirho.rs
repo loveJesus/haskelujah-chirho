@@ -26,6 +26,13 @@ pub const PROMOTED_KEY_PREFIX_CHIRHO: &str = "%promoted:";
 
 const UNKNOWN_TAG_CHIRHO: &str = "unknown";
 
+/// The prefix of every type-constructor key `TypeConstructorIdentityChirho::key_chirho`
+/// produces. Diagnostics invert it for people; nothing else reads its parts.
+const CONSTRUCTOR_KEY_PREFIX_CHIRHO: &str = "%constructor:";
+
+/// What a compiler constructor key's identity says before the constructor's own name.
+const COMPILER_STANDARD_PREFIX_CHIRHO: &str = "compiler-standard:";
+
 /// The module the compiler's own constructors are defined in: `Bool`, `Ordering` and the
 /// list constructors.
 pub const BUILTIN_CONSTRUCTOR_MODULE_CHIRHO: &str = "GHC.Types";
@@ -403,15 +410,7 @@ fn stamp_constraint_promotions_chirho(
 /// stays canonical, because Core's dictionary keys read it, so diagnostics are rewritten
 /// here.
 pub fn readable_promoted_keys_chirho(text_chirho: &str) -> String {
-    let mut identities_chirho: HashMap<&str, HashSet<(&str, &str)>> = HashMap::new();
-    for key_chirho in keys_in_text_chirho(text_chirho) {
-        if let Some(parsed_chirho) = key_chirho.1 {
-            identities_chirho
-                .entry(parsed_chirho.name_chirho)
-                .or_default()
-                .insert((parsed_chirho.tag_chirho, parsed_chirho.module_chirho));
-        }
-    }
+    let identities_chirho = identities_by_spelling_chirho(&keys_in_text_chirho(text_chirho));
     let mut readable_chirho = String::with_capacity(text_chirho.len());
     let mut copied_to_chirho = 0;
     for (start_chirho, parsed_chirho) in keys_in_text_chirho(text_chirho) {
@@ -446,23 +445,49 @@ struct ParsedKeyChirho<'text_chirho> {
     length_chirho: usize,
 }
 
-/// Every occurrence of the key prefix in `text_chirho`, in order, with its parse; `None`
-/// where the prefix starts no whole key.
+/// Every occurrence of the promoted key prefix in `text_chirho`, in order, with its parse;
+/// `None` where the prefix starts no whole key.
 fn keys_in_text_chirho(text_chirho: &str) -> Vec<(usize, Option<ParsedKeyChirho<'_>>)> {
+    keys_with_prefix_chirho(text_chirho, PROMOTED_KEY_PREFIX_CHIRHO, parse_key_chirho)
+}
+
+/// Every occurrence of `prefix_chirho` in `text_chirho`, in order, with `parse_chirho`'s
+/// parse of the key it starts; `None` where it starts no whole key.
+fn keys_with_prefix_chirho<'text_chirho>(
+    text_chirho: &'text_chirho str,
+    prefix_chirho: &str,
+    parse_chirho: impl Fn(&'text_chirho str) -> Option<ParsedKeyChirho<'text_chirho>>,
+) -> Vec<(usize, Option<ParsedKeyChirho<'text_chirho>>)> {
     let mut keys_chirho = Vec::new();
     let mut from_chirho = 0;
-    while let Some(offset_chirho) = text_chirho[from_chirho..].find(PROMOTED_KEY_PREFIX_CHIRHO) {
+    while let Some(offset_chirho) = text_chirho[from_chirho..].find(prefix_chirho) {
         let start_chirho = from_chirho + offset_chirho;
-        let parsed_chirho = parse_key_chirho(&text_chirho[start_chirho..]);
+        let parsed_chirho = parse_chirho(&text_chirho[start_chirho..]);
         from_chirho = start_chirho
             + parsed_chirho
                 .as_ref()
-                .map_or(PROMOTED_KEY_PREFIX_CHIRHO.len(), |key_chirho| {
-                    key_chirho.length_chirho
-                });
+                .map_or(prefix_chirho.len(), |key_chirho| key_chirho.length_chirho);
         keys_chirho.push((start_chirho, parsed_chirho));
     }
     keys_chirho
+}
+
+/// Each spelling's distinct identities, a tag and a module, among the parsed keys. A
+/// spelling with two identities is one a readable text must qualify.
+fn identities_by_spelling_chirho<'text_chirho>(
+    keys_chirho: &[(usize, Option<ParsedKeyChirho<'text_chirho>>)],
+) -> HashMap<&'text_chirho str, HashSet<(&'text_chirho str, &'text_chirho str)>> {
+    let mut identities_chirho: HashMap<&str, HashSet<(&str, &str)>> = HashMap::new();
+    for parsed_chirho in keys_chirho
+        .iter()
+        .filter_map(|(_, parsed_chirho)| parsed_chirho.as_ref())
+    {
+        identities_chirho
+            .entry(parsed_chirho.name_chirho)
+            .or_default()
+            .insert((parsed_chirho.tag_chirho, parsed_chirho.module_chirho));
+    }
+    identities_chirho
 }
 
 /// The key at the start of `key_chirho`. The module is length-delimited; the constructor
@@ -499,6 +524,91 @@ fn constructor_spelling_length_chirho(text_chirho: &str) -> Option<usize> {
             .unwrap_or(text_chirho.len()),
     };
     (length_chirho > 0).then_some(length_chirho)
+}
+
+/// Text a person reads with every type-constructor key written back as the constructor it
+/// names: `Maybe` for a source `Maybe`, `Proxy` for the compiler's own. When one text names
+/// two different constructors with one spelling, each source one is qualified by its module
+/// (`Main.KChirho`, `DefChirho.KChirho`), as `readable_promoted_keys_chirho` qualifies. A
+/// prefix that starts no whole key is kept verbatim. Presentation only: lookup, matching and
+/// equality read the whole key, never this text.
+/// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+pub fn readable_constructor_keys_chirho(text_chirho: &str) -> String {
+    let keys_chirho = keys_with_prefix_chirho(
+        text_chirho,
+        CONSTRUCTOR_KEY_PREFIX_CHIRHO,
+        parse_constructor_key_chirho,
+    );
+    let identities_chirho = identities_by_spelling_chirho(&keys_chirho);
+    let mut readable_chirho = String::with_capacity(text_chirho.len());
+    let mut copied_to_chirho = 0;
+    for (start_chirho, parsed_chirho) in &keys_chirho {
+        readable_chirho.push_str(&text_chirho[copied_to_chirho..*start_chirho]);
+        let Some(parsed_chirho) = parsed_chirho else {
+            readable_chirho.push_str(CONSTRUCTOR_KEY_PREFIX_CHIRHO);
+            copied_to_chirho = start_chirho + CONSTRUCTOR_KEY_PREFIX_CHIRHO.len();
+            continue;
+        };
+        let shared_chirho = identities_chirho
+            .get(parsed_chirho.name_chirho)
+            .is_some_and(|keys_chirho| keys_chirho.len() > 1);
+        if shared_chirho && !parsed_chirho.module_chirho.is_empty() {
+            readable_chirho.push_str(parsed_chirho.module_chirho);
+            readable_chirho.push('.');
+        }
+        readable_chirho.push_str(parsed_chirho.name_chirho);
+        copied_to_chirho = start_chirho + parsed_chirho.length_chirho;
+    }
+    readable_chirho.push_str(&text_chirho[copied_to_chirho..]);
+    readable_chirho
+}
+
+/// The type-constructor key at the start of `key_chirho`, inverting
+/// `TypeConstructorIdentityChirho::key_chirho`: `%constructor:source:<n>:<module>:<n>:<name>`
+/// or `%constructor:compiler:<n>:compiler-standard:<name>`, each `<n>` counting bytes.
+fn parse_constructor_key_chirho(key_chirho: &str) -> Option<ParsedKeyChirho<'_>> {
+    let body_chirho = key_chirho.strip_prefix(CONSTRUCTOR_KEY_PREFIX_CHIRHO)?;
+    let (tag_chirho, after_tag_chirho) = body_chirho.split_once(':')?;
+    let (module_chirho, name_chirho, rest_chirho) = match tag_chirho {
+        "source" => {
+            let (module_chirho, after_module_chirho) = length_prefixed_chirho(after_tag_chirho)?;
+            let (name_chirho, rest_chirho) =
+                length_prefixed_chirho(after_module_chirho.strip_prefix(':')?)?;
+            (module_chirho, name_chirho, rest_chirho)
+        }
+        "compiler" => {
+            let (identity_chirho, rest_chirho) = length_prefixed_chirho(after_tag_chirho)?;
+            let name_chirho = identity_chirho.strip_prefix(COMPILER_STANDARD_PREFIX_CHIRHO)?;
+            ("", name_chirho, rest_chirho)
+        }
+        _ => return None,
+    };
+    if name_chirho.is_empty() {
+        return None;
+    }
+    Some(ParsedKeyChirho {
+        tag_chirho,
+        module_chirho,
+        name_chirho,
+        length_chirho: key_chirho.len() - rest_chirho.len(),
+    })
+}
+
+/// A `<byte length>:<that many bytes>` field at the start of `text_chirho`, and the text after
+/// it. A length that is not plain decimal digits, overflows, runs past the end or ends inside
+/// a character is no field.
+fn length_prefixed_chirho(text_chirho: &str) -> Option<(&str, &str)> {
+    let (length_chirho, after_length_chirho) = text_chirho.split_once(':')?;
+    if length_chirho.is_empty()
+        || !length_chirho
+            .bytes()
+            .all(|byte_chirho| byte_chirho.is_ascii_digit())
+    {
+        return None;
+    }
+    let length_chirho: usize = length_chirho.parse().ok()?;
+    let field_chirho = after_length_chirho.get(..length_chirho)?;
+    Some((field_chirho, &after_length_chirho[length_chirho..]))
 }
 
 #[cfg(test)]

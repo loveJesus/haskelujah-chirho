@@ -3,7 +3,9 @@
 //! The compiler's own promoted constructors and the readable form of keys in diagnostics.
 
 use super::*;
-use crate::name_chirho::RawNameChirho;
+use crate::name_chirho::{
+    CompilerTypeConstructorChirho, RawNameChirho, TypeConstructorIdentityChirho,
+};
 use haskelujah_span_chirho::SpanChirho;
 
 fn name_chirho(text_chirho: &str) -> NameChirho {
@@ -145,4 +147,86 @@ fn imported_promotion_stamps_survive_another_modules_scope_chirho() {
             );
         }
     }
+}
+
+/// A source type constructor's key, from its producer rather than written by hand.
+fn source_constructor_key_chirho(module_chirho: &str, name_chirho: &str) -> String {
+    TypeConstructorIdentityChirho::SourceChirho {
+        defining_module_chirho: module_chirho.to_owned(),
+        name_chirho: name_chirho.to_owned(),
+    }
+    .key_chirho()
+}
+
+#[test]
+fn diagnostics_name_type_constructors_as_written_chirho() {
+    let local_chirho = source_constructor_key_chirho("Test", "Maybe");
+    let proxy_chirho =
+        TypeConstructorIdentityChirho::CompilerChirho(CompilerTypeConstructorChirho::ProxyChirho)
+            .key_chirho();
+    let text_chirho =
+        format!("expected `{local_chirho}`, found `Prelude.Maybe`; in `{proxy_chirho} Int`");
+    assert_eq!(
+        readable_constructor_keys_chirho(&text_chirho),
+        "expected `Maybe`, found `Prelude.Maybe`; in `Proxy Int`"
+    );
+}
+
+#[test]
+fn two_type_constructors_sharing_a_spelling_are_qualified_chirho() {
+    let def_chirho = source_constructor_key_chirho("DefChirho", "KChirho");
+    let main_chirho = source_constructor_key_chirho("Main", "KChirho");
+    assert_eq!(
+        readable_constructor_keys_chirho(&format!(
+            "expected `{def_chirho}`, found `{main_chirho}`"
+        )),
+        "expected `DefChirho.KChirho`, found `Main.KChirho`",
+        "F02's hidden kinds must not read as KChirho against KChirho"
+    );
+    assert_eq!(
+        readable_constructor_keys_chirho(&format!("{main_chirho} and {main_chirho}")),
+        "KChirho and KChirho",
+        "one constructor named twice needs no module"
+    );
+}
+
+#[test]
+fn text_without_a_whole_constructor_key_is_kept_chirho() {
+    for text_chirho in [
+        "expected `Maybe Int`",
+        "%constructor:",
+        "%constructor:source:99:Short",
+        "%constructor:source:1:\u{e9}:1:T",
+        "%constructor:source:99999999999999999999999999:M:1:T",
+        "%constructor:source:+1:M:1:T",
+        "%constructor:source:1:M1:T",
+        "%constructor:source:1:M:0:",
+        "%constructor:compiler:4:Bool",
+        "%constructor:other:1:M:1:T",
+    ] {
+        assert_eq!(
+            readable_constructor_keys_chirho(text_chirho),
+            text_chirho,
+            "a malformed, misaligned or overflowing key is kept verbatim: {text_chirho}"
+        );
+    }
+}
+
+#[test]
+fn each_renderer_rewrites_only_its_own_keys_chirho() {
+    let promoted_chirho = PromotedKeyChirho::source_chirho("Main", "TChirho");
+    let constructor_chirho = source_constructor_key_chirho("Main", "LChirho");
+    let text_chirho = format!(
+        "`{}` has kind `{constructor_chirho}`",
+        promoted_chirho.as_str_chirho()
+    );
+    let constructors_chirho = readable_constructor_keys_chirho(&text_chirho);
+    assert_eq!(
+        constructors_chirho,
+        format!("`{}` has kind `LChirho`", promoted_chirho.as_str_chirho())
+    );
+    assert_eq!(
+        readable_promoted_keys_chirho(&constructors_chirho),
+        "`'TChirho` has kind `LChirho`"
+    );
 }

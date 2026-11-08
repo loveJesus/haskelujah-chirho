@@ -26,6 +26,7 @@ flowchart TD
     result_chirho --> export_chirho["driver: stamped_synonym_rhs_chirho stamps exported right sides"]
     export_chirho --> importer_chirho["importer: stamps win; its own scope never re-resolves"]
     result_chirho --> readable_chirho["typing: readable_promoted_keys_chirho rewrites diagnostics"]
+    readable_chirho --> readable_constructors_chirho["typing: readable_constructor_keys_chirho rewrites type-constructor keys"]
 ```
 
 ## Identity
@@ -67,13 +68,15 @@ All of these read one scope, or a name's stamp, and must agree:
 
 Keys are the checker's identities, not text for people. When inference returns, every diagnostic's message, labels, notes and suggestion descriptions pass through `readable_promoted_keys_chirho`, which writes each key back as the constructor it names (`'True`, `'Z`, or `'M.T` for an unproven qualified spelling). Display itself stays canonical.
 
+The same boundary then passes the text through `readable_constructor_keys_chirho`. It inverts the type-constructor keys `TypeConstructorIdentityChirho::key_chirho` produces, `%constructor:source:<n>:<module>:<n>:<name>` and `%constructor:compiler:<n>:compiler-standard:<name>`, by their byte lengths. Each becomes the constructor's name, so a source `Maybe` reads `Maybe` and the compiler's `Proxy` reads `Proxy`. When one text names two different constructors with one spelling, each source one is qualified by its module, the policy the promoted rewrite uses, so f02's hidden kinds read `DefChirho.KChirho` against `Main.KChirho`. A prefix that starts no whole key stays verbatim: a length that is not plain digits, overflows, runs past the end or ends inside a character, and an unknown tag or identity. Both rewrites are presentation only; lookup, matching and equality read whole keys.
+
 ## Without naming
 
 A direct typing caller that never ran naming has no scope. Promoted spellings then keep their legacy forms: the use-site converter writes `True`, synonym conversion writes `'True`, and Core keys a ticked head `_`. These forms are not the corrected identity, and they disagree. Tests pin them only as legacy.
 
 ## Controls
 
-- **AST:** `promotion_chirho/tests_chirho.rs` covers the compiler's own constructors and readable keys.
+- **AST:** `promotion_chirho/tests_chirho.rs` covers the compiler's own constructors and readable promoted and type-constructor keys, including keys that stay verbatim.
 - **Typing:** `infer_chirho/tests_chirho/promotion_identity_tests_chirho.rs`.
 - **Naming:** `promotion_scope_tests_chirho.rs`, including a guard that every table parent naming its providers is listed by exactly those builtin interfaces.
 - **Parser:** `lower_chirho/classes_chirho/family_equation_tests_chirho.rs` covers promoted tuples and prefix forms.

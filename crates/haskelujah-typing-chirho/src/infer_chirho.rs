@@ -24,7 +24,7 @@ use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::promotion_chirho::{
-    PromotionScopeChirho, readable_promoted_keys_chirho,
+    PromotionScopeChirho, readable_constructor_keys_chirho, readable_promoted_keys_chirho,
 };
 use haskelujah_ast_chirho::provenance_chirho::OriginIdChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
@@ -1011,11 +1011,15 @@ fn infer_module_with_elaboration_state_chirho(
     let (reference_evidence_chirho, reference_evidence_by_origin_chirho) =
         ctx_chirho.finalize_reference_evidence_chirho(&composed_subst_chirho);
     let mut result_chirho = ctx_chirho.finish_chirho();
-    // Promoted keys are the checker's identities; people read the constructors (row 686).
+    // Promoted and type-constructor keys are the checker's identities; people read the
+    // constructors (row 686, f02).
     // workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
     result_chirho
         .diagnostics_chirho
         .map_text_chirho(readable_promoted_keys_chirho);
+    result_chirho
+        .diagnostics_chirho
+        .map_text_chirho(readable_constructor_keys_chirho);
     let families_chirho = &result_chirho.type_families_chirho;
     result_chirho
         .diagnostics_chirho
