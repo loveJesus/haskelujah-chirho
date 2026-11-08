@@ -12,7 +12,7 @@ use crate::ty_chirho::{
     SchemeChirho, SchemePredChirho, SchemePredPartsChirho, TyChirho, TyVarChirho,
 };
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
-use haskelujah_ast_chirho::name_chirho::NameChirho;
+use haskelujah_ast_chirho::name_chirho::{CompilerValueChirho, NameChirho};
 use haskelujah_span_chirho::SpanChirho;
 use std::collections::HashSet;
 
@@ -25,9 +25,18 @@ struct ApplicationPlanChirho<'source_chirho> {
     name_chirho: &'source_chirho NameChirho,
     variable_head_chirho: bool,
     scheme_chirho: SchemeChirho,
+    compiler_value_chirho: Option<CompilerValueChirho>,
+    global_quick_look_chirho: bool,
     predicates_chirho: Vec<PredChirho>,
     arguments_chirho: Vec<ApplicationArgumentChirho<'source_chirho>>,
     result_chirho: TyChirho,
+}
+
+impl ApplicationPlanChirho<'_> {
+    fn quick_look_enabled_chirho(&self) -> bool {
+        self.global_quick_look_chirho
+            || self.compiler_value_chirho == Some(CompilerValueChirho::ApplyChirho)
+    }
 }
 #[derive(Default)]
 struct QuickLookChirho {
@@ -341,7 +350,7 @@ impl QuickLookChirho {
 
 #[derive(Clone, Copy)]
 struct ApplicationPreparationChirho {
-    quick_look_chirho: bool,
+    global_quick_look_chirho: bool,
     retain_result_chirho: bool,
 }
 
@@ -410,7 +419,7 @@ impl InferCtxChirho {
         let prepared_chirho = self.prepare_application_chirho(
             expression_chirho,
             ApplicationPreparationChirho {
-                quick_look_chirho: enabled_chirho,
+                global_quick_look_chirho: enabled_chirho,
                 retain_result_chirho,
             },
             &mut look_chirho,
@@ -425,7 +434,7 @@ impl InferCtxChirho {
                 return Some((SubstChirho::empty_chirho(), self.fresh_var_chirho()));
             }
         };
-        if enabled_chirho
+        if prepared_chirho.quick_look_enabled_chirho()
             && let Some(expected_chirho) = expected_chirho
             && look_chirho
                 .unify_chirho(
@@ -496,12 +505,14 @@ impl InferCtxChirho {
         if !variable_head_chirho && !explicit_ast_chirho.is_empty() {
             return Ok(None);
         }
-        let Some(scheme_chirho) = self.lookup_value_scheme_with_qualified_suffix_fallback_chirho(
+        let Some((_, scheme_chirho, compiler_value_chirho)) = self.lookup_value_entry_keyed_chirho(
             &name_chirho.full_name_chirho(),
             name_chirho.text_chirho(),
         ) else {
             return Ok(None);
         };
+        let quick_look_chirho = mode_chirho.global_quick_look_chirho
+            || compiler_value_chirho == Some(CompilerValueChirho::ApplyChirho);
         let mut variables_chirho = self.scoped_tyvars_chirho.clone();
         let explicit_kinds_chirho: Vec<_> = explicit_ast_chirho
             .iter()
@@ -532,13 +543,22 @@ impl InferCtxChirho {
                 (self.elaboration_state_chirho.next_variable_chirho - start_chirho) as usize,
             )
             .ok_or(())?;
-        look_chirho.variables_chirho.extend(
-            (start_chirho..self.elaboration_state_chirho.next_variable_chirho).map(TyVarChirho),
-        );
+        // A parent's selected compiler head never licenses a child's fresh
+        // instantiation variables. Only this resolved head, or the actual
+        // global option, grants its own short-lived delta variables.
+        if quick_look_chirho {
+            look_chirho.variables_chirho.extend(
+                (start_chirho..self.elaboration_state_chirho.next_variable_chirho).map(TyVarChirho),
+            );
+        }
         let mut prepared_arguments_chirho = Vec::new();
         for argument_chirho in arguments_chirho {
-            let (opened_chirho, additional_chirho) =
-                self.open_application_prefix_chirho(current_chirho, look_chirho, budget_chirho)?;
+            let (opened_chirho, additional_chirho) = self.open_application_prefix_chirho(
+                current_chirho,
+                look_chirho,
+                budget_chirho,
+                quick_look_chirho,
+            )?;
             predicates_chirho.extend(additional_chirho);
             let TyChirho::FunChirho(formal_chirho, result_chirho, _) = opened_chirho else {
                 return Ok(None);
@@ -554,7 +574,7 @@ impl InferCtxChirho {
                     | TyChirho::RequiredForallChirho { .. }
                     | TyChirho::QualChirho { .. }
             );
-            let prepared_chirho = if mode_chirho.quick_look_chirho && !sigma_chirho {
+            let prepared_chirho = if quick_look_chirho && !sigma_chirho {
                 self.prepare_application_chirho(
                     argument_chirho,
                     ApplicationPreparationChirho {
@@ -591,8 +611,12 @@ impl InferCtxChirho {
             current_chirho = *result_chirho;
         }
         if !mode_chirho.retain_result_chirho {
-            let (opened_chirho, additional_chirho) =
-                self.open_application_prefix_chirho(current_chirho, look_chirho, budget_chirho)?;
+            let (opened_chirho, additional_chirho) = self.open_application_prefix_chirho(
+                current_chirho,
+                look_chirho,
+                budget_chirho,
+                quick_look_chirho,
+            )?;
             predicates_chirho.extend(additional_chirho);
             current_chirho = opened_chirho;
         }
@@ -600,6 +624,8 @@ impl InferCtxChirho {
             name_chirho,
             variable_head_chirho,
             scheme_chirho,
+            compiler_value_chirho,
+            global_quick_look_chirho: mode_chirho.global_quick_look_chirho,
             predicates_chirho,
             arguments_chirho: prepared_arguments_chirho,
             result_chirho: current_chirho,
@@ -611,6 +637,7 @@ impl InferCtxChirho {
         mut current_chirho: TyChirho,
         look_chirho: &mut QuickLookChirho,
         budget_chirho: &mut EqualityBudgetChirho,
+        quick_look_chirho: bool,
     ) -> Result<(TyChirho, Vec<PredChirho>), ()> {
         let mut predicates_chirho = Vec::new();
         loop {
@@ -645,10 +672,12 @@ impl InferCtxChirho {
                             preds_chirho: Vec::new(),
                             ty_chirho: *body_chirho,
                         });
-                    look_chirho.variables_chirho.extend(
-                        (start_chirho..self.elaboration_state_chirho.next_variable_chirho)
-                            .map(TyVarChirho),
-                    );
+                    if quick_look_chirho {
+                        look_chirho.variables_chirho.extend(
+                            (start_chirho..self.elaboration_state_chirho.next_variable_chirho)
+                                .map(TyVarChirho),
+                        );
+                    }
                     predicates_chirho.extend(additional_chirho);
                     current_chirho = opened_chirho;
                 }

@@ -13,6 +13,37 @@ fn prelude_chirho() -> ModuleIfaceChirho {
 }
 
 #[test]
+fn prelude_apply_is_a_positive_export_and_a_conflicting_fragment_removes_it_chirho() {
+    let builtin_chirho = prelude_chirho();
+    assert_eq!(
+        builtin_chirho.exports_chirho.values_chirho["$"].compiler_value_chirho,
+        Some(CompilerValueChirho::ApplyChirho)
+    );
+    let mut unknown_chirho = builtin_chirho.clone();
+    unknown_chirho.exports_chirho.origin_chirho = IfaceOriginChirho::SourceChirho;
+    unknown_chirho
+        .exports_chirho
+        .values_chirho
+        .get_mut("$")
+        .unwrap()
+        .compiler_value_chirho = None;
+    for copies_chirho in [
+        vec![
+            builtin_chirho.clone(),
+            unknown_chirho.clone(),
+            builtin_chirho.clone(),
+        ],
+        vec![unknown_chirho, builtin_chirho.clone(), builtin_chirho],
+    ] {
+        let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
+        assert_eq!(
+            merged_chirho[0].exports_chirho.values_chirho["$"].compiler_value_chirho,
+            None
+        );
+    }
+}
+
+#[test]
 fn data_list_forwards_the_actual_prelude_append_export_chirho() {
     let prelude_chirho = prelude_chirho();
     let data_list_chirho = crate::builtin_module_ifaces_chirho()

@@ -204,6 +204,8 @@ pub(crate) fn import_suppliers_chirho(
             if namespace_chirho == NamespaceChirho::ValueChirho
                 && let Some(value_chirho) = selected_value_chirho
                 && value_chirho.defining_module_chirho.is_none()
+                && value_chirho.availability_chirho
+                    == haskelujah_naming_chirho::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho
                 && let Some(compiler_chirho) = value_chirho.compiler_value_chirho
             {
                 suppliers_chirho.add_compiler_chirho(
@@ -219,7 +221,7 @@ pub(crate) fn import_suppliers_chirho(
             if !program_modules_chirho.contains(&supplier_chirho)
                 || iface_chirho.exports_chirho.origin_chirho != IfaceOriginChirho::SourceChirho
             {
-                if namespace_chirho == NamespaceChirho::ValueChirho && bare_chirho == "++" {
+                if namespace_chirho == NamespaceChirho::ValueChirho {
                     suppliers_chirho.add_unproven_chirho(Some(&qualifier_chirho), &bare_chirho);
                     if !import_chirho.qualified_chirho {
                         suppliers_chirho.add_unproven_chirho(None, &bare_chirho);
@@ -236,7 +238,7 @@ pub(crate) fn import_suppliers_chirho(
                     program_modules_chirho,
                 )
             else {
-                if namespace_chirho == NamespaceChirho::ValueChirho && bare_chirho == "++" {
+                if namespace_chirho == NamespaceChirho::ValueChirho {
                     suppliers_chirho.add_unproven_chirho(Some(&qualifier_chirho), &bare_chirho);
                     if !import_chirho.qualified_chirho {
                         suppliers_chirho.add_unproven_chirho(None, &bare_chirho);

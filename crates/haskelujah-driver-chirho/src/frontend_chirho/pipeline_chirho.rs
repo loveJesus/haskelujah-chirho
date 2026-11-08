@@ -272,7 +272,7 @@ pub(crate) fn run_frontend_under_policy_chirho(
             );
         }
     }
-    let mut unavailable_selectors_chirho = std::collections::HashSet::new();
+    let mut unavailable_values_chirho = std::collections::HashSet::new();
     let mut selected_imported_value_schemes_chirho = Vec::new();
     let mut merged_imported_record_field_names_chirho: std::collections::HashMap<
         String,
@@ -424,8 +424,8 @@ pub(crate) fn run_frontend_under_policy_chirho(
                     if iface_chirho.exports_chirho.values_chirho.get(name_chirho)
                         .is_some_and(|value_chirho| value_chirho.availability_chirho == haskelujah_naming_chirho::iface_chirho::IfaceValueAvailabilityChirho::FieldLabelOnlyChirho)
                     {
-                        unavailable_selectors_chirho.insert(format!("{qualifier_chirho}.{name_chirho}"));
-                        if !import_chirho.qualified_chirho { unavailable_selectors_chirho.insert(name_chirho.clone()); }
+                        unavailable_values_chirho.insert(format!("{qualifier_chirho}.{name_chirho}"));
+                        if !import_chirho.qualified_chirho { unavailable_values_chirho.insert(name_chirho.clone()); }
                         merged_imported_types_chirho.remove(&format!("{qualifier_chirho}.{name_chirho}"));
                         if !import_chirho.qualified_chirho { merged_imported_types_chirho.remove(name_chirho); }
                         continue;
@@ -440,6 +440,14 @@ pub(crate) fn run_frontend_under_policy_chirho(
                         &builtin_value_schemes_chirho,
                     );
                     let trusted_builtin_seed_chirho = builtin_seed_chirho.is_some();
+                    let compiler_value_chirho = trusted_builtin_seed_chirho
+                        .then(|| {
+                            crate::import_qualification_chirho::selected_compiler_value_chirho(
+                                iface_chirho,
+                                name_chirho,
+                            )
+                        })
+                        .flatten();
                     let base_scheme_chirho = builtin_seed_chirho
                         .map(std::borrow::Cow::Owned)
                         .or_else(|| {
@@ -502,14 +510,29 @@ pub(crate) fn run_frontend_under_policy_chirho(
                                 &in_scope_seed_scheme_chirho,
                                 trusted_builtin_seed_chirho,
                             )?,
+                            compiler_value_chirho,
                         ));
                     }
                     let qualified_name_chirho = format!("{qualifier_chirho}.{name_chirho}");
-                    selected_imported_value_schemes_chirho
-                        .push((qualified_name_chirho, in_scope_seed_scheme_chirho));
+                    selected_imported_value_schemes_chirho.push((
+                        qualified_name_chirho,
+                        in_scope_seed_scheme_chirho,
+                        compiler_value_chirho,
+                    ));
                 }
             }
         }
+    }
+
+    // The generic lexical-absence carrier also prevents the compatibility
+    // Prelude seed from resurrecting an actually hidden/unimported apply.
+    // Actual source declarations and inner binders replace/shadow this mask.
+    // This produces only absence, never compiler authority from spelling.
+    if !selected_imported_value_schemes_chirho
+        .iter()
+        .any(|(name_chirho, _, _)| name_chirho == "$")
+    {
+        unavailable_values_chirho.insert("$".to_string());
     }
 
     // Names spelled bare by their unique exporter keep the synonym key that spelling needs
@@ -535,7 +558,7 @@ pub(crate) fn run_frontend_under_policy_chirho(
                 imported_type_synonyms_chirho: &merged_imported_type_synonyms_chirho,
                 imported_type_families_chirho: &merged_imported_type_families_chirho,
                 imported_class_env_chirho,
-                unavailable_selectors_chirho: &unavailable_selectors_chirho,
+                unavailable_values_chirho: &unavailable_values_chirho,
                 imported_record_field_names_chirho: &merged_imported_record_field_names_chirho,
                 safe_unqualified_imported_type_names_chirho:
                     &safe_unqualified_imported_type_names_chirho,

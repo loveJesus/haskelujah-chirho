@@ -9,7 +9,7 @@ use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemeChirho, TyChirho};
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
-use haskelujah_ast_chirho::name_chirho::NameChirho;
+use haskelujah_ast_chirho::name_chirho::{CompilerValueChirho, NameChirho};
 use haskelujah_ast_chirho::promotion_chirho::unquoted_promoted_spelling_chirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
@@ -36,6 +36,18 @@ impl InferCtxChirho {
         full_name_chirho: &str,
         bare_name_chirho: &str,
     ) -> Option<(Option<String>, SchemeChirho)> {
+        self.lookup_value_entry_keyed_chirho(full_name_chirho, bare_name_chirho)
+            .map(|(entry_chirho, scheme_chirho, _)| (entry_chirho, scheme_chirho))
+    }
+
+    /// Resolve the scheme and optional certificate together. Only an exact
+    /// canonical lexical entry carries authority; compatibility suffix/bare
+    /// fallback may borrow a scheme but cannot borrow a different entry's proof.
+    pub(super) fn lookup_value_entry_keyed_chirho(
+        &self,
+        full_name_chirho: &str,
+        bare_name_chirho: &str,
+    ) -> Option<(Option<String>, SchemeChirho, Option<CompilerValueChirho>)> {
         let canonical_full_name_chirho = canonical_value_name_text_chirho(full_name_chirho);
         let canonical_bare_name_chirho = canonical_value_name_text_chirho(bare_name_chirho);
         if self
@@ -47,12 +59,19 @@ impl InferCtxChirho {
         if canonical_full_name_chirho == canonical_bare_name_chirho {
             return self
                 .env_chirho
-                .lookup_chirho(&canonical_bare_name_chirho)
-                .map(|scheme_chirho| (None, scheme_chirho.clone()));
+                .lookup_value_chirho(&canonical_bare_name_chirho)
+                .map(|(scheme_chirho, value_chirho)| (None, scheme_chirho.clone(), value_chirho));
         }
 
-        if let Some(scheme_chirho) = self.env_chirho.lookup_chirho(&canonical_full_name_chirho) {
-            return Some((Some(canonical_full_name_chirho), scheme_chirho.clone()));
+        if let Some((scheme_chirho, value_chirho)) = self
+            .env_chirho
+            .lookup_value_chirho(&canonical_full_name_chirho)
+        {
+            return Some((
+                Some(canonical_full_name_chirho),
+                scheme_chirho.clone(),
+                value_chirho,
+            ));
         }
 
         let suffix_chirho = format!(".{canonical_full_name_chirho}");
@@ -61,7 +80,9 @@ impl InferCtxChirho {
             .all_bindings_chirho()
             .into_iter()
             .filter(|(name_chirho, _scheme_chirho)| name_chirho.ends_with(&suffix_chirho))
-            .map(|(name_chirho, scheme_chirho)| (Some(name_chirho.clone()), scheme_chirho.clone()));
+            .map(|(name_chirho, scheme_chirho)| {
+                (Some(name_chirho.clone()), scheme_chirho.clone(), None)
+            });
         let first_match_chirho = suffix_matches_chirho.next();
         if first_match_chirho.is_some() && suffix_matches_chirho.next().is_none() {
             return first_match_chirho;
@@ -71,7 +92,7 @@ impl InferCtxChirho {
         // `let x` named the local (row 598).
         self.env_chirho
             .lookup_outermost_chirho(&canonical_bare_name_chirho)
-            .map(|scheme_chirho| (None, scheme_chirho.clone()))
+            .map(|scheme_chirho| (None, scheme_chirho.clone(), None))
     }
 
     pub(super) fn lookup_record_constructor_field_bundle_chirho(
@@ -688,5 +709,60 @@ impl InferCtxChirho {
             self.type_normalization_exhausted_chirho.set(true);
         }
         result_chirho
+    }
+}
+
+#[cfg(test)]
+mod selected_value_tests_chirho {
+    use super::*;
+
+    #[test]
+    fn a_qualified_fallback_borrows_no_other_entries_compiler_authority_chirho() {
+        let mut context_chirho = InferCtxChirho::new_chirho();
+        let scheme_chirho = SchemeChirho::mono_chirho(TyChirho::int_chirho());
+        context_chirho.env_chirho.bind_selected_value_chirho(
+            "$".to_string(),
+            scheme_chirho.clone(),
+            Some(CompilerValueChirho::ApplyChirho),
+        );
+        assert_eq!(
+            context_chirho
+                .lookup_value_entry_keyed_chirho("MissingChirho.$", "$")
+                .unwrap()
+                .2,
+            None
+        );
+        context_chirho.env_chirho.bind_selected_value_chirho(
+            "OuterChirho.PChirho.$".to_string(),
+            scheme_chirho.clone(),
+            Some(CompilerValueChirho::ApplyChirho),
+        );
+        assert_eq!(
+            context_chirho
+                .lookup_value_entry_keyed_chirho("PChirho.$", "$")
+                .unwrap()
+                .2,
+            None
+        );
+        context_chirho.env_chirho.bind_selected_value_chirho(
+            "PChirho.$".to_string(),
+            scheme_chirho,
+            Some(CompilerValueChirho::ApplyChirho),
+        );
+        assert_eq!(
+            context_chirho
+                .lookup_value_entry_keyed_chirho("PChirho.$", "$")
+                .unwrap()
+                .2,
+            Some(CompilerValueChirho::ApplyChirho)
+        );
+        context_chirho
+            .env_chirho
+            .mask_chirho("PChirho.$".to_string());
+        assert!(
+            context_chirho
+                .lookup_value_entry_keyed_chirho("PChirho.$", "$")
+                .is_none()
+        );
     }
 }

@@ -541,3 +541,135 @@ fn a_first_class_compiler_dollar_keeps_its_argument_lazy_chirho() {
     .expect("compiler dollar must not evaluate an unused argument Chirho");
     assert_eq!(machine_chirho.io_output_chirho, "42\n");
 }
+
+// After-only mutation controls start from the real builtin interfaces. A precise
+// borrowed scheme is deliberately insufficient when its selected proof is absent.
+fn check_selected_apply_ifaces_chirho(
+    ifaces_chirho: &[haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho],
+    source_chirho: &str,
+) -> Result<(), String> {
+    let builtins_chirho = haskelujah_typing_chirho::infer_chirho::builtin_value_schemes_chirho();
+    let types_chirho =
+        std::collections::HashMap::from([("Prelude.$".to_string(), builtins_chirho["$"].clone())]);
+    let synonyms_chirho = std::collections::HashMap::new();
+    let families_chirho = haskelujah_typing_chirho::infer_chirho::TypeFamilyEnvChirho::new_chirho();
+    let classes_chirho = haskelujah_typing_chirho::ClassEnvChirho::new_chirho();
+    let mut sources_chirho = SourceMapChirho::new_chirho();
+    let file_chirho = sources_chirho.add_file_chirho("ApplySelectionChirho.hs", source_chirho);
+    haskelujah_driver::run_frontend_with_options_chirho(
+        source_chirho,
+        file_chirho,
+        haskelujah_driver::FrontendImportsChirho {
+            ifaces_chirho,
+            types_chirho: &types_chirho,
+            type_synonyms_chirho: &synonyms_chirho,
+            type_families_chirho: &families_chirho,
+            class_env_chirho: &classes_chirho,
+        },
+        &FrontendOptionsChirho::from_ghc_options_chirho(RANK_APPLY_OPTIONS_CHIRHO.iter().copied()),
+    )
+    .map(|_| ())
+    .map_err(|error_chirho| error_chirho.to_string())
+}
+
+#[test]
+fn a_missing_or_stub_apply_certificate_does_not_license_the_same_scheme_chirho() {
+    let ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    let source_chirho = APPLY_FIXTURES_CHIRHO[2].source_chirho;
+    check_selected_apply_ifaces_chirho(&ifaces_chirho, source_chirho)
+        .expect("the actual selected builtin licenses application Chirho");
+    for stub_chirho in [false, true] {
+        let mut unproven_chirho = ifaces_chirho.clone();
+        let prelude_chirho = unproven_chirho
+            .iter_mut()
+            .find(|iface_chirho| iface_chirho.name_chirho == "Prelude")
+            .unwrap();
+        prelude_chirho
+            .exports_chirho
+            .values_chirho
+            .get_mut("$")
+            .unwrap()
+            .compiler_value_chirho = None;
+        if stub_chirho {
+            prelude_chirho.exports_chirho.origin_chirho =
+                haskelujah_naming_chirho::IfaceOriginChirho::SourceChirho;
+        }
+        let error_chirho = check_selected_apply_ifaces_chirho(&unproven_chirho, source_chirho)
+            .expect_err("a precise scheme is not a compiler certificate Chirho");
+        assert!(error_chirho.contains("E0200"), "{error_chirho}");
+    }
+}
+
+#[test]
+fn an_unproven_apply_copy_cannot_be_outvoted_by_positive_copies_chirho() {
+    let ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    let positive_chirho = ifaces_chirho
+        .iter()
+        .find(|iface_chirho| iface_chirho.name_chirho == "Prelude")
+        .unwrap();
+    let mut unproven_chirho = positive_chirho.clone();
+    unproven_chirho
+        .exports_chirho
+        .values_chirho
+        .get_mut("$")
+        .unwrap()
+        .compiler_value_chirho = None;
+    for copies_chirho in [
+        vec![
+            positive_chirho.clone(),
+            unproven_chirho.clone(),
+            positive_chirho.clone(),
+        ],
+        vec![
+            unproven_chirho,
+            positive_chirho.clone(),
+            positive_chirho.clone(),
+        ],
+    ] {
+        let merged_chirho =
+            haskelujah_naming_chirho::iface_chirho::merge_module_ifaces_chirho(copies_chirho);
+        let error_chirho = check_selected_apply_ifaces_chirho(
+            &merged_chirho,
+            APPLY_FIXTURES_CHIRHO[2].source_chirho,
+        )
+        .expect_err("every selected copy must grant the same authority Chirho");
+        assert!(error_chirho.contains("E0200"), "{error_chirho}");
+    }
+}
+
+#[test]
+fn an_unavailable_apply_is_masked_and_a_real_local_binder_shadows_it_chirho() {
+    let mut ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    ifaces_chirho
+        .iter_mut()
+        .find(|iface_chirho| iface_chirho.name_chirho == "Prelude")
+        .unwrap()
+        .exports_chirho
+        .values_chirho
+        .get_mut("$")
+        .unwrap()
+        .availability_chirho =
+        haskelujah_naming_chirho::iface_chirho::IfaceValueAvailabilityChirho::FieldLabelOnlyChirho;
+    let error_chirho =
+        check_selected_apply_ifaces_chirho(&ifaces_chirho, APPLY_FIXTURES_CHIRHO[2].source_chirho)
+            .expect_err("an unavailable selected value stops lookup Chirho");
+    assert!(error_chirho.contains("unbound variable"), "{error_chirho}");
+    let source_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule MaskedApplyLocalChirho where\nimport Prelude (Int, ($))\nresultChirho :: Int\nresultChirho = let leftChirho $ rightChirho = leftChirho in (2 :: Int) $ (3 :: Int)\n";
+    check_selected_apply_ifaces_chirho(&ifaces_chirho, source_chirho)
+        .expect("a real local source binder shadows the unavailable import Chirho");
+}
+
+#[test]
+fn an_imported_source_infix_dollar_runs_its_distinct_body_chirho() {
+    let source_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Main where\nimport Prelude (IO, print)\nimport qualified OwnDollarProviderChirho as OwnChirho\nmain :: IO ()\nmain = print (2 OwnChirho.$ 3)\n";
+    let (_, machine_chirho) = eval_modules_with_machine_chirho(
+        &[
+            ("OwnDollarProviderChirho.hs", APPLY_PROVIDER_2_CHIRHO),
+            ("Main.hs", source_chirho),
+        ],
+        &mut SourceMapChirho::new_chirho(),
+        Some("main"),
+    )
+    .expect("infix syntax must dispatch the selected source body Chirho");
+    assert_eq!(machine_chirho.io_output_chirho, "6\n");
+}
