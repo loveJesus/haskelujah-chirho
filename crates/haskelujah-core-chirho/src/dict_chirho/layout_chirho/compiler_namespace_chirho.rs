@@ -624,6 +624,23 @@ impl DictPassCtxChirho {
         }
     }
 
+    /// The layout a class proof selects for the class `name_chirho` spells, by the decision
+    /// `predicate_namespace_chirho` makes: a displaced compiler class's own layout, read by the
+    /// identity its proof carries, or None when this pass could not lay it out; any other proof,
+    /// the spelled layout. A displaced compiler class never takes the spelling a source class
+    /// owns, and its identity is never read back from a namespace name (row 692, C10, #33179).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(in crate::dict_chirho) fn proof_layout_chirho(
+        &self,
+        name_chirho: &str,
+        proof_chirho: &PredicateClassProofChirho,
+    ) -> Option<&DictLayoutChirho> {
+        match self.displaced_identity_chirho(proof_chirho) {
+            Some(identity_chirho) => self.compiler_layouts_chirho.get(&identity_chirho),
+            None => self.layouts_chirho.get(name_chirho),
+        }
+    }
+
     /// The class name a compiler class's builtin rows are spelled under: its legacy spelling
     /// when no source class displaces it, its reserved namespace when one does. None for a
     /// displaced class this pass could not lay out: its rows have no namespace to live in, and

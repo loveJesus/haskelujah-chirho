@@ -1160,3 +1160,24 @@ The controls distinguish two independent Num and Show dictionaries, source-owned
 numeric arguments, result-only Num literals and qualified Prelude methods. Imported
 result-only dictionaries still lack exported parameter inventory and remain separately
 measured; this change adds no ABI metadata channel.
+
+## Proof-chosen compiler layouts Chirho
+
+A program class owns its spelled layout. A compiler-proven displaced class uses its identity-keyed compiler namespace. A layout is chosen by proof, never by a name: proof_layout_chirho gives a displaced compiler proof its compiler layout, or None when that class was not laid out. Any other proof gets the spelled layout. A `$compiler_` name is never parsed back into an identity.
+
+- The superclass walk of a binding's own dictionary parameters starts from each parameter's namespace and proof and steps by each slot's namespace and proof. A displaced `Prelude.Ord b` parameter extracts Eq through `$sel_$compiler_Ord_super_Eq`. Each step projects the parameter's own field; no type key is chosen by that walk. A displaced class with no layout is not extracted under a spelling.
+- The conditional list builder routes each instance by its class proof and owner. A compiler-generated body requires the compiler's own seed instance, proven of the class its spelling names, at a complete `[v]` head whose context constrains only `v`. Class proof alone does not certify a compiler body.
+- The compiler's `Show a => Show [a]` under a displaced Show builds its namespace dictionaries for Int, Char, Bool and Double. Element dictionaries follow the context predicate's own namespace; method fields use compiler_method_row_chirho.
+- A displaced compiler Eq, Ord or other conditional list instance is a named gap. A source or unproven instance under Eq, Show or Ord takes the generic builder and its own rows.
+
+```mermaid
+flowchart TD
+    proof_layout_chirho[Actual class proof] --> layout_chirho[Existing proof chosen layout]
+    layout_chirho --> walk_chirho[Own parameter superclass walk]
+    layout_chirho --> conditional_chirho[Conditional list builder by class proof and owner]
+    conditional_chirho -->|compiler seed Show list| dictionary_chirho[Compiler namespace dictionary]
+    walk_chirho --> slot_chirho[Project the same parameters proof carrying field]
+    missing_chirho[Unavailable displaced compiler route] --> refusal_chirho[Named unsupported boundary]
+```
+
+A displaced compiler request cannot borrow the source class's spelled route. A missing layout, a GND or unsupported conditional key, a structured row generator or an imported instance without its required proof retains the named boundary. `Show [Maybe Int]` stays refused by a_displaced_compiler_show_it_cannot_build_is_refused_by_name_chirho. Source and unknown requests keep their existing routes. The own-scope print control exercises `[Bool]`; a_qualified_ord_given_keeps_its_eq_superclass_under_a_namesake_chirho exercises the parameter walk. These source additions do not establish a fresh assembled-source execution.
