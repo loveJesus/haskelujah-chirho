@@ -204,7 +204,7 @@ pub struct DesugarCtxChirho {
     instance_row_keys_chirho: Vec<crate::dict_chirho::InstanceRowKeyChirho>,
     /// The module's promoted-constructor scope (row 686), so a promoted type keys as its
     /// constructor's identity, as the checker's types do. `None` keeps legacy keys.
-    /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    /// workflow: type-identity-chirho/promoted-constructor-identity-chirho
     promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
     type_constructor_scope_chirho:
         Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
@@ -717,7 +717,7 @@ pub struct DesugarInputsChirho {
     /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
     pub import_suppliers_chirho: ImportSuppliersChirho,
     /// The module's promoted-constructor scope (row 686); `None` keeps legacy type keys.
-    /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    /// workflow: type-identity-chirho/promoted-constructor-identity-chirho
     pub promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
     pub type_constructor_scope_chirho:
         Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,

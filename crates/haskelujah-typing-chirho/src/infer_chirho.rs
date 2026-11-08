@@ -670,7 +670,7 @@ pub struct InferCtxChirho {
     /// The module's promoted-constructor scope from naming (row 686). `None` for a
     /// direct caller that never ran naming: promoted spellings then keep their legacy
     /// form, which is not the corrected identity.
-    /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    /// workflow: type-identity-chirho/promoted-constructor-identity-chirho
     promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
     type_constructor_scope_chirho:
         Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
@@ -824,7 +824,7 @@ pub fn infer_module_with_imports_type_synonyms_and_families_chirho(
 
 /// What a module's inference brings in from the rest of the program, borrowed for one
 /// call, with the module's own promoted-constructor scope from naming.
-/// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+/// workflow: type-identity-chirho/promoted-constructor-identity-chirho
 pub struct InferenceImportContextChirho<'imports_chirho> {
     /// Meet of the actual selected interface producers, independent of name lists.
     pub unary_variable_instance_heads_covered_chirho: bool,
@@ -1033,7 +1033,7 @@ fn infer_module_with_elaboration_state_chirho(
         ctx_chirho.finalize_reference_evidence_chirho(&composed_subst_chirho);
     let mut result_chirho = ctx_chirho.finish_chirho();
     // Promoted keys are the checker's identities; people read the constructors (row 686).
-    // workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    // workflow: type-identity-chirho/promoted-constructor-identity-chirho
     result_chirho
         .diagnostics_chirho
         .map_text_chirho(readable_promoted_keys_chirho);

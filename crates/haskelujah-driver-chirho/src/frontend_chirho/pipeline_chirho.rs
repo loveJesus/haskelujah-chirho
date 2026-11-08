@@ -177,7 +177,7 @@ pub(crate) fn run_frontend_under_policy_chirho(
     }
     // Phase 3.05: promoted constructors' identity (row 686), from the same interfaces
     // resolution read. Every typing conversion and Core type key reads it.
-    // workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    // workflow: type-identity-chirho/promoted-constructor-identity-chirho
     let promotion_scope_chirho = std::sync::Arc::new(
         haskelujah_naming_chirho::build_promotion_scope_chirho(&module_chirho, ifaces_chirho),
     );

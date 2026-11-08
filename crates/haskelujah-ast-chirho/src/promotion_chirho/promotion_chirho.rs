@@ -12,7 +12,7 @@
 //! conversion agrees. An AST that leaves its module (an exported synonym) carries the
 //! resolution on its names instead (`RawNameChirho::promotion_chirho`). Ordinary datatype
 //! names are never rewritten.
-//! workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+//! workflow: type-identity-chirho/promoted-constructor-identity-chirho
 
 use std::collections::{HashMap, HashSet};
 

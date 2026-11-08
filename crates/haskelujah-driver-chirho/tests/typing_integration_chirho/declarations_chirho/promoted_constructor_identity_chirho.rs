@@ -8,7 +8,7 @@
 //! `True True` for C15b; the 686a equation carrier alone still refused A04 and C17,
 //! failed E03 at run time and printed `False False` for C15b. The multi-module controls
 //! (C18b, E01) need native project builds and are measured as build-run cells.
-//! workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+//! workflow: type-identity-chirho/promoted-constructor-identity-chirho
 
 use super::assert_prints_everywhere_chirho;
 use haskelujah_span_chirho::SourceMapChirho;

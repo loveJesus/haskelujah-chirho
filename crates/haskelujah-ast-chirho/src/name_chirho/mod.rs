@@ -57,7 +57,7 @@ pub struct RawNameChirho {
     /// scope. `None` is unannotated: a module's own names are resolved by its
     /// `PromotionScopeChirho`. Like the origin, it is metadata that equality, hashing and
     /// lookups ignore.
-    /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    /// workflow: type-identity-chirho/promoted-constructor-identity-chirho
     pub promotion_chirho: Option<PromotionResolutionChirho>,
     /// Family identity stamped before an exported type leaves its defining scope.
     /// This is transport metadata, ignored by source-name equality and hashing.

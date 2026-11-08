@@ -10,7 +10,7 @@
 //! through forwarding interfaces, so a source module spelling `True` gains nothing. A spelling bound to two
 //! different constructors, or proven by nothing, is Unknown. The type-namespace spellings
 //! are kept too, because an unquoted name the type namespace has is the type.
-//! workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+//! workflow: type-identity-chirho/promoted-constructor-identity-chirho
 
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
@@ -46,7 +46,7 @@ struct BuiltinParentChirho {
 /// The constructors the compiler itself defines: the only constructors a builtin
 /// interface can give a builtin key. List, unit and tuple constructors are written with
 /// their own syntax and keyed by the converters.
-/// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+/// workflow: type-identity-chirho/promoted-constructor-identity-chirho
 const BUILTIN_PROMOTED_PARENTS_CHIRHO: &[BuiltinParentChirho] = &[
     BuiltinParentChirho {
         parent_chirho: "Bool",

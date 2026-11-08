@@ -547,7 +547,7 @@ impl ParserChirho<'_> {
     /// `'(,)`, `'(,,)`, … and a prefix operator constructor such as `'(:)` or `'(:+:)` are
     /// one promoted constructor. Anything else is a promoted tuple `'(t1, t2, …)`, whose
     /// elements are types (row 686).
-    /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    /// workflow: type-identity-chirho/promoted-constructor-identity-chirho
     fn parse_promoted_paren_type_chirho(&mut self) {
         let [after_paren_chirho, after_operator_chirho] = self.peek_kinds_after_tick_paren_chirho();
         let constructor_form_chirho = match after_paren_chirho {

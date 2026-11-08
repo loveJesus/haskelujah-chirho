@@ -399,7 +399,7 @@ impl LowerCtxChirho {
                 // DataKinds promoted tuple '(t1, …, tn): the tuple constructor '(,…,)
                 // applied to its elements, the shape naming, kinds and the promotion
                 // identity already handle (row 686).
-                // workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+                // workflow: type-identity-chirho/promoted-constructor-identity-chirho
                 let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
                 let elements_chirho: Vec<TypeChirho> = children_chirho
                     .iter()
