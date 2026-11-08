@@ -42,7 +42,7 @@ get a `fail` its monad might not have. See `tasklists-chirho/26-09-24_12-35-task
   plain local function, records none, so no Monad evidence is ever invented for it. That evidence
   reaches no consumer yet: the join drops every role but Reference.
 
-## Row 710, in progress: each statement typed through its selected operation
+## Row 710: each statement typed through its selected operation
 
 The old checker unified every statement with one block-wide `m a` and never typed a statement
 through the operation it selected, so a QualifiedDo bind of a plain local `a -> (a -> b) -> b`
@@ -67,14 +67,17 @@ flowchart TD
   selects every statement of a parsed block after the RecursiveDo knot (the knot bind included),
   while the knot's inner block, Template Haskell conversion and hand-built ASTs select none. Any
   change to that policy waits for root's word.
-- A selected operation that is not in scope is an ordinary unbound reference, reported under its
-  qualified name, for example M.>>=.
+- A selected operation that reaches the ordinary reference checker without an in-scope binding
+  uses its full qualified name in the diagnostic. The unknown-qualified control remains an open
+  historical failure because its measured path did not preserve that name.
 - Checking mode: a `let` after a bind sits inside a lambda that the application checker types.
-  The checking-mode arm for `let` lives in the reserved expected_chirho.rs, so such a tail is
-  inferred, then unified with the rigid type, rather than checked. This is named for kind's sigma
-  writer, not changed here.
+  The existing checking-mode cases in expected_chirho.rs govern the translated tail; a let tail
+  is inferred, then unified with the rigid type when it has no specialized checking arm. No new
+  checking-mode rule is introduced by this dependency port.
 - Controls: the c06 qualified non-Monad record control and its execution (5); a `($)` bind; an
   indexed or graded qualified bind; IO and refutable-Maybe MonadFail; an unsigned polymorphic Monad
   do; both let-only positives; the DoBindExact refusal and its pure twin; T21206. See
-  `tasklists-chirho/26-11-06_22-25-tasklist-selected_do_typing-chirho.md`.
+  the exact-source tasklist and immutable receipts; no private historical tasklist is imported.
 
+
+The measured dc879e94 focused selection had47 passing and4 failing controls. The frozen b35-production BEFORE leaf74641a7c measured those same four failures: T21206, the unknown-qualified-method diagnostic, the first-class-dollar runtime control and MonadFail Maybe/list. Three reasons were identical and the unknown-qualified diagnostic shape changed. Those are inherited measurements at that original pair; they are neither waivers nor results at the combined source. The c06 qualified non-Monad and do-let positives likewise need fresh combined-source gates.

@@ -5,21 +5,21 @@
   ],
   "base_source_chirho": "f6b97149988cc411e248f019c6e2131a4515cd74",
   "canonical_main_or_sqlite_changed_chirho": false,
-  "changed_compiler_paths_chirho": 47,
+  "changed_compiler_paths_chirho": 52,
   "changed_source_blob_shard_chirho": {
     "path_chirho": "spec-chirho/tasklists-chirho/parity-lanes-chirho/26-11-08-chirho/selected-gnd-source-blobs-chirho.jsonl",
-    "rows_chirho": 47,
-    "sha256_chirho": "f2adef2400ce65c486f8637a3952bbfe0c2719b95bafdbb6ced9c75949fbd997"
+    "rows_chirho": 52,
+    "sha256_chirho": "87e1fd9c2e85e16cdac1e15734027afd3d07b567e4e658fe166a6e38b73c3d47"
   },
   "compiler_paths_equal_to_base_or_frozen_input_chirho": 1485,
   "compiler_scope_paths_chirho": 1499,
-  "compiler_source_snapshot_chirho": "18ed8f68a37be396d6f5648111316a7929a7efeb",
-  "crates_tree_chirho": "03ce86a0602204e91362be8c9e04f2a618508249",
+  "compiler_source_snapshot_chirho": "d13f40fe98ea967cb3cf1862633ff7c2d693402a",
+  "crates_tree_chirho": "f6ed04a21917cff09a0dbed19a58c0ae00ec573c",
   "excluded_chirho": [
     "d275/830 replay",
     "GND b91 test parent",
     "private historical SQLite/tasklists/reports",
-    "Row710 dependency remains absent pending separate source lease"
+    "No unreviewed source beyond the exact named input chains"
   ],
   "family_extension_chirho": {
     "input_commit_chirho": "973bcc3f796526358da32e8d9be7fb20ac500645",
@@ -238,12 +238,12 @@
     "c104_chirho": "Earlier exact c104 compile and preservation846/238/220 retained at original source.",
     "composition_chirho": "No compiler, test, runtime, native, GHC or Clippy execution."
   },
-  "metadata_policy_chirho": "Preserve base metadata/SQLite; update only owned provenance/tasklist and four actual workflow documents. No historical private tasklist/report/ledger resurrection.",
+  "metadata_policy_chirho": "Preserve base metadata/SQLite; update only owned provenance/tasklist and five actual workflow documents. No historical private tasklist/report/ledger resurrection.",
   "named_merge_paths_chirho": 14,
   "new_target_absent_chirho": true,
-  "next_chirho": "Apply the newly cleared exact row710 dependency chain, then prepare the single final combined workspace check at its resulting source.",
+  "next_chirho": "Prepare the ONE final composed-source all-target workspace check, with own absent target and unchanged stock runner/facts; execute only under a separate actual root GO.",
   "old_worktrees_targets_evidence_frozen_chirho": true,
-  "outside_changed_paths_rule_chirho": "All compiler paths outside these47 paths remain exact f6; every mixed path is named in the shard. No whole-file source overwrite.",
+  "outside_changed_paths_rule_chirho": "All compiler paths outside these52 changed/deleted paths remain exact f6; every mixed path is named in the shard. No whole-file source overwrite.",
   "preserved_shared_behavior_chirho": [
     "unit719 opaque constructor equality and legacy/numeric boundaries",
     "main31 nominality and native GC/PAP/rootframes",
@@ -298,10 +298,23 @@
     ],
     "workflow_adaptation_chirho": "Existing dictionary-evidence doc keeps its main-rooted prefix; add only proof-chosen layouts, one Double conversion producer and demand-owned refusal sections/DAG. Do not import historical private C10 prose."
   },
+  "retained_row710_measurements_chirho": {
+    "before_comparison_chirho": "74641a7c is b35 production plus dollar test; same4FAILED, three reasons identical and unknown-qualified shape different.",
+    "focused_chirho": "47ok/4FAILED on51; c06 and do-let pass at that exact input.",
+    "red_names_chirho": [
+      "typecheck_t21206_rank_n_qualified_do_chirho",
+      "eval_unknown_qualified_do_method_stays_loud_chirho",
+      "eval_dollar_qualified_bind_types_by_its_own_scheme_chirho",
+      "eval_monadfail_maybe_list_chirho"
+    ],
+    "scope_chirho": "Historical inherited measurements only; not waived and not current candidate outcomes.",
+    "source_chirho": "dc879e94"
+  },
   "retained_whitespace_finding_chirho": "Frozen T18005.hs extra EOF blank line unchanged; no whole-union/main diff-check-clean claim.",
   "row710_dependency_chirho": {
     "c06_allgreen_must_not_be_assumed_chirho": true,
-    "evidence_chirho": "No row710 ancestor; do_blocks absent; do_operations/dependency/driver IO/qualified-do/workflow blobs equal b35.",
+    "evidence_chirho": "do_blocks/dependency/both driver files exactly equal dc879; do_operations exact deletion; only infer and expressions are named unions.",
+    "fresh_composed_source_measurement_chirho": false,
     "measured_tip_chirho": "dc879e94bd344cd4ff3e2d262fd1d290114eb1ef",
     "overlaps_chirho": [
       "infer_chirho.rs module registration with selected import/reader/entry context elsewhere",
@@ -309,7 +322,15 @@
       "existing apply_subst_all path must retain P1 literal captures; Q entailment code is separate"
     ],
     "port_authorized_chirho": true,
-    "present_chirho": false,
+    "ported_commits_chirho": [
+      "207a002d5df8f763780df8f97b19d9b34ece421b",
+      "751cc59b325b077809acaa1fa77893751cebe370",
+      "6dac6ac6ba01646bb7f868358003a0e795907e8c",
+      "2c183f4431df142779cbb507791bd0c546bfbb4e",
+      "d13f40fe98ea967cb3cf1862633ff7c2d693402a"
+    ],
+    "present_chirho": true,
+    "production_textual_conflicts_chirho": [],
     "source_chain_chirho": [
       "8e9b2a6e532636133dd65c29fbd70cd433fafaae",
       "01ce5d58aa1f763f6879c9ceacaa67f845eb3e5a",
@@ -317,9 +338,10 @@
       "14691144fb1e41ae01b89405e719c1730807b39a",
       "dc879e94bd344cd4ff3e2d262fd1d290114eb1ef"
     ],
-    "status_chirho": "MISSING_AT_THIS_Q_CHECKPOINT; exact measured chain now separately leased, not yet applied"
+    "status_chirho": "EXACT_MEASURED_CHAIN_COMPOSED_SOURCE_ONLY_UNCOMPILED",
+    "workflow_adaptation_chirho": "Actual qualified-do workflow reconciled narrowly after skipping docs-only df96. Remove transient private writer reservation/missing tasklist links, retain current translation DAG and explicitly retain the four historical REDs at their measured before pair."
   },
-  "schema_chirho": "main-rooted-selected-gnd-composition-r1-chirho",
+  "schema_chirho": "main-rooted-selected-gnd-family-q-do-composition-r2-chirho",
   "selected_commits_in_order_chirho": [
     "c89e6532a291c5305f7110a4cda2aacd737d36a4",
     "40d8cdaf820c4191bb4a5df6fb517d9592de2198",
@@ -328,7 +350,7 @@
   ],
   "source_format_chirho": {
     "all_byte_identical_chirho": true,
-    "changed_rust_files_chirho": 38,
+    "changed_rust_files_chirho": 42,
     "rustfmt_chirho": "1.93.0 stdin,edition2024,skip_children=true"
   },
   "status_chirho": "SOURCE_ONLY_UNCOMPILED_UNRUN",
