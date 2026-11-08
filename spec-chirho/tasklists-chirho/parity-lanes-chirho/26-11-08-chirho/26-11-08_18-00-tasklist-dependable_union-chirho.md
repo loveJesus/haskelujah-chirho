@@ -2,7 +2,7 @@
 
 # Dependable source union Chirho
 
-Current resume: unit719's exact shared opaque-constructor correction is measured at f6b97149988cc411e248f019c6e2131a4515cd74. Its fresh AFTER carriers pass U7 plus whole typing848 (no double count), source compile-only2, Core238 and scoped changed-span Clippy versus exact c104 with0 hits/247 OUTSIDE. BEFORE U6/1 and S1/1 remain raw REDs. This NEW owned worktree begins from f6 and carries the separately leased selected-application, GND producer, complete family-header, Q and measured row710 patches. The resulting composition is UNCOMPILED and UNRUN; main, SQLite, old c104 and unit719 worktrees/targets/evidence remain untouched.
+Current resume: the full main-rooted selected/GND/family/Q/row710 union at e9d4dc7c has an actual zero-message workspace all-target compilation PASS. Its source, old packets and protected evidence remain historical and immutable. The final separately measured fc5 conditional-route leaf is now ported exactly on top; this new source is UNCOMPILED and behaviorally UNRUN. Meaningful combined inventories and functional phases still need separate root grants; main/SQLite and old c104/unit719 source/targets/evidence remain untouched.
 
 This isolated branch starts at exact main acd8baaab60fe2005429cbae72a31ccfd2fd3d06 (compiler04116a69). Root delegated source-only assembly to /root/integration_frontier_chirho. No compiler execution or acceptance is authorized by this plan. Canonical main, its dirty work, SQLite and reporting remain root-owned and untouched.
 
@@ -126,3 +126,12 @@ Root subsequently cleared the exact measured row710 dependency chain8e9b2a6e thr
 - [ ] Freeze final source/provenance, scan/push and prepare the single combined all-target check packet. No compiler execution until root's actual GO.
 
 Row710 ports are207a002d,751cc59b,6dac6ac6,2c183f44,d13f40fe. The original dc879 set47/4 and the test-only b35 BEFORE pair remain immutable; their four failures are not waived or current-candidate findings. All final gates must measure the composed source freshly. The new source contains the existing measured c06 dependency rather than claiming evidence-all-green without it.
+
+## Final measured conditional-route leaf Chirho
+
+- [x] Record the e9 actual combined check:415 JSON records,378 artifacts/36 scripts/one successful build-finished,zero compiler-message and non-JSON stdout. Stage57.2447s; source/tools/protected inputs and original group68953 closed before the fold. No behavioral acceptance follows.
+- [x] Port exactfc5a17bb3c1d37e39fb76fe474c2abcbcbb7783a as60bbb8af: only conditional_chirho.rs, byte-identical to the measured input, rustfmt-clean. The three old semantic states map bijectively to ClassBuilder(None/Some)/InstanceRows through the same validated factory. No behavior, fixture or workflow rule is added.
+- [ ] Scan/push final provenance, then prepare fresh combined-check and single inventory data at the resulting final HEAD. Preserve e9's20 evidence files and every older protected input unchanged.
+- [ ] After the final check and inventory actually pass, run separately granted meaningful combined behavioral/negative/preservation phases from the retained actual binaries/archive; no list replay or private-green inheritance.
+
+The inventory phase compiles/lists typing/Core/naming/driver libs, typing_integration, native_symbol_identity and Core native_identity, then builds/proves/pins its own RTS. It runs no test body. All actual counts and executable hashes come from those fresh lists. Expected-green whole libs/evidence remain separate from the51-control do movement, known remaining E4b/f02 frontier measurements and all runtime/native/end-state gates. Root's33235/33236 fc5 scopes remain attached to their private source; no current-union result is claimed.

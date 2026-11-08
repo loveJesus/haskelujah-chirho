@@ -9,12 +9,13 @@
   "changed_source_blob_shard_chirho": {
     "path_chirho": "spec-chirho/tasklists-chirho/parity-lanes-chirho/26-11-08-chirho/selected-gnd-source-blobs-chirho.jsonl",
     "rows_chirho": 52,
-    "sha256_chirho": "87e1fd9c2e85e16cdac1e15734027afd3d07b567e4e658fe166a6e38b73c3d47"
+    "sha256_chirho": "0c4e4dbbe1e60f8d77c907d967f424087ce911b0a026182b90dc5ee6199dd7b0"
   },
+  "compiler_executions_at_this_snapshot_chirho": 0,
   "compiler_paths_equal_to_base_or_frozen_input_chirho": 1485,
   "compiler_scope_paths_chirho": 1499,
-  "compiler_source_snapshot_chirho": "d13f40fe98ea967cb3cf1862633ff7c2d693402a",
-  "crates_tree_chirho": "f6ed04a21917cff09a0dbed19a58c0ae00ec573c",
+  "compiler_source_snapshot_chirho": "60bbb8afc1db311c2097257cab6e5ee875cf0439",
+  "crates_tree_chirho": "4620609b21887e329217b7b440ac71f0701e8542",
   "excluded_chirho": [
     "d275/830 replay",
     "GND b91 test parent",
@@ -236,12 +237,12 @@
   "measurements_chirho": {
     "base719_chirho": "Exact f6 AFTER U7+whole848,source2,Core238,Clippy0hits/247OUTSIDE; not fresh composition executions.",
     "c104_chirho": "Earlier exact c104 compile and preservation846/238/220 retained at original source.",
-    "composition_chirho": "No compiler, test, runtime, native, GHC or Clippy execution."
+    "composition_chirho": "The e9 parent has the actual compilation-only PASS recorded below. This exact fc5 route-leaf source has no compiler or behavioral execution."
   },
   "metadata_policy_chirho": "Preserve base metadata/SQLite; update only owned provenance/tasklist and five actual workflow documents. No historical private tasklist/report/ledger resurrection.",
   "named_merge_paths_chirho": 14,
   "new_target_absent_chirho": true,
-  "next_chirho": "Prepare the ONE final composed-source all-target workspace check, with own absent target and unchanged stock runner/facts; execute only under a separate actual root GO.",
+  "next_chirho": "Prepare ONE fresh combined check and final inventory data at the final clean HEAD; no compiler until root actual GO, then meaningful combined functional phases from actual inventories.",
   "old_worktrees_targets_evidence_frozen_chirho": true,
   "outside_changed_paths_rule_chirho": "All compiler paths outside these52 changed/deleted paths remain exact f6; every mixed path is named in the shard. No whole-file source overwrite.",
   "preserved_shared_behavior_chirho": [
@@ -254,6 +255,14 @@
     "actual root options/default/provider policy",
     "typed Proxy producer plus field metadata"
   ],
+  "prior_composed_check_chirho": {
+    "evidence_manifest_sha256_chirho": "d10b399de40f2ec794ec395bcb17b8d1c78ef9580ae055811b358bce6507df00",
+    "facts_chirho": "378artifacts(allfresh=false)+36scripts+1true,zero compiler-message/zero nonJSONstdout;1502source,4tools,323oldevidence/10bins/2WTs held;68953empty. No test/runtime/native/GHC/Clippy claim.",
+    "source_chirho": "e9d4dc7cd573564d23e7e006067323de7ccac75a",
+    "status_chirho": "ACTUAL_PASS_COMPILATION_ONLY_IMMUTABLE",
+    "summary_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-dependable-union-selected-gnd-26-11-08-chirho/tmp-chirho/dependable-union-selected-gnd-chirho/check-readiness-e9d4dc7c-r1-chirho/stages-chirho/summary-chirho.json",
+    "summary_sha256_chirho": "968793f64fc67d74f8cf9f7ca1f26d300b805832c200c4ed5cf906e056ff1f23"
+  },
   "q_extension_chirho": {
     "commits_in_order_chirho": [
       {
@@ -297,6 +306,20 @@
       "all combined/main-parent gates"
     ],
     "workflow_adaptation_chirho": "Existing dictionary-evidence doc keeps its main-rooted prefix; add only proof-chosen layouts, one Double conversion producer and demand-owned refusal sections/DAG. Do not import historical private C10 prose."
+  },
+  "q_route_leaf_chirho": {
+    "exact_input_blob_chirho": true,
+    "factory_chirho": "Same conditional_list_entry validated proof/owner/head factory; variant never mints authority.",
+    "input_chirho": "fc5a17bb3c1d37e39fb76fe474c2abcbcbb7783a",
+    "isolated_measurement_chirho": "Root-reported ACTUAL33235/33236 atfc5:zero-message check,same29/29 plus wholetyping845/Core231,full81df-deltaClippy0hits/250OUTSIDE. Not executions of this union leaf.",
+    "other_behavior_or_fixture_change_chirho": false,
+    "path_chirho": "crates/haskelujah-core-chirho/src/dict_chirho/instance_chirho/conditional_chirho.rs",
+    "port_chirho": "60bbb8afc1db311c2097257cab6e5ee875cf0439",
+    "semantic_mapping_chirho": [
+      "Spelled -> ClassBuilder(None)",
+      "CompilerShow(identity) -> ClassBuilder(Some(identity))",
+      "InstanceRows unchanged"
+    ]
   },
   "retained_row710_measurements_chirho": {
     "before_comparison_chirho": "74641a7c is b35 production plus dollar test; same4FAILED, three reasons identical and unknown-qualified shape different.",
@@ -353,7 +376,7 @@
     "changed_rust_files_chirho": 42,
     "rustfmt_chirho": "1.93.0 stdin,edition2024,skip_children=true"
   },
-  "status_chirho": "SOURCE_ONLY_UNCOMPILED_UNRUN",
+  "status_chirho": "SOURCE_ONLY_FINAL_ROUTE_LEAF_UNCOMPILED",
   "superseded_unrun_check_chirho": {
     "actual_contract_or_stage_exists_chirho": false,
     "packet_manifest_sha256_chirho": "1a62b48516914e8bdf3ae439787de9fa22bc9672c85f08ae64a27893604e9c31",
