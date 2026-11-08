@@ -3,9 +3,9 @@
 //! Row 692, C10 Q (gpt #33099): a qualified builtin class written in a constraint (`P.Num`,
 //! `F.Foldable`, `Prelude.Ord`) names the class naming selected for that spelling. A compiler
 //! class and a program class with equal text never discharge each other's constraints, directly
-//! or through a superclass. Each program here is in the GHC reference plan
-//! `c10-qualified-class-v1`. The positives must print GHC's output on the interpreter, LLVM and
-//! Cranelift; the negatives must be refused for GHC's reason.
+//! or through a superclass. Each program here is in a GHC reference plan,
+//! `c10-qualified-class-v1` to `-v3`. The positives must print GHC's output on the interpreter,
+//! LLVM and Cranelift; the negatives must be refused for GHC's reason.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
 use super::{assert_prints_everywhere_chirho, rejected_like_ghc_chirho};
@@ -14,6 +14,8 @@ use super::{assert_prints_everywhere_chirho, rejected_like_ghc_chirho};
 const QUALIFIED_PRELUDE_NUM_CHIRHO: &str = include_str!("qualified_prelude_num_chirho.hs");
 /// P2: `F.Foldable t` from `Data.Foldable`, used by `F.foldr`.
 const QUALIFIED_FOLDABLE_CHIRHO: &str = include_str!("qualified_foldable_chirho.hs");
+/// P2': `F.Foldable t` serving the wanted that `F.length`'s own Foldable constraint makes.
+const QUALIFIED_FOLDABLE_LENGTH_CHIRHO: &str = include_str!("qualified_foldable_length_chirho.hs");
 /// P3: `Prelude.Ord b` reaches the compiler's `Eq` while the program's own `Ord` takes the spelling.
 const QUALIFIED_ORD_SUPERCLASS_UNDER_NAMESAKE_CHIRHO: &str =
     include_str!("qualified_ord_superclass_under_namesake_chirho.hs");
@@ -42,6 +44,17 @@ fn a_qualified_foldable_given_serves_the_compilers_foldable_chirho() {
         "qualified_foldable_chirho.hs",
         QUALIFIED_FOLDABLE_CHIRHO,
         "6\n",
+    );
+}
+
+/// P2's `F.foldr` asks for no Foldable here, so it cannot show the given at work (BEFORE r3,
+/// #33136). `F.length`'s own scheme asks for `Foldable t`, which only the qualified given serves.
+#[test]
+fn a_qualified_foldable_given_serves_a_constrained_method_chirho() {
+    assert_prints_everywhere_chirho(
+        "qualified_foldable_length_chirho.hs",
+        QUALIFIED_FOLDABLE_LENGTH_CHIRHO,
+        "3\n",
     );
 }
 
