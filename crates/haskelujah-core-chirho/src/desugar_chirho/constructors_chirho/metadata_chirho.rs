@@ -22,8 +22,43 @@ use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 impl DesugarCtxChirho {
+    /// Actual local declarations replace imported namesakes, including a
+    /// fieldless declaration's explicit empty label sequence.
+    fn bind_local_field_scope_chirho(
+        &mut self,
+        module_name_chirho: &str,
+        owner_chirho: Option<&haskelujah_ast_chirho::name_chirho::TypeConstructorDeclarationChirho>,
+        constructor_name_chirho: &str,
+        labels_chirho: Vec<String>,
+    ) {
+        let scope_chirho = match owner_chirho {
+            Some(owner_chirho) => haskelujah_typing_chirho::infer_chirho::ConstructorFieldScopeChirho::selected_chirho(owner_chirho.clone(), labels_chirho.clone(), labels_chirho),
+            None => haskelujah_typing_chirho::infer_chirho::ConstructorFieldScopeChirho::legacy_unproven_chirho(labels_chirho),
+        };
+        // This copies actual local constructor arity; an empty label sequence
+        // alone never proves a nullary runtime constructor.
+        if let Some(arity_chirho) = self
+            .con_arities_chirho
+            .get(constructor_name_chirho)
+            .copied()
+        {
+            self.con_arities_chirho.insert(
+                format!("{module_name_chirho}.{constructor_name_chirho}"),
+                arity_chirho,
+            );
+        }
+        self.con_field_names_chirho.insert(
+            format!("{module_name_chirho}.{constructor_name_chirho}"),
+            scope_chirho.clone(),
+        );
+        self.con_field_names_chirho
+            .insert(constructor_name_chirho.to_string(), scope_chirho);
+    }
+
     /// Populate constructor strictness and field name maps from data declarations.
     pub(super) fn collect_con_strictness_chirho(&mut self, module_chirho: &ModuleChirho) {
+        let type_scope_chirho = self.type_constructor_scope_chirho.clone();
+        let module_name_chirho = module_chirho.name_chirho.full_name_chirho();
         for decl_chirho in &module_chirho.decls_chirho {
             let constructors_chirho: &[ConDeclChirho] = match decl_chirho {
                 DeclChirho::DataDeclChirho {
@@ -35,6 +70,14 @@ impl DesugarCtxChirho {
                 } => std::slice::from_ref(constructor_chirho),
                 _ => continue,
             };
+            let parent_name_chirho = match decl_chirho {
+                DeclChirho::DataDeclChirho { name_chirho, .. }
+                | DeclChirho::NewtypeDeclChirho { name_chirho, .. } => name_chirho,
+                _ => unreachable!("constructor inventory has a real data/newtype parent Chirho"),
+            };
+            let owner_chirho = type_scope_chirho.as_ref().and_then(|scope_chirho| {
+                scope_chirho.declaration_chirho(&parent_name_chirho.full_name_chirho())
+            });
             for con_chirho in constructors_chirho {
                 match con_chirho {
                     ConDeclChirho::OrdinaryChirho {
@@ -44,6 +87,12 @@ impl DesugarCtxChirho {
                     } => {
                         self.con_arities_chirho
                             .insert(name_chirho.text_chirho().to_string(), fields_chirho.len());
+                        self.bind_local_field_scope_chirho(
+                            &module_name_chirho,
+                            owner_chirho,
+                            name_chirho.text_chirho(),
+                            Vec::new(),
+                        );
                         let strictness_chirho: Vec<StrictnessChirho> = fields_chirho
                             .iter()
                             .map(|(s_chirho, _)| *s_chirho)
@@ -92,8 +141,12 @@ impl DesugarCtxChirho {
                             name_chirho.text_chirho().to_string(),
                             field_names_chirho.len(),
                         );
-                        self.con_field_names_chirho
-                            .insert(name_chirho.text_chirho().to_string(), field_names_chirho);
+                        self.bind_local_field_scope_chirho(
+                            &module_name_chirho,
+                            owner_chirho,
+                            name_chirho.text_chirho(),
+                            field_names_chirho,
+                        );
                     }
                     ConDeclChirho::GadtChirho {
                         name_chirho,
@@ -115,19 +168,19 @@ impl DesugarCtxChirho {
                             self.con_strictness_chirho
                                 .insert(name_chirho.text_chirho().to_string(), strictness_chirho);
                         }
-                        if let Some(fields_chirho) = signature_chirho.record_fields_chirho() {
-                            self.con_field_names_chirho.insert(
-                                name_chirho.text_chirho().to_string(),
-                                fields_chirho
-                                    .iter()
-                                    .flat_map(|field_chirho| {
-                                        field_chirho.names_chirho.iter().map(|name_chirho| {
-                                            name_chirho.text_chirho().to_string()
-                                        })
-                                    })
-                                    .collect(),
-                            );
-                        }
+                        let labels_chirho = signature_chirho
+                            .record_fields_chirho()
+                            .unwrap_or_default()
+                            .iter()
+                            .flat_map(|field_chirho| &field_chirho.names_chirho)
+                            .map(|name_chirho| name_chirho.text_chirho().to_string())
+                            .collect();
+                        self.bind_local_field_scope_chirho(
+                            &module_name_chirho,
+                            owner_chirho,
+                            name_chirho.text_chirho(),
+                            labels_chirho,
+                        );
                     }
                 }
             }

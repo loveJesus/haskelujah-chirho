@@ -121,7 +121,9 @@ fn diagnostics_with_collapsed_names_chirho(
     use haskelujah_parser_chirho::cst_parser_chirho::parse_to_cst_chirho;
     use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
     use haskelujah_span_chirho::FileIdChirho;
-    use haskelujah_typing_chirho::infer_chirho::infer_module_with_imports_type_synonyms_families_and_class_env_chirho;
+    use haskelujah_typing_chirho::infer_chirho::{
+        InferenceImportContextChirho, infer_module_with_import_context_chirho,
+    };
     use std::collections::{HashMap, HashSet};
 
     let file_chirho = FileIdChirho::SYNTHETIC_CHIRHO;
@@ -131,18 +133,29 @@ fn diagnostics_with_collapsed_names_chirho(
     );
     let mut class_env_chirho = haskelujah_typing_chirho::ClassEnvChirho::new_chirho();
     class_env_chirho.seed_standard_chirho();
-    let result_chirho = infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
+    let result_chirho = infer_module_with_import_context_chirho(
         &module_chirho,
-        &HashMap::new(),
-        &HashMap::new(),
-        &haskelujah_typing_chirho::infer_chirho::TypeFamilyEnvChirho::new_chirho(),
-        &class_env_chirho,
-        &HashMap::new(),
-        &collapsed_chirho
-            .iter()
-            .map(|name_chirho| name_chirho.to_string())
-            .collect::<HashSet<String>>(),
-        &HashMap::new(),
+        InferenceImportContextChirho {
+            unary_variable_instance_heads_covered_chirho: false,
+            local_class_prefix_instances_complete_chirho: false,
+            imported_types_chirho: &HashMap::new(),
+            selected_imported_value_schemes_chirho: Vec::new(),
+            imported_type_synonyms_chirho: &HashMap::new(),
+            imported_type_families_chirho:
+                &haskelujah_typing_chirho::infer_chirho::TypeFamilyEnvChirho::new_chirho(),
+            imported_class_env_chirho: &class_env_chirho,
+            imported_record_field_names_chirho: &HashMap::new(),
+            unavailable_selectors_chirho: &HashSet::new(),
+            safe_unqualified_imported_type_names_chirho: &collapsed_chirho
+                .iter()
+                .map(|name_chirho| name_chirho.to_string())
+                .collect::<HashSet<String>>(),
+            preferred_qualified_type_names_chirho: &HashMap::new(),
+            promotion_scope_chirho: None,
+            family_scope_chirho: None,
+            type_constructor_scope_chirho: None,
+            entry_obligation_chirho: None,
+        },
     );
     format!("{}", result_chirho.diagnostics_chirho)
 }

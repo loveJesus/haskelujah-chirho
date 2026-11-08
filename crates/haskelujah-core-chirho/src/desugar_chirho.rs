@@ -57,6 +57,7 @@ mod syntax_methods_chirho;
 mod constructor_metadata_chirho;
 #[cfg(test)]
 mod promoted_keys_tests_chirho;
+use haskelujah_typing_chirho::infer_chirho::ConstructorFieldScopeChirho;
 use match_rows_chirho::{MatchRowChirho, RowBodyChirho};
 
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -174,7 +175,7 @@ pub struct DesugarCtxChirho {
     con_strictness_chirho: HashMap<String, Vec<StrictnessChirho>>,
     /// Record constructor field names: maps constructor name → ordered list of field names.
     /// Used for RecordWildCards expansion (`Foo{..}` fills in missing fields).
-    con_field_names_chirho: HashMap<String, Vec<String>>,
+    con_field_names_chirho: HashMap<String, ConstructorFieldScopeChirho>,
     /// Constructor arities for the ordinary and record constructors declared
     /// in this module: `C {}` on a positional constructor supplies no fields,
     /// so every argument becomes a missing-field thunk.
@@ -709,6 +710,8 @@ pub struct DesugarInputsChirho {
     /// positional constructor fills every argument with a missing-field thunk.
     /// workflow: language-features-chirho/rigid-type-variables-chirho (records)
     pub constructor_arities_chirho: HashMap<String, usize>,
+    /// The checker's final physical/eligible field scopes; no re-selection in Core.
+    pub constructor_field_scopes_chirho: HashMap<String, ConstructorFieldScopeChirho>,
     /// Which program modules define each imported value name, so a reference to one takes its
     /// definer's identity (rows 629 and 642).
     /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
@@ -731,6 +734,7 @@ pub fn desugar_module_with_inputs_chirho(
     ctx_chirho.set_method_occurrence_names_chirho(inputs_chirho.method_names_chirho);
     ctx_chirho.set_constrained_names_chirho(inputs_chirho.constrained_names_chirho);
     ctx_chirho.set_constructor_arities_chirho(inputs_chirho.constructor_arities_chirho);
+    ctx_chirho.con_field_names_chirho = inputs_chirho.constructor_field_scopes_chirho;
     ctx_chirho.import_suppliers_chirho = inputs_chirho.import_suppliers_chirho;
     ctx_chirho.promotion_scope_chirho = inputs_chirho.promotion_scope_chirho;
     ctx_chirho.type_constructor_scope_chirho = inputs_chirho.type_constructor_scope_chirho;

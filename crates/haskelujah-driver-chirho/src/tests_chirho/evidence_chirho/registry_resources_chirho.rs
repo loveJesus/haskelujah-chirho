@@ -262,7 +262,26 @@ fn failed_admission_cannot_export_evidence_or_become_a_successful_next_import_ch
     let mut failed_chirho = ClassEnvChirho::with_registration_limit_chirho(0);
     failed_chirho.seed_standard_chirho();
     let infer_chirho = |environment_chirho: &ClassEnvChirho| {
-        haskelujah_typing_chirho::infer_chirho::infer_module_with_imports_type_synonyms_families_and_class_env_chirho(&healthy_chirho.module_chirho, &HashMap::new(), &HashMap::new(), &Default::default(), environment_chirho, &HashMap::new(), &Default::default(), &HashMap::new())
+        haskelujah_typing_chirho::infer_chirho::infer_module_with_import_context_chirho(
+            &healthy_chirho.module_chirho,
+            haskelujah_typing_chirho::infer_chirho::InferenceImportContextChirho {
+                unary_variable_instance_heads_covered_chirho: false,
+                local_class_prefix_instances_complete_chirho: false,
+                imported_types_chirho: &HashMap::new(),
+                selected_imported_value_schemes_chirho: Vec::new(),
+                imported_type_synonyms_chirho: &HashMap::new(),
+                imported_type_families_chirho: &Default::default(),
+                imported_class_env_chirho: environment_chirho,
+                imported_record_field_names_chirho: &HashMap::new(),
+                unavailable_selectors_chirho: &std::collections::HashSet::new(),
+                safe_unqualified_imported_type_names_chirho: &Default::default(),
+                preferred_qualified_type_names_chirho: &HashMap::new(),
+                promotion_scope_chirho: None,
+                family_scope_chirho: None,
+                type_constructor_scope_chirho: None,
+                entry_obligation_chirho: None,
+            },
+        )
     };
     let first_chirho = infer_chirho(&failed_chirho);
     assert!(

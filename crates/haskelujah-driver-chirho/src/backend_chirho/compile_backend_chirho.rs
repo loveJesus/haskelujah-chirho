@@ -90,6 +90,9 @@ pub(crate) fn compile_backend_chirho(
             ),
             constrained_names_chirho,
             constructor_arities_chirho,
+            constructor_field_scopes_chirho: infer_result_chirho
+                .constructor_field_scopes_chirho
+                .clone(),
             // A reference to a value another module of this program defines takes its
             // definer's identity, seen through any re-export (rows 629 and 642).
             // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho

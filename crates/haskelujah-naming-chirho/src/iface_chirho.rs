@@ -24,8 +24,11 @@ use crate::type_exports_chirho::{
 
 mod builtin_chirho;
 mod class_identity_chirho;
+mod constructor_fields_chirho;
 mod selection_chirho;
 mod type_identity_chirho;
+pub use constructor_fields_chirho::ConstructorFieldsChirho;
+pub(crate) use constructor_fields_chirho::publish_source_constructor_values_chirho;
 pub use selection_chirho::{IfaceExposureChirho, select_import_iface_chirho};
 pub use type_identity_chirho::build_type_constructor_scope_chirho;
 #[cfg(test)]
@@ -60,6 +63,9 @@ pub struct IfaceValueChirho {
     /// whose text cannot say where a value is defined.
     /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
     pub defining_module_chirho: Option<String>,
+    /// Complete fields from this constructor's actual declaration. Export and
+    /// import visibility do not change its physical field order.
+    pub constructor_fields_chirho: Option<ConstructorFieldsChirho>,
     /// Positive value identity from its actual builtin producer, preserved by
     /// export filtering and source re-exports. Unknown/source/stub values have
     /// none; `defining_module_chirho == None` supplies no builtin authority.
@@ -789,11 +795,34 @@ pub fn merge_module_ifaces_chirho(
                     alternate_value_chirho.compiler_value_chirho = None;
                     value_chirho.compiler_value_chirho = None;
                 }
+                if let Some(alternate_value_chirho) = existing_chirho
+                    .exports_chirho
+                    .values_chirho
+                    .get_mut(&alternate_chirho)
+                {
+                    let agrees_chirho = alternate_value_chirho.constructor_fields_chirho
+                        == value_chirho.constructor_fields_chirho
+                        && alternate_value_chirho.defining_module_chirho
+                            == value_chirho.defining_module_chirho;
+                    if !agrees_chirho
+                        && (alternate_value_chirho.constructor_fields_chirho.is_some()
+                            || value_chirho.constructor_fields_chirho.is_some())
+                    {
+                        alternate_value_chirho.constructor_fields_chirho =
+                            Some(ConstructorFieldsChirho::blocked_chirho());
+                        value_chirho.constructor_fields_chirho =
+                            Some(ConstructorFieldsChirho::blocked_chirho());
+                    }
+                }
                 existing_chirho
                     .exports_chirho
                     .values_chirho
                     .entry(name_chirho)
                     .and_modify(|existing_value_chirho| {
+                        constructor_fields_chirho::merge_constructor_fields_chirho(
+                            existing_value_chirho,
+                            &value_chirho,
+                        );
                         // Fragment union cannot turn an unproven/replaced source
                         // value into a builtin. Real re-exports carry identical
                         // explicit markers and preserve them through this join.

@@ -797,10 +797,11 @@ impl DesugarCtxChirho {
                 // Con { f1 = e1, f2 = e2 } → ConApp "Con" [e1, e2]
                 // RecordWildCards: Con { f1 = e1, .. } → fills missing fields from scope
                 let con_name_chirho = con_chirho.text_chirho().to_string();
+                let field_key_chirho = con_chirho.full_name_chirho();
                 let con_args_chirho: Vec<CoreExprChirho> = if *has_wildcard_chirho {
-                    self.expand_record_wildcard_expr_chirho(&con_name_chirho, fields_chirho)
+                    self.expand_record_wildcard_expr_chirho(&field_key_chirho, fields_chirho)
                 } else {
-                    self.record_construction_args_chirho(&con_name_chirho, fields_chirho)
+                    self.record_construction_args_chirho(&field_key_chirho, fields_chirho)
                 };
                 self.enforce_strict_fields_chirho(con_name_chirho, con_args_chirho)
             }

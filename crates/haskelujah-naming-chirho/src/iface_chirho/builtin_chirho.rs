@@ -173,6 +173,7 @@ fn normalize_builtin_class_exports_chirho(modules_chirho: &mut [ModuleIfaceChirh
                             name_chirho: method_name_chirho,
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                             defining_module_chirho: None,
+                            constructor_fields_chirho: None,
                             compiler_value_chirho: None,
                         });
                 }
@@ -190,6 +191,7 @@ fn mk_val_chirho(name_chirho: &str) -> (String, IfaceValueChirho) {
             name_chirho: name_chirho.to_string(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             defining_module_chirho: None,
+            constructor_fields_chirho: None,
             compiler_value_chirho: None,
         },
     )

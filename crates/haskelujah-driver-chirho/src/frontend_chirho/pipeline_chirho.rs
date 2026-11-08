@@ -7,6 +7,9 @@
 
 use super::*;
 
+#[path = "constructor_fields_chirho.rs"]
+mod constructor_field_scopes_chirho;
+
 /// What one module is checked against: the interfaces name resolution reads and the
 /// environment imported with them.
 pub struct FrontendImportsChirho<'imports_chirho> {
@@ -275,10 +278,11 @@ pub(crate) fn run_frontend_under_policy_chirho(
     }
     let mut unavailable_selectors_chirho = std::collections::HashSet::new();
     let mut selected_imported_value_schemes_chirho = Vec::new();
-    let mut merged_imported_record_field_names_chirho: std::collections::HashMap<
-        String,
-        Vec<String>,
-    > = std::collections::HashMap::new();
+    let merged_imported_record_field_names_chirho =
+        constructor_field_scopes_chirho::selected_import_field_scopes_chirho(
+            &module_chirho,
+            ifaces_chirho,
+        );
     let builtin_value_schemes_chirho =
         haskelujah_typing_chirho::infer_chirho::builtin_value_schemes_chirho();
     for (builtin_name_chirho, builtin_scheme_chirho) in &builtin_value_schemes_chirho {
@@ -364,31 +368,6 @@ pub(crate) fn run_frontend_under_policy_chirho(
                 budget_chirho: &mut qualification_budget_chirho,
                 span_chirho: import_chirho.module_chirho.span_chirho(),
             };
-            if !import_chirho.qualified_chirho {
-                for type_info_chirho in iface_chirho.exports_chirho.types_chirho.values() {
-                    if type_info_chirho.methods_chirho.is_empty()
-                        || type_info_chirho.constructors_chirho.is_empty()
-                    {
-                        continue;
-                    }
-                    for constructor_name_chirho in &type_info_chirho.constructors_chirho {
-                        merged_imported_record_field_names_chirho
-                            .entry(constructor_name_chirho.clone())
-                            .or_insert_with(|| type_info_chirho.methods_chirho.clone());
-                        merged_imported_record_field_names_chirho
-                            .entry(format!(
-                                "{}.{}",
-                                module_name_chirho, constructor_name_chirho
-                            ))
-                            .or_insert_with(|| type_info_chirho.methods_chirho.clone());
-                        if qualifier_chirho != module_name_chirho {
-                            merged_imported_record_field_names_chirho
-                                .entry(format!("{}.{}", qualifier_chirho, constructor_name_chirho))
-                                .or_insert_with(|| type_info_chirho.methods_chirho.clone());
-                        }
-                    }
-                }
-            }
             for (name_chirho, ns_chirho, _span_chirho) in &names_chirho {
                 if ns_chirho == &haskelujah_naming_chirho::env_chirho::NamespaceChirho::TypeChirho {
                     let module_qualified_name_chirho =

@@ -394,6 +394,7 @@ fn ensure_type_export_chirho(
                 name_chirho: canonical_constructor_chirho,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 defining_module_chirho: None,
+                constructor_fields_chirho: None,
                 compiler_value_chirho: None,
             });
     }
@@ -533,22 +534,13 @@ pub(crate) fn collect_all_definitions_chirho(
                     .map(|field_chirho| canonical_value_name_chirho(&field_chirho))
                     .collect();
 
-                for value_name_chirho in constructor_names_chirho
-                    .iter()
-                    .chain(field_names_chirho.iter())
-                {
-                    exports_chirho.values_chirho.insert(
-                        value_name_chirho.clone(),
-                        IfaceValueChirho {
-                            availability_chirho:
-                                crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
-                            name_chirho: value_name_chirho.clone(),
-                            span_chirho: *span_chirho,
-                            defining_module_chirho: defining_module_chirho.clone(),
-                            compiler_value_chirho: None,
-                        },
-                    );
-                }
+                crate::iface_chirho::publish_source_constructor_values_chirho(
+                    &mut exports_chirho,
+                    constructors_chirho,
+                    declaration_chirho.as_ref(),
+                    &defining_module_chirho,
+                    *span_chirho,
+                );
                 exports_chirho.types_chirho.insert(
                     type_name_chirho.clone(),
                     IfaceTypeChirho {
@@ -576,21 +568,13 @@ pub(crate) fn collect_all_definitions_chirho(
                         .map(|field_chirho| canonical_value_name_chirho(&field_chirho))
                         .collect();
 
-                for value_name_chirho in
-                    std::iter::once(&constructor_name_chirho).chain(field_names_chirho.iter())
-                {
-                    exports_chirho.values_chirho.insert(
-                        value_name_chirho.clone(),
-                        IfaceValueChirho {
-                            availability_chirho:
-                                crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
-                            name_chirho: value_name_chirho.clone(),
-                            span_chirho: *span_chirho,
-                            defining_module_chirho: defining_module_chirho.clone(),
-                            compiler_value_chirho: None,
-                        },
-                    );
-                }
+                crate::iface_chirho::publish_source_constructor_values_chirho(
+                    &mut exports_chirho,
+                    std::slice::from_ref(constructor_chirho),
+                    declaration_chirho.as_ref(),
+                    &defining_module_chirho,
+                    *span_chirho,
+                );
                 exports_chirho.types_chirho.insert(
                     type_name_chirho.clone(),
                     IfaceTypeChirho {
@@ -643,6 +627,7 @@ pub(crate) fn collect_all_definitions_chirho(
                             name_chirho: method_name_chirho.clone(),
                             span_chirho: *span_chirho,
                             defining_module_chirho: defining_module_chirho.clone(),
+                            constructor_fields_chirho: None,
                             compiler_value_chirho: None,
                         },
                     );
@@ -712,6 +697,7 @@ pub(crate) fn collect_all_definitions_chirho(
                         name_chirho: value_name_chirho,
                         span_chirho: *span_chirho,
                         defining_module_chirho: defining_module_chirho.clone(),
+                        constructor_fields_chirho: None,
                         compiler_value_chirho: None,
                     },
                 );
@@ -731,6 +717,7 @@ pub(crate) fn collect_all_definitions_chirho(
                             name_chirho: value_name_chirho,
                             span_chirho: *span_chirho,
                             defining_module_chirho: defining_module_chirho.clone(),
+                            constructor_fields_chirho: None,
                             compiler_value_chirho: None,
                         },
                     );

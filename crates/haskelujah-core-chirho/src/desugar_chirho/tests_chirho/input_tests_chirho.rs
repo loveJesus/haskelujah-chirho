@@ -48,10 +48,7 @@ fn assert_refusal_chirho(module_chirho: &ModuleChirho) {
     let error_chirho =
         desugar_module_chirho(module_chirho).expect_err("no partial Core is published");
     assert!(
-        matches!(
-            error_chirho,
-            DesugarInputErrorChirho::UnexpandedPatternChirho { .. }
-        ),
+        error_chirho.is_unexpanded_pattern_chirho(),
         "{error_chirho}"
     );
 }
@@ -159,7 +156,7 @@ fn borrowed_pattern_scan_uses_the_same_sticky_allowance_without_output_chirho() 
         Some(&DesugarCtxChirho::new_chirho()),
     )
     .expect_err("the cursor shares the finite allowance");
-    let DesugarInputErrorChirho::ProjectionChirho(error_chirho) = error_chirho else {
+    let Some(error_chirho) = error_chirho.projection_error_chirho() else {
         panic!("resource error must remain typed")
     };
     assert_eq!(
@@ -205,10 +202,11 @@ fn transform_module_chirho(present_chirho: bool) -> ModuleChirho {
 
 #[test]
 fn unread_transform_refuses_before_any_core_publication_chirho() {
-    assert!(matches!(
-        desugar_module_chirho(&transform_module_chirho(false)),
-        Err(DesugarInputErrorChirho::UnreadTransformChirho { .. })
-    ));
+    assert!(
+        desugar_module_chirho(&transform_module_chirho(false))
+            .expect_err("unread transformer must refuse before Core Chirho")
+            .is_unread_transform_chirho()
+    );
 }
 
 #[test]
@@ -227,7 +225,7 @@ fn transform_output_reserves_the_original_sticky_module_allowance_chirho() {
         Some(&context_chirho),
     )
     .expect_err("even a zero-column transform emits a real row/loop");
-    let DesugarInputErrorChirho::ProjectionChirho(error_chirho) = error_chirho else {
+    let Some(error_chirho) = error_chirho.projection_error_chirho() else {
         panic!("typed original resource failure")
     };
     assert_eq!(
@@ -251,4 +249,71 @@ fn transform_output_reserves_the_original_sticky_module_allowance_chirho() {
     )
     .expect("the exact checked reserve fits");
     assert_eq!(budget_chirho.remaining_limits_chirho().output_chirho, 0);
+}
+
+#[test]
+fn blocked_named_record_fields_refuse_with_a_typed_input_cause_chirho() {
+    let pattern_chirho = PatChirho::RecordChirho {
+        con_chirho: dummy_name_chirho("BoxChirho"),
+        fields_chirho: vec![PatFieldChirho {
+            name_chirho: dummy_name_chirho("fieldChirho"),
+            pattern_chirho: PatChirho::VarChirho(dummy_name_chirho("valueChirho")),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+        has_wildcard_chirho: false,
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    };
+    let construction_chirho = module_chirho(DeclChirho::PatBindChirho {
+        pat_chirho: PatChirho::VarChirho(dummy_name_chirho("valueChirho")),
+        rhs_chirho: RhsChirho::UnguardedChirho(ExprChirho::RecordConChirho {
+            con_chirho: dummy_name_chirho("BoxChirho"),
+            fields_chirho: vec![haskelujah_ast_chirho::expr_chirho::FieldAssignChirho {
+                name_chirho: dummy_name_chirho("fieldChirho"),
+                value_chirho: unit_chirho(),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            }],
+            has_wildcard_chirho: false,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    });
+    for module_chirho in [
+        module_chirho(binding_chirho(pattern_chirho)),
+        construction_chirho,
+    ] {
+        let mut context_chirho = DesugarCtxChirho::new_chirho();
+        context_chirho.con_field_names_chirho.insert(
+            "BoxChirho".to_owned(),
+            haskelujah_typing_chirho::infer_chirho::ConstructorFieldScopeChirho::blocked_chirho(),
+        );
+        let error_chirho = context_chirho
+            .desugar_module_chirho(&module_chirho)
+            .expect_err("blocked positioning evidence cannot guess a named field slot Chirho");
+        assert!(error_chirho.is_field_account_chirho());
+        assert!(error_chirho.constructor_error_chirho().is_none());
+        assert!(error_chirho.projection_error_chirho().is_none());
+        assert!(error_chirho.ghc_code_chirho().is_none());
+        assert_eq!(error_chirho.span_chirho(), SpanChirho::DUMMY_CHIRHO);
+    }
+}
+
+#[test]
+fn blocked_unused_record_wildcard_keeps_the_constructor_arity_chirho() {
+    let module_chirho = module_chirho(binding_chirho(PatChirho::RecordChirho {
+        con_chirho: dummy_name_chirho("BoxChirho"),
+        fields_chirho: vec![],
+        has_wildcard_chirho: true,
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }));
+    let mut context_chirho = DesugarCtxChirho::new_chirho();
+    context_chirho
+        .con_arities_chirho
+        .insert("BoxChirho".to_owned(), 1);
+    context_chirho.con_field_names_chirho.insert(
+        "BoxChirho".to_owned(),
+        haskelujah_typing_chirho::infer_chirho::ConstructorFieldScopeChirho::blocked_chirho(),
+    );
+    context_chirho
+        .desugar_module_chirho(&module_chirho)
+        .expect("no named field demands a position or invents a binder Chirho");
 }

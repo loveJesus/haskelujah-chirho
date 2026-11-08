@@ -300,7 +300,12 @@ impl DesugarCtxChirho {
             unreachable!("match_record_chirho is only called on a record pattern");
         };
         let con_name_chirho = con_chirho.text_chirho();
-        let declared_chirho = self.con_field_names_chirho.get(con_name_chirho).cloned();
+        let declared_chirho = self
+            .con_field_names_chirho
+            .get(&con_chirho.full_name_chirho())
+            .and_then(|scope_chirho| scope_chirho.physical_labels_chirho())
+            .filter(|labels_chirho| !labels_chirho.is_empty())
+            .map(|labels_chirho| labels_chirho.to_vec());
         let positional_chirho: Vec<Option<&PatChirho>> = match declared_chirho {
             Some(declared_chirho) => {
                 let mut positional_chirho = vec![None; declared_chirho.len()];
@@ -319,7 +324,7 @@ impl DesugarCtxChirho {
             None if fields_chirho.is_empty() => {
                 let arity_chirho = self
                     .con_arities_chirho
-                    .get(con_name_chirho)
+                    .get(&con_chirho.full_name_chirho())
                     .copied()
                     .unwrap_or(0);
                 vec![None; arity_chirho]

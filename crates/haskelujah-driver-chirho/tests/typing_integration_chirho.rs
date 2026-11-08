@@ -19,6 +19,8 @@ mod associated_named_results_chirho;
 mod builtin_class_kinds_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/closed_family_equations_chirho.rs"]
 mod closed_family_equations_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/constructor_fields_chirho.rs"]
+mod constructor_fields_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/declaration_validity_chirho.rs"]
 mod declaration_validity_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/deriving_strategies_chirho.rs"]

@@ -119,6 +119,7 @@ fn iface_chirho(
                 name_chirho: constructor_chirho.to_string(),
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 defining_module_chirho: defining_chirho.map(str::to_string),
+                constructor_fields_chirho: None,
                 compiler_value_chirho: None,
             },
         );
@@ -435,6 +436,7 @@ fn a_value_no_exported_type_lists_is_no_promotion_chirho() {
             name_chirho: "MkPatternChirho".to_string(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             defining_module_chirho: Some("FunctionsChirho".to_string()),
+            constructor_fields_chirho: None,
             compiler_value_chirho: None,
         },
     );

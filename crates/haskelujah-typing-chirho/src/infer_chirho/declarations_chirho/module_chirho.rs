@@ -4,6 +4,7 @@
 //! Moved from `infer_chirho.rs` in row 661.
 
 use super::InferCtxChirho;
+use super::gadt_constructors_chirho::LocalConstructorFieldContextChirho;
 use super::restriction_chirho::{effective_flag_chirho, group_is_restricted_chirho};
 use super::{
     GeneralizationScopeChirho, SIGNATURE_MISMATCH_CODE_CHIRHO, ast_type_to_syn_rhs_chirho,
@@ -274,6 +275,14 @@ impl InferCtxChirho {
                     constructors_chirho,
                     ..
                 } => {
+                    let field_context_chirho = LocalConstructorFieldContextChirho {
+                        module_name_chirho: &module_name_chirho,
+                        owner_declaration_chirho: type_constructor_scope_chirho.as_ref().and_then(
+                            |scope_chirho| {
+                                scope_chirho.declaration_chirho(&name_chirho.full_name_chirho())
+                            },
+                        ),
+                    };
                     let (result_ty_chirho, mut tv_map_chirho) =
                         self.data_head_type_chirho(name_chirho.text_chirho(), type_vars_chirho);
                     let data_type_name_chirho = name_chirho.text_chirho().to_string();
@@ -293,7 +302,7 @@ impl InferCtxChirho {
                             (name_chirho, type_vars_chirho),
                             &tv_map_chirho,
                             type_constructor_scope_chirho.as_deref(),
-                            &module_name_chirho,
+                            field_context_chirho,
                             &mut projection_budget_chirho,
                         ) {
                             continue;
@@ -304,6 +313,11 @@ impl InferCtxChirho {
                                 fields_chirho,
                                 ..
                             } => {
+                                self.bind_constructor_field_names_chirho(
+                                    field_context_chirho,
+                                    name_chirho.text_chirho(),
+                                    Vec::new(),
+                                );
                                 if fields_chirho.iter().any(|(strictness_chirho, _ty_chirho)| {
                                     strictness_chirho.is_strict_chirho()
                                 }) {
@@ -360,8 +374,9 @@ impl InferCtxChirho {
                                             .map(|n_chirho| n_chirho.text_chirho().to_string())
                                     })
                                     .collect();
-                                self.con_field_names_chirho.insert(
-                                    name_chirho.text_chirho().to_string(),
+                                self.bind_constructor_field_names_chirho(
+                                    field_context_chirho,
+                                    name_chirho.text_chirho(),
                                     field_names_chirho,
                                 );
                                 self.con_strict_fields_chirho.insert(
@@ -401,7 +416,7 @@ impl InferCtxChirho {
                                     signature_chirho,
                                     &tv_map_chirho,
                                     type_constructor_scope_chirho.as_deref(),
-                                    &module_name_chirho,
+                                    field_context_chirho,
                                     &mut projection_budget_chirho,
                                 );
                             }
@@ -422,6 +437,14 @@ impl InferCtxChirho {
                                 .text_chirho()
                                 .to_string(),
                         );
+                    let field_context_chirho = LocalConstructorFieldContextChirho {
+                        module_name_chirho: &module_name_chirho,
+                        owner_declaration_chirho: type_constructor_scope_chirho.as_ref().and_then(
+                            |scope_chirho| {
+                                scope_chirho.declaration_chirho(&name_chirho.full_name_chirho())
+                            },
+                        ),
+                    };
                     let (result_ty_chirho, mut nt_tv_map_chirho) =
                         self.data_head_type_chirho(name_chirho.text_chirho(), type_vars_chirho);
                     if self.bind_written_h98_constructor_chirho(
@@ -429,7 +452,7 @@ impl InferCtxChirho {
                         (name_chirho, type_vars_chirho),
                         &nt_tv_map_chirho,
                         type_constructor_scope_chirho.as_deref(),
-                        &module_name_chirho,
+                        field_context_chirho,
                         &mut projection_budget_chirho,
                     ) {
                         continue;
@@ -440,6 +463,11 @@ impl InferCtxChirho {
                             fields_chirho,
                             ..
                         } => {
+                            self.bind_constructor_field_names_chirho(
+                                field_context_chirho,
+                                con_name_chirho.text_chirho(),
+                                Vec::new(),
+                            );
                             // Newtype constructor: field type → result type
                             let field_tys_chirho: Vec<TyChirho> = fields_chirho
                                 .iter()
@@ -470,8 +498,9 @@ impl InferCtxChirho {
                                         .map(|n_chirho| n_chirho.text_chirho().to_string())
                                 })
                                 .collect();
-                            self.con_field_names_chirho.insert(
-                                con_name_chirho.text_chirho().to_string(),
+                            self.bind_constructor_field_names_chirho(
+                                field_context_chirho,
+                                con_name_chirho.text_chirho(),
                                 field_names_chirho,
                             );
                             self.con_strict_fields_chirho.insert(
@@ -528,7 +557,7 @@ impl InferCtxChirho {
                                 signature_chirho,
                                 &nt_tv_map_chirho,
                                 type_constructor_scope_chirho.as_deref(),
-                                &module_name_chirho,
+                                field_context_chirho,
                                 &mut projection_budget_chirho,
                             );
                         }

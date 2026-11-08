@@ -190,11 +190,8 @@ impl InferCtxChirho {
                     self.install_pattern_givens_chirho(predicates_chirho);
                     if let Some(field_names_chirho) = self
                         .con_field_names_chirho
-                        .get(con_chirho.text_chirho())
-                        .or_else(|| {
-                            self.con_field_names_chirho
-                                .get(&con_chirho.full_name_chirho())
-                        })
+                        .get(&con_chirho.full_name_chirho())
+                        .and_then(|scope_chirho| scope_chirho.physical_labels_chirho())
                     {
                         for (field_name_chirho, field_ty_chirho) in
                             field_names_chirho.iter().zip(field_tys_chirho)
@@ -228,8 +225,9 @@ impl InferCtxChirho {
                         .collect();
                     if let Some(all_fields_chirho) = self
                         .con_field_names_chirho
-                        .get(con_chirho.text_chirho())
-                        .cloned()
+                        .get(&con_chirho.full_name_chirho())
+                        .and_then(|scope_chirho| scope_chirho.wildcard_binding_labels_chirho())
+                        .map(|labels_chirho| labels_chirho.to_vec())
                     {
                         for field_name_chirho in &all_fields_chirho {
                             if !explicit_names_chirho.contains(field_name_chirho) {

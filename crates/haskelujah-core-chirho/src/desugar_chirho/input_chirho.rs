@@ -6,8 +6,7 @@
 //! Workflow: language-features-chirho/pattern-matching-chirho.
 
 use haskelujah_ast_chirho::decl_chirho::{
-    ClassMethodChirho, ConstructorSignatureErrorChirho, DeclChirho, GadtProjectionBudgetChirho,
-    GadtProjectionErrorChirho, PatSynDirChirho,
+    ClassMethodChirho, DeclChirho, GadtProjectionBudgetChirho, PatSynDirChirho,
 };
 use haskelujah_ast_chirho::expr_chirho::{
     AltChirho, ComprehensionQualifierChirho, ExprChirho, FieldAssignChirho, GuardedExprChirho,
@@ -17,57 +16,9 @@ use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::pat_chirho::{PatChirho, PatFieldChirho};
 use haskelujah_span_chirho::SpanChirho;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DesugarInputErrorChirho {
-    ConstructorChirho(ConstructorSignatureErrorChirho),
-    ProjectionChirho(GadtProjectionErrorChirho),
-    UnexpandedPatternChirho { span_chirho: SpanChirho },
-    UnreadTransformChirho { span_chirho: SpanChirho },
-}
-
-impl DesugarInputErrorChirho {
-    pub fn span_chirho(self) -> SpanChirho {
-        match self {
-            Self::ConstructorChirho(error_chirho) => error_chirho.span_chirho(),
-            Self::ProjectionChirho(error_chirho) => error_chirho.span_chirho,
-            Self::UnexpandedPatternChirho { span_chirho }
-            | Self::UnreadTransformChirho { span_chirho } => span_chirho,
-        }
-    }
-    pub fn ghc_code_chirho(self) -> Option<&'static str> {
-        match self {
-            Self::ConstructorChirho(error_chirho) => error_chirho.ghc_code_chirho(),
-            Self::ProjectionChirho(_)
-            | Self::UnexpandedPatternChirho { .. }
-            | Self::UnreadTransformChirho { .. } => None,
-        }
-    }
-}
-impl From<ConstructorSignatureErrorChirho> for DesugarInputErrorChirho {
-    fn from(error_chirho: ConstructorSignatureErrorChirho) -> Self {
-        Self::ConstructorChirho(error_chirho)
-    }
-}
-impl From<GadtProjectionErrorChirho> for DesugarInputErrorChirho {
-    fn from(error_chirho: GadtProjectionErrorChirho) -> Self {
-        Self::ProjectionChirho(error_chirho)
-    }
-}
-impl std::fmt::Display for DesugarInputErrorChirho {
-    fn fmt(&self, formatter_chirho: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ConstructorChirho(error_chirho) => error_chirho.fmt(formatter_chirho),
-            Self::ProjectionChirho(error_chirho) => error_chirho.fmt(formatter_chirho),
-            Self::UnexpandedPatternChirho { .. } => {
-                formatter_chirho.write_str("unsupported unexpanded executable pattern splice")
-            }
-            Self::UnreadTransformChirho { .. } => {
-                formatter_chirho.write_str("unread comprehension transformer")
-            }
-        }
-    }
-}
-impl std::error::Error for DesugarInputErrorChirho {}
+#[path = "input_chirho/errors_chirho.rs"]
+mod errors_chirho;
+pub use errors_chirho::DesugarInputErrorChirho;
 
 enum NodeChirho<'syntax_chirho> {
     DeclarationsChirho(&'syntax_chirho [DeclChirho]),
@@ -115,7 +66,7 @@ pub(super) fn check_executable_patterns_chirho(
     budget_chirho: &mut GadtProjectionBudgetChirho,
     context_chirho: Option<&super::DesugarCtxChirho>,
 ) -> Result<bool, DesugarInputErrorChirho> {
-    let mut expanded_rows_chirho = false;
+    let mut needs_context_chirho = false;
     let mut pending_chirho = Vec::new();
     push_chirho(
         &mut pending_chirho,
@@ -192,9 +143,9 @@ pub(super) fn check_executable_patterns_chirho(
                 }
                 ComprehensionQualifierChirho::TransformChirho(transform_chirho) => {
                     let Some(using_chirho) = &transform_chirho.using_chirho else {
-                        return Err(DesugarInputErrorChirho::UnreadTransformChirho {
-                            span_chirho: transform_chirho.span_chirho,
-                        });
+                        return Err(DesugarInputErrorChirho::unread_transform_chirho(
+                            transform_chirho.span_chirho,
+                        ));
                     };
                     push_chirho!(NodeChirho::ExpressionChirho(using_chirho));
                     if let Some(by_chirho) = &transform_chirho.by_chirho {
@@ -421,9 +372,9 @@ pub(super) fn check_executable_patterns_chirho(
             },
             NodeChirho::PatternChirho(pattern_chirho) => match pattern_chirho {
                 PatChirho::SpliceChirho { span_chirho, .. } => {
-                    return Err(DesugarInputErrorChirho::UnexpandedPatternChirho {
-                        span_chirho: *span_chirho,
-                    });
+                    return Err(DesugarInputErrorChirho::unexpanded_pattern_chirho(
+                        *span_chirho,
+                    ));
                 }
                 PatChirho::ConChirho { args_chirho, .. } => {
                     push_chirho!(NodeChirho::PatternsChirho(args_chirho));
@@ -452,7 +403,19 @@ pub(super) fn check_executable_patterns_chirho(
                     push_chirho!(NodeChirho::PatternChirho(right_chirho));
                     push_chirho!(NodeChirho::PatternChirho(left_chirho));
                 }
-                PatChirho::RecordChirho { fields_chirho, .. } => {
+                PatChirho::RecordChirho {
+                    con_chirho,
+                    fields_chirho,
+                    span_chirho,
+                    ..
+                } => {
+                    needs_context_chirho |= !fields_chirho.is_empty();
+                    check_field_account_chirho(
+                        context_chirho,
+                        con_chirho,
+                        !fields_chirho.is_empty(),
+                        *span_chirho,
+                    )?;
                     push_chirho!(NodeChirho::PatternFieldsChirho(fields_chirho));
                 }
                 PatChirho::ViewChirho {
@@ -572,7 +535,7 @@ pub(super) fn check_executable_patterns_chirho(
                             ComprehensionQualifierChirho::TransformChirho(_)
                         )
                     });
-                    expanded_rows_chirho |=
+                    needs_context_chirho |=
                         has_transform_chirho || !parallel_quals_chirho.is_empty();
                     if context_chirho.is_some() {
                         budget_chirho.reserve_transport_chirho(
@@ -600,7 +563,19 @@ pub(super) fn check_executable_patterns_chirho(
                 ExprChirho::ParenChirho { inner_chirho, .. } => {
                     push_chirho!(NodeChirho::ExpressionChirho(inner_chirho));
                 }
-                ExprChirho::RecordConChirho { fields_chirho, .. } => {
+                ExprChirho::RecordConChirho {
+                    con_chirho,
+                    fields_chirho,
+                    span_chirho,
+                    ..
+                } => {
+                    needs_context_chirho |= !fields_chirho.is_empty();
+                    check_field_account_chirho(
+                        context_chirho,
+                        con_chirho,
+                        !fields_chirho.is_empty(),
+                        *span_chirho,
+                    )?;
                     push_chirho!(NodeChirho::FieldsChirho(fields_chirho));
                 }
                 ExprChirho::RecordUpdateChirho {
@@ -623,5 +598,26 @@ pub(super) fn check_executable_patterns_chirho(
             },
         }
     }
-    Ok(expanded_rows_chirho)
+    Ok(needs_context_chirho)
+}
+
+/// Physical field positioning cannot be guessed after a selected declaration's
+/// account was lost. This does not perform lexical label admission.
+fn check_field_account_chirho(
+    context_chirho: Option<&super::DesugarCtxChirho>,
+    constructor_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
+    has_named_fields_chirho: bool,
+    span_chirho: SpanChirho,
+) -> Result<(), DesugarInputErrorChirho> {
+    if has_named_fields_chirho
+        && context_chirho.is_some_and(|context_chirho| {
+            context_chirho
+                .con_field_names_chirho
+                .get(&constructor_chirho.full_name_chirho())
+                .is_some_and(|scope_chirho| scope_chirho.is_blocked_chirho())
+        })
+    {
+        return Err(DesugarInputErrorChirho::field_account_chirho(span_chirho));
+    }
+    Ok(())
 }
