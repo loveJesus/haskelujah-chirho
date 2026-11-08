@@ -74,9 +74,15 @@ pub(crate) fn build_con_type_map_chirho(
     map_chirho
 }
 
-/// Build each newtype's record by type name: its constructor, its underlying type key, and
-/// the classes its own declarations derive with the newtype strategy, routed with the builtin
-/// classes naming proved for the module (row 694).
+/// Build each newtype's record: its constructor, its underlying type key, and the classes its
+/// own declarations derive with the newtype strategy, routed with the builtin classes naming
+/// proved for the module (row 694).
+///
+/// The record is keyed by the declaration's canonical type key, the one the checker spells the
+/// newtype's instance heads with, so the dictionary pass finds it. The declaration is taken as
+/// the elaborator takes it: none for an opaque name, else the name's own stamp, else the
+/// selected type-constructor scope by the written name. A name with no declaration (legacy or
+/// raw Template Haskell) keeps its bare text; no identity is minted.
 /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub(crate) fn build_newtype_info_chirho(
     module_chirho: &ModuleChirho,
@@ -84,6 +90,9 @@ pub(crate) fn build_newtype_info_chirho(
     coercion_proofs_chirho: &[haskelujah_typing_chirho::GndCoercionProofChirho],
     default_method_rows_chirho: &std::collections::HashSet<String>,
     promotion_scope_chirho: Option<&PromotionScopeChirho>,
+    type_constructor_scope_chirho: Option<
+        &haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho,
+    >,
 ) -> std::collections::HashMap<String, NewtypeInfoChirho> {
     let mut map_chirho = std::collections::HashMap::new();
     let mut derived_classes_chirho =
@@ -98,7 +107,22 @@ pub(crate) fn build_newtype_info_chirho(
             ..
         } = decl_chirho
         {
+            // The bare declared text keys only the deriving-request and coercion-proof joins
+            // below; the record itself is keyed by the declaration's canonical type key.
             let type_name_chirho = name_chirho.text_chirho().to_string();
+            let declaration_chirho = if name_chirho.type_constructor_opaque_chirho() {
+                None
+            } else {
+                name_chirho.type_constructor_chirho().or_else(|| {
+                    type_constructor_scope_chirho.and_then(|scope_chirho| {
+                        scope_chirho.declaration_chirho(&name_chirho.full_name_chirho())
+                    })
+                })
+            };
+            let type_key_chirho = declaration_chirho.map_or_else(
+                || type_name_chirho.clone(),
+                haskelujah_ast_chirho::name_chirho::TypeConstructorDeclarationChirho::type_key_chirho,
+            );
             let con_name_chirho = match constructor_chirho {
                 haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                     name_chirho: cn_chirho,
@@ -148,14 +172,14 @@ pub(crate) fn build_newtype_info_chirho(
                 .filter(|proof_chirho| proof_chirho.newtype_chirho() == type_name_chirho)
                 .cloned()
                 .collect();
-            let row_suffix_chirho = format!("_{type_name_chirho}");
+            let row_suffix_chirho = format!("_{type_key_chirho}");
             let newtype_default_rows_chirho = default_method_rows_chirho
                 .iter()
                 .filter(|row_chirho| row_chirho.ends_with(&row_suffix_chirho))
                 .cloned()
                 .collect();
             map_chirho.insert(
-                type_name_chirho,
+                type_key_chirho,
                 NewtypeInfoChirho {
                     constructor_chirho,
                     underlying_key_chirho,
