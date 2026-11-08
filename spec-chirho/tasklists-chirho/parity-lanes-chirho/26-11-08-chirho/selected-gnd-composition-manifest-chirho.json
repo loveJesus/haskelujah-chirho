@@ -1,0 +1,198 @@
+{
+  "additional_leased_callers_chirho": [
+    "crates/haskelujah-driver-chirho/src/tests_chirho/evidence_chirho/registry_resources_chirho.rs",
+    "crates/haskelujah-driver-chirho/tests/instance_obligations_chirho.rs"
+  ],
+  "base_source_chirho": "f6b97149988cc411e248f019c6e2131a4515cd74",
+  "canonical_main_or_sqlite_changed_chirho": false,
+  "changed_compiler_paths_chirho": 20,
+  "changed_source_blob_shard_chirho": {
+    "path_chirho": "spec-chirho/tasklists-chirho/parity-lanes-chirho/26-11-08-chirho/selected-gnd-source-blobs-chirho.jsonl",
+    "rows_chirho": 20,
+    "sha256_chirho": "3b0bcce44967828fd9016c5cc5fcaa8296d55f5e3f2ce39bbe08435cf8251b34"
+  },
+  "compiler_paths_equal_to_base_or_frozen_input_chirho": 1480,
+  "compiler_scope_paths_chirho": 1489,
+  "compiler_source_snapshot_chirho": "0a8a21efd166fef218e701bcdde8a5cb81156d73",
+  "crates_tree_chirho": "0ff589aece37664b297c50a191edfa132a7f935b",
+  "excluded_chirho": [
+    "d275/830 replay",
+    "GND b91 test parent",
+    "Q16b/0ce descendants",
+    "family973",
+    "private historical SQLite/tasklists/reports"
+  ],
+  "gnd_commit_chirho": "9957bec9c122f4bd55d100d32dfe89ad158c05b3",
+  "gnd_patch_scope_chirho": [
+    "crates/haskelujah-driver-chirho/src/backend_chirho/compile_backend_chirho.rs",
+    "crates/haskelujah-driver-chirho/src/backend_chirho/constructor_maps_chirho.rs",
+    "spec-chirho/workflows-chirho/compiler-pipeline-chirho/deriving-strategies-chirho.md"
+  ],
+  "main_protected31_unchanged_since_base_chirho": true,
+  "main_protected_paths_chirho": [
+    {
+      "f6_and_assembled_blob_chirho": "d9e25c746dba8feb38c74c9d46081fde4bc2920f",
+      "path_chirho": "crates/haskelujah-backend-cranelift-chirho/src/codegen_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "dd0c019738c8a653b59c77adaf8fd769a61ea50c",
+      "path_chirho": "crates/haskelujah-backend-cranelift-chirho/src/lower_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "7730020f5cbf3c3387836b9342a6f63fcac6b2cc",
+      "path_chirho": "crates/haskelujah-backend-cranelift-chirho/src/lower_chirho/root_frames_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "99036d9da2a00599dbf332440abd8bf3bd341155",
+      "path_chirho": "crates/haskelujah-backend-llvm-chirho/src/codegen_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "6a6d817cf55abe883f4b9838dcc80ae0c0857e3d",
+      "path_chirho": "crates/haskelujah-backend-llvm-chirho/src/codegen_chirho/partial_applications_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "7ad26320f05addc34a1435dce3450beeac812683",
+      "path_chirho": "crates/haskelujah-backend-llvm-chirho/src/codegen_chirho/root_frames_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "00804460156b6e3940ffd1245424a845265dec03",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/native_boxed_applications_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "096621ba7e106c7f4cbf41f0645e82cea8f76e64",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/native_root_lifetimes_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "924fbd78f43aafdadf9f76234cecae2617e2c2ea",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/native_runtime_measurement_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "433a2a058ad1cc766bf1aa57350e0c9638163cb4",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "d9e7d0679090a74175a72dbb52090d58182a5ce2",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/declarations_chirho/numeric_nominality_chirho/fixtures_chirho/negative_chirho/double_to_int_chirho.hs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "79bed779a8484fa164f9663af0536e174ec9bcd7",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/declarations_chirho/numeric_nominality_chirho/fixtures_chirho/negative_chirho/int_to_double_chirho.hs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "4f4b72ae0856d07ef5c37412bf3b1c7413d97807",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/declarations_chirho/numeric_nominality_chirho/fixtures_chirho/negative_chirho/nested_numeric_list_chirho.hs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "04263df6b8eed1142179f875d2ded847b2dff317",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/declarations_chirho/numeric_nominality_chirho/fixtures_chirho/positive_chirho/double_literals_chirho.hs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "3596faa713fdf617720a5da0530eabee9df84981",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/declarations_chirho/numeric_nominality_chirho/fixtures_chirho/positive_chirho/explicit_conversion_chirho.hs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "76c9aff717463e8a21104313117df53a3a123f29",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/declarations_chirho/numeric_nominality_chirho/fixtures_chirho/positive_chirho/int_literal_chirho.hs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "d632a43350c515014ea9919274ac3a0d31e8b4f1",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/declarations_chirho/numeric_nominality_chirho/fixtures_chirho/positive_chirho/numeric_default_chirho.hs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "876c1dbcb8fce36b62ab54e8624ac58ab44c5a5c",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/declarations_chirho/numeric_nominality_chirho/fixtures_chirho/positive_chirho/numeric_pattern_chirho.hs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "4001ce1302579f19042bdade4f1b4bb3a98dbc7e",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/declarations_chirho/numeric_nominality_chirho/fixtures_chirho/positive_chirho/polymorphic_identity_chirho.hs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "e20ad511ecbd4ed602f59d71bba6f6b36abef906",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/declarations_chirho/numeric_nominality_chirho/fixtures_chirho/positive_chirho/polymorphic_numeric_function_chirho.hs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "3ad92ec0cbd72fbffaf60ac738214fc98c072596",
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho/declarations_chirho/numeric_nominality_chirho/mod.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "cff425125166c099764c89a96b94dc4631132aff",
+      "path_chirho": "crates/haskelujah-rts-chirho/src/ffi_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "ca7c894d954f7555270c0d00ec179134f0d63348",
+      "path_chirho": "crates/haskelujah-rts-chirho/src/ffi_chirho/native_measurement_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "3ce22f8f26fb91d31bb3624255b032cfc32a2e8d",
+      "path_chirho": "crates/haskelujah-rts-chirho/src/ffi_chirho/native_root_frames_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "9c804eae2f9e0a5a32e74fd539047ab4f2daa947",
+      "path_chirho": "crates/haskelujah-rts-chirho/src/ffi_chirho/native_root_frames_chirho/tests_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "d768a32da40b646de18a5f400018cd24b82e503f",
+      "path_chirho": "crates/haskelujah-rts-chirho/src/ffi_chirho/native_thunks_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "b46cb2b2552825699dcf441d1b4cb5700ae44eea",
+      "path_chirho": "crates/haskelujah-rts-chirho/tests/native_root_frames_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "0c8352cd4f59932f7d07ed048fb960988f4a999a",
+      "path_chirho": "crates/haskelujah-rts-chirho/tests/native_thunk_retirement_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "62c6cabdf226e7238d9e372b5daef4dd51602f4b",
+      "path_chirho": "crates/haskelujah-test-harness-chirho/src/native_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "3dfc17539e82ef9702731daf3795294c7946e9fa",
+      "path_chirho": "crates/haskelujah-test-harness-chirho/src/native_chirho/runtime_measurement_chirho.rs"
+    },
+    {
+      "f6_and_assembled_blob_chirho": "e446e8fbc81f7f887fa231efa72fe9af6b1d66f4",
+      "path_chirho": "crates/haskelujah-typing-chirho/src/unify_chirho.rs"
+    }
+  ],
+  "measurements_chirho": {
+    "base719_chirho": "Exact f6 AFTER U7+whole848,source2,Core238,Clippy0hits/247OUTSIDE; not fresh composition executions.",
+    "c104_chirho": "Earlier exact c104 compile and preservation846/238/220 retained at original source.",
+    "composition_chirho": "No compiler, test, runtime, native, GHC or Clippy execution."
+  },
+  "metadata_policy_chirho": "Preserve base metadata/SQLite; update only owned tasklist, this composition manifest/shard and the two actual workflow documents. Do not resurrect private selected tasklist or deleted row688 history.",
+  "named_merge_paths_chirho": 9,
+  "new_target_absent_chirho": true,
+  "next_chirho": "Separate root-GO workspace all-target check, then final main-parent quality/behavior/corpus/end-state gates.",
+  "old_worktrees_targets_evidence_frozen_chirho": true,
+  "outside_changed_paths_rule_chirho": "All compiler paths outside these20 paths remain exact f6; all mixed paths are named in the shard. No whole-file overwrite.",
+  "preserved_shared_behavior_chirho": [
+    "unit719 opaque constructor equality and legacy/numeric boundaries",
+    "main31 nominality and native GC/PAP/rootframes",
+    "actual supplier CompilerValue reference evidence",
+    "input Core ID reservation and fresh module-owned generated binding IDs",
+    "reader field scope and exact physical labels",
+    "C10 entry obligation, literal substitutions and proof-bearing superclass layouts",
+    "actual root options/default/provider policy",
+    "typed Proxy producer plus field metadata"
+  ],
+  "retained_whitespace_finding_chirho": "Frozen T18005.hs extra EOF blank line unchanged; no whole-union/main diff-check-clean claim.",
+  "schema_chirho": "main-rooted-selected-gnd-composition-r1-chirho",
+  "selected_commits_in_order_chirho": [
+    "c89e6532a291c5305f7110a4cda2aacd737d36a4",
+    "40d8cdaf820c4191bb4a5df6fb517d9592de2198",
+    "cdc63b014c011795401d600f6bcc5c8fd4429887",
+    "02d45d087ac7cf670a4548244a3c0a34822f7ce8"
+  ],
+  "source_format_chirho": {
+    "all_byte_identical_chirho": true,
+    "changed_rust_files_chirho": 20,
+    "rustfmt_chirho": "1.93.0 stdin,edition2024,skip_children=true"
+  },
+  "status_chirho": "SOURCE_ONLY_UNCOMPILED_UNRUN",
+  "textual_conflicts_chirho": [
+    "infer_chirho.rs selected payload/absence field plus ConstructorFieldScope and entry",
+    "builtin-type-environment DAG and omitted private row688/new row714",
+    "selected private tasklist remains deleted in both cherry-picks"
+  ]
+}
