@@ -60,8 +60,13 @@ impl DictPassCtxChirho {
         );
         let dict_id_chirho = dict_binder_chirho.id_chirho;
         let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
+        // A speculative dictionary owns its superclass refusals (#33201).
         for slot_chirho in &layout_chirho.super_slots_chirho {
-            field_args_chirho.push(self.superclass_field_chirho(slot_chirho, list_type_key_chirho));
+            field_args_chirho.push(self.superclass_field_owned_chirho(
+                slot_chirho,
+                list_type_key_chirho,
+                Some(dict_id_chirho),
+            ));
         }
         for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
             let method_row_id_chirho = if method_name_chirho == "compare" {

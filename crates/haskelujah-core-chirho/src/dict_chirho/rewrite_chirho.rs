@@ -4,7 +4,7 @@
 //! Method rewriting: dict param insertion, method reference rewriting,
 //! module transformation, and the final pass finish.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
 use haskelujah_typing_chirho::env_chirho::TyEnvChirho;
@@ -805,11 +805,23 @@ impl DictPassCtxChirho {
                 self.canonicalize_surviving_occurrences_chirho(&mut binding_chirho.rhs_chirho);
             }
         }
+        let demanded_chirho = self.demanded_ids_chirho(&module_chirho);
         let mut unsupported_chirho = self.unsupported_dictionaries_chirho;
         unsupported_chirho.extend(self.gnd_unbuilt_uses_chirho.into_inner());
         // A displaced compiler request this pass could not serve refuses the module by name
-        // (row 692, C10, gpt #32666).
-        unsupported_chirho.extend(self.displaced_refusals_chirho.into_inner());
+        // (row 692, C10, gpt #32666): every request made where it is demanded, and a
+        // speculatively generated dictionary's only when that dictionary is demanded (#33201).
+        let displaced_chirho: BTreeSet<String> = self
+            .displaced_refusals_chirho
+            .into_inner()
+            .into_iter()
+            .filter(|(owner_chirho, _)| {
+                owner_chirho
+                    .is_none_or(|owner_id_chirho| demanded_chirho.contains(&owner_id_chirho))
+            })
+            .map(|(_, message_chirho)| message_chirho)
+            .collect();
+        unsupported_chirho.extend(displaced_chirho);
         DictPassResultChirho {
             module_chirho,
             names_chirho: self.names_chirho,
@@ -817,5 +829,40 @@ impl DictPassCtxChirho {
             diagnostics_chirho,
             unsupported_chirho,
         }
+    }
+
+    /// The ids the rewritten input bindings reach. The roots are the bindings the input module
+    /// bound at top level (`module_bound_ids_chirho`), library and source methods alike, and a
+    /// binding generated here is never a root for being in the module. Each step follows the
+    /// free variables of every final binding of a reached id, so a dictionary is demanded
+    /// exactly when an input binding refers to it, directly or through generated bindings. Each
+    /// binding's free variables are read once, and the seen set ends recursive and
+    /// forward-referenced dictionaries (row 692, C10, #33201).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    fn demanded_ids_chirho(&self, module_chirho: &CoreModuleChirho) -> HashSet<CoreIdChirho> {
+        let mut edges_chirho: HashMap<CoreIdChirho, Vec<CoreIdChirho>> = HashMap::new();
+        for binding_chirho in &module_chirho.bindings_chirho {
+            edges_chirho
+                .entry(binding_chirho.binder_chirho.id_chirho)
+                .or_default()
+                .extend(crate::simplify_chirho::free_vars_chirho(
+                    &binding_chirho.rhs_chirho,
+                ));
+        }
+        let mut pending_chirho: Vec<CoreIdChirho> = module_chirho
+            .bindings_chirho
+            .iter()
+            .map(|binding_chirho| binding_chirho.binder_chirho.id_chirho)
+            .filter(|id_chirho| self.module_bound_ids_chirho.contains(id_chirho))
+            .collect();
+        let mut demanded_chirho = HashSet::new();
+        while let Some(id_chirho) = pending_chirho.pop() {
+            if demanded_chirho.insert(id_chirho)
+                && let Some(next_chirho) = edges_chirho.get(&id_chirho)
+            {
+                pending_chirho.extend(next_chirho.iter().copied());
+            }
+        }
+        demanded_chirho
     }
 }

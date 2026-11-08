@@ -1253,10 +1253,38 @@ the GND and structured generators still build into the spelling as before. The c
 builder builds a displaced compiler class's instance only into that class's namespace, or not at
 all.
 
+A refusal counts only when what it refuses is demanded (#33201). One carrier holds every
+refusal with its owner:
+- A request made where it is demanded (an occurrence or reference head, a consumer's dictionary
+  argument) has no owner and always refuses the module.
+- A speculative dictionary that a producer builds for every element type has an owner: the
+  conditional generic, Eq and Show lists and the list-order `Ord [T]`. A refusal in one of its
+  fields belongs to that dictionary.
+
+At finish, after occurrence canonicalization, the pass computes once the ids that the rewritten
+input bindings reach:
+- The roots are the input's own top-level bindings, library and source alike. A generated binding
+  is never a root just because it is in the module.
+- Each step follows the free variables of a reached id's final bindings.
+
+An owned refusal counts only when its owner is reached. Its error body stays either way, so a
+demanded use still refuses by name, while a dictionary no use reaches refuses nothing. The
+scalar `elem` under a program's own `Eq` therefore no longer fails because of the four `Ord [T]`
+specializations it never uses. There are no namespace Eq lists and no fallback to the
+source class's spelling.
+
 Controls:
 - `an_own_scope_print_keeps_the_compilers_show_chirho`, for `[Bool]` in the namespace;
 - `a_qualified_ord_given_keeps_its_eq_superclass_under_a_namesake_chirho`, for the superclass
-  walk.
+  walk;
+- `the_early_equality_route_keeps_the_compilers_eq_under_a_namesake_chirho`, for the unused
+  speculative owners;
+- `a_demanded_compiler_ord_list_is_refused_by_its_own_key_chirho`, for direct demand;
+- `a_transitively_demanded_compiler_ord_list_is_refused_by_its_own_key_chirho`, for demand
+  through a generated dictionary.
+
+The last two are refused at `[Double]` and nowhere else; GHC accepts both programs, so they are a
+named gap.
 
 Proof transport and the definition ABI (gpt #32675, #32681, #32683):
 - Method records and reference records carry the class proof of the predicate they captured,

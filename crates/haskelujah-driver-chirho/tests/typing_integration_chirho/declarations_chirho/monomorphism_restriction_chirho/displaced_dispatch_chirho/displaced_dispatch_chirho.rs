@@ -63,6 +63,13 @@ const OWN_SCOPE_REAL_SUPERCLASS_UNDER_NAMESAKE_CHIRHO: &str = include_str!(
 const TRANSFORMED_SUPERCLASS_HEAD_UNDER_NAMESAKE_CHIRHO: &str = include_str!(
     "../displaced_own_scope_chirho/transformed_superclass_head_under_namesake_chirho.hs"
 );
+/// A use that demands the compiler's `Ord [Double]` dictionary itself under a program's own `Eq`.
+const DEMANDED_LIST_ORDER_UNDER_NAMESAKE_EQ_CHIRHO: &str =
+    include_str!("../displaced_demand_chirho/demanded_list_order_under_namesake_eq_chirho.hs");
+/// The same dictionary, demanded only through a program class's Ord superclass field.
+const TRANSITIVELY_DEMANDED_LIST_ORDER_UNDER_NAMESAKE_EQ_CHIRHO: &str = include_str!(
+    "../displaced_demand_chirho/transitively_demanded_list_order_under_namesake_eq_chirho.hs"
+);
 
 #[test]
 fn a_user_instance_of_the_compiler_num_keeps_its_own_body_chirho() {
@@ -288,4 +295,52 @@ fn a_compiler_superclass_at_a_transformed_head_is_refused_by_name_chirho() {
                 .contains("while the program's own class takes the spelling `Typeable`"),
         "refused, but not by the transformed-head refusal: {message_chirho}"
     );
+}
+
+/// gpt #33201, a demanded use: `sameChirho` at `[Double]` passes the compiler's `Ord [Double]`
+/// dictionary, whose Eq superclass slot this pass cannot build while the program's own `Eq` takes
+/// the spelling. The module is refused by that dictionary's key alone; the speculative list
+/// dictionaries no use reaches refuse nothing. GHC accepts the program and prints `True`: this is
+/// a named gap, not parity.
+#[test]
+fn a_demanded_compiler_ord_list_is_refused_by_its_own_key_chirho() {
+    assert_refused_at_the_demanded_key_chirho(
+        "demanded_list_order_under_namesake_eq_chirho.hs",
+        DEMANDED_LIST_ORDER_UNDER_NAMESAKE_EQ_CHIRHO,
+    );
+}
+
+/// gpt #33201, a transitive demand: the use passes only the program's `RankChirho [Double]`
+/// dictionary, whose Ord superclass field is the compiler's `Ord [Double]`. GHC prints `2`: this is
+/// a named gap, not parity.
+#[test]
+fn a_transitively_demanded_compiler_ord_list_is_refused_by_its_own_key_chirho() {
+    assert_refused_at_the_demanded_key_chirho(
+        "transitively_demanded_list_order_under_namesake_eq_chirho.hs",
+        TRANSITIVELY_DEMANDED_LIST_ORDER_UNDER_NAMESAKE_EQ_CHIRHO,
+    );
+}
+
+/// The module is refused by the compiler's Eq superclass slot at the demanded key `[Double]`, and
+/// at no list key that no use demands.
+fn assert_refused_at_the_demanded_key_chirho(file_name_chirho: &str, source_chirho: &str) {
+    let message_chirho = match compile_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        file_name_chirho,
+    ) {
+        Ok(_) => panic!("{file_name_chirho}: served, where it must be refused by name"),
+        Err(error_chirho) => error_chirho.to_string(),
+    };
+    assert!(
+        message_chirho.contains("the compiler's `Eq` superclass slot at `[Double]`")
+            && message_chirho.contains("while the program's own class takes the spelling `Eq`"),
+        "{file_name_chirho}: refused, but not by the demanded dictionary: {message_chirho}"
+    );
+    for unused_key_chirho in ["`[Int]`", "`[Bool]`", "`[[Char]]`"] {
+        assert!(
+            !message_chirho.contains(unused_key_chirho),
+            "{file_name_chirho}: a list dictionary no use demands refused the module: {message_chirho}"
+        );
+    }
 }
