@@ -294,7 +294,9 @@ fn a_source_binding_is_never_replaced_by_a_compiler_value_payload_chirho() {
 #[test]
 fn dictionary_generation_does_not_overwrite_independent_input_id_domains_chirho() {
     use haskelujah_core::ImportedReferenceChirho;
-    use haskelujah_core::dict_chirho::{DictPassEvidenceChirho, DictPassInputsChirho};
+    use haskelujah_core::dict_chirho::{
+        DictPassEvidenceChirho, DictPassInputsChirho, OccurrenceEvidenceChirho,
+    };
 
     for (index_chirho, domain_chirho) in [
         "module_names_chirho",
@@ -373,9 +375,10 @@ fn dictionary_generation_does_not_overwrite_independent_input_id_domains_chirho(
                 );
             }
             "occurrence_evidence_chirho" => {
-                evidence_chirho
-                    .occurrence_evidence_chirho
-                    .insert(reserved_chirho, ("Eq".to_string(), "Int".to_string()));
+                evidence_chirho.occurrence_evidence_chirho.insert(
+                    reserved_chirho,
+                    OccurrenceEvidenceChirho::legacy_chirho("Eq", "Int"),
+                );
             }
             "occurrence_applied_tys_chirho" => {
                 evidence_chirho

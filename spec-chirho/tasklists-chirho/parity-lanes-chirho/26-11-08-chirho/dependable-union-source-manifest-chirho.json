@@ -1,8 +1,7 @@
 {
   "schema_chirho": "main-rooted-source-union-r1-chirho",
   "status_chirho": "SOURCE_ONLY_UNCOMPILED_UNMEASURED",
-  "source_checkpoint_chirho": "57960b73cb96762ab37036fa0d88e401a3b365f4",
-  "crates_tree_chirho": "8634f45bb84ad65ca1d53d196bd39973a4ab5dac",
+  "crates_tree_chirho": "556541781728809f26f25aeeb8f2ca56b9b1ca4f",
   "input_commits_chirho": {
     "main_chirho": "acd8baaab60fe2005429cbae72a31ccfd2fd3d06",
     "apply_before_chirho": "d275f76c96d24a2f8a826c9d613943b10d4908d9",
@@ -15,13 +14,13 @@
     "test-data-chirho/package-ladder-chirho/"
   ],
   "compiler_paths_chirho": 1489,
-  "exact_input_paths_chirho": 1468,
-  "named_merge_paths_chirho": 21,
+  "exact_input_paths_chirho": 1467,
+  "named_merge_paths_chirho": 22,
   "source_blob_shards_chirho": [
     {
       "path_chirho": "spec-chirho/tasklists-chirho/parity-lanes-chirho/26-11-08-chirho/source-blobs-chirho/0000-chirho.jsonl",
       "records_chirho": 500,
-      "sha256_chirho": "a74e4611b8771fd8f901aa57e9153bdc33f292f3b85ea095202eebefcc3f7af8"
+      "sha256_chirho": "c32842a863022930dcc3503e789a788b5e29cbcd670cc0b4cd140efcc1694c2b"
     },
     {
       "path_chirho": "spec-chirho/tasklists-chirho/parity-lanes-chirho/26-11-08-chirho/source-blobs-chirho/0500-chirho.jsonl",
@@ -59,6 +58,11 @@
       "path_chirho": "crates/haskelujah-core-chirho/src/dict_chirho/rewrite_chirho.rs",
       "blob_chirho": "d995f13530c07f1e02521711f1ec5521e119d4d7",
       "reason_chirho": "Automatic union: reserve actual input IDs before generation; retain certified value bodies and C10 compiler dictionary layout order."
+    },
+    {
+      "path_chirho": "crates/haskelujah-core-chirho/tests/native_identity_chirho.rs",
+      "blob_chirho": "256e78f372df55d65fc1b53ac11def9893a63f45",
+      "reason_chirho": "Separately leased compiler-found merge adaptation: replace the old Eq/Int pair at the synthetic input-ID test caller with existing OccurrenceEvidenceChirho::legacy_chirho. This preserves Unknown(Legacy), all15 ID-domain cases and assertions. Production source unchanged."
     },
     {
       "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/pipeline_chirho.rs",
@@ -152,7 +156,6 @@
   "canonical_worktree_touched_chirho": false,
   "old_passes_relabelled_chirho": false,
   "future_apply_certificate_imported_chirho": false,
-  "compiler_executions_chirho": 0,
   "source_format_chirho": {
     "tool_chirho": "rustfmt1.93.0 edition2024 stdin skip_children",
     "named_merge_rust_files_chirho": 21,
@@ -185,5 +188,15 @@
     "suggested_outer_seconds_chirho": 1500,
     "own_target_absent_chirho": true,
     "acceptance_chirho": "rc0; zero compiler-message records at any level; one successful build-finished; full source/tool/group closure; no semantic or native claim."
+  },
+  "source_parent_chirho": "acea7dec311f5c3fc93fccfaa738a74dc5bbe6d9",
+  "source_snapshot_chirho": "Parent acea7dec plus the separately leased legacy occurrence-evidence test caller. Exact new Git crates tree pinned here; final commit named by fresh check readiness.",
+  "compiler_executions_at_this_snapshot_chirho": 0,
+  "prior_compiler_execution_chirho": {
+    "source_chirho": "acea7dec311f5c3fc93fccfaa738a74dc5bbe6d9",
+    "cargo_rc_chirho": 101,
+    "diagnostic_chirho": "E0308 native_identity_chirho.rs:378, expected OccurrenceEvidenceChirho, found tuple",
+    "summary_sha256_chirho": "217573c03cc1de172ced67fa7f468212b6d9cc22330ef580e3fcfe019a44e632",
+    "immutable_packet_chirho": "tmp-chirho/dependable-union-chirho/check-readiness-acea7dec-r1-chirho"
   }
 }

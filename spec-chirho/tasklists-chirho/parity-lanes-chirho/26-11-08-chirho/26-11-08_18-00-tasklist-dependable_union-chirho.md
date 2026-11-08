@@ -2,6 +2,8 @@
 
 # Dependable source union Chirho
 
+Current resume: the acea7dec first workspace check is a retained compiler RED (one E0308 tuple/record caller mismatch); a separate test-only adaptation now uses the existing explicit legacy record. This new source has not been compiled. Fresh check requires its own named root GO.
+
 This isolated branch starts at exact main acd8baaab60fe2005429cbae72a31ccfd2fd3d06 (compiler04116a69). Root delegated source-only assembly to /root/integration_frontier_chirho. No compiler execution or acceptance is authorized by this plan. Canonical main, its dirty work, SQLite and reporting remain root-owned and untouched.
 
 - [x] Verify the new worktree/branch are unused, inspect registrations and preserve canonical dirty state.
@@ -52,3 +54,5 @@ The fixture parent merges as exactly one source line in project_chirho.rs: prese
 Source identity:1489 compiler/fixture paths are recorded in three bounded generated JSONL shards;1468 equal at least one frozen input blob and21 are named source merges. Of main's31 changed compiler paths,28 remain exact main blobs; the unifier, integration root and native harness are the explicitly documented unions. All21 mixed Rust files are rustfmt1.93/edition2024 clean on stdin without rewriting children. The outgoing source ancestry scan covered201 commits/6.81MB and found no leaks. The final manifest-only commit is scanned again before push. No compiler has run; the own target is absent.
 
 The frozen compiler source and manifest were pushed at2380269dfc27c36706ce91d955e754238fbde960; remote readback matched. The full outgoing scan covered202 commits/7.30MB with no leaks. This closure changes only the owned task record, preserving the source tree. No runtime, compiler, test or Clippy process has been launched; first compile is still a separate root GO.
+
+The first actual compile at acea7dec ran40.488 seconds, Cargo101/runner98: one E0308 plus its failure-note,325 artifacts/36 scripts/build-finished false, no JSON warnings. Pins and original40368 group closed before the fold; after-facts carries only the actual nonzero build finding. Old packet and raw evidence remain untouched. Root then leased only the native_identity synthetic input-ID caller: import the existing occurrence-evidence record and retain Eq/Int through legacy_chirho, which explicitly has Unknown(Legacy). All15 cases, keys, assertions, fixtures and production code are unchanged. The source manifest now names22 adaptations and1467 exact frozen-input blobs.
