@@ -90,3 +90,27 @@ fn a_data_homonym_of_a_gnd_newtype_constructor_is_never_erased_chirho() {
         }
     }
 }
+
+/// The same `KeysChirho` under a Main with no homonym. The test above stops inside this module
+/// before Main is read, so this control separates the home module's own derived Show from the
+/// homonym property. GHC's semantics print 7; its GHC 9.14.1 run is still to be measured.
+const PLAIN_MAIN_CHIRHO: &str = "-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module Main where
+import qualified KeysChirho as KeysChirho
+main :: IO ()
+main = putStrLn (KeysChirho.showKeyChirho 7)
+";
+
+#[test]
+fn a_gnd_newtype_shows_its_representation_without_a_homonym_chirho() {
+    let (_, machine_chirho) = haskelujah_driver::eval_modules_with_machine_chirho(
+        &[
+            ("KeysChirho.hs", HOMONYM_KEYS_CHIRHO),
+            ("Main.hs", PLAIN_MAIN_CHIRHO),
+        ],
+        &mut SourceMapChirho::new_chirho(),
+        None,
+    )
+    .unwrap_or_else(|error_chirho| panic!("interpreter: {error_chirho}"));
+    assert_eq!(machine_chirho.io_output_chirho, "7\n", "interpreter");
+}
