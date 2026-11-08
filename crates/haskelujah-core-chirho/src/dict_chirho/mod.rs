@@ -289,8 +289,9 @@ pub struct DictPassCtxChirho {
     /// with that class; its references are refused by name (gpt #32683).
     displaced_compiler_helpers_chirho: HashMap<CoreIdChirho, CompilerClassChirho>,
     /// Row 692, C10: the named refusals of displaced compiler requests this pass cannot serve,
-    /// returned with the unsupported dictionaries.
-    displaced_refusals_chirho: RefCell<BTreeSet<String>>,
+    /// returned with the unsupported dictionaries. Each has its owner: the speculatively built
+    /// dictionary holding the error, reported only when demanded (#33201), or None, always.
+    displaced_refusals_chirho: RefCell<BTreeSet<(Option<CoreIdChirho>, String)>>,
     /// Conditional instance dict builders: `(class_name, type_constructor)` → the builder, a
     /// lambda that takes the instance's context dictionaries and returns the constructed
     /// class dict, with the head's formal binders and the context those parameters stand for.

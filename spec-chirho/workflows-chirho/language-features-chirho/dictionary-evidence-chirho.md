@@ -1177,9 +1177,17 @@ flowchart TD
     layout_chirho --> conditional_chirho[Conditional list builder by class proof and owner]
     conditional_chirho -->|compiler seed Show list| dictionary_chirho[Compiler namespace dictionary]
     walk_chirho --> slot_chirho[Project the same parameters proof carrying field]
-    missing_chirho[Unavailable displaced compiler route] --> refusal_chirho[Named unsupported boundary]
+    missing_chirho[Unavailable displaced compiler route] --> owner_chirho{Demanded request or reached owner?}
+    owner_chirho -- yes --> refusal_chirho[Named unsupported boundary]
+    owner_chirho -- no --> retained_error_chirho[Keep error body without refusing unused dictionary]
 ```
 
 A displaced compiler request cannot borrow the source class's spelled route. A missing layout, a GND or unsupported conditional key, a structured row generator or an imported instance without its required proof retains the named boundary. `Show [Maybe Int]` stays refused by a_displaced_compiler_show_it_cannot_build_is_refused_by_name_chirho. Source and unknown requests keep their existing routes. The own-scope print control exercises `[Bool]`; a_qualified_ord_given_keeps_its_eq_superclass_under_a_namesake_chirho exercises the parameter walk. These source additions do not establish a fresh assembled-source execution.
 
 The Double fromInteger row has one conversion body, `fromIntegral# n`, typed `Int -> Double`. The builtin row generator emits it in either namespace through generate_from_integer_double_row_chirho in prelude_chirho/floating_methods_chirho.rs. An identity body would read an Int payload as Double bits; the late spelled Prelude twin that shared the identity row's ID is removed. Both namespaces therefore use the same conversion producer.
+
+A refusal counts only when what it refuses is demanded. The existing refusal carrier stores its owner beside the message. An occurrence, reference head or consumer dictionary request has no speculative owner and always refuses the module. A field refusal inside a speculative conditional generic/Eq/Show list or list-order `Ord [T]` belongs to that generated dictionary.
+
+After occurrence canonicalization, demanded_ids_chirho computes the IDs reached by the rewritten input's own top-level bindings, including libraries and source methods. A generated binding is not a root merely because it is present. Each step follows free variables of every final binding of a reached ID. An owned refusal counts only if its owner is reached; the error body is retained either way. Each binding's free variables are read once and a seen set ends cycles. There is no compiler Eq-list implementation or source-spelling fallback.
+
+The early-equality namesake control preserves a scalar elem use despite unused speculative Ord-list dictionaries. a_demanded_compiler_ord_list_is_refused_by_its_own_key_chirho and a_transitively_demanded_compiler_ord_list_is_refused_by_its_own_key_chirho check direct and generated-dictionary demand: each named refusal is for `[Double]` only. They retain an explicit unsupported boundary, not a parity claim.

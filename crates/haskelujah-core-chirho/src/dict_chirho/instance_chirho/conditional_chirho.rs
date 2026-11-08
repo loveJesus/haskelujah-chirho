@@ -335,9 +335,13 @@ impl DictPassCtxChirho {
 
         let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
 
-        // Superclass dict arguments
+        // Superclass dict arguments, whose refusals this speculative dictionary owns (#33201)
         for slot_chirho in &layout_chirho.super_slots_chirho {
-            field_args_chirho.push(self.superclass_field_chirho(slot_chirho, list_type_key_chirho));
+            field_args_chirho.push(self.superclass_field_owned_chirho(
+                slot_chirho,
+                list_type_key_chirho,
+                Some(dict_binder_chirho.id_chirho),
+            ));
         }
 
         // Method arguments: find the user's $prim_ bindings.
@@ -670,9 +674,13 @@ impl DictPassCtxChirho {
         let con_name_chirho = "$Dict_Eq".to_string();
         let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
 
-        // Superclass dicts (Eq has none)
+        // Superclass dicts (Eq has none), whose refusals this speculative dictionary owns (#33201)
         for slot_chirho in &layout_chirho.super_slots_chirho {
-            field_args_chirho.push(self.superclass_field_chirho(slot_chirho, list_type_key_chirho));
+            field_args_chirho.push(self.superclass_field_owned_chirho(
+                slot_chirho,
+                list_type_key_chirho,
+                Some(dict_id_chirho),
+            ));
         }
 
         // Method implementations
@@ -728,8 +736,13 @@ impl DictPassCtxChirho {
         let con_name_chirho = format!("$Dict_{namespace_chirho}");
         let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
 
+        // A speculative dictionary owns its superclass refusals (#33201).
         for slot_chirho in &layout_chirho.super_slots_chirho {
-            field_args_chirho.push(self.superclass_field_chirho(slot_chirho, list_type_key_chirho));
+            field_args_chirho.push(self.superclass_field_owned_chirho(
+                slot_chirho,
+                list_type_key_chirho,
+                Some(dict_id_chirho),
+            ));
         }
 
         for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {

@@ -500,6 +500,19 @@ impl DictPassCtxChirho {
         slot_chirho: &SuperclassSlotChirho,
         ty_key_chirho: &str,
     ) -> CoreExprChirho {
+        self.superclass_field_owned_chirho(slot_chirho, ty_key_chirho, None)
+    }
+
+    /// `superclass_field_chirho` for a field of `owner_chirho`, the dictionary a producer is
+    /// building: a speculatively generated one owns its refusal, which is reported only when a
+    /// rewritten input binding reaches it; None, a request made where it is demanded (#33201).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(in crate::dict_chirho) fn superclass_field_owned_chirho(
+        &mut self,
+        slot_chirho: &SuperclassSlotChirho,
+        ty_key_chirho: &str,
+        owner_chirho: Option<CoreIdChirho>,
+    ) -> CoreExprChirho {
         let Some(identity_chirho) = self.displaced_identity_chirho(&slot_chirho.class_proof_chirho)
         else {
             let spelled_chirho = format!("$f{}{ty_key_chirho}", slot_chirho.namespace_chirho);
@@ -508,17 +521,21 @@ impl DictPassCtxChirho {
         // The child's key names this superclass only with the identity-head witness; a
         // transformed head is refused by name, never served at the wrong key (gpt #32942).
         if !slot_chirho.identity_head_chirho {
-            return self.displaced_refusal_chirho(
+            return self.displaced_refusal_owned_chirho(
                 identity_chirho,
                 "superclass at a transformed head",
                 ty_key_chirho,
+                owner_chirho,
             );
         }
         match self.compiler_superclass_id_chirho(identity_chirho, ty_key_chirho) {
             Some(id_chirho) => CoreExprChirho::VarChirho(id_chirho),
-            None => {
-                self.displaced_refusal_chirho(identity_chirho, "superclass slot", ty_key_chirho)
-            }
+            None => self.displaced_refusal_owned_chirho(
+                identity_chirho,
+                "superclass slot",
+                ty_key_chirho,
+                owner_chirho,
+            ),
         }
     }
 
@@ -531,19 +548,39 @@ impl DictPassCtxChirho {
         request_chirho: &str,
         ty_key_chirho: &str,
     ) -> CoreExprChirho {
-        self.named_displaced_refusal_chirho(format!(
-            "the compiler's `{}` {request_chirho} at `{ty_key_chirho}` has no dictionary this pass can build while the program's own class takes the spelling `{}`",
-            identity_chirho.legacy_name_chirho(),
-            identity_chirho.legacy_name_chirho()
-        ))
+        self.displaced_refusal_owned_chirho(identity_chirho, request_chirho, ty_key_chirho, None)
     }
 
-    /// One named refusal: recorded for the module's unsupported list, and the error the refused
-    /// request becomes.
-    fn named_displaced_refusal_chirho(&self, message_chirho: String) -> CoreExprChirho {
+    /// `displaced_refusal_chirho`, owned by the dictionary `owner_chirho` when a producer builds
+    /// one speculatively (#33201).
+    fn displaced_refusal_owned_chirho(
+        &self,
+        identity_chirho: CompilerClassChirho,
+        request_chirho: &str,
+        ty_key_chirho: &str,
+        owner_chirho: Option<CoreIdChirho>,
+    ) -> CoreExprChirho {
+        self.named_displaced_refusal_chirho(
+            owner_chirho,
+            format!(
+                "the compiler's `{}` {request_chirho} at `{ty_key_chirho}` has no dictionary this pass can build while the program's own class takes the spelling `{}`",
+                identity_chirho.legacy_name_chirho(),
+                identity_chirho.legacy_name_chirho()
+            ),
+        )
+    }
+
+    /// One named refusal: recorded with its owner for the module's unsupported list, and the
+    /// error the refused request becomes. An owned refusal counts only when its owner is
+    /// demanded (`rewrite_chirho.rs`, `finish_chirho`); its error body stays either way.
+    fn named_displaced_refusal_chirho(
+        &self,
+        owner_chirho: Option<CoreIdChirho>,
+        message_chirho: String,
+    ) -> CoreExprChirho {
         self.displaced_refusals_chirho
             .borrow_mut()
-            .insert(message_chirho.clone());
+            .insert((owner_chirho, message_chirho.clone()));
         CoreExprChirho::PrimOpChirho {
             name_chirho: "error".to_string(),
             args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
@@ -605,10 +642,13 @@ impl DictPassCtxChirho {
             .names_chirho
             .get(&canonical_chirho)
             .map_or("a compiler helper", String::as_str);
-        Some(self.named_displaced_refusal_chirho(format!(
-            "the compiler-owned helper `{helper_chirho}` reaches the compiler's `{}` selectors by spelling, which the program's own class takes here",
-            identity_chirho.legacy_name_chirho()
-        )))
+        Some(self.named_displaced_refusal_chirho(
+            None,
+            format!(
+                "the compiler-owned helper `{helper_chirho}` reaches the compiler's `{}` selectors by spelling, which the program's own class takes here",
+                identity_chirho.legacy_name_chirho()
+            ),
+        ))
     }
 
     /// The class name a scheme predicate's dictionary is decided and keyed under: a displaced
