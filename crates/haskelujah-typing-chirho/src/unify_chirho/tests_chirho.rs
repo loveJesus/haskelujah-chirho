@@ -185,8 +185,8 @@ fn source_constructor_ty_chirho(defining_module_chirho: &str) -> TyChirho {
 
 #[test]
 fn source_constructor_keys_with_dotted_definers_remain_nominal_chirho() {
-    let left_chirho = source_constructor_ty_chirho("Alpha.Shared");
-    let right_chirho = source_constructor_ty_chirho("Other.Shared");
+    let left_chirho = source_constructor_ty_chirho("AlphaChirho.SharedChirho");
+    let right_chirho = source_constructor_ty_chirho("OtherChirho.SharedChirho");
     assert_ne!(left_chirho, right_chirho);
 
     for (expected_chirho, actual_chirho) in [
@@ -217,8 +217,8 @@ fn source_constructor_keys_with_dotted_definers_remain_nominal_chirho() {
 
 #[test]
 fn source_constructor_keys_keep_the_same_producer_and_meta_substitution_chirho() {
-    let source_chirho = source_constructor_ty_chirho("Alpha.Shared");
-    let same_chirho = source_constructor_ty_chirho("Alpha.Shared");
+    let source_chirho = source_constructor_ty_chirho("AlphaChirho.SharedChirho");
+    let same_chirho = source_constructor_ty_chirho("AlphaChirho.SharedChirho");
     let substitution_chirho = unify_chirho(&source_chirho, &same_chirho, SpanChirho::DUMMY_CHIRHO)
         .expect("the same source producer retains its identity");
     assert!(substitution_chirho.is_empty_chirho());

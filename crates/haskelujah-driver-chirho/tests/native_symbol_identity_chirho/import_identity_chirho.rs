@@ -581,26 +581,26 @@ fn an_ambiguous_unqualified_import_gets_no_link_chirho() {
 }
 
 const DOTTED_ALPHA_TYPE_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
-module Alpha.Shared (TokenChirho(..)) where
+module AlphaChirho.SharedChirho (TokenChirho(..)) where
 data TokenChirho = TokenChirho
 "#;
 
 const DOTTED_OTHER_TYPE_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
-module Other.Shared (TokenChirho(..)) where
+module OtherChirho.SharedChirho (TokenChirho(..)) where
 data TokenChirho = TokenChirho
 "#;
 
 #[test]
 fn source_dotted_definers_never_share_a_nominal_type_chirho() {
     let sources_chirho = [
-        ("Alpha/Shared.hs", DOTTED_ALPHA_TYPE_CHIRHO),
-        ("Other/Shared.hs", DOTTED_OTHER_TYPE_CHIRHO),
+        ("AlphaChirho/SharedChirho.hs", DOTTED_ALPHA_TYPE_CHIRHO),
+        ("OtherChirho/SharedChirho.hs", DOTTED_OTHER_TYPE_CHIRHO),
         (
             "WrongDefinerChirho.hs",
             r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 module WrongDefinerChirho where
-import qualified Alpha.Shared as LeftChirho
-import qualified Other.Shared as RightChirho
+import qualified AlphaChirho.SharedChirho as LeftChirho
+import qualified OtherChirho.SharedChirho as RightChirho
 wrongChirho :: LeftChirho.TokenChirho -> RightChirho.TokenChirho
 wrongChirho valueChirho = valueChirho
 "#,
@@ -614,7 +614,11 @@ wrongChirho valueChirho = valueChirho
         Ok(_) => panic!("an identity function cannot change a source type's defining module"),
     };
     let message_chirho = diagnostics_chirho.to_string();
-    for name_chirho in ["Alpha.Shared", "Other.Shared", "TokenChirho"] {
+    for name_chirho in [
+        "AlphaChirho.SharedChirho",
+        "OtherChirho.SharedChirho",
+        "TokenChirho",
+    ] {
         assert!(
             message_chirho.contains(name_chirho),
             "the refusal must identify both source types: {message_chirho}"
@@ -626,29 +630,29 @@ wrongChirho valueChirho = valueChirho
 fn source_aliases_of_one_dotted_definer_keep_the_same_nominal_type_chirho() {
     const DIRECT_CONSUMER_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 module SameDefinerChirho where
-import qualified Alpha.Shared as LeftChirho
-import qualified Alpha.Shared as RightChirho
+import qualified AlphaChirho.SharedChirho as LeftChirho
+import qualified AlphaChirho.SharedChirho as RightChirho
 sameChirho :: LeftChirho.TokenChirho -> RightChirho.TokenChirho
 sameChirho valueChirho = valueChirho
 "#;
     const FORWARDER_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 module ForwardChirho (TokenChirho(..)) where
-import Alpha.Shared (TokenChirho(..))
+import AlphaChirho.SharedChirho (TokenChirho(..))
 "#;
     const FORWARDED_CONSUMER_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 module SameDefinerChirho where
-import qualified Alpha.Shared as LeftChirho
+import qualified AlphaChirho.SharedChirho as LeftChirho
 import qualified ForwardChirho as RightChirho
 sameChirho :: LeftChirho.TokenChirho -> RightChirho.TokenChirho
 sameChirho valueChirho = valueChirho
 "#;
     let programs_chirho: [ProgramChirho; 2] = [
         &[
-            ("Alpha.Shared", DOTTED_ALPHA_TYPE_CHIRHO),
+            ("AlphaChirho.SharedChirho", DOTTED_ALPHA_TYPE_CHIRHO),
             ("SameDefinerChirho", DIRECT_CONSUMER_CHIRHO),
         ],
         &[
-            ("Alpha.Shared", DOTTED_ALPHA_TYPE_CHIRHO),
+            ("AlphaChirho.SharedChirho", DOTTED_ALPHA_TYPE_CHIRHO),
             ("ForwardChirho", FORWARDER_CHIRHO),
             ("SameDefinerChirho", FORWARDED_CONSUMER_CHIRHO),
         ],
