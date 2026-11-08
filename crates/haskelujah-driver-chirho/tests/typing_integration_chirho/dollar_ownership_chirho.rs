@@ -4,7 +4,8 @@
 //! controls assert their named behavior without claiming a separately executed GHC reference.
 //! workflow: compiler-pipeline-chirho/operator-fixity-chirho
 
-use super::{assert_compile_success_chirho, assert_prints_everywhere_chirho};
+use super::{NativeBackendChirho, assert_compile_success_chirho, assert_prints_everywhere_chirho};
+use haskelujah_test_harness_chirho::native_project_round_trip_chirho;
 
 /// A program's own `$`, signed and unsigned, a `where`-bound one, a declared `infixr 0` chain,
 /// and one applied to a `do` block.
@@ -516,9 +517,15 @@ fn a_source_owned_monomorphic_dollar_runs_its_distinct_body_chirho() {
     assert_eq!(machine_chirho.io_output_chirho, "6\n");
 }
 
+// The native coverage wrappers borrow exactly the existing STG source bytes.
+const FIRST_CLASS_APPLY_SOURCE_CHIRHO: &str =
+    "module Main where\nmain :: IO ()\nmain = print (($) (+ 1) (41 :: Int))\n";
+const LAZY_APPLY_SOURCE_CHIRHO: &str = "module Main where\nmain :: IO ()\nmain = print (($) (const (42 :: Int)) (error \"unused Chirho\"))\n";
+const IMPORTED_INFIX_APPLY_SOURCE_CHIRHO: &str = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Main where\nimport Prelude (IO, print)\nimport qualified OwnDollarProviderChirho as OwnChirho\nmain :: IO ()\nmain = print (2 OwnChirho.$ 3)\n";
+
 #[test]
 fn a_first_class_compiler_dollar_has_an_ordinary_body_chirho() {
-    let source_chirho = "module Main where\nmain :: IO ()\nmain = print (($) (+ 1) (41 :: Int))\n";
+    let source_chirho = FIRST_CLASS_APPLY_SOURCE_CHIRHO;
     let (_, machine_chirho) = eval_source_with_machine_chirho(
         source_chirho,
         &mut SourceMapChirho::new_chirho(),
@@ -531,7 +538,7 @@ fn a_first_class_compiler_dollar_has_an_ordinary_body_chirho() {
 
 #[test]
 fn a_first_class_compiler_dollar_keeps_its_argument_lazy_chirho() {
-    let source_chirho = "module Main where\nmain :: IO ()\nmain = print (($) (const (42 :: Int)) (error \"unused Chirho\"))\n";
+    let source_chirho = LAZY_APPLY_SOURCE_CHIRHO;
     let (_, machine_chirho) = eval_source_with_machine_chirho(
         source_chirho,
         &mut SourceMapChirho::new_chirho(),
@@ -661,7 +668,7 @@ fn an_unavailable_apply_is_masked_and_a_real_local_binder_shadows_it_chirho() {
 
 #[test]
 fn an_imported_source_infix_dollar_runs_its_distinct_body_chirho() {
-    let source_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule Main where\nimport Prelude (IO, print)\nimport qualified OwnDollarProviderChirho as OwnChirho\nmain :: IO ()\nmain = print (2 OwnChirho.$ 3)\n";
+    let source_chirho = IMPORTED_INFIX_APPLY_SOURCE_CHIRHO;
     let (_, machine_chirho) = eval_modules_with_machine_chirho(
         &[
             ("OwnDollarProviderChirho.hs", APPLY_PROVIDER_2_CHIRHO),
@@ -672,4 +679,38 @@ fn an_imported_source_infix_dollar_runs_its_distinct_body_chirho() {
     )
     .expect("infix syntax must dispatch the selected source body Chirho");
     assert_eq!(machine_chirho.io_output_chirho, "6\n");
+}
+
+#[test]
+fn a_first_class_compiler_dollar_runs_on_every_engine_chirho() {
+    assert_prints_everywhere_chirho(
+        "FirstClassApplyChirho.hs",
+        FIRST_CLASS_APPLY_SOURCE_CHIRHO,
+        "42\n",
+    );
+}
+
+#[test]
+fn a_lazy_compiler_dollar_runs_on_every_engine_chirho() {
+    assert_prints_everywhere_chirho("LazyApplyChirho.hs", LAZY_APPLY_SOURCE_CHIRHO, "42\n");
+}
+
+#[test]
+fn an_imported_source_infix_dollar_keeps_its_native_body_chirho() {
+    for backend_chirho in [
+        NativeBackendChirho::LlvmChirho,
+        NativeBackendChirho::CraneliftChirho,
+    ] {
+        let result_chirho = native_project_round_trip_chirho(
+            &[
+                ("OwnDollarProviderChirho", APPLY_PROVIDER_2_CHIRHO),
+                ("Main", IMPORTED_INFIX_APPLY_SOURCE_CHIRHO),
+            ],
+            backend_chirho,
+            "",
+            std::time::Duration::from_secs(15),
+        )
+        .unwrap_or_else(|error_chirho| panic!("source apply {backend_chirho:?}: {error_chirho}"));
+        assert_eq!(result_chirho, (0, "6\n".to_string()), "{backend_chirho:?}");
+    }
 }
