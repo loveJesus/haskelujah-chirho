@@ -176,6 +176,8 @@ pub(crate) fn compile_backend_chirho(
     // same scope from the same declarations, imports and interfaces before deriving, and
     // deriving adds only instances. The newtype inventory and the derived Show and Enum
     // metadata judge each derived class by it, exactly as the deriving pass routed it (row 694).
+    // The newtype records are keyed through the same type-constructor scope the desugarer
+    // receives above, so each matches the canonical instance heads (#33147).
     // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     let builtin_class_scope_chirho =
         haskelujah_naming_chirho::build_builtin_class_scope_chirho(&module_chirho, ifaces_chirho);
@@ -185,6 +187,7 @@ pub(crate) fn compile_backend_chirho(
         &infer_result_chirho.gnd_coercion_proofs_chirho,
         &desugar_output_chirho.default_method_rows_chirho,
         infer_result_chirho.promotion_scope_chirho.as_deref(),
+        infer_result_chirho.type_constructor_scope_chirho.as_deref(),
     );
     let mut newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
         .values()

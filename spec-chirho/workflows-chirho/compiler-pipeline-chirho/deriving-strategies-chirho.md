@@ -33,7 +33,8 @@ flowchart TD
     ignored_chirho --> route_chirho
     ignored_chirho --> validity_chirho
     stock_chirho --> metadata_chirho["Show and Enum metadata: only entries the same judgment names as stock Show or Enum"]
-    inventory_chirho --> info_chirho["Driver build_newtype_info_chirho, with the module's real K01 scope: NewtypeInfoChirho.newtype_derived_classes_chirho"]
+    inventory_chirho --> info_chirho["Driver build_newtype_info_chirho, with the module's real K01 scope: NewtypeInfoChirho.newtype_derived_classes_chirho, keyed by the declaration's canonical type key (an opaque name has none; else its own stamp, else the selected type-constructor scope by written name; no declaration keeps the bare text), the key the checker spells the instance heads with; the derived classes and coercion proofs still join by the declared name"]
+    type_scope_chirho --> info_chirho
     roles_annotation_chirho["Lowering role_annotations_chirho.rs: type role T r.. onto T's parameters"] --> roles_chirho["parameter_roles_chirho.rs: each local parameter's role (phantom < representational < Unknown < nominal), a least fixed point with annotations as floors"]
     prefix_lower_chirho["Lowering con_prefixes_chirho.rs: an H98 constructor's forall binders and context onto ConPrefixChirho, or unread"] --> roles_chirho
     inventory_chirho --> authority_chirho["class_authority_chirho.rs: the spelling names the module's own class, or a K01 builtin the module does not shadow whose entry is the compiler's seed; else a named Unsupported gap"]
