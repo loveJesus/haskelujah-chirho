@@ -1,0 +1,189 @@
+{
+  "schema_chirho": "main-rooted-source-union-r1-chirho",
+  "status_chirho": "SOURCE_ONLY_UNCOMPILED_UNMEASURED",
+  "source_checkpoint_chirho": "57960b73cb96762ab37036fa0d88e401a3b365f4",
+  "crates_tree_chirho": "8634f45bb84ad65ca1d53d196bd39973a4ab5dac",
+  "input_commits_chirho": {
+    "main_chirho": "acd8baaab60fe2005429cbae72a31ccfd2fd3d06",
+    "apply_before_chirho": "d275f76c96d24a2f8a826c9d613943b10d4908d9",
+    "c10_chirho": "81df0c74a4620f986380e8c710c03b0768b896ae",
+    "reader_chirho": "a352b2cc9a65a6c96520f0506ed6326cf415083a",
+    "fixture_chirho": "2d46429aaa7dd967ba34bc00c8e9e3d4f3297466"
+  },
+  "compiler_path_scope_chirho": [
+    "crates/",
+    "test-data-chirho/package-ladder-chirho/"
+  ],
+  "compiler_paths_chirho": 1489,
+  "exact_input_paths_chirho": 1468,
+  "named_merge_paths_chirho": 21,
+  "source_blob_shards_chirho": [
+    {
+      "path_chirho": "spec-chirho/tasklists-chirho/parity-lanes-chirho/26-11-08-chirho/source-blobs-chirho/0000-chirho.jsonl",
+      "records_chirho": 500,
+      "sha256_chirho": "a74e4611b8771fd8f901aa57e9153bdc33f292f3b85ea095202eebefcc3f7af8"
+    },
+    {
+      "path_chirho": "spec-chirho/tasklists-chirho/parity-lanes-chirho/26-11-08-chirho/source-blobs-chirho/0500-chirho.jsonl",
+      "records_chirho": 500,
+      "sha256_chirho": "618c3ad1debf1b9e79de9bfee4908ca573190c2f8c70646c3ee63a70e396152f"
+    },
+    {
+      "path_chirho": "spec-chirho/tasklists-chirho/parity-lanes-chirho/26-11-08-chirho/source-blobs-chirho/1000-chirho.jsonl",
+      "records_chirho": 489,
+      "sha256_chirho": "24a8f2b818cb730c1f52b8e4e753959e523ce8c116b8cd275a3293d37b4f1e80"
+    }
+  ],
+  "adaptations_chirho": [
+    {
+      "path_chirho": "crates/haskelujah-cli-chirho/src/main.rs",
+      "blob_chirho": "c4b5a56663266d2e2f3447c7ba0dcc0c33719550",
+      "reason_chirho": "Automatic union: truthful package install/build behavior plus explicit C10 program-purpose compile/run wrappers."
+    },
+    {
+      "path_chirho": "crates/haskelujah-core-chirho/src/dict_chirho/dict_pass_tests_chirho.rs",
+      "blob_chirho": "4c22320735a80b9e8e0057ffed6094e780ec92f2",
+      "reason_chirho": "Automatic union: actual input-ID reservation controls plus proof-carrying dictionary layout tests; original assertions retained."
+    },
+    {
+      "path_chirho": "crates/haskelujah-core-chirho/src/dict_chirho/instance_chirho.rs",
+      "blob_chirho": "e0bdd72e33123a660c0e1c4354ba31d30cd27383",
+      "reason_chirho": "Automatic union: package supplier/input binding support plus C10 proof-directed superclass fillers."
+    },
+    {
+      "path_chirho": "crates/haskelujah-core-chirho/src/dict_chirho/mod.rs",
+      "blob_chirho": "665df423c60327b10d3eb63ceb4c01835a351c36",
+      "reason_chirho": "Automatic union: actual input-ID traversal/reservation and typed occurrence evidence/compiler namespace/superclass slot state."
+    },
+    {
+      "path_chirho": "crates/haskelujah-core-chirho/src/dict_chirho/rewrite_chirho.rs",
+      "blob_chirho": "d995f13530c07f1e02521711f1ec5521e119d4d7",
+      "reason_chirho": "Automatic union: reserve actual input IDs before generation; retain certified value bodies and C10 compiler dictionary layout order."
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/pipeline_chirho.rs",
+      "blob_chirho": "551a95a3601aa8b7d538a0bd7849f4640aa9bddc",
+      "reason_chirho": "Automatic union: reader selected constructor field contexts plus C10 actual-root entry obligation and existing selected value schemes."
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/lib.rs",
+      "blob_chirho": "4127556533c7b6702d0e4d4886bd7ea08d20cb51",
+      "reason_chirho": "Manual semantic union: one existing FrontendOptions carrier; default/file wrappers pass default options, explicit program wrapper passes for_program(entry), same caller options drive root discovery/frontend; provider defaults and fresh imported class environment retained."
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/tests_chirho/compile_chirho.rs",
+      "blob_chirho": "557b019ac07238b5fd6fce4420c54db1c08ec30a",
+      "reason_chirho": "Automatic union of package compile controls and C10 caller-purpose adaptations; assertions retained."
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/tests_chirho/evidence_chirho/occurrence_join_chirho.rs",
+      "blob_chirho": "1581244e0befe1d10d9ecf7f2d2ac423ada66540",
+      "reason_chirho": "Automatic union of typed class-proof occurrence evidence and reader constructor-field context test setup."
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/tests_chirho/evidence_chirho/registry_resources_chirho.rs",
+      "blob_chirho": "65c2d97d214f2cde1fbadded49919d7d770fe031",
+      "reason_chirho": "Reader migration borrows the actual sticky-failed class environment; explicitly retains C10 non-program entry None. Assertions unchanged."
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/tests_chirho/mod.rs",
+      "blob_chirho": "978ca49eba190a0a659073ce7f5b83949ef96ec5",
+      "reason_chirho": "Automatic union of package and C10 test registrations."
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/instance_obligations_chirho.rs",
+      "blob_chirho": "ddcb46f70ba45780f4bcc3c73b96e331bf5cc018",
+      "reason_chirho": "Reader context migration retains the actual seeded class environment and collapsed names, with explicit C10 non-program entry None. Assertions unchanged."
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/tests/typing_integration_chirho.rs",
+      "blob_chirho": "433a2a058ad1cc766bf1aa57350e0c9638163cb4",
+      "reason_chirho": "Union main nominality registration, private foundation/package/reader modules and C10 MR/namesake modules plus its explicit-purpose engine helper."
+    },
+    {
+      "path_chirho": "crates/haskelujah-naming-chirho/src/type_exports_chirho.rs",
+      "blob_chirho": "c3219955a2013494e611c8d8507ffb0606df20b5",
+      "reason_chirho": "Automatic union of typed Data.Data Proxy producer preservation and reader selected field-owner payload handling."
+    },
+    {
+      "path_chirho": "crates/haskelujah-test-harness-chirho/src/native_chirho.rs",
+      "blob_chirho": "62c6cabdf226e7238d9e372b5daef4dd51602f4b",
+      "reason_chirho": "Keep main native lifetime/measurement behavior and -j2 spelling; add actual program-purpose route and package canonical module paths with locked/offline bounded RTS freshness."
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho.rs",
+      "blob_chirho": "29f1af7de45857685416ffc50f2435b6443f228b",
+      "reason_chirho": "Automatic union: reader ConstructorFieldScope and two-argument context entry together with C10 entry obligation; ordinary compatibility wrapper remains non-program."
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/context_chirho.rs",
+      "blob_chirho": "c2b904613bb4796b2f84f6402d4affcae15e5789",
+      "reason_chirho": "Automatic union: publish reader constructor scopes alongside C10 literal/reference class-proof evidence."
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/declarations_chirho/module_chirho.rs",
+      "blob_chirho": "1c48a3faf1576d0421aabba652952b9e27b0177f",
+      "reason_chirho": "Retain both MR restriction imports/logic and reader LocalConstructorFieldContext imports/logic."
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/infer_chirho/terms_chirho/expressions_chirho.rs",
+      "blob_chirho": "be98155709edd3f43d4b5059fb8b6caf31d00bd0",
+      "reason_chirho": "Automatic union: existing C10 do/literal behavior and reader qualified record-field account checks; row710 source is not imported."
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/unify_chirho.rs",
+      "blob_chirho": "25f2bc4c465b19d2cb5e85c711015c1fc4a69d40",
+      "reason_chirho": "Retain incoming checked-kind unifier but keep main ordinary numeric nominality; private widening arm removed. Existing extracted test module retained."
+    },
+    {
+      "path_chirho": "crates/haskelujah-typing-chirho/src/unify_chirho/tests_chirho.rs",
+      "blob_chirho": "1af55a055c4949eac618fbc98bfb9874050ee95c",
+      "reason_chirho": "Append the three main numeric nominality test functions to the incoming existing test module, byte-identical except indentation; all private tests retained."
+    }
+  ],
+  "main_source_delta_paths_chirho": 31,
+  "main_exact_paths_chirho": 28,
+  "main_adapted_paths_chirho": [
+    "crates/haskelujah-driver-chirho/tests/typing_integration_chirho.rs",
+    "crates/haskelujah-test-harness-chirho/src/native_chirho.rs",
+    "crates/haskelujah-typing-chirho/src/unify_chirho.rs"
+  ],
+  "main_noncompiler_metadata_retained_chirho": true,
+  "canonical_worktree_touched_chirho": false,
+  "old_passes_relabelled_chirho": false,
+  "future_apply_certificate_imported_chirho": false,
+  "compiler_executions_chirho": 0,
+  "source_format_chirho": {
+    "tool_chirho": "rustfmt1.93.0 edition2024 stdin skip_children",
+    "named_merge_rust_files_chirho": 21,
+    "changed_files_chirho": 0
+  },
+  "retained_whitespace_finding_chirho": {
+    "path_chirho": "crates/haskelujah-driver-chirho/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/syntax_chirho/T18005.hs",
+    "finding_chirho": "one blank line at EOF already present in frozen incoming fixture; exact input retained"
+  },
+  "outgoing_scan_chirho": {
+    "range_chirho": "acd8baaab60fe2005429cbae72a31ccfd2fd3d06..57960b73",
+    "commits_scanned_chirho": 201,
+    "leaks_chirho": 0,
+    "note_chirho": "Final manifest-only commit is scanned again before push."
+  },
+  "next_gate_chirho": {
+    "kind_chirho": "workspace all-target compilation only",
+    "argv_chirho": [
+      "cargo",
+      "check",
+      "--locked",
+      "--offline",
+      "-j2",
+      "--workspace",
+      "--all-targets",
+      "--message-format=json"
+    ],
+    "cap_seconds_chirho": 1200,
+    "cleanup_reserve_seconds_chirho": 30,
+    "suggested_outer_seconds_chirho": 1500,
+    "own_target_absent_chirho": true,
+    "acceptance_chirho": "rc0; zero compiler-message records at any level; one successful build-finished; full source/tool/group closure; no semantic or native claim."
+  }
+}

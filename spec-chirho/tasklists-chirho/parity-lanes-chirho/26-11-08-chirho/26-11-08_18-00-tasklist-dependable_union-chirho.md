@@ -10,7 +10,7 @@ This isolated branch starts at exact main acd8baaab60fe2005429cbae72a31ccfd2fd3d
 - [x] Merge the complete C10 producer/ABI chain through the mechanical P2 leaf, preserving supplier proofs/input-ID reservation.
 - [x] Merge the reader interface/physical-field/context-entry chain with C10 entry purpose and the existing selected import payload intact.
 - [x] Carry the exact fixture-literal leaf, retaining every original assertion.
-- [ ] Verify all final compiler blobs equal a declared input outside named semantic merges; retain main non-compiler metadata and add only this plan/manifest/workflow records.
+- [x] Verify all final compiler blobs equal a declared input outside named semantic merges; retain main non-compiler metadata and add only this plan/manifest/workflow records.
 - [ ] Run source-only formatting and diff checks, scan the outgoing Git range, commit/push the frozen assembly and report its own-target compile readiness.
 - [ ] Root's separately named first compile and subsequent main-parent quality/behavior/corpus/end-state gates. UNSTARTED.
 
@@ -48,3 +48,5 @@ Source-only whitespace finding retained: the imported exact T18005.hs syntax fix
 Reader merge adaptations: keep both the MR restriction imports and LocalConstructorFieldContext import in declaration-module inference. The two reader-migrated test callers explicitly pass entry_obligation None, preserving their prior non-program purpose while borrowing the actual seeded or sticky-failed class environment unchanged. The existing production convenience caller already retains its C10 None field, and the actual frontend root retains policy.program_entry. Reader ConstructorFieldScope replaces the old field Vec in the common context without removing C10 entry purpose; selected imported value schemes remain the current pre-certificate payload. Four incoming metadata paths are restored; no private ledger/tasklist/workflow is imported.
 
 The fixture parent merges as exactly one source line in project_chirho.rs: preserve the two spaces before the Rust line continuation, producing the committed407-byte EqOrdUtil positive. All assertions and the StrictPair provider remain unchanged. There are no fixture-merge conflicts and no incoming metadata changes.
+
+Source identity:1489 compiler/fixture paths are recorded in three bounded generated JSONL shards;1468 equal at least one frozen input blob and21 are named source merges. Of main's31 changed compiler paths,28 remain exact main blobs; the unifier, integration root and native harness are the explicitly documented unions. All21 mixed Rust files are rustfmt1.93/edition2024 clean on stdin without rewriting children. The outgoing source ancestry scan covered201 commits/6.81MB and found no leaks. The final manifest-only commit is scanned again before push. No compiler has run; the own target is absent.
