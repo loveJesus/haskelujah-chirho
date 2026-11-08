@@ -49,6 +49,8 @@ impl DictPassCtxChirho {
             (NumChirho, "*", "Double", 1),
             (NumChirho, "-", "Double", 1),
             (NumChirho, "negate", "Double", 2),
+            // fromInteger at Double is handled specially below: `fromIntegral# n`, typed
+            // Int -> Double (`generate_from_integer_double_row_chirho`), never the identity.
             (NumChirho, "fromInteger", "Double", 0),
             // Fractional Double
             (FractionalChirho, "/", "Double", 1),

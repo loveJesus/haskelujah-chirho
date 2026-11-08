@@ -1181,3 +1181,5 @@ flowchart TD
 ```
 
 A displaced compiler request cannot borrow the source class's spelled route. A missing layout, a GND or unsupported conditional key, a structured row generator or an imported instance without its required proof retains the named boundary. `Show [Maybe Int]` stays refused by a_displaced_compiler_show_it_cannot_build_is_refused_by_name_chirho. Source and unknown requests keep their existing routes. The own-scope print control exercises `[Bool]`; a_qualified_ord_given_keeps_its_eq_superclass_under_a_namesake_chirho exercises the parameter walk. These source additions do not establish a fresh assembled-source execution.
+
+The Double fromInteger row has one conversion body, `fromIntegral# n`, typed `Int -> Double`. The builtin row generator emits it in either namespace through generate_from_integer_double_row_chirho in prelude_chirho/floating_methods_chirho.rs. An identity body would read an Int payload as Double bits; the late spelled Prelude twin that shared the identity row's ID is removed. Both namespaces therefore use the same conversion producer.
