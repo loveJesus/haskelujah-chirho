@@ -181,7 +181,7 @@ fn two_type_constructors_sharing_a_spelling_are_qualified_chirho() {
             "expected `{def_chirho}`, found `{main_chirho}`"
         )),
         "expected `DefChirho.KChirho`, found `Main.KChirho`",
-        "F02's hidden kinds must not read as KChirho against KChirho"
+        "two type constructors sharing a spelling must not read alike"
     );
     assert_eq!(
         readable_constructor_keys_chirho(&format!("{main_chirho} and {main_chirho}")),
