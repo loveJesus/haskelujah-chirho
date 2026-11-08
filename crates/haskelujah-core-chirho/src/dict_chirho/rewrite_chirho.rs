@@ -857,7 +857,10 @@ impl DictPassCtxChirho {
             .collect();
         let mut demanded_chirho = HashSet::new();
         while let Some(id_chirho) = pending_chirho.pop() {
+            // MUTANT M3, never to land: only input-bound ids expand, so a generated binding's
+            // own edges are never followed (direct-only demand).
             if demanded_chirho.insert(id_chirho)
+                && self.module_bound_ids_chirho.contains(&id_chirho)
                 && let Some(next_chirho) = edges_chirho.get(&id_chirho)
             {
                 pending_chirho.extend(next_chirho.iter().copied());
