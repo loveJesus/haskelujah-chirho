@@ -80,6 +80,8 @@ mod equality_normalization_chirho;
 pub(crate) use equality_normalization_chirho::{
     EqualityBudgetChirho, EqualityNormalizationExhaustedChirho, EqualityNormalizationViewChirho,
 };
+#[path = "infer_chirho/restriction_chirho/entry_obligation_chirho.rs"]
+mod entry_obligation_chirho;
 #[cfg(test)]
 #[path = "infer_chirho/solving_chirho/equality_normalization_tests_chirho.rs"]
 mod equality_normalization_tests_chirho;
@@ -92,6 +94,8 @@ mod equality_scopes_chirho;
 mod fundep_generalization_chirho;
 #[path = "infer_chirho/solving_chirho/inferred_dictionary_owners_chirho.rs"]
 mod inferred_dictionary_owners_chirho;
+#[path = "infer_chirho/restriction_chirho/restriction_chirho.rs"]
+mod restriction_chirho;
 #[path = "infer_chirho/solving_chirho/rigid_chirho.rs"]
 mod rigid_chirho;
 #[path = "infer_chirho/solving_chirho/schemes_chirho.rs"]
@@ -154,6 +158,9 @@ mod promotion_identity_tests_chirho;
 #[cfg(test)]
 #[path = "infer_chirho/tests_chirho/signature_newtype_tests_chirho.rs"]
 mod signature_newtype_tests_chirho;
+#[cfg(test)]
+#[path = "infer_chirho/tests_chirho/superclass_reduction_tests_chirho.rs"]
+mod superclass_reduction_tests_chirho;
 #[cfg(test)]
 #[path = "infer_chirho/tests_chirho/test_support_chirho.rs"]
 mod test_support_chirho;
@@ -454,6 +461,11 @@ pub struct MethodOccurrenceRecordChirho {
     pub ordinal_chirho: u32,
     pub class_name_chirho: String,
     pub ty_key_chirho: String,
+    /// The class proof of the predicate captured at this occurrence, ground or not (row 692,
+    /// C10). An own-dictionary or instance-context record keeps it as a ground one does, so the
+    /// dictionary pass never takes a compiler class's method for a namesake's. It is no ground
+    /// goal; Unknown stays absorbing.
+    pub class_identity_chirho: haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
     /// The complete closed goal after final substitution and normalization.
     /// Missing argument captures or an own dictionary never supply this proof.
     pub ground_pred_chirho: Option<PredChirho>,
@@ -462,11 +474,11 @@ pub struct MethodOccurrenceRecordChirho {
     pub resolved_entry_chirho: Option<String>,
 }
 
+/// A literal's minted wanted, captured whole so its class proof reaches finalization (row 692).
 type LiteralCaptureChirho = (
     SpanChirho,
     Option<OriginIdChirho>,
-    String,
-    TyChirho,
+    PredChirho,
     Option<Arc<[PredChirho]>>,
 );
 
@@ -605,6 +617,12 @@ pub struct InferCtxChirho {
     con_field_names_chirho: HashMap<String, Vec<String>>,
     /// Module-local numeric default declaration candidates from `default (...)`.
     module_default_types_chirho: Vec<TyChirho>,
+    /// The monomorphism restriction's module facts and withheld variables (row 692).
+    restriction_chirho: restriction_chirho::RestrictionStateChirho,
+    /// Whether this module's literals translate to the compiler's own classes, so their
+    /// predicates carry its proof: false under effective RebindableSyntax or MagicHash, and
+    /// before a module is set up (row 692).
+    compiler_literals_chirho: bool,
     /// Whether the current module enables OverloadedStrings.
     overloaded_strings_chirho: bool,
     /// Classes whose full instance universe is visible: the standard-seeded
@@ -813,6 +831,7 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
             promotion_scope_chirho: None,
             family_scope_chirho: None,
             type_constructor_scope_chirho: None,
+            entry_obligation_chirho: None,
         },
     )
 }
@@ -844,6 +863,10 @@ pub struct InferenceImportContextChirho<'imports_chirho> {
     pub family_scope_chirho: Option<Arc<TypeFamilyScopeChirho>>,
     pub type_constructor_scope_chirho:
         Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
+    /// The program entry this module, the caller's program root, must define as an IO action
+    /// (Report section 5). Only an executable caller names it. A value, library or check
+    /// purpose, and every dependency, pass `None` (row 692).
+    pub entry_obligation_chirho: Option<&'imports_chirho str>,
 }
 
 /// Run type inference on a module with everything it imports.
@@ -884,6 +907,7 @@ fn infer_module_with_elaboration_state_chirho(
         promotion_scope_chirho,
         family_scope_chirho,
         type_constructor_scope_chirho,
+        entry_obligation_chirho,
     } = context_chirho;
     let mut ctx_chirho =
         InferCtxChirho::new_with_imported_class_env_chirho(imported_class_env_chirho);
@@ -995,6 +1019,15 @@ fn infer_module_with_elaboration_state_chirho(
     if ctx_chirho.has_non_deferrable_failure_chirho() {
         return ctx_chirho.finish_chirho();
     }
+    // The caller's program entry must be an IO action: checked after inference and before any
+    // final default, so the entry's role, never a default, fixes its monad (row 692).
+    let entry_subst_chirho =
+        ctx_chirho.require_program_entry_chirho(entry_obligation_chirho, &subst_chirho);
+    let subst_chirho = entry_subst_chirho.compose_chirho(&subst_chirho);
+    // Rule 2 of the monomorphism restriction, at the module's end only, before the legacy
+    // defaults: instance-method checks reach check_deferred_preds_chirho mid-module (row 692).
+    let restricted_subst_chirho = ctx_chirho.resolve_restricted_residuals_chirho(&subst_chirho);
+    let subst_chirho = restricted_subst_chirho.compose_chirho(&subst_chirho);
     let default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
     if !default_subst_chirho.is_empty_chirho() {
         ctx_chirho.apply_subst_all_chirho(&default_subst_chirho);

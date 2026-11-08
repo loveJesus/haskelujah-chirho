@@ -8,7 +8,7 @@ use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
 use haskelujah_typing_chirho::env_chirho::TyEnvChirho;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
-use super::dict_pass_module_full_with_method_occurrences_chirho;
+use super::{OccurrenceEvidenceChirho, dict_pass_module_full_with_method_occurrences_chirho};
 use crate::expr_chirho::{
     BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreLitChirho, CoreModuleChirho,
     InlineAnnotationChirho,
@@ -78,7 +78,10 @@ fn evidenced_print_rewrites_to_show_instance_then_put_str_ln_chirho() {
     let mut canonical_occurrences_chirho = HashMap::new();
     canonical_occurrences_chirho.insert(CoreIdChirho(50), ("print".to_string(), CoreIdChirho(60)));
     let mut evidence_chirho = HashMap::new();
-    evidence_chirho.insert(CoreIdChirho(50), ("Show".to_string(), "Bool".to_string()));
+    evidence_chirho.insert(
+        CoreIdChirho(50),
+        OccurrenceEvidenceChirho::legacy_chirho("Show", "Bool"),
+    );
 
     let result_chirho = dict_pass_module_full_with_method_occurrences_chirho(
         &module_chirho,
@@ -176,7 +179,7 @@ fn evidenced_print_materializes_missing_flat_either_show_binding_chirho() {
     let mut evidence_chirho = HashMap::new();
     evidence_chirho.insert(
         CoreIdChirho(50),
-        ("Show".to_string(), "Either Int Bool".to_string()),
+        OccurrenceEvidenceChirho::legacy_chirho("Show", "Either Int Bool"),
     );
 
     let result_chirho = dict_pass_module_full_with_method_occurrences_chirho(

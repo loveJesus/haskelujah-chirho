@@ -16,7 +16,14 @@ impl DictPassCtxChirho {
         scheme_chirho: &SchemeChirho,
     ) -> Option<CoreIdChirho> {
         let key_chirho = if matches!(predicate_chirho.ty_chirho, TyChirho::VarChirho(_)) {
-            if !Self::is_defaultable_pred_chirho(predicate_chirho, scheme_chirho) {
+            // A displaced compiler class is never defaulted from its spelling: its non-ground
+            // predicate keeps its parameter (row 692, gpt #32683). The legacy policy below is
+            // unchanged for every other predicate.
+            if self
+                .displaced_identity_chirho(predicate_chirho.class_identity_chirho())
+                .is_some()
+                || !Self::is_defaultable_pred_chirho(predicate_chirho, scheme_chirho)
+            {
                 return None;
             }
             match predicate_chirho.class_name_chirho.as_str() {
@@ -27,10 +34,20 @@ impl DictPassCtxChirho {
                 _ => return None,
             }
         } else {
-            format!("{}", predicate_chirho.ty_chirho)
+            // Every class argument, in the registry's own key (row 692, gpt #32675).
+            super::instance_chirho::generic_heads_chirho::head_key_chirho(
+                &predicate_chirho.ty_chirho,
+                &predicate_chirho.extra_tys_chirho,
+            )
         };
+        // The predicate's own namespace: a displaced compiler class resolves only in its own,
+        // and with no dictionary there the binding keeps its parameter rather than take the
+        // source class's (row 692, gpt #32675). The caller reads this same decision.
         self.instance_dicts_chirho
-            .get(&(predicate_chirho.class_name_chirho.clone(), key_chirho))
+            .get(&(
+                self.predicate_namespace_chirho(predicate_chirho),
+                key_chirho,
+            ))
             .copied()
     }
 
@@ -45,7 +62,8 @@ impl DictPassCtxChirho {
                 self.resolved_pred_dictionary_chirho(predicate_chirho, scheme_chirho)
                     .is_none()
             })
-            .map(|predicate_chirho| predicate_chirho.class_name_chirho.clone())
+            // Each retained slot by its namespace, in scheme order (row 692, gpt #32683).
+            .map(|predicate_chirho| self.predicate_namespace_chirho(predicate_chirho))
             .collect()
     }
 }

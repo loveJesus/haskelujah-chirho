@@ -1,7 +1,54 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! Small structural operations shared by evidence-key consumers. A separator
-//! inside a list or tuple belongs to that nested type, not to the outer key.
+//! Small structural operations shared by evidence-key consumers, and the
+//! per-occurrence evidence record they read. A separator inside a list or
+//! tuple belongs to that nested type, not to the outer key.
+
+use haskelujah_ast_chirho::name_chirho::{ClassIdentityUnknownChirho, PredicateClassProofChirho};
+
+/// One occurrence's proved dictionary: the class and instance type key, spelled as
+/// before, with the class proof of the predicate the checker discharged there. The
+/// spelling is a legacy name, not authority: only `class_identity_chirho` says which
+/// class the proof is about, and a record without a producer proof carries
+/// `Unknown(Legacy)` explicitly (row 692, C10).
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OccurrenceEvidenceChirho {
+    pub class_name_chirho: String,
+    pub ty_key_chirho: String,
+    pub class_identity_chirho: PredicateClassProofChirho,
+}
+
+impl OccurrenceEvidenceChirho {
+    pub fn new_chirho(
+        class_name_chirho: impl Into<String>,
+        ty_key_chirho: impl Into<String>,
+        class_identity_chirho: PredicateClassProofChirho,
+    ) -> Self {
+        Self {
+            class_name_chirho: class_name_chirho.into(),
+            ty_key_chirho: ty_key_chirho.into(),
+            class_identity_chirho,
+        }
+    }
+
+    /// A record whose producer supplied no class proof.
+    pub fn legacy_chirho(
+        class_name_chirho: impl Into<String>,
+        ty_key_chirho: impl Into<String>,
+    ) -> Self {
+        Self::new_chirho(
+            class_name_chirho,
+            ty_key_chirho,
+            PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::LegacyChirho),
+        )
+    }
+
+    /// The legacy spelled pair, for consumers that read only the strings.
+    pub fn keys_chirho(&self) -> (&String, &String) {
+        (&self.class_name_chirho, &self.ty_key_chirho)
+    }
+}
 
 /// Split `source_chirho` only at separators outside balanced tuple and list
 /// delimiters. An unbalanced key is refused instead of partially interpreted.

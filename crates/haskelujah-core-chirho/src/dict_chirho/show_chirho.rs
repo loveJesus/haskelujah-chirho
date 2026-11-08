@@ -52,8 +52,9 @@ impl DictPassCtxChirho {
         let keys_chirho = self
             .occurrence_evidence_chirho
             .values()
-            .filter_map(|(class_chirho, key_chirho)| {
-                (class_chirho == "Show").then_some(key_chirho.clone())
+            .filter_map(|occurrence_chirho| {
+                (occurrence_chirho.class_name_chirho == "Show")
+                    .then_some(occurrence_chirho.ty_key_chirho.clone())
             })
             .collect::<BTreeSet<_>>();
         for key_chirho in keys_chirho {

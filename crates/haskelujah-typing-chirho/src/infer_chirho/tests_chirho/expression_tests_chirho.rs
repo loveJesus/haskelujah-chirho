@@ -3,7 +3,7 @@
 //! Expressions: literals, applications, conditionals, tuples, lists, lets, lambdas and do blocks.
 //! Moved from `infer_chirho.rs` in row 661.
 
-use super::test_support_chirho::dummy_name_chirho;
+use super::test_support_chirho::{assert_restricted_binding_refused_chirho, dummy_name_chirho};
 use super::*;
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
 use haskelujah_ast_chirho::expr_chirho::{AltChirho, RhsChirho, StmtChirho};
@@ -590,16 +590,15 @@ fn infer_result_bind_lambda_constructor_body_chirho() {
     );
 }
 
-/// Test: do-notation bind statement unwraps monadic type.
-/// Haskell: `doExample = do { x <- Just 42; pure x }`
-#[test]
-fn infer_do_bind_unwraps_monad_chirho() {
+/// `doExampleChirho = do { x <- Just 42; <final> }`, the do-bind unit's module with its final
+/// statement given.
+fn do_bind_module_chirho(final_chirho: ExprChirho) -> ModuleChirho {
     // Build: doExample = do { x <- expr_m; expr_body }
     // where expr_m :: Maybe Int  (simulated as App(Con("Maybe"), Lit(42)))
     // and expr_body :: uses x (a VarChirho)
     //
     // We seed Maybe Just Nothing in the env.
-    let module_chirho = ModuleChirho {
+    ModuleChirho {
         name_chirho: dummy_name_chirho("DoNotation"),
         exports_chirho: None,
         imports_chirho: vec![],
@@ -628,8 +627,7 @@ fn infer_do_bind_unwraps_monad_chirho() {
                             },
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                         },
-                        // pure x (simplified: just return x)
-                        StmtChirho::expr_stmt_chirho(ExprChirho::VarChirho(dummy_name_chirho("x"))),
+                        StmtChirho::expr_stmt_chirho(final_chirho),
                     ],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 }),
@@ -645,7 +643,19 @@ fn infer_do_bind_unwraps_monad_chirho() {
         deriving_via_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
         origin_supply_chirho: Default::default(),
-    };
+    }
+}
+
+/// Test: do-notation bind statement unwraps monadic type.
+/// Haskell: `doExample = do { x <- Just 42; pure x }`. GHC accepts it (row 692 p04 oracle,
+/// `DoBindPureTwinChirho`): the restricted `Num a` defaults to Integer.
+#[test]
+fn infer_do_bind_unwraps_monad_chirho() {
+    let module_chirho = do_bind_module_chirho(ExprChirho::AppChirho {
+        fun_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("pure"))),
+        arg_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("x"))),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    });
 
     let result_chirho = infer_module_chirho(&module_chirho);
     assert!(
@@ -661,6 +671,15 @@ fn infer_do_bind_unwraps_monad_chirho() {
     // The type should involve x :: Int (unwrapped from Just Int)
     // The last stmt `x` has type Int, not wrapped
     assert!(!format!("{scheme_chirho}").is_empty(), "should have a type");
+}
+
+/// The unit's original program, `doExample = do { x <- Just 42; x }`: its final `x` makes the
+/// bound value `Maybe b`, so the literal wants `Num (Maybe b)`. GHC refuses it (row 692 p04
+/// oracle, `DoBindExactChirho`, GHC-39999); the restricted binding cannot generalize it.
+#[test]
+fn a_do_bind_whose_final_statement_is_the_bound_number_is_refused_chirho() {
+    let module_chirho = do_bind_module_chirho(ExprChirho::VarChirho(dummy_name_chirho("x")));
+    assert_restricted_binding_refused_chirho(&infer_module_chirho(&module_chirho), "Num (Maybe ");
 }
 
 /// Test: do-notation with let statement.

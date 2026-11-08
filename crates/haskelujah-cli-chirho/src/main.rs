@@ -16,8 +16,8 @@ use haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho;
 use haskelujah_driver_chirho::rts_snapshot_chirho::{RtsSnapshotChirho, rts_snapshot_chirho};
 use haskelujah_driver_chirho::{
-    check_source_path_with_source_map_chirho, eval_source_file_outcome_chirho,
-    render_diagnostics_chirho, render_summary_chirho,
+    check_source_path_with_source_map_chirho, render_diagnostics_chirho, render_summary_chirho,
+    run_program_file_outcome_chirho,
 };
 use haskelujah_runtime_chirho::ExecutionModeChirho;
 use haskelujah_span_chirho::SourceMapChirho;
@@ -244,11 +244,13 @@ fn run_command_chirho(
     // If any dump flags are set, compile first to get Core/LLVM IR.
     if flags_chirho.dump_core_chirho || flags_chirho.dump_llvm_chirho {
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        match haskelujah_driver_chirho::compile_source_file_with_search_path_chirho(
+        // An executable: `main` is the program's IO entry (row 692).
+        match haskelujah_driver_chirho::compile_program_file_with_search_path_chirho(
             &source_text_chirho,
             &mut sm_chirho,
             checked_path_chirho,
             search_dir_chirho,
+            "main",
         ) {
             Ok(result_chirho) => {
                 if flags_chirho.dump_core_chirho {
@@ -274,11 +276,12 @@ fn run_command_chirho(
     // linking successfully.
     let mut source_map_chirho = SourceMapChirho::new_chirho();
 
-    match eval_source_file_outcome_chirho(
+    // An executable: `main` is the program's IO entry (row 692).
+    match run_program_file_outcome_chirho(
         &source_text_chirho,
         &mut source_map_chirho,
         checked_path_chirho,
-        None,
+        "main",
     ) {
         Ok(outcome_chirho) => {
             let machine_chirho = &outcome_chirho.machine_chirho;
@@ -432,11 +435,13 @@ fn compile_command_chirho(
         }
     };
     let search_dir_chirho = search_dir_chirho.as_path();
-    match haskelujah_driver_chirho::compile_source_file_with_search_path_chirho(
+    // An executable: `main` is the program's IO entry (row 692).
+    match haskelujah_driver_chirho::compile_program_file_with_search_path_chirho(
         &source_text_chirho,
         &mut source_map_chirho,
         Path::new(&path_chirho),
         search_dir_chirho,
+        "main",
     ) {
         Ok(result_chirho) => {
             if let Some(ref output_path_chirho) = flags_chirho.output_path_chirho {

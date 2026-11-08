@@ -104,8 +104,11 @@ impl DictPassCtxChirho {
             is_rec_chirho: false,
             inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
-        self.dict_param_bindings_chirho
-            .insert(return_id_chirho, vec!["Monad".to_string()]);
+        // Its slot, by compiler class: a displaced one refuses its references (row 692).
+        self.register_compiler_helper_slots_chirho(
+            return_id_chirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho],
+        );
 
         let bind_id_chirho = self.resolve_or_fresh_id_chirho("bindMaybeT");
         let dictionary_chirho =
@@ -207,8 +210,10 @@ impl DictPassCtxChirho {
             is_rec_chirho: false,
             inline_chirho: InlineAnnotationChirho::NoneChirho,
         });
-        self.dict_param_bindings_chirho
-            .insert(bind_id_chirho, vec!["Monad".to_string()]);
+        self.register_compiler_helper_slots_chirho(
+            bind_id_chirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho],
+        );
     }
 
     fn unwrap_maybe_transformer_chirho(

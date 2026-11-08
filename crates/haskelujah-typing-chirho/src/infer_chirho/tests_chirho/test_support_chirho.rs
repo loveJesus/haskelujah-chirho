@@ -140,3 +140,31 @@ pub(super) fn type_family_app1_chirho(family_chirho: &str, arg_chirho: TyChirho)
 pub(super) fn type_lit_chirho(value_chirho: &str) -> TyChirho {
     TyChirho::ConChirho(value_chirho.to_string())
 }
+
+/// The refusal GHC 9.14.1 measured as GHC-39999 for a restricted binding whose constrained
+/// variable nothing fixes and no default satisfies (row 692, p04 oracle `typing-units-p04-r1`):
+/// an E0204 error naming `wanted_prefix_chirho` among the predicates no default satisfies.
+pub(super) fn assert_restricted_binding_refused_chirho(
+    result_chirho: &InferResultChirho,
+    wanted_prefix_chirho: &str,
+) {
+    let expected_chirho =
+        format!("of a restricted binding: no default satisfies `{wanted_prefix_chirho}");
+    assert!(
+        result_chirho
+            .diagnostics_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|diagnostic_chirho| {
+                diagnostic_chirho.code_chirho
+                    == Some(
+                        haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(
+                            crate::infer_chirho::UNSATISFIED_CONSTRAINT_CODE_CHIRHO,
+                        ),
+                    )
+                    && diagnostic_chirho.message_chirho.contains(&expected_chirho)
+            }),
+        "expected the restricted-binding refusal `{expected_chirho}`: {:?}",
+        result_chirho.diagnostics_chirho
+    );
+}

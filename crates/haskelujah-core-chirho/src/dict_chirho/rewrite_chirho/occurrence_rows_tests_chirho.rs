@@ -17,6 +17,7 @@ use crate::expr_chirho::{
 };
 
 use super::DictPassCtxChirho;
+use crate::dict_chirho::OccurrenceEvidenceChirho;
 use crate::dict_chirho::prelude_chirho::fractional_power_chirho::FRACTIONAL_POWER_DOUBLE_INT_CHIRHO;
 
 /// The checker's record proving `class_chirho` at `key_chirho`, with no applied type.
@@ -28,6 +29,10 @@ fn keyed_proof_chirho(
         ground_pred_chirho: None,
         applied_head_chirho: None,
         class_name_chirho: class_chirho.to_string(),
+        class_identity_chirho:
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+            ),
         ty_key_chirho: Some(key_chirho.to_string()),
         applied_ty_chirho: None,
     }
@@ -118,10 +123,7 @@ fn recursion_pass_chirho(proven_key_chirho: &str) -> DictPassCtxChirho {
     );
     pass_chirho.occurrence_evidence_chirho.insert(
         CoreIdChirho(2),
-        (
-            "DescribableChirho".to_string(),
-            proven_key_chirho.to_string(),
-        ),
+        OccurrenceEvidenceChirho::legacy_chirho("DescribableChirho", proven_key_chirho),
     );
     pass_chirho.method_selectors_chirho.insert(
         "describeChirho".to_string(),
@@ -425,9 +427,10 @@ fn aggregate_pass_chirho() -> DictPassCtxChirho {
     pass_chirho
         .method_occurrence_canon_chirho
         .insert(CoreIdChirho(2), ("sum".to_string(), CoreIdChirho(1)));
-    pass_chirho
-        .occurrence_evidence_chirho
-        .insert(CoreIdChirho(2), ("Num".to_string(), "Double".to_string()));
+    pass_chirho.occurrence_evidence_chirho.insert(
+        CoreIdChirho(2),
+        OccurrenceEvidenceChirho::legacy_chirho("Num", "Double"),
+    );
     pass_chirho
 }
 
@@ -487,9 +490,10 @@ fn print_pass_chirho() -> DictPassCtxChirho {
     pass_chirho
         .method_occurrence_canon_chirho
         .insert(CoreIdChirho(12), ("print".to_string(), CoreIdChirho(11)));
-    pass_chirho
-        .occurrence_evidence_chirho
-        .insert(CoreIdChirho(12), ("Show".to_string(), "Double".to_string()));
+    pass_chirho.occurrence_evidence_chirho.insert(
+        CoreIdChirho(12),
+        OccurrenceEvidenceChirho::legacy_chirho("Show", "Double"),
+    );
     pass_chirho
 }
 
@@ -562,7 +566,7 @@ fn own_show_print_pass_chirho(key_chirho: &str) -> DictPassCtxChirho {
         .insert(CoreIdChirho(22), ("print".to_string(), CoreIdChirho(21)));
     pass_chirho.occurrence_evidence_chirho.insert(
         CoreIdChirho(22),
-        ("Show".to_string(), key_chirho.to_string()),
+        OccurrenceEvidenceChirho::legacy_chirho("Show", key_chirho),
     );
     pass_chirho
         .method_selectors_chirho

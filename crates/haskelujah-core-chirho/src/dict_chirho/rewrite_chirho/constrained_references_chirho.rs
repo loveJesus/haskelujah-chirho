@@ -54,6 +54,9 @@ impl DictPassCtxChirho {
         evidence_classes_chirho: &HashSet<String>,
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
     ) -> CoreExprChirho {
+        if let Some(refusal_chirho) = self.displaced_helper_refusal_chirho(written_id_chirho) {
+            return refusal_chirho;
+        }
         let mut reference_evidence_chirho = self
             .reference_evidence_chirho
             .get(&written_id_chirho)
@@ -62,13 +65,41 @@ impl DictPassCtxChirho {
         let mut result_chirho =
             CoreExprChirho::VarChirho(self.canonical_id_chirho(written_id_chirho));
         for class_name_chirho in classes_chirho {
-            let proof_chirho = Self::take_reference_evidence_chirho(
-                &mut reference_evidence_chirho,
-                class_name_chirho,
-            );
+            let proof_chirho = self
+                .take_reference_evidence_chirho(&mut reference_evidence_chirho, class_name_chirho);
             let evidence_key_chirho = proof_chirho
                 .as_ref()
                 .and_then(|proof_chirho| proof_chirho.ty_key_chirho.clone());
+            // A displaced compiler class's ground proof takes its own namespace's dictionary, or
+            // its named refusal; never a spelled route, since that spelling is the source class's
+            // (row 692, C10, gpt #32666).
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            if let Some(identity_chirho) = proof_chirho.as_ref().and_then(|proof_chirho| {
+                self.displaced_identity_chirho(&proof_chirho.class_identity_chirho)
+            }) {
+                // Its own key, or, with none, the call's argument key, in its own namespace.
+                let key_chirho = evidence_key_chirho
+                    .as_deref()
+                    .or(syntactic_type_key_chirho)
+                    .unwrap_or_default();
+                let dict_arg_chirho = self
+                    .compiler_dictionary_chirho(
+                        identity_chirho,
+                        key_chirho,
+                        dict_vars_chirho,
+                        evidence_classes_chirho,
+                        local_instance_dicts_chirho,
+                    )
+                    .map(CoreExprChirho::VarChirho)
+                    .unwrap_or_else(|| {
+                        self.displaced_refusal_chirho(identity_chirho, "dictionary", key_chirho)
+                    });
+                result_chirho = CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(result_chirho),
+                    arg_chirho: Box::new(dict_arg_chirho),
+                };
+                continue;
+            }
             let evidence_dict_chirho = self.evidence_dict_for_class_chirho(
                 class_name_chirho,
                 evidence_key_chirho.as_deref(),
@@ -175,6 +206,11 @@ impl DictPassCtxChirho {
         dict_vars_chirho: &HashMap<String, CoreIdChirho>,
         evidence_classes_chirho: &HashSet<String>,
     ) -> Option<CoreExprChirho> {
+        // A compiler helper with a displaced slot refuses by name (row 692, gpt #32683). Every
+        // other slot names its own namespace, so the lookups below never cross it.
+        if let Some(refusal_chirho) = self.displaced_helper_refusal_chirho(written_id_chirho) {
+            return Some(refusal_chirho);
+        }
         let slots_chirho: Vec<Option<CoreIdChirho>> = classes_chirho
             .iter()
             .map(|class_name_chirho| {
@@ -318,7 +354,7 @@ impl DictPassCtxChirho {
     /// proven key, the enclosing binding's own parameter for
     /// `OWN_DICTIONARY_KEY_CHIRHO`, and nothing when nothing was proved.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
-    pub(super) fn evidence_dict_for_class_chirho(
+    pub(in crate::dict_chirho) fn evidence_dict_for_class_chirho(
         &self,
         class_name_chirho: &str,
         ty_key_chirho: Option<&str>,
@@ -404,9 +440,30 @@ impl DictPassCtxChirho {
         {
             return Some(CoreExprChirho::VarChirho(*canonical_id_chirho));
         }
-        if let Some((class_name_chirho, ty_key_chirho)) =
-            self.occurrence_evidence_chirho.get(&head_id_chirho)
-        {
+        if let Some(evidence_chirho) = self.occurrence_evidence_chirho.get(&head_id_chirho) {
+            let (class_name_chirho, ty_key_chirho) = evidence_chirho.keys_chirho();
+            // A displaced compiler class's method takes its own selector and dictionary before
+            // any spelled route, the enclosing source instance's own dictionary included: that
+            // spelling is the source class's (row 692, C10).
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            if let Some(head_chirho) = self.compiler_method_head_chirho(
+                &evidence_chirho.class_identity_chirho,
+                method_name_chirho,
+                ty_key_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_instance_dicts_chirho,
+            ) {
+                return Some(head_chirho);
+            }
+            // Any other occurrence under a displaced compiler proof keeps its own binding: the
+            // routes below are spelled, and that spelling is the source class's (gpt #32666).
+            if self
+                .displaced_identity_chirho(&evidence_chirho.class_identity_chirho)
+                .is_some()
+            {
+                return Some(CoreExprChirho::VarChirho(*canonical_id_chirho));
+            }
             // A recursive call proved only by its head keeps the enclosing
             // instance's own dictionary, the one its argument's key names.
             // workflow: language-features-chirho/own-class-method-occurrences-chirho
@@ -509,8 +566,10 @@ impl DictPassCtxChirho {
         let (_method_name_chirho, canonical_id_chirho) = self
             .method_occurrence_canon_chirho
             .get(&occurrence_id_chirho)?;
-        let (class_name_chirho, proven_key_chirho) =
-            self.occurrence_evidence_chirho.get(&occurrence_id_chirho)?;
+        let (class_name_chirho, proven_key_chirho) = self
+            .occurrence_evidence_chirho
+            .get(&occurrence_id_chirho)?
+            .keys_chirho();
         let selector_id_chirho = self.proven_list_selector_chirho(
             *canonical_id_chirho,
             class_name_chirho,
@@ -646,13 +705,16 @@ impl DictPassCtxChirho {
 
     /// Take the evidence for the next predicate of `class_name` from a
     /// reference's evidence list (scheme order), if the checker recorded one.
+    /// Paired by namespace, so a displaced compiler slot takes only its compiler proof and a
+    /// source slot only its source one (row 692, gpt #32683); spellings are unchanged otherwise.
     pub(super) fn take_reference_evidence_chirho(
+        &self,
         evidence_chirho: &mut Vec<ReferenceEvidenceChirho>,
         class_name_chirho: &str,
     ) -> Option<ReferenceEvidenceChirho> {
-        let position_chirho = evidence_chirho
-            .iter()
-            .position(|proof_chirho| proof_chirho.class_name_chirho == class_name_chirho)?;
+        let position_chirho = evidence_chirho.iter().position(|proof_chirho| {
+            self.reference_namespace_chirho(proof_chirho) == class_name_chirho
+        })?;
         Some(evidence_chirho.remove(position_chirho))
     }
 

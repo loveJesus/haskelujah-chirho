@@ -488,6 +488,49 @@ impl ClassEnvChirho {
         ));
     }
 
+    /// The seed's own producer of a compiler class's superclass relation (row 692). Each
+    /// superclass is named by its compiler identity, never looked up from a spelling: its
+    /// legacy string is derived from that identity once, in the same order, and its template
+    /// is the proven superclass predicate over the class's own variable. Only a unary class
+    /// with no kind prefix, whose superclasses are unary with no kind prefix too, has that
+    /// shape (`superclass_reduction_tests_chirho` pins every seeded relation).
+    /// workflow: language-features-chirho/fundep-generalization-chirho
+    pub(super) fn add_seed_class_with_superclasses_chirho(
+        &mut self,
+        identity_chirho: CompilerClassChirho,
+        superclasses_chirho: &[CompilerClassChirho],
+        mut parts_chirho: ClassDeclPartsChirho,
+    ) {
+        debug_assert!(
+            parts_chirho.supers_chirho.is_empty()
+                && parts_chirho.super_templates_chirho.is_empty()
+                && parts_chirho.kind_vars_chirho.is_empty()
+                && parts_chirho.extra_vars_chirho.is_empty(),
+            "seeded class `{}` does not fit the superclass producer",
+            parts_chirho.name_chirho
+        );
+        let class_variable_chirho = crate::ty_chirho::TyChirho::VarChirho(parts_chirho.var_chirho);
+        parts_chirho.supers_chirho = superclasses_chirho
+            .iter()
+            .map(|superclass_chirho| superclass_chirho.legacy_name_chirho().to_owned())
+            .collect();
+        parts_chirho.super_templates_chirho = superclasses_chirho
+            .iter()
+            .map(|superclass_chirho| {
+                crate::ty_chirho::SchemePredChirho::from_compiler_chirho(
+                    *superclass_chirho,
+                    crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: superclass_chirho.legacy_name_chirho().to_owned(),
+                        ty_chirho: class_variable_chirho.clone(),
+                        extra_tys_chirho: Vec::new(),
+                    },
+                )
+            })
+            .collect();
+        self.add_seed_class_chirho(identity_chirho, parts_chirho);
+    }
+
     pub(super) fn add_seed_instance_reference_chirho(
         &mut self,
         identity_chirho: Option<CompilerClassChirho>,

@@ -6,12 +6,24 @@
 use super::*;
 use haskelujah_typing_chirho::infer_chirho::TypeFamilyIdChirho;
 
-fn frontend_chirho(source_chirho: &str) -> crate::FrontendResultChirho {
-    crate::run_frontend_chirho(
+/// Every source here is a GHC program, so its `main` is the program's IO entry (row 692).
+fn program_frontend_chirho(source_chirho: &str) -> crate::FrontendResultChirho {
+    let ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    let types_chirho = std::collections::HashMap::new();
+    let type_synonyms_chirho = crate::ImportedTypeSynonymsChirho::new();
+    let type_families_chirho = crate::seed_builtin_type_families_chirho();
+    let class_env_chirho = haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho();
+    crate::run_frontend_with_options_chirho(
         source_chirho,
         FileIdChirho::SYNTHETIC_CHIRHO,
-        &haskelujah_naming_chirho::builtin_module_ifaces_chirho(),
-        &std::collections::HashMap::new(),
+        crate::FrontendImportsChirho {
+            ifaces_chirho: &ifaces_chirho,
+            types_chirho: &types_chirho,
+            type_synonyms_chirho: &type_synonyms_chirho,
+            type_families_chirho: &type_families_chirho,
+            class_env_chirho: &class_env_chirho,
+        },
+        &crate::FrontendOptionsChirho::for_program_chirho("main"),
     )
     .unwrap_or_else(|errors_chirho| {
         panic!(
@@ -29,7 +41,7 @@ fn frontend_chirho(source_chirho: &str) -> crate::FrontendResultChirho {
 #[test]
 fn local_closed_family_reduces_on_the_full_checked_kind_prefix_chirho() {
     let source_chirho = "{-# LANGUAGE StandaloneKindSignatures, ExplicitForAll, TypeFamilies, PolyKinds, KindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\ntype FChirho :: forall k. k -> Type\ntype family FChirho a where\n  FChirho (a :: Type) = Int\n  FChirho (a :: Type -> Type) = Bool\nintChirho :: FChirho Int\nintChirho = 1\nboolChirho :: FChirho Maybe\nboolChirho = True\nmain = pure ()\n";
-    let result_chirho = frontend_chirho(source_chirho);
+    let result_chirho = program_frontend_chirho(source_chirho);
     let key_chirho = TypeFamilyIdChirho::SourceChirho {
         module_chirho: "Main".to_owned(),
         name_chirho: "FChirho".to_owned(),
@@ -53,14 +65,14 @@ fn local_closed_family_reduces_on_the_full_checked_kind_prefix_chirho() {
 
 #[test]
 fn a_nullary_family_returning_an_arrow_reduces_before_surplus_application_chirho() {
-    frontend_chirho(
+    program_frontend_chirho(
         "{-# LANGUAGE StandaloneKindSignatures, TypeFamilies #-}\nmodule Main where\nimport Data.Kind (Type)\ntype FChirho :: Type -> Type\ntype family FChirho where\n  FChirho = Maybe\nvalueChirho :: FChirho Int\nvalueChirho = Nothing\nmain = pure ()\n",
     );
 }
 
 #[test]
 fn open_family_instances_transport_their_checked_hidden_prefix_chirho() {
-    frontend_chirho(
+    program_frontend_chirho(
         "{-# LANGUAGE DataKinds, TypeFamilies, PolyKinds, KindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\nimport GHC.TypeLits (Nat)\ntype family FChirho (a :: k) :: Type\ntype instance FChirho (3 :: Nat) = Int\ntype instance FChirho (a :: Type -> Type) = Bool\nintChirho :: FChirho 3\nintChirho = 1\nboolChirho :: FChirho Maybe\nboolChirho = True\nmain = pure ()\n",
     );
 }

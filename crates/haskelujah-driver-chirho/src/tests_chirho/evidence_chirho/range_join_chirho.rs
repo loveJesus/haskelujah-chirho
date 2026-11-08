@@ -37,6 +37,10 @@ fn only_the_marked_range_receives_its_enum_proof_chirho() {
             ground_pred_chirho: None,
             applied_head_chirho: None,
             class_name_chirho: "Enum".to_string(),
+            class_identity_chirho:
+                haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                    haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+                ),
             ty_key_chirho: Some("Integer".to_string()),
             applied_ty_chirho: None,
         }],
@@ -52,7 +56,10 @@ fn only_the_marked_range_receives_its_enum_proof_chirho() {
     ]);
     assert_eq!(
         join_range_evidence_chirho(&result_chirho, &occurrences_chirho, &ranges_chirho),
-        HashMap::from([(range_chirho, ("Enum".to_string(), "Int".to_string()))]),
+        HashMap::from([(
+            range_chirho,
+            haskelujah_core_chirho::OccurrenceEvidenceChirho::legacy_chirho("Enum", "Int"),
+        )]),
     );
 }
 
@@ -69,6 +76,7 @@ fn range_proofs_require_a_real_span_and_one_solved_enum_obligation_chirho() {
             ground_pred_chirho: None,
             applied_head_chirho: None,
             class_name_chirho: "Enum".to_string(),
+            class_identity_chirho: haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho),
             ty_key_chirho: None,
             applied_ty_chirho: None,
         }],
@@ -76,6 +84,7 @@ fn range_proofs_require_a_real_span_and_one_solved_enum_obligation_chirho() {
             ground_pred_chirho: None,
             applied_head_chirho: None,
             class_name_chirho: "Num".to_string(),
+            class_identity_chirho: haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho),
             ty_key_chirho: Some("Int".to_string()),
             applied_ty_chirho: None,
         }],
@@ -84,6 +93,7 @@ fn range_proofs_require_a_real_span_and_one_solved_enum_obligation_chirho() {
                 ground_pred_chirho: None,
                 applied_head_chirho: None,
                 class_name_chirho: "Enum".to_string(),
+                class_identity_chirho: haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho),
                 ty_key_chirho: Some("Int".to_string()),
                 applied_ty_chirho: None,
             },
@@ -91,6 +101,7 @@ fn range_proofs_require_a_real_span_and_one_solved_enum_obligation_chirho() {
                 ground_pred_chirho: None,
                 applied_head_chirho: None,
                 class_name_chirho: "Enum".to_string(),
+                class_identity_chirho: haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho),
                 ty_key_chirho: Some("Char".to_string()),
                 applied_ty_chirho: None,
             },
@@ -112,6 +123,10 @@ fn range_proofs_require_a_real_span_and_one_solved_enum_obligation_chirho() {
             ground_pred_chirho: None,
             applied_head_chirho: None,
             class_name_chirho: "Enum".to_string(),
+            class_identity_chirho:
+                haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                    haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+                ),
             ty_key_chirho: Some("Char".to_string()),
             applied_ty_chirho: None,
         }],

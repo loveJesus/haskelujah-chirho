@@ -56,7 +56,7 @@ pub fn run_frontend_with_options_chirho(
     imports_chirho: FrontendImportsChirho<'_>,
     options_chirho: &FrontendOptionsChirho,
 ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
-    let policy_chirho = FrontendPolicyChirho::resolve_chirho(
+    let mut policy_chirho = FrontendPolicyChirho::resolve_chirho(
         &options_chirho.ghc_options_chirho,
         [
             haskelujah_parser_chirho::pragma_chirho::header_pragmas_chirho(
@@ -65,6 +65,7 @@ pub fn run_frontend_with_options_chirho(
             ),
         ],
     );
+    policy_chirho.program_entry_chirho = options_chirho.program_entry_chirho.clone();
     run_frontend_under_policy_chirho(source_chirho, file_id_chirho, imports_chirho, policy_chirho)
 }
 
@@ -543,6 +544,8 @@ pub(crate) fn run_frontend_under_policy_chirho(
                 promotion_scope_chirho: Some(promotion_scope_chirho.clone()),
                 family_scope_chirho: Some(family_scope_chirho),
                 type_constructor_scope_chirho: Some(type_constructor_scope_chirho),
+                // Only the caller's program root carries an entry (row 692).
+                entry_obligation_chirho: policy_chirho.program_entry_chirho.as_deref(),
             },
             elaboration_chirho.state_chirho,
         );

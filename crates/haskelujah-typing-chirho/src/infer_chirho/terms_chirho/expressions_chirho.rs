@@ -13,9 +13,29 @@ use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, TyChirho};
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, StmtChirho};
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
+use haskelujah_ast_chirho::name_chirho::CompilerClassChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
 
 impl InferCtxChirho {
+    /// The wanted a literal or a prefix negation brings. Its translation names the compiler's
+    /// own class whatever is in scope (Report sections 3.2, 3.4 and 6.4.1), so the predicate
+    /// carries that proof, and no `IsString` import is needed. Under RebindableSyntax the
+    /// literal calls whatever `fromInteger` (and the negation whatever `negate`) is in scope,
+    /// and under MagicHash it may be a primitive literal whose `#` the AST erases. Either way
+    /// the predicate stays legacy and unproven, a named support boundary (row 692).
+    /// workflow: language-features-chirho/fundep-generalization-chirho
+    fn literal_predicate_chirho(
+        &self,
+        identity_chirho: CompilerClassChirho,
+        ty_chirho: &TyChirho,
+    ) -> PredChirho {
+        if self.compiler_literals_chirho {
+            PredChirho::compiler_chirho(identity_chirho, ty_chirho.clone())
+        } else {
+            PredChirho::new_chirho(identity_chirho.legacy_name_chirho(), ty_chirho.clone())
+        }
+    }
+
     /// Infer the type of an expression, returning (substitution, type).
     pub fn infer_expr_chirho(&mut self, expr_chirho: &ExprChirho) -> (SubstChirho, TyChirho) {
         let (substitution_chirho, ty_chirho) = self.infer_expr_inner_chirho(expr_chirho);
@@ -28,29 +48,33 @@ impl InferCtxChirho {
             ExprChirho::LitChirho(lit_chirho) => match lit_chirho {
                 LitChirho::IntChirho(_, span_chirho, _) => {
                     let lit_ty_chirho = self.fresh_var_chirho();
-                    self.deferred_preds_chirho.push((
-                        PredChirho::new_chirho("Num", lit_ty_chirho.clone()),
-                        *span_chirho,
-                    ));
-                    self.capture_literal_evidence_chirho(lit_chirho, "Num", &lit_ty_chirho);
+                    let wanted_chirho = self
+                        .literal_predicate_chirho(CompilerClassChirho::NumChirho, &lit_ty_chirho);
+                    self.capture_literal_evidence_chirho(lit_chirho, &wanted_chirho);
+                    self.deferred_preds_chirho
+                        .push((wanted_chirho, *span_chirho));
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
                 LitChirho::FloatChirho(_, span_chirho, _) => {
                     let lit_ty_chirho = self.fresh_var_chirho();
-                    self.deferred_preds_chirho.push((
-                        PredChirho::new_chirho("Fractional", lit_ty_chirho.clone()),
-                        *span_chirho,
-                    ));
-                    self.capture_literal_evidence_chirho(lit_chirho, "Fractional", &lit_ty_chirho);
+                    let wanted_chirho = self.literal_predicate_chirho(
+                        CompilerClassChirho::FractionalChirho,
+                        &lit_ty_chirho,
+                    );
+                    self.capture_literal_evidence_chirho(lit_chirho, &wanted_chirho);
+                    self.deferred_preds_chirho
+                        .push((wanted_chirho, *span_chirho));
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
                 LitChirho::StringChirho(_, span_chirho, _) if self.overloaded_strings_chirho => {
                     let lit_ty_chirho = self.fresh_var_chirho();
-                    self.deferred_preds_chirho.push((
-                        PredChirho::new_chirho("IsString", lit_ty_chirho.clone()),
-                        *span_chirho,
-                    ));
-                    self.capture_literal_evidence_chirho(lit_chirho, "IsString", &lit_ty_chirho);
+                    let wanted_chirho = self.literal_predicate_chirho(
+                        CompilerClassChirho::IsStringChirho,
+                        &lit_ty_chirho,
+                    );
+                    self.capture_literal_evidence_chirho(lit_chirho, &wanted_chirho);
+                    self.deferred_preds_chirho
+                        .push((wanted_chirho, *span_chirho));
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
                 _ => {
@@ -535,6 +559,19 @@ impl InferCtxChirho {
                 // and unify as we go. The bind pattern variable `x` gets the
                 // unwrapped type `a` from `m a`.
                 let m_chirho = self.fresh_var_chirho(); // the monad constructor
+                // Only a bind or a non-final expression makes the block monadic (Report
+                // section 3.14): `do {e}` is `e`, and lets then a final expression are
+                // `let decls in e`, whose type is the expression's own, with no `m a` and no
+                // Monad (row 692).
+                let monadic_chirho =
+                    stmts_chirho
+                        .iter()
+                        .enumerate()
+                        .any(|(idx_chirho, stmt_chirho)| match stmt_chirho {
+                            StmtChirho::BindChirho { .. } => true,
+                            StmtChirho::ExprChirho { .. } => idx_chirho + 1 < stmts_chirho.len(),
+                            StmtChirho::LetChirho { .. } => false,
+                        });
                 let mut subst_chirho = SubstChirho::empty_chirho();
                 let mut last_ty_chirho = TyChirho::unit_chirho();
                 let last_expected_chirho = self.do_last_expected_chirho.take();
@@ -566,7 +603,10 @@ impl InferCtxChirho {
                             subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                             self.apply_subst_all_chirho(&s_chirho);
 
-                            if is_last_chirho {
+                            if is_last_chirho && !monadic_chirho {
+                                // `do {e}` and `do {let decls; e}`: no monad at all.
+                                last_ty_chirho = ty_chirho;
+                            } else if is_last_chirho {
                                 // Last statement: its type IS the do-block type.
                                 // Unify with `m_chirho a` to extract the monad.
                                 let a_chirho = self.fresh_var_chirho();
@@ -733,12 +773,12 @@ impl InferCtxChirho {
                 span_chirho,
             } => {
                 let (s_chirho, expr_ty_chirho) = self.infer_expr_chirho(expr_chirho);
-                // negate :: Num a => a -> a
-                // Defer a Num constraint on the expression type
-                self.deferred_preds_chirho.push((
-                    PredChirho::new_chirho("Num", expr_ty_chirho.clone()),
-                    *span_chirho,
-                ));
+                // `-e` is the Prelude's `negate e` (Report section 3.4): the compiler's own Num,
+                // under the same safety flags as an ordinary literal (row 692).
+                let wanted_chirho =
+                    self.literal_predicate_chirho(CompilerClassChirho::NumChirho, &expr_ty_chirho);
+                self.deferred_preds_chirho
+                    .push((wanted_chirho, *span_chirho));
                 (s_chirho, expr_ty_chirho)
             }
 

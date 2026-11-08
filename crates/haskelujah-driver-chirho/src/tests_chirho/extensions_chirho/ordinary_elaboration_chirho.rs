@@ -26,6 +26,36 @@ pub(super) fn frontend_chirho(source_chirho: &str) -> Result<FrontendResultChirh
     })
 }
 
+/// `frontend_chirho` for a GHC program: its `main` is the program's IO entry, as GHC checks
+/// a Main module's (row 692). Library and value sources keep `frontend_chirho`.
+pub(super) fn program_frontend_chirho(source_chirho: &str) -> Result<FrontendResultChirho, String> {
+    let ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    let types_chirho = HashMap::new();
+    let type_synonyms_chirho = crate::ImportedTypeSynonymsChirho::new();
+    let type_families_chirho = crate::seed_builtin_type_families_chirho();
+    let class_env_chirho = haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho();
+    crate::run_frontend_with_options_chirho(
+        source_chirho,
+        FileIdChirho::SYNTHETIC_CHIRHO,
+        crate::FrontendImportsChirho {
+            ifaces_chirho: &ifaces_chirho,
+            types_chirho: &types_chirho,
+            type_synonyms_chirho: &type_synonyms_chirho,
+            type_families_chirho: &type_families_chirho,
+            class_env_chirho: &class_env_chirho,
+        },
+        &crate::FrontendOptionsChirho::for_program_chirho("main"),
+    )
+    .map_err(|diagnostics_chirho| {
+        diagnostics_chirho
+            .diagnostics_chirho()
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join("\n")
+    })
+}
+
 fn declaration_chirho(
     result_chirho: &FrontendResultChirho,
     name_chirho: &str,
@@ -48,7 +78,7 @@ fn declaration_chirho(
 
 #[test]
 fn ordinary_headers_bodies_and_the_inference_handoff_run_chirho() {
-    let result_chirho = frontend_chirho("{-# LANGUAGE KindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\ndata WrapChirho (f :: Type -> Type) a = WrapChirho (f a)\nidentityChirho :: WrapChirho Maybe Int -> WrapChirho Maybe Int\nidentityChirho x = x\nmain = pure ()\n").expect("kinded ordinary declaration checks");
+    let result_chirho = program_frontend_chirho("{-# LANGUAGE KindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\ndata WrapChirho (f :: Type -> Type) a = WrapChirho (f a)\nidentityChirho :: WrapChirho Maybe Int -> WrapChirho Maybe Int\nidentityChirho x = x\nmain = pure ()\n").expect("kinded ordinary declaration checks");
     let declaration_chirho = declaration_chirho(&result_chirho, "WrapChirho");
     let key_chirho = declaration_chirho.identity_chirho.key_chirho();
     let scheme_chirho = result_chirho
@@ -72,14 +102,14 @@ fn ordinary_headers_bodies_and_the_inference_handoff_run_chirho() {
 
 #[test]
 fn ordinary_kind_mismatch_is_fatal_under_deferral_chirho() {
-    let error_chirho = frontend_chirho("{-# LANGUAGE KindSignatures #-}\n{-# OPTIONS_GHC -fdefer-type-errors #-}\nmodule Main where\nimport Data.Kind (Type)\ndata WrapChirho (f :: Type -> Type) = WrapChirho (f Int)\nbadChirho :: WrapChirho Int\nbadChirho = undefined\nmain = pure ()\n").err().expect("a wrong constructor kind cannot defer");
+    let error_chirho = program_frontend_chirho("{-# LANGUAGE KindSignatures #-}\n{-# OPTIONS_GHC -fdefer-type-errors #-}\nmodule Main where\nimport Data.Kind (Type)\ndata WrapChirho (f :: Type -> Type) = WrapChirho (f Int)\nbadChirho :: WrapChirho Int\nbadChirho = undefined\nmain = pure ()\n").err().expect("a wrong constructor kind cannot defer");
     assert!(error_chirho.contains("kind mismatch"), "{error_chirho}");
     assert!(error_chirho.contains("error[E0300]"), "{error_chirho}");
 }
 
 #[test]
 fn typed_builtin_class_telescopes_accept_nat_and_polykinded_typeable_chirho() {
-    let result_chirho = frontend_chirho("{-# LANGUAGE DataKinds, FlexibleContexts, KindSignatures, PolyKinds #-}\nmodule Main where\nimport GHC.TypeLits (KnownNat)\nimport Data.Typeable (Typeable)\nimport Data.Proxy (Proxy(..))\nknownChirho :: KnownNat 5 => ()\nknownChirho = ()\npolyChirho :: Typeable Maybe => ()\npolyChirho = ()\nmain = pure ()\n").expect("typed builtin class kinds check");
+    let result_chirho = program_frontend_chirho("{-# LANGUAGE DataKinds, FlexibleContexts, KindSignatures, PolyKinds #-}\nmodule Main where\nimport GHC.TypeLits (KnownNat)\nimport Data.Typeable (Typeable)\nimport Data.Proxy (Proxy(..))\nknownChirho :: KnownNat 5 => ()\nknownChirho = ()\npolyChirho :: Typeable Maybe => ()\npolyChirho = ()\nmain = pure ()\n").expect("typed builtin class kinds check");
     let schemes_chirho = result_chirho
         .infer_result_chirho
         .type_families_chirho
@@ -100,25 +130,25 @@ fn typed_builtin_class_telescopes_accept_nat_and_polykinded_typeable_chirho() {
 
 #[test]
 fn typed_builtin_class_telescopes_reject_wrong_nat_kind_chirho() {
-    let error_chirho = frontend_chirho("{-# LANGUAGE DataKinds, FlexibleContexts #-}\nmodule Main where\nimport GHC.TypeLits (KnownNat)\nbadChirho :: KnownNat Bool => ()\nbadChirho = ()\nmain = pure ()\n").err().expect("KnownNat cannot accept an ordinary type");
+    let error_chirho = program_frontend_chirho("{-# LANGUAGE DataKinds, FlexibleContexts #-}\nmodule Main where\nimport GHC.TypeLits (KnownNat)\nbadChirho :: KnownNat Bool => ()\nbadChirho = ()\nmain = pure ()\n").err().expect("KnownNat cannot accept an ordinary type");
     assert!(error_chirho.contains("kind mismatch"), "{error_chirho}");
 }
 
 #[test]
 fn declaration_sccs_share_headers_and_generalize_before_dependants_chirho() {
-    frontend_chirho("{-# LANGUAGE PolyKinds, KindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\ndata FirstChirho a = FirstChirho (SecondChirho a)\ndata SecondChirho a = SecondChirho (FirstChirho a)\ndata PhantomChirho (a :: k) = PhantomChirho\naChirho :: PhantomChirho Int\naChirho = PhantomChirho\nbChirho :: PhantomChirho Maybe\nbChirho = PhantomChirho\nmain = pure ()\n").expect("SCC and per-use generalized telescope");
+    program_frontend_chirho("{-# LANGUAGE PolyKinds, KindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\ndata FirstChirho a = FirstChirho (SecondChirho a)\ndata SecondChirho a = SecondChirho (FirstChirho a)\ndata PhantomChirho (a :: k) = PhantomChirho\naChirho :: PhantomChirho Int\naChirho = PhantomChirho\nbChirho :: PhantomChirho Maybe\nbChirho = PhantomChirho\nmain = pure ()\n").expect("SCC and per-use generalized telescope");
 }
 
 #[test]
 fn independent_signature_and_pattern_scopes_restore_chirho() {
-    frontend_chirho("{-# LANGUAGE ScopedTypeVariables #-}\nmodule Main where\nfChirho :: forall a. a -> a\nfChirho (x :: a) = x\ngChirho :: forall a. a -> a\ngChirho (x :: a) = x\nmain = pure ()\n").expect("independent lexical type-variable scopes");
+    program_frontend_chirho("{-# LANGUAGE ScopedTypeVariables #-}\nmodule Main where\nfChirho :: forall a. a -> a\nfChirho (x :: a) = x\ngChirho :: forall a. a -> a\ngChirho (x :: a) = x\nmain = pure ()\n").expect("independent lexical type-variable scopes");
 }
 
 #[test]
 fn scoped_signature_binder_is_the_patterns_canonical_variable_chirho() {
     use haskelujah_ast_chirho::pat_chirho::PatChirho;
     use haskelujah_ast_chirho::ty_chirho::TypeChirho;
-    let result_chirho = frontend_chirho("{-# LANGUAGE ScopedTypeVariables #-}\nmodule Main where\nfChirho :: forall a. a -> a\nfChirho (x :: a) = x\nmain = pure ()\n").expect("scoped signature handoff");
+    let result_chirho = program_frontend_chirho("{-# LANGUAGE ScopedTypeVariables #-}\nmodule Main where\nfChirho :: forall a. a -> a\nfChirho (x :: a) = x\nmain = pure ()\n").expect("scoped signature handoff");
     let binder_chirho = result_chirho
         .module_chirho
         .decls_chirho
@@ -166,46 +196,46 @@ fn scoped_signature_binder_is_the_patterns_canonical_variable_chirho() {
 
 #[test]
 fn equality_syntax_uses_the_same_kind_solver_chirho() {
-    frontend_chirho("{-# LANGUAGE GADTs, TypeOperators #-}\nmodule Main where\nfChirho :: (a ~ Int) => a -> Int\nfChirho x = x\nmain = pure ()\n").expect("homogeneous equality kind checks");
-    let error_chirho = frontend_chirho("{-# LANGUAGE GADTs, TypeOperators, PolyKinds #-}\nmodule Main where\nbadChirho :: (Int ~ Maybe) => ()\nbadChirho = ()\nmain = pure ()\n").err().expect("equality operands must have the same kind");
+    program_frontend_chirho("{-# LANGUAGE GADTs, TypeOperators #-}\nmodule Main where\nfChirho :: (a ~ Int) => a -> Int\nfChirho x = x\nmain = pure ()\n").expect("homogeneous equality kind checks");
+    let error_chirho = program_frontend_chirho("{-# LANGUAGE GADTs, TypeOperators, PolyKinds #-}\nmodule Main where\nbadChirho :: (Int ~ Maybe) => ()\nbadChirho = ()\nmain = pure ()\n").err().expect("equality operands must have the same kind");
     assert!(error_chirho.contains("kind mismatch"), "{error_chirho}");
 }
 
 #[test]
 fn a_standalone_polymorphic_kind_cannot_be_specialized_chirho() {
-    let error_chirho = frontend_chirho("{-# LANGUAGE StandaloneKindSignatures, ExplicitForAll, PolyKinds, KindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\ntype TChirho :: forall k. k -> Type\ndata TChirho (a :: Type) = MkTChirho a\nmain = pure ()\n").err().expect("a universal kind cannot specialize to Type");
+    let error_chirho = program_frontend_chirho("{-# LANGUAGE StandaloneKindSignatures, ExplicitForAll, PolyKinds, KindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\ntype TChirho :: forall k. k -> Type\ndata TChirho (a :: Type) = MkTChirho a\nmain = pure ()\n").err().expect("a universal kind cannot specialize to Type");
     assert!(error_chirho.contains("kind mismatch"), "{error_chirho}");
 }
 
 #[test]
 fn promoted_result_retains_the_parents_hidden_kind_prefix_chirho() {
-    frontend_chirho("{-# LANGUAGE DataKinds, KindSignatures, PolyKinds #-}\nmodule Main where\nimport Data.Proxy (Proxy)\ndata PhantomChirho (a :: k) = MkChirho\npChirho :: Proxy ('MkChirho :: PhantomChirho Maybe)\npChirho = undefined\nmain = pure ()\n").expect("promoted constructor and parent use the same complete telescope");
+    program_frontend_chirho("{-# LANGUAGE DataKinds, KindSignatures, PolyKinds #-}\nmodule Main where\nimport Data.Proxy (Proxy)\ndata PhantomChirho (a :: k) = MkChirho\npChirho :: Proxy ('MkChirho :: PhantomChirho Maybe)\npChirho = undefined\nmain = pure ()\n").expect("promoted constructor and parent use the same complete telescope");
 }
 
 #[test]
 fn transparent_kind_synonyms_use_the_checked_common_catalogue_chirho() {
-    frontend_chirho("{-# LANGUAGE KindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\ntype KindChirho = Type\ndata BoxChirho (a :: KindChirho) = BoxChirho a\nmain = pure ()\n").expect("kind synonym is transparent in the same solver");
+    program_frontend_chirho("{-# LANGUAGE KindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\ntype KindChirho = Type\ndata BoxChirho (a :: KindChirho) = BoxChirho a\nmain = pure ()\n").expect("kind synonym is transparent in the same solver");
 }
 
 #[test]
 fn associated_families_and_class_method_kinds_are_orchestrated_chirho() {
-    frontend_chirho("{-# LANGUAGE TypeFamilies, KindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\nclass CChirho (f :: Type -> Type) where\n  type FChirho f a :: Type\n  methodChirho :: f Int -> f Int\nmain = pure ()\n").expect("associated family and class method headers check");
+    program_frontend_chirho("{-# LANGUAGE TypeFamilies, KindSignatures #-}\nmodule Main where\nimport Data.Kind (Type)\nclass CChirho (f :: Type -> Type) where\n  type FChirho f a :: Type\n  methodChirho :: f Int -> f Int\nmain = pure ()\n").expect("associated family and class method headers check");
 }
 
 #[test]
 fn transparent_synonym_cycles_are_refused_without_rejecting_nominal_recursion_chirho() {
-    let error_chirho = frontend_chirho("module Main where\ntype FirstChirho = SecondChirho\ntype SecondChirho = FirstChirho\nmain = pure ()\n").err().expect("a transparent synonym cycle is not finite");
+    let error_chirho = program_frontend_chirho("module Main where\ntype FirstChirho = SecondChirho\ntype SecondChirho = FirstChirho\nmain = pure ()\n").err().expect("a transparent synonym cycle is not finite");
     assert!(
         error_chirho.contains("recursive type synonym"),
         "{error_chirho}"
     );
-    frontend_chirho("module Main where\ndata FirstChirho = FirstChirho SecondChirho\ntype SecondChirho = FirstChirho\nmain = pure ()\n").expect("a nominal data boundary breaks synonym expansion");
+    program_frontend_chirho("module Main where\ndata FirstChirho = FirstChirho SecondChirho\ntype SecondChirho = FirstChirho\nmain = pure ()\n").expect("a nominal data boundary breaks synonym expansion");
 }
 
 #[test]
 fn constraint_aliases_keep_the_checked_hidden_prefix_and_producer_chirho() {
     use haskelujah_ast_chirho::name_chirho::{CompilerClassChirho, PredicateClassIdentityChirho};
-    let result_chirho = frontend_chirho("{-# LANGUAGE ConstraintKinds, PolyKinds, FlexibleContexts #-}\nmodule Main where\nimport Data.Typeable (Typeable)\ntype ReflectionChirho a = Typeable a\nprobeChirho :: ReflectionChirho Maybe => ()\nprobeChirho = ()\nmain = pure ()\n").expect("checked constraint synonym converts");
+    let result_chirho = program_frontend_chirho("{-# LANGUAGE ConstraintKinds, PolyKinds, FlexibleContexts #-}\nmodule Main where\nimport Data.Typeable (Typeable)\ntype ReflectionChirho a = Typeable a\nprobeChirho :: ReflectionChirho Maybe => ()\nprobeChirho = ()\nmain = pure ()\n").expect("checked constraint synonym converts");
     let scheme_chirho = result_chirho
         .infer_result_chirho
         .env_chirho
@@ -228,7 +258,7 @@ fn constraint_aliases_keep_the_checked_hidden_prefix_and_producer_chirho() {
 
 #[test]
 fn context_only_variables_and_hidden_kinds_are_quantified_chirho() {
-    let result_chirho = frontend_chirho("{-# LANGUAGE PolyKinds, ExplicitForAll, KindSignatures, FlexibleContexts #-}\nmodule Main where\nimport Data.Typeable (Typeable)\nprobeChirho :: forall k (a :: k). Typeable a => ()\nprobeChirho = ()\nmain = pure ()\n").expect("context-only signature checks");
+    let result_chirho = program_frontend_chirho("{-# LANGUAGE PolyKinds, ExplicitForAll, KindSignatures, FlexibleContexts #-}\nmodule Main where\nimport Data.Typeable (Typeable)\nprobeChirho :: forall k (a :: k). Typeable a => ()\nprobeChirho = ()\nmain = pure ()\n").expect("context-only signature checks");
     let scheme_chirho = result_chirho
         .infer_result_chirho
         .env_chirho
@@ -254,7 +284,7 @@ fn context_only_variables_and_hidden_kinds_are_quantified_chirho() {
 
 #[test]
 fn equality_inside_a_constraint_alias_retains_its_obligation_chirho() {
-    frontend_chirho("{-# LANGUAGE ConstraintKinds, GADTs, TypeOperators #-}\nmodule Main where\ntype SameChirho a b = (a ~ b)\nidentityChirho :: SameChirho a Int => a -> Int\nidentityChirho x = x\nmain = pure ()\n").expect("equality alias supplies the same signature equality");
+    program_frontend_chirho("{-# LANGUAGE ConstraintKinds, GADTs, TypeOperators #-}\nmodule Main where\ntype SameChirho a b = (a ~ b)\nidentityChirho :: SameChirho a Int => a -> Int\nidentityChirho x = x\nmain = pure ()\n").expect("equality alias supplies the same signature equality");
 }
 
 #[test]
@@ -262,7 +292,34 @@ fn a_source_namesake_never_acquires_a_compiler_class_identity_chirho() {
     use haskelujah_ast_chirho::name_chirho::{
         ClassIdentityUnknownChirho, PredicateClassProofChirho,
     };
-    let result_chirho = frontend_chirho("{-# LANGUAGE FlexibleContexts #-}\nmodule Main where\nclass Typeable a\nprobeChirho :: Typeable Int => ()\nprobeChirho = ()\nmain = pure ()\n").expect("source class context remains representable");
+    let result_chirho = program_frontend_chirho("{-# LANGUAGE FlexibleContexts #-}\nmodule Main where\nclass Typeable a\nprobeChirho :: Typeable Int => ()\nprobeChirho = ()\nmain = pure ()\n").expect("source class context remains representable");
+    let scheme_chirho = result_chirho
+        .infer_result_chirho
+        .env_chirho
+        .lookup_chirho("probeChirho")
+        .expect("source context retained");
+    let predicate_chirho = scheme_chirho
+        .preds_chirho
+        .iter()
+        .find(|predicate_chirho| predicate_chirho.class_name_chirho == "Typeable")
+        .expect("source predicate retained");
+    assert_eq!(
+        predicate_chirho.class_identity_chirho(),
+        &PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::MissingUnitChirho)
+    );
+    assert!(predicate_chirho.kind_tys_chirho.is_empty());
+}
+
+/// Diagnostic for the program-purpose regression (row 692, gpt_chirho #32611): the namesake
+/// module with a signed `main`, as a value module and as a program, judged by the test
+/// above's two assertions. With the unsigned program above, the first of the three to fail
+/// names the handoff.
+const SIGNED_NAMESAKE_SOURCE_CHIRHO: &str = "{-# LANGUAGE FlexibleContexts #-}\nmodule Main where\nclass Typeable a\nprobeChirho :: Typeable Int => ()\nprobeChirho = ()\nmain :: IO ()\nmain = pure ()\n";
+
+fn assert_source_namesake_stays_unproven_chirho(result_chirho: FrontendResultChirho) {
+    use haskelujah_ast_chirho::name_chirho::{
+        ClassIdentityUnknownChirho, PredicateClassProofChirho,
+    };
     let scheme_chirho = result_chirho
         .infer_result_chirho
         .env_chirho
@@ -281,8 +338,24 @@ fn a_source_namesake_never_acquires_a_compiler_class_identity_chirho() {
 }
 
 #[test]
+fn a_source_namesake_stays_unproven_in_a_signed_value_module_chirho() {
+    assert_source_namesake_stays_unproven_chirho(
+        frontend_chirho(SIGNED_NAMESAKE_SOURCE_CHIRHO)
+            .expect("source class context remains representable"),
+    );
+}
+
+#[test]
+fn a_source_namesake_stays_unproven_in_a_signed_program_chirho() {
+    assert_source_namesake_stays_unproven_chirho(
+        program_frontend_chirho(SIGNED_NAMESAKE_SOURCE_CHIRHO)
+            .expect("source class context remains representable"),
+    );
+}
+
+#[test]
 fn a_constraint_tuple_alias_preserves_every_predicate_telescope_chirho() {
-    let result_chirho = frontend_chirho("{-# LANGUAGE ConstraintKinds, PolyKinds, FlexibleContexts #-}\nmodule Main where\nimport Data.Typeable (Typeable)\ntype ContextChirho a = (Typeable a, Eq Int)\nprobeChirho :: ContextChirho Maybe => ()\nprobeChirho = ()\nmain = pure ()\n").expect("constraint tuple alias checks");
+    let result_chirho = program_frontend_chirho("{-# LANGUAGE ConstraintKinds, PolyKinds, FlexibleContexts #-}\nmodule Main where\nimport Data.Typeable (Typeable)\ntype ContextChirho a = (Typeable a, Eq Int)\nprobeChirho :: ContextChirho Maybe => ()\nprobeChirho = ()\nmain = pure ()\n").expect("constraint tuple alias checks");
     let scheme_chirho = result_chirho
         .infer_result_chirho
         .env_chirho

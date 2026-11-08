@@ -49,26 +49,41 @@ impl DictPassCtxChirho {
             return None;
         }
         let evidence_chirho = self.reference_evidence_chirho.get(&id_chirho)?;
-        let fractional_key_chirho = evidence_chirho
+        let fractional_chirho = evidence_chirho
             .iter()
-            .find(|proof_chirho| proof_chirho.class_name_chirho == "Fractional")?
-            .ty_key_chirho
-            .as_deref();
-        let integral_key_chirho = evidence_chirho
+            .find(|proof_chirho| proof_chirho.class_name_chirho == "Fractional")?;
+        let integral_chirho = evidence_chirho
             .iter()
-            .find(|proof_chirho| proof_chirho.class_name_chirho == "Integral")?
-            .ty_key_chirho
-            .as_deref();
-        if fractional_key_chirho != Some("Double") || integral_key_chirho != Some("Int") {
+            .find(|proof_chirho| proof_chirho.class_name_chirho == "Integral")?;
+        if fractional_chirho.ty_key_chirho.as_deref() != Some("Double")
+            || integral_chirho.ty_key_chirho.as_deref() != Some("Int")
+        {
             return None;
         }
-        let divide_chirho =
-            self.lookup_dispatch_body_name_id_chirho("$prim_Fractional_/_Double")?;
         let helper_chirho =
             self.lookup_body_backed_name_id_chirho(FRACTIONAL_POWER_DOUBLE_INT_CHIRHO)?;
+        // Each predicate keeps its own proof (row 692, gpt #32675). A displaced compiler
+        // Fractional divides through its own dictionary or refuses by name. The helper's Int
+        // exponent is the compiler's own code, so a displaced Integral borrows nothing.
+        let (no_vars_chirho, no_classes_chirho, no_locals_chirho) =
+            (HashMap::new(), HashSet::new(), HashMap::new());
+        let compiler_divide_chirho = self.compiler_method_head_chirho(
+            &fractional_chirho.class_identity_chirho,
+            "/",
+            "Double",
+            &no_vars_chirho,
+            &no_classes_chirho,
+            &no_locals_chirho,
+        );
+        let divide_chirho = match compiler_divide_chirho {
+            Some(head_chirho) => head_chirho,
+            None => CoreExprChirho::VarChirho(
+                self.lookup_dispatch_body_name_id_chirho("$prim_Fractional_/_Double")?,
+            ),
+        };
         Some(CoreExprChirho::AppChirho {
             fun_chirho: Box::new(CoreExprChirho::VarChirho(helper_chirho)),
-            arg_chirho: Box::new(CoreExprChirho::VarChirho(divide_chirho)),
+            arg_chirho: Box::new(divide_chirho),
         })
     }
 
@@ -118,9 +133,37 @@ impl DictPassCtxChirho {
         id_chirho: CoreIdChirho,
     ) -> Option<CoreExprChirho> {
         let (operator_chirho, unit_chirho) = self.aggregate_shape_chirho(id_chirho)?;
-        let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
-        if class_name_chirho != "Num" {
+        let evidence_chirho = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = evidence_chirho.keys_chirho();
+        // An own key is the own-scope route's (`own_aggregate_chirho`), with the binding's
+        // dictionaries; this route has none to serve it (row 692, gpt #32692).
+        if class_name_chirho != "Num" || is_own_dictionary_key_chirho(ty_key_chirho) {
             return None;
+        }
+        // A displaced compiler Num folds through its own dictionary's methods, or their named
+        // refusals: the spelled rows are the source class's (row 692, C10, gpt #32666).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        if self
+            .displaced_identity_chirho(&evidence_chirho.class_identity_chirho)
+            .is_some()
+        {
+            let (no_vars_chirho, no_classes_chirho, no_locals_chirho) =
+                (HashMap::new(), HashSet::new(), HashMap::new());
+            let method_head_chirho = |method_chirho: &str| {
+                self.compiler_method_head_chirho(
+                    &evidence_chirho.class_identity_chirho,
+                    method_chirho,
+                    ty_key_chirho,
+                    &no_vars_chirho,
+                    &no_classes_chirho,
+                    &no_locals_chirho,
+                )
+            };
+            return self.aggregate_fold_chirho(
+                method_head_chirho(operator_chirho)?,
+                method_head_chirho("fromInteger")?,
+                unit_chirho,
+            );
         }
         // Only rows with an actual body count: the global name table can hold
         // dangling placeholder ids, and a generated missing-method body is not
@@ -155,9 +198,33 @@ impl DictPassCtxChirho {
             return None;
         }
         let (operator_chirho, unit_chirho) = self.aggregate_shape_chirho(id_chirho)?;
-        let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let evidence_chirho = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = evidence_chirho.keys_chirho();
         if class_name_chirho != "Num" || !is_own_dictionary_key_chirho(ty_key_chirho) {
             return None;
+        }
+        // A displaced compiler Num folds through its own selectors on the binding's own
+        // dictionary, or their named refusals (row 692, gpt #32675).
+        if self
+            .displaced_identity_chirho(&evidence_chirho.class_identity_chirho)
+            .is_some()
+        {
+            let no_locals_chirho = HashMap::new();
+            let method_head_chirho = |method_chirho: &str| {
+                self.compiler_method_head_chirho(
+                    &evidence_chirho.class_identity_chirho,
+                    method_chirho,
+                    ty_key_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    &no_locals_chirho,
+                )
+            };
+            return self.aggregate_fold_chirho(
+                method_head_chirho(operator_chirho)?,
+                method_head_chirho("fromInteger")?,
+                unit_chirho,
+            );
         }
         let dict_id_chirho = Self::own_dict_chirho(
             "Num",
@@ -205,9 +272,30 @@ impl DictPassCtxChirho {
         let (_, method_chirho) = ORDERING_FOLDS_CHIRHO
             .iter()
             .find(|(name_chirho, _)| *name_chirho == base_name_chirho)?;
-        let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let evidence_chirho = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = evidence_chirho.keys_chirho();
         if class_name_chirho != "Ord" || !is_own_dictionary_key_chirho(ty_key_chirho) {
             return None;
+        }
+        let fold_id_chirho = self.lookup_body_backed_name_id_chirho(ORDERING_FOLD1_CHIRHO)?;
+        // A displaced compiler Ord folds through its own `max` or `min` on the binding's own
+        // dictionary, or its named refusal (row 692, gpt #32675).
+        if self
+            .displaced_identity_chirho(&evidence_chirho.class_identity_chirho)
+            .is_some()
+        {
+            let method_head_chirho = self.compiler_method_head_chirho(
+                &evidence_chirho.class_identity_chirho,
+                method_chirho,
+                ty_key_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                &HashMap::new(),
+            )?;
+            return Some(CoreExprChirho::AppChirho {
+                fun_chirho: Box::new(CoreExprChirho::VarChirho(fold_id_chirho)),
+                arg_chirho: Box::new(method_head_chirho),
+            });
         }
         let dict_id_chirho = Self::own_dict_chirho(
             "Ord",
@@ -217,7 +305,6 @@ impl DictPassCtxChirho {
         )?;
         let (_class_chirho, selector_id_chirho) =
             self.method_selectors_chirho.get(*method_chirho)?;
-        let fold_id_chirho = self.lookup_body_backed_name_id_chirho(ORDERING_FOLD1_CHIRHO)?;
         Some(CoreExprChirho::AppChirho {
             fun_chirho: Box::new(CoreExprChirho::VarChirho(fold_id_chirho)),
             arg_chirho: Box::new(CoreExprChirho::AppChirho {
@@ -259,15 +346,36 @@ impl DictPassCtxChirho {
         let (_, method_chirho) = ORDERING_FOLDS_CHIRHO
             .iter()
             .find(|(name_chirho, _)| *name_chirho == base_name_chirho)?;
-        let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let evidence_chirho = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = evidence_chirho.keys_chirho();
         if class_name_chirho != "Ord" || is_own_dictionary_key_chirho(ty_key_chirho) {
             return None;
         }
-        let row_id_chirho = self.ordering_method_row_chirho(method_chirho, ty_key_chirho)?;
+        // A displaced compiler Ord folds through its own `max` or `min`, or its named refusal;
+        // the spelled row is the source class's (row 692, gpt #32675).
+        let row_chirho = if self
+            .displaced_identity_chirho(&evidence_chirho.class_identity_chirho)
+            .is_some()
+        {
+            let (no_vars_chirho, no_classes_chirho, no_locals_chirho) =
+                (HashMap::new(), HashSet::new(), HashMap::new());
+            self.compiler_method_head_chirho(
+                &evidence_chirho.class_identity_chirho,
+                method_chirho,
+                ty_key_chirho,
+                &no_vars_chirho,
+                &no_classes_chirho,
+                &no_locals_chirho,
+            )?
+        } else {
+            CoreExprChirho::VarChirho(
+                self.ordering_method_row_chirho(method_chirho, ty_key_chirho)?,
+            )
+        };
         let fold_id_chirho = self.lookup_body_backed_name_id_chirho(ORDERING_FOLD1_CHIRHO)?;
         Some(CoreExprChirho::AppChirho {
             fun_chirho: Box::new(CoreExprChirho::VarChirho(fold_id_chirho)),
-            arg_chirho: Box::new(CoreExprChirho::VarChirho(row_id_chirho)),
+            arg_chirho: Box::new(row_chirho),
         })
     }
 
@@ -289,15 +397,39 @@ impl DictPassCtxChirho {
         let (_, helper_chirho) = EQUALITY_CONSUMERS_CHIRHO
             .iter()
             .find(|(name_chirho, _)| *name_chirho == base_name_chirho)?;
-        let (class_name_chirho, ty_key_chirho) = self.occurrence_evidence_chirho.get(&id_chirho)?;
-        if class_name_chirho != "Eq" || INT_SHAPED_KEYS_CHIRHO.contains(&ty_key_chirho.as_str()) {
+        let evidence_chirho = self.occurrence_evidence_chirho.get(&id_chirho)?;
+        let (class_name_chirho, ty_key_chirho) = evidence_chirho.keys_chirho();
+        // An own key has no row here and no dictionaries in scope; it keeps its route (row 692,
+        // gpt #32692).
+        if class_name_chirho != "Eq"
+            || INT_SHAPED_KEYS_CHIRHO.contains(&ty_key_chirho.as_str())
+            || is_own_dictionary_key_chirho(ty_key_chirho)
+        {
             return None;
         }
-        let row_id_chirho = self.existing_eq_row_chirho(ty_key_chirho)?;
+        // A displaced compiler Eq compares through its own `==`, or its named refusal; the
+        // spelled row is the source class's (row 692, gpt #32675).
+        let equality_chirho = if self
+            .displaced_identity_chirho(&evidence_chirho.class_identity_chirho)
+            .is_some()
+        {
+            let (no_vars_chirho, no_classes_chirho, no_locals_chirho) =
+                (HashMap::new(), HashSet::new(), HashMap::new());
+            self.compiler_method_head_chirho(
+                &evidence_chirho.class_identity_chirho,
+                "==",
+                ty_key_chirho,
+                &no_vars_chirho,
+                &no_classes_chirho,
+                &no_locals_chirho,
+            )?
+        } else {
+            CoreExprChirho::VarChirho(self.existing_eq_row_chirho(ty_key_chirho)?)
+        };
         let helper_id_chirho = self.lookup_compiler_owned_name_id_chirho(helper_chirho)?;
         Some(CoreExprChirho::AppChirho {
             fun_chirho: Box::new(CoreExprChirho::VarChirho(helper_id_chirho)),
-            arg_chirho: Box::new(CoreExprChirho::VarChirho(row_id_chirho)),
+            arg_chirho: Box::new(equality_chirho),
         })
     }
 

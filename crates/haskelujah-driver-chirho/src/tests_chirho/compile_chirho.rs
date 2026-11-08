@@ -6812,7 +6812,15 @@ fn ensure_rts_staticlib_for_tests_chirho() -> Option<crate::rts_snapshot_chirho:
         || {
             let cargo_status_chirho = std::process::Command::new("cargo")
                 .current_dir(&workspace_root_chirho)
-                .args(["build", "-p", "haskelujah-rts", "--quiet"])
+                .args([
+                    "build",
+                    "--locked",
+                    "--offline",
+                    "-j2",
+                    "-p",
+                    "haskelujah-rts",
+                    "--quiet",
+                ])
                 .status()
                 .map_err(|error_chirho| error_chirho.to_string())?;
             if cargo_status_chirho.success() {

@@ -24,6 +24,10 @@ fn show_record_chirho(applied_chirho: Option<TyChirho>) -> ReferenceEvidenceChir
         ground_pred_chirho: None,
         applied_head_chirho: None,
         class_name_chirho: "Show".to_string(),
+        class_identity_chirho:
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+            ),
         ty_key_chirho: Some("BoxChirho".to_string()),
         applied_ty_chirho: applied_chirho,
     }
@@ -112,6 +116,10 @@ fn only_a_head_every_capture_resolved_alike_survives_chirho() {
         ground_pred_chirho: None,
         applied_head_chirho: Some(vec![int_chirho(), second_chirho]),
         class_name_chirho: "AskChirho".to_string(),
+        class_identity_chirho:
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+            ),
         ty_key_chirho: Some("Int".to_string()),
         applied_ty_chirho: None,
     };
@@ -150,8 +158,10 @@ fn agreeing_predicate_shapes_meet_class_proof_in_both_orders_chirho() {
         },
     );
     let unknown_chirho = PredChirho::new_chirho("Eq", int_chirho());
+    // The producer carries each predicate's own class proof beside its ground goal.
     let record_chirho = |predicate_chirho: PredChirho| ReferenceEvidenceChirho {
         class_name_chirho: "Eq".to_string(),
+        class_identity_chirho: predicate_chirho.class_identity_chirho().clone(),
         ty_key_chirho: Some("Int".to_string()),
         applied_ty_chirho: None,
         applied_head_chirho: None,
@@ -170,6 +180,11 @@ fn agreeing_predicate_shapes_meet_class_proof_in_both_orders_chirho() {
         )]));
         let record_chirho = &agreed_chirho[&1][0];
         assert_eq!(record_chirho.ty_key_chirho.as_deref(), Some("Int"));
+        // The position's own class proof meets the same way (row 692, gpt #32681).
+        assert_eq!(
+            &record_chirho.class_identity_chirho,
+            unknown_chirho.class_identity_chirho()
+        );
         assert_eq!(
             record_chirho
                 .ground_pred_chirho
@@ -192,6 +207,10 @@ fn agreeing_predicate_shapes_meet_class_proof_in_both_orders_chirho() {
             .as_ref()
             .unwrap()
             .class_identity_chirho(),
+        proven_chirho.class_identity_chirho()
+    );
+    assert_eq!(
+        &agreed_chirho[&1][0].class_identity_chirho,
         proven_chirho.class_identity_chirho()
     );
 }

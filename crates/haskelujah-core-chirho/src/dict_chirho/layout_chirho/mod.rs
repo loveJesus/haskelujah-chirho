@@ -1,0 +1,298 @@
+// For God so loved the world that he gave his only begotten Son, that whoever
+// believes in him should not perish but have eternal life. — John 3:16
+
+//! Dictionary layout building and method/superclass selector generation, and the reserved
+//! namespace a displaced compiler class keeps (`compiler_namespace_chirho`, row 692, C10).
+
+#![allow(unused_imports)]
+use std::collections::HashMap;
+
+use haskelujah_span_chirho::SpanChirho;
+use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, ClassEnvChirho};
+use haskelujah_typing_chirho::ty_chirho::{TyChirho, TyVarChirho};
+
+use super::{DictLayoutChirho, DictPassCtxChirho, SuperclassSlotChirho};
+use crate::expr_chirho::{
+    AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
+    CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
+};
+use haskelujah_ast_chirho::name_chirho::{ClassIdentityUnknownChirho, PredicateClassProofChirho};
+
+mod builtin_rows_chirho;
+mod compiler_namespace_chirho;
+
+impl DictPassCtxChirho {
+    pub fn build_layouts_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
+        for (name_chirho, decl_chirho) in class_env_chirho.classes_chirho().iter_chirho() {
+            let layout_chirho = self.class_layout_chirho(
+                name_chirho,
+                decl_chirho.supers_chirho.clone(),
+                decl_chirho,
+            );
+            self.layouts_chirho
+                .insert(name_chirho.clone(), layout_chirho);
+        }
+    }
+
+    /// One class's layout under `namespace_chirho`: its superclass slots first, in declared
+    /// order, then its methods sorted by name. The method arities and the class's parameter
+    /// count are recorded under the same namespace. A spelled class and a displaced compiler
+    /// class (row 692, C10) are laid out by this one rule.
+    pub(in crate::dict_chirho) fn class_layout_chirho(
+        &mut self,
+        namespace_chirho: &str,
+        super_namespaces_chirho: Vec<String>,
+        decl_chirho: &ClassDeclChirho,
+    ) -> DictLayoutChirho {
+        let mut slot_chirho = 0usize;
+
+        // Each slot carries the proof of the superclass template the record states for it (row
+        // 692, C10, gpt #32919). This count check is no fresh validation: it only reads the
+        // alignment the producers give, since the seed derives a class's supers and templates from
+        // one ordered identity list and a source class derives its supers from its templates, so
+        // neither yields a same-count misaligned pair (gpt #32935). With unequal counts no
+        // identity is claimed.
+        let templates_chirho = decl_chirho.superclass_templates_chirho();
+        let templates_match_chirho = templates_chirho.len() == super_namespaces_chirho.len();
+        let unary_declaration_chirho =
+            decl_chirho.all_vars_chirho().len() == 1 && decl_chirho.kind_vars_chirho.is_empty();
+        let super_slots_chirho: Vec<SuperclassSlotChirho> = super_namespaces_chirho
+            .into_iter()
+            .enumerate()
+            .map(|(position_chirho, super_name_chirho)| {
+                let pos_chirho = slot_chirho;
+                slot_chirho += 1;
+                let template_chirho = templates_chirho
+                    .get(position_chirho)
+                    .filter(|_| templates_match_chirho);
+                let class_proof_chirho = template_chirho
+                    .map(|template_chirho| template_chirho.class_identity_chirho().clone())
+                    .unwrap_or(PredicateClassProofChirho::UnknownChirho(
+                        ClassIdentityUnknownChirho::LegacyChirho,
+                    ));
+                // The whole child key is the superclass head only for a one-parameter class
+                // without a kind prefix whose template is exactly its own variable (gpt #32942).
+                let identity_head_chirho = unary_declaration_chirho
+                    && template_chirho.is_some_and(|template_chirho| {
+                        template_chirho.kind_tys_chirho.is_empty()
+                            && template_chirho.extra_tys_chirho.is_empty()
+                            && template_chirho.ty_chirho
+                                == TyChirho::VarChirho(decl_chirho.var_chirho)
+                    });
+                SuperclassSlotChirho {
+                    namespace_chirho: super_name_chirho,
+                    index_chirho: pos_chirho,
+                    class_proof_chirho,
+                    identity_head_chirho,
+                }
+            })
+            .collect();
+
+        // Sort method names for deterministic layout
+        let mut method_names_chirho: Vec<String> =
+            decl_chirho.methods_chirho.keys().cloned().collect();
+        method_names_chirho.sort();
+        for (method_name_chirho, scheme_chirho) in &decl_chirho.methods_chirho {
+            self.method_arities_chirho.insert(
+                (namespace_chirho.to_string(), method_name_chirho.clone()),
+                Self::scheme_arity_chirho(scheme_chirho),
+            );
+        }
+
+        let method_slots_chirho: Vec<(String, usize)> = method_names_chirho
+            .into_iter()
+            .map(|method_name_chirho| {
+                let pos_chirho = slot_chirho;
+                slot_chirho += 1;
+                (method_name_chirho, pos_chirho)
+            })
+            .collect();
+
+        // Track parameter count for MPTC dispatch
+        self.class_param_count_chirho.insert(
+            namespace_chirho.to_string(),
+            decl_chirho.all_vars_chirho().len(),
+        );
+
+        DictLayoutChirho {
+            class_name_chirho: namespace_chirho.to_string(),
+            super_slots_chirho,
+            method_slots_chirho,
+            field_count_chirho: slot_chirho,
+        }
+    }
+
+    /// Generate method selector functions for each class.
+    ///
+    /// For a class `Eq` with method `==` at slot 0 in a 2-field dict:
+    /// ```text
+    /// $sel_Eq_== = \$dict -> case $dict of
+    ///     $DictEq f0 f1 -> f0
+    /// ```
+    pub fn generate_selectors_chirho(&mut self) {
+        let layouts_chirho: Vec<_> = self.layouts_chirho.values().cloned().collect();
+        for layout_chirho in &layouts_chirho {
+            for (method_name_chirho, sel_id_chirho) in
+                self.generate_layout_selectors_chirho(layout_chirho)
+            {
+                self.method_selectors_chirho.insert(
+                    method_name_chirho,
+                    (layout_chirho.class_name_chirho.clone(), sel_id_chirho),
+                );
+            }
+        }
+        // A displaced compiler class's selectors stay out of the method-name map, which
+        // the source class owning the spelling keeps (row 692, C10).
+        self.generate_compiler_selectors_chirho();
+    }
+
+    /// One layout's method selectors, by method name, and its superclass selectors, registered
+    /// under the layout's class. Spelled and compiler layouts share it (row 692, C10).
+    pub(in crate::dict_chirho) fn generate_layout_selectors_chirho(
+        &mut self,
+        layout_chirho: &DictLayoutChirho,
+    ) -> Vec<(String, CoreIdChirho)> {
+        let mut selectors_chirho = Vec::new();
+        for (method_name_chirho, slot_idx_chirho) in &layout_chirho.method_slots_chirho {
+            let sel_name_chirho = format!(
+                "$sel_{}_{}",
+                layout_chirho.class_name_chirho, method_name_chirho
+            );
+            let dict_ty_chirho =
+                TyChirho::ConChirho(format!("$Dict_{}", layout_chirho.class_name_chirho));
+
+            // The dictionary binder for the lambda
+            let dict_binder_chirho = self.fresh_binder_chirho("$dict", dict_ty_chirho.clone());
+            let dict_id_chirho = dict_binder_chirho.id_chirho;
+
+            // Build field binders for the case alt
+            let mut field_binders_chirho = Vec::new();
+            let mut selected_id_chirho = CoreIdChirho(0);
+            for i_chirho in 0..layout_chirho.field_count_chirho {
+                let field_name_chirho = format!("$f{i_chirho}");
+                let fb_chirho = self.fresh_binder_chirho(
+                    &field_name_chirho,
+                    TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9999)),
+                );
+                if i_chirho == *slot_idx_chirho {
+                    selected_id_chirho = fb_chirho.id_chirho;
+                }
+                field_binders_chirho.push(fb_chirho);
+            }
+
+            let case_wild_chirho = self.fresh_binder_chirho("$wild", dict_ty_chirho.clone());
+
+            let con_name_chirho = format!("$Dict_{}", layout_chirho.class_name_chirho);
+
+            let case_expr_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
+                bind_chirho: case_wild_chirho,
+                result_ty_chirho: TyChirho::VarChirho(
+                    haskelujah_typing_chirho::ty_chirho::TyVarChirho(9998),
+                ),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho(con_name_chirho),
+                    binders_chirho: field_binders_chirho,
+                    rhs_chirho: CoreExprChirho::VarChirho(selected_id_chirho),
+                }],
+            };
+
+            let selector_rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: dict_binder_chirho,
+                body_chirho: Box::new(case_expr_chirho),
+            };
+
+            let sel_binder_chirho = self.fresh_binder_chirho(
+                &sel_name_chirho,
+                TyChirho::fun_chirho(
+                    dict_ty_chirho,
+                    TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9998)),
+                ),
+            );
+            let sel_id_chirho = sel_binder_chirho.id_chirho;
+
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: sel_binder_chirho,
+                rhs_chirho: selector_rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+
+            selectors_chirho.push((method_name_chirho.clone(), sel_id_chirho));
+        }
+
+        // Generate superclass selectors:
+        // $sel_Ord_super_Eq = \$dict -> case $dict of $DictOrd f0 f1 ... -> f0
+        for slot_chirho in &layout_chirho.super_slots_chirho {
+            let super_name_chirho = &slot_chirho.namespace_chirho;
+            let slot_idx_chirho = &slot_chirho.index_chirho;
+            let sel_name_chirho = format!(
+                "$sel_{}_super_{}",
+                layout_chirho.class_name_chirho, super_name_chirho
+            );
+            let dict_ty_chirho =
+                TyChirho::ConChirho(format!("$Dict_{}", layout_chirho.class_name_chirho));
+
+            let dict_binder_chirho = self.fresh_binder_chirho("$dict", dict_ty_chirho.clone());
+            let dict_id_chirho = dict_binder_chirho.id_chirho;
+
+            let mut field_binders_chirho = Vec::new();
+            let mut selected_id_chirho = CoreIdChirho(0);
+            for i_chirho in 0..layout_chirho.field_count_chirho {
+                let field_name_chirho = format!("$f{i_chirho}");
+                let fb_chirho = self.fresh_binder_chirho(
+                    &field_name_chirho,
+                    TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(9999)),
+                );
+                if i_chirho == *slot_idx_chirho {
+                    selected_id_chirho = fb_chirho.id_chirho;
+                }
+                field_binders_chirho.push(fb_chirho);
+            }
+
+            let case_wild_chirho = self.fresh_binder_chirho("$wild", dict_ty_chirho.clone());
+            let con_name_chirho = format!("$Dict_{}", layout_chirho.class_name_chirho);
+
+            let case_expr_chirho = CoreExprChirho::CaseChirho {
+                scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(dict_id_chirho)),
+                bind_chirho: case_wild_chirho,
+                result_ty_chirho: TyChirho::VarChirho(
+                    haskelujah_typing_chirho::ty_chirho::TyVarChirho(9998),
+                ),
+                alts_chirho: vec![CoreAltChirho {
+                    con_chirho: AltConChirho::DataConChirho(con_name_chirho),
+                    binders_chirho: field_binders_chirho,
+                    rhs_chirho: CoreExprChirho::VarChirho(selected_id_chirho),
+                }],
+            };
+
+            let selector_rhs_chirho = CoreExprChirho::LamChirho {
+                binder_chirho: dict_binder_chirho,
+                body_chirho: Box::new(case_expr_chirho),
+            };
+
+            let super_dict_ty_chirho = TyChirho::ConChirho(format!("$Dict_{}", super_name_chirho));
+            let sel_binder_chirho = self.fresh_binder_chirho(
+                &sel_name_chirho,
+                TyChirho::fun_chirho(dict_ty_chirho, super_dict_ty_chirho),
+            );
+            let sel_id_chirho = sel_binder_chirho.id_chirho;
+
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: sel_binder_chirho,
+                rhs_chirho: selector_rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+
+            self.super_selectors_chirho.insert(
+                (
+                    layout_chirho.class_name_chirho.clone(),
+                    super_name_chirho.clone(),
+                ),
+                sel_id_chirho,
+            );
+        }
+        selectors_chirho
+    }
+}

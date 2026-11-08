@@ -163,8 +163,8 @@ impl ClassEnvChirho {
                 class_name_chirho: "Functor".to_string(),
                 head_ty_chirho: state_t_head_ty_chirho.clone(),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Functor",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FunctorChirho,
                     TyChirho::VarChirho(state_monad_var_chirho),
                 )],
             },
@@ -178,8 +178,8 @@ impl ClassEnvChirho {
                 class_name_chirho: "Applicative".to_string(),
                 head_ty_chirho: state_t_head_ty_chirho.clone(),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Applicative",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ApplicativeChirho,
                     TyChirho::VarChirho(state_monad_var_chirho),
                 )],
             },
@@ -193,8 +193,8 @@ impl ClassEnvChirho {
                 class_name_chirho: "Monad".to_string(),
                 head_ty_chirho: state_t_head_ty_chirho,
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Monad",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
                     TyChirho::VarChirho(state_monad_var_chirho),
                 )],
             },
@@ -218,8 +218,8 @@ impl ClassEnvChirho {
                 class_name_chirho: "Functor".to_string(),
                 head_ty_chirho: reader_t_head_ty_chirho.clone(),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Functor",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FunctorChirho,
                     TyChirho::VarChirho(reader_monad_var_chirho),
                 )],
             },
@@ -233,8 +233,8 @@ impl ClassEnvChirho {
                 class_name_chirho: "Applicative".to_string(),
                 head_ty_chirho: reader_t_head_ty_chirho.clone(),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Applicative",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ApplicativeChirho,
                     TyChirho::VarChirho(reader_monad_var_chirho),
                 )],
             },
@@ -248,8 +248,8 @@ impl ClassEnvChirho {
                 class_name_chirho: "Monad".to_string(),
                 head_ty_chirho: reader_t_head_ty_chirho.clone(),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Monad",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
                     TyChirho::VarChirho(reader_monad_var_chirho),
                 )],
             },
@@ -284,8 +284,8 @@ impl ClassEnvChirho {
                 class_name_chirho: "Functor".to_string(),
                 head_ty_chirho: maybe_t_head_ty_chirho.clone(),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Functor",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::FunctorChirho,
                     TyChirho::VarChirho(maybe_t_monad_var_chirho),
                 )],
             },
@@ -299,8 +299,8 @@ impl ClassEnvChirho {
                 class_name_chirho: "Applicative".to_string(),
                 head_ty_chirho: maybe_t_head_ty_chirho.clone(),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Applicative",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ApplicativeChirho,
                     TyChirho::VarChirho(maybe_t_monad_var_chirho),
                 )],
             },
@@ -314,8 +314,8 @@ impl ClassEnvChirho {
                 class_name_chirho: "Monad".to_string(),
                 head_ty_chirho: maybe_t_head_ty_chirho.clone(),
                 extra_head_tys_chirho: vec![],
-                context_chirho: vec![PredChirho::new_chirho(
-                    "Monad",
+                context_chirho: vec![PredChirho::compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
                     TyChirho::VarChirho(maybe_t_monad_var_chirho),
                 )],
             },

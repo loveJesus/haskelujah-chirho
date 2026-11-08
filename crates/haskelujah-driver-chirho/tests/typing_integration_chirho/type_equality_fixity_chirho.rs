@@ -3,7 +3,8 @@
 //! Equality at the type level has GHC's precedence four, below numeric addition.
 //! Both the positive proof and false-equality controls are measured with GHC 9.14.1.
 
-use super::{SourceMapChirho, assert_prints_everywhere_chirho, compile_source_chirho};
+use super::{SourceMapChirho, assert_prints_everywhere_chirho};
+use haskelujah_driver::FrontendOptionsChirho;
 
 const TYPE_EQUALITY_CHIRHO: &str = r#"{-# LANGUAGE DataKinds, GADTs, TypeOperators #-}
 module Main where
@@ -80,17 +81,29 @@ fn explicit_type_equality_parentheses_keep_their_meaning_chirho() {
 
 #[test]
 fn false_equalities_and_noninjective_arithmetic_stay_rejected_chirho() {
-    for (name_chirho, source_chirho) in [
-        ("FalseTypeEqualityChirho.hs", FALSE_EQUALITY_CHIRHO),
-        ("ChainedTypeEqualityChirho.hs", CHAINED_EQUALITY_CHIRHO),
-        ("UnrelatedTypeSumsChirho.hs", UNRELATED_SUMS_CHIRHO),
-        ("ZeroTypeProductChirho.hs", ZERO_PRODUCT_CHIRHO),
+    // Main programs compile as programs, so their `main` is IO and only the equality can
+    // refuse them; library modules compile as libraries (row 692).
+    for (name_chirho, source_chirho, program_chirho) in [
+        ("FalseTypeEqualityChirho.hs", FALSE_EQUALITY_CHIRHO, true),
+        (
+            "ChainedTypeEqualityChirho.hs",
+            CHAINED_EQUALITY_CHIRHO,
+            true,
+        ),
+        ("UnrelatedTypeSumsChirho.hs", UNRELATED_SUMS_CHIRHO, false),
+        ("ZeroTypeProductChirho.hs", ZERO_PRODUCT_CHIRHO, false),
     ] {
+        let options_chirho = if program_chirho {
+            FrontendOptionsChirho::for_program_chirho("main")
+        } else {
+            FrontendOptionsChirho::default()
+        };
         assert!(
-            compile_source_chirho(
+            haskelujah_driver::compile_source_with_options_chirho(
                 source_chirho,
                 &mut SourceMapChirho::new_chirho(),
-                name_chirho
+                name_chirho,
+                &options_chirho,
             )
             .is_err(),
             "GHC rejects {name_chirho}; we accepted it"

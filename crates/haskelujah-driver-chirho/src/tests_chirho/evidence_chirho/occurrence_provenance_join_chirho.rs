@@ -119,6 +119,10 @@ fn a_reference_join_preserves_the_complete_checked_record_chirho() {
     });
     let record_chirho = ReferenceEvidenceChirho {
         class_name_chirho: "PolyChirho".to_string(),
+        class_identity_chirho:
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+            ),
         ty_key_chirho: Some("Int".to_string()),
         applied_ty_chirho: Some(TyChirho::int_chirho()),
         applied_head_chirho: Some(vec![TyChirho::int_chirho(), TyChirho::bool_chirho()]),
@@ -291,6 +295,10 @@ fn legacy_reference_join_chirho(
             ground_pred_chirho: None,
             applied_head_chirho: None,
             class_name_chirho: "Show".to_string(),
+            class_identity_chirho:
+                haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                    haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+                ),
             ty_key_chirho: Some(key_chirho.to_string()),
             applied_ty_chirho: None,
         }]
@@ -348,6 +356,10 @@ fn join_literal_chirho(
     let evidence_chirho = |key_chirho: &str| LiteralEvidenceChirho {
         class_name_chirho: "Num".to_string(),
         ty_key_chirho: key_chirho.to_string(),
+        class_identity_chirho:
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+            ),
     };
     let mut result_chirho = infer_result_chirho(vec![]);
     result_chirho.literal_evidence_by_origin_chirho = by_origin_chirho
@@ -376,6 +388,56 @@ fn join_literal_chirho(
     )
     .evidence_chirho
     .remove(&CoreIdChirho(10))
+}
+
+/// A literal's record carries its minted wanted's class proof to the dictionary pass, and a
+/// legacy literal stays legacy (row 692, C10).
+#[test]
+fn a_literal_carries_its_wanted_class_proof_to_the_pass_chirho() {
+    use haskelujah_ast_chirho::name_chirho::{
+        ClassIdentityUnknownChirho, CompilerClassChirho, PredicateClassIdentityChirho,
+        PredicateClassProofChirho,
+    };
+    use haskelujah_typing_chirho::infer_chirho::LiteralEvidenceChirho;
+    let mut supply_chirho = OriginSupplyChirho::new_chirho();
+    let literal_chirho = supply_chirho.fresh_chirho();
+    for proof_chirho in [
+        PredicateClassProofChirho::ProvenChirho(PredicateClassIdentityChirho::CompilerChirho(
+            CompilerClassChirho::NumChirho,
+        )),
+        PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::LegacyChirho),
+    ] {
+        let mut result_chirho = infer_result_chirho(vec![]);
+        result_chirho.literal_evidence_by_origin_chirho = HashMap::from([(
+            literal_chirho,
+            LiteralEvidenceChirho {
+                class_name_chirho: "Num".to_string(),
+                ty_key_chirho: "Int".to_string(),
+                class_identity_chirho: proof_chirho.clone(),
+            },
+        )]);
+        let proofs_chirho = crate::evidence_join_chirho::join_occurrence_proofs_chirho(
+            &result_chirho,
+            &HashMap::from([(
+                CoreIdChirho(10),
+                ("fromInteger".to_string(), CoreIdChirho(1)),
+            )]),
+            &HashMap::from([(CoreIdChirho(10), SpanChirho::DUMMY_CHIRHO)]),
+            &HashMap::new(),
+            &HashMap::from([(
+                CoreIdChirho(10),
+                ProvenanceChirho::new_chirho(literal_chirho, OccurrenceRoleChirho::IntegerLiteral),
+            )]),
+        );
+        assert_eq!(
+            crate::evidence_join_chirho::occurrence_keys_chirho(&proofs_chirho)[&CoreIdChirho(10)],
+            haskelujah_core_chirho::OccurrenceEvidenceChirho::new_chirho(
+                "Num",
+                "Int",
+                proof_chirho
+            ),
+        );
+    }
 }
 
 #[test]
@@ -426,6 +488,10 @@ fn two_generated_literals_at_one_span_each_take_their_own_evidence_chirho() {
     let evidence_chirho = |key_chirho: &str| LiteralEvidenceChirho {
         class_name_chirho: "Num".to_string(),
         ty_key_chirho: key_chirho.to_string(),
+        class_identity_chirho:
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+            ),
     };
 
     let mut result_chirho = infer_result_chirho(vec![]);
@@ -519,6 +585,9 @@ fn an_origin_meets_class_proofs_in_both_capture_orders_chirho() {
             .into_iter()
             .map(|predicate_chirho| {
                 let mut record_chirho = identified_record_chirho("Int", Some(origin_chirho));
+                // The checker captures the class proof with the predicate it grounds.
+                record_chirho.class_identity_chirho =
+                    predicate_chirho.class_identity_chirho().clone();
                 record_chirho.ground_pred_chirho = Some(predicate_chirho);
                 record_chirho
             })
@@ -531,6 +600,11 @@ fn an_origin_meets_class_proofs_in_both_capture_orders_chirho() {
             &HashMap::from([(CoreIdChirho(10), reference_chirho(origin_chirho))]),
         );
         assert_eq!(joined_chirho[&CoreIdChirho(10)].ty_key_chirho, "Int");
+        // The occurrence's own class proof is the same meet (row 692, C10).
+        assert_eq!(
+            &joined_chirho[&CoreIdChirho(10)].class_identity_chirho,
+            expected_chirho.class_identity_chirho()
+        );
         let goals_chirho =
             crate::evidence_join_chirho::occurrence_ground_goals_chirho(&joined_chirho);
         assert_eq!(goals_chirho[&CoreIdChirho(10)].len(), 1);

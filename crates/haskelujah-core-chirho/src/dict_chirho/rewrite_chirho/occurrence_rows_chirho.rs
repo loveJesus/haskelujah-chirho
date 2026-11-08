@@ -45,8 +45,10 @@ impl DictPassCtxChirho {
         let (_method_name_chirho, canonical_id_chirho) = self
             .method_occurrence_canon_chirho
             .get(&occurrence_id_chirho)?;
-        let (class_name_chirho, proven_key_chirho) =
-            self.occurrence_evidence_chirho.get(&occurrence_id_chirho)?;
+        let (class_name_chirho, proven_key_chirho) = self
+            .occurrence_evidence_chirho
+            .get(&occurrence_id_chirho)?
+            .keys_chirho();
         if !Self::is_head_only_key_chirho(proven_key_chirho) {
             return None;
         }

@@ -384,3 +384,62 @@ fn a_qualified_print_beside_the_programs_own_print_keeps_its_own_show_proof_chir
         classes_in_scope_chirho("P.print")
     );
 }
+
+/// A literal inside an instance method keeps the solution its method check found (row 692, C10).
+/// The program's own `class Num` displaces the compiler's, and the literal `1` in
+/// `fromInteger valueChirho = Prelude.fromInteger valueChirho + 1` is published at `Int` with the
+/// compiler's own `Num` proof, as GHC reads every literal through the compiler's class. Without
+/// the record, Core reached the literal through the program's spelled `fromInteger`, which
+/// re-entered itself on its own literal.
+#[test]
+fn an_instance_method_literal_publishes_its_local_compiler_proof_chirho() {
+    use haskelujah_ast_chirho::lit_chirho::LitChirho;
+    use haskelujah_ast_chirho::name_chirho::{
+        CompilerClassChirho, PredicateClassIdentityChirho, PredicateClassProofChirho,
+    };
+    let mut result_chirho = frontend_chirho(
+        "module Main where\n\
+         import Prelude hiding (Num, fromInteger)\n\
+         import qualified Prelude\n\
+         class Num a where\n\
+         \x20 fromInteger :: Integer -> a\n\
+         instance Num Int where\n\
+         \x20 fromInteger valueChirho = Prelude.fromInteger valueChirho + 1\n\
+         main :: IO ()\n\
+         main = print (fromInteger 7 :: Int)\n",
+    );
+    let mut origins_chirho: Vec<OriginIdChirho> = Vec::new();
+    for decl_chirho in &mut result_chirho.module_chirho.decls_chirho {
+        visit_decl_chirho(decl_chirho, &mut |occurrence_chirho| {
+            if let OccurrenceMutChirho::LiteralChirho(lit_chirho) = &occurrence_chirho
+                && matches!(&**lit_chirho, LitChirho::IntChirho(1, ..))
+                && let Some(origin_chirho) = lit_chirho.origin_chirho()
+            {
+                origins_chirho.push(origin_chirho);
+            }
+        });
+    }
+    assert_eq!(
+        origins_chirho.len(),
+        1,
+        "the control has exactly one owned literal 1"
+    );
+    let record_chirho = result_chirho
+        .infer_result_chirho
+        .literal_evidence_by_origin_chirho
+        .get(&origins_chirho[0])
+        .expect("the instance method's literal published no record");
+    assert_eq!(
+        (
+            record_chirho.class_name_chirho.as_str(),
+            record_chirho.ty_key_chirho.as_str()
+        ),
+        ("Num", "Int")
+    );
+    assert_eq!(
+        record_chirho.class_identity_chirho,
+        PredicateClassProofChirho::ProvenChirho(PredicateClassIdentityChirho::CompilerChirho(
+            CompilerClassChirho::NumChirho
+        ))
+    );
+}

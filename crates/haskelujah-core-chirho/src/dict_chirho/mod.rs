@@ -42,12 +42,14 @@ mod print_evidence_tests_chirho;
 pub mod rewrite_chirho;
 mod show_chirho;
 mod type_keys_chirho;
+pub use type_keys_chirho::OccurrenceEvidenceChirho;
 
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
+use haskelujah_ast_chirho::name_chirho::CompilerClassChirho;
 use haskelujah_span_chirho::SpanChirho;
-use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, PredChirho};
+use haskelujah_typing_chirho::class_chirho::{ClassDeclChirho, ClassEnvChirho, PredChirho};
 use haskelujah_typing_chirho::deriving_chirho::DerivedShowChirho;
 use haskelujah_typing_chirho::env_chirho::TyEnvChirho;
 use haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho;
@@ -67,12 +69,31 @@ const CORE_ID_EXHAUSTED_CHIRHO: &str =
 #[derive(Debug, Clone)]
 pub struct DictLayoutChirho {
     pub class_name_chirho: String,
-    /// Superclass dictionary positions: `(superclass_name, slot_index)`.
-    pub super_slots_chirho: Vec<(String, usize)>,
+    /// Superclass dictionary slots, in declared order.
+    pub super_slots_chirho: Vec<SuperclassSlotChirho>,
     /// Method positions: `(method_name, slot_index)`.
     pub method_slots_chirho: Vec<(String, usize)>,
     /// Total number of fields (super dicts + methods).
     pub field_count_chirho: usize,
+}
+
+/// One superclass slot of a dictionary layout (row 692, C10): the namespace its dictionaries and
+/// selector are spelled under, its position in the dictionary, and the class proof of the
+/// superclass template the class's own validated record states for it. The namespace is an ABI
+/// name only: a reader judges the superclass by this proof, so a reserved `$compiler_` spelling
+/// is never itself proof (gpt #32919).
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+#[derive(Debug, Clone)]
+pub struct SuperclassSlotChirho {
+    pub namespace_chirho: String,
+    pub index_chirho: usize,
+    pub class_proof_chirho: haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
+    /// The witness that this superclass's dictionary sits at the child's whole key, read from
+    /// the actual producer template (gpt #32942): the declaring class has exactly one type
+    /// parameter and no kind prefix, and the template has no kind or extra type arguments and its
+    /// head is exactly that declaration's own type variable. Only a slot with this witness may be
+    /// served at a key reused from the child or its representation.
+    pub identity_head_chirho: bool,
 }
 
 /// One conditional instance's dictionary factory (row 694): the binding that takes the
@@ -141,7 +162,7 @@ impl std::fmt::Display for DictPassDiagnosticChirho {
 #[derive(Default)]
 pub struct DictPassEvidenceChirho {
     pub method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
-    pub occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    pub occurrence_evidence_chirho: HashMap<CoreIdChirho, OccurrenceEvidenceChirho>,
     pub occurrence_applied_tys_chirho: HashMap<CoreIdChirho, TyChirho>,
     pub reference_evidence_chirho: HashMap<CoreIdChirho, Vec<ReferenceEvidenceChirho>>,
     pub derived_shows_chirho: HashMap<String, DerivedShowChirho>,
@@ -228,10 +249,10 @@ pub struct DictPassCtxChirho {
     /// Evidence-threading P1: occurrence id → (method name, canonical shared id)
     /// from `DesugarOutputChirho::method_occurrences_chirho`. Empty by default.
     method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
-    /// Evidence-threading P1: occurrence id → (class name, instance type key).
-    /// Populated by later phases (typing bridge / defaulting); when present the
-    /// occurrence dispatches directly to `$prim_{class}_{method}_{key}`.
-    occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    /// Evidence-threading P1: occurrence id → its proved class, instance type key and
+    /// class proof. Populated by later phases (typing bridge / defaulting); when present
+    /// the occurrence dispatches directly to `$prim_{class}_{method}_{key}`.
+    occurrence_evidence_chirho: HashMap<CoreIdChirho, OccurrenceEvidenceChirho>,
     /// The ground application each method occurrence's proof resolved to, where the checker
     /// recorded one (`BoxChirho Int`): the arguments a conditional instance's factory takes
     /// (`method_through_factory_chirho`, row 694, M1).
@@ -254,6 +275,22 @@ pub struct DictPassCtxChirho {
     /// Superclass selector CoreIds: `(subclass, superclass)` → selector id.
     /// Used to extract a superclass dictionary from a subclass dictionary.
     super_selectors_chirho: HashMap<(String, String), CoreIdChirho>,
+    /// Row 692, C10: the layout of each compiler class a source class displaces, under the
+    /// class's reserved namespace (`layout_chirho::compiler_namespace_chirho`). Empty when no
+    /// source class takes a compiler class's spelling.
+    compiler_layouts_chirho: HashMap<CompilerClassChirho, DictLayoutChirho>,
+    /// Row 692, C10: those classes' method selectors, by identity and method name.
+    compiler_selectors_chirho: HashMap<(CompilerClassChirho, String), CoreIdChirho>,
+    /// Row 692, C10: every compiler class a source class displaces, with its compiler record,
+    /// laid out or not. A compiler proof of one never takes the spelled route (gpt #32666).
+    displaced_compiler_classes_chirho:
+        HashMap<CompilerClassChirho, std::sync::Arc<ClassDeclChirho>>,
+    /// Row 692, C10: each compiler-owned helper whose dictionary slots name a displaced class,
+    /// with that class; its references are refused by name (gpt #32683).
+    displaced_compiler_helpers_chirho: HashMap<CoreIdChirho, CompilerClassChirho>,
+    /// Row 692, C10: the named refusals of displaced compiler requests this pass cannot serve,
+    /// returned with the unsupported dictionaries.
+    displaced_refusals_chirho: RefCell<BTreeSet<String>>,
     /// Conditional instance dict builders: `(class_name, type_constructor)` → the builder, a
     /// lambda that takes the instance's context dictionaries and returns the constructed
     /// class dict, with the head's formal binders and the context those parameters stand for.
@@ -369,6 +406,11 @@ impl DictPassCtxChirho {
             operator_occurrences_chirho: HashSet::new(),
             context_leading_rows_chirho: HashMap::new(),
             super_selectors_chirho: HashMap::new(),
+            compiler_layouts_chirho: HashMap::new(),
+            compiler_selectors_chirho: HashMap::new(),
+            displaced_compiler_classes_chirho: HashMap::new(),
+            displaced_compiler_helpers_chirho: HashMap::new(),
+            displaced_refusals_chirho: RefCell::new(BTreeSet::new()),
             conditional_dicts_chirho: HashMap::new(),
             newtype_info_chirho: HashMap::new(),
             gnd_default_rows_chirho: HashMap::new(),
@@ -772,7 +814,7 @@ pub fn dict_pass_module_full_with_method_occurrences_chirho(
     newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
     extra_dict_param_names_chirho: HashSet<String>,
     method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
-    occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    occurrence_evidence_chirho: HashMap<CoreIdChirho, OccurrenceEvidenceChirho>,
 ) -> DictPassResultChirho {
     let mut ctx_chirho = DictPassCtxChirho::new_chirho(0, names_chirho, con_types_chirho);
     ctx_chirho.newtype_info_chirho = newtype_info_chirho;
@@ -800,7 +842,7 @@ pub fn dict_pass_module_full_with_evidence_chirho(
     newtype_info_chirho: HashMap<String, NewtypeInfoChirho>,
     extra_dict_param_names_chirho: HashSet<String>,
     method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
-    occurrence_evidence_chirho: HashMap<CoreIdChirho, (String, String)>,
+    occurrence_evidence_chirho: HashMap<CoreIdChirho, OccurrenceEvidenceChirho>,
     occurrence_applied_tys_chirho: HashMap<CoreIdChirho, TyChirho>,
     reference_evidence_chirho: HashMap<CoreIdChirho, Vec<ReferenceEvidenceChirho>>,
     derived_shows_chirho: HashMap<String, DerivedShowChirho>,

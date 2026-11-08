@@ -111,12 +111,13 @@ impl DictPassCtxChirho {
         let wanted_chirho = self
             .occurrence_evidence_chirho
             .iter()
-            .filter(|(id_chirho, (class_name_chirho, key_chirho))| {
-                class_name_chirho == "Ord"
-                    && !is_own_dictionary_key_chirho(key_chirho)
+            .filter(|(id_chirho, occurrence_chirho)| {
+                occurrence_chirho.class_name_chirho == "Ord"
+                    && !is_own_dictionary_key_chirho(&occurrence_chirho.ty_key_chirho)
                     && !self.names_programs_own_binder_chirho(**id_chirho)
             })
-            .filter_map(|(id_chirho, (_, key_chirho))| {
+            .filter_map(|(id_chirho, occurrence_chirho)| {
+                let key_chirho = &occurrence_chirho.ty_key_chirho;
                 let (name_chirho, _) = self.method_occurrence_canon_chirho.get(id_chirho)?;
                 let method_chirho = match name_chirho.rsplit('.').next()? {
                     "max" | "maximum" => "max",

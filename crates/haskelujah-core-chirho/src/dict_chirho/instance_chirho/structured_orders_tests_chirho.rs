@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use super::DictPassCtxChirho;
+use crate::dict_chirho::OccurrenceEvidenceChirho;
 use crate::expr_chirho::{
     BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, InlineAnnotationChirho,
 };
@@ -39,15 +40,15 @@ fn structured_ord_rows_require_body_backed_components_chirho() {
         .push(binding_chirho(2, "$prim_Ord_compare_Char"));
     pass_chirho.occurrence_evidence_chirho.insert(
         CoreIdChirho(10),
-        ("Ord".to_string(), "Maybe Int".to_string()),
+        OccurrenceEvidenceChirho::legacy_chirho("Ord", "Maybe Int"),
     );
     pass_chirho.occurrence_evidence_chirho.insert(
         CoreIdChirho(11),
-        ("Ord".to_string(), "(Maybe Int,Char)".to_string()),
+        OccurrenceEvidenceChirho::legacy_chirho("Ord", "(Maybe Int,Char)"),
     );
     pass_chirho.occurrence_evidence_chirho.insert(
         CoreIdChirho(12),
-        ("Ord".to_string(), "Maybe FooChirho".to_string()),
+        OccurrenceEvidenceChirho::legacy_chirho("Ord", "Maybe FooChirho"),
     );
 
     pass_chirho.generate_evidenced_ord_bindings_chirho(

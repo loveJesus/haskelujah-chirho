@@ -316,6 +316,10 @@ impl DictPassCtxChirho {
 
         // Build layouts from the class environment
         self.build_layouts_chirho(class_env_chirho);
+        // A compiler class whose spelling a source class takes keeps its own namespace, laid
+        // out from its compiler record (row 692, C10).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        self.build_compiler_layouts_chirho(class_env_chirho, Self::builtin_row_classes_chirho());
 
         // Context-leading rows, before any binding is rewritten.
         // workflow: language-features-chirho/own-class-method-occurrences-chirho
@@ -805,6 +809,9 @@ impl DictPassCtxChirho {
         }
         let mut unsupported_chirho = self.unsupported_dictionaries_chirho;
         unsupported_chirho.extend(self.gnd_unbuilt_uses_chirho.into_inner());
+        // A displaced compiler request this pass could not serve refuses the module by name
+        // (row 692, C10, gpt #32666).
+        unsupported_chirho.extend(self.displaced_refusals_chirho.into_inner());
         DictPassResultChirho {
             module_chirho,
             names_chirho: self.names_chirho,

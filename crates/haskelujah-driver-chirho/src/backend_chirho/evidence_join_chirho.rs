@@ -14,11 +14,12 @@ use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
+use haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::provenance_chirho::{
     OccurrenceRoleChirho, OriginIdChirho, ProvenanceChirho,
 };
-use haskelujah_core_chirho::CoreIdChirho;
+use haskelujah_core_chirho::{CoreIdChirho, OccurrenceEvidenceChirho};
 use haskelujah_typing_chirho::class_chirho::PredChirho;
 use haskelujah_typing_chirho::infer_chirho::{
     MethodOccurrenceRecordChirho, ReferenceEvidenceChirho,
@@ -27,30 +28,39 @@ use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
 use crate::InferResultChirho;
 
-/// One occurrence's joined proof: the class and engine key its dispatch reads, and the ground
-/// goals (S1) the same records proved, for the conditional-dictionary route. Both come from
-/// the one identity decision this join makes, never from a second matcher.
+/// One occurrence's joined proof: the class and engine key its dispatch reads, the class proof
+/// of the predicate the checker finalized there, and the ground goals (S1) the same records
+/// proved, for the conditional-dictionary route. All come from the one identity decision this
+/// join makes, never from a second matcher.
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct JoinedProofChirho {
     pub(crate) class_name_chirho: String,
     pub(crate) ty_key_chirho: String,
+    pub(crate) class_identity_chirho: PredicateClassProofChirho,
     pub(crate) ground_preds_chirho: Vec<PredChirho>,
     pub(crate) applied_ty_chirho: Option<TyChirho>,
 }
 
 impl JoinedProofChirho {
-    /// A proof with an engine key only: a literal's, which proves no ground goal.
-    fn keyed_chirho(class_name_chirho: String, ty_key_chirho: String) -> Self {
+    /// A proof with an engine key only: a literal's, which proves no ground goal. Its class
+    /// proof is the literal's minted wanted's (row 692, C10).
+    fn keyed_chirho(
+        class_name_chirho: String,
+        ty_key_chirho: String,
+        class_identity_chirho: PredicateClassProofChirho,
+    ) -> Self {
         Self {
             class_name_chirho,
             ty_key_chirho,
+            class_identity_chirho,
             ground_preds_chirho: Vec::new(),
             applied_ty_chirho: None,
         }
     }
 
-    /// The proof one occurrence record makes under its engine key.
+    /// The proof one occurrence record makes under its engine key. Its class proof is the one
+    /// the checker captured for that predicate, ground or not (row 692, gpt #32675).
     fn from_record_chirho(
         record_chirho: &MethodOccurrenceRecordChirho,
         ty_key_chirho: String,
@@ -58,6 +68,7 @@ impl JoinedProofChirho {
         Self {
             class_name_chirho: record_chirho.class_name_chirho.clone(),
             ty_key_chirho,
+            class_identity_chirho: record_chirho.class_identity_chirho.clone(),
             ground_preds_chirho: record_chirho.ground_pred_chirho.iter().cloned().collect(),
             applied_ty_chirho: None,
         }
@@ -336,23 +347,35 @@ pub(crate) fn join_occurrence_evidence_chirho(
         occurrence_provenance_chirho,
     );
     OccurrenceJoinChirho {
-        evidence_chirho: occurrence_keys_chirho(&proofs_chirho),
+        evidence_chirho: occurrence_keys_chirho(&proofs_chirho)
+            .into_iter()
+            .map(|(occ_id_chirho, evidence_chirho)| {
+                (
+                    occ_id_chirho,
+                    (
+                        evidence_chirho.class_name_chirho,
+                        evidence_chirho.ty_key_chirho,
+                    ),
+                )
+            })
+            .collect(),
         applied_tys_chirho: occurrence_applied_tys_chirho(&proofs_chirho),
     }
 }
 
-/// The class and engine key of each joined proof.
+/// The class, engine key and class proof of each joined proof, as the dictionary pass reads them.
 pub(crate) fn occurrence_keys_chirho(
     proofs_chirho: &HashMap<CoreIdChirho, JoinedProofChirho>,
-) -> HashMap<CoreIdChirho, (String, String)> {
+) -> HashMap<CoreIdChirho, OccurrenceEvidenceChirho> {
     proofs_chirho
         .iter()
         .map(|(occ_id_chirho, proof_chirho)| {
             (
                 *occ_id_chirho,
-                (
+                OccurrenceEvidenceChirho::new_chirho(
                     proof_chirho.class_name_chirho.clone(),
                     proof_chirho.ty_key_chirho.clone(),
+                    proof_chirho.class_identity_chirho.clone(),
                 ),
             )
         })
@@ -465,6 +488,7 @@ pub(crate) fn join_occurrence_proofs_chirho(
                 JoinedProofChirho::keyed_chirho(
                     record_chirho.class_name_chirho.clone(),
                     ty_key_chirho,
+                    record_chirho.class_identity_chirho.clone(),
                 ),
             );
         }
@@ -933,7 +957,7 @@ pub(crate) fn join_range_evidence_chirho(
     infer_result_chirho: &InferResultChirho,
     occurrences_chirho: &HashMap<CoreIdChirho, (String, CoreIdChirho)>,
     ranges_chirho: &HashMap<CoreIdChirho, haskelujah_span_chirho::SpanChirho>,
-) -> HashMap<CoreIdChirho, (String, String)> {
+) -> HashMap<CoreIdChirho, OccurrenceEvidenceChirho> {
     ranges_chirho
         .iter()
         .filter_map(|(id_chirho, span_chirho)| {
@@ -966,7 +990,14 @@ pub(crate) fn join_range_evidence_chirho(
             } else {
                 key_chirho
             };
-            Some((*id_chirho, ("Enum".to_string(), key_chirho.to_string())))
+            Some((
+                *id_chirho,
+                OccurrenceEvidenceChirho::new_chirho(
+                    "Enum",
+                    key_chirho,
+                    proof_chirho.class_identity_chirho.clone(),
+                ),
+            ))
         })
         .collect()
 }
@@ -987,6 +1018,16 @@ fn single_proof_chirho(proofs_chirho: &[JoinedProofChirho]) -> Option<JoinedProo
         return None;
     }
     let first_chirho = proofs_chirho.first()?;
+    // The class proof is what every record of the chosen class proves: Unknown absorbs.
+    let class_identity_chirho = proofs_chirho
+        .iter()
+        .filter(|proof_chirho| proof_chirho.class_name_chirho == first_chirho.class_name_chirho)
+        .fold(
+            first_chirho.class_identity_chirho.clone(),
+            |identity_chirho, proof_chirho| {
+                identity_chirho.meet_chirho(proof_chirho.class_identity_chirho.clone())
+            },
+        );
     let mut ground_preds_chirho: Vec<PredChirho> = Vec::new();
     for proof_chirho in proofs_chirho {
         for ground_chirho in &proof_chirho.ground_preds_chirho {
@@ -1017,6 +1058,7 @@ fn single_proof_chirho(proofs_chirho: &[JoinedProofChirho]) -> Option<JoinedProo
     Some(JoinedProofChirho {
         class_name_chirho: first_chirho.class_name_chirho.clone(),
         ty_key_chirho: first_chirho.ty_key_chirho.clone(),
+        class_identity_chirho,
         ground_preds_chirho,
         applied_ty_chirho: None,
     })

@@ -26,6 +26,12 @@ use haskelujah_typing_chirho::infer_chirho::{
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FrontendOptionsChirho {
     pub ghc_options_chirho: Vec<String>,
+    /// The binding this module, as the program's root, must define as its IO entry (Report
+    /// section 5, row 692). Only an executable caller names one: the CLI's run and compile,
+    /// and the all-engine executable test helpers. Every value, library and check entry point
+    /// passes `None`, so a pure evaluator entry stays a value. Dependencies never inherit it.
+    /// workflow: language-features-chirho/fundep-generalization-chirho
+    pub program_entry_chirho: Option<String>,
 }
 
 impl FrontendOptionsChirho {
@@ -39,6 +45,15 @@ impl FrontendOptionsChirho {
     {
         Self {
             ghc_options_chirho: options_chirho.into_iter().map(Into::into).collect(),
+            program_entry_chirho: None,
+        }
+    }
+
+    /// An executable's options: `entry_chirho` is the program's IO entry.
+    pub fn for_program_chirho(entry_chirho: impl Into<String>) -> Self {
+        Self {
+            ghc_options_chirho: Vec::new(),
+            program_entry_chirho: Some(entry_chirho.into()),
         }
     }
 }

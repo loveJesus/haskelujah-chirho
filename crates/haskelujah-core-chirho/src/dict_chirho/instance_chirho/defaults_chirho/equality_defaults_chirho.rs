@@ -116,9 +116,9 @@ impl DictPassCtxChirho {
         let keys_chirho = self
             .occurrence_evidence_chirho
             .iter()
-            .filter(|(id_chirho, (class_name_chirho, key_chirho))| {
-                class_name_chirho == "Eq"
-                    && !is_own_dictionary_key_chirho(key_chirho)
+            .filter(|(id_chirho, occurrence_chirho)| {
+                occurrence_chirho.class_name_chirho == "Eq"
+                    && !is_own_dictionary_key_chirho(&occurrence_chirho.ty_key_chirho)
                     && self
                         .method_occurrence_canon_chirho
                         .get(id_chirho)
@@ -126,7 +126,7 @@ impl DictPassCtxChirho {
                             name_chirho.rsplit('.').next() == Some("/=")
                         })
             })
-            .map(|(_, (_, key_chirho))| key_chirho.clone())
+            .map(|(_, occurrence_chirho)| occurrence_chirho.ty_key_chirho.clone())
             .collect::<BTreeSet<_>>();
         for key_chirho in keys_chirho {
             let row_name_chirho = format!("$prim_Eq_/=_{key_chirho}");

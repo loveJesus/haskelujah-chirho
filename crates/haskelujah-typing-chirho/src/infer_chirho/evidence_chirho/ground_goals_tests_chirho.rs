@@ -376,6 +376,10 @@ fn structural_disagreement_clears_only_the_new_goal_chirho() {
         applied_ty_chirho: None,
         applied_head_chirho: None,
         class_name_chirho: "Eq".to_owned(),
+        class_identity_chirho:
+            haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+            ),
         ty_key_chirho: Some("Maybe".to_owned()),
         ground_pred_chirho: Some(PredChirho::new_chirho("Eq", ty_chirho)),
     };

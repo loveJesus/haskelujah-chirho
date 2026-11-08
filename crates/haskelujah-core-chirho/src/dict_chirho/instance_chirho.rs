@@ -5,8 +5,9 @@
 //! GND dicts, conditional ground dicts, and list dictionary helpers.
 
 #![allow(unused_imports)]
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
+use haskelujah_ast_chirho::name_chirho::CompilerClassChirho;
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho};
 use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
@@ -19,88 +20,7 @@ use crate::expr_chirho::{
 
 impl DictPassCtxChirho {
     pub fn generate_builtin_prim_bindings_chirho(&mut self) {
-        let builtins_chirho: Vec<(&str, &str, &str, u8)> = vec![
-            // (class, method, type_key, kind)
-            // kind: 0 = identity, 1 = binary primop, 2 = unary primop
-            // Eq
-            ("Eq", "==", "Int", 1),
-            ("Eq", "==", "Char", 1),
-            ("Eq", "==", "Bool", 1),
-            // Ord
-            ("Ord", "compare", "Int", 1),
-            ("Ord", "compare", "Char", 1),
-            ("Ord", "compare", "Double", 1),
-            ("Ord", "compare", "Bool", 1),
-            ("Ord", "compare", "[Char]", 1),
-            // Show
-            ("Show", "show", "Int", 2),
-            ("Show", "show", "Char", 2),
-            // Show Bool is handled specially below (case True/False -> string)
-            ("Show", "show", "Bool", 0),
-            // Num
-            ("Num", "+", "Int", 1),
-            ("Num", "*", "Int", 1),
-            ("Num", "-", "Int", 1),
-            ("Num", "negate", "Int", 2),
-            ("Num", "fromInteger", "Int", 0),
-            // Double
-            ("Eq", "==", "Double", 1),
-            ("Show", "show", "Double", 2),
-            ("Num", "+", "Double", 1),
-            ("Num", "*", "Double", 1),
-            ("Num", "-", "Double", 1),
-            ("Num", "negate", "Double", 2),
-            ("Num", "fromInteger", "Double", 0),
-            // Fractional Double
-            ("Fractional", "/", "Double", 1),
-            ("Fractional", "recip", "Double", 2),
-            ("Fractional", "fromRational", "Double", 0),
-            // Read instances
-            ("Read", "read", "Int", 2),
-            ("Read", "read", "Double", 2),
-            ("Read", "read", "Bool", 2),
-            // String (i.e. [Char])
-            ("Eq", "==", "[Char]", 1),
-            ("Show", "show", "[Char]", 2),
-            // Lists
-            ("Show", "show", "[Int]", 2),
-            // Maybe
-            ("Show", "show", "Maybe Int", 2),
-            ("Show", "show", "Maybe String", 2),
-            ("Show", "show", "Maybe Double", 2),
-            // Tuples
-            ("Show", "show", "(Int,Int)", 2),
-            ("Show", "show", "(Int,String)", 2),
-            ("Show", "show", "(String,Int)", 2),
-            ("Show", "show", "(String,String)", 2),
-            ("Show", "show", "(Int,Bool)", 2),
-            ("Show", "show", "(Bool,Int)", 2),
-            ("Show", "show", "(Int,Double)", 2),
-            ("Show", "show", "(Double,Int)", 2),
-            ("Show", "show", "(Bool,Bool)", 2),
-            ("Show", "show", "(Double,Double)", 2),
-            ("Show", "show", "(Bool,String)", 2),
-            ("Show", "show", "(String,Bool)", 2),
-            // 3-tuples
-            ("Show", "show", "(Int,Int,Int)", 2),
-            ("Show", "show", "(Int,Int,String)", 2),
-            ("Show", "show", "(String,Int,Int)", 2),
-            ("Show", "show", "(Int,String,Int)", 2),
-            // Either
-            ("Show", "show", "Either Int Int", 2),
-            ("Show", "show", "Either String Int", 2),
-            ("Show", "show", "Either Int String", 2),
-            ("Show", "show", "Either String String", 2),
-            // Ordering
-            ("Show", "show", "Ordering", 2),
-            ("Eq", "==", "Ordering", 1),
-            ("Ord", "compare", "Ordering", 1),
-            // IsString (OverloadedStrings)
-            ("IsString", "fromString", "[Char]", 0),
-            // IsList (OverloadedLists) — identity for [a] (type key matches TyVarChirho(9037))
-            ("IsList", "fromList", "[t9037]", 0),
-            ("IsList", "toList", "[t9037]", 0),
-        ];
+        let builtins_chirho = Self::builtin_rows_chirho();
 
         let primop_for_chirho =
             |class_chirho: &str, method_chirho: &str, type_key_chirho: &str| -> &str {
@@ -162,11 +82,17 @@ impl DictPassCtxChirho {
                 }
             };
 
-        for (class_chirho, method_chirho, type_key_chirho, kind_chirho) in builtins_chirho {
-            let prim_name_chirho = format!(
-                "$prim_{}_{}_{}",
-                class_chirho, method_chirho, type_key_chirho
-            );
+        for (identity_chirho, method_chirho, type_key_chirho, kind_chirho) in builtins_chirho {
+            let class_chirho = identity_chirho.legacy_name_chirho();
+            // Named in its class's namespace: the legacy spelling, or the reserved one when a
+            // source class has taken that spelling. A displaced class this pass could not lay
+            // out has none, and the spelling is the source class's (row 692, C10).
+            let Some(namespace_chirho) = self.compiler_rows_class_name_chirho(identity_chirho)
+            else {
+                continue;
+            };
+            let prim_name_chirho =
+                format!("$prim_{namespace_chirho}_{method_chirho}_{type_key_chirho}");
 
             // Skip if this binding already exists (user may have provided one)
             let already_exists_chirho = self
@@ -551,14 +477,15 @@ impl DictPassCtxChirho {
         // entry read its whole head (row 694, #31909).
         let mut multi_heads_chirho: HashMap<(String, String), std::sync::Arc<InstDeclChirho>> =
             HashMap::new();
+        // Row 692, C10: (namespace, key) of each dictionary a displaced compiler class's own
+        // instance fills, with that class's identity.
+        let mut compiler_entries_chirho: HashMap<(String, String), CompilerClassChirho> =
+            HashMap::new();
 
         for (class_name_chirho, instances_chirho) in
             class_env_chirho.instances_chirho().iter_chirho()
         {
-            let layout_chirho = match self.layouts_chirho.get(class_name_chirho) {
-                Some(l_chirho) => l_chirho.clone(),
-                None => continue,
-            };
+            let spelled_layout_chirho = self.layouts_chirho.get(class_name_chirho).cloned();
 
             for inst_chirho in instances_chirho {
                 // Only handle ground instances (no context) for now
@@ -570,6 +497,34 @@ impl DictPassCtxChirho {
                     &inst_chirho.head_ty_chirho,
                     &inst_chirho.extra_head_tys_chirho,
                 );
+                // A displaced compiler class's own instances fill its namespace, and nothing
+                // else does; its spelling keeps the source class (row 692, C10).
+                // workflow: language-features-chirho/dictionary-evidence-chirho
+                if let Some(identity_chirho) =
+                    self.displaced_identity_chirho(inst_chirho.class_identity_chirho())
+                {
+                    // Laid out or not, a displaced class's instance never enters the spelling.
+                    if identity_chirho.legacy_name_chirho() == class_name_chirho
+                        && let Some(compiler_layout_chirho) =
+                            self.compiler_layouts_chirho.get(&identity_chirho)
+                    {
+                        let namespace_chirho = compiler_layout_chirho.class_name_chirho.clone();
+                        let compiler_layout_chirho = compiler_layout_chirho.clone();
+                        compiler_entries_chirho.insert(
+                            (namespace_chirho.clone(), type_key_chirho.clone()),
+                            identity_chirho,
+                        );
+                        eligible_chirho.push((
+                            namespace_chirho,
+                            type_key_chirho,
+                            compiler_layout_chirho,
+                        ));
+                    }
+                    continue;
+                }
+                let Some(layout_chirho) = spelled_layout_chirho.clone() else {
+                    continue;
+                };
                 // A newtype-strategy instance takes its representation's dictionary,
                 // built by `generate_gnd_dicts_chirho` (row 694).
                 if self.takes_representation_dictionary_chirho(class_name_chirho, &type_key_chirho)
@@ -604,7 +559,27 @@ impl DictPassCtxChirho {
 
         // Inject synthetic ground instances for compound Show types.
         // These are monomorphised instances for Show (Maybe Int), etc.
-        if let Some(show_layout_chirho) = self.layouts_chirho.get("Show").cloned() {
+        // They are compiler Show instances: a source class displacing Show leaves them to the
+        // compiler class's namespace (row 692, C10).
+        let show_namespace_chirho = match self
+            .compiler_layouts_chirho
+            .get(&CompilerClassChirho::ShowChirho)
+        {
+            Some(layout_chirho) => Some((layout_chirho.clone(), true)),
+            None if self
+                .displaced_compiler_classes_chirho
+                .contains_key(&CompilerClassChirho::ShowChirho) =>
+            {
+                None
+            }
+            None => self
+                .layouts_chirho
+                .get("Show")
+                .cloned()
+                .map(|layout_chirho| (layout_chirho, false)),
+        };
+        if let Some((show_layout_chirho, displaced_chirho)) = show_namespace_chirho {
+            let show_name_chirho = show_layout_chirho.class_name_chirho.clone();
             for type_key_chirho in &[
                 "Maybe Int",
                 "Maybe String",
@@ -623,10 +598,16 @@ impl DictPassCtxChirho {
                 "(String,Bool)",
             ] {
                 if !eligible_chirho.iter().any(|(c_chirho, t_chirho, _)| {
-                    c_chirho == "Show" && t_chirho == *type_key_chirho
+                    *c_chirho == show_name_chirho && t_chirho == *type_key_chirho
                 }) {
+                    if displaced_chirho {
+                        compiler_entries_chirho.insert(
+                            (show_name_chirho.clone(), type_key_chirho.to_string()),
+                            CompilerClassChirho::ShowChirho,
+                        );
+                    }
                     eligible_chirho.push((
-                        "Show".to_string(),
+                        show_name_chirho.clone(),
                         type_key_chirho.to_string(),
                         show_layout_chirho.clone(),
                     ));
@@ -650,6 +631,22 @@ impl DictPassCtxChirho {
                 dict_binder_chirho,
             ));
         }
+
+        // The spelled rows each displacing source class may own, which no compiler dictionary
+        // takes (row 692, C10).
+        let namesake_rows_chirho: HashMap<CompilerClassChirho, HashSet<(String, String)>> =
+            compiler_entries_chirho
+                .values()
+                .copied()
+                .collect::<HashSet<_>>()
+                .into_iter()
+                .map(|identity_chirho| {
+                    (
+                        identity_chirho,
+                        self.namesake_rows_chirho(class_env_chirho, identity_chirho),
+                    )
+                })
+                .collect();
 
         // Pass 2: build dict bodies — super dict ids are now findable via
         // `resolve_or_fresh_id_chirho` because pass 1 registered them.
@@ -677,12 +674,9 @@ impl DictPassCtxChirho {
                     built_chirho.then_some(inst_chirho)
                 }
                 None => {
-                    for (super_name_chirho, _) in &layout_chirho.super_slots_chirho {
-                        let super_dict_name_chirho =
-                            format!("$f{}{}", super_name_chirho, type_key_chirho);
-                        let super_dict_id_chirho =
-                            self.resolve_or_fresh_id_chirho(&super_dict_name_chirho);
-                        field_args_chirho.push(CoreExprChirho::VarChirho(super_dict_id_chirho));
+                    for slot_chirho in &layout_chirho.super_slots_chirho {
+                        field_args_chirho
+                            .push(self.superclass_field_chirho(slot_chirho, &type_key_chirho));
                     }
                     None
                 }
@@ -698,14 +692,26 @@ impl DictPassCtxChirho {
                     "$prim_{}_{}_{}",
                     class_name_chirho, method_name_chirho, type_key_chirho
                 );
-                let prim_id_chirho = self.resolve_or_missing_method_id_chirho(
-                    class_env_chirho,
-                    &class_name_chirho,
-                    method_name_chirho,
-                    &type_key_chirho,
-                    &prim_name_chirho,
-                    written_key_chirho,
-                );
+                let compiler_entry_chirho = compiler_entries_chirho
+                    .get(&(class_name_chirho.clone(), type_key_chirho.clone()))
+                    .copied();
+                let prim_id_chirho = match compiler_entry_chirho {
+                    Some(identity_chirho) => self.compiler_method_row_chirho(
+                        identity_chirho,
+                        &prim_name_chirho,
+                        method_name_chirho,
+                        &type_key_chirho,
+                        &namesake_rows_chirho[&identity_chirho],
+                    ),
+                    None => self.resolve_or_missing_method_id_chirho(
+                        class_env_chirho,
+                        &class_name_chirho,
+                        method_name_chirho,
+                        &type_key_chirho,
+                        &prim_name_chirho,
+                        written_key_chirho,
+                    ),
+                };
                 field_args_chirho.push(CoreExprChirho::VarChirho(prim_id_chirho));
             }
 
@@ -959,7 +965,7 @@ mod context_slots_chirho;
 mod enum_defaults_chirho;
 #[path = "instance_chirho/defaults_chirho/equality_defaults_chirho.rs"]
 mod equality_defaults_chirho;
-mod generic_heads_chirho;
+pub(in crate::dict_chirho) mod generic_heads_chirho;
 // Ground dictionaries for conditional instances live together in
 // `instance_chirho/ground_dictionaries_chirho/`.
 #[path = "instance_chirho/ground_dictionaries_chirho/ground_admission_chirho.rs"]

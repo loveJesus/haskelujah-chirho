@@ -46,8 +46,10 @@ impl DictPassCtxChirho {
         let evidenced_chirho = self
             .occurrence_evidence_chirho
             .iter()
-            .filter(|(_, (class_chirho, _))| class_chirho == "Eq")
-            .map(|(id_chirho, (_, key_chirho))| (*id_chirho, key_chirho.clone()))
+            .filter(|(_, occurrence_chirho)| occurrence_chirho.class_name_chirho == "Eq")
+            .map(|(id_chirho, occurrence_chirho)| {
+                (*id_chirho, occurrence_chirho.ty_key_chirho.clone())
+            })
             .collect::<Vec<_>>();
         let keys_chirho = evidenced_chirho
             .iter()

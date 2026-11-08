@@ -83,6 +83,10 @@ impl DictPassCtxChirho {
         if name_chirho != "return" && name_chirho != "pure" {
             return None;
         }
+        // A displaced compiler proof is the evidence route's (row 692, C10, gpt #32666).
+        if self.displaced_occurrence_chirho(id_chirho) {
+            return None;
+        }
         let context_key_chirho = self.monad_context_stack_chirho.borrow().last().cloned()?;
         let inst_id_chirho = self.lookup_dispatch_body_name_id_chirho(&format!(
             "$prim_Applicative_pure_{context_key_chirho}"
@@ -212,11 +216,13 @@ impl DictPassCtxChirho {
             CoreExprChirho::VarChirho(id_chirho) => *id_chirho,
             _ => return None,
         };
-        // Locally-shadowed names (`let (>>=) = ...`) are never intercepted.
+        // Locally-shadowed names (`let (>>=) = ...`) are never intercepted, and a displaced
+        // compiler proof is the evidence route's (row 692, C10, gpt #32666).
         if self
             .local_shadow_ids_chirho
             .borrow()
             .contains(&head_id_chirho)
+            || self.displaced_occurrence_chirho(head_id_chirho)
         {
             return None;
         }
@@ -485,10 +491,12 @@ impl DictPassCtxChirho {
         let (method_id_chirho, args_chirho, type_key_hint_chirho) =
             self.collect_method_app_chirho(expr_chirho)?;
         let method_name_chirho = self.names_chirho.get(&method_id_chirho)?;
+        // A displaced compiler proof is the evidence route's (row 692, C10, gpt #32666).
         if self
             .local_shadow_ids_chirho
             .borrow()
             .contains(&method_id_chirho)
+            || self.displaced_occurrence_chirho(method_id_chirho)
         {
             return None;
         }

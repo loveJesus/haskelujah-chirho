@@ -13,13 +13,14 @@ impl ClassEnvChirho {
         // ── Alternative / MonadPlus ──
         let alt_var_chirho = TyVarChirho(9055);
         let alt_a_chirho = TyVarChirho(9056);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::AlternativeChirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ApplicativeChirho],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Alternative".to_string(),
-                supers_chirho: vec!["Applicative".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: alt_var_chirho,
                 methods_chirho: HashMap::from([
                     (
@@ -79,13 +80,17 @@ impl ClassEnvChirho {
 
         // MonadPlus class (superclass: Monad, Alternative)
         let mp_var_chirho = TyVarChirho(9057);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadPlusChirho,
+            &[
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::AlternativeChirho,
+            ],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "MonadPlus".to_string(),
-                supers_chirho: vec!["Monad".to_string(), "Alternative".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: mp_var_chirho,
                 methods_chirho: HashMap::from([
                     (
@@ -175,13 +180,14 @@ impl ClassEnvChirho {
 
         // Monoid (superclass: Semigroup)
         let mon_var_chirho = TyVarChirho(9051);
-        self.add_seed_class_chirho(
+        self.add_seed_class_with_superclasses_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonoidChirho,
+            &[haskelujah_ast_chirho::name_chirho::CompilerClassChirho::SemigroupChirho],
             crate::class_chirho::ClassDeclPartsChirho {
                 super_templates_chirho: Vec::new(),
                 kind_vars_chirho: Vec::new(),
                 name_chirho: "Monoid".to_string(),
-                supers_chirho: vec!["Semigroup".to_string()],
+                supers_chirho: Vec::new(),
                 var_chirho: mon_var_chirho,
                 methods_chirho: HashMap::from([
                     (
