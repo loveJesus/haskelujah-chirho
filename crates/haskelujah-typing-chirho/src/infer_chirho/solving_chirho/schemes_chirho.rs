@@ -683,7 +683,11 @@ impl InferCtxChirho {
     ) -> bool {
         const STEPS_CHIRHO: usize = 64;
         let wanted_chirho = PredChirho::from_scheme_chirho(wanted_chirho);
-        if self.active_compiler_record_chirho(&wanted_chirho).is_none() {
+        if self
+            .class_env_chirho
+            .active_compiler_record_chirho(&wanted_chirho)
+            .is_none()
+        {
             return false;
         }
         let given_chirho = PredChirho::from_scheme_chirho(given_chirho);
@@ -695,7 +699,10 @@ impl InferCtxChirho {
                 return false;
             }
             steps_chirho += 1;
-            let Some(record_chirho) = self.active_compiler_record_chirho(&current_chirho) else {
+            let Some(record_chirho) = self
+                .class_env_chirho
+                .active_compiler_record_chirho(&current_chirho)
+            else {
                 continue;
             };
             let Some(superclasses_chirho) = record_chirho.superclass_preds_at_chirho(
@@ -706,6 +713,7 @@ impl InferCtxChirho {
             };
             for superclass_chirho in superclasses_chirho {
                 if self
+                    .class_env_chirho
                     .active_compiler_record_chirho(&superclass_chirho)
                     .is_none()
                 {
@@ -723,30 +731,6 @@ impl InferCtxChirho {
             }
         }
         false
-    }
-
-    /// The compiler record a predicate's proof names, when it is also the record active under
-    /// the predicate's spelling. An unknown or source proof, or a shadowed name, has none.
-    fn active_compiler_record_chirho(
-        &self,
-        predicate_chirho: &PredChirho,
-    ) -> Option<&std::sync::Arc<crate::class_chirho::ClassDeclChirho>> {
-        let haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::ProvenChirho(
-            haskelujah_ast_chirho::name_chirho::PredicateClassIdentityChirho::CompilerChirho(
-                identity_chirho,
-            ),
-        ) = predicate_chirho.class_identity_chirho()
-        else {
-            return None;
-        };
-        let producer_chirho = self
-            .class_env_chirho
-            .compiler_class_record_chirho(*identity_chirho)?;
-        let active_chirho = self
-            .class_env_chirho
-            .classes_chirho()
-            .get_chirho(&predicate_chirho.class_name_chirho)?;
-        std::sync::Arc::ptr_eq(producer_chirho, active_chirho).then_some(producer_chirho)
     }
 
     /// Check if `potential_super_chirho` is a (transitive) superclass of
