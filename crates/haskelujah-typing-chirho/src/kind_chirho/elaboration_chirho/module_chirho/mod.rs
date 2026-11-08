@@ -378,11 +378,16 @@ impl TypeElaboratorChirho<'_> {
 
     /// Complete written kind headers support polymorphic recursion. Inferred
     /// headers remain shared until their declaration SCC has been checked.
+    /// A family's header is complete when it has a standalone kind signature:
+    /// its telescope, with the signature's implicit kind variables quantified,
+    /// is published before its equations are checked, so each equation
+    /// instantiates it (row 711 c18b).
     fn elaborate_complete_headers_chirho(
         &mut self,
         module_chirho: &mut ModuleChirho,
         group_chirho: &[usize],
     ) -> Result<(), ElaborationErrorChirho> {
+        let module_span_chirho = module_chirho.span_chirho;
         for index_chirho in group_chirho {
             let declaration_chirho = &mut module_chirho.decls_chirho[*index_chirho];
             if let DeclChirho::ClassDeclChirho {
@@ -413,6 +418,38 @@ impl TypeElaboratorChirho<'_> {
                     )?;
                     this_chirho
                         .finish_catalogue_chirho(std::slice::from_ref(&key_chirho), span_chirho)
+                });
+                self.current_declaration_chirho = previous_chirho;
+                result_chirho?;
+                continue;
+            }
+            // A family with a standalone kind signature: the body arm's header steps, at the
+            // spans it used, then the publication its group would reach after the bodies.
+            let declaration_span_chirho = declaration_chirho.span_chirho();
+            if let DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                type_vars_chirho,
+                result_kind_chirho,
+                standalone_kind_chirho,
+                ..
+            } = declaration_chirho
+                && standalone_kind_chirho.is_some()
+            {
+                let key_chirho = self.local_key_chirho(name_chirho)?;
+                let previous_chirho = self.current_declaration_chirho.replace(key_chirho.clone());
+                let result_chirho = self.scoped_chirho(|this_chirho| {
+                    this_chirho.bind_header_scope_chirho(&key_chirho, declaration_span_chirho)?;
+                    this_chirho.check_binder_annotations_chirho(type_vars_chirho)?;
+                    this_chirho.check_kind_contract_chirho(
+                        &key_chirho,
+                        result_kind_chirho.as_mut(),
+                        standalone_kind_chirho.as_mut(),
+                        declaration_span_chirho,
+                    )?;
+                    this_chirho.finish_catalogue_chirho(
+                        std::slice::from_ref(&key_chirho),
+                        module_span_chirho,
+                    )
                 });
                 self.current_declaration_chirho = previous_chirho;
                 result_chirho?;
@@ -703,24 +740,33 @@ impl TypeElaboratorChirho<'_> {
                 closed_chirho,
                 ..
             } => {
-                self.check_binder_annotations_chirho(type_vars_chirho)?;
-                if !*closed_chirho
-                    && result_kind_chirho.is_none()
-                    && standalone_kind_chirho.is_none()
+                // A complete header published early keeps its telescope; only a
+                // provisional one is checked here.
+                if self
+                    .registry_chirho
+                    .declaration_schemes_chirho()
+                    .get_chirho(key_chirho)
+                    .is_none_or(|scheme_chirho| scheme_chirho.owner_chirho.is_some())
                 {
-                    let expected_chirho = self.result_kind_chirho(key_chirho, span_chirho)?;
-                    self.unify_kinds_chirho(
-                        &expected_chirho,
-                        &ElaborationStateChirho::type_universe_chirho(),
+                    self.check_binder_annotations_chirho(type_vars_chirho)?;
+                    if !*closed_chirho
+                        && result_kind_chirho.is_none()
+                        && standalone_kind_chirho.is_none()
+                    {
+                        let expected_chirho = self.result_kind_chirho(key_chirho, span_chirho)?;
+                        self.unify_kinds_chirho(
+                            &expected_chirho,
+                            &ElaborationStateChirho::type_universe_chirho(),
+                            span_chirho,
+                        )?;
+                    }
+                    self.check_kind_contract_chirho(
+                        key_chirho,
+                        result_kind_chirho.as_mut(),
+                        standalone_kind_chirho.as_mut(),
                         span_chirho,
                     )?;
                 }
-                self.check_kind_contract_chirho(
-                    key_chirho,
-                    result_kind_chirho.as_mut(),
-                    standalone_kind_chirho.as_mut(),
-                    span_chirho,
-                )?;
                 self.elaborate_family_equations_chirho(
                     equations_chirho,
                     key_chirho,
