@@ -2,7 +2,7 @@
 
 # Dependable source union Chirho
 
-Current resume: unit719's frozen BEFORE at1bdf91c1 measured the direct unifier RED (6ok/1FAILED) and the source wrong-definer acceptance (1ok/1FAILED), with both actual attempts closed and preserved. This separate AFTER branch adds only the shared comparator's constructor-key opacity condition plus this checklist/workflow update. The correction is UNCOMPILED and UNRUN; compiler work still needs a separately named root GO. Frozen c104's earlier workspace and Rust preservation results remain attached to c104.
+Current resume: unit719's exact shared opaque-constructor correction is measured at f6b97149988cc411e248f019c6e2131a4515cd74. Its fresh AFTER carriers pass U7 plus whole typing848 (no double count), source compile-only2, Core238 and scoped changed-span Clippy versus exact c104 with0 hits/247 OUTSIDE. BEFORE U6/1 and S1/1 remain raw REDs. This NEW owned worktree begins from f6 and carries the separately leased selected-application and GND producer patches. The resulting composition is UNCOMPILED and UNRUN; main, SQLite, old c104 and unit719 worktrees/targets/evidence remain untouched.
 
 This isolated branch starts at exact main acd8baaab60fe2005429cbae72a31ccfd2fd3d06 (compiler04116a69). Root delegated source-only assembly to /root/integration_frontier_chirho. No compiler execution or acceptance is authorized by this plan. Canonical main, its dirty work, SQLite and reporting remain root-owned and untouched.
 
@@ -60,7 +60,7 @@ The first actual compile at acea7dec ran40.488 seconds, Cargo101/runner98: one E
 
 ## Unit719 source constructor key checkpoints Chirho
 
-Root's canonical unit719 owns this active, unmeasured regression/repair. This private tasklist records source and actual-gate progress only; root remains the sole SQLite writer.
+Root's canonical unit719 owns this regression/repair; the private BEFORE and AFTER scopes below are now measured. This private tasklist records source and actual-gate progress only; root remains the sole SQLite writer.
 
 - [x] Create the new owned gpt-source-key-nominality-before-chirho worktree from frozen c1042478 under haskelujah-workspaces-chirho; preserve the union worktree, target, contracts and raw evidence at their original paths. The new own target is absent, with no cloning or sharing.
 - [x] Add the actual AST source-declaration factory controls to existing unify_chirho/tests_chirho.rs: AlphaChirho.SharedChirho and OtherChirho.SharedChirho TokenChirho must remain distinct in both orders and nested positions; the same producer and metavariable substitution stay valid. Preserve all existing numeric, promoted and legacy qualified-alias controls.
@@ -69,8 +69,22 @@ Root's canonical unit719 owns this active, unmeasured regression/repair. This pr
 - [x] Execute the fresh list/exact-control BEFORE packets under root GO33176 and GO33178. U lists848 and executes the7 selected names once (6ok/1FAILED); S lists77 and executes the2 new compile-only names once (1ok/1FAILED). No ignored, missing, extra or duplicate outcome; both REDs stay raw.
 - [x] Before editing production, retain bounded verified COPY backups of both BEFORE executables, not hardlinks, with original/copy paths and SHA,size,mtime,mode plus observational inode facts. The manifest is tmp-chirho/source-key-nominality-chirho/retained-before-chirho/binary-copies-chirho.json (914f5088); copies are not fresh executions. Keep the1bdf BEFORE branch, contracts/raw records and old c104 worktree/binaries intact.
 - [x] Under the separate source lease, use the existing warmed worktree on gpt-source-key-nominality-after-chirho and extend only same_tycon_name_chirho's opaque guard to the reserved constructor-key namespace. No fixture, assertion, oracle, legacy alias or numeric-rule change.
-- [ ] Execute separately granted AFTER U7/S2, whole typing/Core and scoped changed-span Clippy against exact c104. Every reverse/nested negative arm must actually complete in a passing AFTER test; BEFORE never measured those unreached arms.
+- [x] Execute separately granted AFTER U7/S2, whole typing/Core and scoped changed-span Clippy against exact c104. Every reverse/nested negative arm must actually complete in a passing AFTER test; BEFORE never measured those unreached arms.
 
 The c104 workspace check has378 compiler artifacts,36 scripts,one true build-finished and zero compiler messages. Its preservation run proves ID1/1, nominality3/3 and source2/2, whole typing846/846, Core238/238 and naming220/220; the focused three are included in whole typing. It is not an execution of this test-only descendant. Its immutable inventory and run summaries are a7b87d6d and a7a254c5 respectively. All native/CLI/corpus/Clippy acceptance and the dotted-definer BEFORE results remain separate.
 
 The measured BEFORE finds the shared helper's raw qualifier suffix route: the first plain pair of distinct actual constructor keys fails its required Mismatch expectation. Reverse/nested arms are unreached after that panic. The source negative takes its Ok-only panic, confirming that compile_modules actually served the signed wrong-definer identity; the same-definer direct/forwarded alias positive passes. U's same-producer/meta, legacy qualified/bare and main numeric controls pass. This AFTER changes the single shared comparison boundary, with no per-file guard, new registry/parser or manufactured identity authority. No canonical main, SQLite, field-scope, selected-apply, C10 or other writer's source is changed here, and no AFTER result is claimed yet.
+
+## Selected application and GND composition Chirho
+
+Placement: this new private gpt-dependable-union-selected-gnd-26-11-08-chirho worktree is rooted at f6b97149988cc411e248f019c6e2131a4515cd74, which already includes c104 and unit719. Its own target starts absent and is not cloned or shared. Preserve all old worktree, executable-copy and evidence paths. Root remains the sole canonical source/SQLite writer.
+
+- [x] Inspect registrations, current clean branches and exact input DAGs; create an unused owned worktree under haskelujah-workspaces-chirho.
+- [ ] Compose selected-application semantic/test commits in order: c89e6532a291c5305f7110a4cda2aacd737d36a4,40d8cdaf820c4191bb4a5df6fb517d9592de2198,cdc63b014c011795401d600f6bcc5c8fd4429887,02d45d087ac7cf670a4548244a3c0a34822f7ce8. Do not replay d275/830/options or resurrect the private selected-application tasklist.
+- [ ] Compose exact9957bec9c122f4bd55d100d32dfe89ad158c05b3 as its three-path GND canonical-newtype producer patch; do not import its b91 test parent.
+- [ ] Reconcile the named inference import context, two extra caller-field renames and actual builtin workflow DAG while keeping reader field scopes, C10 entry/literal evidence, selected triples and main nominality/native source. No whole-file source replacement.
+- [ ] Record exact source parents, path identity and every conflict adaptation; format/diff-check owned changes, scan the outgoing range and commit/push coherent source.
+- [ ] Prepare a fresh all-target workspace check at the frozen composed source; execute only after a separate actual root GO. No private intermediate compiler gate or inherited-pass claim.
+- [ ] Final main-parent quality/behavior/corpus/end-state gates remain required at the assembled source.
+
+The future certificate/selected-value changes preserve actual supplier reference evidence, fresh module-owned Core IDs and input-ID reservation. The selected import entry carries its scheme and optional compiler-value certificate together; unavailable_values still includes field-label and import-scope absences. The reader's ConstructorFieldScope and entry_obligation are retained. C10 literal substitution and superclass proofs/layouts stay intact. Q16b/0ce and family973 are explicitly excluded pending their independent repair gates.
