@@ -58,7 +58,9 @@ The frozen compiler source and manifest were pushed at2380269dfc27c36706ce91d955
 
 The first actual compile at acea7dec ran40.488 seconds, Cargo101/runner98: one E0308 plus its failure-note,325 artifacts/36 scripts/build-finished false, no JSON warnings. Pins and original40368 group closed before the fold; after-facts carries only the actual nonzero build finding. Old packet and raw evidence remain untouched. Root then leased only the native_identity synthetic input-ID caller: import the existing occurrence-evidence record and retain Eq/Int through legacy_chirho, which explicitly has Unknown(Legacy). All15 cases, keys, assertions, fixtures and production code are unchanged. The source manifest now names22 adaptations and1467 exact frozen-input blobs.
 
-## Source constructor key BEFORE checkpoint Chirho
+## Unit719 source constructor key BEFORE checkpoint Chirho
+
+Root's canonical unit719 owns this active, unmeasured regression/repair. This private tasklist records source and actual-gate progress only; root remains the sole SQLite writer.
 
 - [x] Create the new owned gpt-source-key-nominality-before-chirho worktree from frozen c1042478 under haskelujah-workspaces-chirho; preserve the union worktree, target, contracts and raw evidence at their original paths. The new own target is absent, with no cloning or sharing.
 - [x] Add the actual AST source-declaration factory controls to existing unify_chirho/tests_chirho.rs: Alpha.Shared and Other.Shared TokenChirho must remain distinct in both orders and nested positions; the same producer and metavariable substitution stay valid. Preserve all existing numeric, promoted and legacy qualified-alias controls.
