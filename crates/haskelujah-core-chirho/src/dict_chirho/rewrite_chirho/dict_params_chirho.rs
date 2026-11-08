@@ -4,6 +4,7 @@
 
 use std::collections::{HashMap, HashSet};
 
+use haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho;
 use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, TyChirho};
 
 use super::DictPassCtxChirho;
@@ -232,6 +233,10 @@ impl DictPassCtxChirho {
         }
 
         let mut dict_binders_chirho = Vec::new();
+        // Each abstracted parameter's namespace and class proof, from which the superclass
+        // walk below starts (row 692, C10, #33179).
+        let mut superclass_roots_chirho: Vec<(String, PredicateClassProofChirho, CoreIdChirho)> =
+            Vec::new();
         let dict_param_indices_chirho =
             self.binding_dict_param_indices_chirho(binding_chirho, scheme_chirho);
 
@@ -254,7 +259,12 @@ impl DictPassCtxChirho {
                 let dict_ty_chirho = TyChirho::ConChirho(format!("$Dict_{namespace_chirho}"));
                 let dict_binder_chirho =
                     self.fresh_binder_chirho(&dict_name_chirho, dict_ty_chirho);
-                dict_vars_chirho.insert(namespace_chirho, dict_binder_chirho.id_chirho);
+                dict_vars_chirho.insert(namespace_chirho.clone(), dict_binder_chirho.id_chirho);
+                superclass_roots_chirho.push((
+                    namespace_chirho,
+                    pred_chirho.class_identity_chirho().clone(),
+                    dict_binder_chirho.id_chirho,
+                ));
                 // Also by predicate index, which is how the checker's
                 // own-parameter evidence names this parameter (two predicates
                 // of one class are two parameters).
@@ -383,39 +393,54 @@ impl DictPassCtxChirho {
         // Superclass extraction: compute the transitive superclass closure for
         // each dict binder. Context reduction can leave a binding with only a
         // subclass predicate (for example Integral) while the body still uses a
-        // superclass method such as (==).
+        // superclass method such as (==). The walk starts from each parameter's
+        // namespace and class proof, and each step reads the layout that proof selects
+        // (`proof_layout_chirho`), so a displaced compiler class's parameter reaches its
+        // compiler record's superclasses, never those of the source class that took its
+        // spelling. A slot whose displaced compiler class has no layout is never extracted
+        // under a spelling; a request for it is refused by name where it is made. Each step
+        // projects the parameter's own field, so no key is chosen here (row 692, C10, #33179).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
         let mut super_let_binds_chirho: Vec<(BinderChirho, CoreExprChirho)> = Vec::new();
         {
             let mut available_dicts_chirho: HashMap<String, CoreIdChirho> = HashMap::new();
-            let mut pending_classes_chirho = Vec::new();
-            for dict_binder_chirho in &dict_binders_chirho {
-                if let Some(class_name_chirho) = dict_binder_chirho.name_chirho.strip_prefix("$d") {
-                    let class_name_chirho = class_name_chirho.to_string();
-                    available_dicts_chirho
-                        .insert(class_name_chirho.clone(), dict_binder_chirho.id_chirho);
-                    pending_classes_chirho.push(class_name_chirho);
-                }
+            let mut pending_classes_chirho: Vec<(String, PredicateClassProofChirho)> = Vec::new();
+            for (namespace_chirho, proof_chirho, dict_id_chirho) in superclass_roots_chirho {
+                available_dicts_chirho.insert(namespace_chirho.clone(), dict_id_chirho);
+                pending_classes_chirho.push((namespace_chirho, proof_chirho));
             }
 
-            while let Some(class_name_chirho) = pending_classes_chirho.pop() {
+            while let Some((class_name_chirho, proof_chirho)) = pending_classes_chirho.pop() {
                 let Some(sub_dict_id_chirho) =
                     available_dicts_chirho.get(&class_name_chirho).copied()
                 else {
                     continue;
                 };
-                let super_names_chirho = self
-                    .layouts_chirho
-                    .get(&class_name_chirho)
+                let super_slots_chirho = self
+                    .proof_layout_chirho(&class_name_chirho, &proof_chirho)
                     .map(|layout_chirho| {
                         layout_chirho
                             .super_slots_chirho
                             .iter()
-                            .map(|slot_chirho| slot_chirho.namespace_chirho.clone())
+                            .map(|slot_chirho| {
+                                (
+                                    slot_chirho.namespace_chirho.clone(),
+                                    slot_chirho.class_proof_chirho.clone(),
+                                )
+                            })
                             .collect::<Vec<_>>()
                     })
                     .unwrap_or_default();
-                for super_name_chirho in super_names_chirho {
-                    if available_dicts_chirho.contains_key(&super_name_chirho) {
+                for (super_name_chirho, super_proof_chirho) in super_slots_chirho {
+                    let unlaid_displaced_chirho = self
+                        .displaced_identity_chirho(&super_proof_chirho)
+                        .is_some()
+                        && self
+                            .proof_layout_chirho(&super_name_chirho, &super_proof_chirho)
+                            .is_none();
+                    if unlaid_displaced_chirho
+                        || available_dicts_chirho.contains_key(&super_name_chirho)
+                    {
                         continue;
                     }
                     let Some(sel_id_chirho) = self
@@ -443,7 +468,7 @@ impl DictPassCtxChirho {
                         super_name_chirho.clone(),
                         super_dict_binder_chirho.id_chirho,
                     );
-                    pending_classes_chirho.push(super_name_chirho);
+                    pending_classes_chirho.push((super_name_chirho, super_proof_chirho));
                     super_let_binds_chirho.push((super_dict_binder_chirho, extraction_chirho));
                 }
             }

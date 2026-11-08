@@ -1185,6 +1185,27 @@ spell it.
   2. the legacy-spelled row a compiler producer wrote, when no source instance of the
      displacing class can own it;
   3. a named failure.
+- A layout is chosen by proof, never by a name (#33179). `proof_layout_chirho` gives a displaced
+  compiler proof its identity-keyed compiler layout, or None when the class was not laid out;
+  any other proof gets the spelled layout. A `$compiler_` name is never parsed back into an
+  identity. Two producers read it:
+  - The superclass walk of a binding's own dictionary parameters (`dict_params_chirho.rs`)
+    starts from each parameter's namespace and proof and steps by each slot's namespace and
+    proof. A displaced `Prelude.Ord b` parameter therefore extracts its Eq through
+    `$sel_$compiler_Ord_super_Eq`. A slot whose displaced class has no layout is never
+    extracted under a spelling. Each step projects the parameter's own field, so no key is
+    chosen there.
+  - The conditional list builder (`instance_chirho/conditional_chirho.rs`) routes each instance
+    by its class proof and its owner. A class proof alone never certifies a compiler-generated
+    body. That requires the compiler's own seed instance, proven of the class its spelling
+    names, at a complete `[v]` head whose context constrains only `v`.
+    - The compiler's `Show a => Show [a]` under a displaced Show builds `$f$compiler_Show[T]`
+      for T in Int, Char, Bool and Double. Each element dictionary is checked in the context
+      predicate's own namespace, and its method fields go through `compiler_method_row_chirho`.
+    - A displaced compiler Eq, Ord or other conditional list instance is a named gap and is
+      never built into the spelling.
+    - A source or unproven instance under the spelling `Eq`, `Show` or `Ord` takes the generic
+      builder, which reads its own rows.
 - Only a compiler proof of a displaced class dispatches through the namespace. It always uses
   the selector form, `$sel_$compiler_Num_fromInteger $f$compiler_NumInt`, which literal wrappers
   already keep. That applies to occurrence heads, method vars, evidenced aggregates, own
@@ -1203,18 +1224,32 @@ flowchart TD
     layout_chirho --> namespace_chirho
     seeds_chirho[Same-class compiler-proven instances] --> dictionaries_chirho[$f$compiler_C dictionaries]
     dictionaries_chirho --> namespace_chirho
+    proof_layout_chirho[proof_layout_chirho: layout by proof] --> walk_chirho[Own-parameter superclass walk]
+    proof_layout_chirho --> conditional_chirho[Conditional list builder, routed by proof and owner]
+    conditional_chirho -->|compiler seed Show list| dictionaries_chirho
+    walk_chirho --> namespace_chirho
 ```
 
 A displaced compiler request this pass cannot serve is refused by name and never borrows the
 source class's spelled route (gpt #32666). The refusal goes into the pass's unsupported list,
 which refuses the module, and the request's head becomes an error naming it. This applies to:
 - a class whose superclass templates are not all proven, so it has no layout;
-- a key with no compiler ground dictionary (conditional/context or GND instances);
+- a key with no compiler ground dictionary: a GND instance, or a conditional instance other than
+  the compiler's own Show list at the builder's element types. `Show [Maybe Int]` stays refused,
+  the boundary `a_displaced_compiler_show_it_cannot_build_is_refused_by_name_chirho`;
 - the evidenced structured Show/Eq/Ord/Enum row generators;
 - an imported or qualified compiler-class instance in a displaced module, which has no P0 proof.
+
 Any other occurrence under a displaced compiler proof keeps its own binding, such as the
-Prelude's `sum`. Source and unknown requests keep their established route. The conditional,
-GND and structured generators still build into the spelling as before, for those requests.
+Prelude's `sum`. Source and unknown requests keep their established route. For those requests
+the GND and structured generators still build into the spelling as before. The conditional list
+builder builds a displaced compiler class's instance only into that class's namespace, or not at
+all.
+
+Controls:
+- `an_own_scope_print_keeps_the_compilers_show_chirho`, for `[Bool]` in the namespace;
+- `a_qualified_ord_given_keeps_its_eq_superclass_under_a_namesake_chirho`, for the superclass
+  walk.
 
 Proof transport and the definition ABI (gpt #32675, #32681, #32683):
 - Method records and reference records carry the class proof of the predicate they captured,

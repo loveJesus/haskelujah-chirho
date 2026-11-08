@@ -1,15 +1,67 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
 //! Conditional list dictionaries and their stable, possibly forward-referenced identities.
+//! Each conditional list instance is routed by its class proof and its owner, never by its
+//! spelling alone (row 692, C10, #33179).
+
+use std::collections::HashSet;
 
 use super::{DictLayoutChirho, DictPassCtxChirho};
 use crate::expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreLitChirho,
     InlineAnnotationChirho,
 };
+use haskelujah_ast_chirho::name_chirho::{
+    CompilerClassChirho, InstanceIdentityChirho, PredicateClassIdentityChirho,
+};
 use haskelujah_span_chirho::SpanChirho;
-use haskelujah_typing_chirho::class_chirho::ClassEnvChirho;
+use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho};
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
+
+/// One conditional list instance's dictionaries: the namespace they are named and filed under,
+/// its layout, its context predicates' namespaces and the builder that fills them.
+struct ConditionalListEntryChirho {
+    class_name_chirho: String,
+    layout_chirho: DictLayoutChirho,
+    context_classes_chirho: Vec<String>,
+    route_chirho: ConditionalListRouteChirho,
+}
+
+/// The builder of a conditional list instance's dictionaries.
+#[derive(Clone, Copy)]
+enum ConditionalListRouteChirho {
+    /// By the class's spelling (`generate_list_instance_dict_chirho`), as before.
+    SpelledChirho,
+    /// A source or unproven instance under the spelling `Eq`, `Show` or `Ord`: the generic
+    /// builder, which reads that instance's own rows and never a compiler-generated body.
+    InstanceRowsChirho,
+    /// The compiler's own `Show a => Show [a]` while a source class takes the spelling `Show`:
+    /// the Show list builder in that compiler class's namespace, its methods from its own rows.
+    CompilerShowChirho(CompilerClassChirho),
+}
+
+/// Whether an instance's head is a list of one type variable, `[v]`, with no hidden kind or
+/// extra argument, and each context predicate constrains exactly that variable: an element type
+/// is then that instance's whole instantiation (#33179).
+fn complete_list_head_chirho(inst_chirho: &InstDeclChirho) -> bool {
+    let TyChirho::ListChirho(element_chirho) = &inst_chirho.head_ty_chirho else {
+        return false;
+    };
+    let TyChirho::VarChirho(variable_chirho) = element_chirho.as_ref() else {
+        return false;
+    };
+    inst_chirho.kind_tys_chirho.is_empty()
+        && inst_chirho.extra_head_tys_chirho.is_empty()
+        && inst_chirho.context_chirho.iter().all(|predicate_chirho| {
+            predicate_chirho.kind_tys_chirho.is_empty()
+                && predicate_chirho.extra_tys_chirho.is_empty()
+                && matches!(
+                    &predicate_chirho.ty_chirho,
+                    TyChirho::VarChirho(context_variable_chirho)
+                        if context_variable_chirho == variable_chirho
+                )
+        })
+}
 
 impl DictPassCtxChirho {
     /// A superclass reference may reserve this name before its body is built.
@@ -34,9 +86,10 @@ impl DictPassCtxChirho {
     /// generate a ground `Eq [T]` dict with the appropriate method
     /// implementations. This avoids needing full parametric conditional
     /// dict support while covering common concrete list types.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub fn generate_conditional_ground_dicts_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
-        // Collect conditional list instances: (class, context_classes)
-        let mut cond_list_instances_chirho: Vec<(String, Vec<String>)> = Vec::new();
+        // Collect conditional list instances, each routed by its class proof and its owner.
+        let mut entries_chirho: Vec<ConditionalListEntryChirho> = Vec::new();
 
         for (class_name_chirho, instances_chirho) in
             class_env_chirho.instances_chirho().iter_chirho()
@@ -46,14 +99,11 @@ impl DictPassCtxChirho {
                     continue;
                 }
                 // Check if this is a list instance: head_ty is List(Var(_))
-                if let TyChirho::ListChirho(_) = &inst_chirho.head_ty_chirho {
-                    let context_classes_chirho: Vec<String> = inst_chirho
-                        .context_chirho
-                        .iter()
-                        .map(|p_chirho| p_chirho.class_name_chirho.clone())
-                        .collect();
-                    cond_list_instances_chirho
-                        .push((class_name_chirho.clone(), context_classes_chirho));
+                if let TyChirho::ListChirho(_) = &inst_chirho.head_ty_chirho
+                    && let Some(entry_chirho) =
+                        self.conditional_list_entry_chirho(class_name_chirho, inst_chirho)
+                {
+                    entries_chirho.push(entry_chirho);
                 }
             }
         }
@@ -62,10 +112,16 @@ impl DictPassCtxChirho {
         // for known element types that have the required dicts.
         let known_element_types_chirho = vec!["Int", "Char", "Bool", "Double"];
 
-        for (class_name_chirho, context_classes_chirho) in &cond_list_instances_chirho {
-            let layout_chirho = match self.layouts_chirho.get(class_name_chirho) {
-                Some(l_chirho) => l_chirho.clone(),
-                None => continue,
+        for entry_chirho in &entries_chirho {
+            let class_name_chirho = &entry_chirho.class_name_chirho;
+            let layout_chirho = &entry_chirho.layout_chirho;
+            let context_classes_chirho = &entry_chirho.context_classes_chirho;
+            // A displaced compiler Show's method fields take only that class's own rows.
+            let namesake_rows_chirho = match entry_chirho.route_chirho {
+                ConditionalListRouteChirho::CompilerShowChirho(identity_chirho) => {
+                    self.namesake_rows_chirho(class_env_chirho, identity_chirho)
+                }
+                _ => HashSet::new(),
             };
 
             // `Eq` and `Ord` also cover string elements. `Eq [String]` compares
@@ -108,16 +164,100 @@ impl DictPassCtxChirho {
 
                 // Generate the ground dict for this list type.
                 // We need method implementations that use the element dict.
-                self.generate_list_instance_dict_chirho(
-                    class_env_chirho,
-                    class_name_chirho,
-                    elem_type_chirho,
-                    &list_type_key_chirho,
-                    &layout_chirho,
-                    context_classes_chirho,
-                );
+                match entry_chirho.route_chirho {
+                    ConditionalListRouteChirho::SpelledChirho => self
+                        .generate_list_instance_dict_chirho(
+                            class_env_chirho,
+                            class_name_chirho,
+                            elem_type_chirho,
+                            &list_type_key_chirho,
+                            layout_chirho,
+                            context_classes_chirho,
+                        ),
+                    ConditionalListRouteChirho::InstanceRowsChirho => self
+                        .generate_generic_list_dict_chirho(
+                            class_env_chirho,
+                            class_name_chirho,
+                            elem_type_chirho,
+                            &list_type_key_chirho,
+                            layout_chirho,
+                            context_classes_chirho,
+                        ),
+                    ConditionalListRouteChirho::CompilerShowChirho(identity_chirho) => self
+                        .generate_show_list_dict_chirho(
+                            &list_type_key_chirho,
+                            layout_chirho,
+                            Some((identity_chirho, &namesake_rows_chirho)),
+                        ),
+                }
             }
         }
+    }
+
+    /// The route of one conditional list instance, read from its class proof and its owner, not
+    /// its spelling (row 692, C10, #33179). A class proof alone never certifies a
+    /// compiler-generated body: that takes the compiler's own instance (a seed), proven of the
+    /// class its spelling names, at a complete `[v]` head. A displaced compiler class's instance
+    /// never enters the spelling: only the compiler's own Show list instance is built, in that
+    /// class's namespace with its context predicates' own namespaces; any other is a named gap,
+    /// refused by name where it is requested. `None` builds nothing for the instance.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    fn conditional_list_entry_chirho(
+        &self,
+        class_name_chirho: &str,
+        inst_chirho: &InstDeclChirho,
+    ) -> Option<ConditionalListEntryChirho> {
+        let compiler_owned_chirho = matches!(
+            inst_chirho.instance_identity_chirho(),
+            InstanceIdentityChirho::SeedChirho(_)
+        ) && complete_list_head_chirho(inst_chirho);
+        // Each context predicate's namespace, read from its own class proof.
+        let context_classes_chirho = inst_chirho
+            .context_chirho
+            .iter()
+            .map(|predicate_chirho| {
+                self.proof_layout_chirho(
+                    &predicate_chirho.class_name_chirho,
+                    predicate_chirho.class_identity_chirho(),
+                )
+                .map(|context_layout_chirho| context_layout_chirho.class_name_chirho.clone())
+            })
+            .collect::<Option<Vec<_>>>()?;
+        if let Some(identity_chirho) =
+            self.displaced_identity_chirho(inst_chirho.class_identity_chirho())
+        {
+            if identity_chirho != CompilerClassChirho::ShowChirho || !compiler_owned_chirho {
+                return None;
+            }
+            let layout_chirho = self
+                .proof_layout_chirho(class_name_chirho, inst_chirho.class_identity_chirho())?
+                .clone();
+            return Some(ConditionalListEntryChirho {
+                class_name_chirho: layout_chirho.class_name_chirho.clone(),
+                layout_chirho,
+                context_classes_chirho,
+                route_chirho: ConditionalListRouteChirho::CompilerShowChirho(identity_chirho),
+            });
+        }
+        let layout_chirho = self.layouts_chirho.get(class_name_chirho)?.clone();
+        let proves_spelling_chirho = matches!(
+            inst_chirho.class_identity_chirho().identity_chirho(),
+            Some(PredicateClassIdentityChirho::CompilerChirho(identity_chirho))
+                if identity_chirho.legacy_name_chirho() == class_name_chirho
+        );
+        let route_chirho = if matches!(class_name_chirho, "Eq" | "Show" | "Ord")
+            && !(compiler_owned_chirho && proves_spelling_chirho)
+        {
+            ConditionalListRouteChirho::InstanceRowsChirho
+        } else {
+            ConditionalListRouteChirho::SpelledChirho
+        };
+        Some(ConditionalListEntryChirho {
+            class_name_chirho: class_name_chirho.to_string(),
+            layout_chirho,
+            context_classes_chirho,
+            route_chirho,
+        })
     }
 
     /// Build the `[elem]` dictionary of a conditional list instance; the GND pass calls it for
@@ -137,7 +277,9 @@ impl DictPassCtxChirho {
                 list_type_key_chirho,
                 layout_chirho,
             ),
-            "Show" => self.generate_show_list_dict_chirho(list_type_key_chirho, layout_chirho),
+            "Show" => {
+                self.generate_show_list_dict_chirho(list_type_key_chirho, layout_chirho, None)
+            }
             "Ord" => {
                 // A real `Ord [T]` when the element's compare row has a body;
                 // the generic path names the method otherwise.
@@ -559,25 +701,31 @@ impl DictPassCtxChirho {
         );
     }
 
-    /// Generate `Show [T]` dict for element types other than [Int] and [Char].
+    /// Generate `Show [T]` dict for element types other than [Int] and [Char], named in its
+    /// layout's namespace: the spelling `Show`, or the reserved namespace of a displaced
+    /// compiler Show, whose method fields only that class's own rows fill
+    /// (`compiler_method_row_chirho`, row 692, C10, #33179).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
     fn generate_show_list_dict_chirho(
         &mut self,
         list_type_key_chirho: &str,
         layout_chirho: &DictLayoutChirho,
+        compiler_rows_chirho: Option<(CompilerClassChirho, &HashSet<(String, String)>)>,
     ) {
+        let namespace_chirho = &layout_chirho.class_name_chirho;
         self.generate_show_key_binding_chirho(
-            &format!("$prim_Show_show_{list_type_key_chirho}"),
+            &format!("$prim_{namespace_chirho}_show_{list_type_key_chirho}"),
             list_type_key_chirho,
         );
 
         // Generate the Show dict for this list type
-        let dict_name_chirho = format!("$fShow{}", list_type_key_chirho);
-        let dict_ty_chirho = TyChirho::ConChirho("$Dict_Show".to_string());
+        let dict_name_chirho = format!("$f{namespace_chirho}{list_type_key_chirho}");
+        let dict_ty_chirho = TyChirho::ConChirho(format!("$Dict_{namespace_chirho}"));
         let dict_binder_chirho =
             self.conditional_dict_binder_chirho(&dict_name_chirho, dict_ty_chirho);
         let dict_id_chirho = dict_binder_chirho.id_chirho;
 
-        let con_name_chirho = "$Dict_Show".to_string();
+        let con_name_chirho = format!("$Dict_{namespace_chirho}");
         let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
 
         for slot_chirho in &layout_chirho.super_slots_chirho {
@@ -586,8 +734,17 @@ impl DictPassCtxChirho {
 
         for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
             let impl_name_chirho =
-                format!("$prim_Show_{}_{}", method_name_chirho, list_type_key_chirho);
-            let impl_id_chirho = self.resolve_or_fresh_id_chirho(&impl_name_chirho);
+                format!("$prim_{namespace_chirho}_{method_name_chirho}_{list_type_key_chirho}");
+            let impl_id_chirho = match compiler_rows_chirho {
+                Some((identity_chirho, namesake_rows_chirho)) => self.compiler_method_row_chirho(
+                    identity_chirho,
+                    &impl_name_chirho,
+                    method_name_chirho,
+                    list_type_key_chirho,
+                    namesake_rows_chirho,
+                ),
+                None => self.resolve_or_fresh_id_chirho(&impl_name_chirho),
+            };
             field_args_chirho.push(CoreExprChirho::VarChirho(impl_id_chirho));
         }
 
@@ -604,7 +761,7 @@ impl DictPassCtxChirho {
         });
 
         self.instance_dicts_chirho.insert(
-            ("Show".to_string(), list_type_key_chirho.to_string()),
+            (namespace_chirho.clone(), list_type_key_chirho.to_string()),
             dict_id_chirho,
         );
     }
