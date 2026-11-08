@@ -338,3 +338,15 @@ Q's measured baseline and repaired front end now expose deeper work. P2 and adde
 - [ ] Execute both prepared current-main BEFORE corpus axes using frozen CLIce10896d; no comparison or compatibility metric rewrite is inferred from the build.
 
 Root canonical compiler crates remain04116a69. Fresh main-equivalent release build325d passes with zero compiler messages, root build fold2ae787e7. No additional cache cleanup is needed or authorized. The consolidated November8 report is grouped directly by date because the existing November month shard is at14 entries; no immutable report or evidence path was moved.
+
+## Convergence priority after L.J.'s optimization question Chirho
+
+- [x] Combine the measured inputs into pushed16ac9aed/crates4620609b. Both e9 and final-route16ac workspace/all-target checks have zero compiler messages; no behavioral or main acceptance follows. The row710 dependency is explicitly present, preserving selected sections, reader scope, literal substitution, class proof and main native/nominality seams.
+- [x] Complete final ten fresh inventories plus ownRTS under33243. All eleven stages and pin/group closures pass; no test body ran. Reuse these binaries, actual names and archive proof for combined behavior, with no listing replay.
+- [x] Complete both current-main-equivalent BEFORE directory axes; fold2a8336ea records raw profile observations and exact completeness only. Inner attempt count is unknown, first timeout logs can be overwritten, and no all.T option matrix or semantic compatibility update is claimed.
+- [x] Close private Q route quality atfc5: zero-message check, typing845/Core231/exact29 and whole-Q-delta zero changed-span hits with250 OUTSIDE; old024 enum warning stays a RED. M3 genuinely loses only the transitive demanded refusal while its direct/scalar controls stay green.
+- [x] Measure family973 repair: whole typing827, four positive outputs on all three engines, two existing rejection controls and scoped lint0hits/249OUTSIDE. Original family evidence root has39 entries, a recorded structural failure; preserve it and use bounded groups for all new combined packets.
+- [ ] Prioritize combined healthy libraries/evidence, selected/Q/family/reader controls and the actual main native GC/PAP/root-lifetime targets. Treat known driver/MR/ground/frontier outcomes as explicit movement, never inferred green.
+- [ ] Finish remaining authority mutations and movement after the combined primary; keep diagnostic/lexical preparation parallel and bounded, without delaying convergence.
+
+L.J. asks whether this is optimal. Root's assessment is that technical progress is real but coordination and repeated private checks have delayed a measured landable candidate. The execution change is fewer bundled meaningful grants, one shared fresh inventory, immediate slot release before reporting, and combined behavior before opening more compiler subphases. No safety, provenance, failure or main-landing gate is waived.
