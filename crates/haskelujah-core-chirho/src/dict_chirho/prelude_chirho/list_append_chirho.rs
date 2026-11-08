@@ -1,6 +1,6 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-//! One generic lazy append body and forwarding entries backed by selected-value provenance.
+//! Lazy compiler values and append forwarding backed by selected-value provenance.
 //! Workflow: compiler-pipeline-chirho/native-symbol-identity-chirho.md#polymorphic-list-append-chirho.
 
 use haskelujah_ast_chirho::name_chirho::CompilerValueChirho;
@@ -101,7 +101,7 @@ impl DictPassCtxChirho {
             if self.module_bound_ids_chirho.contains(&id_chirho) {
                 continue;
             }
-            match value_chirho {
+            let (rhs_chirho, ty_chirho) = match value_chirho {
                 CompilerValueChirho::ListAppendChirho => {
                     let target_chirho = self
                         .lookup_compiler_owned_name_id_chirho("append")
@@ -129,24 +129,57 @@ impl DictPassCtxChirho {
                             }),
                         }),
                     };
-                    self.names_chirho
-                        .insert(id_chirho, value_chirho.core_name_chirho().to_string());
-                    self.generated_bindings_chirho.push(CoreBindingChirho {
-                        binder_chirho: BinderChirho {
-                            id_chirho,
-                            name_chirho: value_chirho.core_name_chirho().to_string(),
-                            ty_chirho: TyChirho::fun_n_chirho(
-                                vec![list_chirho.clone(), list_chirho.clone()],
-                                list_chirho,
-                            ),
-                            span_chirho: SpanChirho::DUMMY_CHIRHO,
-                        },
+                    (
                         rhs_chirho,
-                        is_rec_chirho: false,
-                        inline_chirho: InlineAnnotationChirho::NeverChirho,
-                    });
+                        TyChirho::fun_n_chirho(
+                            vec![list_chirho.clone(), list_chirho.clone()],
+                            list_chirho,
+                        ),
+                    )
                 }
-            }
+                CompilerValueChirho::ApplyChirho => {
+                    let argument_ty_chirho = TyChirho::VarChirho(TyVarChirho(9993));
+                    let result_ty_chirho = TyChirho::VarChirho(TyVarChirho(9994));
+                    let function_ty_chirho =
+                        TyChirho::fun_chirho(argument_ty_chirho.clone(), result_ty_chirho.clone());
+                    let function_chirho = self
+                        .fresh_binder_chirho("apply_function_chirho", function_ty_chirho.clone());
+                    let argument_chirho = self
+                        .fresh_binder_chirho("apply_argument_chirho", argument_ty_chirho.clone());
+                    // An ordinary two-argument lazy binding. There is no
+                    // runtime spelling lookup and no eager force of x.
+                    let body_chirho = CoreExprChirho::AppChirho {
+                        fun_chirho: Box::new(CoreExprChirho::VarChirho(function_chirho.id_chirho)),
+                        arg_chirho: Box::new(CoreExprChirho::VarChirho(argument_chirho.id_chirho)),
+                    };
+                    (
+                        CoreExprChirho::LamChirho {
+                            binder_chirho: function_chirho,
+                            body_chirho: Box::new(CoreExprChirho::LamChirho {
+                                binder_chirho: argument_chirho,
+                                body_chirho: Box::new(body_chirho),
+                            }),
+                        },
+                        TyChirho::fun_n_chirho(
+                            vec![function_ty_chirho, argument_ty_chirho],
+                            result_ty_chirho,
+                        ),
+                    )
+                }
+            };
+            self.names_chirho
+                .insert(id_chirho, value_chirho.core_name_chirho().to_string());
+            self.generated_bindings_chirho.push(CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho,
+                    name_chirho: value_chirho.core_name_chirho().to_string(),
+                    ty_chirho,
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NeverChirho,
+            });
         }
     }
 }

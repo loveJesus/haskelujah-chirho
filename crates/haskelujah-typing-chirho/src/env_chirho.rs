@@ -11,19 +11,23 @@ use std::collections::HashMap;
 use crate::skolem_chirho::rewrite_skolems_chirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
+use haskelujah_ast_chirho::name_chirho::CompilerValueChirho;
 
 /// A lexical entry is either a value or an explicit absence. A masked field
 /// label must stop lookup before an outer Prelude seed can be considered.
 #[derive(Debug, Clone)]
 enum EnvEntryChirho {
-    ValueChirho(SchemeChirho),
+    ValueChirho {
+        scheme_chirho: SchemeChirho,
+        compiler_value_chirho: Option<CompilerValueChirho>,
+    },
     MaskedChirho,
 }
 
 impl EnvEntryChirho {
     fn scheme_chirho(&self) -> Option<&SchemeChirho> {
         match self {
-            Self::ValueChirho(scheme_chirho) => Some(scheme_chirho),
+            Self::ValueChirho { scheme_chirho, .. } => Some(scheme_chirho),
             Self::MaskedChirho => None,
         }
     }
@@ -169,8 +173,53 @@ impl TyEnvChirho {
 
     /// Bind a name to a type scheme in the current (innermost) scope.
     pub fn bind_chirho(&mut self, name_chirho: String, scheme_chirho: SchemeChirho) {
+        self.bind_selected_value_chirho(name_chirho, scheme_chirho, None);
+    }
+
+    /// One selected lexical value carries its producer certificate beside its
+    /// scheme. New ordinary binders use `bind_chirho` and cannot inherit it.
+    /// workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
+    pub(crate) fn bind_selected_value_chirho(
+        &mut self,
+        name_chirho: String,
+        scheme_chirho: SchemeChirho,
+        compiler_value_chirho: Option<CompilerValueChirho>,
+    ) {
         if let Some(scope_chirho) = self.scopes_chirho.last_mut() {
-            scope_chirho.insert(name_chirho, EnvEntryChirho::ValueChirho(scheme_chirho));
+            scope_chirho.insert(
+                name_chirho,
+                EnvEntryChirho::ValueChirho {
+                    scheme_chirho,
+                    compiler_value_chirho,
+                },
+            );
+        }
+    }
+
+    /// Consume the existing import payload once. Equal-name copies retain the
+    /// old last-scheme policy, but every copy must agree positively on authority.
+    pub(crate) fn bind_selected_imports_chirho(
+        &mut self,
+        mut selected_chirho: Vec<(String, SchemeChirho, Option<CompilerValueChirho>)>,
+    ) {
+        selected_chirho.sort_by(|left_chirho, right_chirho| left_chirho.0.cmp(&right_chirho.0));
+        let mut selected_chirho = selected_chirho.into_iter().peekable();
+        while let Some((name_chirho, mut scheme_chirho, mut compiler_value_chirho)) =
+            selected_chirho.next()
+        {
+            while selected_chirho
+                .peek()
+                .is_some_and(|entry_chirho| entry_chirho.0 == name_chirho)
+            {
+                let (_, next_scheme_chirho, next_value_chirho) = selected_chirho
+                    .next()
+                    .expect("peeked selected value Chirho");
+                scheme_chirho = next_scheme_chirho;
+                if compiler_value_chirho != next_value_chirho {
+                    compiler_value_chirho = None;
+                }
+            }
+            self.bind_selected_value_chirho(name_chirho, scheme_chirho, compiler_value_chirho);
         }
     }
 
@@ -211,9 +260,25 @@ impl TyEnvChirho {
 
     /// Look up a name, searching from innermost to outermost scope.
     pub fn lookup_chirho(&self, name_chirho: &str) -> Option<&SchemeChirho> {
+        self.lookup_value_chirho(name_chirho)
+            .map(|(scheme_chirho, _)| scheme_chirho)
+    }
+
+    /// Borrow the scheme and authority from the same exact lexical entry.
+    /// A mask stops this lookup, and a new local binder has no certificate.
+    pub(crate) fn lookup_value_chirho(
+        &self,
+        name_chirho: &str,
+    ) -> Option<(&SchemeChirho, Option<CompilerValueChirho>)> {
         for scope_chirho in self.scopes_chirho.iter().rev() {
             if let Some(entry_chirho) = scope_chirho.get(name_chirho) {
-                return entry_chirho.scheme_chirho();
+                return match entry_chirho {
+                    EnvEntryChirho::ValueChirho {
+                        scheme_chirho,
+                        compiler_value_chirho,
+                    } => Some((scheme_chirho, *compiler_value_chirho)),
+                    EnvEntryChirho::MaskedChirho => None,
+                };
             }
         }
         None
@@ -282,7 +347,10 @@ impl TyEnvChirho {
         name_chirho: &str,
         scheme_chirho: SchemeChirho,
     ) {
-        if let Some(EnvEntryChirho::ValueChirho(entry_chirho)) = self
+        if let Some(EnvEntryChirho::ValueChirho {
+            scheme_chirho: entry_chirho,
+            ..
+        }) = self
             .scopes_chirho
             .get_mut(index_chirho)
             .and_then(|scope_chirho| scope_chirho.get_mut(name_chirho))
@@ -323,7 +391,7 @@ impl TyEnvChirho {
     pub fn apply_subst_chirho(&mut self, subst_chirho: &SubstChirho) {
         for scope_chirho in &mut self.scopes_chirho {
             for entry_chirho in scope_chirho.values_mut() {
-                if let EnvEntryChirho::ValueChirho(scheme_chirho) = entry_chirho {
+                if let EnvEntryChirho::ValueChirho { scheme_chirho, .. } = entry_chirho {
                     *scheme_chirho = subst_chirho.apply_scheme_chirho(scheme_chirho);
                 }
             }
@@ -340,6 +408,77 @@ impl TyEnvChirho {
 mod tests_chirho {
     use super::*;
     use crate::ty_chirho::TyChirho;
+
+    #[test]
+    fn compiler_value_authority_belongs_to_the_selected_lexical_binding_chirho() {
+        let mut env_chirho = TyEnvChirho::new_chirho();
+        let scheme_chirho = SchemeChirho::mono_chirho(TyChirho::int_chirho());
+        env_chirho.bind_selected_value_chirho(
+            "$".to_string(),
+            scheme_chirho.clone(),
+            Some(CompilerValueChirho::ApplyChirho),
+        );
+        env_chirho.apply_subst_chirho(&SubstChirho::empty_chirho());
+        env_chirho.replace_located_binding_chirho(0, "$", scheme_chirho.clone());
+        assert_eq!(
+            env_chirho.lookup_value_chirho("$").unwrap().1,
+            Some(CompilerValueChirho::ApplyChirho)
+        );
+        env_chirho.push_scope_chirho();
+        env_chirho.bind_chirho("$".to_string(), scheme_chirho.clone());
+        assert_eq!(env_chirho.lookup_value_chirho("$").unwrap().1, None);
+        env_chirho.pop_scope_chirho();
+        assert_eq!(
+            env_chirho.lookup_value_chirho("$").unwrap().1,
+            Some(CompilerValueChirho::ApplyChirho)
+        );
+        env_chirho.mask_chirho("$".to_string());
+        assert!(env_chirho.lookup_value_chirho("$").is_none());
+        env_chirho.bind_chirho("$".to_string(), scheme_chirho);
+        assert_eq!(env_chirho.lookup_value_chirho("$").unwrap().1, None);
+    }
+
+    #[test]
+    fn every_selected_copy_must_agree_and_an_unproven_copy_stays_absorbing_chirho() {
+        let int_chirho = SchemeChirho::mono_chirho(TyChirho::int_chirho());
+        let bool_chirho = SchemeChirho::mono_chirho(TyChirho::bool_chirho());
+        let compiler_chirho = (
+            "$".to_string(),
+            int_chirho.clone(),
+            Some(CompilerValueChirho::ApplyChirho),
+        );
+        let unproven_chirho = ("$".to_string(), int_chirho.clone(), None);
+        for selected_chirho in [
+            vec![
+                compiler_chirho.clone(),
+                unproven_chirho.clone(),
+                compiler_chirho.clone(),
+            ],
+            vec![
+                unproven_chirho,
+                compiler_chirho.clone(),
+                compiler_chirho.clone(),
+            ],
+        ] {
+            let mut env_chirho = TyEnvChirho::new_chirho();
+            env_chirho.bind_selected_imports_chirho(selected_chirho);
+            assert_eq!(env_chirho.lookup_value_chirho("$").unwrap().1, None);
+        }
+        let mut env_chirho = TyEnvChirho::new_chirho();
+        env_chirho.bind_selected_imports_chirho(vec![compiler_chirho.clone(), compiler_chirho]);
+        assert_eq!(
+            env_chirho.lookup_value_chirho("$").unwrap().1,
+            Some(CompilerValueChirho::ApplyChirho)
+        );
+        env_chirho.bind_selected_imports_chirho(vec![
+            ("applyChirho".to_string(), int_chirho, None),
+            ("applyChirho".to_string(), bool_chirho, None),
+        ]);
+        assert_eq!(
+            env_chirho.lookup_chirho("applyChirho").unwrap().ty_chirho,
+            TyChirho::bool_chirho()
+        );
+    }
 
     #[test]
     fn bind_and_lookup_chirho() {

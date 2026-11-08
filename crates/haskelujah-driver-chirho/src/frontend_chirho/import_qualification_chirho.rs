@@ -17,6 +17,42 @@ pub fn qualified_import_alias_scheme_chirho(
     name_chirho: &str,
     builtins_chirho: &std::collections::HashMap<String, haskelujah_typing_chirho::SchemeChirho>,
 ) -> Option<haskelujah_typing_chirho::SchemeChirho> {
+    if let Some(compiler_value_chirho) = selected_compiler_value_chirho(iface_chirho, name_chirho) {
+        return match compiler_value_chirho {
+            haskelujah_ast_chirho::name_chirho::CompilerValueChirho::ListAppendChirho => {
+                haskelujah_typing_chirho::infer_chirho::qualified_builtin_alias_scheme_chirho(
+                    "Prelude",
+                    "++",
+                    builtins_chirho,
+                )
+            }
+            haskelujah_ast_chirho::name_chirho::CompilerValueChirho::ApplyChirho => {
+                haskelujah_typing_chirho::infer_chirho::qualified_builtin_alias_scheme_chirho(
+                    "Prelude",
+                    "$",
+                    builtins_chirho,
+                )
+            }
+        };
+    }
+    if iface_chirho.exports_chirho.origin_chirho
+        != haskelujah_naming_chirho::IfaceOriginChirho::BuiltinChirho
+    {
+        return None;
+    }
+    haskelujah_typing_chirho::infer_chirho::qualified_builtin_alias_scheme_chirho(
+        &iface_chirho.name_chirho,
+        name_chirho,
+        builtins_chirho,
+    )
+}
+
+/// Read the actual selected export, including a real re-export. An absent,
+/// unavailable or source-owned value cannot acquire a compiler certificate.
+pub(super) fn selected_compiler_value_chirho(
+    iface_chirho: &ModuleIfaceChirho,
+    name_chirho: &str,
+) -> Option<haskelujah_ast_chirho::name_chirho::CompilerValueChirho> {
     let selected_value_chirho = iface_chirho
         .exports_chirho
         .values_chirho
@@ -33,26 +69,9 @@ pub fn qualified_import_alias_scheme_chirho(
             == haskelujah_naming_chirho::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho
         && let Some(compiler_value_chirho) = value_chirho.compiler_value_chirho
     {
-        return match compiler_value_chirho {
-            haskelujah_ast_chirho::name_chirho::CompilerValueChirho::ListAppendChirho => {
-                haskelujah_typing_chirho::infer_chirho::qualified_builtin_alias_scheme_chirho(
-                    "Prelude",
-                    "++",
-                    builtins_chirho,
-                )
-            }
-        };
+        return Some(compiler_value_chirho);
     }
-    if iface_chirho.exports_chirho.origin_chirho
-        != haskelujah_naming_chirho::IfaceOriginChirho::BuiltinChirho
-    {
-        return None;
-    }
-    haskelujah_typing_chirho::infer_chirho::qualified_builtin_alias_scheme_chirho(
-        &iface_chirho.name_chirho,
-        name_chirho,
-        builtins_chirho,
-    )
+    None
 }
 
 fn collect_local_type_names_chirho(

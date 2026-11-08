@@ -21,7 +21,7 @@ use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, MatchArmChirho};
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::name_chirho::NameChirho;
+use haskelujah_ast_chirho::name_chirho::{CompilerValueChirho, NameChirho};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::promotion_chirho::{
     PromotionScopeChirho, readable_promoted_keys_chirho,
@@ -811,7 +811,7 @@ pub fn infer_module_with_imports_type_synonyms_and_families_chirho(
             imported_type_families_chirho,
             imported_class_env_chirho: &imported_class_env_chirho,
             imported_record_field_names_chirho,
-            unavailable_selectors_chirho: &HashSet::new(),
+            unavailable_values_chirho: &HashSet::new(),
             safe_unqualified_imported_type_names_chirho,
             preferred_qualified_type_names_chirho,
             promotion_scope_chirho: None,
@@ -835,12 +835,14 @@ pub struct InferenceImportContextChirho<'imports_chirho> {
     pub imported_types_chirho: &'imports_chirho HashMap<String, SchemeChirho>,
     /// Actual import-selected spellings and their complete schemes, consumed once
     /// after broad compatibility seeds. Unknown is a binding, not builtin authority.
-    pub selected_imported_value_schemes_chirho: Vec<(String, SchemeChirho)>,
+    pub selected_imported_value_schemes_chirho:
+        Vec<(String, SchemeChirho, Option<CompilerValueChirho>)>,
     pub imported_type_synonyms_chirho: &'imports_chirho HashMap<String, (Vec<String>, TypeChirho)>,
     pub imported_type_families_chirho: &'imports_chirho TypeFamilyEnvChirho,
     pub imported_class_env_chirho: &'imports_chirho ClassEnvChirho,
-    /// Exact admitted spellings that are field labels without callable selectors.
-    pub unavailable_selectors_chirho: &'imports_chirho HashSet<String>,
+    /// Exact lexical absences: field labels without callable selectors and
+    /// compatibility seeds not admitted by the checked source's actual imports.
+    pub unavailable_values_chirho: &'imports_chirho HashSet<String>,
     pub imported_record_field_names_chirho:
         &'imports_chirho HashMap<String, ConstructorFieldScopeChirho>,
     pub safe_unqualified_imported_type_names_chirho: &'imports_chirho HashSet<String>,
@@ -888,7 +890,7 @@ fn infer_module_with_elaboration_state_chirho(
         imported_type_families_chirho,
         imported_class_env_chirho,
         imported_record_field_names_chirho,
-        unavailable_selectors_chirho,
+        unavailable_values_chirho,
         safe_unqualified_imported_type_names_chirho,
         preferred_qualified_type_names_chirho,
         promotion_scope_chirho,
@@ -982,15 +984,14 @@ fn infer_module_with_elaboration_state_chirho(
                 .bind_chirho(name_chirho.clone(), scheme_chirho.clone());
         }
     }
-    // Naming-selected bindings win over generic seeds even when their checked
-    // type payload is absent. Consume the full Scheme in the existing arena;
-    // no origin-only permission or second lookup state survives this handoff.
+    // Naming-selected bindings win over generic seeds. Stable sorting preserves
+    // the existing last-scheme policy for duplicate keys, while a certificate
+    // survives only if every selected copy positively agrees. An unproven copy
+    // is absorbing, regardless of import order. No second registry is created.
     // Workflow: compiler-pipeline-chirho/builtin-type-environment-chirho.
-    for (name_chirho, scheme_chirho) in selected_imported_value_schemes_chirho {
-        ctx_chirho
-            .env_chirho
-            .bind_chirho(name_chirho, scheme_chirho);
-    }
+    ctx_chirho
+        .env_chirho
+        .bind_selected_imports_chirho(selected_imported_value_schemes_chirho);
     let mut sorted_record_fields_chirho: Vec<_> =
         imported_record_field_names_chirho.iter().collect();
     sorted_record_fields_chirho.sort_by(|a_chirho, b_chirho| a_chirho.0.cmp(b_chirho.0));
@@ -999,7 +1000,7 @@ fn infer_module_with_elaboration_state_chirho(
             .con_field_names_chirho
             .insert(constructor_name_chirho.clone(), field_names_chirho.clone());
     }
-    for name_chirho in unavailable_selectors_chirho {
+    for name_chirho in unavailable_values_chirho {
         ctx_chirho.env_chirho.mask_chirho(name_chirho.clone());
     }
     let subst_chirho = ctx_chirho.infer_module_chirho(module_chirho);

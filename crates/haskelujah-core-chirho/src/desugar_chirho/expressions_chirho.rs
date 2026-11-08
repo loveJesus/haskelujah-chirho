@@ -358,14 +358,6 @@ impl DesugarCtxChirho {
                     );
                 }
 
-                // ($) is function application: f $ x = f x
-                if op_name_chirho == "$" {
-                    return CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(left_core_chirho),
-                        arg_chirho: Box::new(right_core_chirho),
-                    };
-                }
-
                 // ($!) is strict application: f $! x = seq x (f x)
                 // Desugars to: case x of { _ -> f x }
                 if op_name_chirho == "$!" {

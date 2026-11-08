@@ -273,7 +273,7 @@ fn failed_admission_cannot_export_evidence_or_become_a_successful_next_import_ch
                 imported_type_families_chirho: &Default::default(),
                 imported_class_env_chirho: environment_chirho,
                 imported_record_field_names_chirho: &HashMap::new(),
-                unavailable_selectors_chirho: &std::collections::HashSet::new(),
+                unavailable_values_chirho: &std::collections::HashSet::new(),
                 safe_unqualified_imported_type_names_chirho: &Default::default(),
                 preferred_qualified_type_names_chirho: &HashMap::new(),
                 promotion_scope_chirho: None,

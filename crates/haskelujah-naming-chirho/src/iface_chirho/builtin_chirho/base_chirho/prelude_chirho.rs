@@ -640,6 +640,10 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             "throwIO",
         ] {
             let (k_chirho, mut v_chirho) = mk_val_chirho(name_chirho);
+            if *name_chirho == "($)" {
+                v_chirho.compiler_value_chirho =
+                    Some(haskelujah_ast_chirho::name_chirho::CompilerValueChirho::ApplyChirho);
+            }
             if *name_chirho == "(++)" {
                 v_chirho.compiler_value_chirho =
                     Some(haskelujah_ast_chirho::name_chirho::CompilerValueChirho::ListAppendChirho);

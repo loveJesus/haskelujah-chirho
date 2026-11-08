@@ -17,7 +17,11 @@ flowchart TD
     surface_chirho --> seeded_chirho[(Seeded TyEnvChirho)]
 
     seeded_chirho -- via builtin_value_schemes_chirho --> driver_chirho[Driver merges into imported value types with or_insert: an import wins]
-    driver_chirho --> imports_chirho[Phase 3.9: each imported name takes its Module.name scheme first]
+    driver_chirho --> imports_chirho[Phase 3.9: actual selected interface and import list choose each value]
+    imports_chirho --> selected_chirho[InferenceImportContext: exact spellings, full Scheme and optional selected value certificate]
+    selected_chirho --> consume_chirho[Consume selected bindings in TyEnv after generic import seeds]
+    consume_chirho --> shadow_chirho
+
     seeded_chirho -- via InferCtxChirho::new_chirho --> shadow_chirho[infer_module_chirho: collect_module_shadowed_names_chirho, then remove_chirho]
     shadow_chirho --> rebind_chirho[Phases 0b-2: foreign imports, classes, instances, data and newtype constructors bind]
     rebind_chirho --> groups_chirho[Phase 3: SCC binding groups]
@@ -45,6 +49,32 @@ flowchart TD
 - `collect_module_shadowed_names_chirho` gathers the module's top-level function, signature and pattern-bound names, its data and newtype constructors, and its record field names. `infer_module_chirho` removes all of them from the seeded environment before Phase 0, then the module's own declarations bind them.
 - Class methods are not removed. Phase 1a binds them over the seed.
 - The driver's copy goes the other way. It merges `builtin_value_schemes_chirho()` into the module's imported value types with `or_insert`, so an imported scheme wins over a builtin of the same name.
+
+## Selected compiler application, row 714
+
+The actual Prelude `($)` export mints `CompilerValueChirho::ApplyChirho`. Its selected export supplies the known compiler scheme by enum dispatch, including through a real forwarding interface. A precise scheme, builtin spelling or interface origin alone grants no application permission. The existing transient import vector carries the optional certificate beside its scheme into one lexical `TyEnvChirho` value entry. Stable grouping keeps the previous last-scheme policy and meets certificates conservatively: every copy must agree positively, and an unproven copy is absorbing. Same-binding substitution/replacement retains the certificate; a new source binder or alias clears it. Exact lookup returns both fields from that entry. A suffix-qualified or outer bare fallback may borrow the existing compatibility scheme, but always returns no certificate.
+
+The existing unavailable-selector carrier is now `unavailable_values_chirho`: it still masks uncallable field labels and also masks the bare compatibility `$` seed when the actual selected import scope contains no callable unqualified `$`. This is a negative scope fact, not a producer of compiler authority. Ordinary source declarations and lexical binders shadow it through the existing binding route.
+
+```mermaid
+flowchart TD
+    export_chirho[Actual Prelude export] --> certificate_chirho[Existing CompilerValue Apply certificate]
+    certificate_chirho --> selected_chirho[Existing selected import vector]
+    selected_chirho --> meet_chirho[Every equal-name copy agrees positively]
+    meet_chirho --> lexical_chirho[Scheme and certificate in one lexical entry]
+    lexical_chirho --> head_chirho[Exact resolved application head]
+    head_chirho --> local_chirho[Existing Quick Look with this heads fresh variables]
+    global_chirho[Actual ImpredicativeTypes option] --> local_chirho
+    source_chirho[New source binder, stub, conflict or qualifier fallback] --> ordinary_chirho[Ordinary application without certificate]
+    certificate_chirho --> supplier_chirho[Existing selected Core supplier and reference provenance]
+    supplier_chirho --> body_chirho[Ordinary lazy function argument application body]
+    body_chirho --> lookup_chirho[Existing STG binding lookup]
+```
+
+A selected apply plan licenses only its own fresh Quick Look variables. Recursive preparation passes the actual global option separately, so an outer compiler `$` cannot license a source-clone child. Existing bounds, equality budgets, class wanteds and rigid-escape checks remain shared. Both formerly append-specific unproven-supplier recording branches now use the generic selected value route. Infix `$` also uses that ordinary operator reference route; a source-owned body keeps its actual supplier and binding. The certified-body generator emits `function argument` as a normal two-parameter lazy binding, and does not replace input module-owned IDs or force an unused argument.
+
+The immutable `d275f76c` before measurement compiled the workspace with zero diagnostics, then ran sixteen exact controls: six passed and ten failed. The failures were six false type refusals, the hidden-dollar refusal for the wrong reason, one unimported monomorphic false accept and two missing first-class STG bindings. The source-owned monomorphic body printed6. The after-only mutation controls start with actual builtin interfaces and remove or mask their selected proof; they do not hand-write a positive certificate or scheme. This selected-application source is composed into the main-rooted private union; the assembled source still needs its own compiler and behavioral gates. Earlier measurements remain attached to their exact private inputs.
+
 
 ## Module-scoped builtins
 

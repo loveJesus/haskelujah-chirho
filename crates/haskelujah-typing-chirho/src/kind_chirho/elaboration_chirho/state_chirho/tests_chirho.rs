@@ -159,7 +159,7 @@ fn adopted_latched_failure_is_fatal_without_another_argument_chirho() {
                 imported_type_synonyms_chirho: &HashMap::new(),
                 imported_type_families_chirho: &checked_chirho.registry_chirho,
                 imported_class_env_chirho: &crate::class_chirho::ClassEnvChirho::default(),
-                unavailable_selectors_chirho: &HashSet::new(),
+                unavailable_values_chirho: &HashSet::new(),
                 imported_record_field_names_chirho: &HashMap::new(),
                 safe_unqualified_imported_type_names_chirho: &HashSet::new(),
                 preferred_qualified_type_names_chirho: &HashMap::new(),

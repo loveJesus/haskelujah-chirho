@@ -145,7 +145,7 @@ fn diagnostics_with_collapsed_names_chirho(
                 &haskelujah_typing_chirho::infer_chirho::TypeFamilyEnvChirho::new_chirho(),
             imported_class_env_chirho: &class_env_chirho,
             imported_record_field_names_chirho: &HashMap::new(),
-            unavailable_selectors_chirho: &HashSet::new(),
+            unavailable_values_chirho: &HashSet::new(),
             safe_unqualified_imported_type_names_chirho: &collapsed_chirho
                 .iter()
                 .map(|name_chirho| name_chirho.to_string())

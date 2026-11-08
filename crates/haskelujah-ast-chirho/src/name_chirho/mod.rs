@@ -197,6 +197,7 @@ impl RawNameChirho {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum CompilerValueChirho {
     ListAppendChirho,
+    ApplyChirho,
 }
 
 impl CompilerValueChirho {
@@ -204,6 +205,7 @@ impl CompilerValueChirho {
     pub fn core_name_chirho(self) -> &'static str {
         match self {
             Self::ListAppendChirho => "$list_append_chirho",
+            Self::ApplyChirho => "$apply_chirho",
         }
     }
 }
