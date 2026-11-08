@@ -170,6 +170,73 @@ fn unify_bare_and_qualified_tycons_do_not_alias_chirho() {
     );
 }
 
+fn source_constructor_ty_chirho(defining_module_chirho: &str) -> TyChirho {
+    use haskelujah_ast_chirho::name_chirho::{
+        TypeConstructorDeclarationChirho, TypeConstructorRoleChirho,
+    };
+
+    let declaration_chirho = TypeConstructorDeclarationChirho::source_chirho(
+        defining_module_chirho,
+        "TokenChirho",
+        TypeConstructorRoleChirho::DataChirho,
+    );
+    TyChirho::ConChirho(declaration_chirho.type_key_chirho())
+}
+
+#[test]
+fn source_constructor_keys_with_dotted_definers_remain_nominal_chirho() {
+    let left_chirho = source_constructor_ty_chirho("Alpha.Shared");
+    let right_chirho = source_constructor_ty_chirho("Other.Shared");
+    assert_ne!(left_chirho, right_chirho);
+
+    for (expected_chirho, actual_chirho) in [
+        (left_chirho.clone(), right_chirho.clone()),
+        (right_chirho, left_chirho),
+    ] {
+        for (expected_chirho, actual_chirho) in [
+            (expected_chirho.clone(), actual_chirho.clone()),
+            (
+                TyChirho::ListChirho(Box::new(expected_chirho.clone())),
+                TyChirho::ListChirho(Box::new(actual_chirho.clone())),
+            ),
+            (
+                TyChirho::fun_chirho(TyChirho::int_chirho(), expected_chirho),
+                TyChirho::fun_chirho(TyChirho::int_chirho(), actual_chirho),
+            ),
+        ] {
+            assert!(
+                matches!(
+                    unify_chirho(&expected_chirho, &actual_chirho, SpanChirho::DUMMY_CHIRHO),
+                    Err(UnifyErrorChirho::MismatchChirho { .. })
+                ),
+                "distinct source producers must remain nominal: {expected_chirho:?}, {actual_chirho:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn source_constructor_keys_keep_the_same_producer_and_meta_substitution_chirho() {
+    let source_chirho = source_constructor_ty_chirho("Alpha.Shared");
+    let same_chirho = source_constructor_ty_chirho("Alpha.Shared");
+    let substitution_chirho = unify_chirho(&source_chirho, &same_chirho, SpanChirho::DUMMY_CHIRHO)
+        .expect("the same source producer retains its identity");
+    assert!(substitution_chirho.is_empty_chirho());
+
+    let variable_chirho = TyChirho::VarChirho(TyVarChirho(5_000));
+    for (left_chirho, right_chirho) in [
+        (&variable_chirho, &source_chirho),
+        (&source_chirho, &variable_chirho),
+    ] {
+        let substitution_chirho = unify_chirho(left_chirho, right_chirho, SpanChirho::DUMMY_CHIRHO)
+            .expect("a metavariable can stand for the source constructor");
+        assert_eq!(
+            substitution_chirho.apply_ty_chirho(&variable_chirho),
+            source_chirho
+        );
+    }
+}
+
 #[test]
 fn occurs_check_prevents_infinite_type_chirho() {
     let a_chirho = TyVarChirho(0);

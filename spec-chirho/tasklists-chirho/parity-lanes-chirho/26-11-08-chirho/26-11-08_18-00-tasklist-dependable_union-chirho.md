@@ -2,7 +2,7 @@
 
 # Dependable source union Chirho
 
-Current resume: the acea7dec first workspace check is a retained compiler RED (one E0308 tuple/record caller mismatch); a separate test-only adaptation now uses the existing explicit legacy record. This new source has not been compiled. Fresh check requires its own named root GO.
+Current resume: frozen c1042478 passed its separately granted workspace check and preservation set (ID1, nominality3/source2, whole typing846/Core238/naming220). A new isolated test-only BEFORE descendant now adds the dotted-definer source-key controls below, with production byte-equal to c104. This new test code is UNCOMPILED and UNRUN; no compiler launch is authorized by its preparation.
 
 This isolated branch starts at exact main acd8baaab60fe2005429cbae72a31ccfd2fd3d06 (compiler04116a69). Root delegated source-only assembly to /root/integration_frontier_chirho. No compiler execution or acceptance is authorized by this plan. Canonical main, its dirty work, SQLite and reporting remain root-owned and untouched.
 
@@ -14,7 +14,8 @@ This isolated branch starts at exact main acd8baaab60fe2005429cbae72a31ccfd2fd3d
 - [x] Carry the exact fixture-literal leaf, retaining every original assertion.
 - [x] Verify all final compiler blobs equal a declared input outside named semantic merges; retain main non-compiler metadata and add only this plan/manifest/workflow records.
 - [x] Run source-only formatting and diff checks, scan the outgoing Git range and commit/push the frozen source assembly. First-compile readiness is prepared separately from the final clean source HEAD.
-- [ ] Root's separately named first compile and subsequent main-parent quality/behavior/corpus/end-state gates. UNSTARTED.
+- [x] Root's separately named c104 workspace check and frozen Rust preservation set, with exact raw reconciliation and closed groups.
+- [ ] Remaining main-parent quality/behavior/corpus/end-state gates at the final source. Earlier scoped measurements are not whole-union acceptance.
 
 | Source role | Exact input |
 | --- | --- |
@@ -56,3 +57,16 @@ Source identity:1489 compiler/fixture paths are recorded in three bounded genera
 The frozen compiler source and manifest were pushed at2380269dfc27c36706ce91d955e754238fbde960; remote readback matched. The full outgoing scan covered202 commits/7.30MB with no leaks. This closure changes only the owned task record, preserving the source tree. No runtime, compiler, test or Clippy process has been launched; first compile is still a separate root GO.
 
 The first actual compile at acea7dec ran40.488 seconds, Cargo101/runner98: one E0308 plus its failure-note,325 artifacts/36 scripts/build-finished false, no JSON warnings. Pins and original40368 group closed before the fold; after-facts carries only the actual nonzero build finding. Old packet and raw evidence remain untouched. Root then leased only the native_identity synthetic input-ID caller: import the existing occurrence-evidence record and retain Eq/Int through legacy_chirho, which explicitly has Unknown(Legacy). All15 cases, keys, assertions, fixtures and production code are unchanged. The source manifest now names22 adaptations and1467 exact frozen-input blobs.
+
+## Source constructor key BEFORE checkpoint Chirho
+
+- [x] Create the new owned gpt-source-key-nominality-before-chirho worktree from frozen c1042478 under haskelujah-workspaces-chirho; preserve the union worktree, target, contracts and raw evidence at their original paths. The new own target is absent, with no cloning or sharing.
+- [x] Add the actual AST source-declaration factory controls to existing unify_chirho/tests_chirho.rs: Alpha.Shared and Other.Shared TokenChirho must remain distinct in both orders and nested positions; the same producer and metavariable substitution stay valid. Preserve all existing numeric, promoted and legacy qualified-alias controls.
+- [x] Add compile-only controls to existing native_symbol_identity_chirho/import_identity_chirho.rs: a signed wrong-definer identity must name both source types in its refusal, and direct/forwarded aliases of one defining module must compile. The new controls never call interpreter or native helpers.
+- [x] Format only the two owned Rust test files. Production same_tycon_name_chirho and every other compiler source remain byte-equal to c104.
+- [ ] Execute the fresh list/exact-control BEFORE packet only under a separately named root GO. Record every selected name once with its actual outcome; a predicted RED is not a measured result.
+- [ ] After the measured BEFORE state and a separate source lease, extend only the existing shared same_tycon_name_chirho opaque-key comparison. No production change is in this checkpoint.
+
+The c104 workspace check has378 compiler artifacts,36 scripts,one true build-finished and zero compiler messages. Its preservation run proves ID1/1, nominality3/3 and source2/2, whole typing846/846, Core238/238 and naming220/220; the focused three are included in whole typing. It is not an execution of this test-only descendant. Its immutable inventory and run summaries are a7b87d6d and a7a254c5 respectively. All native/CLI/corpus/Clippy acceptance and the dotted-definer BEFORE results remain separate.
+
+Source-only prediction: the ordinary unifier's raw qualifier suffix comparison can identify the two distinct producer keys when their defining modules end in Shared. The actual source negative may encounter another handoff first and must be reported as found. The future correction belongs to the one existing comparison helper, not per-file guards, a new registry/parser, or manufactured identity authority. No canonical main, SQLite, field-scope, selected-apply, C10 or other writer's source is changed here.
