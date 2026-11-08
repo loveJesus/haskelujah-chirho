@@ -332,7 +332,7 @@ fn resolve_newtype_record_field_chirho() {
         vec![DeclChirho::NewtypeDeclChirho {
             name_chirho: dummy_name_chirho("Age"),
             type_vars_chirho: vec![],
-            constructor_chirho: ConDeclChirho::RecordChirho {
+            constructor_chirho: Box::new(ConDeclChirho::RecordChirho {
                 name_chirho: dummy_name_chirho("MkAge"),
                 fields_chirho: vec![FieldDeclChirho {
                     multiplicity_chirho: None,
@@ -346,7 +346,7 @@ fn resolve_newtype_record_field_chirho() {
                 }],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-            },
+            }),
             deriving_chirho: vec![],
             kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -495,7 +495,7 @@ fn orphan_local_newtype_in_app_not_orphan_chirho() {
             DeclChirho::NewtypeDeclChirho {
                 name_chirho: dummy_name_chirho("Wrapper"),
                 type_vars_chirho: vec![dummy_name_chirho("a").into()],
-                constructor_chirho: ConDeclChirho::OrdinaryChirho {
+                constructor_chirho: Box::new(ConDeclChirho::OrdinaryChirho {
                     name_chirho: dummy_name_chirho("MkWrapper"),
                     fields_chirho: vec![(
                         haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
@@ -503,7 +503,7 @@ fn orphan_local_newtype_in_app_not_orphan_chirho() {
                     )],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-                },
+                }),
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,

@@ -225,7 +225,7 @@ fn check_module_declaration_validity_with_type_scope_chirho(
             } => constructors_chirho.as_slice(),
             DeclChirho::NewtypeDeclChirho {
                 constructor_chirho, ..
-            } => std::slice::from_ref(constructor_chirho),
+            } => std::slice::from_ref(constructor_chirho.as_ref()),
             _ => &[],
         };
         for constructor_chirho in constructors_chirho {

@@ -224,7 +224,7 @@ fn only_a_bare_stock_or_unwritten_entry_names_a_stock_class_chirho() {
 fn a_generated_instance_takes_the_written_class_spelling_chirho() {
     let constraint_chirho = |class_chirho: NameChirho| ConstraintChirho::ClassChirho {
         kind_args_chirho: Vec::new(),
-        class_chirho,
+        class_chirho: Box::new(class_chirho),
         args_chirho: vec![TypeChirho::VarChirho(name_chirho("a"))],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };

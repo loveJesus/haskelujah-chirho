@@ -81,7 +81,7 @@ pub(super) fn derive_eq_chirho(
         .map(
             |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
                 kind_args_chirho: Vec::new(),
-                class_chirho: var_name_chirho("Eq"),
+                class_chirho: Box::new(var_name_chirho("Eq")),
                 args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
                 span_chirho: gen_span_chirho(),
             },
@@ -233,7 +233,7 @@ pub(super) fn derive_ord_chirho(
         .map(
             |tv_chirho| haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
                 kind_args_chirho: Vec::new(),
-                class_chirho: var_name_chirho("Ord"),
+                class_chirho: Box::new(var_name_chirho("Ord")),
                 args_chirho: vec![TypeChirho::VarChirho(tv_chirho.name_chirho.clone())],
                 span_chirho: gen_span_chirho(),
             },

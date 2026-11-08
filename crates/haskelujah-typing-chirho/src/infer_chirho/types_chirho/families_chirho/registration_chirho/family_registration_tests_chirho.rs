@@ -336,7 +336,7 @@ fn qualified_constraint_arguments_are_stamped_without_rebinding_imports_chirho()
             vars_chirho: vec![],
             context_chirho: vec![ConstraintChirho::ClassChirho {
                 kind_args_chirho: Vec::new(),
-                class_chirho: dummy_name_chirho("Eq"),
+                class_chirho: Box::new(dummy_name_chirho("Eq")),
                 args_chirho: vec![syntax_app_chirho(
                     "FChirho",
                     vec![syntax_app_chirho("Int", vec![])],
@@ -345,7 +345,7 @@ fn qualified_constraint_arguments_are_stamped_without_rebinding_imports_chirho()
             }],
             body_chirho: Box::new(ConstraintChirho::ClassChirho {
                 kind_args_chirho: Vec::new(),
-                class_chirho: dummy_name_chirho("Show"),
+                class_chirho: Box::new(dummy_name_chirho("Show")),
                 args_chirho: vec![TypeChirho::ConChirho(preserved_chirho)],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }),

@@ -201,7 +201,10 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 {
                     self.walk_declaration_result_kind_chirho(result_chirho);
                 }
-                if matches!(constructor_chirho, ConDeclChirho::GadtChirho { .. }) {
+                if matches!(
+                    constructor_chirho.as_ref(),
+                    ConDeclChirho::GadtChirho { .. }
+                ) {
                     self.pop_binders_chirho(&pushed_chirho);
                     self.walk_constructor_chirho(constructor_chirho);
                 } else {

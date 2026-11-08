@@ -21,7 +21,7 @@ fn a_signature_round_trip_keeps_prefix_scope_and_arrow_multiplicity_chirho() {
         body_chirho: Box::new(TypeChirho::QualChirho {
             context_chirho: vec![ConstraintChirho::ClassChirho {
                 kind_args_chirho: Vec::new(),
-                class_chirho: name_chirho("Eq"),
+                class_chirho: Box::new(name_chirho("Eq")),
                 args_chirho: vec![TypeChirho::VarChirho(name_chirho("aChirho"))],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],

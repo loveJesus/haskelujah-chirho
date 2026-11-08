@@ -179,7 +179,7 @@ fn derive_instances_with_type_scope_chirho(
                 span_chirho,
                 ..
             } => {
-                let cons_chirho = vec![constructor_chirho.clone()];
+                let cons_chirho = vec![constructor_chirho.as_ref().clone()];
                 let visible_vars_chirho = declaration_heads_chirho::visible_instance_binders_chirho(
                     type_vars_chirho,
                     kind_sig_chirho.as_ref(),

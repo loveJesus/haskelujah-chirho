@@ -215,7 +215,7 @@ fn quantified_context_bodies_and_nested_binder_kinds_are_charged_chirho() {
                 context_chirho: vec![],
                 body_chirho: Box::new(ConstraintChirho::ClassChirho {
                     kind_args_chirho: Vec::new(),
-                    class_chirho: name_chirho("CChirho"),
+                    class_chirho: Box::new(name_chirho("CChirho")),
                     args_chirho: vec![TypeChirho::PromotedListChirho {
                         elements_chirho: vec![TypeChirho::LitChirho {
                             value_chirho: "x".repeat(1024),
@@ -566,7 +566,7 @@ fn heavy_kind_chirho() -> TypeChirho {
 fn full_type_kind_nodes_and_constraint_prefixes_are_precharged_chirho() {
     let span_chirho = SpanChirho::DUMMY_CHIRHO;
     let ordinary_predicate_chirho = || ConstraintChirho::ClassChirho {
-        class_chirho: name_chirho("CChirho"),
+        class_chirho: Box::new(name_chirho("CChirho")),
         kind_args_chirho: vec![],
         args_chirho: vec![con_chirho("Int")],
         span_chirho,

@@ -205,7 +205,7 @@ fn derive_generic_newtype_chirho() {
         decls_chirho: vec![DeclChirho::NewtypeDeclChirho {
             name_chirho: var_name_chirho("Wrapper"),
             type_vars_chirho: vec![var_name_chirho("a").into()],
-            constructor_chirho: ConDeclChirho::OrdinaryChirho {
+            constructor_chirho: Box::new(ConDeclChirho::OrdinaryChirho {
                 name_chirho: var_name_chirho("MkWrapper"),
                 fields_chirho: vec![(
                     StrictnessChirho::LazyChirho,
@@ -213,7 +213,7 @@ fn derive_generic_newtype_chirho() {
                 )],
                 span_chirho: gen_span_chirho(),
                 prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-            },
+            }),
             deriving_chirho: unspecified_chirho(&["Generic"]),
             kind_sig_chirho: None,
             span_chirho: gen_span_chirho(),

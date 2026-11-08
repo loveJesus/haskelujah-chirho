@@ -181,7 +181,7 @@ fn constraint_tuple_synonym_rhs_uses_the_same_size_boundary_chirho() {
 fn constraint_chirho(class_chirho: &str, args_chirho: Vec<TypeChirho>) -> ConstraintChirho {
     ConstraintChirho::ClassChirho {
         kind_args_chirho: Vec::new(),
-        class_chirho: name_chirho(class_chirho),
+        class_chirho: Box::new(name_chirho(class_chirho)),
         args_chirho,
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     }

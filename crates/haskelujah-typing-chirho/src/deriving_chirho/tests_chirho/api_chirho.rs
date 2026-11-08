@@ -145,7 +145,7 @@ fn derive_newtype_chirho() {
         decls_chirho: vec![DeclChirho::NewtypeDeclChirho {
             name_chirho: var_name_chirho("Age"),
             type_vars_chirho: vec![],
-            constructor_chirho: ConDeclChirho::OrdinaryChirho {
+            constructor_chirho: Box::new(ConDeclChirho::OrdinaryChirho {
                 name_chirho: var_name_chirho("MkAge"),
                 fields_chirho: vec![(
                     StrictnessChirho::LazyChirho,
@@ -153,7 +153,7 @@ fn derive_newtype_chirho() {
                 )],
                 span_chirho: gen_span_chirho(),
                 prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-            },
+            }),
             deriving_chirho: unspecified_chirho(&["Eq", "Show"]),
             kind_sig_chirho: None,
             span_chirho: gen_span_chirho(),
@@ -187,7 +187,7 @@ fn derive_newtype_gnd_chirho() {
         decls_chirho: vec![DeclChirho::NewtypeDeclChirho {
             name_chirho: var_name_chirho("Age"),
             type_vars_chirho: vec![],
-            constructor_chirho: ConDeclChirho::OrdinaryChirho {
+            constructor_chirho: Box::new(ConDeclChirho::OrdinaryChirho {
                 name_chirho: var_name_chirho("MkAge"),
                 fields_chirho: vec![(
                     StrictnessChirho::LazyChirho,
@@ -195,7 +195,7 @@ fn derive_newtype_gnd_chirho() {
                 )],
                 span_chirho: gen_span_chirho(),
                 prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-            },
+            }),
             deriving_chirho: unspecified_chirho(&["Num"]),
             kind_sig_chirho: None,
             span_chirho: gen_span_chirho(),
@@ -268,7 +268,7 @@ fn derive_newtype_standard_classes_not_gnd_chirho() {
         decls_chirho: vec![DeclChirho::NewtypeDeclChirho {
             name_chirho: var_name_chirho("Wrapper"),
             type_vars_chirho: vec![],
-            constructor_chirho: ConDeclChirho::OrdinaryChirho {
+            constructor_chirho: Box::new(ConDeclChirho::OrdinaryChirho {
                 name_chirho: var_name_chirho("MkWrapper"),
                 fields_chirho: vec![(
                     StrictnessChirho::LazyChirho,
@@ -276,7 +276,7 @@ fn derive_newtype_standard_classes_not_gnd_chirho() {
                 )],
                 span_chirho: gen_span_chirho(),
                 prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-            },
+            }),
             deriving_chirho: unspecified_chirho(&["Eq", "Show"]),
             kind_sig_chirho: None,
             span_chirho: gen_span_chirho(),
@@ -318,7 +318,7 @@ fn derive_newtype_functor_chirho() {
         decls_chirho: vec![DeclChirho::NewtypeDeclChirho {
             name_chirho: var_name_chirho("App"),
             type_vars_chirho: vec![var_name_chirho("f").into(), var_name_chirho("a").into()],
-            constructor_chirho: ConDeclChirho::OrdinaryChirho {
+            constructor_chirho: Box::new(ConDeclChirho::OrdinaryChirho {
                 name_chirho: var_name_chirho("MkApp"),
                 fields_chirho: vec![(
                     StrictnessChirho::LazyChirho,
@@ -330,7 +330,7 @@ fn derive_newtype_functor_chirho() {
                 )],
                 span_chirho: gen_span_chirho(),
                 prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-            },
+            }),
             deriving_chirho: unspecified_chirho(&["Functor"]),
             kind_sig_chirho: None,
             span_chirho: gen_span_chirho(),

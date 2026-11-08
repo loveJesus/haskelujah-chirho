@@ -428,7 +428,7 @@ pub fn check_declaration_projection_chirho(
                 type_vars_chirho.as_slice(),
                 kind_sig_chirho.as_ref(),
                 deriving_chirho.as_slice(),
-                std::slice::from_ref(constructor_chirho),
+                std::slice::from_ref(constructor_chirho.as_ref()),
             ),
             _ => {
                 return checked_chirho(

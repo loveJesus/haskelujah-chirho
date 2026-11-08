@@ -51,7 +51,7 @@ pub(crate) fn build_con_type_map_chirho(
         } = decl_chirho
         {
             let type_name_chirho = name_chirho.text_chirho().to_string();
-            let con_name_chirho = match constructor_chirho {
+            let con_name_chirho = match constructor_chirho.as_ref() {
                 haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                     name_chirho: cn_chirho,
                     ..
@@ -123,7 +123,7 @@ pub(crate) fn build_newtype_info_chirho(
                 || type_name_chirho.clone(),
                 haskelujah_ast_chirho::name_chirho::TypeConstructorDeclarationChirho::type_key_chirho,
             );
-            let con_name_chirho = match constructor_chirho {
+            let con_name_chirho = match constructor_chirho.as_ref() {
                 haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                     name_chirho: cn_chirho,
                     fields_chirho,

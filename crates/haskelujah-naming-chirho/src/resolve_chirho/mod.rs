@@ -137,7 +137,7 @@ pub fn resolve_module_with_imports_chirho(
                 if let haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
                     signature_chirho,
                     ..
-                } = constructor_chirho
+                } = constructor_chirho.as_ref()
                 {
                     for field_chirho in signature_chirho.record_fields_chirho().unwrap_or_default()
                     {
@@ -150,7 +150,7 @@ pub fn resolve_module_with_imports_chirho(
                         }
                     }
                 }
-                match constructor_chirho {
+                match constructor_chirho.as_ref() {
                     haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                         name_chirho: con_name_chirho,
                         ..

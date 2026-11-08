@@ -180,29 +180,26 @@ fn newtype_constructors_chirho(module_chirho: &ModuleChirho) -> Vec<(String, usi
         .iter()
         .filter_map(|decl_chirho| match decl_chirho {
             DeclChirho::NewtypeDeclChirho {
-                constructor_chirho:
-                    ConDeclChirho::OrdinaryChirho {
-                        name_chirho,
-                        fields_chirho,
-                        ..
-                    },
-                ..
-            } => Some((name_chirho.text_chirho().to_string(), fields_chirho.len())),
-            DeclChirho::NewtypeDeclChirho {
-                constructor_chirho:
-                    ConDeclChirho::RecordChirho {
-                        name_chirho,
-                        fields_chirho,
-                        ..
-                    },
-                ..
-            } => Some((
-                name_chirho.text_chirho().to_string(),
-                fields_chirho
-                    .iter()
-                    .map(|field_chirho| field_chirho.names_chirho.len())
-                    .sum::<usize>(),
-            )),
+                constructor_chirho, ..
+            } => match constructor_chirho.as_ref() {
+                ConDeclChirho::OrdinaryChirho {
+                    name_chirho,
+                    fields_chirho,
+                    ..
+                } => Some((name_chirho.text_chirho().to_string(), fields_chirho.len())),
+                ConDeclChirho::RecordChirho {
+                    name_chirho,
+                    fields_chirho,
+                    ..
+                } => Some((
+                    name_chirho.text_chirho().to_string(),
+                    fields_chirho
+                        .iter()
+                        .map(|field_chirho| field_chirho.names_chirho.len())
+                        .sum::<usize>(),
+                )),
+                _ => None,
+            },
             _ => None,
         })
         .collect()

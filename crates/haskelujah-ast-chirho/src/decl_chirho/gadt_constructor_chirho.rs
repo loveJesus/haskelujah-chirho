@@ -392,7 +392,7 @@ pub fn check_module_constructor_signatures_chirho(
             } => constructors_chirho.as_slice(),
             super::DeclChirho::NewtypeDeclChirho {
                 constructor_chirho, ..
-            } => std::slice::from_ref(constructor_chirho),
+            } => std::slice::from_ref(constructor_chirho.as_ref()),
             _ => continue,
         };
         for constructor_chirho in constructors_chirho {

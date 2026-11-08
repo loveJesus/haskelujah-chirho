@@ -223,7 +223,7 @@ impl TypeElaboratorChirho<'_> {
                 }
                 let mut head_chirho =
                     haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
-                        class_chirho: class_chirho.clone(),
+                        class_chirho: Box::new(class_chirho.clone()),
                         args_chirho: std::mem::take(types_chirho),
                         kind_args_chirho: std::mem::take(kind_args_chirho),
                         span_chirho: *span_chirho,
@@ -272,7 +272,7 @@ impl TypeElaboratorChirho<'_> {
                         *argument_chirho =
                             self.surface_chirho(&typed_chirho.term_chirho, span_chirho)?;
                     }
-                    *class_chirho = checked_class_chirho;
+                    *class_chirho = *checked_class_chirho;
                     *types_chirho = args_chirho;
                     *kind_args_chirho = hidden_chirho;
                 }
@@ -318,7 +318,7 @@ impl TypeElaboratorChirho<'_> {
                 }
                 let mut constraint_chirho =
                     haskelujah_ast_chirho::ty_chirho::ConstraintChirho::ClassChirho {
-                        class_chirho: class_chirho.clone(),
+                        class_chirho: Box::new(class_chirho.clone()),
                         args_chirho: std::mem::take(types_chirho),
                         kind_args_chirho: Vec::new(),
                         span_chirho: *span_chirho,

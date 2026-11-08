@@ -46,7 +46,7 @@ fn show_context_chirho(body_chirho: TypeChirho) -> TypeChirho {
     TypeChirho::QualChirho {
         context_chirho: vec![ConstraintChirho::ClassChirho {
             kind_args_chirho: Vec::new(),
-            class_chirho: name_chirho("Show"),
+            class_chirho: Box::new(name_chirho("Show")),
             args_chirho: vec![var_ty_chirho("a")],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
@@ -84,7 +84,7 @@ fn newtype_chirho(constructor_chirho: ConDeclChirho) -> DeclChirho {
     DeclChirho::NewtypeDeclChirho {
         name_chirho: name_chirho("N"),
         type_vars_chirho: vec![],
-        constructor_chirho,
+        constructor_chirho: Box::new(constructor_chirho),
         deriving_chirho: vec![],
         kind_sig_chirho: None,
         span_chirho: SpanChirho::DUMMY_CHIRHO,

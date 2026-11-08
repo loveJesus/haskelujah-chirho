@@ -86,7 +86,7 @@ fn newtype_chirho(deriving_chirho: Vec<DerivedClassChirho>) -> DeclChirho {
     DeclChirho::NewtypeDeclChirho {
         name_chirho: name_chirho("AgeChirho"),
         type_vars_chirho: vec![],
-        constructor_chirho: int_constructor_chirho("AgeChirho"),
+        constructor_chirho: Box::new(int_constructor_chirho("AgeChirho")),
         deriving_chirho,
         kind_sig_chirho: None,
         span_chirho: SpanChirho::DUMMY_CHIRHO,

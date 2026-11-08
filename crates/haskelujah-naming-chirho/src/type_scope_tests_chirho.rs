@@ -348,7 +348,7 @@ fn datakinds_does_not_treat_a_constructor_as_a_class_chirho() {
         standalone_kind_chirho: None,
         context_chirho: vec![ConstraintChirho::ClassChirho {
             kind_args_chirho: Vec::new(),
-            class_chirho: name_chirho("True"),
+            class_chirho: Box::new(name_chirho("True")),
             args_chirho: vec![TypeChirho::VarChirho(name_chirho("aChirho"))],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
@@ -881,7 +881,7 @@ fn parser_sensitive_rank_n_record_field_is_deferred_chirho() {
     let decl_chirho = DeclChirho::NewtypeDeclChirho {
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![],
-        constructor_chirho: ConDeclChirho::RecordChirho {
+        constructor_chirho: Box::new(ConDeclChirho::RecordChirho {
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![FieldDeclChirho {
                 multiplicity_chirho: None,
@@ -892,7 +892,7 @@ fn parser_sensitive_rank_n_record_field_is_deferred_chirho() {
             }],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-        },
+        }),
         deriving_chirho: vec![],
         kind_sig_chirho: None,
         span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1198,7 +1198,7 @@ fn unknown_superclass_is_resolved_in_the_type_namespace_chirho() {
         standalone_kind_chirho: None,
         context_chirho: vec![ConstraintChirho::ClassChirho {
             kind_args_chirho: Vec::new(),
-            class_chirho: name_chirho("MissingClassChirho"),
+            class_chirho: Box::new(name_chirho("MissingClassChirho")),
             args_chirho: vec![TypeChirho::VarChirho(name_chirho("aChirho"))],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
@@ -1225,7 +1225,7 @@ fn qualified_equality_signature_chirho(
     let mut module_chirho = module_chirho(vec![signature_chirho(TypeChirho::QualChirho {
         context_chirho: vec![ConstraintChirho::ClassChirho {
             kind_args_chirho: Vec::new(),
-            class_chirho: qualified_name_chirho("Q", operator_chirho),
+            class_chirho: Box::new(qualified_name_chirho("Q", operator_chirho)),
             args_chirho: vec![
                 TypeChirho::VarChirho(name_chirho("a")),
                 TypeChirho::VarChirho(name_chirho("b")),

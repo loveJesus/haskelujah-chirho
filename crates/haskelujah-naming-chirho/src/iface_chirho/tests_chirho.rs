@@ -272,12 +272,12 @@ fn export_parenthesized_operator_type_with_constructor_chirho() {
         vec![DeclChirho::NewtypeDeclChirho {
             name_chirho: mk_name_chirho(":-"),
             type_vars_chirho: vec![mk_name_chirho("a").into(), mk_name_chirho("b").into()],
-            constructor_chirho: ConDeclChirho::OrdinaryChirho {
+            constructor_chirho: Box::new(ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("Sub"),
                 fields_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-            },
+            }),
             deriving_chirho: vec![],
             kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -422,12 +422,12 @@ fn newtype_exported_chirho() {
         vec![DeclChirho::NewtypeDeclChirho {
             name_chirho: mk_name_chirho("Wrapper"),
             type_vars_chirho: vec![],
-            constructor_chirho: ConDeclChirho::OrdinaryChirho {
+            constructor_chirho: Box::new(ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("Wrap"),
                 fields_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-            },
+            }),
             deriving_chirho: vec![],
             kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,

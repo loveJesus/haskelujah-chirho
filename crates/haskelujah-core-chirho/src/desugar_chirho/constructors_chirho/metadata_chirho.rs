@@ -67,7 +67,7 @@ impl DesugarCtxChirho {
                 } => constructors_chirho,
                 DeclChirho::NewtypeDeclChirho {
                     constructor_chirho, ..
-                } => std::slice::from_ref(constructor_chirho),
+                } => std::slice::from_ref(constructor_chirho.as_ref()),
                 _ => continue,
             };
             let parent_name_chirho = match decl_chirho {
@@ -204,7 +204,7 @@ impl DesugarCtxChirho {
                 } => constructors_chirho.as_slice(),
                 DeclChirho::NewtypeDeclChirho {
                     constructor_chirho, ..
-                } => std::slice::from_ref(constructor_chirho),
+                } => std::slice::from_ref(constructor_chirho.as_ref()),
                 _ => continue,
             };
             for con_chirho in constructors_chirho {

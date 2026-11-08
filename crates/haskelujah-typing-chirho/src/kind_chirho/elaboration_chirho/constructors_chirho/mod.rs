@@ -314,7 +314,10 @@ impl TypeElaboratorChirho<'_> {
                     name_chirho,
                     constructor_chirho,
                     ..
-                } => (name_chirho, std::slice::from_ref(constructor_chirho)),
+                } => (
+                    name_chirho,
+                    std::slice::from_ref(constructor_chirho.as_ref()),
+                ),
                 _ => continue,
             };
             let Some(proof_chirho) = self.declaration_chirho(name_chirho)? else {

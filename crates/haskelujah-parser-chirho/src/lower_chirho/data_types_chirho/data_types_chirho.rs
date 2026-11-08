@@ -709,14 +709,14 @@ impl LowerCtxChirho {
         DeclChirho::NewtypeDeclChirho {
             name_chirho,
             type_vars_chirho,
-            constructor_chirho: constructor_chirho.unwrap_or_else(|| {
+            constructor_chirho: Box::new(constructor_chirho.unwrap_or_else(|| {
                 ConDeclChirho::OrdinaryChirho {
                     prefix_chirho: Default::default(),
                     name_chirho: self.dummy_name_chirho(),
                     fields_chirho: vec![],
                     span_chirho,
                 }
-            }),
+            })),
             deriving_chirho,
             kind_sig_chirho,
             span_chirho,

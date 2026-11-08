@@ -1258,7 +1258,7 @@ mod tests_chirho {
             DeclChirho::NewtypeDeclChirho {
                 name_chirho: mk_name_chirho("Wrapper"),
                 type_vars_chirho: vec![],
-                constructor_chirho: ConDeclChirho::OrdinaryChirho {
+                constructor_chirho: Box::new(ConDeclChirho::OrdinaryChirho {
                     name_chirho: mk_name_chirho("Wrap"),
                     fields_chirho: vec![(
                         haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
@@ -1268,7 +1268,7 @@ mod tests_chirho {
                     )],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-                },
+                }),
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,

@@ -317,7 +317,7 @@ pub(crate) fn spell_generated_class_chirho(
             if let ConstraintChirho::ClassChirho { class_chirho, .. } = constraint_chirho
                 && generated_name_chirho(class_chirho)
             {
-                *class_chirho = written_chirho.clone();
+                **class_chirho = written_chirho.clone();
             }
         }
     }

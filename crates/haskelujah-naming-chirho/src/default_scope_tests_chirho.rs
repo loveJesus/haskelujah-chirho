@@ -204,7 +204,7 @@ fn full_kind_variable_capture_respects_nested_forall_scope_chirho() {
 fn full_kind_annotations_and_hidden_constraint_arguments_resolve_names_chirho() {
     let missing_chirho = || TypeChirho::ConChirho(name_chirho("MissingKindChirho"));
     let predicate_chirho = || ConstraintChirho::ClassChirho {
-        class_chirho: name_chirho("CChirho"),
+        class_chirho: Box::new(name_chirho("CChirho")),
         kind_args_chirho: vec![],
         args_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,

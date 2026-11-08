@@ -297,7 +297,11 @@ fn roled_type_chirho<'a>(
                 type_vars_chirho,
                 constructor_chirho,
                 ..
-            } => (name_chirho, type_vars_chirho, vec![constructor_chirho]),
+            } => (
+                name_chirho,
+                type_vars_chirho,
+                vec![constructor_chirho.as_ref()],
+            ),
             _ => return None,
         };
     let visible_chirho = TyVarChirho::visible_binders_chirho(type_vars_chirho);

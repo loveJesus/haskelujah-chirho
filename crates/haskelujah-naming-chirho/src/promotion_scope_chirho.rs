@@ -280,7 +280,7 @@ fn declared_constructors_chirho(decl_chirho: &DeclChirho) -> Vec<&str> {
         } => constructors_chirho.iter().collect(),
         DeclChirho::NewtypeDeclChirho {
             constructor_chirho, ..
-        } => vec![constructor_chirho],
+        } => vec![constructor_chirho.as_ref()],
         _ => Vec::new(),
     };
     constructors_chirho

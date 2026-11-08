@@ -72,7 +72,7 @@ fn infix_chirho(
 fn constraint_chirho(class_text_chirho: &str, args_chirho: Vec<TypeChirho>) -> ConstraintChirho {
     ConstraintChirho::ClassChirho {
         kind_args_chirho: Vec::new(),
-        class_chirho: name_chirho(class_text_chirho),
+        class_chirho: Box::new(name_chirho(class_text_chirho)),
         args_chirho,
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     }

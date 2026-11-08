@@ -60,7 +60,7 @@ fn class_chirho(
 fn on_last_chirho(class_name_chirho: &str) -> ConstraintChirho {
     ConstraintChirho::ClassChirho {
         kind_args_chirho: Vec::new(),
-        class_chirho: name_chirho(class_name_chirho),
+        class_chirho: Box::new(name_chirho(class_name_chirho)),
         args_chirho: vec![var_chirho("mChirho")],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     }

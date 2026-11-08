@@ -297,7 +297,7 @@ fn infer_visible_type_application_wildcard_uses_signature_equality_chirho() {
         body_chirho: Box::new(TypeChirho::QualChirho {
             context_chirho: vec![AstConstraintChirho::ClassChirho {
                 kind_args_chirho: Vec::new(),
-                class_chirho: dummy_name_chirho("~"),
+                class_chirho: Box::new(dummy_name_chirho("~")),
                 args_chirho: vec![
                     var_ast_chirho("bind"),
                     expr_ast_chirho(var_ast_chirho("t"), var_ast_chirho("lrs")),

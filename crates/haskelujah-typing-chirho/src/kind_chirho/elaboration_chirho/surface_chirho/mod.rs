@@ -813,7 +813,7 @@ impl TypeElaboratorChirho<'_> {
             } => {
                 let span_chirho = *span_chirho;
                 let name_chirho = std::mem::replace(
-                    class_chirho,
+                    class_chirho.as_mut(),
                     NameChirho::RawChirho(RawNameChirho::unqualified_chirho("", span_chirho)),
                 );
                 let mut syntax_chirho = TypeChirho::ConChirho(name_chirho);
@@ -857,7 +857,7 @@ impl TypeElaboratorChirho<'_> {
                             syntax_chirho = *fun_chirho;
                         }
                         TypeChirho::ConChirho(name_chirho) => {
-                            *class_chirho = name_chirho;
+                            **class_chirho = name_chirho;
                             break;
                         }
                         _ => {

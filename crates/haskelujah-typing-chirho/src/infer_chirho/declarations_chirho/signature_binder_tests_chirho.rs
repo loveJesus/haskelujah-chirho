@@ -61,7 +61,7 @@ fn constraint_first_occurrences_precede_body_allocation_chirho() {
     let signature_chirho = TypeChirho::QualChirho {
         context_chirho: vec![ConstraintChirho::ClassChirho {
             kind_args_chirho: Vec::new(),
-            class_chirho: name_chirho("Eq", 5),
+            class_chirho: Box::new(name_chirho("Eq", 5)),
             args_chirho: vec![var_chirho("bChirho", 10)],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],

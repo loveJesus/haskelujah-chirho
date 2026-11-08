@@ -435,7 +435,7 @@ pub(super) fn collect_module_shadowed_names_chirho(
                         );
                     }
                 }
-                match constructor_chirho {
+                match constructor_chirho.as_ref() {
                     haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                         name_chirho,
                         ..

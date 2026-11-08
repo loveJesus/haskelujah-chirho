@@ -123,7 +123,7 @@ fn derive_standalone_for_type_chirho(
                 constructor_chirho,
                 ..
             } if name_chirho.text_chirho() == target_chirho => {
-                let cons_chirho = vec![constructor_chirho.clone()];
+                let cons_chirho = vec![constructor_chirho.as_ref().clone()];
                 let visible_vars_chirho = TyVarChirho::visible_binders_chirho(type_vars_chirho);
                 let declared_chirho = DeclaredTypeChirho {
                     name_chirho,

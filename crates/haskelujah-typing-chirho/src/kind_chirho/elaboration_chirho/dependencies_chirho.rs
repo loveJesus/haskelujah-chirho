@@ -57,7 +57,7 @@ impl TypeElaboratorChirho<'_> {
                 } => constructors_chirho,
                 DeclChirho::NewtypeDeclChirho {
                     constructor_chirho, ..
-                } => std::slice::from_ref(constructor_chirho),
+                } => std::slice::from_ref(constructor_chirho.as_ref()),
                 _ => &[],
             };
             for constructor_chirho in constructors_chirho {
@@ -499,7 +499,7 @@ impl TypeElaboratorChirho<'_> {
             } => (
                 type_vars_chirho.as_slice(),
                 kind_sig_chirho.as_ref(),
-                std::slice::from_ref(constructor_chirho),
+                std::slice::from_ref(constructor_chirho.as_ref()),
             ),
             DeclChirho::TypeFamilyDeclChirho {
                 type_vars_chirho,
@@ -910,7 +910,7 @@ pub fn source_declaration_dependencies_chirho(
                 } => constructors_chirho.as_slice(),
                 DeclChirho::NewtypeDeclChirho {
                     constructor_chirho, ..
-                } => std::slice::from_ref(constructor_chirho),
+                } => std::slice::from_ref(constructor_chirho.as_ref()),
                 _ => &[],
             };
             for constructor_chirho in members_chirho {

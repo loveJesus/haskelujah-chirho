@@ -317,9 +317,15 @@ fn lower_newtype_record_tuple_type_application_chirho() {
     );
     match &module_chirho.decls_chirho[0] {
         DeclChirho::NewtypeDeclChirho {
-            constructor_chirho: ConDeclChirho::RecordChirho { fields_chirho, .. },
-            ..
+            constructor_chirho, ..
         } => {
+            let ConDeclChirho::RecordChirho { fields_chirho, .. } = constructor_chirho.as_ref()
+            else {
+                panic!(
+                    "expected record newtype, got {:?}",
+                    module_chirho.decls_chirho[0]
+                );
+            };
             assert_eq!(fields_chirho.len(), 1);
             match &fields_chirho[0].ty_chirho {
                 TypeChirho::AppChirho {
@@ -379,9 +385,15 @@ fn lower_newtype_record_function_returning_tuple_application_chirho() {
     );
     match &module_chirho.decls_chirho[0] {
         DeclChirho::NewtypeDeclChirho {
-            constructor_chirho: ConDeclChirho::RecordChirho { fields_chirho, .. },
-            ..
+            constructor_chirho, ..
         } => {
+            let ConDeclChirho::RecordChirho { fields_chirho, .. } = constructor_chirho.as_ref()
+            else {
+                panic!(
+                    "expected record newtype, got {:?}",
+                    module_chirho.decls_chirho[0]
+                );
+            };
             assert_eq!(fields_chirho.len(), 1);
             match &fields_chirho[0].ty_chirho {
                 TypeChirho::FunChirho {
@@ -995,7 +1007,7 @@ newtype WrapChirho = WrapChirho ~Int\n",
                 } => &constructors_chirho[0],
                 DeclChirho::NewtypeDeclChirho {
                     constructor_chirho, ..
-                } => constructor_chirho,
+                } => constructor_chirho.as_ref(),
                 other_chirho => {
                     panic!("expected a data or newtype declaration, got {other_chirho:?}")
                 }

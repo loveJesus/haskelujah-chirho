@@ -203,7 +203,7 @@ pub fn infer_module_kinds_with_imports_chirho(
                     *span_chirho,
                 );
                 // Kind-check the newtype constructor field.
-                match constructor_chirho {
+                match constructor_chirho.as_ref() {
                     haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                         fields_chirho,
                         ..

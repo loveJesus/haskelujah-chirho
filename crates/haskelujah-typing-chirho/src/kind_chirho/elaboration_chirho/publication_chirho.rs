@@ -690,7 +690,7 @@ impl TypeElaboratorChirho<'_> {
                     span_chirho,
                 )?;
                 ConstraintChirho::ClassChirho {
-                    class_chirho: if class_chirho.type_variable_chirho().is_some() {
+                    class_chirho: Box::new(if class_chirho.type_variable_chirho().is_some() {
                         match self
                             .publish_syntax_variable_chirho(publication_chirho, class_chirho)?
                         {
@@ -705,7 +705,7 @@ impl TypeElaboratorChirho<'_> {
                         }
                     } else {
                         self.copy_name_chirho(class_chirho)?
-                    },
+                    }),
                     args_chirho: args_chirho
                         .iter()
                         .map(|argument_chirho| {

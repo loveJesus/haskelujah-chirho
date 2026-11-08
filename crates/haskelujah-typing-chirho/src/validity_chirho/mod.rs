@@ -515,7 +515,7 @@ fn check_unlifted_newtype_fields_chirho(module_chirho: &ModuleChirho) -> Vec<Val
         else {
             continue;
         };
-        let field_tys_chirho: Vec<&TypeChirho> = match constructor_chirho {
+        let field_tys_chirho: Vec<&TypeChirho> = match constructor_chirho.as_ref() {
             ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => fields_chirho
                 .iter()
                 .map(|(_, ty_chirho)| ty_chirho)
@@ -1089,7 +1089,7 @@ mod tests_chirho {
         let rhs_chirho = TypeChirho::QualChirho {
             context_chirho: vec![ConstraintChirho::ClassChirho {
                 kind_args_chirho: Vec::new(),
-                class_chirho: mk_name_chirho("Num"),
+                class_chirho: Box::new(mk_name_chirho("Num")),
                 args_chirho: vec![mk_var_chirho("a")],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
@@ -1248,7 +1248,7 @@ mod tests_chirho {
             context_chirho: vec![],
             body_chirho: Box::new(ConstraintChirho::ClassChirho {
                 kind_args_chirho: Vec::new(),
-                class_chirho: mk_name_chirho("Eq"),
+                class_chirho: Box::new(mk_name_chirho("Eq")),
                 args_chirho: vec![mk_var_chirho("a")],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }),
@@ -1281,7 +1281,7 @@ mod tests_chirho {
         let ty_chirho = TypeChirho::QualChirho {
             context_chirho: vec![ConstraintChirho::ClassChirho {
                 kind_args_chirho: Vec::new(),
-                class_chirho: mk_name_chirho(UNRESOLVED_CONSTRAINT_MARKER_CHIRHO),
+                class_chirho: Box::new(mk_name_chirho(UNRESOLVED_CONSTRAINT_MARKER_CHIRHO)),
                 args_chirho: vec![mk_poly_id_chirho()],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
@@ -1305,12 +1305,12 @@ mod tests_chirho {
         let mut decls_chirho = vec![DeclChirho::NewtypeDeclChirho {
             name_chirho: mk_name_chirho("N"),
             type_vars_chirho: vec![],
-            constructor_chirho: ConDeclChirho::OrdinaryChirho {
+            constructor_chirho: Box::new(ConDeclChirho::OrdinaryChirho {
                 name_chirho: mk_name_chirho("MkN"),
                 fields_chirho: vec![(StrictnessChirho::LazyChirho, mk_con_chirho("Int#"))],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-            },
+            }),
             deriving_chirho: vec![],
             kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,

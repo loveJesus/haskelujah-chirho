@@ -147,7 +147,9 @@ pub enum ConstraintChirho {
     },
     /// A simple class constraint such as `Eq a` or `Show (Maybe a)`.
     ClassChirho {
-        class_chirho: NameChirho,
+        /// The complete stamped class name; boxing changes only its storage.
+        // Workflow: spec-chirho/workflows-chirho/type-identity-chirho/ast-owned-payloads-chirho.md
+        class_chirho: Box<NameChirho>,
         args_chirho: Vec<TypeChirho>,
         /// Hidden kind arguments retain their own prefix, never primary/extra
         /// ordinary class arguments.
@@ -187,7 +189,7 @@ impl ConstraintChirho {
 
     pub fn simple_class_chirho(&self) -> Option<&NameChirho> {
         match self {
-            Self::ClassChirho { class_chirho, .. } => Some(class_chirho),
+            Self::ClassChirho { class_chirho, .. } => Some(class_chirho.as_ref()),
             Self::QuantifiedChirho { .. } => None,
             Self::KindAnnotationChirho {
                 constraint_chirho, ..

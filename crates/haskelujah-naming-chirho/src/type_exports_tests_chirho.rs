@@ -525,7 +525,7 @@ fn a_source_module_marks_the_types_it_declares_complete_chirho() {
             DeclChirho::NewtypeDeclChirho {
                 name_chirho: name_chirho("WrapChirho"),
                 type_vars_chirho: vec![],
-                constructor_chirho: ordinary_constructor_chirho("WrapChirho"),
+                constructor_chirho: Box::new(ordinary_constructor_chirho("WrapChirho")),
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,

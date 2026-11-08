@@ -122,7 +122,7 @@ fn local_tagged_decl_shadows_builtin_tagged_kind_chirho() {
                     Box::new(AstKindChirho::StarChirho),
                 ),
             )],
-            constructor_chirho: ConDeclChirho::RecordChirho {
+            constructor_chirho: Box::new(ConDeclChirho::RecordChirho {
                 name_chirho: mk_name_chirho("Tagged"),
                 fields_chirho: vec![haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
                     multiplicity_chirho: None,
@@ -133,7 +133,7 @@ fn local_tagged_decl_shadows_builtin_tagged_kind_chirho() {
                 }],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                 prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-            },
+            }),
             deriving_chirho: vec![],
             kind_sig_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -168,7 +168,7 @@ fn class_associated_type_family_shadows_builtin_rep_chirho() {
         standalone_kind_chirho: None,
         context_chirho: vec![ConstraintChirho::ClassChirho {
             kind_args_chirho: Vec::new(),
-            class_chirho: mk_name_chirho("Contravariant"),
+            class_chirho: Box::new(mk_name_chirho("Contravariant")),
             args_chirho: vec![TypeChirho::VarChirho(mk_name_chirho("f"))],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],

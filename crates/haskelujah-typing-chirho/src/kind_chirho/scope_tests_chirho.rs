@@ -170,7 +170,7 @@ fn quantified_constraint_binders_do_not_capture_the_qualified_body_chirho() {
         context_chirho: vec![],
         body_chirho: Box::new(ConstraintChirho::ClassChirho {
             kind_args_chirho: Vec::new(),
-            class_chirho: name_chirho("Eq"),
+            class_chirho: Box::new(name_chirho("Eq")),
             args_chirho: vec![app_chirho(
                 var_chirho("fChirho"),
                 TypeChirho::ConChirho(name_chirho("Int")),
@@ -255,7 +255,7 @@ fn synonym_substitution_retains_kind_annotations_applications_and_predicate_pref
     let span_chirho = SpanChirho::DUMMY_CHIRHO;
     let predicate_chirho = ConstraintChirho::KindAnnotationChirho {
         constraint_chirho: Box::new(ConstraintChirho::ClassChirho {
-            class_chirho: name_chirho("CChirho"),
+            class_chirho: Box::new(name_chirho("CChirho")),
             kind_args_chirho: vec![var_chirho("kChirho")],
             args_chirho: vec![var_chirho("aChirho")],
             span_chirho,

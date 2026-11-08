@@ -92,12 +92,12 @@ fn newtype_decl_chirho(
             .iter()
             .map(|var_chirho| TyVarChirho::plain_chirho(var_name_chirho(var_chirho)))
             .collect(),
-        constructor_chirho: ConDeclChirho::OrdinaryChirho {
+        constructor_chirho: Box::new(ConDeclChirho::OrdinaryChirho {
             name_chirho: var_name_chirho(name_chirho),
             fields_chirho: vec![(StrictnessChirho::LazyChirho, field_chirho)],
             span_chirho: gen_span_chirho(),
             prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-        },
+        }),
         deriving_chirho,
         kind_sig_chirho: None,
         span_chirho: gen_span_chirho(),
@@ -135,7 +135,7 @@ fn instance_shapes_chirho(
 fn show_int_context_chirho() -> Vec<ConstraintChirho> {
     vec![ConstraintChirho::ClassChirho {
         kind_args_chirho: Vec::new(),
-        class_chirho: var_name_chirho("Show"),
+        class_chirho: Box::new(var_name_chirho("Show")),
         args_chirho: vec![con_ty_chirho("Int")],
         span_chirho: gen_span_chirho(),
     }]
@@ -464,7 +464,7 @@ fn derive_any_class_takes_an_unwritten_newtype_class_over_gnd_chirho() {
             "DescribeChirho".to_string(),
             vec![ConstraintChirho::ClassChirho {
                 kind_args_chirho: Vec::new(),
-                class_chirho: var_name_chirho("DescribeChirho"),
+                class_chirho: Box::new(var_name_chirho("DescribeChirho")),
                 args_chirho: vec![con_ty_chirho("Int")],
                 span_chirho: gen_span_chirho(),
             }],
@@ -657,7 +657,7 @@ fn only_the_proven_builtin_typeable_is_ignored_chirho() {
                 "Typeable".to_string(),
                 vec![ConstraintChirho::ClassChirho {
                     kind_args_chirho: Vec::new(),
-                    class_chirho: var_name_chirho("Typeable"),
+                    class_chirho: Box::new(var_name_chirho("Typeable")),
                     args_chirho: vec![con_ty_chirho("Int")],
                     span_chirho: gen_span_chirho(),
                 }],

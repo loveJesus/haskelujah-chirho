@@ -570,7 +570,7 @@ pub(crate) fn collect_all_definitions_chirho(
 
                 crate::iface_chirho::publish_source_constructor_values_chirho(
                     &mut exports_chirho,
-                    std::slice::from_ref(constructor_chirho),
+                    std::slice::from_ref(constructor_chirho.as_ref()),
                     declaration_chirho.as_ref(),
                     &defining_module_chirho,
                     *span_chirho,
@@ -743,7 +743,7 @@ pub(crate) fn collect_all_definitions_chirho(
             } => constructors_chirho.as_slice(),
             DeclChirho::NewtypeDeclChirho {
                 constructor_chirho, ..
-            } => std::slice::from_ref(constructor_chirho),
+            } => std::slice::from_ref(constructor_chirho.as_ref()),
             _ => continue,
         };
         for con_chirho in constructors_chirho {

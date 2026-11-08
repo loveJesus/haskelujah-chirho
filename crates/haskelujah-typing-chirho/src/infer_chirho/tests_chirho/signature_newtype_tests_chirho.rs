@@ -132,7 +132,7 @@ fn infer_newtype_constructor_chirho() {
             DeclChirho::NewtypeDeclChirho {
                 name_chirho: dummy_name_chirho("Age"),
                 type_vars_chirho: vec![],
-                constructor_chirho: ConDeclChirho::OrdinaryChirho {
+                constructor_chirho: Box::new(ConDeclChirho::OrdinaryChirho {
                     name_chirho: dummy_name_chirho("MkAge"),
                     fields_chirho: vec![(
                         haskelujah_ast_chirho::decl_chirho::StrictnessChirho::LazyChirho,
@@ -140,7 +140,7 @@ fn infer_newtype_constructor_chirho() {
                     )],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-                },
+                }),
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -226,7 +226,7 @@ fn infer_newtype_record_constructor_with_function_field_chirho() {
                         dummy_name_chirho("aChirho"),
                     ),
                 ],
-                constructor_chirho: ConDeclChirho::RecordChirho {
+                constructor_chirho: Box::new(ConDeclChirho::RecordChirho {
                     name_chirho: dummy_name_chirho("WrapChirho"),
                     fields_chirho: vec![haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
                         multiplicity_chirho: None,
@@ -258,7 +258,7 @@ fn infer_newtype_record_constructor_with_function_field_chirho() {
                     }],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-                },
+                }),
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -340,7 +340,7 @@ fn writer_module_chirho(extensions_chirho: Vec<String>) -> ModuleChirho {
                         "aChirho",
                     )),
                 ],
-                constructor_chirho: ConDeclChirho::RecordChirho {
+                constructor_chirho: Box::new(ConDeclChirho::RecordChirho {
                     name_chirho: dummy_name_chirho("WriterT"),
                     fields_chirho: vec![haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
                         multiplicity_chirho: None,
@@ -364,7 +364,7 @@ fn writer_module_chirho(extensions_chirho: Vec<String>) -> ModuleChirho {
                     }],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-                },
+                }),
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -457,7 +457,7 @@ fn infer_state_newtype_composition_with_function_tuple_payload_chirho() {
                         "aChirho",
                     )),
                 ],
-                constructor_chirho: ConDeclChirho::RecordChirho {
+                constructor_chirho: Box::new(ConDeclChirho::RecordChirho {
                     name_chirho: dummy_name_chirho("StateT"),
                     fields_chirho: vec![haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
                         multiplicity_chirho: None,
@@ -488,7 +488,7 @@ fn infer_state_newtype_composition_with_function_tuple_payload_chirho() {
                     }],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     prefix_chirho: haskelujah_ast_chirho::decl_chirho::ConPrefixChirho::default(),
-                },
+                }),
                 deriving_chirho: vec![],
                 kind_sig_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -666,7 +666,7 @@ fn infer_gadt_equations_refine_rigid_signature_vars_per_equation_chirho() {
                 ty_chirho: TypeChirho::QualChirho {
                     context_chirho: vec![AstConstraintChirho::ClassChirho {
                         kind_args_chirho: Vec::new(),
-                        class_chirho: dummy_name_chirho("Applicative"),
+                        class_chirho: Box::new(dummy_name_chirho("Applicative")),
                         args_chirho: vec![TypeChirho::VarChirho(dummy_name_chirho("fChirho"))],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     }],

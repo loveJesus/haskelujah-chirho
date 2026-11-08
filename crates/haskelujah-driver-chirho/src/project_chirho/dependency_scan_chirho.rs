@@ -95,10 +95,7 @@ impl From<DependencyInterfaceScanChirho> for FrontendInterfaceSeedsChirho {
                 {
                     return None;
                 }
-                match candidate_chirho.outcome_chirho {
-                    Ok(interface_ordinal_chirho) => Some(interface_ordinal_chirho),
-                    Err(_) => None,
-                }
+                candidate_chirho.outcome_chirho.ok()
             })
             .collect::<BTreeSet<_>>();
         let ifaces_chirho = scan_chirho

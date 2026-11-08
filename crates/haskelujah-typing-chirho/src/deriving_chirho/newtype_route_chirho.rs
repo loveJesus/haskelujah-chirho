@@ -49,7 +49,7 @@ pub(super) fn derive_newtype_instance_chirho(
         kind_args_chirho: Vec::new(),
         context_chirho: vec![ConstraintChirho::ClassChirho {
             kind_args_chirho: Vec::new(),
-            class_chirho: class_name_chirho.clone(),
+            class_chirho: Box::new(class_name_chirho.clone()),
             args_chirho: class_arguments_chirho
                 .iter()
                 .cloned()

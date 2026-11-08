@@ -122,9 +122,8 @@ impl LowerCtxChirho {
             } => {
                 if implicit_parameter_name_chirho(ty_chirho).is_some() {
                     return vec![ConstraintChirho::ClassChirho {
-                        class_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-                            "?",
-                            *annotation_span_chirho,
+                        class_chirho: Box::new(NameChirho::RawChirho(
+                            RawNameChirho::unqualified_chirho("?", *annotation_span_chirho),
                         )),
                         kind_args_chirho: vec![],
                         args_chirho: vec![TypeChirho::KindAnnotationChirho {
@@ -184,7 +183,7 @@ impl LowerCtxChirho {
                 let (class_chirho, kind_args_chirho, args_chirho) =
                     Self::collect_app_class_chirho(ty_chirho);
                 vec![ConstraintChirho::ClassChirho {
-                    class_chirho,
+                    class_chirho: Box::new(class_chirho),
                     kind_args_chirho,
                     args_chirho,
                     span_chirho: *app_span_chirho,
@@ -193,7 +192,7 @@ impl LowerCtxChirho {
             // Bare constructor: Typeable (zero-arg constraint)
             TypeChirho::ConChirho(name_chirho) => {
                 vec![ConstraintChirho::ClassChirho {
-                    class_chirho: name_chirho.clone(),
+                    class_chirho: Box::new(name_chirho.clone()),
                     kind_args_chirho: vec![],
                     args_chirho: vec![],
                     span_chirho,
@@ -202,9 +201,8 @@ impl LowerCtxChirho {
             // Anything else — wrap as a single constraint with a synthetic name
             other_chirho => {
                 vec![ConstraintChirho::ClassChirho {
-                    class_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
-                        "?",
-                        span_chirho,
+                    class_chirho: Box::new(NameChirho::RawChirho(
+                        RawNameChirho::unqualified_chirho("?", span_chirho),
                     )),
                     kind_args_chirho: vec![],
                     args_chirho: vec![other_chirho.clone()],

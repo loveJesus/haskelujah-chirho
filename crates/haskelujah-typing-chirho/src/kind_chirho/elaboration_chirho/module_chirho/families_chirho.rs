@@ -335,7 +335,7 @@ impl TypeElaboratorChirho<'_> {
         span_chirho: SpanChirho,
     ) -> Result<(Vec<TyChirho>, TyChirho), ElaborationErrorChirho> {
         let mut constraint_chirho = ConstraintChirho::ClassChirho {
-            class_chirho: head_chirho.clone(),
+            class_chirho: Box::new(head_chirho.clone()),
             kind_args_chirho: std::mem::take(hidden_chirho),
             args_chirho: std::mem::take(visible_chirho),
             span_chirho,
@@ -350,7 +350,7 @@ impl TypeElaboratorChirho<'_> {
         else {
             unreachable!()
         };
-        let mut syntax_chirho = TypeChirho::ConChirho(class_chirho.clone());
+        let mut syntax_chirho = TypeChirho::ConChirho(class_chirho.as_ref().clone());
         for argument_chirho in std::mem::take(kind_args_chirho) {
             syntax_chirho = TypeChirho::KindApplicationChirho {
                 fun_chirho: Box::new(syntax_chirho),

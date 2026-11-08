@@ -173,7 +173,7 @@ fn gadt_newtype_constructor_and_deriving_survive_lowering_chirho() {
 
     assert!(
         matches!(
-            constructor_chirho,
+            constructor_chirho.as_ref(),
             ConDeclChirho::GadtChirho { name_chirho, .. }
                 if name_chirho.text_chirho() == "WrapChirho"
         ),
@@ -220,7 +220,7 @@ fn inline_gadt_newtype_kind_signature_does_not_inflate_head_arity_chirho() {
         Some(TypeChirho::RequiredForallChirho { .. })
     ));
     assert!(matches!(
-        constructor_chirho,
+        constructor_chirho.as_ref(),
         ConDeclChirho::GadtChirho { .. }
     ));
 }

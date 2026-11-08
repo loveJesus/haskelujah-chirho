@@ -457,7 +457,7 @@ impl InferCtxChirho {
                     ) {
                         continue;
                     }
-                    match constructor_chirho {
+                    match constructor_chirho.as_ref() {
                         haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                             name_chirho: con_name_chirho,
                             fields_chirho,

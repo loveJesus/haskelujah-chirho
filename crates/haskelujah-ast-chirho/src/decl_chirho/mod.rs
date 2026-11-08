@@ -255,8 +255,10 @@ pub enum DeclChirho {
         name_chirho: NameChirho,
         /// Type parameters introduced by the declaration.
         type_vars_chirho: Vec<TyVarChirho>,
-        /// The single runtime constructor carried by the newtype.
-        constructor_chirho: ConDeclChirho,
+        /// The complete single runtime constructor, stored out of line without
+        /// changing its declaration identity, fields, signature, or span.
+        // Workflow: spec-chirho/workflows-chirho/type-identity-chirho/ast-owned-payloads-chirho.md
+        constructor_chirho: Box<ConDeclChirho>,
         /// Classes the deriving clauses list, each with its clause's strategy.
         deriving_chirho: Vec<DerivedClassChirho>,
         /// Optional inline result kind and/or complete standalone kind signature.

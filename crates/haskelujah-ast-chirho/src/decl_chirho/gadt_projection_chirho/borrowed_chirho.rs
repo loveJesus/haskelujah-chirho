@@ -41,7 +41,7 @@ pub fn check_borrowed_declaration_syntax_chirho(
                         type_vars_chirho,
                         kind_sig_chirho,
                         deriving_chirho,
-                        std::slice::from_ref(constructor_chirho),
+                        std::slice::from_ref(constructor_chirho.as_ref()),
                     ),
                     _ => {
                         return syntax_chirho(ProjectionNodeChirho::DeclarationChirho(

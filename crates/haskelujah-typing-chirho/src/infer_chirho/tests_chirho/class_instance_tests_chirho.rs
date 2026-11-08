@@ -91,7 +91,7 @@ fn infer_user_class_with_superclass_chirho() {
             standalone_kind_chirho: None,
             context_chirho: vec![AstConstraintChirho::ClassChirho {
                 kind_args_chirho: Vec::new(),
-                class_chirho: dummy_name_chirho("Eq"),
+                class_chirho: Box::new(dummy_name_chirho("Eq")),
                 args_chirho: vec![TypeChirho::VarChirho(dummy_name_chirho("a"))],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
@@ -376,7 +376,7 @@ fn ast_scheme_expands_constraint_type_alias_predicates_chirho() {
     let sig_chirho = TypeChirho::QualChirho {
         context_chirho: vec![AstConstraintChirho::ClassChirho {
             kind_args_chirho: Vec::new(),
-            class_chirho: dummy_name_chirho("ShowEq"),
+            class_chirho: Box::new(dummy_name_chirho("ShowEq")),
             args_chirho: vec![a_ty_chirho.clone()],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
@@ -629,7 +629,7 @@ fn duplicate_written_method_class_chirho() -> DeclChirho {
                     context_chirho: classes_chirho
                         .iter()
                         .map(|class_chirho| ConstraintChirho::ClassChirho {
-                            class_chirho: dummy_name_chirho(class_chirho),
+                            class_chirho: Box::new(dummy_name_chirho(class_chirho)),
                             kind_args_chirho: vec![],
                             args_chirho: vec![TypeChirho::VarChirho(dummy_name_chirho("aChirho"))],
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
