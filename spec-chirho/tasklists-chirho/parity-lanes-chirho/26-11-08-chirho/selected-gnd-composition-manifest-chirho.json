@@ -5,23 +5,33 @@
   ],
   "base_source_chirho": "f6b97149988cc411e248f019c6e2131a4515cd74",
   "canonical_main_or_sqlite_changed_chirho": false,
-  "changed_compiler_paths_chirho": 20,
+  "changed_compiler_paths_chirho": 21,
   "changed_source_blob_shard_chirho": {
     "path_chirho": "spec-chirho/tasklists-chirho/parity-lanes-chirho/26-11-08-chirho/selected-gnd-source-blobs-chirho.jsonl",
-    "rows_chirho": 20,
-    "sha256_chirho": "3b0bcce44967828fd9016c5cc5fcaa8296d55f5e3f2ce39bbe08435cf8251b34"
+    "rows_chirho": 21,
+    "sha256_chirho": "44d8f19bbb00d80bd777ef173bcf650f9b296fd9400b36737f7809f58922d59e"
   },
   "compiler_paths_equal_to_base_or_frozen_input_chirho": 1480,
   "compiler_scope_paths_chirho": 1489,
-  "compiler_source_snapshot_chirho": "0a8a21efd166fef218e701bcdde8a5cb81156d73",
-  "crates_tree_chirho": "0ff589aece37664b297c50a191edfa132a7f935b",
+  "compiler_source_snapshot_chirho": "2051e478cfb2d8599e7826aa4c49e93513aa16d1",
+  "crates_tree_chirho": "301925e602fc13b421be2bad7304cedd9bb5c872",
   "excluded_chirho": [
     "d275/830 replay",
     "GND b91 test parent",
     "Q16b/0ce descendants",
-    "family973",
     "private historical SQLite/tasklists/reports"
   ],
+  "family_extension_chirho": {
+    "input_commit_chirho": "973bcc3f796526358da32e8d9be7fb20ac500645",
+    "input_parent_chirho": "9957bec9c122f4bd55d100d32dfe89ad158c05b3",
+    "isolated_measurement_chirho": "Root-reported33211/33212:zero-message check,whole typing827,c18b/e01/C15b/E03 all three engines,both safety negatives,scoped Clippy0hits/249OUTSIDE. These are not executions of this composition.",
+    "ported_commit_chirho": "2051e478cfb2d8599e7826aa4c49e93513aa16d1",
+    "production_blob_exact_chirho": true,
+    "production_lines_chirho": 926,
+    "source_path_chirho": "crates/haskelujah-typing-chirho/src/kind_chirho/elaboration_chirho/module_chirho/mod.rs",
+    "workflow_adaptation_chirho": "Keep main-rooted head-binder prose; add the new complete family-header scheduling paragraph and DAG edges, with no wholesale historical workflow replacement.",
+    "workflow_path_chirho": "spec-chirho/workflows-chirho/language-features-chirho/declaration-kinds-chirho.md"
+  },
   "gnd_commit_chirho": "9957bec9c122f4bd55d100d32dfe89ad158c05b3",
   "gnd_patch_scope_chirho": [
     "crates/haskelujah-driver-chirho/src/backend_chirho/compile_backend_chirho.rs",
@@ -160,12 +170,12 @@
     "c104_chirho": "Earlier exact c104 compile and preservation846/238/220 retained at original source.",
     "composition_chirho": "No compiler, test, runtime, native, GHC or Clippy execution."
   },
-  "metadata_policy_chirho": "Preserve base metadata/SQLite; update only owned tasklist, this composition manifest/shard and the two actual workflow documents. Do not resurrect private selected tasklist or deleted row688 history.",
+  "metadata_policy_chirho": "Preserve base metadata/SQLite; update only owned tasklist, composition manifest/shard and three actual workflow documents. Do not resurrect private selected tasklist or deleted row688 history.",
   "named_merge_paths_chirho": 9,
   "new_target_absent_chirho": true,
-  "next_chirho": "Separate root-GO workspace all-target check, then final main-parent quality/behavior/corpus/end-state gates.",
+  "next_chirho": "Wait for the remaining Q source lease and compose it; prepare the next all-target check only after all cleared inputs are assembled. No intermediate compiler execution.",
   "old_worktrees_targets_evidence_frozen_chirho": true,
-  "outside_changed_paths_rule_chirho": "All compiler paths outside these20 paths remain exact f6; all mixed paths are named in the shard. No whole-file overwrite.",
+  "outside_changed_paths_rule_chirho": "All compiler paths outside these21 paths remain exact f6; all mixed paths are named in the shard. No whole-file overwrite.",
   "preserved_shared_behavior_chirho": [
     "unit719 opaque constructor equality and legacy/numeric boundaries",
     "main31 nominality and native GC/PAP/rootframes",
@@ -186,10 +196,17 @@
   ],
   "source_format_chirho": {
     "all_byte_identical_chirho": true,
-    "changed_rust_files_chirho": 20,
+    "changed_rust_files_chirho": 21,
     "rustfmt_chirho": "1.93.0 stdin,edition2024,skip_children=true"
   },
   "status_chirho": "SOURCE_ONLY_UNCOMPILED_UNRUN",
+  "superseded_unrun_check_chirho": {
+    "actual_contract_or_stage_exists_chirho": false,
+    "packet_manifest_sha256_chirho": "1a62b48516914e8bdf3ae439787de9fa22bc9672c85f08ae64a27893604e9c31",
+    "packet_path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-dependable-union-selected-gnd-26-11-08-chirho/tmp-chirho/dependable-union-selected-gnd-chirho/check-readiness-a04426cf-r1-chirho",
+    "source_chirho": "a04426cfd269615eecc54ff350794b2f1ba78428",
+    "status_chirho": "SUPERSEDED_UNRUN_IMMUTABLE"
+  },
   "textual_conflicts_chirho": [
     "infer_chirho.rs selected payload/absence field plus ConstructorFieldScope and entry",
     "builtin-type-environment DAG and omitted private row688/new row714",

@@ -2,7 +2,7 @@
 
 # Dependable source union Chirho
 
-Current resume: unit719's exact shared opaque-constructor correction is measured at f6b97149988cc411e248f019c6e2131a4515cd74. Its fresh AFTER carriers pass U7 plus whole typing848 (no double count), source compile-only2, Core238 and scoped changed-span Clippy versus exact c104 with0 hits/247 OUTSIDE. BEFORE U6/1 and S1/1 remain raw REDs. This NEW owned worktree begins from f6 and carries the separately leased selected-application and GND producer patches. The resulting composition is UNCOMPILED and UNRUN; main, SQLite, old c104 and unit719 worktrees/targets/evidence remain untouched.
+Current resume: unit719's exact shared opaque-constructor correction is measured at f6b97149988cc411e248f019c6e2131a4515cd74. Its fresh AFTER carriers pass U7 plus whole typing848 (no double count), source compile-only2, Core238 and scoped changed-span Clippy versus exact c104 with0 hits/247 OUTSIDE. BEFORE U6/1 and S1/1 remain raw REDs. This NEW owned worktree begins from f6 and carries the separately leased selected-application, GND producer and complete family-header patches. The resulting composition is UNCOMPILED and UNRUN; main, SQLite, old c104 and unit719 worktrees/targets/evidence remain untouched.
 
 This isolated branch starts at exact main acd8baaab60fe2005429cbae72a31ccfd2fd3d06 (compiler04116a69). Root delegated source-only assembly to /root/integration_frontier_chirho. No compiler execution or acceptance is authorized by this plan. Canonical main, its dirty work, SQLite and reporting remain root-owned and untouched.
 
@@ -87,8 +87,18 @@ Placement: this new private gpt-dependable-union-selected-gnd-26-11-08-chirho wo
 - [ ] Prepare a fresh all-target workspace check at the frozen composed source; execute only after a separate actual root GO. No private intermediate compiler gate or inherited-pass claim.
 - [ ] Final main-parent quality/behavior/corpus/end-state gates remain required at the assembled source.
 
-The future certificate/selected-value changes preserve actual supplier reference evidence, fresh module-owned Core IDs and input-ID reservation. The selected import entry carries its scheme and optional compiler-value certificate together; unavailable_values still includes field-label and import-scope absences. The reader's ConstructorFieldScope and entry_obligation are retained. C10 literal substitution and superclass proofs/layouts stay intact. Q16b/0ce and family973 are explicitly excluded pending their independent repair gates.
+The future certificate/selected-value changes preserve actual supplier reference evidence, fresh module-owned Core IDs and input-ID reservation. The selected import entry carries its scheme and optional compiler-value certificate together; unavailable_values still includes field-label and import-scope absences. The reader's ConstructorFieldScope and entry_obligation are retained. C10 literal substitution and superclass proofs/layouts stay intact. Q16b/0ce remain excluded pending their independent repair gates. Family973 is separately cleared and carried in the checkpoint below.
 
 Composition checkpoint: selected commits map to5f66f55f,bec5b9ee,87469d3e,4e3ff374 and the exact GND patch to0a8a21ef. Source changes cover20 compiler paths;11 are exact selected/GND blobs and9 are the named union/caller adaptations. Every other compiler/fixture path is exact f6, and all31 protected main-source paths remain byte-identical to f6. All20 changed Rust files are rustfmt-clean on stdin. The two documentation conflicts retain the current workflow DAG and row714 while omitting private row688 history; the private selected tasklist stays deleted. The old source manifest/shards remain historical c104 records; selected-gnd-composition-manifest-chirho.json and its20-row blob shard record this layer. No compiler has run.
 
 The coherent composition was pushed at7e30564b; the outgoing seven-commit range from f6 scanned64.97KB with no leaks. The final task-only closure preserves that compiler tree. Its new all-target check packet is prepared against the final clean HEAD outside the tracked source; it authorizes no execution.
+
+## Cleared family-header extension Chirho
+
+- [x] Inspect exact973bcc3f796526358da32e8d9be7fb20ac500645 on9957; port its existing two-path patch only. Production is byte-identical to the frozen input and rustfmt-clean.
+- [x] Reconcile only its declaration-kinds workflow conflict: retain the main-rooted head-binder prose and add complete standalone family-header publication before equation checking, including the workflow DAG. No expanded source authority.
+- [x] Preserve the a04426cf check packet unchanged as SUPERSEDED/UNRUN, with manifest1a62b485 and an empty stages child; no contract or actual GO is materialized.
+- [ ] Compose Q only after the root clears its exact source. Current Q024 actual check/end29 owns the compiler slot independently.
+- [ ] After all cleared inputs are assembled, prepare one fresh final-source check packet; no duplicate intermediate compiler check.
+
+Root's33211/33212 family receipts are scoped to973: zero-message check,whole typing827,c18b/e01/C15b/E03 output on all three engines,both safety negatives and0 scoped Clippy hits/249 OUTSIDE. Those isolated passes do not become executions of this composition. Family port2051e478 retains the exact production blob; its only source-merge adaptation is the existing workflow document. Old c104 and unit719 source/targets/evidence remain frozen, and canonical main/SQLite are untouched.
