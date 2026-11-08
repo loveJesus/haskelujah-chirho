@@ -27,17 +27,18 @@ struct ConditionalListEntryChirho {
     route_chirho: ConditionalListRouteChirho,
 }
 
-/// The builder of a conditional list instance's dictionaries.
+/// The builder of a conditional list instance's dictionaries. Only `conditional_list_entry_chirho`
+/// chooses it, from the instance's class proof, owner and head; the variant is never authority.
 #[derive(Clone, Copy)]
 enum ConditionalListRouteChirho {
-    /// By the class's spelling (`generate_list_instance_dict_chirho`), as before.
-    SpelledChirho,
+    /// The class's own builder. With no identity, by the class's spelling
+    /// (`generate_list_instance_dict_chirho`), as before. With the identity of a displaced compiler
+    /// Show, the compiler's own `Show a => Show [a]` built in that class's namespace, its methods
+    /// from its own rows; no other class takes an identity here.
+    ClassBuilderChirho(Option<CompilerClassChirho>),
     /// A source or unproven instance under the spelling `Eq`, `Show` or `Ord`: the generic
     /// builder, which reads that instance's own rows and never a compiler-generated body.
     InstanceRowsChirho,
-    /// The compiler's own `Show a => Show [a]` while a source class takes the spelling `Show`:
-    /// the Show list builder in that compiler class's namespace, its methods from its own rows.
-    CompilerShowChirho(CompilerClassChirho),
 }
 
 /// Whether an instance's head is a list of one type variable, `[v]`, with no hidden kind or
@@ -118,7 +119,7 @@ impl DictPassCtxChirho {
             let context_classes_chirho = &entry_chirho.context_classes_chirho;
             // A displaced compiler Show's method fields take only that class's own rows.
             let namesake_rows_chirho = match entry_chirho.route_chirho {
-                ConditionalListRouteChirho::CompilerShowChirho(identity_chirho) => {
+                ConditionalListRouteChirho::ClassBuilderChirho(Some(identity_chirho)) => {
                     self.namesake_rows_chirho(class_env_chirho, identity_chirho)
                 }
                 _ => HashSet::new(),
@@ -165,7 +166,7 @@ impl DictPassCtxChirho {
                 // Generate the ground dict for this list type.
                 // We need method implementations that use the element dict.
                 match entry_chirho.route_chirho {
-                    ConditionalListRouteChirho::SpelledChirho => self
+                    ConditionalListRouteChirho::ClassBuilderChirho(None) => self
                         .generate_list_instance_dict_chirho(
                             class_env_chirho,
                             class_name_chirho,
@@ -183,7 +184,7 @@ impl DictPassCtxChirho {
                             layout_chirho,
                             context_classes_chirho,
                         ),
-                    ConditionalListRouteChirho::CompilerShowChirho(identity_chirho) => self
+                    ConditionalListRouteChirho::ClassBuilderChirho(Some(identity_chirho)) => self
                         .generate_show_list_dict_chirho(
                             &list_type_key_chirho,
                             layout_chirho,
@@ -236,7 +237,7 @@ impl DictPassCtxChirho {
                 class_name_chirho: layout_chirho.class_name_chirho.clone(),
                 layout_chirho,
                 context_classes_chirho,
-                route_chirho: ConditionalListRouteChirho::CompilerShowChirho(identity_chirho),
+                route_chirho: ConditionalListRouteChirho::ClassBuilderChirho(Some(identity_chirho)),
             });
         }
         let layout_chirho = self.layouts_chirho.get(class_name_chirho)?.clone();
@@ -250,7 +251,7 @@ impl DictPassCtxChirho {
         {
             ConditionalListRouteChirho::InstanceRowsChirho
         } else {
-            ConditionalListRouteChirho::SpelledChirho
+            ConditionalListRouteChirho::ClassBuilderChirho(None)
         };
         Some(ConditionalListEntryChirho {
             class_name_chirho: class_name_chirho.to_string(),
