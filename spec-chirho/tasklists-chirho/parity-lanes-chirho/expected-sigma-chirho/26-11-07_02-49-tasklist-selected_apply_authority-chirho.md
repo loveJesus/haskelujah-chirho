@@ -17,8 +17,9 @@ Canonical unit714 reuses the existing AST CompilerValue certificate and selected
 - [x] Prepare source transporting the same certificate through actual Core supplier/reference identity and the existing certified-body generator to a lazy first-class application body. Remove infix spelling privilege while preserving actual program-owned bodies and input-ID reservation.
 - [x] Add after-only structural missing/stub/conflicting-copy/masked authority controls, exact lexical fallback controls and imported source-infix runtime body6. These new controls are source-only and unrun.
 - [ ] Measure the agreed focused, preservation, original-source and runtime gates under separate named grants.
-- [ ] Complete generic section expected-checking via one hygienic lambda translation; retain actual operator name/origin and shared application checking.
-- [ ] Update dependent workflows, record exact paths/source and findings, run appropriate static checks and outgoing secret scan, commit and push coherent progress. Root owns canonical DB and landing.
+- [x] Prepare generic section expected-checking via one hygienic lambda translation, with the existing fresh supply and actual operator name/origin. Parentheses retain the expected input. Infix already delegated to the shared expected application checker at the before tip and is unchanged. This source is uncompiled until its named after check.
+- [x] Update dependent workflows and record the immutable before findings; preserve all seventeen raw source/provider literals and all caller options/assertions. Standalone pinned rustfmt and diff checks are clean. Commit and secret-scan the owned source checkpoints before push. Root owns canonical DB and landing.
+- [ ] Obtain the separately named after compile, focused behavior, preservation and lint results; report actual failures without changing the oracle.
 
 ## Placement and forwarding contract
 

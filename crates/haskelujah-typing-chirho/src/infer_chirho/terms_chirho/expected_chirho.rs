@@ -8,9 +8,47 @@ use super::build_infix_app_expr_chirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::TyChirho;
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
+use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_span_chirho::SpanChirho;
 
 impl InferCtxChirho {
+    /// Sections share ordinary lambda/application checking. The compiler-only
+    /// binder uses the existing fresh supply and cannot capture a written name;
+    /// the actual operator keeps its selected name and occurrence origin.
+    /// workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
+    pub(super) fn build_section_lambda_chirho(
+        &mut self,
+        op_chirho: &NameChirho,
+        arg_chirho: &ExprChirho,
+        fixed_left_chirho: bool,
+        span_chirho: SpanChirho,
+    ) -> ExprChirho {
+        let TyChirho::VarChirho(variable_chirho) = self.fresh_var_chirho() else {
+            unreachable!("fresh section variable Chirho")
+        };
+        let binder_chirho = NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+            format!("$section:{}_chirho", variable_chirho.0),
+            span_chirho,
+        ));
+        let reference_chirho = ExprChirho::VarChirho(binder_chirho.clone());
+        let (left_chirho, right_chirho) = if fixed_left_chirho {
+            (arg_chirho, &reference_chirho)
+        } else {
+            (&reference_chirho, arg_chirho)
+        };
+        ExprChirho::LamChirho {
+            pats_chirho: vec![PatChirho::VarChirho(binder_chirho)],
+            body_chirho: Box::new(build_infix_app_expr_chirho(
+                left_chirho,
+                op_chirho,
+                right_chirho,
+                span_chirho,
+            )),
+            span_chirho,
+        }
+    }
+
     pub(super) fn contains_polymorphic_component_chirho(ty_chirho: &TyChirho) -> bool {
         match ty_chirho {
             TyChirho::QualChirho { .. }
@@ -64,6 +102,30 @@ impl InferCtxChirho {
             return result_chirho;
         }
         match expr_chirho {
+            ExprChirho::ParenChirho { inner_chirho, .. } => self
+                .infer_expr_against_expected_chirho(inner_chirho, expected_ty_chirho, span_chirho),
+            ExprChirho::LeftSectionChirho {
+                op_chirho,
+                arg_chirho,
+                span_chirho: section_span_chirho,
+            }
+            | ExprChirho::RightSectionChirho {
+                op_chirho,
+                arg_chirho,
+                span_chirho: section_span_chirho,
+            } => {
+                let lambda_chirho = self.build_section_lambda_chirho(
+                    op_chirho,
+                    arg_chirho,
+                    matches!(expr_chirho, ExprChirho::RightSectionChirho { .. }),
+                    *section_span_chirho,
+                );
+                self.infer_expr_against_expected_chirho(
+                    &lambda_chirho,
+                    expected_ty_chirho,
+                    *section_span_chirho,
+                )
+            }
             ExprChirho::TypeLamChirho {
                 binder_chirho,
                 body_chirho,
