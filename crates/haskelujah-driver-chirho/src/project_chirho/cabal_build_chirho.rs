@@ -4,21 +4,22 @@
 
 use super::core_merge_chirho::merge_compile_results_core_chirho;
 use super::dependency_packages_chirho::{
-    builtin_dependency_names_chirho, collect_local_dependency_frontend_artifacts_chirho,
-    compile_module_sources_with_extra_ifaces_chirho, merge_local_dependency_package_index_chirho,
+    DependencyCoreChirho, StoreSelectionChirho, builtin_dependency_names_chirho,
+    collect_linked_dependency_artifacts_chirho, collect_local_dependency_frontend_artifacts_chirho,
+    compile_module_sources_linked_chirho, merge_local_dependency_package_index_chirho,
+    merge_local_dependency_store_chirho,
 };
 use super::module_discovery_chirho::{
     discover_modules_chirho, discover_modules_for_library_chirho,
-    is_self_or_internal_library_dep_chirho, iter_package_libraries_chirho,
+    is_self_or_internal_library_dep_chirho, iter_package_libraries_chirho, require_modules_chirho,
 };
 use super::project_dir_chirho::ProjectCompileResultChirho;
 use super::{
-    CompileResultChirho, ImportedTypeFamiliesChirho, ImportedTypeSynonymsChirho,
-    preprocess_cpp_source_with_options_chirho, read_haskell_source_file_chirho,
+    CompileResultChirho, FrontendSeedArtifactsChirho, preprocess_cpp_source_with_options_chirho,
+    read_haskell_source_file_chirho,
 };
 use haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_chirho;
 use haskelujah_core_chirho::CoreModuleChirho;
-use haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho;
 use haskelujah_span_chirho::SourceMapChirho;
 use std::path::{Path, PathBuf};
 
@@ -61,7 +62,8 @@ pub struct CabalBuildResultChirho {
 ///
 /// This function:
 /// 1. Reads and parses the `.cabal` file
-/// 2. Discovers exposed and internal modules from `hs-source-dirs`
+/// 2. Discovers exposed and internal modules from `hs-source-dirs`, refusing a declared library or
+///    executable module that is missing (test-suite modules stay best effort)
 /// 3. Resolves external dependencies against the provided package index
 /// 4. Compiles all discovered modules in dependency order
 pub fn compile_cabal_project_chirho(
@@ -102,8 +104,8 @@ pub fn compile_cabal_project_chirho(
         resolve_deps_chirho(&all_deps_chirho, &merged_index_chirho, &builtins_chirho)
             .map_err(|e_chirho| format!("dependency resolution failed: {}", e_chirho))?;
 
-    // Discover Haskell source files.
-    let source_files_chirho = discover_modules_chirho(&package_chirho, project_dir_chirho);
+    // Discover Haskell source files; a declared library or executable module must exist.
+    let source_files_chirho = require_modules_chirho(&package_chirho, project_dir_chirho)?;
     let module_cpp_options_chirho =
         package_module_cpp_options_map_chirho(&package_chirho, project_dir_chirho);
 
@@ -115,10 +117,8 @@ pub fn compile_cabal_project_chirho(
         &source_files_chirho,
         &module_cpp_options_chirho,
         &mut source_map_chirho,
-        dep_frontend_artifacts_chirho.ifaces_chirho.clone(),
-        dep_frontend_artifacts_chirho.imported_types_chirho,
-        dep_frontend_artifacts_chirho.imported_type_synonyms_chirho,
-        dep_frontend_artifacts_chirho.imported_type_families_chirho,
+        dep_frontend_artifacts_chirho,
+        &std::collections::HashSet::new(),
     )?;
 
     Ok(CabalCompileResultChirho {
@@ -130,11 +130,12 @@ pub fn compile_cabal_project_chirho(
     })
 }
 
+/// workflow: development-chirho/package-source-install-chirho
 pub fn build_cabal_project_chirho(
     cabal_path_chirho: impl AsRef<Path>,
     index_chirho: &haskelujah_package_chirho::PackageIndexChirho,
 ) -> Result<CabalBuildResultChirho, String> {
-    use haskelujah_package_chirho::{parse_cabal_chirho, resolve_deps_chirho};
+    use haskelujah_package_chirho::{parse_cabal_chirho, resolve_build_deps_chirho};
 
     let cabal_content_chirho =
         std::fs::read_to_string(cabal_path_chirho.as_ref()).map_err(|e_chirho| {
@@ -146,7 +147,7 @@ pub fn build_cabal_project_chirho(
         })?;
     let package_chirho = parse_cabal_chirho(&cabal_content_chirho);
 
-    let all_deps_chirho = collect_package_deps_chirho(&package_chirho);
+    let all_deps_chirho = collect_build_package_deps_chirho(&package_chirho);
     let project_dir_chirho = cabal_path_chirho
         .as_ref()
         .parent()
@@ -154,52 +155,94 @@ pub fn build_cabal_project_chirho(
     let builtins_chirho = builtin_dependency_names_chirho()
         .into_iter()
         .collect::<std::collections::BTreeSet<_>>();
-    let merged_index_chirho = merge_local_dependency_package_index_chirho(
-        project_dir_chirho,
-        &all_deps_chirho,
-        index_chirho,
-    )?;
+    let (merged_index_chirho, store_packages_chirho) =
+        merge_local_dependency_store_chirho(project_dir_chirho, index_chirho)?;
+    // An executable links exactly the versions it plans, so the build resolves strictly: a
+    // missing or unsatisfied dependency is refused here, before anything is compiled (row 703).
     let build_plan_chirho =
-        resolve_deps_chirho(&all_deps_chirho, &merged_index_chirho, &builtins_chirho)
+        resolve_build_deps_chirho(&all_deps_chirho, &merged_index_chirho, &builtins_chirho)
             .map_err(|e_chirho| format!("dependency resolution failed: {}", e_chirho))?;
+    let selection_chirho =
+        StoreSelectionChirho::from_plan_chirho(&build_plan_chirho, store_packages_chirho)?;
 
     let mut executables_chirho = Vec::new();
-    let dep_frontend_artifacts_chirho =
-        collect_local_dependency_frontend_artifacts_chirho(project_dir_chirho, &all_deps_chirho)?;
+    // Every planned dependency package is compiled once, for its seeds and its Core; an
+    // executable cannot link a body that failed, so failures are errors here (row 703).
+    let (dep_frontend_artifacts_chirho, dependency_cores_chirho) =
+        collect_linked_dependency_artifacts_chirho(
+            project_dir_chirho,
+            &all_deps_chirho,
+            &selection_chirho,
+        )?;
+    let linked_modules_chirho: std::collections::HashSet<String> = dependency_cores_chirho
+        .iter()
+        .flat_map(|core_chirho| core_chirho.module_names_chirho.iter().cloned())
+        .collect();
+    let module_owners_chirho = dependency_module_owners_chirho(&dependency_cores_chirho)?;
+    // Dependency Core first, in dependency order; each executable appends its own modules and
+    // truncates them away again, so the bodies are linked without copying them.
+    let mut linked_results_chirho: Vec<CompileResultChirho> = dependency_cores_chirho
+        .into_iter()
+        .flat_map(|core_chirho| core_chirho.results_chirho)
+        .collect();
+    let dependency_result_count_chirho = linked_results_chirho.len();
     for executable_chirho in &package_chirho.executables_chirho {
-        let target_modules_chirho = discover_executable_modules_chirho(
+        let target_modules_chirho = require_executable_modules_chirho(
             &package_chirho,
             executable_chirho,
             project_dir_chirho,
-        );
+        )?;
         let target_module_cpp_options_chirho = module_cpp_options_map_for_module_files_chirho(
             &target_modules_chirho,
             &executable_chirho.build_info_chirho.cpp_options_chirho,
         );
         let mut source_map_chirho = SourceMapChirho::new_chirho();
-        let project_compile_result_chirho = compile_module_files_with_frontend_seed_chirho(
+        let ProjectCompileResultChirho {
+            module_results_chirho,
+            compilation_order_chirho,
+            warnings_chirho,
+        } = compile_module_files_with_frontend_seed_chirho(
             &target_modules_chirho,
             &target_module_cpp_options_chirho,
             &mut source_map_chirho,
-            dep_frontend_artifacts_chirho.ifaces_chirho.clone(),
-            dep_frontend_artifacts_chirho.imported_types_chirho.clone(),
-            dep_frontend_artifacts_chirho
-                .imported_type_synonyms_chirho
-                .clone(),
-            dep_frontend_artifacts_chirho
-                .imported_type_families_chirho
-                .clone(),
+            FrontendSeedArtifactsChirho {
+                ifaces_chirho: dep_frontend_artifacts_chirho.ifaces_chirho.clone(),
+                interface_sources_chirho: None,
+                imported_types_chirho: dep_frontend_artifacts_chirho.imported_types_chirho.clone(),
+                imported_type_synonyms_chirho: dep_frontend_artifacts_chirho
+                    .imported_type_synonyms_chirho
+                    .clone(),
+                imported_type_families_chirho: dep_frontend_artifacts_chirho
+                    .imported_type_families_chirho
+                    .clone(),
+            },
+            &linked_modules_chirho,
         )?;
-        let merged_core_chirho = merge_compile_results_core_chirho(
-            &project_compile_result_chirho.module_results_chirho,
-        )?;
+        if let Some((module_name_chirho, owner_chirho)) =
+            compilation_order_chirho
+                .iter()
+                .find_map(|module_name_chirho| {
+                    module_owners_chirho
+                        .get(module_name_chirho)
+                        .map(|owner_chirho| (module_name_chirho, owner_chirho))
+                })
+        {
+            return Err(format!(
+                "module {module_name_chirho} is defined both by {} and by dependency {owner_chirho}; linking both would mislink it",
+                package_chirho.name_chirho
+            ));
+        }
+        linked_results_chirho.extend(module_results_chirho);
+        let merged_core_chirho = merge_compile_results_core_chirho(&linked_results_chirho);
+        linked_results_chirho.truncate(dependency_result_count_chirho);
+        let merged_core_chirho = merged_core_chirho?;
         let llvm_ir_chirho = try_compile_core_to_llvm_executable_chirho(&merged_core_chirho)?;
         executables_chirho.push(CabalExecutableBuildResultChirho {
             name_chirho: executable_chirho.name_chirho.clone(),
             core_chirho: merged_core_chirho,
             llvm_ir_chirho,
-            compilation_order_chirho: project_compile_result_chirho.compilation_order_chirho,
-            warnings_chirho: project_compile_result_chirho.warnings_chirho,
+            compilation_order_chirho,
+            warnings_chirho,
         });
     }
 
@@ -210,23 +253,98 @@ pub fn build_cabal_project_chirho(
     })
 }
 
+/// Which dependency package defines each linked module, refusing a module two packages define:
+/// merged Core would otherwise join or shadow the two bodies (row 703).
+fn dependency_module_owners_chirho(
+    dependency_cores_chirho: &[DependencyCoreChirho],
+) -> Result<std::collections::HashMap<String, String>, String> {
+    let mut owners_chirho: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
+    for core_chirho in dependency_cores_chirho {
+        for module_name_chirho in &core_chirho.module_names_chirho {
+            if let Some(previous_chirho) = owners_chirho.insert(
+                module_name_chirho.clone(),
+                core_chirho.package_name_chirho.clone(),
+            ) {
+                return Err(format!(
+                    "module {module_name_chirho} is defined by both {previous_chirho} and {}; linking both would mislink it",
+                    core_chirho.package_name_chirho
+                ));
+            }
+        }
+    }
+    Ok(owners_chirho)
+}
+
+/// The library components' external dependencies, one per package name in first-listed order.
+/// Every bound any library places on a package is kept: repeated names are conjoined with `&&`,
+/// so a later, stricter bound is never dropped (row 703).
 pub(crate) fn collect_library_package_deps_chirho(
     package_chirho: &haskelujah_package_chirho::PackageDescChirho,
 ) -> Vec<haskelujah_package_chirho::DependencyChirho> {
-    let mut deps_chirho = Vec::new();
-    let mut seen_chirho = std::collections::HashSet::new();
+    let mut deps_chirho: Vec<haskelujah_package_chirho::DependencyChirho> = Vec::new();
+    let mut positions_chirho: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
     for lib_chirho in iter_package_libraries_chirho(package_chirho) {
         for dep_chirho in &lib_chirho.build_info_chirho.build_depends_chirho {
             if is_self_or_internal_library_dep_chirho(package_chirho, &dep_chirho.package_chirho) {
                 continue;
             }
-            if seen_chirho.insert(dep_chirho.package_chirho.clone()) {
-                deps_chirho.push(dep_chirho.clone());
-            }
+            conjoin_dependency_chirho(&mut deps_chirho, &mut positions_chirho, dep_chirho);
         }
     }
 
     deps_chirho
+}
+
+/// Every library and executable bound an executable build must satisfy: one entry per package,
+/// its bounds conjoined, so a later component's bound is never dropped. Test suites and
+/// benchmarks stay out, as in `collect_package_deps_chirho`, which the best-effort compile keeps
+/// (row 703).
+/// workflow: development-chirho/package-source-install-chirho
+pub(crate) fn collect_build_package_deps_chirho(
+    package_chirho: &haskelujah_package_chirho::PackageDescChirho,
+) -> Vec<haskelujah_package_chirho::DependencyChirho> {
+    let mut deps_chirho: Vec<haskelujah_package_chirho::DependencyChirho> = Vec::new();
+    let mut positions_chirho: std::collections::HashMap<String, usize> =
+        std::collections::HashMap::new();
+    for dep_chirho in collect_library_package_deps_chirho(package_chirho) {
+        conjoin_dependency_chirho(&mut deps_chirho, &mut positions_chirho, &dep_chirho);
+    }
+    for exe_chirho in &package_chirho.executables_chirho {
+        for dep_chirho in &exe_chirho.build_info_chirho.build_depends_chirho {
+            if is_self_or_internal_library_dep_chirho(package_chirho, &dep_chirho.package_chirho) {
+                continue;
+            }
+            conjoin_dependency_chirho(&mut deps_chirho, &mut positions_chirho, dep_chirho);
+        }
+    }
+    deps_chirho
+}
+
+/// Add `dep_chirho` to `deps_chirho`, conjoining its bound with an earlier bound on the same
+/// package rather than dropping either.
+fn conjoin_dependency_chirho(
+    deps_chirho: &mut Vec<haskelujah_package_chirho::DependencyChirho>,
+    positions_chirho: &mut std::collections::HashMap<String, usize>,
+    dep_chirho: &haskelujah_package_chirho::DependencyChirho,
+) {
+    match positions_chirho.get(&dep_chirho.package_chirho) {
+        Some(&position_chirho) => {
+            let existing_chirho = &mut deps_chirho[position_chirho];
+            if existing_chirho.constraint_chirho != dep_chirho.constraint_chirho {
+                existing_chirho.constraint_chirho =
+                    haskelujah_package_chirho::VersionConstraintChirho::AndChirho(
+                        Box::new(existing_chirho.constraint_chirho.clone()),
+                        Box::new(dep_chirho.constraint_chirho.clone()),
+                    );
+            }
+        }
+        None => {
+            positions_chirho.insert(dep_chirho.package_chirho.clone(), deps_chirho.len());
+            deps_chirho.push(dep_chirho.clone());
+        }
+    }
 }
 
 /// Collect build-depends for the package targets we compile directly.
@@ -255,16 +373,41 @@ pub(crate) fn collect_package_deps_chirho(
     deps_chirho
 }
 
+/// The package as one executable's build sees it: its libraries and that executable only.
+fn executable_target_package_chirho(
+    package_chirho: &haskelujah_package_chirho::PackageDescChirho,
+    executable_chirho: &haskelujah_package_chirho::ExecutableChirho,
+) -> haskelujah_package_chirho::PackageDescChirho {
+    let mut target_package_chirho = package_chirho.clone();
+    target_package_chirho.executables_chirho = vec![executable_chirho.clone()];
+    target_package_chirho.test_suites_chirho.clear();
+    target_package_chirho.benchmarks_chirho.clear();
+    target_package_chirho
+}
+
 fn discover_executable_modules_chirho(
     package_chirho: &haskelujah_package_chirho::PackageDescChirho,
     executable_chirho: &haskelujah_package_chirho::ExecutableChirho,
     project_dir_chirho: &Path,
 ) -> Vec<(String, PathBuf)> {
-    let mut target_package_chirho = package_chirho.clone();
-    target_package_chirho.executables_chirho = vec![executable_chirho.clone()];
-    target_package_chirho.test_suites_chirho.clear();
-    target_package_chirho.benchmarks_chirho.clear();
-    discover_modules_chirho(&target_package_chirho, project_dir_chirho)
+    discover_modules_chirho(
+        &executable_target_package_chirho(package_chirho, executable_chirho),
+        project_dir_chirho,
+    )
+}
+
+/// One executable's modules for its build. A missing declared library or executable module, or a
+/// missing `main-is`, is the error, so the build never links a builtin namesake in its place.
+/// workflow: development-chirho/package-source-install-chirho
+fn require_executable_modules_chirho(
+    package_chirho: &haskelujah_package_chirho::PackageDescChirho,
+    executable_chirho: &haskelujah_package_chirho::ExecutableChirho,
+    project_dir_chirho: &Path,
+) -> Result<Vec<(String, PathBuf)>, String> {
+    require_modules_chirho(
+        &executable_target_package_chirho(package_chirho, executable_chirho),
+        project_dir_chirho,
+    )
 }
 
 fn module_cpp_options_map_for_module_files_chirho(
@@ -315,17 +458,17 @@ pub(crate) fn package_module_cpp_options_map_chirho(
     module_cpp_options_chirho
 }
 
-fn compile_module_files_with_frontend_seed_chirho(
+/// Read, preprocess and compile module files to Core with seeded dependency artifacts. Source
+/// install (row 703) compiles a staged library through this same path.
+/// The project compile keeps the metadata-free seed (no interface-source authority), as it did
+/// with a plain interface list; `linked_modules_chirho` names dependency modules merged into the
+/// same executable.
+pub(crate) fn compile_module_files_with_frontend_seed_chirho(
     module_files_chirho: &[(String, PathBuf)],
     module_cpp_options_chirho: &std::collections::HashMap<PathBuf, Vec<String>>,
     source_map_chirho: &mut SourceMapChirho,
-    extra_ifaces_chirho: Vec<ModuleIfaceChirho>,
-    initial_imported_types_chirho: std::collections::HashMap<
-        String,
-        haskelujah_typing_chirho::ty_chirho::SchemeChirho,
-    >,
-    initial_imported_type_synonyms_chirho: ImportedTypeSynonymsChirho,
-    initial_imported_type_families_chirho: ImportedTypeFamiliesChirho,
+    seed_chirho: FrontendSeedArtifactsChirho,
+    linked_modules_chirho: &std::collections::HashSet<String>,
 ) -> Result<ProjectCompileResultChirho, String> {
     let mut module_sources_chirho: Vec<(String, String, String)> = Vec::new();
     for (module_name_chirho, path_chirho) in module_files_chirho {
@@ -361,12 +504,13 @@ fn compile_module_files_with_frontend_seed_chirho(
             source_chirho,
         ));
     }
-    compile_module_sources_with_extra_ifaces_chirho(
+    compile_module_sources_linked_chirho(
         module_sources_chirho,
         source_map_chirho,
-        extra_ifaces_chirho,
-        initial_imported_types_chirho,
-        initial_imported_type_synonyms_chirho,
-        initial_imported_type_families_chirho,
+        FrontendSeedArtifactsChirho {
+            interface_sources_chirho: None,
+            ..seed_chirho
+        },
+        linked_modules_chirho,
     )
 }

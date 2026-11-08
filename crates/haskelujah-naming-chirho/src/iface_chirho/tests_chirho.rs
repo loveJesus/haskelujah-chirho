@@ -71,7 +71,8 @@ fn export_all_when_no_export_list_chirho() {
         ],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert_eq!(iface_chirho.name_chirho, "Lib");
     assert!(
         iface_chirho
@@ -140,7 +141,8 @@ fn export_list_filters_chirho() {
         ],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -191,7 +193,8 @@ fn export_type_without_constructors_chirho() {
         }],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -240,7 +243,8 @@ fn export_some_constructors_chirho() {
         }],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -280,7 +284,8 @@ fn export_parenthesized_operator_type_with_constructor_chirho() {
         }],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho.exports_chirho.types_chirho.contains_key(":-"),
         "parenthesized operator type export should match the operator type key"
@@ -304,6 +309,7 @@ fn class_methods_exported_chirho() {
         "Lib",
         None,
         vec![DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: mk_name_chirho("Show"),
             type_vars_chirho: vec![],
@@ -322,7 +328,8 @@ fn class_methods_exported_chirho() {
         }],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -353,6 +360,7 @@ fn record_field_selectors_exported_chirho() {
                 name_chirho: mk_name_chirho("LanguageDefChirho"),
                 fields_chirho: vec![
                     haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![mk_name_chirho("opLetterChirho")],
                         ty_chirho: haskelujah_ast_chirho::ty_chirho::TypeChirho::ConChirho(
                             mk_name_chirho("String"),
@@ -362,6 +370,7 @@ fn record_field_selectors_exported_chirho() {
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                     haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![mk_name_chirho("reservedNamesChirho")],
                         ty_chirho: haskelujah_ast_chirho::ty_chirho::TypeChirho::ListChirho {
                             element_chirho: Box::new(
@@ -385,7 +394,8 @@ fn record_field_selectors_exported_chirho() {
         }],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -424,7 +434,8 @@ fn newtype_exported_chirho() {
         }],
     );
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -448,20 +459,25 @@ fn module_re_export_chirho() {
 
     // Simulate the Inner module interface.
     let inner_iface_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: "Inner".to_string(),
         exports_chirho: {
             let mut e_chirho = IfaceExportsChirho::default();
             e_chirho.values_chirho.insert(
                 "innerFn".to_string(),
                 IfaceValueChirho {
+                    availability_chirho:
+                        crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                     name_chirho: "innerFn".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    compiler_value_chirho: None,
                 },
             );
             e_chirho.types_chirho.insert(
                 "InnerType".to_string(),
                 IfaceTypeChirho {
+                    declaration_chirho: None,
                     name_chirho: "InnerType".to_string(),
                     constructors_chirho: vec!["MkInner".to_string()],
                     methods_chirho: vec![],
@@ -472,9 +488,12 @@ fn module_re_export_chirho() {
             e_chirho.values_chirho.insert(
                 "MkInner".to_string(),
                 IfaceValueChirho {
+                    availability_chirho:
+                        crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                     name_chirho: "MkInner".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    compiler_value_chirho: None,
                 },
             );
             e_chirho
@@ -488,7 +507,9 @@ fn module_re_export_chirho() {
             ExportSpecChirho::ModuleChirho(mk_name_chirho("Inner")),
         ]),
         imports_chirho: vec![ImportDeclChirho {
+            package_chirho: None,
             module_chirho: mk_name_chirho("Inner"),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: None,
@@ -508,7 +529,8 @@ fn module_re_export_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[inner_iface_chirho]);
+    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[inner_iface_chirho])
+        .expect("small source interface fixture fits constructor projection budget");
 
     // Re-exported names from Inner should be present.
     assert!(
@@ -547,15 +569,19 @@ fn module_alias_re_export_chirho() {
     use haskelujah_ast_chirho::module_chirho::ImportDeclChirho;
 
     let inner_iface_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: "Inner".to_string(),
         exports_chirho: {
             let mut e_chirho = IfaceExportsChirho::default();
             e_chirho.values_chirho.insert(
                 "innerFn".to_string(),
                 IfaceValueChirho {
+                    availability_chirho:
+                        crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                     name_chirho: "innerFn".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    compiler_value_chirho: None,
                 },
             );
             e_chirho
@@ -568,7 +594,9 @@ fn module_alias_re_export_chirho() {
             "Alias",
         ))]),
         imports_chirho: vec![ImportDeclChirho {
+            package_chirho: None,
             module_chirho: mk_name_chirho("Inner"),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: Some(mk_name_chirho("Alias")),
             spec_chirho: None,
@@ -584,7 +612,8 @@ fn module_alias_re_export_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[inner_iface_chirho]);
+    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[inner_iface_chirho])
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -598,38 +627,49 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
     use haskelujah_ast_chirho::module_chirho::{ImportDeclChirho, ImportSpecChirho};
 
     let left_iface_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: "LeftMod".to_string(),
         exports_chirho: {
             let mut e_chirho = IfaceExportsChirho::default();
             e_chirho.values_chirho.insert(
                 "leftFn".to_string(),
                 IfaceValueChirho {
+                    availability_chirho:
+                        crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                     name_chirho: "leftFn".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    compiler_value_chirho: None,
                 },
             );
             e_chirho.values_chirho.insert(
                 "hiddenLeft".to_string(),
                 IfaceValueChirho {
+                    availability_chirho:
+                        crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                     name_chirho: "hiddenLeft".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    compiler_value_chirho: None,
                 },
             );
             e_chirho
         },
     };
     let right_iface_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: "RightMod".to_string(),
         exports_chirho: {
             let mut e_chirho = IfaceExportsChirho::default();
             e_chirho.values_chirho.insert(
                 "rightFn".to_string(),
                 IfaceValueChirho {
+                    availability_chirho:
+                        crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                     name_chirho: "rightFn".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    compiler_value_chirho: None,
                 },
             );
             e_chirho
@@ -643,7 +683,9 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
         ))]),
         imports_chirho: vec![
             ImportDeclChirho {
+                package_chirho: None,
                 module_chirho: mk_name_chirho("LeftMod"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: Some(mk_name_chirho("Alias")),
                 spec_chirho: Some(ImportSpecChirho {
@@ -653,7 +695,9 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             ImportDeclChirho {
+                package_chirho: None,
                 module_chirho: mk_name_chirho("RightMod"),
+                source_chirho: false,
                 qualified_chirho: false,
                 alias_chirho: Some(mk_name_chirho("Alias")),
                 spec_chirho: None,
@@ -671,7 +715,8 @@ fn module_alias_re_export_unions_matching_imports_chirho() {
     };
 
     let iface_chirho =
-        build_iface_with_imports_chirho(&module_chirho, &[left_iface_chirho, right_iface_chirho]);
+        build_iface_with_imports_chirho(&module_chirho, &[left_iface_chirho, right_iface_chirho])
+            .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -697,15 +742,19 @@ fn explicit_export_list_reexports_imported_value_chirho() {
     use haskelujah_ast_chirho::module_chirho::ImportDeclChirho;
 
     let imported_iface_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: "InnerChoice".to_string(),
         exports_chirho: {
             let mut exports_chirho = IfaceExportsChirho::default();
             exports_chirho.values_chirho.insert(
                 "choice".to_string(),
                 IfaceValueChirho {
+                    availability_chirho:
+                        crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                     name_chirho: "choice".to_string(),
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                     defining_module_chirho: None,
+                    compiler_value_chirho: None,
                 },
             );
             exports_chirho
@@ -716,7 +765,9 @@ fn explicit_export_list_reexports_imported_value_chirho() {
         name_chirho: mk_name_chirho("OuterChoice"),
         exports_chirho: Some(vec![ExportSpecChirho::VarChirho(mk_name_chirho("choice"))]),
         imports_chirho: vec![ImportDeclChirho {
+            package_chirho: None,
             module_chirho: mk_name_chirho("InnerChoice"),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: None,
@@ -732,7 +783,8 @@ fn explicit_export_list_reexports_imported_value_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho]);
+    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho])
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -746,12 +798,14 @@ fn explicit_export_list_reexports_imported_type_chirho() {
     use haskelujah_ast_chirho::module_chirho::ImportDeclChirho;
 
     let imported_iface_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: "InnerParsec".to_string(),
         exports_chirho: {
             let mut exports_chirho = IfaceExportsChirho::default();
             exports_chirho.types_chirho.insert(
                 "Parsec".to_string(),
                 IfaceTypeChirho {
+                    declaration_chirho: None,
                     name_chirho: "Parsec".to_string(),
                     constructors_chirho: vec![],
                     methods_chirho: vec![],
@@ -767,7 +821,9 @@ fn explicit_export_list_reexports_imported_type_chirho() {
         name_chirho: mk_name_chirho("OuterParsec"),
         exports_chirho: Some(vec![ExportSpecChirho::VarChirho(mk_name_chirho("Parsec"))]),
         imports_chirho: vec![ImportDeclChirho {
+            package_chirho: None,
             module_chirho: mk_name_chirho("InnerParsec"),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: None,
@@ -783,7 +839,8 @@ fn explicit_export_list_reexports_imported_type_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho]);
+    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[imported_iface_chirho])
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -814,7 +871,8 @@ fn self_re_export_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     // Self re-export means export all local definitions.
     assert!(
         iface_chirho
@@ -851,7 +909,8 @@ fn iface_exports_foreign_import_names_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let iface_chirho = build_iface_chirho(&module_chirho);
+    let iface_chirho = build_iface_chirho(&module_chirho)
+        .expect("small source interface fixture fits constructor projection budget");
     assert!(
         iface_chirho
             .exports_chirho
@@ -860,3 +919,157 @@ fn iface_exports_foreign_import_names_chirho() {
         "foreign import names should be exported through module interfaces"
     );
 }
+
+fn family_parent_iface_chirho(module_name_chirho: &str, member_chirho: &str) -> ModuleIfaceChirho {
+    let mut exports_chirho = IfaceExportsChirho::default();
+    for (name_chirho, is_class_chirho) in [("CChirho", true), (member_chirho, false)] {
+        exports_chirho.types_chirho.insert(
+            name_chirho.to_owned(),
+            IfaceTypeChirho {
+                declaration_chirho: None,
+                is_class_chirho,
+                name_chirho: name_chirho.to_owned(),
+                constructors_chirho: Vec::new(),
+                methods_chirho: Vec::new(),
+                span_chirho: SpanChirho::DUMMY_CHIRHO,
+            },
+        );
+    }
+    exports_chirho
+        .associated_types_chirho
+        .insert("CChirho".to_owned(), vec![member_chirho.to_owned()]);
+    ModuleIfaceChirho {
+        exposure_chirho: None,
+        name_chirho: module_name_chirho.to_owned(),
+        exports_chirho,
+    }
+}
+
+fn family_export_import_chirho(
+    module_chirho: &str,
+    alias_chirho: &str,
+    name_chirho: &str,
+) -> haskelujah_ast_chirho::module_chirho::ImportDeclChirho {
+    haskelujah_ast_chirho::module_chirho::ImportDeclChirho {
+        package_chirho: None,
+        module_chirho: mk_name_chirho(module_chirho),
+        source_chirho: false,
+        qualified_chirho: true,
+        alias_chirho: Some(mk_name_chirho(alias_chirho)),
+        spec_chirho: Some(haskelujah_ast_chirho::module_chirho::ImportSpecChirho {
+            hiding_chirho: false,
+            items_chirho: vec![
+                haskelujah_ast_chirho::module_chirho::ImportItemChirho::TyConChirho {
+                    name_chirho: mk_name_chirho(name_chirho),
+                    members_chirho: ExportMembersChirho::NoneChirho,
+                },
+            ],
+        }),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    }
+}
+
+#[test]
+fn qualified_type_exports_use_the_selected_parent_and_latest_interface_chirho() {
+    let mut module_chirho = mk_module_chirho(
+        "UserChirho",
+        Some(vec![ExportSpecChirho::TyConChirho {
+            name_chirho: NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+                "QChirho",
+                "CChirho",
+                SpanChirho::DUMMY_CHIRHO,
+            )),
+            members_chirho: ExportMembersChirho::SomeChirho(vec![mk_name_chirho("FChirho")]),
+        }]),
+        vec![DeclChirho::TypeAliasDeclChirho {
+            name_chirho: mk_name_chirho("CChirho"),
+            type_vars_chirho: Vec::new(),
+            rhs_chirho: TypeChirho::ConChirho(mk_name_chirho("Int")),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+    );
+    module_chirho.imports_chirho = vec![
+        family_export_import_chirho("OriginChirho", "QChirho", "CChirho"),
+        family_export_import_chirho("OriginChirho", "RChirho", "FChirho"),
+    ];
+    let ifaces_chirho = [
+        family_parent_iface_chirho("OriginChirho", "OldChirho"),
+        family_parent_iface_chirho("OriginChirho", "FChirho"),
+    ];
+    let resolve_chirho = |module_chirho: &str, name_chirho: &str| {
+        if module_chirho == "OriginChirho" && name_chirho == "FChirho" {
+            std::collections::BTreeSet::from(["origin-family-chirho".to_owned()])
+        } else {
+            std::collections::BTreeSet::new()
+        }
+    };
+    let iface_chirho = build_iface_with_imports_and_family_identities_chirho(
+        &module_chirho,
+        &ifaces_chirho,
+        &resolve_chirho,
+    )
+    .expect("small source interface fixture fits constructor projection budget");
+    assert!(
+        iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("FChirho")
+    );
+    assert!(
+        !iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("OldChirho")
+    );
+    assert_eq!(
+        iface_chirho.exports_chirho.associated_types_chirho["CChirho"],
+        vec!["FChirho"]
+    );
+}
+
+#[test]
+fn an_associated_namesake_with_another_identity_is_not_exported_chirho() {
+    let mut module_chirho = mk_module_chirho(
+        "UserChirho",
+        Some(vec![ExportSpecChirho::TyConChirho {
+            name_chirho: NameChirho::RawChirho(RawNameChirho::qualified_chirho(
+                "QChirho",
+                "CChirho",
+                SpanChirho::DUMMY_CHIRHO,
+            )),
+            members_chirho: ExportMembersChirho::SomeChirho(vec![mk_name_chirho("FChirho")]),
+        }]),
+        Vec::new(),
+    );
+    module_chirho.imports_chirho = vec![
+        family_export_import_chirho("OriginChirho", "QChirho", "CChirho"),
+        family_export_import_chirho("OtherChirho", "RChirho", "FChirho"),
+    ];
+    let ifaces_chirho = [
+        family_parent_iface_chirho("OriginChirho", "FChirho"),
+        family_parent_iface_chirho("OtherChirho", "FChirho"),
+    ];
+    let resolve_chirho = |module_chirho: &str, _name_chirho: &str| {
+        std::collections::BTreeSet::from([format!("{module_chirho}-family-chirho")])
+    };
+    let iface_chirho = build_iface_with_imports_and_family_identities_chirho(
+        &module_chirho,
+        &ifaces_chirho,
+        &resolve_chirho,
+    )
+    .expect("small source interface fixture fits constructor projection budget");
+    assert!(
+        iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("CChirho")
+    );
+    assert!(
+        !iface_chirho
+            .exports_chirho
+            .types_chirho
+            .contains_key("FChirho")
+    );
+}
+
+mod compiler_values_chirho;

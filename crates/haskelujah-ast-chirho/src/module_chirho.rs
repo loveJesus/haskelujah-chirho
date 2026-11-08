@@ -58,6 +58,36 @@ pub struct ModuleChirho {
     pub origin_supply_chirho: OriginSupplyChirho,
 }
 
+/// Apply ordered LANGUAGE on/off flags. Naming and kind elaboration share
+/// this policy; a later pragma wins, including NoStarIsType.
+pub fn extension_enabled_with_default_chirho(
+    module_chirho: &ModuleChirho,
+    name_chirho: &str,
+    default_chirho: bool,
+) -> bool {
+    module_chirho.extensions_chirho.iter().fold(
+        default_chirho,
+        |enabled_chirho, extension_chirho| {
+            let positive_mode_chirho = name_chirho == "CUSKs"
+                && matches!(extension_chirho.as_str(), "Haskell98" | "Haskell2010");
+            let negative_mode_chirho = name_chirho == "CUSKs"
+                && matches!(
+                    extension_chirho.as_str(),
+                    "GHC2021" | "GHC2024" | "StandaloneKindSignatures"
+                );
+            if extension_chirho == name_chirho || positive_mode_chirho {
+                true
+            } else if extension_chirho.strip_prefix("No") == Some(name_chirho)
+                || negative_mode_chirho
+            {
+                false
+            } else {
+                enabled_chirho
+            }
+        },
+    )
+}
+
 /// An export specification.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExportSpecChirho {
@@ -91,6 +121,10 @@ pub enum ExportMembersChirho {
 pub struct ImportDeclChirho {
     /// The imported module name.
     pub module_chirho: NameChirho,
+    /// Explicit written package selector. This is syntax, not a checked unit identity.
+    pub package_chirho: Option<String>,
+    /// Whether this import explicitly selects the target's hs-boot interface.
+    pub source_chirho: bool,
     /// Whether this is a qualified import.
     pub qualified_chirho: bool,
     /// Optional alias (`as Alias`).
@@ -160,6 +194,15 @@ pub enum ImportListModeChirho<'a> {
 }
 
 impl ImportDeclChirho {
+    /// Home source selection is distinct from checked unit identity. GHC's
+    /// explicit `"this"` selector names the current compilation unit; another
+    /// written package selector cannot authorize a same-named home candidate.
+    pub fn selects_home_source_chirho(&self) -> bool {
+        self.package_chirho
+            .as_deref()
+            .is_none_or(|selector_chirho| selector_chirho == "this")
+    }
+
     /// The qualifier this import binds its names under: the `as` alias,
     /// otherwise the module name.
     pub fn effective_qualifier_chirho(&self) -> String {
@@ -219,10 +262,12 @@ mod tests_chirho {
     #[test]
     fn import_decl_basics_chirho() {
         let import_chirho = ImportDeclChirho {
+            package_chirho: None,
             module_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
                 "Data.List",
                 SpanChirho::DUMMY_CHIRHO,
             )),
+            source_chirho: false,
             qualified_chirho: true,
             alias_chirho: Some(NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
                 "L",
@@ -248,7 +293,9 @@ mod tests_chirho {
     /// `import qualified Data.List.NonEmpty as NE` with the given spec.
     fn non_empty_import_chirho(spec_chirho: Option<ImportSpecChirho>) -> ImportDeclChirho {
         ImportDeclChirho {
+            package_chirho: None,
             module_chirho: plain_name_chirho("Data.List.NonEmpty"),
+            source_chirho: false,
             qualified_chirho: true,
             alias_chirho: Some(plain_name_chirho("NE")),
             spec_chirho,

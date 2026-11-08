@@ -5,7 +5,6 @@
 
 use super::InferCtxChirho;
 use super::build_infix_app_expr_chirho;
-use crate::skolem_chirho::contains_skolem_chirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::TyChirho;
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
@@ -14,7 +13,9 @@ use haskelujah_span_chirho::SpanChirho;
 impl InferCtxChirho {
     pub(super) fn contains_polymorphic_component_chirho(ty_chirho: &TyChirho) -> bool {
         match ty_chirho {
-            TyChirho::ForallChirho { .. } | TyChirho::RequiredForallChirho { .. } => true,
+            TyChirho::QualChirho { .. }
+            | TyChirho::ForallChirho { .. }
+            | TyChirho::RequiredForallChirho { .. } => true,
             TyChirho::AppChirho(fun_chirho, arg_chirho)
             | TyChirho::FunChirho(fun_chirho, arg_chirho, _) => {
                 Self::contains_polymorphic_component_chirho(fun_chirho)
@@ -30,12 +31,38 @@ impl InferCtxChirho {
         }
     }
 
+    /// Inferred fallbacks return a current actual type; their substitution
+    /// transports the external expected input before the new equality check.
+    /// workflow: language-features-chirho/rigid-type-variables-chirho
     pub(super) fn infer_expr_against_expected_chirho(
         &mut self,
         expr_chirho: &ExprChirho,
         expected_ty_chirho: &TyChirho,
         span_chirho: SpanChirho,
     ) -> (SubstChirho, TyChirho) {
+        let normalized_expected_chirho = self.normalize_ty_chirho(expected_ty_chirho);
+        if matches!(normalized_expected_chirho, TyChirho::QualChirho { .. }) {
+            let (body_chirho, givens_chirho) =
+                self.expose_qualified_parts_chirho(normalized_expected_chirho, Vec::new());
+            let (substitution_chirho, _) =
+                self.with_signature_givens_chirho(givens_chirho, &body_chirho, |context_chirho| {
+                    context_chirho.infer_expr_against_expected_chirho(
+                        expr_chirho,
+                        &body_chirho,
+                        span_chirho,
+                    )
+                });
+            let checked_chirho = substitution_chirho.apply_ty_chirho(expected_ty_chirho);
+            return (substitution_chirho, checked_chirho);
+        }
+        if matches!(
+            expr_chirho,
+            ExprChirho::VarChirho(_) | ExprChirho::ConChirho(_) | ExprChirho::TypeAppChirho { .. }
+        ) && let Some(result_chirho) =
+            self.infer_application_spine_chirho(expr_chirho, Some(expected_ty_chirho), span_chirho)
+        {
+            return result_chirho;
+        }
         match expr_chirho {
             ExprChirho::TypeLamChirho {
                 binder_chirho,
@@ -59,7 +86,7 @@ impl InferCtxChirho {
                     forall_body_chirho.as_ref().clone()
                 } else {
                     TyChirho::ForallChirho {
-                        vars_chirho: remaining_vars_chirho.to_vec(),
+                        vars_chirho: vars_chirho.slice_chirho(1..vars_chirho.len()),
                         body_chirho: forall_body_chirho.clone(),
                     }
                 };
@@ -106,7 +133,7 @@ impl InferCtxChirho {
                 alts_chirho,
                 ..
             } if Self::contains_polymorphic_component_chirho(expected_ty_chirho)
-                || contains_skolem_chirho(expected_ty_chirho) =>
+                || self.type_contains_skolem_chirho(expected_ty_chirho) =>
             {
                 // A rigid expected type must reach every alternative, because a
                 // GADT alternative sees it through its own refinement.
@@ -121,6 +148,7 @@ impl InferCtxChirho {
 
                 for alt_chirho in alts_chirho {
                     self.env_chirho.push_scope_chirho();
+                    let pattern_frame_chirho = self.begin_pattern_implication_chirho();
 
                     self.bind_pat_against_chirho(
                         &alt_chirho.pat_chirho,
@@ -158,6 +186,12 @@ impl InferCtxChirho {
                         self.apply_subst_all_chirho(&unify_subst_chirho);
                     }
 
+                    let solved_chirho = self.end_pattern_implication_chirho(
+                        pattern_frame_chirho,
+                        &subst_chirho.apply_ty_chirho(expected_ty_chirho),
+                        alt_chirho.span_chirho,
+                    );
+                    subst_chirho = solved_chirho.compose_chirho(&subst_chirho);
                     self.env_chirho.pop_scope_chirho();
                 }
 
@@ -181,6 +215,13 @@ impl InferCtxChirho {
                 arg_chirho,
                 span_chirho: app_span_chirho,
             } => {
+                if let Some(result_chirho) = self.infer_application_spine_chirho(
+                    expr_chirho,
+                    Some(expected_ty_chirho),
+                    *app_span_chirho,
+                ) {
+                    return result_chirho;
+                }
                 // Bidirectional application checking lets a known result type
                 // specialize variables that also occur in the parameter. This
                 // is required for `g True :: Char` when `g :: F a -> a` and
@@ -191,13 +232,14 @@ impl InferCtxChirho {
                 let inferred_fun_sub_chirho =
                     fun_subst_chirho.apply_ty_chirho(&inferred_fun_ty_chirho);
 
-                if let Some(required_arg_ty_chirho) =
-                    self.expr_to_required_type_arg_chirho(arg_chirho)
-                    && let Some(required_result_ty_chirho) = self.apply_required_type_arg_chirho(
+                if let Some((links_chirho, required_result_ty_chirho)) = self
+                    .infer_required_type_application_chirho(
                         &inferred_fun_sub_chirho,
-                        required_arg_ty_chirho,
+                        arg_chirho,
+                        *app_span_chirho,
                     )
                 {
+                    let fun_subst_chirho = links_chirho.compose_chirho(&fun_subst_chirho);
                     return match self.unify_normalized_chirho(
                         &required_result_ty_chirho,
                         expected_ty_chirho,
@@ -355,9 +397,10 @@ impl InferCtxChirho {
                 let expected_norm_chirho = self.normalize_ty_chirho(expected_ty_chirho);
                 let TyChirho::ListChirho(expected_elem_ty_chirho) = expected_norm_chirho else {
                     let (s_chirho, actual_ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                    let expected_sub_chirho = s_chirho.apply_ty_chirho(expected_ty_chirho);
                     match self.unify_normalized_chirho(
                         &actual_ty_chirho,
-                        expected_ty_chirho,
+                        &expected_sub_chirho,
                         span_chirho,
                     ) {
                         Ok(su_chirho) => {
@@ -418,15 +461,16 @@ impl InferCtxChirho {
                 // own arm consumes the hint.
                 // workflow: language-features-chirho/rigid-type-variables-chirho
                 if matches!(expr_chirho, ExprChirho::DoChirho { .. })
-                    && contains_skolem_chirho(expected_ty_chirho)
+                    && self.type_contains_skolem_chirho(expected_ty_chirho)
                 {
                     self.do_last_expected_chirho = Some(expected_ty_chirho.clone());
                 }
                 let (s_chirho, actual_ty_chirho) = self.infer_expr_chirho(expr_chirho);
                 self.do_last_expected_chirho = None;
+                let expected_sub_chirho = s_chirho.apply_ty_chirho(expected_ty_chirho);
                 match self.unify_normalized_chirho(
                     &actual_ty_chirho,
-                    expected_ty_chirho,
+                    &expected_sub_chirho,
                     span_chirho,
                 ) {
                     Ok(su_chirho) => {

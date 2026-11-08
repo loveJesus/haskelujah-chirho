@@ -129,11 +129,11 @@ fn closed_qualifiers_chirho(
             }
             ImportListModeChirho::ExplicitChirho(items_chirho) => {
                 // The interface name resolution reads: the latest of that name.
-                let exports_chirho = available_modules_chirho
-                    .iter()
-                    .rev()
-                    .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
-                    .map(|iface_chirho| &iface_chirho.exports_chirho);
+                let exports_chirho = crate::iface_chirho::select_import_iface_chirho(
+                    available_modules_chirho,
+                    import_chirho,
+                )
+                .map(|iface_chirho| &iface_chirho.exports_chirho);
                 explicit_list_supply_chirho(items_chirho, exports_chirho)
             }
         };

@@ -110,9 +110,9 @@ fn class_env_chirho(
     heads_chirho: Vec<(TyChirho, Vec<TyChirho>)>,
 ) -> ClassEnvChirho {
     let mut env_chirho = ClassEnvChirho::new_chirho();
-    env_chirho.classes_chirho.insert(
-        "TagChirho".to_string(),
-        ClassDeclChirho {
+    env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
+        haskelujah_typing_chirho::class_chirho::ClassDeclPartsChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "TagChirho".to_string(),
             supers_chirho: supers_chirho
                 .iter()
@@ -125,27 +125,66 @@ fn class_env_chirho(
             fundeps_chirho: Vec::new(),
             defaults_chirho: HashMap::new(),
         },
-    );
-    env_chirho.instances_chirho.insert(
-        "TagChirho".to_string(),
-        heads_chirho
-            .into_iter()
-            .map(|(head_chirho, extra_chirho)| InstDeclChirho {
-                class_name_chirho: "TagChirho".to_string(),
-                head_ty_chirho: head_chirho,
-                extra_head_tys_chirho: extra_chirho,
-                context_chirho: Vec::new(),
-            })
-            .collect(),
-    );
+    ));
+    for instance_chirho in heads_chirho
+        .into_iter()
+        .map(|(head_chirho, extra_chirho)| {
+            InstDeclChirho::legacy_chirho(
+                haskelujah_typing_chirho::class_chirho::InstDeclPartsChirho {
+                    kind_tys_chirho: Vec::new(),
+                    class_name_chirho: "TagChirho".to_string(),
+                    head_ty_chirho: head_chirho,
+                    extra_head_tys_chirho: extra_chirho,
+                    context_chirho: Vec::new(),
+                },
+            )
+        })
+        .collect::<Vec<InstDeclChirho>>()
+    {
+        env_chirho.add_instance_chirho(instance_chirho);
+    }
     env_chirho
 }
 
 /// `generic_spine_chirho` for the class's first instance.
 fn first_spine_chirho(env_chirho: &ClassEnvChirho) -> Option<(String, usize)> {
-    let first_chirho = &env_chirho.instances_chirho["TagChirho"][0];
+    let first_chirho = env_chirho
+        .instances_chirho()
+        .get_chirho("TagChirho")
+        .expect("registered class")
+        .first_chirho()
+        .expect("registered instance");
     generic_spine_chirho(env_chirho, "TagChirho", first_chirho)
         .map(|(constructor_chirho, arity_chirho)| (constructor_chirho.to_string(), arity_chirho))
+}
+
+#[test]
+fn multi_head_registration_keeps_the_canonical_arena_record_chirho() {
+    let environment_chirho = class_env_chirho(
+        &[],
+        vec![TyVarChirho(101)],
+        vec![(con_chirho("Int"), vec![con_chirho("Bool")])],
+    );
+    let instance_chirho = environment_chirho
+        .instances_chirho()
+        .get_chirho("TagChirho")
+        .expect("the class has its arena view")
+        .first_chirho()
+        .expect("the view has its canonical record");
+    let mut pass_chirho = DictPassCtxChirho::new_chirho(10, HashMap::new(), HashMap::new());
+    pass_chirho.register_multi_head_chirho(instance_chirho, CoreIdChirho(20));
+    pass_chirho.register_multi_head_chirho(instance_chirho, CoreIdChirho(21));
+    assert_eq!(pass_chirho.conditional_dicts_chirho.len(), 1);
+    let dictionary_chirho = pass_chirho
+        .conditional_dicts_chirho
+        .values()
+        .next()
+        .unwrap();
+    assert_eq!(dictionary_chirho.builder_chirho, CoreIdChirho(20));
+    assert!(std::sync::Arc::ptr_eq(
+        instance_chirho,
+        dictionary_chirho.instance_chirho.as_ref().unwrap(),
+    ));
 }
 
 #[test]
@@ -245,7 +284,12 @@ fn slot_coverage_reads_the_rows_the_slot_lookup_takes_chirho() {
         Vec::new(),
         vec![(app_chirho(con_chirho("BoxChirho"), var_chirho(0)), vec![])],
     );
-    let inst_chirho = &env_chirho.instances_chirho["TagChirho"][0];
+    let inst_chirho = env_chirho
+        .instances_chirho()
+        .get_chirho("TagChirho")
+        .expect("registered class")
+        .first_chirho()
+        .expect("registered instance");
     let typed_key_chirho = format!("{}", inst_chirho.head_ty_chirho);
     let layout_chirho = DictLayoutChirho {
         class_name_chirho: "TagChirho".to_string(),
@@ -395,7 +439,12 @@ fn only_the_list_head_may_omit_a_method_chirho() {
     };
     let list_env_chirho =
         class_env_chirho(&[], Vec::new(), vec![(list_chirho(var_chirho(0)), vec![])]);
-    let list_inst_chirho = &list_env_chirho.instances_chirho["TagChirho"][0];
+    let list_inst_chirho = list_env_chirho
+        .instances_chirho()
+        .get_chirho("TagChirho")
+        .expect("registered class")
+        .first_chirho()
+        .expect("registered instance");
     let list_key_chirho = format!("{}", list_inst_chirho.head_ty_chirho);
     let head_chirho = pass_with_rows_chirho(&[("$prim_TagChirho_firstChirho_[a]", 1)])
         .generic_head_chirho(
@@ -413,7 +462,12 @@ fn only_the_list_head_may_omit_a_method_chirho() {
         Vec::new(),
         vec![(app_chirho(con_chirho("BoxChirho"), var_chirho(0)), vec![])],
     );
-    let box_inst_chirho = &box_env_chirho.instances_chirho["TagChirho"][0];
+    let box_inst_chirho = box_env_chirho
+        .instances_chirho()
+        .get_chirho("TagChirho")
+        .expect("registered class")
+        .first_chirho()
+        .expect("registered instance");
     let box_key_chirho = format!("{}", box_inst_chirho.head_ty_chirho);
     assert!(
         pass_with_rows_chirho(&[("$prim_TagChirho_firstChirho_BoxChirho a", 1)])

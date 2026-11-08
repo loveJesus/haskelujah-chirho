@@ -34,7 +34,6 @@ use haskelujah_span_chirho::SpanChirho;
 
 use super::{InferCtxChirho, UNSATISFIED_CONSTRAINT_CODE_CHIRHO};
 use crate::class_chirho::{PredChirho, match_ty_chirho};
-use crate::skolem_chirho::contains_skolem_chirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemePredChirho, TyChirho, TyVarChirho};
 
@@ -138,7 +137,7 @@ fn needs_syntax_split_chirho(pattern_chirho: &TyChirho, target_chirho: &TyChirho
 fn mentions_type_variable_chirho(ty_chirho: &TyChirho) -> bool {
     match ty_chirho {
         TyChirho::VarChirho(_) | TyChirho::ForallVarChirho(_) => true,
-        TyChirho::ConChirho(_) => contains_skolem_chirho(ty_chirho),
+        TyChirho::ConChirho(_) => false,
         TyChirho::AppChirho(fun_chirho, arg_chirho)
         | TyChirho::FunChirho(fun_chirho, arg_chirho, _) => {
             mentions_type_variable_chirho(fun_chirho) || mentions_type_variable_chirho(arg_chirho)
@@ -148,7 +147,9 @@ fn mentions_type_variable_chirho(ty_chirho: &TyChirho) -> bool {
             elems_chirho.iter().any(mentions_type_variable_chirho)
         }
         // A polytype in a determined position is outside this rule.
-        TyChirho::ForallChirho { .. } | TyChirho::RequiredForallChirho { .. } => false,
+        TyChirho::QualChirho { .. }
+        | TyChirho::ForallChirho { .. }
+        | TyChirho::RequiredForallChirho { .. } => false,
     }
 }
 
@@ -176,8 +177,8 @@ impl InferCtxChirho {
             .filter_map(|(pred_chirho, _span_chirho)| {
                 let class_chirho = self
                     .class_env_chirho
-                    .classes_chirho
-                    .get(&pred_chirho.class_name_chirho)?;
+                    .classes_chirho()
+                    .get_chirho(&pred_chirho.class_name_chirho)?;
                 (!class_chirho.fundeps_chirho.is_empty()).then(|| FundepWantedChirho {
                     fundeps_chirho: &class_chirho.fundeps_chirho,
                     args_chirho: self.normalized_pred_args_chirho(pred_chirho),
@@ -236,14 +237,14 @@ impl InferCtxChirho {
         remaining_chirho: &mut Vec<(PredChirho, SpanChirho)>,
     ) -> Option<(PredChirho, SpanChirho)> {
         if fundeps_chirho.newly_mono_chirho.is_empty()
-            || Self::pred_mentions_rigid_chirho(&wanted_chirho.0)
+            || self.pred_mentions_rigid_chirho(&wanted_chirho.0)
         {
             return Some(wanted_chirho);
         }
-        let vars_chirho: Vec<TyVarChirho> = self
-            .normalized_pred_args_chirho(&wanted_chirho.0)
-            .iter()
-            .flat_map(TyChirho::free_vars_chirho)
+        let vars_chirho: Vec<TyVarChirho> = wanted_chirho
+            .0
+            .semantic_tys_chirho()
+            .flat_map(|ty_chirho| self.normalize_ty_chirho(ty_chirho).free_vars_chirho())
             .collect();
         if !vars_chirho
             .iter()
@@ -258,11 +259,15 @@ impl InferCtxChirho {
                 .any(|var_chirho| fundeps_chirho.quantified_chirho.contains(var_chirho));
         if quantify_chirho {
             let (pred_chirho, _span_chirho) = wanted_chirho;
-            scheme_preds_chirho.push(SchemePredChirho {
-                class_name_chirho: pred_chirho.class_name_chirho,
-                ty_chirho: pred_chirho.ty_chirho,
-                extra_tys_chirho: pred_chirho.extra_tys_chirho,
-            });
+            scheme_preds_chirho.push(SchemePredChirho::from_proof_chirho(
+                pred_chirho.class_identity_chirho().clone(),
+                crate::ty_chirho::SchemePredPartsChirho {
+                    kind_tys_chirho: pred_chirho.kind_tys_chirho,
+                    class_name_chirho: pred_chirho.class_name_chirho,
+                    ty_chirho: pred_chirho.ty_chirho,
+                    extra_tys_chirho: pred_chirho.extra_tys_chirho,
+                },
+            ));
         } else {
             remaining_chirho.push(wanted_chirho);
         }
@@ -279,21 +284,29 @@ impl InferCtxChirho {
         givens_chirho: &[PredChirho],
         span_chirho: SpanChirho,
     ) -> bool {
-        let resolved_chirho = PredChirho {
-            class_name_chirho: defaulted_pred_chirho.class_name_chirho.clone(),
-            ty_chirho: final_subst_chirho.apply_ty_chirho(&defaulted_pred_chirho.ty_chirho),
-            extra_tys_chirho: defaulted_pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .map(|arg_chirho| final_subst_chirho.apply_ty_chirho(arg_chirho))
-                .collect(),
-        };
+        let resolved_chirho = PredChirho::from_proof_chirho(
+            defaulted_pred_chirho.class_identity_chirho().clone(),
+            crate::class_chirho::PredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: defaulted_pred_chirho.class_name_chirho.clone(),
+                ty_chirho: final_subst_chirho.apply_ty_chirho(&defaulted_pred_chirho.ty_chirho),
+                extra_tys_chirho: defaulted_pred_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|arg_chirho| final_subst_chirho.apply_ty_chirho(arg_chirho))
+                    .collect(),
+            },
+        );
         let args_chirho = self.normalized_pred_args_chirho(&resolved_chirho);
-        let pred_chirho = PredChirho {
-            class_name_chirho: resolved_chirho.class_name_chirho,
-            ty_chirho: args_chirho[0].clone(),
-            extra_tys_chirho: args_chirho[1..].to_vec(),
-        };
+        let pred_chirho = PredChirho::from_proof_chirho(
+            resolved_chirho.class_identity_chirho().clone(),
+            crate::class_chirho::PredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: resolved_chirho.class_name_chirho,
+                ty_chirho: args_chirho[0].clone(),
+                extra_tys_chirho: args_chirho[1..].to_vec(),
+            },
+        );
         if !self.fundep_wanted_unsatisfiable_chirho(&pred_chirho, &args_chirho, givens_chirho) {
             return false;
         }
@@ -327,7 +340,11 @@ impl InferCtxChirho {
         {
             return false;
         }
-        let Some(class_chirho) = self.class_env_chirho.classes_chirho.get(class_name_chirho) else {
+        let Some(class_chirho) = self
+            .class_env_chirho
+            .classes_chirho()
+            .get_chirho(class_name_chirho)
+        else {
             return false;
         };
         class_chirho
@@ -365,8 +382,8 @@ impl InferCtxChirho {
     /// Whether some other known class has this one among its superclasses.
     fn is_extended_by_another_class_chirho(&self, class_name_chirho: &str) -> bool {
         self.class_env_chirho
-            .classes_chirho
-            .keys()
+            .classes_chirho()
+            .keys_chirho()
             .any(|other_chirho| {
                 other_chirho != class_name_chirho
                     && self.is_transitive_superclass_chirho(class_name_chirho, other_chirho)
@@ -379,8 +396,8 @@ impl InferCtxChirho {
     fn is_closed_determinant_chirho(&self, ty_chirho: &TyChirho) -> bool {
         match ty_chirho {
             TyChirho::ConChirho(name_chirho) => {
-                !contains_skolem_chirho(ty_chirho)
-                    && !self.type_families_chirho.contains_key(name_chirho)
+                !self.type_contains_skolem_chirho(ty_chirho)
+                    && !self.is_type_family_name_chirho(name_chirho)
                     && !self.type_synonyms_chirho.contains_key(name_chirho)
                     && !name_chirho.ends_with('#')
             }
@@ -395,6 +412,7 @@ impl InferCtxChirho {
                 .all(|elem_chirho| self.is_closed_determinant_chirho(elem_chirho)),
             TyChirho::VarChirho(_)
             | TyChirho::ForallVarChirho(_)
+            | TyChirho::QualChirho { .. }
             | TyChirho::ForallChirho { .. }
             | TyChirho::RequiredForallChirho { .. } => false,
         }
@@ -418,12 +436,12 @@ impl InferCtxChirho {
         }
         let Some(instances_chirho) = self
             .class_env_chirho
-            .instances_chirho
-            .get(class_name_chirho)
+            .instances_chirho()
+            .get_chirho(class_name_chirho)
         else {
             return false;
         };
-        instances_chirho.iter().any(|instance_chirho| {
+        instances_chirho.iter_chirho().any(|instance_chirho| {
             let instance_args_chirho: Vec<TyChirho> =
                 std::iter::once(&instance_chirho.head_ty_chirho)
                     .chain(&instance_chirho.extra_head_tys_chirho)
@@ -455,7 +473,7 @@ impl InferCtxChirho {
         match ty_chirho {
             TyChirho::VarChirho(_) => true,
             TyChirho::ConChirho(name_chirho) => {
-                !self.type_families_chirho.contains_key(name_chirho)
+                !self.is_type_family_name_chirho(name_chirho)
                     && !self.type_synonyms_chirho.contains_key(name_chirho)
                     && !is_prefix_tuple_or_arrow_chirho(name_chirho)
             }
@@ -471,6 +489,7 @@ impl InferCtxChirho {
                 .iter()
                 .all(|elem_chirho| self.is_matchable_instance_type_chirho(elem_chirho)),
             TyChirho::ForallVarChirho(_)
+            | TyChirho::QualChirho { .. }
             | TyChirho::ForallChirho { .. }
             | TyChirho::RequiredForallChirho { .. } => false,
         }

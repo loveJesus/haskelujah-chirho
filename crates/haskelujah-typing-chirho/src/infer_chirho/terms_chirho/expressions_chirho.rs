@@ -10,7 +10,7 @@ use super::{
 };
 use crate::class_chirho::PredChirho;
 use crate::subst_chirho::SubstChirho;
-use crate::ty_chirho::{MultChirho, TyChirho, TyVarChirho};
+use crate::ty_chirho::{MultChirho, TyChirho};
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, StmtChirho};
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
@@ -18,6 +18,12 @@ use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
 impl InferCtxChirho {
     /// Infer the type of an expression, returning (substitution, type).
     pub fn infer_expr_chirho(&mut self, expr_chirho: &ExprChirho) -> (SubstChirho, TyChirho) {
+        let (substitution_chirho, ty_chirho) = self.infer_expr_inner_chirho(expr_chirho);
+        let ty_chirho = self.expose_qualified_wanteds_chirho(ty_chirho, expr_chirho.span_chirho());
+        (substitution_chirho, ty_chirho)
+    }
+
+    fn infer_expr_inner_chirho(&mut self, expr_chirho: &ExprChirho) -> (SubstChirho, TyChirho) {
         match expr_chirho {
             ExprChirho::LitChirho(lit_chirho) => match lit_chirho {
                 LitChirho::IntChirho(_, span_chirho, _) => {
@@ -187,16 +193,23 @@ impl InferCtxChirho {
                 arg_chirho,
                 span_chirho,
             } => {
+                if let Some(result_chirho) =
+                    self.infer_application_spine_chirho(expr_chirho, None, *span_chirho)
+                {
+                    return result_chirho;
+                }
                 let (s1_chirho, fun_ty_chirho) = self.infer_expr_chirho(fun_chirho);
                 self.apply_subst_all_chirho(&s1_chirho);
                 let fun_ty_chirho = s1_chirho.apply_ty_chirho(&fun_ty_chirho);
 
-                if let Some(required_arg_ty_chirho) =
-                    self.expr_to_required_type_arg_chirho(arg_chirho)
-                    && let Some(result_ty_chirho) =
-                        self.apply_required_type_arg_chirho(&fun_ty_chirho, required_arg_ty_chirho)
+                if let Some((links_chirho, result_ty_chirho)) = self
+                    .infer_required_type_application_chirho(
+                        &fun_ty_chirho,
+                        arg_chirho,
+                        *span_chirho,
+                    )
                 {
-                    return (s1_chirho, result_ty_chirho);
+                    return (links_chirho.compose_chirho(&s1_chirho), result_ty_chirho);
                 }
 
                 if let ExprChirho::LamChirho {
@@ -299,7 +312,7 @@ impl InferCtxChirho {
                 span_chirho,
             } => {
                 let param_tys_chirho: Vec<TyChirho> = (0..pats_chirho.len())
-                    .map(|_| self.fresh_var_chirho())
+                    .map(|_| self.fresh_value_parameter_chirho(*span_chirho))
                     .collect();
                 let result_ty_chirho = self.fresh_var_chirho();
                 self.infer_lambda_with_seed_chirho(
@@ -316,8 +329,16 @@ impl InferCtxChirho {
                 body_chirho,
                 ..
             } => {
-                let ty_var_chirho = TyVarChirho(self.next_var_chirho);
-                self.next_var_chirho += 1;
+                let ty_var_chirho = self.surface_binder_variable_chirho(
+                    binder_chirho,
+                    &mut std::collections::HashMap::new(),
+                );
+                let preceding_chirho = self.scoped_tyvars_chirho.clone();
+                let kind_chirho = self.surface_quantifier_kind_chirho(
+                    binder_chirho,
+                    &preceding_chirho,
+                    &mut super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho(),
+                );
                 let binder_text_chirho = binder_chirho.text_chirho().to_string();
                 let previous_chirho = self
                     .scoped_tyvars_chirho
@@ -332,7 +353,12 @@ impl InferCtxChirho {
                 (
                     subst_chirho.clone(),
                     TyChirho::ForallChirho {
-                        vars_chirho: vec![ty_var_chirho],
+                        vars_chirho: crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(vec![crate::ty_chirho::QuantifiedVariableChirho {
+                            variable_chirho: ty_var_chirho,
+                            source_chirho: binder_chirho.type_variable_chirho().cloned(),
+                            specificity_chirho: Some(haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho),
+                            kind_chirho,
+                        }]),
                         body_chirho: Box::new(subst_chirho.apply_ty_chirho(&body_ty_chirho)),
                     },
                 )
@@ -354,11 +380,13 @@ impl InferCtxChirho {
                 body_chirho,
                 ..
             } => {
+                let type_pattern_scope_mark_chirho = self.type_pattern_alias_undo_chirho.len();
                 self.env_chirho.push_scope_chirho();
                 let mut subst_chirho = SubstChirho::empty_chirho();
                 self.infer_local_binds_chirho(binds_chirho, &mut subst_chirho);
 
                 let (body_s_chirho, body_ty_chirho) = self.infer_expr_chirho(body_chirho);
+                self.restore_type_pattern_aliases_chirho(type_pattern_scope_mark_chirho);
                 self.env_chirho.pop_scope_chirho();
 
                 let combined_chirho = body_s_chirho.compose_chirho(&subst_chirho);
@@ -442,7 +470,9 @@ impl InferCtxChirho {
                 let mut subst_chirho = s1_chirho;
 
                 for alt_chirho in alts_chirho {
+                    let type_pattern_scope_mark_chirho = self.type_pattern_alias_undo_chirho.len();
                     self.env_chirho.push_scope_chirho();
+                    let pattern_frame_chirho = self.begin_pattern_implication_chirho();
 
                     self.bind_pat_against_chirho(
                         &alt_chirho.pat_chirho,
@@ -459,21 +489,29 @@ impl InferCtxChirho {
                     subst_chirho = sr_chirho.compose_chirho(&subst_chirho);
                     self.apply_subst_all_chirho(&sr_chirho);
 
-                    // Unify alt result with overall result type.
-                    // Use lenient unification: if it fails (e.g. GADT
-                    // refinement gives different result types per alt),
-                    // silently skip — the signature check catches real
-                    // mismatches later.
+                    // Every alternative must meet the common result under
+                    // its own evidence. A later signature sees only the shared
+                    // result and cannot recover an ignored branch mismatch.
                     let result_sub_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
-                    if let Ok(sa_chirho) = self.unify_normalized_chirho(
+                    match self.unify_normalized_chirho(
                         &result_sub_chirho,
                         &alt_ty_chirho,
-                        *span_chirho,
+                        alt_chirho.span_chirho,
                     ) {
-                        subst_chirho = sa_chirho.compose_chirho(&subst_chirho);
-                        self.apply_subst_all_chirho(&sa_chirho);
+                        Ok(sa_chirho) => {
+                            subst_chirho = sa_chirho.compose_chirho(&subst_chirho);
+                            self.apply_subst_all_chirho(&sa_chirho);
+                        }
+                        Err(error_chirho) => self.report_unify_error_chirho(&error_chirho),
                     }
 
+                    let solved_chirho = self.end_pattern_implication_chirho(
+                        pattern_frame_chirho,
+                        &subst_chirho.apply_ty_chirho(&result_ty_chirho),
+                        *span_chirho,
+                    );
+                    subst_chirho = solved_chirho.compose_chirho(&subst_chirho);
+                    self.restore_type_pattern_aliases_chirho(type_pattern_scope_mark_chirho);
                     self.env_chirho.pop_scope_chirho();
                 }
 
@@ -501,6 +539,7 @@ impl InferCtxChirho {
                 let mut last_ty_chirho = TyChirho::unit_chirho();
                 let last_expected_chirho = self.do_last_expected_chirho.take();
 
+                let type_pattern_scope_mark_chirho = self.type_pattern_alias_undo_chirho.len();
                 self.env_chirho.push_scope_chirho();
 
                 for (idx_chirho, stmt_chirho) in stmts_chirho.iter().enumerate() {
@@ -631,6 +670,7 @@ impl InferCtxChirho {
                     }
                 }
 
+                self.restore_type_pattern_aliases_chirho(type_pattern_scope_mark_chirho);
                 self.env_chirho.pop_scope_chirho();
                 (subst_chirho, last_ty_chirho)
             }
@@ -641,23 +681,34 @@ impl InferCtxChirho {
                 parallel_quals_chirho,
                 span_chirho,
             } => {
+                let type_pattern_scope_mark_chirho = self.type_pattern_alias_undo_chirho.len();
+                let mut body_aliases_chirho = Vec::new();
                 let mut subst_chirho = SubstChirho::empty_chirho();
                 let mut body_bindings_chirho = Vec::new();
                 if parallel_quals_chirho.is_empty() {
-                    let (group_subst_chirho, group_bindings_chirho) =
+                    let (group_subst_chirho, group_bindings_chirho, group_aliases_chirho) =
                         self.infer_list_comp_qual_group_chirho(quals_chirho, *span_chirho);
                     subst_chirho = group_subst_chirho.compose_chirho(&subst_chirho);
                     body_bindings_chirho.extend(group_bindings_chirho);
+                    body_aliases_chirho.extend(group_aliases_chirho);
                 } else {
                     for group_chirho in parallel_quals_chirho {
-                        let (group_subst_chirho, group_bindings_chirho) =
+                        let (group_subst_chirho, group_bindings_chirho, group_aliases_chirho) =
                             self.infer_list_comp_qual_group_chirho(group_chirho, *span_chirho);
                         subst_chirho = group_subst_chirho.compose_chirho(&subst_chirho);
                         body_bindings_chirho.extend(group_bindings_chirho);
+                        body_aliases_chirho.extend(group_aliases_chirho);
                     }
                 }
 
                 self.env_chirho.push_scope_chirho();
+                for (name_chirho, variable_chirho, image_chirho) in body_aliases_chirho {
+                    self.install_type_pattern_alias_image_chirho(
+                        name_chirho,
+                        variable_chirho,
+                        image_chirho,
+                    );
+                }
                 for (name_chirho, scheme_chirho) in body_bindings_chirho {
                     self.env_chirho.bind_chirho(
                         name_chirho,
@@ -667,6 +718,7 @@ impl InferCtxChirho {
                 let (body_subst_chirho, body_ty_chirho) = self.infer_expr_chirho(body_chirho);
                 subst_chirho = body_subst_chirho.compose_chirho(&subst_chirho);
                 self.apply_subst_all_chirho(&body_subst_chirho);
+                self.restore_type_pattern_aliases_chirho(type_pattern_scope_mark_chirho);
                 self.env_chirho.pop_scope_chirho();
 
                 let final_elem_ty_chirho = subst_chirho.apply_ty_chirho(&body_ty_chirho);
@@ -787,33 +839,13 @@ impl InferCtxChirho {
                 ty_chirho: ann_ty_chirho,
                 span_chirho,
             } => {
-                // Type annotation: infer the expression, then check against annotation
-                // using subsumption to handle higher-rank annotations properly
-                let (s_chirho, inferred_ty_chirho) = self.infer_expr_chirho(expr_chirho);
-                self.apply_subst_all_chirho(&s_chirho);
-
-                // ScopedTypeVariables: a variable of an enclosing signature
-                // names that signature's rigid variable here.
-                let ann_internal_chirho = self.ast_type_to_ty_in_scope_chirho(ann_ty_chirho);
-                let ann_normalized_chirho = self.normalize_ty_chirho(&ann_internal_chirho);
-                let inferred_normalized_chirho = self.normalize_ty_chirho(&inferred_ty_chirho);
-
-                match self.subsume_normalized_chirho(
-                    &inferred_normalized_chirho,
-                    &ann_normalized_chirho,
+                let (substitution_chirho, scheme_chirho) = self.check_expression_annotation_chirho(
+                    expr_chirho,
+                    ann_ty_chirho,
                     *span_chirho,
-                ) {
-                    Ok(su_chirho) => {
-                        let combined_chirho = su_chirho.compose_chirho(&s_chirho);
-                        let final_ty_chirho = combined_chirho.apply_ty_chirho(&ann_internal_chirho);
-                        self.apply_subst_all_chirho(&su_chirho);
-                        (combined_chirho, final_ty_chirho)
-                    }
-                    Err(err_chirho) => {
-                        self.report_unify_error_chirho(&err_chirho);
-                        (s_chirho, ann_internal_chirho)
-                    }
-                }
+                );
+                let result_chirho = self.instantiate_chirho(&scheme_chirho, *span_chirho);
+                (substitution_chirho, result_chirho)
             }
 
             // Infix application: `a op b` is treated as `(op a) b`
@@ -1045,9 +1077,8 @@ impl InferCtxChirho {
                 (combined_chirho, base_ty_chirho)
             }
 
-            // TypeApplications: infer the inner expression, then unify
-            // the result type with the provided type argument so that the
-            // type annotation constrains polymorphic instantiation.
+            // TypeApplications consume an actual specified quantifier and
+            // compare the producer-checked kind before ordinary instantiation.
             ExprChirho::TypeAppChirho {
                 expr_chirho: inner_expr_chirho,
                 ty_chirho,
@@ -1059,27 +1090,31 @@ impl InferCtxChirho {
                     return result_chirho;
                 }
 
-                let (s1_chirho, inferred_chirho) = self.infer_expr_chirho(inner_expr_chirho);
-                let target_chirho = self.ast_type_to_ty_in_scope_chirho(ty_chirho);
+                let (s1_chirho, inferred_chirho) = self
+                    .infer_application_sigma_chirho(inner_expr_chirho, *span_chirho)
+                    .unwrap_or_else(|| self.infer_expr_chirho(inner_expr_chirho));
+                let inferred_chirho =
+                    self.expose_qualified_wanteds_chirho(inferred_chirho, *span_chirho);
+                let (target_chirho, kind_chirho) = self.check_body_type_argument_chirho(ty_chirho);
                 let inferred_sub_chirho = s1_chirho.apply_ty_chirho(&inferred_chirho);
-                if let Some(result_chirho) =
-                    self.apply_visible_type_arg_chirho(&inferred_sub_chirho, target_chirho.clone())
-                {
+                if let Some(result_chirho) = self.apply_visible_type_arg_chirho(
+                    &inferred_sub_chirho,
+                    target_chirho,
+                    kind_chirho.as_ref(),
+                    *span_chirho,
+                ) {
                     return (s1_chirho, result_chirho);
                 }
-                match self.unify_normalized_chirho(&inferred_chirho, &target_chirho, *span_chirho) {
-                    Ok(s2_chirho) => {
-                        let composed_chirho = s2_chirho.compose_chirho(&s1_chirho);
-                        let result_chirho = composed_chirho.apply_ty_chirho(&inferred_chirho);
-                        (composed_chirho, result_chirho)
-                    }
-                    Err(_) => {
-                        // If unification fails (e.g. applying @Int to a
-                        // monomorphic String), just keep the inferred type.
-                        // The type argument served as documentation.
-                        (s1_chirho, inferred_chirho)
-                    }
-                }
+                self.diagnostics_chirho.push_chirho(
+                    haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                        haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(
+                            super::TYPE_MISMATCH_CODE_CHIRHO,
+                        ),
+                        "no specified type binder remains for visible type application",
+                        *span_chirho,
+                    ),
+                );
+                (s1_chirho, inferred_chirho)
             }
 
             // For remaining expression forms, return a fresh variable

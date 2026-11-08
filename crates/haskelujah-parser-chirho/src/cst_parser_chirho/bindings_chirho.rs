@@ -158,6 +158,12 @@ impl ParserChirho<'_> {
             self.bump_chirho(); // =
             self.eat_trivia_chirho();
             self.parse_expr_chirho();
+        } else {
+            // A binding without `=` or a guard has no RHS. Keep an error in
+            // the lossless tree rather than letting lowering invent a value.
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+            self.builder_chirho.finish_node_chirho();
         }
 
         // Optional where clause
@@ -332,6 +338,12 @@ impl ParserChirho<'_> {
             self.bump_chirho(); // =
             self.eat_trivia_chirho();
             self.parse_expr_chirho();
+        } else {
+            // A binding without `=` or a guard has no RHS. Keep an error in
+            // the lossless tree rather than letting lowering invent a value.
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+            self.builder_chirho.finish_node_chirho();
         }
 
         self.builder_chirho.finish_node_chirho(); // Match

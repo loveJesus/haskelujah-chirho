@@ -29,6 +29,7 @@ impl LowerCtxChirho {
     pub(super) fn lower_source_file_chirho(
         &mut self,
         root_chirho: &GreenNodeChirho,
+        effective_extensions_chirho: Option<&crate::pragma_chirho::EffectiveExtensionsChirho>,
     ) -> ModuleChirho {
         let start_chirho = self.offset_chirho;
         let children_chirho = self.semantic_children_chirho(root_chirho, start_chirho);
@@ -121,7 +122,9 @@ impl LowerCtxChirho {
 
         let end_chirho = start_chirho + root_chirho.text_len_chirho();
         // Extract LANGUAGE extensions from pragma tokens
-        let extensions_chirho = self.extract_pragma_extensions_chirho(root_chirho);
+        let extensions_chirho = effective_extensions_chirho
+            .map(|extensions_chirho| extensions_chirho.flags_chirho().to_vec())
+            .unwrap_or_else(|| self.extract_pragma_extensions_chirho(root_chirho));
         // Extract INLINE/NOINLINE/INLINABLE pragmas
         let inline_pragmas_chirho = self.extract_inline_pragmas_chirho(root_chirho);
         // Extract SPECIALIZE pragmas
@@ -270,10 +273,12 @@ impl LowerCtxChirho {
     ) -> Option<ExportSpecChirho> {
         let mut first_name_chirho: Option<(String, SpanChirho, bool)> = None; // (text, span, is_con)
         let mut is_module_reexport_chirho = false;
+        let mut explicit_type_chirho = false;
         let mut has_parens_chirho = false;
         let mut has_dotdot_chirho = false;
         let mut members_chirho: Vec<NameChirho> = Vec::new();
-        let mut in_parens_chirho = false;
+        let mut paren_depth_chirho = 0_usize;
+        let mut next_member_type_chirho = false;
 
         let mut offset_chirho = base_chirho;
         for elem_chirho in node_chirho.children_chirho() {
@@ -283,32 +288,43 @@ impl LowerCtxChirho {
                 && let GreenElementChirho::TokenChirho(tok_chirho) = elem_chirho
             {
                 match tok_chirho.kind_chirho() {
+                    TokenKindChirho::TypeKeywordChirho => {
+                        if first_name_chirho.is_none() {
+                            explicit_type_chirho = true;
+                        } else if paren_depth_chirho > 0 {
+                            next_member_type_chirho = true;
+                        }
+                    }
                     TokenKindChirho::ModuleKeywordChirho => {
                         is_module_reexport_chirho = true;
                     }
                     TokenKindChirho::ConIdChirho | TokenKindChirho::QualifiedConIdChirho => {
                         let span_chirho = self.span_chirho(elem_start_chirho, elem_end_chirho);
-                        if first_name_chirho.is_none() && !in_parens_chirho {
+                        if first_name_chirho.is_none() && paren_depth_chirho == 0 {
                             first_name_chirho = Some((
                                 tok_chirho.text_chirho().to_string(),
                                 span_chirho,
                                 !is_module_reexport_chirho,
                             ));
-                        } else if in_parens_chirho {
-                            members_chirho.push(
-                                self.name_from_text_chirho(tok_chirho.text_chirho(), span_chirho),
-                            );
+                        } else if paren_depth_chirho > 0 {
+                            let mut member_chirho =
+                                self.name_from_text_chirho(tok_chirho.text_chirho(), span_chirho);
+                            member_chirho.set_explicit_type_member_chirho(next_member_type_chirho);
+                            members_chirho.push(member_chirho);
+                            next_member_type_chirho = false;
                         }
                     }
                     TokenKindChirho::VarIdChirho | TokenKindChirho::QualifiedVarIdChirho => {
                         let span_chirho = self.span_chirho(elem_start_chirho, elem_end_chirho);
-                        if first_name_chirho.is_none() && !in_parens_chirho {
+                        if first_name_chirho.is_none() && paren_depth_chirho == 0 {
                             first_name_chirho =
                                 Some((tok_chirho.text_chirho().to_string(), span_chirho, false));
-                        } else if in_parens_chirho {
-                            members_chirho.push(
-                                self.name_from_text_chirho(tok_chirho.text_chirho(), span_chirho),
-                            );
+                        } else if paren_depth_chirho > 0 {
+                            let mut member_chirho =
+                                self.name_from_text_chirho(tok_chirho.text_chirho(), span_chirho);
+                            member_chirho.set_explicit_type_member_chirho(next_member_type_chirho);
+                            members_chirho.push(member_chirho);
+                            next_member_type_chirho = false;
                         }
                     }
                     TokenKindChirho::VarSymChirho
@@ -319,18 +335,23 @@ impl LowerCtxChirho {
                         if first_name_chirho.is_none() {
                             first_name_chirho =
                                 Some((tok_chirho.text_chirho().to_string(), span_chirho, false));
-                        } else if in_parens_chirho {
-                            members_chirho.push(
-                                self.name_from_text_chirho(tok_chirho.text_chirho(), span_chirho),
-                            );
+                        } else if paren_depth_chirho > 0 {
+                            let mut member_chirho =
+                                self.name_from_text_chirho(tok_chirho.text_chirho(), span_chirho);
+                            member_chirho.set_explicit_type_member_chirho(next_member_type_chirho);
+                            members_chirho.push(member_chirho);
+                            next_member_type_chirho = false;
                         }
                     }
                     TokenKindChirho::LeftParenChirho => {
                         has_parens_chirho = true;
-                        in_parens_chirho = true;
+                        paren_depth_chirho += 1;
                     }
                     TokenKindChirho::RightParenChirho => {
-                        in_parens_chirho = false;
+                        paren_depth_chirho = paren_depth_chirho.saturating_sub(1);
+                    }
+                    TokenKindChirho::CommaChirho => {
+                        next_member_type_chirho = false;
                     }
                     TokenKindChirho::DotDotChirho => {
                         has_dotdot_chirho = true;
@@ -342,6 +363,7 @@ impl LowerCtxChirho {
         }
 
         let (text_chirho, span_chirho, is_con_chirho) = first_name_chirho?;
+        let is_con_chirho = is_con_chirho || explicit_type_chirho;
         let name_chirho = if is_module_reexport_chirho {
             self.module_name_from_text_chirho(&text_chirho, span_chirho)
         } else {
@@ -388,7 +410,17 @@ impl LowerCtxChirho {
         node_chirho: &GreenNodeChirho,
         base_chirho: usize,
     ) -> ImportDeclChirho {
+        // SOURCE is pragma trivia to the ordinary semantic walk, but its
+        // import edge must survive lowering for reached hs-boot contracts.
+        let source_chirho = node_chirho.children_chirho().iter().any(|element_chirho| {
+            matches!(element_chirho, GreenElementChirho::TokenChirho(token_chirho)
+                if token_chirho.kind_chirho() == TokenKindChirho::PragmaChirho
+                    && token_chirho.text_chirho().strip_prefix("{-#")
+                        .and_then(|body_chirho| body_chirho.strip_suffix("#-}"))
+                        .is_some_and(|body_chirho| body_chirho.trim() == "SOURCE"))
+        });
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        let mut package_chirho = None;
         let mut qualified_chirho = false;
         let mut module_name_chirho = None;
         let mut alias_chirho = None;
@@ -397,6 +429,18 @@ impl LowerCtxChirho {
         for child_chirho in &children_chirho {
             if let GreenElementChirho::TokenChirho(tok_chirho) = child_chirho.element_chirho {
                 match tok_chirho.kind_chirho() {
+                    TokenKindChirho::StringLiteralChirho if module_name_chirho.is_none() => {
+                        let text_chirho = tok_chirho.text_chirho();
+                        let body_chirho = text_chirho
+                            .strip_prefix('"')
+                            .and_then(|body_chirho| body_chirho.strip_suffix('"'))
+                            .unwrap_or(text_chirho);
+                        package_chirho = Some(
+                            haskelujah_ast_chirho::lit_chirho::unescape_string_body_chirho(
+                                body_chirho,
+                            ),
+                        );
+                    }
                     TokenKindChirho::VarIdChirho if tok_chirho.text_chirho() == "qualified" => {
                         qualified_chirho = true;
                     }
@@ -451,6 +495,8 @@ impl LowerCtxChirho {
         let span_chirho =
             self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
         ImportDeclChirho {
+            package_chirho,
+            source_chirho,
             module_chirho: module_name_chirho.unwrap_or_else(|| {
                 NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
                     "",

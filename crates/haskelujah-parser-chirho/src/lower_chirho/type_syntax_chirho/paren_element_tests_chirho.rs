@@ -1,7 +1,7 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
 //! Parenthesized elements that carry `:: k` (T5120, tc218, T12507): every element may be
-//! annotated and the annotation is dropped; a single annotation and the unannotated forms
+//! annotated and the annotation survives; a single annotation and the unannotated forms
 //! keep their shapes. Shapes ignore parentheses (`type_shape_chirho`).
 
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
@@ -33,11 +33,11 @@ fn an_implicit_parameter_after_a_comma_keeps_the_whole_qualified_type_chirho() {
     // before the second `::`.
     assert_eq!(
         signature_shape_chirho("b", "(C t, ?x :: TF t) => t"),
-        "(C t, ? ?x) => t"
+        "(C t, ? (?x :: (TF t))) => t"
     );
     assert_eq!(
         signature_shape_chirho("bar", "(Show a, ?c::a) => String"),
-        "(Show a, ? ?c) => String"
+        "(Show a, ? (?c :: a)) => String"
     );
 }
 
@@ -46,22 +46,22 @@ fn every_annotated_tuple_element_survives_chirho() {
     // T12507's argument, then an annotation on a later and on the first element only.
     assert_eq!(
         signature_shape_chirho("record", "Rec (?a :: Int, ?b :: String)"),
-        "(Rec (?a, ?b))"
+        "(Rec ((?a :: Int), (?b :: String)))"
     );
     assert_eq!(
         signature_shape_chirho("pair", "P (a, b :: Type)"),
-        "(P (a, b))"
+        "(P (a, (b :: Type)))"
     );
     assert_eq!(
         signature_shape_chirho("pair", "P (a :: Type, b)"),
-        "(P (a, b))"
+        "(P ((a :: Type), b))"
     );
 }
 
 #[test]
 fn a_single_annotation_and_unannotated_groups_keep_their_shapes_chirho() {
     for (signature_chirho, shape_chirho) in [
-        ("P (a :: Type)", "(P a)"),
+        ("P (a :: Type)", "(P (a :: Type))"),
         ("(Int, Bool)", "(Int, Bool)"),
         ("(Maybe Int, [a])", "((Maybe Int), [a])"),
         ("(f a) -> (Eq a, Show a)", "((f a) -> ((Eq a), (Show a)))"),

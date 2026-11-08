@@ -18,7 +18,7 @@ use crate::expr_chirho::{
 
 impl DictPassCtxChirho {
     pub fn build_layouts_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
-        for (name_chirho, decl_chirho) in &class_env_chirho.classes_chirho {
+        for (name_chirho, decl_chirho) in class_env_chirho.classes_chirho().iter_chirho() {
             let mut slot_chirho = 0usize;
 
             let super_slots_chirho: Vec<(String, usize)> = decl_chirho

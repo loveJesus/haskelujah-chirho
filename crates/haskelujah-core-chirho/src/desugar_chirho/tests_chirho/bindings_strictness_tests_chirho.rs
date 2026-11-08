@@ -96,7 +96,8 @@ fn desugar_top_level_is_rec_chirho() {
         span_chirho: SpanChirho::DUMMY_CHIRHO,
         origin_supply_chirho: Default::default(),
     };
-    let output_chirho = desugar_module_chirho(&module_chirho);
+    let output_chirho =
+        desugar_module_chirho(&module_chirho).expect("valid constructor signatures in fixture");
     assert!(
         output_chirho.module_chirho.bindings_chirho[0].is_rec_chirho,
         "top-level bindings should be marked recursive"
@@ -141,6 +142,7 @@ fn desugar_lazy_pattern_case_chirho() {
         alts_chirho: vec![haskelujah_ast_chirho::expr_chirho::AltChirho {
             pat_chirho: PatChirho::LazyChirho {
                 inner_chirho: Box::new(PatChirho::ConChirho {
+                    type_args_chirho: Vec::new(),
                     con_chirho: dummy_name_chirho("Just"),
                     args_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("a"))],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -205,7 +207,8 @@ fn desugar_bang_pattern_fun_arg_chirho() {
         span_chirho: SpanChirho::DUMMY_CHIRHO,
         origin_supply_chirho: Default::default(),
     };
-    let output_chirho = desugar_module_chirho(&module_chirho);
+    let output_chirho =
+        desugar_module_chirho(&module_chirho).expect("valid constructor signatures in fixture");
     let f_rhs_chirho = &output_chirho.module_chirho.bindings_chirho[0].rhs_chirho;
     // Should be \x -> x (bang on simple var pattern is a simple lambda)
     assert!(matches!(f_rhs_chirho, CoreExprChirho::LamChirho { .. }));

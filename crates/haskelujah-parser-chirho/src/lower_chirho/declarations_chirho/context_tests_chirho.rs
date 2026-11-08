@@ -27,6 +27,24 @@ fn type_shape_chirho(ty_chirho: &TypeChirho) -> String {
             type_shape_chirho(fun_chirho),
             type_shape_chirho(arg_chirho)
         ),
+        TypeChirho::KindAnnotationChirho {
+            ty_chirho,
+            kind_chirho,
+            ..
+        } => format!(
+            "({} :: {})",
+            type_shape_chirho(ty_chirho),
+            type_shape_chirho(kind_chirho)
+        ),
+        TypeChirho::KindApplicationChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => format!(
+            "({} @{})",
+            type_shape_chirho(fun_chirho),
+            type_shape_chirho(arg_chirho)
+        ),
         TypeChirho::ListChirho { element_chirho, .. } => {
             format!("[{}]", type_shape_chirho(element_chirho))
         }
@@ -58,12 +76,27 @@ fn constraint_shape_chirho(constraint_chirho: &ConstraintChirho) -> String {
     match constraint_chirho {
         ConstraintChirho::ClassChirho {
             class_chirho,
+            kind_args_chirho,
             args_chirho,
             ..
         } => std::iter::once(class_chirho.text_chirho().to_owned())
+            .chain(
+                kind_args_chirho
+                    .iter()
+                    .map(|kind_chirho| format!("@{}", type_shape_chirho(kind_chirho))),
+            )
             .chain(args_chirho.iter().map(type_shape_chirho))
             .collect::<Vec<_>>()
             .join(" "),
+        ConstraintChirho::KindAnnotationChirho {
+            constraint_chirho,
+            kind_chirho,
+            ..
+        } => format!(
+            "({} :: {})",
+            constraint_shape_chirho(constraint_chirho),
+            type_shape_chirho(kind_chirho)
+        ),
         ConstraintChirho::QuantifiedChirho {
             vars_chirho,
             context_chirho,
@@ -232,15 +265,15 @@ fn equalities_and_synonym_applications_keep_both_sides_chirho() {
 }
 
 #[test]
-fn a_kind_annotated_argument_is_the_annotated_type_chirho() {
+fn a_kind_annotated_argument_keeps_its_type_and_kind_chirho() {
     check_contexts_chirho(&[
         (
             "instance KnownChirho (n :: Nat) => CChirho (ProxyChirho n)",
-            "KnownChirho var(n)",
+            "KnownChirho (var(n) :: Nat)",
         ),
         (
             "class (KnownChirho (n :: Nat), Eq a) => SizedChirho n a",
-            "KnownChirho var(n); Eq var(a)",
+            "KnownChirho (var(n) :: Nat); Eq var(a)",
         ),
     ]);
 }
@@ -313,4 +346,22 @@ fn a_quantified_given_does_not_move_the_declaration_arrow_chirho() {
         "deriving instance (forall b. Show b => Show (f b)) => Show (RoseChirho f)",
     );
     assert_eq!(deriving_chirho.class_chirho, "Show");
+}
+
+#[test]
+fn context_kind_prefixes_and_whole_annotations_are_not_ordinary_arguments_chirho() {
+    check_contexts_chirho(&[
+        (
+            "instance CChirho @Type a => DChirho a",
+            "CChirho @Type var(a)",
+        ),
+        (
+            "instance (CChirho @Type (a :: Type) :: Constraint) => DChirho a",
+            "(CChirho @Type (var(a) :: Type) :: Constraint)",
+        ),
+        (
+            "class (CChirho @k a, DChirho @Type b) => EChirho a b",
+            "CChirho @var(k) var(a); DChirho @Type var(b)",
+        ),
+    ]);
 }

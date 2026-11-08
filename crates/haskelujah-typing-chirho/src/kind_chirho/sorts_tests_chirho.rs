@@ -71,6 +71,7 @@ fn infix_chirho(
 
 fn constraint_chirho(class_text_chirho: &str, args_chirho: Vec<TypeChirho>) -> ConstraintChirho {
     ConstraintChirho::ClassChirho {
+        kind_args_chirho: Vec::new(),
         class_chirho: name_chirho(class_text_chirho),
         args_chirho,
         span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -100,6 +101,7 @@ fn class_chirho(
     method_ty_chirho: TypeChirho,
 ) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho(class_text_chirho),
         type_vars_chirho: vec![name_chirho("a").into()],
@@ -173,9 +175,13 @@ fn synonym_chirho(synonym_text_chirho: &str, rhs_chirho: TypeChirho) -> DeclChir
 /// `type family BothChirho a :: Constraint`.
 fn constraint_family_chirho() -> DeclChirho {
     DeclChirho::TypeFamilyDeclChirho {
+        injectivity_chirho: None,
         name_chirho: name_chirho("BothChirho"),
         type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("a"))],
         result_kind_chirho: Some(con_chirho("Constraint")),
+        data_family_chirho: false,
+        standalone_kind_chirho: None,
+        closed_chirho: false,
         equations_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     }

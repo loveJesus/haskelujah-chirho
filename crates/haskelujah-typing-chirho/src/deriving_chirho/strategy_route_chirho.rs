@@ -78,8 +78,21 @@ impl<'a> DerivingPolicyChirho<'a> {
         module_chirho: &ModuleChirho,
         builtin_classes_chirho: &'a BuiltinClassScopeChirho,
     ) -> Self {
-        let identity_chirho =
-            StockIdentityChirho::of_module_chirho(module_chirho, builtin_classes_chirho);
+        Self::with_type_scope_chirho(module_chirho, builtin_classes_chirho, None)
+    }
+
+    pub(super) fn with_type_scope_chirho(
+        module_chirho: &ModuleChirho,
+        builtin_classes_chirho: &'a BuiltinClassScopeChirho,
+        type_scope_chirho: Option<
+            &'a haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho,
+        >,
+    ) -> Self {
+        let identity_chirho = StockIdentityChirho::with_type_scope_chirho(
+            module_chirho,
+            builtin_classes_chirho,
+            type_scope_chirho,
+        );
         Self {
             extensions_chirho: DerivingExtensionsChirho::of_module_chirho(module_chirho),
             class_shapes_chirho: LocalClassShapesChirho::of_module_chirho(

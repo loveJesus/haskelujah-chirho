@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 
@@ -29,6 +30,7 @@ pub(super) fn push_tooling_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for mod_name_chirho in &["Gauge.Main", "Gauge", "Criterion.Main", "Criterion"] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: None,
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -235,12 +237,14 @@ pub(super) fn push_tooling_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["template-haskell"]),
             name_chirho: "Language.Haskell.TH".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         // Sub-modules that re-export from the main TH interface
         for sub_chirho in &["Language.Haskell.TH.Ppr", "Language.Haskell.TH.PprLib"] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: package_exposure_chirho(&["template-haskell"]),
                 name_chirho: sub_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -343,6 +347,7 @@ pub(super) fn push_tooling_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["template-haskell"]),
             name_chirho: "Language.Haskell.TH.Syntax".to_string(),
             exports_chirho,
         });
@@ -358,6 +363,7 @@ pub(super) fn push_tooling_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("QuasiQuoter", &["QuasiQuoter"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["template-haskell"]),
             name_chirho: "Language.Haskell.TH.Quote".to_string(),
             exports_chirho,
         });
@@ -375,6 +381,7 @@ pub(super) fn push_tooling_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["template-haskell"]),
             name_chirho: "Language.Haskell.TH.Lib".to_string(),
             exports_chirho,
         });
@@ -434,11 +441,13 @@ pub(super) fn push_tooling_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Language.Haskell.TH.Datatype".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         // Also expose as TyVarBndr sub-module
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Language.Haskell.TH.Datatype.TyVarBndr".to_string(),
             exports_chirho,
         });
@@ -464,6 +473,7 @@ pub(super) fn push_tooling_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Test.HUnit.Lang".to_string(),
             exports_chirho,
         });
@@ -481,6 +491,7 @@ pub(super) fn push_tooling_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Test.Hspec".to_string(),
             exports_chirho,
         });
@@ -514,6 +525,7 @@ pub(super) fn push_tooling_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("OptionDescription", &["Option"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Test.Tasty.Options".to_string(),
             exports_chirho,
         });
@@ -535,6 +547,7 @@ pub(super) fn push_tooling_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Test.Tasty".to_string(),
             exports_chirho,
         });
@@ -696,6 +709,7 @@ pub(super) fn push_tooling_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             }
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
         });

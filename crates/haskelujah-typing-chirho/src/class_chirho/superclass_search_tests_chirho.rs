@@ -28,7 +28,8 @@ fn class_chirho(
     arity_chirho: u32,
     templates_chirho: Vec<SchemePredChirho>,
 ) -> ClassDeclChirho {
-    ClassDeclChirho {
+    ClassDeclChirho::legacy_chirho(crate::class_chirho::ClassDeclPartsChirho {
+        kind_vars_chirho: Vec::new(),
         name_chirho: name_chirho.to_string(),
         supers_chirho: templates_chirho
             .iter()
@@ -40,24 +41,26 @@ fn class_chirho(
         extra_vars_chirho: (1..arity_chirho).map(TyVarChirho).collect(),
         fundeps_chirho: vec![],
         defaults_chirho: HashMap::new(),
-    }
+    })
 }
 
 fn template_chirho(class_name_chirho: &str, ty_chirho: TyChirho) -> SchemePredChirho {
-    SchemePredChirho {
+    SchemePredChirho::legacy_chirho(crate::ty_chirho::SchemePredPartsChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: class_name_chirho.to_string(),
         ty_chirho,
         extra_tys_chirho: vec![],
-    }
+    })
 }
 
 fn pred_chirho(class_name_chirho: &str, tys_chirho: Vec<TyChirho>) -> PredChirho {
     let mut tys_chirho = tys_chirho.into_iter();
-    PredChirho {
+    PredChirho::legacy_chirho(crate::class_chirho::PredPartsChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: class_name_chirho.to_string(),
         ty_chirho: tys_chirho.next().expect("a predicate has an argument"),
         extra_tys_chirho: tys_chirho.collect(),
-    }
+    })
 }
 
 fn env_chirho(classes_chirho: Vec<ClassDeclChirho>) -> ClassEnvChirho {

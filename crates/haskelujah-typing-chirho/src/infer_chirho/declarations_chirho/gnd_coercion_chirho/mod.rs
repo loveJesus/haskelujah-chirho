@@ -172,7 +172,7 @@ fn unsupported_request_chirho(
     reason_chirho: String,
 ) -> DeclarationErrorChirho {
     DeclarationErrorChirho {
-        ghc_code_chirho: UNSUPPORTED_SHAPE_CHIRHO,
+        ghc_code_chirho: Some(UNSUPPORTED_SHAPE_CHIRHO),
         message_chirho: format!(
             "Deriving `{} {}` through the newtype strategy is not supported yet: {reason_chirho}",
             request_chirho.class_chirho.text_chirho(),
@@ -195,7 +195,10 @@ fn prove_request_chirho(
     let head_chirho = format!("`{class_text_chirho} {}`", request_chirho.newtype_chirho);
     let unsupported_chirho =
         |reason_chirho: String| unsupported_request_chirho(request_chirho, reason_chirho);
-    let Some(class_decl_chirho) = class_env_chirho.classes_chirho.get(class_text_chirho) else {
+    let Some(class_decl_chirho) = class_env_chirho
+        .classes_chirho()
+        .get_chirho(class_text_chirho)
+    else {
         return Err(unsupported_chirho(
             "the checker knows no such class".to_string(),
         ));
@@ -232,7 +235,7 @@ fn prove_request_chirho(
         };
         if blocked_chirho.proven_nominal_chirho {
             return Err(DeclarationErrorChirho {
-                ghc_code_chirho: "GHC-18872",
+                ghc_code_chirho: Some("GHC-18872"),
                 message_chirho: format!(
                     "Couldn't match the representation of `{}` with its representation type, arising from the coercion of the method `{method_chirho}` for {head_chirho}: the class parameter stands under {}, whose parameter is nominal",
                     request_chirho.newtype_chirho, blocked_chirho.under_chirho

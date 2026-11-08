@@ -34,12 +34,15 @@ fn own_print_scheme_chirho() -> SchemeChirho {
 fn show_print_scheme_chirho() -> SchemeChirho {
     let var_chirho = TyVarChirho(0);
     SchemeChirho {
-        vars_chirho: vec![var_chirho],
-        preds_chirho: vec![SchemePredChirho {
-            class_name_chirho: "Show".to_string(),
-            ty_chirho: TyChirho::VarChirho(var_chirho),
-            extra_tys_chirho: vec![],
-        }],
+        vars_chirho: vec![var_chirho].into(),
+        preds_chirho: vec![SchemePredChirho::legacy_chirho(
+            haskelujah_typing_chirho::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Show".to_string(),
+                ty_chirho: TyChirho::VarChirho(var_chirho),
+                extra_tys_chirho: vec![],
+            },
+        )],
         ty_chirho: TyChirho::fun_chirho(
             TyChirho::VarChirho(var_chirho),
             TyChirho::io_chirho(TyChirho::unit_chirho()),
@@ -57,6 +60,8 @@ fn joined_print_chirho(
     let mut supply_chirho = OriginSupplyChirho::new_chirho();
     let origin_chirho = supply_chirho.fresh_chirho();
     let mut infer_chirho = infer_result_chirho(vec![MethodOccurrenceRecordChirho {
+        ground_pred_chirho: None,
+        applied_ty_chirho: None,
         origin_chirho: Some(origin_chirho),
         resolved_entry_chirho: resolved_entry_chirho.map(str::to_string),
         ..record_chirho(

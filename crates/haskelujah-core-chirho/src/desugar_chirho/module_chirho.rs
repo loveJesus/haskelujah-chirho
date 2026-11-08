@@ -10,19 +10,47 @@ impl DesugarCtxChirho {
     /// Derive the type key string from an AST `TypeChirho`, matching
     /// the format produced by `Display for TyChirho` in the typing layer
     /// so that the `$prim_` binding names align with `dict_chirho.rs`.
-    pub fn type_key_from_ast_chirho(ty_chirho: &TypeChirho) -> String {
+    pub fn type_key_from_ast_chirho(
+        ty_chirho: &TypeChirho,
+        scope_chirho: Option<&PromotionScopeChirho>,
+    ) -> String {
         match ty_chirho {
-            TypeChirho::ConChirho(name_chirho) => name_chirho.text_chirho().to_string(),
+            TypeChirho::KindAnnotationChirho { ty_chirho, .. } => {
+                Self::type_key_from_ast_chirho(ty_chirho, scope_chirho)
+            }
+            TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => format!(
+                "({} {})",
+                Self::type_key_from_ast_chirho(fun_chirho, scope_chirho),
+                Self::type_key_from_ast_chirho(arg_chirho, scope_chirho)
+            ),
+            TypeChirho::ConChirho(name_chirho) => {
+                if let Some(declaration_chirho) = name_chirho.type_constructor_chirho() {
+                    return declaration_chirho.type_key_chirho();
+                }
+                unquoted_promoted_spelling_chirho(name_chirho, scope_chirho)
+                    .unwrap_or_else(|| name_chirho.text_chirho().to_string())
+            }
+            TypeChirho::PromotedConChirho { name_chirho, .. } => {
+                quoted_promoted_spelling_chirho(name_chirho, scope_chirho)
+                    .unwrap_or_else(|| "_".to_string())
+            }
             TypeChirho::VarChirho(name_chirho) => name_chirho.text_chirho().to_string(),
             TypeChirho::ListChirho { element_chirho, .. } => {
-                format!("[{}]", Self::type_key_from_ast_chirho(element_chirho))
+                format!(
+                    "[{}]",
+                    Self::type_key_from_ast_chirho(element_chirho, scope_chirho)
+                )
             }
             TypeChirho::TupleChirho {
                 elements_chirho, ..
             } => {
                 let inner_chirho: Vec<String> = elements_chirho
                     .iter()
-                    .map(Self::type_key_from_ast_chirho)
+                    .map(|e_chirho| Self::type_key_from_ast_chirho(e_chirho, scope_chirho))
                     .collect();
                 format!("({})", inner_chirho.join(", "))
             }
@@ -33,12 +61,12 @@ impl DesugarCtxChirho {
             } => {
                 format!(
                     "{} {}",
-                    Self::type_key_from_ast_chirho(fun_chirho),
-                    Self::type_key_from_ast_chirho(arg_chirho)
+                    Self::type_key_from_ast_chirho(fun_chirho, scope_chirho),
+                    Self::type_key_from_ast_chirho(arg_chirho, scope_chirho)
                 )
             }
             TypeChirho::ParenChirho { inner_chirho, .. } => {
-                Self::type_key_from_ast_chirho(inner_chirho)
+                Self::type_key_from_ast_chirho(inner_chirho, scope_chirho)
             }
             _ => "_".to_string(),
         }
@@ -48,22 +76,46 @@ impl DesugarCtxChirho {
     /// For single-parameter classes: just the first type key.
     /// For multi-parameter classes: head_key + "_" + extra keys joined by "_".
     /// Matches the format used in `dict_chirho.rs::generate_instance_dicts_chirho`.
-    pub fn instance_type_key_chirho(types_chirho: &[TypeChirho]) -> String {
+    pub fn instance_type_key_chirho(
+        types_chirho: &[TypeChirho],
+        scope_chirho: Option<&PromotionScopeChirho>,
+    ) -> String {
         if types_chirho.is_empty() {
             "_".to_string()
         } else if types_chirho.len() == 1 {
-            Self::type_key_from_ast_chirho(&types_chirho[0])
+            Self::type_key_from_ast_chirho(&types_chirho[0], scope_chirho)
         } else {
             let keys_chirho: Vec<String> = types_chirho
                 .iter()
-                .map(Self::type_key_from_ast_chirho)
+                .map(|t_chirho| Self::type_key_from_ast_chirho(t_chirho, scope_chirho))
                 .collect();
             keys_chirho.join("_")
         }
     }
 
     /// Desugar an entire AST module into a Core module with name map.
-    pub fn desugar_module_chirho(&mut self, module_chirho: &ModuleChirho) -> DesugarOutputChirho {
+    pub fn desugar_module_chirho(
+        &mut self,
+        module_chirho: &ModuleChirho,
+    ) -> Result<DesugarOutputChirho, DesugarInputErrorChirho> {
+        haskelujah_ast_chirho::decl_chirho::check_module_constructor_signatures_chirho(
+            module_chirho,
+        )?;
+        let mut projection_budget_chirho = GadtProjectionBudgetChirho::with_limits_chirho(
+            haskelujah_ast_chirho::decl_chirho::GadtProjectionLimitsChirho {
+                work_chirho: 1 << 27,
+                output_chirho: 1 << 24,
+                depth_chirho: 512,
+            },
+        );
+        check_module_projection_chirho(module_chirho, &mut projection_budget_chirho, 3)?;
+        let expanded_rows_chirho = input_chirho::check_executable_patterns_chirho(
+            module_chirho,
+            &mut projection_budget_chirho,
+            None,
+        )?;
+        let record_selector_plans_chirho =
+            self.record_selector_plans_chirho(module_chirho, &mut projection_budget_chirho)?;
         self.current_module_name_chirho = Some(module_chirho.name_chirho.text_chirho().to_string());
 
         // Pass -1: Collect constructor strictness annotations for strict field enforcement
@@ -71,6 +123,15 @@ impl DesugarCtxChirho {
 
         // Pass -0.5: Collect pattern synonym definitions for expansion during desugaring
         self.collect_pat_syns_chirho(module_chirho);
+        if expanded_rows_chirho {
+            // The original syntax gate precedes metadata collection. The SAME
+            // remaining allowance now reserves complete matcher-owned columns.
+            input_chirho::check_executable_patterns_chirho(
+                module_chirho,
+                &mut projection_budget_chirho,
+                Some(self),
+            )?;
+        }
 
         // Pass -0.25: Seed aliases for built-in qualified imports whose Core
         // bodies use internal Prelude wrapper names.
@@ -142,7 +203,19 @@ impl DesugarCtxChirho {
                     ..
                 } => {
                     let class_name_chirho = class_chirho.text_chirho();
-                    let type_key_chirho = Self::instance_type_key_chirho(types_chirho);
+                    let type_key_chirho = Self::instance_type_key_chirho(
+                        types_chirho,
+                        self.promotion_scope_chirho.as_deref(),
+                    );
+                    // The rows below are named by this key; the dictionary pass pairs the
+                    // declaration with the checker's instance by class and span (S3).
+                    // workflow: language-features-chirho/dictionary-evidence-chirho
+                    self.instance_row_keys_chirho
+                        .push(crate::dict_chirho::InstanceRowKeyChirho {
+                            class_name_chirho: class_name_chirho.to_string(),
+                            span_chirho: *span_chirho,
+                            row_key_chirho: type_key_chirho.clone(),
+                        });
                     // Collect provided method names
                     let mut provided_chirho: std::collections::HashSet<String> =
                         std::collections::HashSet::new();
@@ -201,57 +274,7 @@ impl DesugarCtxChirho {
             }
         }
 
-        // Pass 1b: Pre-bind record field accessor names so function bodies can reference them
-        for decl_chirho in &module_chirho.decls_chirho {
-            let constructors_chirho = match decl_chirho {
-                DeclChirho::DataDeclChirho {
-                    constructors_chirho,
-                    ..
-                } => constructors_chirho.as_slice(),
-                DeclChirho::NewtypeDeclChirho {
-                    constructor_chirho, ..
-                } => std::slice::from_ref(constructor_chirho),
-                _ => continue,
-            };
-            for con_chirho in constructors_chirho {
-                if let haskelujah_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
-                    fields_chirho: field_decls_chirho,
-                    ..
-                } = con_chirho
-                {
-                    for fd_chirho in field_decls_chirho {
-                        for fname_chirho in &fd_chirho.names_chirho {
-                            let name_str_chirho = fname_chirho.text_chirho().to_string();
-                            let binder_chirho = self.fresh_binder_chirho(
-                                &name_str_chirho,
-                                TyChirho::VarChirho(
-                                    haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                        self.next_id_chirho,
-                                    ),
-                                ),
-                                SpanChirho::DUMMY_CHIRHO,
-                            );
-                            self.bind_in_scope_chirho(&name_str_chirho, binder_chirho.id_chirho);
-                            // Pre-bind setter function
-                            let setter_name_chirho = format!("$setField_{}", name_str_chirho);
-                            let setter_binder_chirho = self.fresh_binder_chirho(
-                                &setter_name_chirho,
-                                TyChirho::VarChirho(
-                                    haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                        self.next_id_chirho,
-                                    ),
-                                ),
-                                SpanChirho::DUMMY_CHIRHO,
-                            );
-                            self.bind_in_scope_chirho(
-                                &setter_name_chirho,
-                                setter_binder_chirho.id_chirho,
-                            );
-                        }
-                    }
-                }
-            }
-        }
+        self.prebind_record_accessors_chirho(&record_selector_plans_chirho);
 
         // Convert AST inline pragmas to Core inline annotations
         let inline_pragmas_chirho = &module_chirho.inline_pragmas_chirho;
@@ -362,7 +385,10 @@ impl DesugarCtxChirho {
                     ..
                 } => {
                     let class_name_chirho = class_chirho.text_chirho();
-                    let type_key_chirho = Self::instance_type_key_chirho(types_chirho);
+                    let type_key_chirho = Self::instance_type_key_chirho(
+                        types_chirho,
+                        self.promotion_scope_chirho.as_deref(),
+                    );
                     let mut provided_chirho: std::collections::HashSet<String> =
                         std::collections::HashSet::new();
                     for method_chirho in methods_chirho {
@@ -472,215 +498,9 @@ impl DesugarCtxChirho {
         }
 
         // Generate record field accessor functions.
-        // For data T = Con { f1 :: T1, f2 :: T2 }, generates:
-        //   f1 = \r -> case r of { Con x _ -> x }
-        //   f2 = \r -> case r of { Con _ x -> x }
-        // Also handles newtype T = Con { f :: T1 } (single-field accessor).
-        for decl_chirho in &module_chirho.decls_chirho {
-            let constructors_chirho = match decl_chirho {
-                DeclChirho::DataDeclChirho {
-                    constructors_chirho,
-                    ..
-                } => constructors_chirho.as_slice(),
-                DeclChirho::NewtypeDeclChirho {
-                    constructor_chirho, ..
-                } => std::slice::from_ref(constructor_chirho),
-                _ => continue,
-            };
-            for con_chirho in constructors_chirho {
-                if let haskelujah_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
-                    name_chirho: con_name_chirho,
-                    fields_chirho: field_decls_chirho,
-                    ..
-                } = con_chirho
-                {
-                    // Flatten field names with their position index
-                    let mut flat_fields_chirho: Vec<(String, usize)> = Vec::new();
-                    for fd_chirho in field_decls_chirho {
-                        for fname_chirho in &fd_chirho.names_chirho {
-                            flat_fields_chirho.push((
-                                fname_chirho.text_chirho().to_string(),
-                                flat_fields_chirho.len(),
-                            ));
-                        }
-                    }
-                    let total_fields_chirho = flat_fields_chirho.len();
-                    let con_str_chirho = con_name_chirho.text_chirho().to_string();
+        self.generate_record_accessors_chirho(&record_selector_plans_chirho, &mut bindings_chirho);
 
-                    for (field_name_chirho, field_idx_chirho) in &flat_fields_chirho {
-                        // Build: \r -> case r of { Con b0 b1 ... -> b_idx }
-                        let param_binder_chirho = self.fresh_binder_chirho(
-                            "$r",
-                            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                self.next_id_chirho,
-                            )),
-                            SpanChirho::DUMMY_CHIRHO,
-                        );
-                        let mut alt_binders_chirho = Vec::new();
-                        let mut result_id_chirho = CoreIdChirho(0);
-                        for i_chirho in 0..total_fields_chirho {
-                            let b_chirho = self.fresh_binder_chirho(
-                                &format!("$f{}", i_chirho),
-                                TyChirho::VarChirho(
-                                    haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                        self.next_id_chirho,
-                                    ),
-                                ),
-                                SpanChirho::DUMMY_CHIRHO,
-                            );
-                            if i_chirho == *field_idx_chirho {
-                                result_id_chirho = b_chirho.id_chirho;
-                            }
-                            alt_binders_chirho.push(b_chirho);
-                        }
-
-                        let case_bind_chirho = self.fresh_binder_chirho(
-                            "$scrut",
-                            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                self.next_id_chirho,
-                            )),
-                            SpanChirho::DUMMY_CHIRHO,
-                        );
-                        let body_chirho = CoreExprChirho::CaseChirho {
-                            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(
-                                param_binder_chirho.id_chirho,
-                            )),
-                            bind_chirho: case_bind_chirho,
-                            result_ty_chirho: TyChirho::VarChirho(
-                                haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                    self.next_id_chirho,
-                                ),
-                            ),
-                            alts_chirho: vec![CoreAltChirho {
-                                con_chirho: AltConChirho::DataConChirho(con_str_chirho.clone()),
-                                binders_chirho: alt_binders_chirho,
-                                rhs_chirho: CoreExprChirho::VarChirho(result_id_chirho),
-                            }],
-                        };
-
-                        let accessor_rhs_chirho = CoreExprChirho::LamChirho {
-                            binder_chirho: param_binder_chirho.clone(),
-                            body_chirho: Box::new(body_chirho),
-                        };
-
-                        // Reuse the pre-bound ID from Pass 1b
-                        let accessor_id_chirho = self
-                            .lookup_scope_chirho(field_name_chirho)
-                            .unwrap_or_else(|| self.fresh_id_chirho(field_name_chirho));
-                        let accessor_binder_chirho = BinderChirho {
-                            id_chirho: accessor_id_chirho,
-                            name_chirho: field_name_chirho.clone(),
-                            ty_chirho: TyChirho::VarChirho(
-                                haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                    self.next_id_chirho,
-                                ),
-                            ),
-                            span_chirho: SpanChirho::DUMMY_CHIRHO,
-                        };
-                        bindings_chirho.push(CoreBindingChirho {
-                            binder_chirho: accessor_binder_chirho,
-                            rhs_chirho: accessor_rhs_chirho,
-                            is_rec_chirho: false,
-                            inline_chirho: InlineAnnotationChirho::NoneChirho,
-                        });
-
-                        // Generate setter: $setField_f = \newVal -> \rec -> case rec of { Con b0 b1 ... -> Con ... newVal ... }
-                        let setter_name_chirho = format!("$setField_{}", field_name_chirho);
-                        let new_val_binder_chirho = self.fresh_binder_chirho(
-                            "$newVal",
-                            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                self.next_id_chirho,
-                            )),
-                            SpanChirho::DUMMY_CHIRHO,
-                        );
-                        let rec_binder_chirho = self.fresh_binder_chirho(
-                            "$rec",
-                            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                self.next_id_chirho,
-                            )),
-                            SpanChirho::DUMMY_CHIRHO,
-                        );
-                        let mut setter_alt_binders_chirho = Vec::new();
-                        let mut con_args_chirho = Vec::new();
-                        for i_chirho in 0..total_fields_chirho {
-                            let b_chirho = self.fresh_binder_chirho(
-                                &format!("$sf{}", i_chirho),
-                                TyChirho::VarChirho(
-                                    haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                        self.next_id_chirho,
-                                    ),
-                                ),
-                                SpanChirho::DUMMY_CHIRHO,
-                            );
-                            if i_chirho == *field_idx_chirho {
-                                // Replace this field with newVal
-                                con_args_chirho.push(CoreExprChirho::VarChirho(
-                                    new_val_binder_chirho.id_chirho,
-                                ));
-                            } else {
-                                con_args_chirho.push(CoreExprChirho::VarChirho(b_chirho.id_chirho));
-                            }
-                            setter_alt_binders_chirho.push(b_chirho);
-                        }
-                        let setter_case_bind_chirho = self.fresh_binder_chirho(
-                            "$scrut",
-                            TyChirho::VarChirho(haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                self.next_id_chirho,
-                            )),
-                            SpanChirho::DUMMY_CHIRHO,
-                        );
-                        let setter_body_chirho = CoreExprChirho::CaseChirho {
-                            scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(
-                                rec_binder_chirho.id_chirho,
-                            )),
-                            bind_chirho: setter_case_bind_chirho,
-                            result_ty_chirho: TyChirho::VarChirho(
-                                haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                    self.next_id_chirho,
-                                ),
-                            ),
-                            alts_chirho: vec![CoreAltChirho {
-                                con_chirho: AltConChirho::DataConChirho(con_str_chirho.clone()),
-                                binders_chirho: setter_alt_binders_chirho,
-                                rhs_chirho: CoreExprChirho::ConAppChirho {
-                                    con_name_chirho: con_str_chirho.clone(),
-                                    args_chirho: con_args_chirho,
-                                },
-                            }],
-                        };
-                        let setter_rhs_chirho = CoreExprChirho::LamChirho {
-                            binder_chirho: new_val_binder_chirho,
-                            body_chirho: Box::new(CoreExprChirho::LamChirho {
-                                binder_chirho: rec_binder_chirho,
-                                body_chirho: Box::new(setter_body_chirho),
-                            }),
-                        };
-                        // Reuse pre-bound setter ID from Pass 1b
-                        let setter_id_chirho = self
-                            .lookup_scope_chirho(&setter_name_chirho)
-                            .unwrap_or_else(|| self.fresh_id_chirho(&setter_name_chirho));
-                        let setter_binder_chirho = BinderChirho {
-                            id_chirho: setter_id_chirho,
-                            name_chirho: setter_name_chirho.clone(),
-                            ty_chirho: TyChirho::VarChirho(
-                                haskelujah_typing_chirho::ty_chirho::TyVarChirho(
-                                    self.next_id_chirho,
-                                ),
-                            ),
-                            span_chirho: SpanChirho::DUMMY_CHIRHO,
-                        };
-                        bindings_chirho.push(CoreBindingChirho {
-                            binder_chirho: setter_binder_chirho,
-                            rhs_chirho: setter_rhs_chirho,
-                            is_rec_chirho: false,
-                            inline_chirho: InlineAnnotationChirho::NoneChirho,
-                        });
-                    }
-                }
-            }
-        }
-
-        DesugarOutputChirho {
+        Ok(DesugarOutputChirho {
             module_chirho: CoreModuleChirho {
                 name_chirho: module_chirho.name_chirho.text_chirho().to_string(),
                 bindings_chirho,
@@ -699,6 +519,7 @@ impl DesugarCtxChirho {
                     .collect(),
                 provenance_chirho: crate::expr_chirho::CoreProvenanceChirho {
                     imported_references_chirho: self.imported_references_chirho.clone(),
+                    compiler_value_references_chirho: self.compiler_value_references_chirho.clone(),
                     ..Default::default()
                 },
             },
@@ -710,7 +531,8 @@ impl DesugarCtxChirho {
             method_occurrence_spans_chirho: self.method_occurrence_spans_chirho.clone(),
             occurrence_provenance_chirho: self.occurrence_provenance_chirho.clone(),
             operator_occurrences_chirho: self.operator_occurrences_chirho.clone(),
+            instance_row_keys_chirho: self.instance_row_keys_chirho.clone(),
             default_method_rows_chirho,
-        }
+        })
     }
 }

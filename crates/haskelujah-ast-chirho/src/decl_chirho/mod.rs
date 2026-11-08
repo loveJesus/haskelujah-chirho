@@ -1,0 +1,667 @@
+// For God so loved the world that he gave his only begotten Son, that whoever
+// believes in him should not perish but have eternal life. — John 3:16
+
+//! # Top-level declarations
+
+use std::borrow::Cow;
+use std::ops::Deref;
+
+use haskelujah_span_chirho::SpanChirho;
+
+use crate::expr_chirho::{LocalBindChirho, MatchArmChirho, RhsChirho};
+use crate::name_chirho::NameChirho;
+use crate::pat_chirho::PatChirho;
+use crate::ty_chirho::{ConstraintChirho, TypeChirho};
+
+#[cfg(test)]
+mod associated_projection_tests_chirho;
+mod con_prefix_chirho;
+mod gadt_constructor_chirho;
+mod gadt_projection_chirho;
+pub use con_prefix_chirho::ConPrefixChirho;
+pub use gadt_constructor_chirho::{
+    ConstructorSignatureErrorChirho, GadtConArgsChirho, GadtConFieldChirho, GadtConFieldRefChirho,
+    GadtConMalformedChirho, GadtConPrefixChirho, GadtConSignatureChirho,
+    check_constructor_signature_chirho, check_module_constructor_signatures_chirho,
+};
+pub use gadt_projection_chirho::{
+    GadtProjectionBudgetChirho, GadtProjectionErrorChirho, GadtProjectionLimitChirho,
+    GadtProjectionLimitsChirho, check_borrowed_declaration_syntax_chirho,
+    check_borrowed_type_syntax_chirho, check_constructor_projection_chirho,
+    check_declaration_projection_chirho, check_module_projection_chirho,
+    check_name_projection_chirho, check_projection_chirho,
+    check_record_accessors_projection_chirho, check_type_projection_chirho,
+};
+mod derived_class_chirho;
+pub use derived_class_chirho::{DerivedClassChirho, DerivingStrategyChirho};
+
+/// AST-level kind annotation (written in source code with KindSignatures).
+///
+/// Represents kind expressions like `*`, `* -> *`, `(* -> *) -> *`.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AstKindChirho {
+    /// `*` or `Type` — the kind of types.
+    StarChirho,
+    /// `k1 -> k2` — arrow kind (type constructor kind).
+    ArrowChirho(Box<AstKindChirho>, Box<AstKindChirho>),
+    /// `Constraint` — the kind of typeclass constraints (ConstraintKinds).
+    ConstraintChirho,
+    /// Kind variable (PolyKinds): `k` in `(a :: k)`.
+    VarChirho(String),
+    /// Kind application: `TYPE representation` in `(a :: TYPE representation)`.
+    AppChirho(Box<AstKindChirho>, Box<AstKindChirho>),
+}
+
+/// One equation in a closed type family, as written:
+/// `F Int = Bool`, `Succ a + b = Succ (a + b)` or `forall x. F [x] = x`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypeFamilyEquationChirho {
+    /// Elaborated hidden kind prefix, independent of the written visible LHS.
+    pub kind_args_chirho: Vec<TypeChirho>,
+    /// The type constructor heading the left side, in any written form: prefix,
+    /// infix, `(op)` prefix, backtick or parenthesized (`(F a) b`). `None` when no
+    /// type constructor heads it (`a Int = …`, `3 = …`); validity reports that.
+    pub head_chirho: Option<NameChirho>,
+    /// The `forall` binders written before the equation, with their kinds and
+    /// visibility; `None` when the equation writes no `forall`.
+    pub explicit_binders_chirho: Option<Vec<TyVarChirho>>,
+    /// Explicit binders the left side never uses: free neither in an argument
+    /// pattern, kind annotations included, nor in the kind of a used binder. A
+    /// binder's own declaration and the right side do not count, and an inner
+    /// `forall` that rebinds the name hides it. Read from the CST, before
+    /// lowering erases pattern kinds.
+    pub unwritten_binders_chirho: Vec<NameChirho>,
+    /// The left side's arguments in order; the head is not among them.
+    pub lhs_types_chirho: Vec<TypeChirho>,
+    /// The reduced result type on the right-hand side.
+    pub rhs_chirho: TypeChirho,
+    /// The written equation is incomplete: no `=`, no right side, a context, or
+    /// tokens the left-side type grammar could not take.
+    pub malformed_chirho: bool,
+    /// Span covering this equation only.
+    pub span_chirho: SpanChirho,
+}
+
+impl TypeFamilyEquationChirho {
+    /// An equation that must never reduce: incomplete, headless, or binding a
+    /// name its left side never uses. In a closed family no later equation may
+    /// reduce in its place either, so reduction stops at the first held one.
+    pub fn is_held_chirho(&self) -> bool {
+        self.malformed_chirho
+            || self.head_chirho.is_none()
+            || !self.unwritten_binders_chirho.is_empty()
+    }
+}
+
+pub use crate::name_chirho::{TyVarSpecificityChirho, TyVarVisibilityChirho};
+
+/// A type variable, optionally annotated with a kind signature.
+///
+/// Without KindSignatures: `data Foo a = ...` → `TyVarChirho { name: a, kind: None }`
+/// With KindSignatures: `data Foo (a :: *) = ...` → `TyVarChirho { name: a, kind: Some(Star) }`
+#[derive(Debug, Clone, PartialEq)]
+pub struct TyVarChirho {
+    /// The source name of the type variable.
+    pub name_chirho: NameChirho,
+    /// Optional kind annotation supplied in source.
+    pub kind_annotation_chirho: Option<Box<TypeChirho>>,
+    /// Head binders remain in lexical scope even when they are invisible.
+    pub visibility_chirho: TyVarVisibilityChirho,
+    pub specificity_chirho: TyVarSpecificityChirho,
+}
+
+impl TyVarChirho {
+    /// Create an unannotated type variable (no kind signature).
+    pub fn plain_chirho(name_chirho: NameChirho) -> Self {
+        Self {
+            name_chirho,
+            kind_annotation_chirho: None,
+            visibility_chirho: TyVarVisibilityChirho::VisibleChirho,
+            specificity_chirho: TyVarSpecificityChirho::SpecifiedChirho,
+        }
+    }
+
+    /// Create a type variable with a kind annotation.
+    pub fn annotated_chirho(name_chirho: NameChirho, kind_chirho: impl Into<TypeChirho>) -> Self {
+        Self {
+            name_chirho,
+            kind_annotation_chirho: Some(Box::new(kind_chirho.into())),
+            visibility_chirho: TyVarVisibilityChirho::VisibleChirho,
+            specificity_chirho: TyVarSpecificityChirho::SpecifiedChirho,
+        }
+    }
+
+    /// Whether this binder belongs in an ordinary type-constructor application.
+    pub fn is_visible_chirho(&self) -> bool {
+        self.visibility_chirho == TyVarVisibilityChirho::VisibleChirho
+    }
+
+    /// Adapt parameter-only consumers without copying ordinary declarations.
+    /// Lexical consumers must retain the original complete binder sequence.
+    pub fn visible_binders_chirho(binders_chirho: &[Self]) -> Cow<'_, [Self]> {
+        if binders_chirho.iter().all(Self::is_visible_chirho) {
+            Cow::Borrowed(binders_chirho)
+        } else {
+            Cow::Owned(
+                binders_chirho
+                    .iter()
+                    .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+                    .cloned()
+                    .collect(),
+            )
+        }
+    }
+}
+
+impl From<NameChirho> for TyVarChirho {
+    fn from(name_chirho: NameChirho) -> Self {
+        Self::plain_chirho(name_chirho)
+    }
+}
+
+impl Deref for TyVarChirho {
+    type Target = NameChirho;
+
+    fn deref(&self) -> &NameChirho {
+        &self.name_chirho
+    }
+}
+
+/// Written kind contracts on a data/newtype declaration. A result annotation
+/// follows the declaration's binders; a standalone signature describes the
+/// complete constructor kind in an independent lexical scope. Keep both when
+/// both are written. See language-features-chirho/declaration-kinds-chirho.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DataKindSigChirho {
+    /// `data T a :: K where`: only the kind remaining after `a`.
+    ResultChirho(TypeChirho),
+    /// `type T :: K`: the complete kind, optionally accompanied by an inline tail.
+    StandaloneChirho {
+        /// Complete constructor kind in the standalone signature's scope.
+        signature_chirho: TypeChirho,
+        /// Separately written tail in the declaration-head scope, if any.
+        result_chirho: Option<TypeChirho>,
+    },
+}
+
+impl DataKindSigChirho {
+    /// The explicitly written inline result kind, never a synthesized tail.
+    pub fn result_chirho(&self) -> Option<&TypeChirho> {
+        match self {
+            Self::ResultChirho(result_chirho) => Some(result_chirho),
+            Self::StandaloneChirho { result_chirho, .. } => result_chirho.as_ref(),
+        }
+    }
+
+    /// The complete standalone signature, never an inline annotation.
+    pub fn standalone_chirho(&self) -> Option<&TypeChirho> {
+        match self {
+            Self::ResultChirho(_) => None,
+            Self::StandaloneChirho {
+                signature_chirho, ..
+            } => Some(signature_chirho),
+        }
+    }
+}
+
+/// A top-level declaration in a Haskell module.
+#[derive(Debug, Clone, PartialEq)]
+pub enum DeclChirho {
+    /// Type signature (`foo :: Type`).
+    TypeSigChirho {
+        /// Name whose type is being declared.
+        name_chirho: NameChirho,
+        /// Declared type for the binding.
+        ty_chirho: TypeChirho,
+        /// Span covering the whole type signature.
+        span_chirho: SpanChirho,
+    },
+    /// Function binding (`foo x y = ...` with possibly multiple equations).
+    FunBindChirho {
+        /// Bound top-level function name.
+        name_chirho: NameChirho,
+        /// Clauses implementing the function.
+        matches_chirho: Vec<MatchArmChirho>,
+        /// Span covering the whole binding group.
+        span_chirho: SpanChirho,
+    },
+    /// Pattern binding (`(a, b) = expr`).
+    PatBindChirho {
+        /// Pattern introduced by the binding.
+        pat_chirho: PatChirho,
+        /// Right-hand side assigned to the pattern.
+        rhs_chirho: RhsChirho,
+        /// Span covering the whole pattern binding.
+        span_chirho: SpanChirho,
+    },
+    /// Data type declaration (`data T a = C1 | C2`).
+    DataDeclChirho {
+        /// Declared type constructor name.
+        name_chirho: NameChirho,
+        /// Type parameters introduced by the declaration.
+        type_vars_chirho: Vec<TyVarChirho>,
+        /// Constructors belonging to the data type.
+        constructors_chirho: Vec<ConDeclChirho>,
+        /// Classes the deriving clauses list, each with its clause's strategy.
+        deriving_chirho: Vec<DerivedClassChirho>,
+        /// Optional inline result kind and/or complete standalone kind signature.
+        kind_sig_chirho: Option<DataKindSigChirho>,
+        /// Span covering the whole data declaration.
+        span_chirho: SpanChirho,
+    },
+    /// Newtype declaration (`newtype T a = Con Type`).
+    NewtypeDeclChirho {
+        /// Declared newtype constructor name.
+        name_chirho: NameChirho,
+        /// Type parameters introduced by the declaration.
+        type_vars_chirho: Vec<TyVarChirho>,
+        /// The single runtime constructor carried by the newtype.
+        constructor_chirho: ConDeclChirho,
+        /// Classes the deriving clauses list, each with its clause's strategy.
+        deriving_chirho: Vec<DerivedClassChirho>,
+        /// Optional inline result kind and/or complete standalone kind signature.
+        kind_sig_chirho: Option<DataKindSigChirho>,
+        /// Span covering the whole newtype declaration.
+        span_chirho: SpanChirho,
+    },
+    /// Type alias (`type Name = Type`).
+    TypeAliasDeclChirho {
+        /// Alias name being introduced.
+        name_chirho: NameChirho,
+        /// Type parameters accepted by the alias.
+        type_vars_chirho: Vec<TyVarChirho>,
+        /// Aliased right-hand-side type.
+        rhs_chirho: TypeChirho,
+        /// Span covering the whole type alias.
+        span_chirho: SpanChirho,
+    },
+    /// Type or data family declaration (type families may be open or closed).
+    /// Open: `type family F a :: *`
+    /// Closed: `type family F a where { F Int = Bool; ... }`
+    TypeFamilyDeclChirho {
+        /// None is unknown; Some(false) proves this parsed header has no
+        /// injectivity annotation. Some(true) retains a dependency boundary.
+        injectivity_chirho: Option<bool>,
+        /// Family name being declared.
+        name_chirho: NameChirho,
+        /// Family parameters introduced by the declaration.
+        type_vars_chirho: Vec<TyVarChirho>,
+        /// Optional result kind annotation after `::`.
+        result_kind_chirho: Option<TypeChirho>,
+        /// The whole standalone kind signature, `type F :: k1 -> k2 -> k`, kept
+        /// apart from the inline result kind (row 686).
+        standalone_kind_chirho: Option<TypeChirho>,
+        /// A written `data family` is nominally generative, unlike a type family.
+        data_family_chirho: bool,
+        /// Whether a written `where` closes the family's equation set. An
+        /// empty closed family is different from an extensible open family.
+        closed_chirho: bool,
+        /// Equations for closed families; either kind may have no equations.
+        equations_chirho: Vec<TypeFamilyEquationChirho>,
+        /// Span covering the whole family declaration.
+        span_chirho: SpanChirho,
+    },
+    /// Open type family instance (`type instance F Int = Bool`).
+    TypeFamilyInstanceDeclChirho {
+        /// Hidden kind arguments selected by this equation.
+        kind_args_chirho: Vec<TypeChirho>,
+        /// Family being instantiated.
+        family_name_chirho: NameChirho,
+        /// Left-hand-side instance arguments.
+        lhs_types_chirho: Vec<TypeChirho>,
+        /// Reduced result type for the instance.
+        rhs_chirho: TypeChirho,
+        /// Span covering the whole family instance declaration.
+        span_chirho: SpanChirho,
+    },
+    /// Type class declaration.
+    ClassDeclChirho {
+        /// Complete written standalone kind, before the class's own binders.
+        standalone_kind_chirho: Option<TypeChirho>,
+        /// Class context required by the declaration head.
+        context_chirho: Vec<ConstraintChirho>,
+        /// Class name being introduced.
+        name_chirho: NameChirho,
+        /// Class type parameters.
+        type_vars_chirho: Vec<TyVarChirho>,
+        /// Method signatures and optional defaults declared in the class body.
+        methods_chirho: Vec<ClassMethodChirho>,
+        /// Associated type families declared inside the class.
+        associated_tfs_chirho: Vec<AssocTypeFamilyChirho>,
+        /// Functional dependencies: `| a -> b, c -> d`.
+        /// Each pair `(from_vars, to_vars)` means the from-vars determine the to-vars.
+        fundeps_chirho: Vec<(Vec<String>, Vec<String>)>,
+        /// Span covering the whole class declaration.
+        span_chirho: SpanChirho,
+    },
+    /// Instance declaration.
+    InstanceDeclChirho {
+        /// Hidden class arguments, excluded from ordinary parameter positions.
+        kind_args_chirho: Vec<TypeChirho>,
+        /// Constraints required by the instance head.
+        context_chirho: Vec<ConstraintChirho>,
+        /// Class implemented by the instance.
+        class_chirho: NameChirho,
+        /// Concrete instance head arguments.
+        types_chirho: Vec<TypeChirho>,
+        /// Method implementations provided by the instance body.
+        methods_chirho: Vec<LocalBindChirho>,
+        /// Associated type family instances: `type FamName ConcreteType = ResultType`.
+        assoc_tf_instances_chirho: Vec<AssocTfInstanceChirho>,
+        /// Span covering the whole instance declaration.
+        span_chirho: SpanChirho,
+    },
+    /// Fixity declaration (`infixl 6 +`).
+    FixityDeclChirho {
+        /// Associativity declared for the operators.
+        fixity_chirho: FixityChirho,
+        /// Optional precedence level.
+        precedence_chirho: Option<u8>,
+        /// Operators whose fixity is being declared.
+        ops_chirho: Vec<NameChirho>,
+        /// Span covering the whole fixity declaration.
+        span_chirho: SpanChirho,
+    },
+    /// Default declaration (`default (Int, Double)`).
+    DefaultDeclChirho {
+        /// Fallback defaulted types used by ambiguous numeric inference.
+        types_chirho: Vec<TypeChirho>,
+        /// Span covering the whole default declaration.
+        span_chirho: SpanChirho,
+    },
+    /// Foreign declaration (`foreign import`/`foreign export`).
+    ForeignDeclChirho {
+        /// Whether the declaration imports or exports a symbol.
+        direction_chirho: ForeignDirectionChirho,
+        /// Local Haskell binding name.
+        name_chirho: NameChirho,
+        /// Haskell type attached to the foreign binding.
+        ty_chirho: TypeChirho,
+        /// Calling convention such as `ccall` or `stdcall`.
+        calling_conv_chirho: String,
+        /// Optional safety annotation (`safe`, `unsafe`, `interruptible`).
+        safety_chirho: Option<String>,
+        /// Optional foreign symbol name when it differs from the local binding name.
+        foreign_name_chirho: Option<String>,
+        /// Span covering the whole foreign declaration.
+        span_chirho: SpanChirho,
+    },
+    /// A pattern synonym's written signature. The nested forall and qualified
+    /// type retain the distinction between required and provided constraints.
+    PatSynSigDeclChirho {
+        /// Constructor-like names sharing this signature.
+        names_chirho: Vec<NameChirho>,
+        /// Complete written signature, including both contexts.
+        ty_chirho: TypeChirho,
+        /// Span covering the signature declaration.
+        span_chirho: SpanChirho,
+    },
+    /// Pattern synonym declaration.
+    PatSynDeclChirho {
+        /// Pattern synonym name being introduced.
+        name_chirho: NameChirho,
+        /// Pattern variables bound by this synonym.
+        args_chirho: Vec<NameChirho>,
+        /// Whether the arguments were written as record selector fields.
+        record_chirho: bool,
+        /// Directionality (unidirectional, implicitly/explicitly bidirectional).
+        dir_chirho: PatSynDirChirho,
+        /// The pattern this synonym expands to in pattern position.
+        pat_chirho: PatChirho,
+        /// Span covering the whole pattern synonym declaration.
+        span_chirho: SpanChirho,
+    },
+    /// A role annotation as written (`type role T nominal _ phantom`, RoleAnnotations, row
+    /// 694): the annotated type's name and every role word with its span, malformed ones
+    /// included. Declaration checking judges it; role inference reads a well-formed one as
+    /// the floors of its type's parameters.
+    RoleAnnotationDeclChirho {
+        /// The annotated type's name.
+        type_name_chirho: NameChirho,
+        /// Each role word as written, in order.
+        roles_chirho: Vec<NameChirho>,
+        /// Span covering the whole annotation.
+        span_chirho: SpanChirho,
+    },
+    /// Template Haskell splice at declaration level (`$(makeLenses ''Foo)`).
+    SpliceDeclChirho {
+        /// Splice expression to execute during compilation.
+        expr_chirho: crate::expr_chirho::ExprChirho,
+        /// Span covering the whole splice declaration.
+        span_chirho: SpanChirho,
+    },
+    /// Standalone deriving declaration (`deriving instance Show Foo`).
+    StandaloneDerivingDeclChirho {
+        /// The explicit strategy (`deriving newtype instance ...`); `None` when unwritten.
+        strategy_chirho: Option<DerivingStrategyChirho>,
+        /// Constraints attached to the deriving instance head.
+        context_chirho: Vec<ConstraintChirho>,
+        /// Class being derived.
+        class_chirho: NameChirho,
+        /// Instance head types receiving the derived instance.
+        types_chirho: Vec<TypeChirho>,
+        /// Span covering the whole standalone deriving declaration.
+        span_chirho: SpanChirho,
+    },
+}
+
+/// Directionality of a pattern synonym.
+#[derive(Debug, Clone, PartialEq)]
+pub enum PatSynDirChirho {
+    /// `pattern P x = pat` — usable as both pattern and expression.
+    ImplBidirChirho,
+    /// `pattern P x <- pat` — usable only in pattern position.
+    UnidirChirho,
+    /// `pattern P x <- pat where P x = expr` — separate match and builder.
+    ExplBidirChirho {
+        /// Builder-side bindings used when the synonym appears in expression position.
+        builder_binds_chirho: Vec<LocalBindChirho>,
+    },
+}
+
+/// Field strictness annotation for data constructor fields.
+///
+/// The written lazy annotation (`~Type`) is its own variant, apart from the
+/// unannotated default: validity judges it (GHC allows it only under
+/// `StrictData` or `Strict`), and the field stays lazy. The default is lazy as
+/// well today: the module-wide `StrictData` default (unannotated fields strict)
+/// is not implemented, and no consumer reads that extension.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum StrictnessChirho {
+    /// Default (lazy) field.
+    LazyChirho,
+    /// Strict field (`!Type`).
+    StrictChirho,
+    /// Strict and unpacked field (`{-# UNPACK #-} !Type`).
+    UnpackChirho,
+    /// Explicitly lazy field (`~Type`), lazy even where `StrictData` is on.
+    ExplicitLazyChirho,
+}
+
+impl StrictnessChirho {
+    /// Whether applying the constructor evaluates the field: `!` and UNPACK
+    /// fields are strict; the default and the explicit `~` are lazy.
+    pub fn is_strict_chirho(self) -> bool {
+        matches!(self, Self::StrictChirho | Self::UnpackChirho)
+    }
+}
+
+/// A data constructor declaration.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ConDeclChirho {
+    /// Ordinary constructor (`Con Type1 !Type2`).
+    OrdinaryChirho {
+        /// Constructor name.
+        name_chirho: NameChirho,
+        /// Actual constructor-local binders and stored constraints.
+        prefix_chirho: ConPrefixChirho,
+        /// Positional constructor fields and their strictness.
+        fields_chirho: Vec<(StrictnessChirho, TypeChirho)>,
+        /// Span covering the whole constructor declaration.
+        span_chirho: SpanChirho,
+    },
+    /// Record constructor (`Con { field1 :: Type1, field2 :: Type2 }`).
+    RecordChirho {
+        /// Constructor name.
+        name_chirho: NameChirho,
+        /// The same written prefix retained by positional and infix constructors.
+        prefix_chirho: ConPrefixChirho,
+        /// Named record fields declared by the constructor.
+        fields_chirho: Vec<FieldDeclChirho>,
+        /// Span covering the whole constructor declaration.
+        span_chirho: SpanChirho,
+    },
+    /// GADT constructor (`Con :: forall a. Ctx => Arg -> ... -> T Int a`).
+    /// Preserves the full type signature including return type for type refinement.
+    GadtChirho {
+        /// Constructor name.
+        name_chirho: NameChirho,
+        /// Canonical prefixes, argument details and written result after `::`.
+        signature_chirho: Box<GadtConSignatureChirho>,
+        /// Span covering the whole constructor declaration.
+        span_chirho: SpanChirho,
+    },
+}
+
+impl ConDeclChirho {
+    /// The named arguments of either record constructor syntax. A GADT record
+    /// remains a GADT; exposing its fields must not discard its signature.
+    pub fn record_fields_chirho(&self) -> Option<&[FieldDeclChirho]> {
+        match self {
+            Self::RecordChirho { fields_chirho, .. } => Some(fields_chirho),
+            Self::GadtChirho {
+                signature_chirho, ..
+            } => signature_chirho.record_fields_chirho(),
+            Self::OrdinaryChirho { .. } => None,
+        }
+    }
+}
+
+/// A record field declaration (`fieldName :: !Type`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct FieldDeclChirho {
+    /// Field names that share the same type declaration.
+    pub names_chirho: Vec<NameChirho>,
+    /// The declared field type.
+    pub ty_chirho: TypeChirho,
+    /// Strictness annotation attached to the field.
+    pub strictness_chirho: StrictnessChirho,
+    /// A GADT record field's written multiplicity (`field %1 :: a`).
+    /// Ordinary records keep their existing interpretation in this unit.
+    pub multiplicity_chirho: Option<crate::ty_chirho::MultiplicityChirho>,
+    /// Span covering the whole field declaration.
+    pub span_chirho: SpanChirho,
+}
+
+/// A method in a class declaration.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClassMethodChirho {
+    /// Method name.
+    pub name_chirho: NameChirho,
+    /// Declared method type.
+    pub ty_chirho: TypeChirho,
+    /// Optional default implementation clauses.
+    pub default_chirho: Option<Vec<MatchArmChirho>>,
+    /// Default signature from `{-# LANGUAGE DefaultSignatures #-}`:
+    /// `default methodName :: MoreConstrained => Type`.
+    /// Stores the raw type text for the more-constrained default method type.
+    pub default_sig_chirho: Option<String>,
+    /// Span covering the whole method declaration.
+    pub span_chirho: SpanChirho,
+}
+
+/// An associated type family declaration inside a class:
+/// `type FamilyName a :: *` or `type FamilyName a` (with optional default).
+#[derive(Debug, Clone, PartialEq)]
+pub struct AssocTypeFamilyChirho {
+    /// The same source-header injectivity fact; defaults cannot invent it.
+    pub injectivity_chirho: Option<bool>,
+    /// Name of the associated type family.
+    pub name_chirho: NameChirho,
+    /// Complete written family telescope, including hidden binders and kinds.
+    /// Visible application arity projects only binders whose visibility is visible.
+    pub type_vars_chirho: Vec<TyVarChirho>,
+    /// The written result kind. Its arrows and named result binder are never
+    /// additional declaration parameters.
+    pub result_kind_chirho: Option<TypeChirho>,
+    /// Whether the class member is a data family rather than a type family.
+    pub data_family_chirho: bool,
+    /// Optional default: `type FamilyName a = DefaultType`.
+    pub default_rhs_chirho: Option<TypeChirho>,
+    /// Complete written default application: hidden kind arguments and visible
+    /// type arguments. Legacy hand-built ASTs may leave this absent.
+    pub default_arguments_chirho: Option<(Vec<TypeChirho>, Vec<TypeChirho>)>,
+    /// The binders the default equation was written with (`type F a x = …`
+    /// may name them differently from the family declaration); empty when
+    /// they coincide with `type_vars_chirho`.
+    pub default_params_chirho: Vec<NameChirho>,
+    /// The binders a written default equation writes, with the kind variables
+    /// their kinds bind, which alone scope its right side (row 686). `None` when
+    /// that scope is unknown, as for a directly built AST, whose default keeps
+    /// the class's binders in scope.
+    pub default_binders_chirho: Option<Vec<TyVarChirho>>,
+    /// Span covering the whole associated type declaration.
+    pub span_chirho: SpanChirho,
+}
+
+/// An associated type family instance inside an instance declaration:
+/// `type FamilyName ConcreteType = ResultType`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AssocTfInstanceChirho {
+    /// Hidden family kind prefix, separate from written ordinary arguments.
+    pub kind_args_chirho: Vec<TypeChirho>,
+    /// Associated family name being instantiated.
+    pub family_name_chirho: NameChirho,
+    /// Concrete left-hand-side arguments for the instance.
+    pub lhs_types_chirho: Vec<TypeChirho>,
+    /// Result type produced by this associated family instance.
+    pub rhs_chirho: TypeChirho,
+    /// Span covering the whole associated type instance.
+    pub span_chirho: SpanChirho,
+}
+
+/// Fixity direction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FixityChirho {
+    /// Non-associative infix operator.
+    InfixChirho,
+    /// Left-associative infix operator.
+    InfixlChirho,
+    /// Right-associative infix operator.
+    InfixrChirho,
+}
+
+/// Foreign declaration direction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ForeignDirectionChirho {
+    /// `foreign import` — bring a C function into Haskell.
+    ImportChirho,
+    /// `foreign export` — expose a Haskell function to C.
+    ExportChirho,
+}
+
+impl DeclChirho {
+    /// Return the source span covering this top-level declaration.
+    pub fn span_chirho(&self) -> SpanChirho {
+        match self {
+            Self::TypeSigChirho { span_chirho, .. }
+            | Self::FunBindChirho { span_chirho, .. }
+            | Self::PatBindChirho { span_chirho, .. }
+            | Self::DataDeclChirho { span_chirho, .. }
+            | Self::NewtypeDeclChirho { span_chirho, .. }
+            | Self::TypeAliasDeclChirho { span_chirho, .. }
+            | Self::ClassDeclChirho { span_chirho, .. }
+            | Self::InstanceDeclChirho { span_chirho, .. }
+            | Self::FixityDeclChirho { span_chirho, .. }
+            | Self::DefaultDeclChirho { span_chirho, .. }
+            | Self::ForeignDeclChirho { span_chirho, .. }
+            | Self::PatSynSigDeclChirho { span_chirho, .. }
+            | Self::PatSynDeclChirho { span_chirho, .. }
+            | Self::TypeFamilyDeclChirho { span_chirho, .. }
+            | Self::TypeFamilyInstanceDeclChirho { span_chirho, .. }
+            | Self::RoleAnnotationDeclChirho { span_chirho, .. }
+            | Self::SpliceDeclChirho { span_chirho, .. }
+            | Self::StandaloneDerivingDeclChirho { span_chirho, .. } => *span_chirho,
+        }
+    }
+}

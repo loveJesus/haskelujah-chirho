@@ -8,35 +8,48 @@
 
 use crate::class_chirho::{ClassDeclChirho, ClassEnvChirho, InstDeclChirho, PredChirho};
 use crate::env_chirho::TyEnvChirho;
+#[cfg(test)]
+use crate::skolem_chirho::contains_skolem_chirho;
 use crate::skolem_chirho::{
-    constructor_result_refines_chirho, contains_skolem_chirho, open_skolems_chirho,
-    skolem_name_chirho, split_refinement_unifier_chirho,
+    constructor_result_refines_chirho, open_skolems_chirho, skolem_name_chirho,
+    split_refinement_unifier_chirho,
 };
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
-use crate::unify_chirho::{UnifyErrorChirho, unify_chirho};
+use crate::unify_chirho::UnifyErrorChirho;
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, MatchArmChirho};
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
+use haskelujah_ast_chirho::promotion_chirho::{
+    PromotionScopeChirho, readable_promoted_keys_chirho,
+};
 use haskelujah_ast_chirho::provenance_chirho::OriginIdChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
+#[path = "infer_chirho/annotations_chirho/mod.rs"]
+mod annotations_chirho;
 mod applied_evidence_chirho;
 mod builtins_chirho;
 #[path = "infer_chirho/context_chirho.rs"]
 mod context_chirho;
 mod evidence_chirho;
 // Declarations and modules live together in `infer_chirho/declarations_chirho/`.
+#[path = "infer_chirho/declarations_chirho/associated_defaults_chirho.rs"]
+mod associated_defaults_chirho;
 #[path = "infer_chirho/declarations_chirho/class_instance_chirho.rs"]
 mod class_instance_chirho;
 #[path = "infer_chirho/declarations_chirho/dependency_chirho.rs"]
 mod dependency_chirho;
+pub(crate) use dependency_chirho::dependency_groups_chirho;
+#[path = "infer_chirho/declarations_chirho/gadt_constructors_chirho.rs"]
+mod gadt_constructors_chirho;
 // GND method coercibility, beside the instance obligations (row 694).
 #[path = "infer_chirho/declarations_chirho/gnd_coercion_chirho/mod.rs"]
 pub mod gnd_coercion_chirho;
@@ -46,6 +59,10 @@ mod instance_obligations_chirho;
 mod instance_signatures_chirho;
 #[path = "infer_chirho/declarations_chirho/module_chirho.rs"]
 mod module_chirho;
+#[path = "infer_chirho/declarations_chirho/qualified_types_chirho.rs"]
+mod qualified_types_chirho;
+#[path = "infer_chirho/types_chirho/quantification_chirho.rs"]
+mod quantification_chirho;
 #[cfg(test)]
 #[path = "infer_chirho/declarations_chirho/signature_binder_tests_chirho.rs"]
 mod signature_binder_tests_chirho;
@@ -58,6 +75,19 @@ mod signature_conversion_chirho;
 mod deferred_predicates_chirho;
 #[path = "infer_chirho/solving_chirho/equalities_chirho.rs"]
 mod equalities_chirho;
+#[path = "infer_chirho/solving_chirho/equality_normalization_chirho/mod.rs"]
+mod equality_normalization_chirho;
+pub(crate) use equality_normalization_chirho::{
+    EqualityBudgetChirho, EqualityNormalizationExhaustedChirho, EqualityNormalizationViewChirho,
+};
+#[cfg(test)]
+#[path = "infer_chirho/solving_chirho/equality_normalization_tests_chirho.rs"]
+mod equality_normalization_tests_chirho;
+#[cfg(test)]
+#[path = "infer_chirho/solving_chirho/equality_scope_tests_chirho.rs"]
+mod equality_scope_tests_chirho;
+#[path = "infer_chirho/solving_chirho/equality_scopes_chirho.rs"]
+mod equality_scopes_chirho;
 #[path = "infer_chirho/solving_chirho/fundep_generalization_chirho.rs"]
 mod fundep_generalization_chirho;
 #[path = "infer_chirho/solving_chirho/inferred_dictionary_owners_chirho.rs"]
@@ -66,15 +96,21 @@ mod inferred_dictionary_owners_chirho;
 mod rigid_chirho;
 #[path = "infer_chirho/solving_chirho/schemes_chirho.rs"]
 mod schemes_chirho;
+#[path = "infer_chirho/solving_chirho/signature_wanteds_chirho.rs"]
+mod signature_wanteds_chirho;
 #[path = "infer_chirho/solving_chirho/unification_chirho.rs"]
 mod unification_chirho;
 #[path = "infer_chirho/solving_chirho/validity_chirho.rs"]
 mod validity_chirho;
 // Expressions, matches and bindings live together in `infer_chirho/terms_chirho/`.
+#[path = "infer_chirho/terms_chirho/applications_chirho.rs"]
+mod applications_chirho;
 #[path = "infer_chirho/terms_chirho/bindings_chirho.rs"]
 mod bindings_chirho;
 #[path = "infer_chirho/terms_chirho/conditionals_chirho.rs"]
 mod conditionals_chirho;
+#[path = "infer_chirho/terms_chirho/constructor_patterns_chirho/mod.rs"]
+mod constructor_patterns_chirho;
 #[path = "infer_chirho/terms_chirho/do_operations_chirho.rs"]
 mod do_operations_chirho;
 #[path = "infer_chirho/terms_chirho/expected_chirho.rs"]
@@ -83,7 +119,7 @@ mod expected_chirho;
 mod expressions_chirho;
 #[path = "infer_chirho/terms_chirho/guards_chirho.rs"]
 mod guards_chirho;
-#[path = "infer_chirho/terms_chirho/matches_chirho.rs"]
+#[path = "infer_chirho/terms_chirho/matches_chirho/mod.rs"]
 mod matches_chirho;
 #[path = "infer_chirho/terms_chirho/pattern_bindings_chirho.rs"]
 mod pattern_bindings_chirho;
@@ -113,6 +149,9 @@ mod inferred_dictionary_owners_tests_chirho;
 #[path = "infer_chirho/tests_chirho/pattern_tests_chirho.rs"]
 mod pattern_tests_chirho;
 #[cfg(test)]
+#[path = "infer_chirho/tests_chirho/promotion_identity_tests_chirho.rs"]
+mod promotion_identity_tests_chirho;
+#[cfg(test)]
 #[path = "infer_chirho/tests_chirho/signature_newtype_tests_chirho.rs"]
 mod signature_newtype_tests_chirho;
 #[cfg(test)]
@@ -135,13 +174,62 @@ mod ast_conversion_chirho;
 mod ast_conversion_tests_chirho;
 #[path = "infer_chirho/types_chirho/ast_types_chirho.rs"]
 mod ast_types_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/checked_families_chirho.rs"]
+mod checked_families_chirho;
+pub(crate) use checked_families_chirho::{
+    CheckedFamilyAbstractionFailureChirho, CheckedFamilyTermsChirho,
+    abstract_checked_family_terms_with_budget_chirho,
+};
+#[path = "infer_chirho/types_chirho/families_chirho/closed_family_apartness_chirho.rs"]
+mod closed_family_apartness_chirho;
+pub(crate) use closed_family_apartness_chirho::{
+    FamilyHeadRoleChirho, FamilyUnificationLimitsChirho,
+    family_branches_compatible_with_budget_chirho,
+};
+#[cfg(test)]
+#[path = "infer_chirho/types_chirho/families_chirho/closed_family_apartness_tests_chirho.rs"]
+mod closed_family_apartness_tests_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/family_constructor_origins_chirho.rs"]
+mod family_constructor_origins_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/family_definitions_chirho.rs"]
+mod family_definitions_chirho;
+#[cfg(test)]
+#[path = "infer_chirho/types_chirho/families_chirho/family_reduction_budget_tests_chirho.rs"]
+mod family_reduction_budget_tests_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/family_reduction_chirho.rs"]
+mod family_reduction_chirho;
+#[cfg(test)]
+#[path = "infer_chirho/types_chirho/families_chirho/family_reduction_tests_chirho.rs"]
+mod family_reduction_tests_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/family_registration_chirho.rs"]
+mod family_registration_chirho;
+pub(crate) use family_registration_chirho::{
+    family_head_with_predeclared_chirho, held_equation_inputs_chirho,
+};
+#[cfg(test)]
+#[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/family_registration_tests_chirho.rs"]
+mod family_registration_tests_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/family_scope_chirho.rs"]
+mod family_scope_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/family_seeds_chirho.rs"]
+mod family_seeds_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/family_transport_chirho.rs"]
+mod family_transport_chirho;
+#[path = "infer_chirho/types_chirho/families_chirho/registration_chirho/source_family_registration_chirho.rs"]
+mod source_family_registration_chirho;
+#[path = "infer_chirho/types_chirho/synonym_expansion_chirho.rs"]
+mod synonym_expansion_chirho;
+#[cfg(test)]
+#[path = "infer_chirho/types_chirho/synonym_expansion_tests_chirho.rs"]
+mod synonym_expansion_tests_chirho;
 #[path = "infer_chirho/types_chirho/type_families_chirho.rs"]
 mod type_families_chirho;
 #[path = "infer_chirho/types_chirho/type_synonyms_chirho.rs"]
 mod type_synonyms_chirho;
 
 use ast_types_chirho::{
-    ast_type_to_syn_rhs_chirho, collect_free_type_vars_from_ast_chirho, mk_type_rep_ty_chirho,
+    ast_type_to_syn_rhs_chirho, collect_free_type_vars_from_ast_chirho, mk_proxy_ty_chirho,
+    mk_type_rep_ty_chirho,
 };
 use builtins_chirho::seed_builtins_chirho;
 pub use builtins_chirho::{
@@ -154,7 +242,7 @@ pub use evidence_chirho::{
 };
 use expressions_chirho::build_infix_app_expr_chirho;
 use fundep_generalization_chirho::{FundepGeneralizationChirho, GeneralizationScopeChirho};
-use type_families_chirho::{canonical_type_family_name_chirho, substitute_type_vars_chirho};
+use type_families_chirho::substitute_type_vars_chirho;
 use type_synonyms_chirho::{collect_app_spine_chirho, map_ty_chirho, subst_named_var_chirho};
 
 /// Error code range for type inference diagnostics.
@@ -189,10 +277,6 @@ const UNBOUND_CONSTRUCTOR_CODE_CHIRHO: u16 = 211;
 /// switch reaches, so it does not share the unsatisfied-constraint code (row 695).
 const DUPLICATE_INSTANCE_CODE_CHIRHO: u16 = 212;
 
-/// The signature converter's own invariant failed: an internal error, not a source type
-/// error, so it does not share the signature-mismatch code (row 695).
-const SIGNATURE_SCOPE_INVARIANT_CODE_CHIRHO: u16 = 213;
-
 /// A `RecordWildCards` construction field with no same-named variable in scope. It is not a
 /// solver type error, so it does not share the type-mismatch code (row 695).
 const RECORD_WILDCARD_FIELD_CODE_CHIRHO: u16 = 214;
@@ -222,7 +306,21 @@ pub const DEFERRABLE_TYPE_ERROR_CODES_CHIRHO: [ErrorCodeChirho; 5] = [
     ErrorCodeChirho::error_chirho(SIGNATURE_MISMATCH_CODE_CHIRHO),
 ];
 
-pub type TypeFamilyEnvChirho = HashMap<String, Vec<(Vec<TyChirho>, TyChirho)>>;
+pub use family_definitions_chirho::{
+    IntrinsicTypeFamilyChirho, TypeFamilyAliasResolutionChirho, TypeFamilyBranchChirho,
+    TypeFamilyBranchIdChirho, TypeFamilyDefinitionChirho, TypeFamilyDefinitionErrorChirho,
+    TypeFamilyIdChirho, TypeFamilyReductionChirho, TypeFamilyRegistryChirho,
+    is_type_family_key_chirho,
+};
+pub use family_scope_chirho::{TypeFamilyScopeChirho, TypeFamilyScopeResolutionChirho};
+pub use family_seeds_chirho::seed_type_family_registry_chirho;
+pub use family_transport_chirho::stamp_family_references_chirho;
+pub use source_family_registration_chirho::{
+    SourceFamilyRegistrationContextChirho, SourceFamilyRegistrationResultChirho,
+    predeclare_source_open_families_chirho, register_source_module_families_chirho,
+};
+
+pub type TypeFamilyEnvChirho = TypeFamilyRegistryChirho;
 
 /// The default equation of an associated type family, remembered on its
 /// class and instantiated for each instance that does not define the family
@@ -280,12 +378,18 @@ fn record_field_key_chirho(name_chirho: &NameChirho) -> String {
 /// Result of type inference on a module.
 #[derive(Debug)]
 pub struct InferResultChirho {
+    /// Resource failures cannot be accepted by -fdefer-type-errors. Consumers
+    /// must reject this channel before publishing environments or evidence.
+    pub non_deferrable_diagnostics_chirho: DiagnosticBundleChirho,
     /// The final substitution after inference.
     pub subst_chirho: SubstChirho,
     /// The type environment after inference (with all top-level bindings).
     pub env_chirho: TyEnvChirho,
     /// The class environment after inference.
     pub class_env_chirho: ClassEnvChirho,
+    /// Actual local instance declarations and their source spans, in registration
+    /// order. Equal spans retain every record; consumers must check the join.
+    pub source_instances_chirho: Vec<(SpanChirho, std::sync::Arc<InstDeclChirho>)>,
     /// Type family equations available after inferring this module.
     pub type_families_chirho: TypeFamilyEnvChirho,
     /// Diagnostics collected during inference.
@@ -314,6 +418,12 @@ pub struct InferResultChirho {
     /// holds generated references, whose placeholder span the span map skips.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub reference_evidence_by_origin_chirho: HashMap<OriginIdChirho, Vec<ReferenceEvidenceChirho>>,
+    /// The promoted-constructor scope inference used (row 686), so a later exporter
+    /// stamps this module's synonym right sides from it instead of re-resolving them.
+    pub promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
+    pub family_scope_chirho: Option<Arc<TypeFamilyScopeChirho>>,
+    pub type_constructor_scope_chirho:
+        Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
     /// One typed proof per GND instance that its methods have one representation at the
     /// newtype and at its representation (row 694). The frontend fills it after inference;
     /// the dictionary pass aliases a newtype's rows only with its proof.
@@ -344,15 +454,31 @@ pub struct MethodOccurrenceRecordChirho {
     pub ordinal_chirho: u32,
     pub class_name_chirho: String,
     pub ty_key_chirho: String,
+    /// The complete closed goal after final substitution and normalization.
+    /// Missing argument captures or an own dictionary never supply this proof.
+    pub ground_pred_chirho: Option<PredChirho>,
     pub span_chirho: SpanChirho,
     pub origin_chirho: Option<OriginIdChirho>,
     pub resolved_entry_chirho: Option<String>,
 }
 
+type LiteralCaptureChirho = (
+    SpanChirho,
+    Option<OriginIdChirho>,
+    String,
+    TyChirho,
+    Option<Arc<[PredChirho]>>,
+);
+
 /// The inference context — carries mutable state during inference.
 pub struct InferCtxChirho {
-    /// Fresh type variable counter.
-    next_var_chirho: u32,
+    non_deferrable_diagnostics_chirho: DiagnosticBundleChirho,
+    type_normalization_exhausted_chirho: std::cell::Cell<bool>,
+    type_validity_license_chirho: Option<crate::validity_chirho::LicenseChirho>,
+    definition_type_conversion_chirho: bool,
+    /// The original common solver, including its owner, supply and allowance,
+    /// continues through term inference. Legacy-only contexts remain unowned.
+    elaboration_state_chirho: crate::kind_chirho::elaboration_chirho::ElaborationStateChirho,
     /// Type environment (scoped).
     env_chirho: TyEnvChirho,
     /// Class environment (typeclasses and instances).
@@ -377,7 +503,7 @@ pub struct InferCtxChirho {
     occurrence_counters_chirho: HashMap<String, u32>,
     /// Literal evidence captures: (span, overloading class, literal type),
     /// finalized by `finalize_literal_evidence_chirho`.
-    literal_captures_chirho: Vec<(SpanChirho, Option<OriginIdChirho>, String, TyChirho)>,
+    literal_captures_chirho: Vec<LiteralCaptureChirho>,
     /// Reference evidence captures: (span, instantiated predicates in scheme
     /// order), finalized by `finalize_reference_evidence_chirho`.
     reference_captures_chirho: Vec<evidence_chirho::ReferenceCaptureChirho>,
@@ -403,6 +529,8 @@ pub struct InferCtxChirho {
     /// Type family environment: family name → list of equations (lhs patterns, rhs type).
     /// Each equation is (param type patterns as TyChirho, result TyChirho).
     type_families_chirho: TypeFamilyEnvChirho,
+    family_module_name_chirho: String,
+    family_scope_chirho: Option<Arc<TypeFamilyScopeChirho>>,
     /// ScopedTypeVariables: when inside a function body whose type signature has
     /// `forall a b.`, maps those names to their TyVarChirho so that where-clause
     /// type annotations and local signatures use the same type variables.
@@ -416,11 +544,15 @@ pub struct InferCtxChirho {
     /// scoped type variable of an enclosing signature reappears in an inner
     /// signature or annotation, so both name the same rigid constant.
     skolem_bindings_chirho: SubstChirho,
+    type_pattern_alias_undo_chirho: Vec<constructor_patterns_chirho::TypePatternAliasUndoChirho>,
     /// Skolems made while checking an instance method. They prove the method
     /// against its type; they are not the enclosing binding's own dictionary
     /// parameters, so evidence keys them as open, as the flexible variables
     /// they replaced were (`own_parameter_key_chirho`).
     instance_method_skolems_chirho: HashSet<String>,
+    /// One rigid instance method's own context, shared by its evidence captures.
+    /// Method-local predicates are not parameters of the instance row.
+    active_instance_context_chirho: Option<Arc<[PredChirho]>>,
     /// Whether ScopedTypeVariables is in effect for the module: an explicit
     /// `forall` (or an instance head) then scopes its binders over the body.
     scoped_type_variables_chirho: bool,
@@ -443,7 +575,14 @@ pub struct InferCtxChirho {
     /// Wanted equalities that could not be decided yet because a type-family
     /// application on one side is stuck on an unsolved variable; retried when
     /// givens change and at the end of the module.
-    deferred_equalities_chirho: Vec<(TyChirho, TyChirho, SpanChirho)>,
+    deferred_equalities_chirho: Vec<equality_scopes_chirho::WantedEqualityChirho>,
+    equality_scopes_chirho: Vec<equality_scopes_chirho::EqualityScopeChirho>,
+    active_equality_scope_chirho: usize,
+    equality_substitutions_chirho: SubstChirho,
+    equality_generalizing_owners_chirho: HashSet<usize>,
+    equality_pattern_depth_chirho: usize,
+    equality_substitution_events_chirho: Vec<TyVarChirho>,
+    equality_substitution_events_exhausted_chirho: bool,
     /// Source spelling of type variables introduced from signatures, so
     /// skolems and diagnostics carry the programmer's names.
     tyvar_source_names_chirho: HashMap<TyVarChirho, String>,
@@ -474,6 +613,22 @@ pub struct InferCtxChirho {
     /// never declare an instance of a class it cannot see, so for these — and
     /// only these — "no potentially matching instance" is a sound rejection.
     fully_known_class_names_chirho: HashSet<String>,
+    /// The new hidden-prefix certificate also requires an actual import-boundary
+    /// proof: home/SOURCE cycles may add instances of a locally declared class.
+    local_class_prefix_instances_complete_chirho: bool,
+    /// The class names the standard seed itself produced, captured beside the fully-known set.
+    /// An ordinary import never clears it: only a whole-environment replacement does, and a
+    /// source declaration of a class removes that name. Base declares no bare-variable instance
+    /// head for these classes; an orphan universal instance in an uncompiled package is the
+    /// explicit boundary (row 686, C08).
+    seeded_class_names_chirho: HashSet<String>,
+    /// Whether a pattern has matched a constructor whose context or refined result the checker
+    /// does not install as local evidence. Once set it stays set for the module, and every later
+    /// signature-scope closure stays off, nested scopes included (row 686, C08).
+    unmodeled_pattern_evidence_seen_chirho: bool,
+    /// Constructors whose written GADT type carries a leading context. Their schemes drop
+    /// it, so a pattern on one brings evidence the checker does not install (row 686, C08).
+    context_constructors_chirho: HashSet<String>,
     /// Whether the class constraints we generate for this module faithfully
     /// reflect the source. Cleared by extensions whose constraints we are
     /// known to mis-generate, so no unsolvable verdict is reached on a wanted
@@ -488,6 +643,13 @@ pub struct InferCtxChirho {
     safe_unqualified_imported_type_names_chirho: HashSet<String>,
     /// Canonical module qualifiers for imported type constructors.
     preferred_qualified_type_names_chirho: HashMap<String, String>,
+    /// The module's promoted-constructor scope from naming (row 686). `None` for a
+    /// direct caller that never ran naming: promoted spellings then keep their legacy
+    /// form, which is not the corrected identity.
+    /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
+    type_constructor_scope_chirho:
+        Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -558,6 +720,18 @@ fn is_placeholder_import_scheme_chirho(scheme_chirho: &SchemeChirho) -> bool {
     if !scheme_chirho.preds_chirho.is_empty() || scheme_chirho.vars_chirho.len() != 1 {
         return false;
     }
+    if scheme_chirho
+        .vars_chirho
+        .records_chirho()
+        .iter()
+        .any(|record_chirho| {
+            record_chirho.kind_chirho.is_some()
+                || record_chirho.source_chirho.is_some()
+                || record_chirho.specificity_chirho.is_some()
+        })
+    {
+        return false;
+    }
     match &scheme_chirho.ty_chirho {
         TyChirho::VarChirho(var_chirho) => {
             *var_chirho == scheme_chirho.vars_chirho[0] && var_chirho.0 >= 9000
@@ -576,7 +750,7 @@ pub fn infer_module_with_imports_and_type_synonyms_chirho(
     safe_unqualified_imported_type_names_chirho: &HashSet<String>,
     preferred_qualified_type_names_chirho: &HashMap<String, String>,
 ) -> InferResultChirho {
-    let imported_type_families_chirho = TypeFamilyEnvChirho::new();
+    let imported_type_families_chirho = TypeFamilyEnvChirho::new_chirho();
     infer_module_with_imports_type_synonyms_and_families_chirho(
         module_chirho,
         imported_types_chirho,
@@ -610,6 +784,8 @@ pub fn infer_module_with_imports_type_synonyms_and_families_chirho(
     )
 }
 
+/// Compatibility entry for callers that never ran naming: no promoted-constructor
+/// scope, so promoted spellings keep their legacy form.
 pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     module_chirho: &ModuleChirho,
     imported_types_chirho: &HashMap<String, SchemeChirho>,
@@ -620,12 +796,128 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     safe_unqualified_imported_type_names_chirho: &HashSet<String>,
     preferred_qualified_type_names_chirho: &HashMap<String, String>,
 ) -> InferResultChirho {
+    infer_module_with_import_context_chirho(
+        module_chirho,
+        InferenceImportContextChirho {
+            unary_variable_instance_heads_covered_chirho: false,
+            local_class_prefix_instances_complete_chirho: false,
+            imported_types_chirho,
+            selected_imported_value_schemes_chirho: Vec::new(),
+            imported_type_synonyms_chirho,
+            imported_type_families_chirho,
+            imported_class_env_chirho,
+            imported_record_field_names_chirho,
+            unavailable_selectors_chirho: &HashSet::new(),
+            safe_unqualified_imported_type_names_chirho,
+            preferred_qualified_type_names_chirho,
+            promotion_scope_chirho: None,
+            family_scope_chirho: None,
+            type_constructor_scope_chirho: None,
+        },
+    )
+}
+
+/// What a module's inference brings in from the rest of the program, borrowed for one
+/// call, with the module's own promoted-constructor scope from naming.
+/// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+pub struct InferenceImportContextChirho<'imports_chirho> {
+    /// Meet of the actual selected interface producers, independent of name lists.
+    pub unary_variable_instance_heads_covered_chirho: bool,
+    /// All selected imports are admitted external-package interfaces, which
+    /// cannot refer back to a new local class. Home/unknown graphs supply no
+    /// completeness proof until their instance records are transported.
+    pub local_class_prefix_instances_complete_chirho: bool,
+    pub imported_types_chirho: &'imports_chirho HashMap<String, SchemeChirho>,
+    /// Actual import-selected spellings and their complete schemes, consumed once
+    /// after broad compatibility seeds. Unknown is a binding, not builtin authority.
+    pub selected_imported_value_schemes_chirho: Vec<(String, SchemeChirho)>,
+    pub imported_type_synonyms_chirho: &'imports_chirho HashMap<String, (Vec<String>, TypeChirho)>,
+    pub imported_type_families_chirho: &'imports_chirho TypeFamilyEnvChirho,
+    pub imported_class_env_chirho: &'imports_chirho ClassEnvChirho,
+    /// Exact admitted spellings that are field labels without callable selectors.
+    pub unavailable_selectors_chirho: &'imports_chirho HashSet<String>,
+    pub imported_record_field_names_chirho: &'imports_chirho HashMap<String, Vec<String>>,
+    pub safe_unqualified_imported_type_names_chirho: &'imports_chirho HashSet<String>,
+    pub preferred_qualified_type_names_chirho: &'imports_chirho HashMap<String, String>,
+    /// `None` when naming did not run; see `InferCtxChirho::promotion_scope_chirho`.
+    pub promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
+    pub family_scope_chirho: Option<Arc<TypeFamilyScopeChirho>>,
+    pub type_constructor_scope_chirho:
+        Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
+}
+
+/// Run type inference on a module with everything it imports.
+pub fn infer_module_with_import_context_chirho(
+    module_chirho: &ModuleChirho,
+    context_chirho: InferenceImportContextChirho<'_>,
+) -> InferResultChirho {
+    infer_module_with_elaboration_state_chirho(module_chirho, context_chirho, None)
+}
+
+/// Adopt the checked module's exact kind/type variable owner, supply and substitution.
+/// Workflow: language-features-chirho/declaration-kinds-chirho.
+pub fn infer_elaborated_module_chirho(
+    module_chirho: &ModuleChirho,
+    context_chirho: InferenceImportContextChirho<'_>,
+    state_chirho: crate::kind_chirho::elaboration_chirho::ElaborationStateChirho,
+) -> InferResultChirho {
+    infer_module_with_elaboration_state_chirho(module_chirho, context_chirho, Some(state_chirho))
+}
+
+fn infer_module_with_elaboration_state_chirho(
+    module_chirho: &ModuleChirho,
+    context_chirho: InferenceImportContextChirho<'_>,
+    state_chirho: Option<crate::kind_chirho::elaboration_chirho::ElaborationStateChirho>,
+) -> InferResultChirho {
+    let InferenceImportContextChirho {
+        unary_variable_instance_heads_covered_chirho,
+        local_class_prefix_instances_complete_chirho,
+        imported_types_chirho,
+        selected_imported_value_schemes_chirho,
+        imported_type_synonyms_chirho,
+        imported_type_families_chirho,
+        imported_class_env_chirho,
+        imported_record_field_names_chirho,
+        unavailable_selectors_chirho,
+        safe_unqualified_imported_type_names_chirho,
+        preferred_qualified_type_names_chirho,
+        promotion_scope_chirho,
+        family_scope_chirho,
+        type_constructor_scope_chirho,
+    } = context_chirho;
     let mut ctx_chirho =
         InferCtxChirho::new_with_imported_class_env_chirho(imported_class_env_chirho);
+    ctx_chirho.local_class_prefix_instances_complete_chirho =
+        local_class_prefix_instances_complete_chirho;
+    ctx_chirho
+        .class_env_chirho
+        .restrict_unary_variable_instance_coverage_chirho(
+            unary_variable_instance_heads_covered_chirho,
+        );
+    if ctx_chirho.has_non_deferrable_failure_chirho() {
+        return ctx_chirho.finish_chirho();
+    }
+    if let Some(state_chirho) = state_chirho {
+        ctx_chirho.adopt_elaboration_state_chirho(state_chirho);
+    }
+    if ctx_chirho.has_non_deferrable_failure_chirho() {
+        return ctx_chirho.finish_chirho();
+    }
     ctx_chirho.set_imported_type_name_preferences_chirho(
         safe_unqualified_imported_type_names_chirho,
         preferred_qualified_type_names_chirho,
     );
+    ctx_chirho.promotion_scope_chirho = promotion_scope_chirho;
+    ctx_chirho.type_constructor_scope_chirho = type_constructor_scope_chirho;
+    if let Err(error_chirho) = ctx_chirho
+        .type_families_chirho
+        .merge_chirho(imported_type_families_chirho)
+    {
+        ctx_chirho
+            .family_registration_error_chirho(error_chirho.to_string(), SpanChirho::DUMMY_CHIRHO);
+    }
+    ctx_chirho.prepare_family_scope_chirho(module_chirho, family_scope_chirho);
+    ctx_chirho.verify_imported_open_families_chirho();
     ctx_chirho.overloaded_strings_chirho = module_chirho
         .extensions_chirho
         .iter()
@@ -636,21 +928,29 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     // runs of the same binary on the same source. Sort by key so the order is a
     // function of the program, not of the hasher.
     // See spec-chirho/bug-nondeterministic-typecheck-chirho.md
+    // An imported right side is resolved by its exporter: its names carry the stamps.
+    // Under a scope it still converts keyed (compiler nil and cons), with nothing to
+    // resolve locally.
+    let imported_promotion_scope_chirho = ctx_chirho
+        .promotion_scope_chirho
+        .as_ref()
+        .map(|_| PromotionScopeChirho::default());
     let mut sorted_type_synonyms_chirho: Vec<_> = imported_type_synonyms_chirho.iter().collect();
     sorted_type_synonyms_chirho.sort_by(|a_chirho, b_chirho| a_chirho.0.cmp(b_chirho.0));
     for (name_chirho, (params_chirho, rhs_ast_chirho)) in sorted_type_synonyms_chirho {
-        let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_ast_chirho, params_chirho);
+        if ctx_chirho.uses_checked_declaration_chirho(name_chirho) {
+            continue;
+        }
+        let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(
+            rhs_ast_chirho,
+            params_chirho,
+            imported_promotion_scope_chirho.as_ref(),
+        );
         ctx_chirho.register_type_synonym_chirho(
             name_chirho.clone(),
             params_chirho.clone(),
             rhs_ty_chirho,
         );
-    }
-    let mut sorted_type_families_chirho: Vec<_> = imported_type_families_chirho.iter().collect();
-    sorted_type_families_chirho.sort_by(|a_chirho, b_chirho| a_chirho.0.cmp(b_chirho.0));
-    for (family_name_chirho, equations_chirho) in sorted_type_families_chirho {
-        ctx_chirho
-            .register_type_family_chirho(family_name_chirho.clone(), equations_chirho.clone());
     }
     // Seed the type environment with imported type schemes, but only if
     // placeholder imports do not override precise built-ins, while real
@@ -671,6 +971,15 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
                 .bind_chirho(name_chirho.clone(), scheme_chirho.clone());
         }
     }
+    // Naming-selected bindings win over generic seeds even when their checked
+    // type payload is absent. Consume the full Scheme in the existing arena;
+    // no origin-only permission or second lookup state survives this handoff.
+    // Workflow: compiler-pipeline-chirho/builtin-type-environment-chirho.
+    for (name_chirho, scheme_chirho) in selected_imported_value_schemes_chirho {
+        ctx_chirho
+            .env_chirho
+            .bind_chirho(name_chirho, scheme_chirho);
+    }
     let mut sorted_record_fields_chirho: Vec<_> =
         imported_record_field_names_chirho.iter().collect();
     sorted_record_fields_chirho.sort_by(|a_chirho, b_chirho| a_chirho.0.cmp(b_chirho.0));
@@ -679,7 +988,13 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
             .con_field_names_chirho
             .insert(constructor_name_chirho.clone(), field_names_chirho.clone());
     }
+    for name_chirho in unavailable_selectors_chirho {
+        ctx_chirho.env_chirho.mask_chirho(name_chirho.clone());
+    }
     let subst_chirho = ctx_chirho.infer_module_chirho(module_chirho);
+    if ctx_chirho.has_non_deferrable_failure_chirho() {
+        return ctx_chirho.finish_chirho();
+    }
     let default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
     if !default_subst_chirho.is_empty_chirho() {
         ctx_chirho.apply_subst_all_chirho(&default_subst_chirho);
@@ -696,6 +1011,15 @@ pub fn infer_module_with_imports_type_synonyms_families_and_class_env_chirho(
     let (reference_evidence_chirho, reference_evidence_by_origin_chirho) =
         ctx_chirho.finalize_reference_evidence_chirho(&composed_subst_chirho);
     let mut result_chirho = ctx_chirho.finish_chirho();
+    // Promoted keys are the checker's identities; people read the constructors (row 686).
+    // workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    result_chirho
+        .diagnostics_chirho
+        .map_text_chirho(readable_promoted_keys_chirho);
+    let families_chirho = &result_chirho.type_families_chirho;
+    result_chirho
+        .diagnostics_chirho
+        .map_text_chirho(|text_chirho| families_chirho.readable_keys_chirho(text_chirho));
     result_chirho.subst_chirho = composed_subst_chirho;
     result_chirho.method_occurrences_chirho = method_occurrences_chirho;
     result_chirho.method_occurrence_totals_chirho = method_occurrence_totals_chirho;

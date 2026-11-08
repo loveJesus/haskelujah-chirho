@@ -185,20 +185,38 @@ fn lower_type_alias_rhs_stops_before_next_signature_chirho() {
         match constraint_chirho {
             ConstraintChirho::ClassChirho {
                 class_chirho,
+                kind_args_chirho,
                 args_chirho,
                 ..
             } => {
                 class_chirho.text_chirho() == wanted_chirho
-                    || args_chirho
+                    || kind_args_chirho
                         .iter()
+                        .chain(args_chirho)
                         .any(|arg_chirho| type_contains_name_chirho(arg_chirho, wanted_chirho))
             }
+            ConstraintChirho::KindAnnotationChirho {
+                constraint_chirho,
+                kind_chirho,
+                ..
+            } => {
+                constraint_contains_name_chirho(constraint_chirho, wanted_chirho)
+                    || type_contains_name_chirho(kind_chirho, wanted_chirho)
+            }
             ConstraintChirho::QuantifiedChirho {
+                vars_chirho,
                 context_chirho,
                 body_chirho,
                 ..
             } => {
-                context_chirho.iter().any(|constraint_chirho| {
+                vars_chirho.iter().any(|binder_chirho| {
+                    binder_chirho
+                        .kind_annotation_chirho
+                        .as_deref()
+                        .is_some_and(|kind_chirho| {
+                            type_contains_name_chirho(kind_chirho, wanted_chirho)
+                        })
+                }) || context_chirho.iter().any(|constraint_chirho| {
                     constraint_contains_name_chirho(constraint_chirho, wanted_chirho)
                 }) || constraint_contains_name_chirho(body_chirho, wanted_chirho)
             }
@@ -216,9 +234,22 @@ fn lower_type_alias_rhs_stops_before_next_signature_chirho() {
                 fun_chirho,
                 arg_chirho,
                 ..
+            }
+            | TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
             } => {
                 type_contains_name_chirho(fun_chirho, wanted_chirho)
                     || type_contains_name_chirho(arg_chirho, wanted_chirho)
+            }
+            TypeChirho::KindAnnotationChirho {
+                ty_chirho,
+                kind_chirho,
+                ..
+            } => {
+                type_contains_name_chirho(ty_chirho, wanted_chirho)
+                    || type_contains_name_chirho(kind_chirho, wanted_chirho)
             }
             TypeChirho::FunChirho {
                 arg_chirho,
@@ -250,9 +281,24 @@ fn lower_type_alias_rhs_stops_before_next_signature_chirho() {
                     constraint_contains_name_chirho(constraint_chirho, wanted_chirho)
                 }) || type_contains_name_chirho(body_chirho, wanted_chirho)
             }
-            TypeChirho::ForallChirho { body_chirho, .. }
-            | TypeChirho::RequiredForallChirho { body_chirho, .. } => {
-                type_contains_name_chirho(body_chirho, wanted_chirho)
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            }
+            | TypeChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            } => {
+                vars_chirho.iter().any(|binder_chirho| {
+                    binder_chirho
+                        .kind_annotation_chirho
+                        .as_deref()
+                        .is_some_and(|kind_chirho| {
+                            type_contains_name_chirho(kind_chirho, wanted_chirho)
+                        })
+                }) || type_contains_name_chirho(body_chirho, wanted_chirho)
             }
             TypeChirho::WildcardChirho { .. } | TypeChirho::LitChirho { .. } => false,
         }
@@ -747,7 +793,50 @@ fn lower_qualified_symbol_type_operator_keeps_operator_head_chirho() {
                 args_chirho.push(arg_chirho);
                 collect_type_spine_chirho(fun_chirho, args_chirho)
             }
+            TypeChirho::KindApplicationChirho { fun_chirho, .. } => {
+                collect_type_spine_chirho(fun_chirho, args_chirho)
+            }
+            TypeChirho::KindAnnotationChirho { ty_chirho, .. } => {
+                collect_type_spine_chirho(ty_chirho, args_chirho)
+            }
             _ => ty_chirho,
+        }
+    }
+
+    fn constraint_contains_l_star_head_chirho(constraint_chirho: &ConstraintChirho) -> bool {
+        match constraint_chirho {
+            ConstraintChirho::ClassChirho {
+                kind_args_chirho,
+                args_chirho,
+                ..
+            } => kind_args_chirho
+                .iter()
+                .chain(args_chirho)
+                .any(contains_l_star_head_chirho),
+            ConstraintChirho::KindAnnotationChirho {
+                constraint_chirho,
+                kind_chirho,
+                ..
+            } => {
+                constraint_contains_l_star_head_chirho(constraint_chirho)
+                    || contains_l_star_head_chirho(kind_chirho)
+            }
+            ConstraintChirho::QuantifiedChirho {
+                vars_chirho,
+                context_chirho,
+                body_chirho,
+                ..
+            } => {
+                vars_chirho.iter().any(|binder_chirho| {
+                    binder_chirho
+                        .kind_annotation_chirho
+                        .as_deref()
+                        .is_some_and(contains_l_star_head_chirho)
+                }) || context_chirho
+                    .iter()
+                    .any(constraint_contains_l_star_head_chirho)
+                    || constraint_contains_l_star_head_chirho(body_chirho)
+            }
         }
     }
 
@@ -766,7 +855,17 @@ fn lower_qualified_symbol_type_operator_keeps_operator_head_chirho() {
                 fun_chirho,
                 arg_chirho,
                 ..
+            }
+            | TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
             } => contains_l_star_head_chirho(fun_chirho) || contains_l_star_head_chirho(arg_chirho),
+            TypeChirho::KindAnnotationChirho {
+                ty_chirho,
+                kind_chirho,
+                ..
+            } => contains_l_star_head_chirho(ty_chirho) || contains_l_star_head_chirho(kind_chirho),
             TypeChirho::FunChirho {
                 arg_chirho,
                 result_chirho,
@@ -783,10 +882,32 @@ fn lower_qualified_symbol_type_operator_keeps_operator_head_chirho() {
                 inner_chirho: element_chirho,
                 ..
             } => contains_l_star_head_chirho(element_chirho),
-            TypeChirho::QualChirho { body_chirho, .. }
-            | TypeChirho::ForallChirho { body_chirho, .. }
-            | TypeChirho::RequiredForallChirho { body_chirho, .. } => {
-                contains_l_star_head_chirho(body_chirho)
+            TypeChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+                ..
+            } => {
+                context_chirho
+                    .iter()
+                    .any(constraint_contains_l_star_head_chirho)
+                    || contains_l_star_head_chirho(body_chirho)
+            }
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            }
+            | TypeChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            } => {
+                vars_chirho.iter().any(|binder_chirho| {
+                    binder_chirho
+                        .kind_annotation_chirho
+                        .as_deref()
+                        .is_some_and(contains_l_star_head_chirho)
+                }) || contains_l_star_head_chirho(body_chirho)
             }
             TypeChirho::PromotedListChirho {
                 elements_chirho, ..

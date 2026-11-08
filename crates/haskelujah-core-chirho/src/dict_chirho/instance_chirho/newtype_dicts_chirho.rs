@@ -172,9 +172,12 @@ impl DictPassCtxChirho {
     /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     fn generate_parametric_gnd_factories_chirho(&mut self, class_env_chirho: &ClassEnvChirho) {
         let mut parametric_chirho: Vec<(String, String)> = Vec::new();
-        let mut multi_heads_chirho: Vec<(String, String, InstDeclChirho)> = Vec::new();
-        for (class_name_chirho, instances_chirho) in &class_env_chirho.instances_chirho {
-            for inst_chirho in instances_chirho {
+        let mut multi_heads_chirho: Vec<(String, String, std::sync::Arc<InstDeclChirho>)> =
+            Vec::new();
+        for (class_name_chirho, instances_chirho) in
+            class_env_chirho.instances_chirho().iter_chirho()
+        {
+            for inst_chirho in instances_chirho.iter_chirho() {
                 if let Some(newtype_chirho) =
                     self.parametric_gnd_newtype_chirho(class_name_chirho, inst_chirho)
                 {
@@ -414,9 +417,9 @@ impl DictPassCtxChirho {
             return None;
         }
         let inst_chirho = class_env_chirho
-            .instances_chirho
-            .get(class_name_chirho)?
-            .iter()
+            .instances_chirho()
+            .get_chirho(class_name_chirho)?
+            .iter_chirho()
             .find(|inst_chirho| {
                 self.parametric_gnd_newtype_chirho(class_name_chirho, inst_chirho)
                     == Some(newtype_chirho)
@@ -552,9 +555,9 @@ impl DictPassCtxChirho {
         representation_chirho: CoreIdChirho,
         building_chirho: &mut Vec<(String, String)>,
     ) -> Result<CoreExprChirho, String> {
-        let own_chirho: Vec<&InstDeclChirho> = class_env_chirho
-            .instances_chirho
-            .get(super_name_chirho)
+        let own_chirho: Vec<&std::sync::Arc<InstDeclChirho>> = class_env_chirho
+            .instances_chirho()
+            .get_chirho(super_name_chirho)
             .into_iter()
             .flatten()
             .filter(|inst_chirho| {
@@ -617,11 +620,13 @@ impl DictPassCtxChirho {
     /// Every GND instance the class environment holds, in (class, newtype) order.
     fn gnd_pairs_chirho(&self, class_env_chirho: &ClassEnvChirho) -> Vec<GndPairChirho> {
         let mut pairs_chirho = Vec::new();
-        for (class_name_chirho, instances_chirho) in &class_env_chirho.instances_chirho {
+        for (class_name_chirho, instances_chirho) in
+            class_env_chirho.instances_chirho().iter_chirho()
+        {
             let Some(layout_chirho) = self.layouts_chirho.get(class_name_chirho) else {
                 continue;
             };
-            for inst_chirho in instances_chirho {
+            for inst_chirho in instances_chirho.iter_chirho() {
                 // A multi-parameter GND instance is a factory by its whole head, never a pair
                 // keyed by its first argument (row 694, #31909).
                 if !inst_chirho.extra_head_tys_chirho.is_empty() {
@@ -799,9 +804,9 @@ impl DictPassCtxChirho {
             .strip_prefix('[')?
             .strip_suffix(']')?;
         let context_classes_chirho: Vec<String> = class_env_chirho
-            .instances_chirho
-            .get(&pair_chirho.class_chirho)?
-            .iter()
+            .instances_chirho()
+            .get_chirho(&pair_chirho.class_chirho)?
+            .iter_chirho()
             .find(|inst_chirho| {
                 !inst_chirho.context_chirho.is_empty()
                     && matches!(inst_chirho.head_ty_chirho, TyChirho::ListChirho(_))

@@ -52,18 +52,34 @@ impl InferCtxChirho {
         let resolved_given_preds_chirho: Vec<PredChirho> = self
             .given_preds_chirho
             .iter()
-            .map(|pred_chirho| PredChirho {
-                class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                ty_chirho: self.normalize_ty_chirho(
-                    &final_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                ),
-                extra_tys_chirho: pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|t_chirho| {
-                        self.normalize_ty_chirho(&final_subst_chirho.apply_ty_chirho(t_chirho))
-                    })
-                    .collect(),
+            .map(|pred_chirho| {
+                PredChirho::from_proof_chirho(
+                    pred_chirho.class_identity_chirho().clone(),
+                    crate::class_chirho::PredPartsChirho {
+                        kind_tys_chirho: pred_chirho
+                            .kind_tys_chirho
+                            .iter()
+                            .map(|kind_chirho| {
+                                self.normalize_ty_chirho(
+                                    &final_subst_chirho.apply_ty_chirho(kind_chirho),
+                                )
+                            })
+                            .collect(),
+                        class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                        ty_chirho: self.normalize_ty_chirho(
+                            &final_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                        ),
+                        extra_tys_chirho: pred_chirho
+                            .extra_tys_chirho
+                            .iter()
+                            .map(|t_chirho| {
+                                self.normalize_ty_chirho(
+                                    &final_subst_chirho.apply_ty_chirho(t_chirho),
+                                )
+                            })
+                            .collect(),
+                    },
+                )
             })
             .collect();
 
@@ -111,17 +127,34 @@ impl InferCtxChirho {
                 .into_iter()
                 .map(|t_chirho| self.normalize_ty_chirho(&t_chirho))
                 .collect();
-            let mut resolved_pred_chirho = PredChirho {
-                class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                ty_chirho: resolved_ty_chirho,
-                extra_tys_chirho: resolved_extra_tys_chirho,
-            };
+            let mut resolved_pred_chirho = PredChirho::from_proof_chirho(
+                pred_chirho.class_identity_chirho().clone(),
+                crate::class_chirho::PredPartsChirho {
+                    kind_tys_chirho: pred_chirho
+                        .kind_tys_chirho
+                        .iter()
+                        .map(|kind_chirho| {
+                            self.normalize_ty_chirho(
+                                &final_subst_chirho.apply_ty_chirho(kind_chirho),
+                            )
+                        })
+                        .collect(),
+                    class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                    ty_chirho: resolved_ty_chirho,
+                    extra_tys_chirho: resolved_extra_tys_chirho,
+                },
+            );
 
             // Apply functional dependency improvement
             let improvement_chirho = self
                 .class_env_chirho
                 .fundep_improve_chirho(&resolved_pred_chirho);
             if !improvement_chirho.is_empty_chirho() {
+                resolved_pred_chirho.kind_tys_chirho = resolved_pred_chirho
+                    .kind_tys_chirho
+                    .iter()
+                    .map(|kind_chirho| improvement_chirho.apply_ty_chirho(kind_chirho))
+                    .collect();
                 resolved_pred_chirho.ty_chirho =
                     improvement_chirho.apply_ty_chirho(&resolved_pred_chirho.ty_chirho);
                 resolved_pred_chirho.extra_tys_chirho = resolved_pred_chirho
@@ -283,15 +316,23 @@ impl InferCtxChirho {
             if integral_bounded_integer_default_chirho {
                 continue;
             }
-            let defaulted_pred_chirho = PredChirho {
-                class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                ty_chirho: default_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                extra_tys_chirho: pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|t_chirho| default_subst_chirho.apply_ty_chirho(t_chirho))
-                    .collect(),
-            };
+            let defaulted_pred_chirho = PredChirho::from_proof_chirho(
+                pred_chirho.class_identity_chirho().clone(),
+                crate::class_chirho::PredPartsChirho {
+                    kind_tys_chirho: pred_chirho
+                        .kind_tys_chirho
+                        .iter()
+                        .map(|kind_chirho| default_subst_chirho.apply_ty_chirho(kind_chirho))
+                        .collect(),
+                    class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                    ty_chirho: default_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                    extra_tys_chirho: pred_chirho
+                        .extra_tys_chirho
+                        .iter()
+                        .map(|t_chirho| default_subst_chirho.apply_ty_chirho(t_chirho))
+                        .collect(),
+                },
+            );
 
             // workflow: language-features-chirho/fundep-generalization-chirho
             if self.report_unsatisfiable_fundep_wanted_chirho(
@@ -314,19 +355,25 @@ impl InferCtxChirho {
             // instance list IS the whole universe. Apply the final
             // substitution to extras too (apply_subst_all_chirho maintains
             // only the primary type during inference).
-            let fully_resolved_pred_chirho = PredChirho {
-                class_name_chirho: defaulted_pred_chirho.class_name_chirho.clone(),
-                ty_chirho: final_subst_chirho.apply_ty_chirho(&defaulted_pred_chirho.ty_chirho),
-                extra_tys_chirho: defaulted_pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|t_chirho| final_subst_chirho.apply_ty_chirho(t_chirho))
-                    .collect(),
-            };
-            // The final ground verdict, shared with generalization and instance methods: GHC's
-            // "No instance for", or the named gap of an undecided superclass search (#31984).
+            let fully_resolved_pred_chirho = PredChirho::from_proof_chirho(
+                defaulted_pred_chirho.class_identity_chirho().clone(),
+                crate::class_chirho::PredPartsChirho {
+                    kind_tys_chirho: defaulted_pred_chirho
+                        .kind_tys_chirho
+                        .iter()
+                        .map(|kind_chirho| final_subst_chirho.apply_ty_chirho(kind_chirho))
+                        .collect(),
+                    class_name_chirho: defaulted_pred_chirho.class_name_chirho.clone(),
+                    ty_chirho: final_subst_chirho.apply_ty_chirho(&defaulted_pred_chirho.ty_chirho),
+                    extra_tys_chirho: defaulted_pred_chirho
+                        .extra_tys_chirho
+                        .iter()
+                        .map(|t_chirho| final_subst_chirho.apply_ty_chirho(t_chirho))
+                        .collect(),
+                },
+            );
             if self
-                .report_certainly_unsolvable_ground_chirho(&fully_resolved_pred_chirho, span_chirho)
+                .report_certainly_unsolvable_wanted_chirho(&fully_resolved_pred_chirho, span_chirho)
             {
                 continue;
             }
@@ -335,13 +382,13 @@ impl InferCtxChirho {
             // the same module, or given constraints from type signatures.
             let has_instances_chirho = self
                 .class_env_chirho
-                .instances_chirho
-                .get(&defaulted_pred_chirho.class_name_chirho)
-                .is_some_and(|insts_chirho| !insts_chirho.is_empty());
+                .instances_chirho()
+                .get_chirho(&defaulted_pred_chirho.class_name_chirho)
+                .is_some_and(|insts_chirho| !insts_chirho.is_empty_chirho());
             if !has_instances_chirho {
                 continue;
             }
-            if Self::pred_mentions_rigid_chirho(&defaulted_pred_chirho) {
+            if self.pred_mentions_rigid_chirho(&defaulted_pred_chirho) {
                 // A wanted over a rigid signature variable was not discharged
                 // by the signature's givens. Report it only when no instance
                 // could ever apply (see rigid_pred_certainly_undeducible_chirho).

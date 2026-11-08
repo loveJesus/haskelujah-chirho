@@ -4,7 +4,9 @@
 //! comprehensions.
 //! Part of CST-to-AST lowering (`lower_chirho.rs`), split by category in row 641.
 
-use haskelujah_ast_chirho::expr_chirho::{ExprChirho, StmtChirho};
+use haskelujah_ast_chirho::expr_chirho::{
+    ComprehensionQualifierChirho, ComprehensionTransformChirho, ExprChirho, StmtChirho,
+};
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_span_chirho::SpanChirho;
@@ -403,8 +405,8 @@ impl LowerCtxChirho {
                 // Collect qualifier parts: each group separated by commas
                 // is either a generator (contains LeftArrowChirho) or a guard.
                 let mut current_qual_parts_chirho: Vec<QualPartChirho> = Vec::new();
-                let mut current_qual_group_chirho: Vec<StmtChirho> = Vec::new();
-                let mut qual_groups_chirho: Vec<Vec<StmtChirho>> = Vec::new();
+                let mut current_qual_group_chirho: Vec<ComprehensionQualifierChirho> = Vec::new();
+                let mut qual_groups_chirho: Vec<Vec<ComprehensionQualifierChirho>> = Vec::new();
 
                 for child_chirho in &children_chirho {
                     match child_chirho.element_chirho {
@@ -418,10 +420,11 @@ impl LowerCtxChirho {
                             if tok_chirho.kind_chirho() == TokenKindChirho::PipeChirho
                                 && past_pipe_chirho =>
                         {
-                            if let Some(qual_chirho) = self
-                                .flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
-                            {
-                                current_qual_group_chirho.push(qual_chirho);
+                            if let Some(qual_chirho) = self.flush_qual_parts_chirho(
+                                &mut current_qual_parts_chirho,
+                                span_chirho,
+                            ) {
+                                current_qual_group_chirho.push(qual_chirho.into());
                             }
                             current_qual_parts_chirho.clear();
                             if !current_qual_group_chirho.is_empty() {
@@ -434,10 +437,11 @@ impl LowerCtxChirho {
                                 && past_pipe_chirho =>
                         {
                             // Flush current qualifier
-                            if let Some(qual_chirho) = self
-                                .flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
-                            {
-                                current_qual_group_chirho.push(qual_chirho);
+                            if let Some(qual_chirho) = self.flush_qual_parts_chirho(
+                                &mut current_qual_parts_chirho,
+                                span_chirho,
+                            ) {
+                                current_qual_group_chirho.push(qual_chirho.into());
                             }
                             current_qual_parts_chirho.clear();
                         }
@@ -470,24 +474,42 @@ impl LowerCtxChirho {
                                 let expr_chirho =
                                     self.lower_expr_chirho(n_chirho, child_chirho.start_chirho);
                                 body_expr_chirho = Some(expr_chirho);
-                            } else if n_chirho.kind_chirho() == SyntaxKindChirho::LetStmtChirho {
+                            } else if n_chirho.kind_chirho()
+                                == SyntaxKindChirho::ComprehensionTransformChirho
+                            {
                                 if let Some(qual_chirho) = self.flush_qual_parts_chirho(
-                                    &current_qual_parts_chirho,
+                                    &mut current_qual_parts_chirho,
                                     span_chirho,
                                 ) {
-                                    current_qual_group_chirho.push(qual_chirho);
+                                    current_qual_group_chirho.push(qual_chirho.into());
                                 }
-                                current_qual_parts_chirho.clear();
-                                current_qual_group_chirho.push(StmtChirho::LetChirho {
-                                    binds_chirho: self.lower_let_stmt_binds_chirho(
+                                current_qual_group_chirho.push(
+                                    self.lower_comprehension_transform_chirho(
                                         n_chirho,
                                         child_chirho.start_chirho,
                                     ),
-                                    span_chirho: self.span_chirho(
-                                        child_chirho.start_chirho,
-                                        child_chirho.end_chirho,
-                                    ),
-                                });
+                                );
+                            } else if n_chirho.kind_chirho() == SyntaxKindChirho::LetStmtChirho {
+                                if let Some(qual_chirho) = self.flush_qual_parts_chirho(
+                                    &mut current_qual_parts_chirho,
+                                    span_chirho,
+                                ) {
+                                    current_qual_group_chirho.push(qual_chirho.into());
+                                }
+                                current_qual_parts_chirho.clear();
+                                current_qual_group_chirho.push(
+                                    StmtChirho::LetChirho {
+                                        binds_chirho: self.lower_let_stmt_binds_chirho(
+                                            n_chirho,
+                                            child_chirho.start_chirho,
+                                        ),
+                                        span_chirho: self.span_chirho(
+                                            child_chirho.start_chirho,
+                                            child_chirho.end_chirho,
+                                        ),
+                                    }
+                                    .into(),
+                                );
                             } else if is_pat_kind_chirho(n_chirho.kind_chirho()) {
                                 current_qual_parts_chirho.push(QualPartChirho::PatChirho(
                                     self.lower_pat_chirho(n_chirho, child_chirho.start_chirho),
@@ -506,9 +528,9 @@ impl LowerCtxChirho {
                 // Flush last qualifier
                 if !current_qual_parts_chirho.is_empty()
                     && let Some(qual_chirho) =
-                        self.flush_qual_parts_chirho(&current_qual_parts_chirho, span_chirho)
+                        self.flush_qual_parts_chirho(&mut current_qual_parts_chirho, span_chirho)
                 {
-                    current_qual_group_chirho.push(qual_chirho);
+                    current_qual_group_chirho.push(qual_chirho.into());
                 }
                 if !current_qual_group_chirho.is_empty() {
                     qual_groups_chirho.push(current_qual_group_chirho);
@@ -564,6 +586,53 @@ impl LowerCtxChirho {
         Some(result_chirho)
     }
 
+    fn lower_comprehension_transform_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+    ) -> ComprehensionQualifierChirho {
+        let span_chirho = self.span_chirho(
+            base_chirho,
+            base_chirho + node_chirho.text_len_chirho(),
+        );
+        let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
+        let group_chirho = children_chirho.iter().any(|child_chirho| matches!(child_chirho.element_chirho, GreenElementChirho::TokenChirho(token_chirho) if token_chirho.kind_chirho() == TokenKindChirho::VarIdChirho && token_chirho.text_chirho() == "group"));
+        let mut using_chirho = None;
+        let mut by_chirho = None;
+        for child_chirho in children_chirho {
+            let GreenElementChirho::NodeChirho(payload_chirho) = child_chirho.element_chirho else {
+                continue;
+            };
+            let target_chirho = match payload_chirho.kind_chirho() {
+                SyntaxKindChirho::ComprehensionUsingChirho => &mut using_chirho,
+                SyntaxKindChirho::ComprehensionByChirho => &mut by_chirho,
+                _ => continue,
+            };
+            *target_chirho = self
+                .semantic_children_chirho(payload_chirho, child_chirho.start_chirho)
+                .iter()
+                .find_map(|expression_chirho| {
+                    let GreenElementChirho::NodeChirho(expression_node_chirho) =
+                        expression_chirho.element_chirho
+                    else {
+                        return None;
+                    };
+                    is_expr_kind_chirho(expression_node_chirho.kind_chirho()).then(|| {
+                        Box::new(self.lower_expr_chirho(
+                            expression_node_chirho,
+                            expression_chirho.start_chirho,
+                        ))
+                    })
+                });
+        }
+        ComprehensionQualifierChirho::TransformChirho(ComprehensionTransformChirho {
+            group_chirho,
+            using_chirho,
+            by_chirho,
+            span_chirho,
+        })
+    }
+
     /// Convert accumulated qualifier parts into a `StmtChirho`.
     ///
     /// Parts are either expressions or a `<-` arrow marker. If an arrow
@@ -571,13 +640,14 @@ impl LowerCtxChirho {
     /// it's a guard (plain expression).
     pub(super) fn flush_qual_parts_chirho(
         &self,
-        parts_chirho: &[QualPartChirho],
+        parts_chirho: &mut Vec<QualPartChirho>,
         span_chirho: SpanChirho,
     ) -> Option<StmtChirho> {
         if parts_chirho.is_empty() {
             return None;
         }
 
+        let mut parts_chirho = std::mem::take(parts_chirho);
         // Find the arrow position, if any
         let arrow_pos_chirho = parts_chirho
             .iter()
@@ -586,20 +656,17 @@ impl LowerCtxChirho {
         if let Some(pos_chirho) = arrow_pos_chirho {
             // Generator: parts before arrow form the pattern (as expr),
             // parts after arrow form the source expression.
-            let pat_parts_chirho = parts_chirho
-                .iter()
-                .take(pos_chirho)
-                .cloned()
-                .collect::<Vec<_>>();
+            let source_parts_chirho = parts_chirho.split_off(pos_chirho + 1);
+            parts_chirho.pop(); // the actual arrow marker
+            let pat_parts_chirho = parts_chirho;
             let pat_chirho = self
-                .fold_qual_pat_parts_to_pat_chirho(&pat_parts_chirho, span_chirho)
+                .fold_qual_pat_parts_to_pat_chirho(pat_parts_chirho, span_chirho)
                 .unwrap_or(PatChirho::WildcardChirho(span_chirho));
 
-            let src_exprs_chirho: Vec<ExprChirho> = parts_chirho
-                .iter()
-                .skip(pos_chirho + 1)
+            let src_exprs_chirho: Vec<ExprChirho> = source_parts_chirho
+                .into_iter()
                 .filter_map(|p_chirho| match p_chirho {
-                    QualPartChirho::ExprChirho(e_chirho) => Some(e_chirho.clone()),
+                    QualPartChirho::ExprChirho(e_chirho) => Some(e_chirho),
                     _ => None,
                 })
                 .collect();
@@ -618,9 +685,9 @@ impl LowerCtxChirho {
         } else {
             // Guard: single expression
             let exprs_chirho: Vec<ExprChirho> = parts_chirho
-                .iter()
+                .into_iter()
                 .filter_map(|p_chirho| match p_chirho {
-                    QualPartChirho::ExprChirho(e_chirho) => Some(e_chirho.clone()),
+                    QualPartChirho::ExprChirho(e_chirho) => Some(e_chirho),
                     _ => None,
                 })
                 .collect();

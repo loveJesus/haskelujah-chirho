@@ -177,22 +177,24 @@ fn dict_pass_chirho() -> DictPassResultChirho {
     class_env_chirho.seed_standard_chirho();
     for integral_chirho in INTEGRAL_KEYS_CHIRHO {
         let head_chirho = TyChirho::ConChirho(integral_chirho.key_chirho.to_string());
-        let declared_chirho =
-            class_env_chirho
-                .instances_chirho
-                .get("Enum")
-                .is_some_and(|instances_chirho| {
-                    instances_chirho
-                        .iter()
-                        .any(|instance_chirho| instance_chirho.head_ty_chirho == head_chirho)
-                });
-        if !declared_chirho {
-            class_env_chirho.add_instance_chirho(InstDeclChirho {
-                class_name_chirho: "Enum".to_string(),
-                head_ty_chirho: head_chirho,
-                extra_head_tys_chirho: vec![],
-                context_chirho: vec![],
+        let declared_chirho = class_env_chirho
+            .instances_chirho()
+            .get_chirho("Enum")
+            .is_some_and(|instances_chirho| {
+                instances_chirho
+                    .iter_chirho()
+                    .any(|instance_chirho| instance_chirho.head_ty_chirho == head_chirho)
             });
+        if !declared_chirho {
+            class_env_chirho.add_instance_chirho(InstDeclChirho::legacy_chirho(
+                haskelujah_typing_chirho::class_chirho::InstDeclPartsChirho {
+                    kind_tys_chirho: Vec::new(),
+                    class_name_chirho: "Enum".to_string(),
+                    head_ty_chirho: head_chirho,
+                    extra_head_tys_chirho: vec![],
+                    context_chirho: vec![],
+                },
+            ));
         }
     }
     let module_chirho = CoreModuleChirho {

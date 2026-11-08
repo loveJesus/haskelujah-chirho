@@ -20,6 +20,8 @@ mod cpp_preprocess_chirho;
 mod dependency_packages_chirho;
 #[path = "frontend_chirho/error_deferral_chirho.rs"]
 mod error_deferral_chirho;
+#[path = "project_chirho/family_exports_chirho.rs"]
+mod family_exports_chirho;
 pub(crate) use error_deferral_chirho::DeferralPolicyChirho;
 pub use error_deferral_chirho::FrontendOptionsChirho;
 #[path = "frontend_chirho/hsc_preprocess_chirho.rs"]
@@ -43,11 +45,11 @@ mod native_provenance_chirho;
 mod package_install_chirho;
 #[path = "frontend_chirho/pipeline_chirho.rs"]
 mod pipeline_chirho;
-pub(crate) use pipeline_chirho::run_frontend_under_deferral_chirho;
 pub use pipeline_chirho::{
     FrontendImportsChirho, run_frontend_with_options_chirho,
     run_frontend_with_type_synonyms_families_and_class_env_chirho,
 };
+pub(crate) use pipeline_chirho::{inject_prelude_import_chirho, run_frontend_under_policy_chirho};
 #[path = "project_chirho/project_dir_chirho.rs"]
 mod project_dir_chirho;
 #[path = "native_link_chirho/rts_snapshot_chirho.rs"]
@@ -55,8 +57,11 @@ pub mod rts_snapshot_chirho;
 #[cfg(test)]
 #[path = "native_link_chirho/rts_snapshot_tests_chirho.rs"]
 mod rts_snapshot_tests_chirho;
+#[path = "frontend_chirho/source_options_chirho.rs"]
+mod source_options_chirho;
+pub(crate) use source_options_chirho::FrontendPolicyChirho;
 mod source_chirho;
-pub use source_chirho::typecheck_source_chirho;
+pub use source_chirho::{preprocess_cpp_chirho, typecheck_source_chirho};
 pub mod splice_chirho;
 #[path = "frontend_chirho/stdlib_seed_chirho.rs"]
 mod stdlib_seed_chirho;
@@ -83,9 +88,14 @@ use dependency_packages_chirho::{
 };
 #[cfg(test)]
 use dependency_packages_chirho::{
-    collect_local_dependency_frontend_artifacts_chirho,
-    compile_module_sources_with_extra_ifaces_chirho, find_local_dependency_package_dir_chirho,
-    merge_local_dependency_package_index_chirho, scan_dependency_package_ifaces_chirho,
+    collect_local_dependency_frontend_artifacts_chirho, compile_module_sources_linked_chirho,
+    find_local_dependency_package_dir_chirho, merge_local_dependency_package_index_chirho,
+    scan_dependency_package_ifaces_chirho,
+};
+use family_exports_chirho::{
+    build_family_aware_iface_chirho, build_type_family_scope_chirho,
+    family_frontend_diagnostics_chirho, publish_inferred_family_exports_chirho,
+    stamp_exported_family_references_chirho,
 };
 use package_install_chirho::find_cabal_in_dir_chirho;
 use project_dir_chirho::{
@@ -103,16 +113,18 @@ use cpp_preprocess_chirho::{
     CPP_GLASGOW_HASKELL_VERSION_CHIRHO, cpp_include_dirs_chirho, decode_cpp_stdout_chirho,
     discover_cpp_min_version_macro_options_chirho, has_cpp_directive_residue_chirho,
     preprocess_cpp_source_chirho, preprocess_cpp_source_with_options_chirho,
-    source_uses_cpp_chirho, strip_cpp_directives_chirho,
+    strip_cpp_directives_chirho,
 };
 use hsc_preprocess_chirho::{
     lower_maybe_like_unboxed_sums_chirho, path_is_hsc_chirho,
     preprocess_hsc_source_with_options_chirho, read_haskell_source_file_chirho,
 };
+#[cfg(test)]
+use import_qualification_chirho::qualify_imported_scheme_for_iface_chirho;
 use import_qualification_chirho::{
-    align_preferred_synonym_keys_chirho, collect_preferred_qualified_type_names_chirho,
-    collect_safe_unqualified_imported_type_names_chirho, qualify_imported_ast_type_chirho,
-    qualify_imported_scheme_for_iface_chirho, should_override_imported_scheme_chirho,
+    ImportQualificationChirho, align_preferred_synonym_keys_chirho,
+    collect_preferred_qualified_type_names_chirho,
+    collect_safe_unqualified_imported_type_names_chirho,
 };
 use linearity_chirho::check_module_linearity_chirho;
 use stdlib_seed_chirho::{FrontendSeedArtifactsChirho, merge_stdlib_frontend_artifacts_chirho};
@@ -132,6 +144,7 @@ use std::sync::OnceLock;
 
 use haskelujah_ast_chirho::ModuleChirho;
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+use haskelujah_ast_chirho::promotion_chirho::{PromotionScopeChirho, stamp_promotions_chirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_backend_llvm_chirho::compile_core_to_llvm_chirho;
 use haskelujah_backend_llvm_chirho::compile_to_llvm_ir_stub_chirho;
@@ -147,11 +160,14 @@ use haskelujah_runtime_chirho::{ExecutionModeChirho, RuntimePlanChirho};
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
 use haskelujah_typing_chirho::infer_chirho::{
-    InferResultChirho, TypeFamilyEnvChirho, infer_module_chirho,
-    infer_module_with_imports_type_synonyms_families_and_class_env_chirho,
+    InferResultChirho, InferenceImportContextChirho, TypeFamilyEnvChirho,
 };
 
-use module_search_chirho::{scan_hierarchical_modules_chirho, scan_sibling_module_ifaces_chirho};
+use module_search_chirho::{
+    DiscoveredFamilyContextChirho, DiscoveredSourceModulesChirho,
+    register_discovered_type_families_chirho, scan_hierarchical_modules_with_sources_chirho,
+    scan_sibling_modules_with_sources_chirho,
+};
 
 type ImportedTypeSynonymsChirho = std::collections::HashMap<String, (Vec<String>, TypeChirho)>;
 type ImportedTypeFamiliesChirho = TypeFamilyEnvChirho;
@@ -373,6 +389,7 @@ fn check_source_file_with_search_path_chirho(
         .unwrap_or_else(|| source_path_chirho.to_string_lossy().to_string());
 
     let mut sibling_source_map_chirho = SourceMapChirho::new_chirho();
+    let mut discovered_sources_chirho = DiscoveredSourceModulesChirho::new();
     let mut all_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     let mut imported_types_chirho = std::collections::HashMap::new();
     let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
@@ -383,28 +400,52 @@ fn check_source_file_with_search_path_chirho(
             &mut imported_types_chirho,
             &mut imported_type_synonyms_chirho,
             &mut imported_type_families_chirho,
-        );
+        )
+        .map_err(|error_chirho| {
+            family_frontend_diagnostics_chirho(
+                error_chirho,
+                haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+            )
+        })?;
     }
 
-    scan_sibling_module_ifaces_chirho(
+    scan_sibling_modules_with_sources_chirho(
         search_dir_chirho,
         &mut sibling_source_map_chirho,
-        &mut all_ifaces_chirho,
+        &all_ifaces_chirho,
         &file_name_chirho,
+        &mut discovered_sources_chirho,
     );
     for _round_chirho in 0..5 {
         let prev_count_chirho = all_ifaces_chirho.len();
-        scan_hierarchical_modules_chirho(
+        scan_hierarchical_modules_with_sources_chirho(
             search_dir_chirho,
             search_dir_chirho,
             &mut sibling_source_map_chirho,
             &mut all_ifaces_chirho,
             &file_name_chirho,
+            &mut discovered_sources_chirho,
         );
         if all_ifaces_chirho.len() == prev_count_chirho {
             break;
         }
     }
+
+    let discovery_parser_chirho = ParserChirho::new_chirho(&source_chirho, file_id_chirho);
+    let discovery_green_chirho = discovery_parser_chirho.parse_checked_chirho()?;
+    let mut discovery_module_chirho = lower_module_chirho(&discovery_green_chirho, file_id_chirho);
+    inject_prelude_import_chirho(&mut discovery_module_chirho);
+    register_discovered_type_families_chirho(
+        &discovery_module_chirho,
+        DiscoveredFamilyContextChirho {
+            imported_types_chirho: Some(&mut imported_types_chirho),
+            modules_chirho: &discovered_sources_chirho,
+            ifaces_chirho: &mut all_ifaces_chirho,
+            registry_chirho: &mut imported_type_families_chirho,
+            imported_synonyms_chirho: &imported_type_synonyms_chirho,
+            checked_path_chirho: Some(&source_path_chirho),
+        },
+    )?;
 
     let frontend_result_chirho = run_frontend_with_type_synonyms_and_type_families_chirho(
         &source_chirho,
@@ -506,29 +547,6 @@ pub fn frontend_warnings_with_options_chirho(
     Ok(frontend_result_chirho.warnings_chirho)
 }
 
-/// Preprocess source code with CPP if `{-# LANGUAGE CPP #-}` is present.
-/// Shells out to the system C preprocessor, defining `__GLASGOW_HASKELL__`
-/// for compatibility with packages that conditionally compile for GHC versions.
-pub fn preprocess_cpp_chirho(source_chirho: &str) -> String {
-    if !source_uses_cpp_chirho(source_chirho) {
-        return lower_maybe_like_unboxed_sums_chirho(source_chirho);
-    }
-
-    match temporary_source_file_chirho(source_chirho, None, ".hs")
-        .and_then(|file_chirho| preprocess_cpp_source_chirho(file_chirho.path(), source_chirho))
-    {
-        Ok(processed_chirho) => {
-            let cleaned_chirho = if has_cpp_directive_residue_chirho(&processed_chirho) {
-                strip_cpp_directives_chirho(&processed_chirho)
-            } else {
-                processed_chirho
-            };
-            lower_maybe_like_unboxed_sums_chirho(&cleaned_chirho)
-        }
-        _ => lower_maybe_like_unboxed_sums_chirho(&strip_cpp_directives_chirho(source_chirho)),
-    }
-}
-
 /// Run the full compiler pipeline: lex → layout → CST parse → AST lower →
 /// name resolve → type infer → desugar to Core → simplify.
 /// Returns the AST module and its optimized Core IR.
@@ -587,78 +605,41 @@ pub fn compile_source_with_search_path_chirho(
     file_name_chirho: &str,
     search_dir_chirho: &Path,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
-    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+    compile_source_with_search_path_and_options_chirho(
+        source_chirho,
         source_map_chirho,
         file_name_chirho,
-        source_chirho,
-    );
-    let file_id_chirho = source_file_chirho.file_id_chirho();
-
-    let mut all_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
-    let mut imported_types_chirho = std::collections::HashMap::new();
-    let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
-    let mut imported_type_families_chirho = seed_builtin_type_families_chirho();
-    if source_imports_stdlib_chirho(source_chirho) {
-        merge_stdlib_frontend_artifacts_chirho(
-            &mut all_ifaces_chirho,
-            &mut imported_types_chirho,
-            &mut imported_type_synonyms_chirho,
-            &mut imported_type_families_chirho,
-        );
-    }
-
-    scan_sibling_module_ifaces_chirho(
         search_dir_chirho,
-        source_map_chirho,
-        &mut all_ifaces_chirho,
-        file_name_chirho,
-    );
+        &FrontendOptionsChirho::default(),
+    )
+}
 
-    // Scan ALL subdirectories recursively for hierarchical module imports
-    // (e.g., Debug/SimpleReflect/Expr.hs for `import Debug.SimpleReflect.Expr`).
-    // Fixed-point iteration handles dependency chains between modules.
-    for _round_chirho in 0..5 {
-        let prev_count_chirho = all_ifaces_chirho.len();
-        scan_hierarchical_modules_chirho(
-            search_dir_chirho,
-            search_dir_chirho,
-            source_map_chirho,
-            &mut all_ifaces_chirho,
-            file_name_chirho,
-        );
-        if all_ifaces_chirho.len() == prev_count_chirho {
-            break;
-        }
-    }
-
-    let frontend_result_chirho = run_frontend_with_type_synonyms_and_type_families_chirho(
+/// Compile the checked consumer under caller options, retaining the existing
+/// filesystem supplier/admission path. Providers keep their own headers and
+/// default options; this does not add CPP or session-wide provider options.
+/// workflow: compiler-pipeline-chirho/error-deferral-chirho
+pub fn compile_source_with_search_path_and_options_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    file_name_chirho: &str,
+    search_dir_chirho: &Path,
+    options_chirho: &FrontendOptionsChirho,
+) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
+    compile_source_with_search_context_chirho(
         source_chirho,
-        file_id_chirho,
-        &all_ifaces_chirho,
-        &imported_types_chirho,
-        &imported_type_synonyms_chirho,
-        &imported_type_families_chirho,
-    )?;
-
-    let FrontendResultChirho {
-        module_chirho,
-        infer_result_chirho,
-        resolved_imported_type_synonyms_chirho: _resolved_imported_type_synonyms_chirho,
-        warnings_chirho: _warnings_chirho,
-    } = frontend_result_chirho;
-
-    compile_backend_chirho(
-        module_chirho,
-        infer_result_chirho,
-        std::collections::HashSet::new(),
-        &all_ifaces_chirho,
-        // Siblings lend their interfaces; their Core is not linked here.
-        &std::collections::HashSet::new(),
+        source_map_chirho,
+        SourceSearchContextChirho {
+            file_name_chirho,
+            search_dir_chirho,
+            checked_path_chirho: None,
+            options_chirho,
+        },
     )
 }
 
 #[path = "backend_chirho/evidence_join_chirho.rs"]
 mod evidence_join_chirho;
+#[cfg(test)]
 pub(crate) use evidence_join_chirho::join_occurrence_evidence_chirho;
 
 /// Compile and evaluate a Haskell source program through the full pipeline,
@@ -867,3 +848,186 @@ pub fn render_summary_chirho(check_summary_chirho: &CheckSummaryChirho) -> Strin
 mod synonym_keys_tests_chirho;
 #[cfg(test)]
 mod tests_chirho;
+
+pub fn compile_source_file_with_search_path_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    checked_path_chirho: &Path,
+    search_dir_chirho: &Path,
+) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
+    let file_name_chirho = checked_path_chirho
+        .file_name()
+        .unwrap_or(checked_path_chirho.as_os_str())
+        .to_string_lossy();
+    compile_source_with_search_context_chirho(
+        source_chirho,
+        source_map_chirho,
+        SourceSearchContextChirho {
+            file_name_chirho: &file_name_chirho,
+            search_dir_chirho,
+            checked_path_chirho: Some(checked_path_chirho),
+            options_chirho: &FrontendOptionsChirho::default(),
+        },
+    )
+}
+
+fn compile_source_with_search_context_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    context_chirho: SourceSearchContextChirho<'_>,
+) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
+    let SourceSearchContextChirho {
+        file_name_chirho,
+        search_dir_chirho,
+        checked_path_chirho,
+        options_chirho,
+    } = context_chirho;
+    let source_file_chirho = SourceFileChirho::from_source_map_chirho(
+        source_map_chirho,
+        file_name_chirho,
+        source_chirho,
+    );
+    let file_id_chirho = source_file_chirho.file_id_chirho();
+
+    let mut all_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
+    let mut discovered_sources_chirho = DiscoveredSourceModulesChirho::new();
+    let mut imported_types_chirho = std::collections::HashMap::new();
+    let mut imported_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
+    let mut imported_type_families_chirho = seed_builtin_type_families_chirho();
+    if source_imports_stdlib_chirho(source_chirho) {
+        merge_stdlib_frontend_artifacts_chirho(
+            &mut all_ifaces_chirho,
+            &mut imported_types_chirho,
+            &mut imported_type_synonyms_chirho,
+            &mut imported_type_families_chirho,
+        )
+        .map_err(|error_chirho| {
+            family_frontend_diagnostics_chirho(
+                error_chirho,
+                haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+            )
+        })?;
+    }
+
+    scan_sibling_modules_with_sources_chirho(
+        search_dir_chirho,
+        source_map_chirho,
+        &all_ifaces_chirho,
+        file_name_chirho,
+        &mut discovered_sources_chirho,
+    );
+
+    // Scan ALL subdirectories recursively for hierarchical module imports
+    // (e.g., Debug/SimpleReflect/Expr.hs for `import Debug.SimpleReflect.Expr`).
+    // Fixed-point iteration handles dependency chains between modules.
+    for _round_chirho in 0..5 {
+        let prev_count_chirho = all_ifaces_chirho.len();
+        scan_hierarchical_modules_with_sources_chirho(
+            search_dir_chirho,
+            search_dir_chirho,
+            source_map_chirho,
+            &mut all_ifaces_chirho,
+            file_name_chirho,
+            &mut discovered_sources_chirho,
+        );
+        if all_ifaces_chirho.len() == prev_count_chirho {
+            break;
+        }
+    }
+
+    let discovery_policy_chirho = FrontendPolicyChirho::resolve_chirho(
+        &options_chirho.ghc_options_chirho,
+        [
+            haskelujah_parser_chirho::pragma_chirho::header_pragmas_chirho(
+                source_chirho,
+                file_id_chirho,
+            ),
+        ],
+    );
+    let discovery_parser_chirho = ParserChirho::with_extensions_chirho(
+        source_chirho,
+        file_id_chirho,
+        &discovery_policy_chirho.extensions_chirho,
+    );
+    let discovery_green_chirho = discovery_parser_chirho.parse_checked_chirho()?;
+    let mut discovery_module_chirho =
+        haskelujah_parser_chirho::lower_chirho::lower_module_with_extensions_chirho(
+            &discovery_green_chirho,
+            file_id_chirho,
+            &discovery_policy_chirho.extensions_chirho,
+        );
+    inject_prelude_import_chirho(&mut discovery_module_chirho);
+    register_discovered_type_families_chirho(
+        &discovery_module_chirho,
+        DiscoveredFamilyContextChirho {
+            imported_types_chirho: Some(&mut imported_types_chirho),
+            modules_chirho: &discovered_sources_chirho,
+            ifaces_chirho: &mut all_ifaces_chirho,
+            registry_chirho: &mut imported_type_families_chirho,
+            imported_synonyms_chirho: &imported_type_synonyms_chirho,
+            checked_path_chirho,
+        },
+    )?;
+
+    let imported_class_env_chirho =
+        haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho();
+    let frontend_result_chirho = run_frontend_with_options_chirho(
+        source_chirho,
+        file_id_chirho,
+        FrontendImportsChirho {
+            ifaces_chirho: &all_ifaces_chirho,
+            types_chirho: &imported_types_chirho,
+            type_synonyms_chirho: &imported_type_synonyms_chirho,
+            type_families_chirho: &imported_type_families_chirho,
+            class_env_chirho: &imported_class_env_chirho,
+        },
+        options_chirho,
+    )?;
+
+    let FrontendResultChirho {
+        module_chirho,
+        infer_result_chirho,
+        resolved_imported_type_synonyms_chirho: _resolved_imported_type_synonyms_chirho,
+        warnings_chirho: _warnings_chirho,
+    } = frontend_result_chirho;
+
+    compile_backend_chirho(
+        module_chirho,
+        infer_result_chirho,
+        std::collections::HashSet::new(),
+        &all_ifaces_chirho,
+        // Siblings lend their interfaces; their Core is not linked here.
+        &std::collections::HashSet::new(),
+    )
+}
+
+pub fn eval_source_file_outcome_chirho(
+    source_chirho: &str,
+    source_map_chirho: &mut SourceMapChirho,
+    checked_path_chirho: &Path,
+    entry_name_chirho: Option<&str>,
+) -> Result<stg_lower_chirho::RunOutcomeChirho, String> {
+    let search_dir_chirho = checked_path_chirho
+        .parent()
+        .filter(|parent_chirho| !parent_chirho.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let compile_result_chirho = compile_source_file_with_search_path_chirho(
+        source_chirho,
+        source_map_chirho,
+        checked_path_chirho,
+        search_dir_chirho,
+    )
+    .map_err(|diagnostics_chirho| format!("compilation error: {diagnostics_chirho:?}"))?;
+    stg_lower_chirho::lower_and_run_outcome_chirho(
+        &compile_result_chirho.core_chirho,
+        entry_name_chirho,
+        compile_result_chirho.newtype_cons_chirho,
+    )
+}
+
+struct SourceSearchContextChirho<'source_chirho> {
+    file_name_chirho: &'source_chirho str,
+    search_dir_chirho: &'source_chirho Path,
+    checked_path_chirho: Option<&'source_chirho Path>,
+    options_chirho: &'source_chirho FrontendOptionsChirho,
+}

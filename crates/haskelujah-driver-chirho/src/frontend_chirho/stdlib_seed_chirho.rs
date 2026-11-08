@@ -10,6 +10,8 @@ use super::*;
 #[derive(Debug, Default, Clone)]
 pub(crate) struct FrontendSeedArtifactsChirho {
     pub(crate) ifaces_chirho: Vec<ModuleIfaceChirho>,
+    pub(crate) interface_sources_chirho:
+        Option<std::sync::Arc<dependency_packages_chirho::DependencyInterfaceSourcesChirho>>,
     pub(crate) imported_types_chirho:
         std::collections::HashMap<String, haskelujah_typing_chirho::ty_chirho::SchemeChirho>,
     pub(crate) imported_type_synonyms_chirho: ImportedTypeSynonymsChirho,
@@ -27,12 +29,20 @@ pub(crate) fn merge_stdlib_frontend_artifacts_chirho(
     >,
     imported_type_synonyms_chirho: &mut ImportedTypeSynonymsChirho,
     imported_type_families_chirho: &mut ImportedTypeFamiliesChirho,
-) {
+) -> Result<(), String> {
     let stdlib_artifacts_chirho = STDLIB_FRONTEND_ARTIFACTS_CHIRHO
         .get_or_init(collect_stdlib_frontend_artifacts_uncached_chirho);
 
     match stdlib_artifacts_chirho {
         Ok(stdlib_artifacts_chirho) => {
+            // Registry merge validates its complete replacement plan before
+            // interfaces or schemes from this independent seed are installed.
+            extend_imported_type_families_chirho(
+                imported_type_families_chirho,
+                stdlib_artifacts_chirho
+                    .imported_type_families_chirho
+                    .clone(),
+            )?;
             ifaces_chirho.extend(stdlib_artifacts_chirho.ifaces_chirho.clone());
             *ifaces_chirho = haskelujah_naming_chirho::iface_chirho::merge_module_ifaces_chirho(
                 std::mem::take(ifaces_chirho),
@@ -43,16 +53,9 @@ pub(crate) fn merge_stdlib_frontend_artifacts_chirho(
                     .imported_type_synonyms_chirho
                     .clone(),
             );
-            extend_imported_type_families_chirho(
-                imported_type_families_chirho,
-                stdlib_artifacts_chirho
-                    .imported_type_families_chirho
-                    .clone(),
-            );
+            Ok(())
         }
-        Err(error_chirho) => {
-            eprintln!("warning: stdlib frontend seed skipped: {}", error_chirho);
-        }
+        Err(error_chirho) => Err(format!("cannot load stdlib frontend seed: {error_chirho}")),
     }
 }
 
@@ -93,6 +96,9 @@ fn collect_stdlib_frontend_artifacts_uncached_chirho() -> Result<FrontendSeedArt
     artifacts_chirho
         .ifaces_chirho
         .retain(|iface_chirho| iface_chirho.name_chirho.starts_with("Haskelujah."));
+    for iface_chirho in &mut artifacts_chirho.ifaces_chirho {
+        iface_chirho.exposure_chirho = None;
+    }
     Ok(artifacts_chirho)
 }
 

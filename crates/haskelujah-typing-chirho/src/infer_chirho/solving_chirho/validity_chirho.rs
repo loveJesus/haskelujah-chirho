@@ -16,18 +16,11 @@ use haskelujah_diagnostics_chirho::{DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
 
 impl InferCtxChirho {
-    /// Extensions under which our wanted constraints do not faithfully mirror
-    /// the source, so an "unsolvable" wanted may be our artifact rather than
-    /// the program's error. RebindableSyntax rebinds `negate`/literals to
-    /// user functions while we still emit `Num` wanteds; the rank-n family
-    /// makes us instantiate a `forall`-typed field once and reuse it at two
-    /// types, inventing constraints the program never had.
-    pub(super) const UNFAITHFUL_CONSTRAINT_EXTENSIONS_CHIRHO: &'static [&'static str] = &[
-        "RebindableSyntax",
-        "RankNTypes",
-        "Rank2Types",
-        "ImpredicativeTypes",
-    ];
+    /// Rebound literals still require a separate producer. Polymorphic
+    /// parameters now retain quantifiers and qualified contexts per use; their
+    /// wanteds are checked inside the corresponding lexical given scope.
+    pub(super) const UNFAITHFUL_CONSTRAINT_EXTENSIONS_CHIRHO: &'static [&'static str] =
+        &["RebindableSyntax"];
 
     /// Classes the certainly-unsolvable check must never fire on: solved by
     /// compiler magic (or a user class colliding with such a name), not by
@@ -65,13 +58,14 @@ impl InferCtxChirho {
     /// Whether every argument of the predicate is free of unification
     /// variables. A fully-ground predicate is invariant under all later
     /// substitution, so its solvability verdict cannot change.
-    pub(super) fn pred_fully_ground_chirho(pred_chirho: &PredChirho) -> bool {
-        pred_chirho.ty_chirho.free_vars_chirho().is_empty()
-            && pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .all(|t_chirho| t_chirho.free_vars_chirho().is_empty())
-            && !Self::pred_mentions_rigid_chirho(pred_chirho)
+    pub(super) fn pred_fully_ground_chirho(&self, pred_chirho: &PredChirho) -> bool {
+        pred_chirho
+            .kind_tys_chirho
+            .iter()
+            .chain(std::iter::once(&pred_chirho.ty_chirho))
+            .chain(&pred_chirho.extra_tys_chirho)
+            .all(|ty_chirho| ty_chirho.free_vars_chirho().is_empty())
+            && !self.pred_mentions_rigid_chirho(pred_chirho)
     }
 
     /// Whether an instance could EVER match the predicate, comparing only
@@ -104,14 +98,184 @@ impl InferCtxChirho {
             })
     }
 
+    /// Normalization and apartness borrow the same shrinking proof allowance;
+    /// failure settles its debt and leaves the optional certificate Unknown.
+    fn normalize_instance_kind_prefix_chirho(
+        &self,
+        prefix_chirho: &[TyChirho],
+        budget_chirho: &mut super::closed_family_apartness_chirho::FamilyUnificationLimitsChirho,
+    ) -> Option<Vec<TyChirho>> {
+        let mut normalization_chirho = super::EqualityBudgetChirho::limited_chirho(
+            budget_chirho.steps_chirho,
+            budget_chirho.nodes_chirho,
+        );
+        let result_chirho = prefix_chirho
+            .iter()
+            .map(|kind_chirho| {
+                self.normalize_signature_public_image_chirho(kind_chirho, &mut normalization_chirho)
+            })
+            .collect::<Result<Vec<_>, _>>();
+        (budget_chirho.steps_chirho, budget_chirho.nodes_chirho) =
+            normalization_chirho.remaining_chirho();
+        result_chirho.ok()
+    }
+
+    /// Only a checked full telescope can refute a wanted by its hidden prefix.
+    /// Opaque visible heads and primitive literal policy supply no such proof.
+    fn checked_instance_kind_prefixes_refute_chirho(&self, pred_chirho: &PredChirho) -> bool {
+        use super::closed_family_apartness_chirho::{
+            FamilyHeadRoleChirho, FamilyPatternRelationChirho, FamilyUnificationLimitsChirho,
+            family_patterns_relation_with_budget_chirho,
+        };
+        use crate::ty_chirho::declarations_chirho::TelescopeVisibilityChirho;
+        use haskelujah_ast_chirho::name_chirho::{
+            ClassIdentityUnknownChirho, InstanceIdentityChirho, PredicateClassProofChirho,
+        };
+        let usable_chirho = |proof_chirho: &PredicateClassProofChirho| {
+            proof_chirho.identity_chirho().is_some()
+                || matches!(
+                    proof_chirho,
+                    PredicateClassProofChirho::UnknownChirho(
+                        ClassIdentityUnknownChirho::LegacyChirho
+                    )
+                )
+        };
+        if pred_chirho.kind_tys_chirho.is_empty()
+            || !self.local_class_prefix_instances_complete_chirho
+            || self.type_normalization_exhausted_chirho.get()
+            || self.class_env_chirho.registry_error_chirho().is_some()
+            || !usable_chirho(pred_chirho.class_identity_chirho())
+        {
+            return false;
+        }
+        let mut budget_chirho = FamilyUnificationLimitsChirho::default();
+        for (class_chirho, _) in &self.derived_instance_heads_chirho {
+            let Some(remaining_chirho) = budget_chirho
+                .steps_chirho
+                .checked_sub(class_chirho.len().saturating_add(1))
+            else {
+                return false;
+            };
+            budget_chirho.steps_chirho = remaining_chirho;
+            if class_chirho == &pred_chirho.class_name_chirho {
+                return false;
+            }
+        }
+        let Some(proof_chirho) =
+            self.type_constructor_scope_chirho
+                .as_ref()
+                .and_then(|scope_chirho| {
+                    scope_chirho.declaration_chirho(&pred_chirho.class_name_chirho)
+                })
+        else {
+            return false;
+        };
+        let Some(schema_chirho) = self.type_families_chirho.declaration_schemes_chirho()
+            .get_chirho(&proof_chirho.type_key_chirho())
+            .filter(|schema_chirho| schema_chirho.owner_chirho.is_none()
+                && !schema_chirho.held_chirho
+                && schema_chirho.role_chirho == haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho::ClassChirho)
+        else { return false; };
+        let Some(class_chirho) = self
+            .class_env_chirho
+            .classes_chirho()
+            .get_chirho(&pred_chirho.class_name_chirho)
+        else {
+            return false;
+        };
+        if !usable_chirho(class_chirho.class_identity_chirho()) {
+            return false;
+        }
+        let Some(remaining_chirho) = budget_chirho
+            .steps_chirho
+            .checked_sub(schema_chirho.binders_chirho.len())
+        else {
+            return false;
+        };
+        budget_chirho.steps_chirho = remaining_chirho;
+        let hidden_chirho = schema_chirho
+            .binders_chirho
+            .iter()
+            .filter(|binder_chirho| {
+                binder_chirho.visibility_chirho != TelescopeVisibilityChirho::RequiredChirho
+            })
+            .count();
+        if hidden_chirho != pred_chirho.kind_tys_chirho.len()
+            || hidden_chirho != class_chirho.kind_vars_chirho.len()
+            || schema_chirho.visible_arity_chirho != pred_chirho.extra_tys_chirho.len() + 1
+            || schema_chirho.visible_arity_chirho != class_chirho.extra_vars_chirho.len() + 1
+        {
+            return false;
+        }
+        let Some(instances_chirho) = self
+            .class_env_chirho
+            .instances_chirho()
+            .get_chirho(&pred_chirho.class_name_chirho)
+            .filter(|instances_chirho| !instances_chirho.is_empty_chirho())
+        else {
+            return false;
+        };
+        let Some(wanted_chirho) = self.normalize_instance_kind_prefix_chirho(
+            &pred_chirho.kind_tys_chirho,
+            &mut budget_chirho,
+        ) else {
+            return false;
+        };
+        let apart_chirho = instances_chirho.iter_chirho().all(|instance_chirho| {
+            if instance_chirho.kind_tys_chirho.len() != hidden_chirho
+                || instance_chirho.extra_head_tys_chirho.len() + 1
+                    != schema_chirho.visible_arity_chirho
+                || !usable_chirho(instance_chirho.class_identity_chirho())
+                || !matches!(
+                    instance_chirho.instance_identity_chirho(),
+                    InstanceIdentityChirho::SeedChirho(_)
+                        | InstanceIdentityChirho::SourceChirho { .. }
+                        | InstanceIdentityChirho::UnknownChirho(
+                            ClassIdentityUnknownChirho::LegacyChirho
+                        )
+                )
+            {
+                return false;
+            }
+            let Some(prefix_chirho) = self.normalize_instance_kind_prefix_chirho(
+                &instance_chirho.kind_tys_chirho,
+                &mut budget_chirho,
+            ) else {
+                return false;
+            };
+            family_patterns_relation_with_budget_chirho(
+                &prefix_chirho,
+                &wanted_chirho,
+                &|name_chirho| {
+                    if self
+                        .type_families_chirho
+                        .declaration_schemes_chirho()
+                        .get_chirho(name_chirho)
+                        .is_some_and(|schema_chirho| {
+                            schema_chirho.owner_chirho.is_none() && !schema_chirho.held_chirho
+                        })
+                    {
+                        super::family_registration_chirho::family_head_role_chirho(
+                            &self.type_families_chirho,
+                            name_chirho,
+                        )
+                    } else {
+                        FamilyHeadRoleChirho::UnknownChirho
+                    }
+                },
+                &mut budget_chirho,
+            ) == FamilyPatternRelationChirho::SurelyApartChirho
+        });
+        apart_chirho && !self.type_normalization_exhausted_chirho.get()
+    }
+
     /// A predicate is *certainly unsolvable* when its class's full instance
     /// universe is visible (standard-seeded or declared in this module —
-    /// see `fully_known_class_names_chirho`), every argument is ground with a
+    /// see `fully_known_class_names_chirho`), every argument has a fixed
     /// concrete outer head that is not an unexpanded synonym or stuck type
     /// family, no known or derived instance could ever match those heads, and
     /// the in-scope givens do not entail it. GHC reports exactly these as
-    /// "No instance for ..." — accepting them silently is unsound. The compiler itself reads
-    /// the three-way `ground_pred_verdict_chirho`; this is the tests' view of it.
+    /// "No instance for ..." — accepting them silently is unsound.
     #[cfg(test)]
     pub(super) fn is_certainly_unsolvable_pred_chirho(&self, pred_chirho: &PredChirho) -> bool {
         self.is_certainly_unsolvable_pred_depth_chirho(pred_chirho, 0)
@@ -128,7 +292,7 @@ impl InferCtxChirho {
         pred_chirho: &PredChirho,
         span_chirho: SpanChirho,
     ) -> bool {
-        if !Self::pred_fully_ground_chirho(pred_chirho) {
+        if !self.pred_fully_ground_chirho(pred_chirho) {
             return false;
         }
         match self.ground_pred_verdict_chirho(pred_chirho, 0) {
@@ -151,10 +315,32 @@ impl InferCtxChirho {
         true
     }
 
-    /// The named gap for a ground wanted whose givens' superclass search a bound stopped: it
-    /// is neither proved nor refuted, so the program is refused through the Unsupported
-    /// packaging (row 694, #31984).
-    /// workflow: language-features-chirho/rigid-type-variables-chirho
+    /// Generalization cannot hide a wanted whose fixed argument heads no actual
+    /// complete class instance can ever match. Open heads and unknown records
+    /// remain unproved; non-ground predicates under givens stay in their scope.
+    pub(super) fn report_certainly_unsolvable_wanted_chirho(
+        &mut self,
+        pred_chirho: &PredChirho,
+        span_chirho: SpanChirho,
+    ) -> bool {
+        match self.wanted_pred_verdict_chirho(pred_chirho, 0) {
+            Some(Ok(false)) => {}
+            Some(Err(_)) => {
+                self.report_undecided_superclass_chirho(pred_chirho, span_chirho);
+                return true;
+            }
+            Some(Ok(true)) | None => return false,
+        }
+        let blamed_chirho = self.unsolvable_blame_pred_chirho(pred_chirho, 0);
+        self.diagnostics_chirho
+            .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                ErrorCodeChirho::error_chirho(UNSATISFIED_CONSTRAINT_CODE_CHIRHO),
+                format!("no instance for `{blamed_chirho}`"),
+                span_chirho,
+            ));
+        true
+    }
+
     pub(super) fn report_undecided_superclass_chirho(
         &mut self,
         pred_chirho: &PredChirho,
@@ -163,7 +349,7 @@ impl InferCtxChirho {
         self.diagnostics_chirho
             .extend_chirho(declaration_error_diagnostics_chirho(vec![
                 DeclarationErrorChirho {
-                    ghc_code_chirho: UNSUPPORTED_SHAPE_CHIRHO,
+                    ghc_code_chirho: Some(UNSUPPORTED_SHAPE_CHIRHO),
                     message_chirho: format!(
                         "Haskelujah stopped searching the givens' superclasses before deciding `{pred_chirho}`: it is neither proved nor refuted"
                     ),
@@ -183,22 +369,41 @@ impl InferCtxChirho {
         depth_chirho: usize,
     ) -> bool {
         matches!(
-            self.ground_pred_verdict_chirho(pred_chirho, depth_chirho),
+            self.wanted_pred_verdict_chirho(pred_chirho, depth_chirho),
             Some(Ok(false))
         )
     }
 
-    /// The verdict on a ground wanted no instance can solve, from the givens: `Some(Ok(true))`
-    /// when they entail it, `Some(Ok(false))` when they certainly do not, and `Some(Err(..))`
-    /// when a superclass search a bound stopped left it undecided (row 694, #31972, #31984).
-    /// `None` when an instance, a family, a synonym or a depth bound keeps any verdict open.
-    /// workflow: language-features-chirho/rigid-type-variables-chirho
+    /// Ground callers retain the landed three-way superclass-search contract.
     pub(super) fn ground_pred_verdict_chirho(
         &self,
         pred_chirho: &PredChirho,
         depth_chirho: usize,
     ) -> Option<Result<bool, SuperclassSearchExhaustedChirho>> {
-        if !self.constraint_generation_faithful_chirho {
+        if !self.pred_fully_ground_chirho(pred_chirho) {
+            return None;
+        }
+        self.wanted_pred_verdict_chirho(pred_chirho, depth_chirho)
+    }
+
+    /// A checked prefix can refute an open visible head under the existing
+    /// no-givens admission. Undecided superclass search never refutes it.
+    fn wanted_pred_verdict_chirho(
+        &self,
+        pred_chirho: &PredChirho,
+        depth_chirho: usize,
+    ) -> Option<Result<bool, SuperclassSearchExhaustedChirho>> {
+        if !self.constraint_generation_faithful_chirho
+            || matches!(
+                pred_chirho.class_identity_chirho(),
+                haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+                    haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::ResourceChirho(
+                        _
+                    )
+                )
+            )
+        {
+            // Soft metadata refusal never becomes a new ordinary type error.
             return None;
         }
         let class_name_chirho = pred_chirho.class_name_chirho.as_str();
@@ -208,7 +413,7 @@ impl InferCtxChirho {
                 .contains(class_name_chirho)
             || Self::MAGIC_CLASSES_CHIRHO.contains(&class_name_chirho)
             || class_name_chirho.starts_with('?')
-            || !Self::pred_fully_ground_chirho(pred_chirho)
+            || (!self.pred_fully_ground_chirho(pred_chirho) && !self.given_preds_chirho.is_empty())
         {
             return None;
         }
@@ -216,98 +421,140 @@ impl InferCtxChirho {
             .chain(pred_chirho.extra_tys_chirho.iter())
             .map(|t_chirho| self.normalize_ty_chirho(t_chirho))
             .collect();
-        let mut head_names_chirho = Vec::new();
-        for arg_chirho in &normalized_args_chirho {
-            match Self::ty_outer_head_name_chirho(arg_chirho) {
-                None => return None,
-                Some(head_chirho) => {
-                    // Unexpanded synonyms and stuck families could still
-                    // reduce to an instance-matching head; `#`-suffixed
-                    // primitive tycons (Int#, ByteArray#) go through solver
-                    // paths we deliberately mismodel (unboxed literals are
-                    // currently typed via Num), so no verdict on either.
-                    if self.type_families_chirho.contains_key(&head_chirho)
-                        || self.type_synonyms_chirho.contains_key(&head_chirho)
-                        || head_chirho.ends_with('#')
-                    {
-                        return None;
+        let normalized_pred_chirho = PredChirho::from_proof_chirho(
+            pred_chirho.class_identity_chirho().clone(),
+            crate::class_chirho::PredPartsChirho {
+                kind_tys_chirho: pred_chirho
+                    .kind_tys_chirho
+                    .iter()
+                    .map(|kind_chirho| self.normalize_ty_chirho(kind_chirho))
+                    .collect(),
+                class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                ty_chirho: normalized_args_chirho[0].clone(),
+                extra_tys_chirho: normalized_args_chirho[1..].to_vec(),
+            },
+        );
+        if !self.checked_instance_kind_prefixes_refute_chirho(&normalized_pred_chirho) {
+            let mut head_names_chirho = Vec::new();
+            for arg_chirho in &normalized_args_chirho {
+                match Self::ty_outer_head_name_chirho(arg_chirho) {
+                    None => return None,
+                    Some(head_chirho) => {
+                        // Unexpanded synonyms and stuck families could still
+                        // reduce to an instance-matching head; `#`-suffixed
+                        // primitive tycons (Int#, ByteArray#) go through solver
+                        // paths we deliberately mismodel (unboxed literals are
+                        // currently typed via Num), so no verdict on either.
+                        if self.is_type_family_name_chirho(&head_chirho)
+                            || self.type_synonyms_chirho.contains_key(&head_chirho)
+                            || head_chirho.ends_with('#')
+                        {
+                            return None;
+                        }
+                        if !arg_chirho.free_vars_chirho().is_empty()
+                            && !matches!(
+                                arg_chirho,
+                                TyChirho::FunChirho(..)
+                                    | TyChirho::ListChirho(_)
+                                    | TyChirho::TupleChirho(_)
+                            )
+                            && !self
+                                .type_families_chirho
+                                .declaration_schemes_chirho()
+                                .get_chirho(&head_chirho)
+                                .and_then(|scheme_chirho| scheme_chirho.declaration_chirho.as_ref())
+                                .is_some_and(|declaration_chirho| {
+                                    declaration_chirho.is_nominally_generative_chirho()
+                                })
+                        {
+                            // A spelling without a checked nominal producer may be
+                            // an unregistered imported family or a legacy placeholder.
+                            return None;
+                        }
+                        head_names_chirho.push(head_chirho);
                     }
-                    head_names_chirho.push(head_chirho);
                 }
             }
-        }
-        if self
-            .derived_instance_heads_chirho
-            .contains(&(class_name_chirho.to_string(), head_names_chirho[0].clone()))
-            || self
+            if self
                 .derived_instance_heads_chirho
-                .contains(&(class_name_chirho.to_string(), "*".to_string()))
-        {
-            return None;
-        }
-        let normalized_pred_chirho = PredChirho {
-            class_name_chirho: pred_chirho.class_name_chirho.clone(),
-            ty_chirho: normalized_args_chirho[0].clone(),
-            extra_tys_chirho: normalized_args_chirho[1..].to_vec(),
-        };
-        if let Some(instances_chirho) = self
-            .class_env_chirho
-            .instances_chirho
-            .get(class_name_chirho)
-        {
-            let candidates_chirho: Vec<&InstDeclChirho> = instances_chirho
-                .iter()
-                .filter(|inst_chirho| {
-                    Self::instance_could_match_pred_chirho(inst_chirho, &normalized_pred_chirho)
-                })
-                .collect();
-            if !candidates_chirho.is_empty() {
-                // An instance whose head matches does not make the predicate
-                // solvable: its own context has to hold too. `instance Convert a
-                // String => Render [a]` cannot serve `Render [Int]` when no
-                // `Convert Int String` exists (GHC-39999 at the use site). The
-                // verdict stays conservative: every candidate must carry a
-                // sub-goal that is itself certainly unsolvable, a candidate we
-                // cannot instantiate gives no verdict, and the depth bound ends
-                // in "unproved".
-                // workflow: language-features-chirho/instance-obligations-chirho
-                if depth_chirho >= Self::UNSOLVABLE_SUB_GOAL_DEPTH_CHIRHO {
-                    return None;
-                }
-                let every_candidate_fails_chirho = candidates_chirho.iter().all(|inst_chirho| {
-                    match ClassEnvChirho::instance_sub_goals_chirho(
-                        inst_chirho,
-                        &normalized_pred_chirho,
-                    ) {
-                        Some(sub_goals_chirho) => sub_goals_chirho.iter().any(|goal_chirho| {
-                            self.is_certainly_unsolvable_pred_depth_chirho(
-                                goal_chirho,
-                                depth_chirho + 1,
-                            )
-                        }),
-                        None => false,
+                .contains(&(class_name_chirho.to_string(), head_names_chirho[0].clone()))
+                || self
+                    .derived_instance_heads_chirho
+                    .contains(&(class_name_chirho.to_string(), "*".to_string()))
+            {
+                return None;
+            }
+            if let Some(instances_chirho) = self
+                .class_env_chirho
+                .instances_chirho()
+                .get_chirho(class_name_chirho)
+            {
+                let candidates_chirho: Vec<&InstDeclChirho> = instances_chirho
+                    .iter_chirho()
+                    .map(|instance_chirho| instance_chirho.as_ref())
+                    .filter(|inst_chirho| {
+                        Self::instance_could_match_pred_chirho(inst_chirho, &normalized_pred_chirho)
+                    })
+                    .collect();
+                if !candidates_chirho.is_empty() {
+                    // An instance whose head matches does not make the predicate
+                    // solvable: its own context has to hold too. `instance Convert a
+                    // String => Render [a]` cannot serve `Render [Int]` when no
+                    // `Convert Int String` exists (GHC-39999 at the use site). The
+                    // verdict stays conservative: every candidate must carry a
+                    // sub-goal that is itself certainly unsolvable, a candidate we
+                    // cannot instantiate gives no verdict, and the depth bound ends
+                    // in "unproved".
+                    // workflow: language-features-chirho/instance-obligations-chirho
+                    if depth_chirho >= Self::UNSOLVABLE_SUB_GOAL_DEPTH_CHIRHO {
+                        return None;
                     }
-                });
-                if !every_candidate_fails_chirho {
-                    return None;
+                    let every_candidate_fails_chirho =
+                        candidates_chirho.iter().all(|inst_chirho| {
+                            match ClassEnvChirho::instance_sub_goals_chirho(
+                                inst_chirho,
+                                &normalized_pred_chirho,
+                            ) {
+                                Some(sub_goals_chirho) => {
+                                    sub_goals_chirho.iter().any(|goal_chirho| {
+                                        self.is_certainly_unsolvable_pred_depth_chirho(
+                                            goal_chirho,
+                                            depth_chirho + 1,
+                                        )
+                                    })
+                                }
+                                None => false,
+                            }
+                        });
+                    if !every_candidate_fails_chirho {
+                        return None;
+                    }
                 }
             }
         }
         let normalized_givens_chirho: Vec<PredChirho> = self
             .given_preds_chirho
             .iter()
-            .map(|given_chirho| PredChirho {
-                class_name_chirho: given_chirho.class_name_chirho.clone(),
-                ty_chirho: self.normalize_ty_chirho(&given_chirho.ty_chirho),
-                extra_tys_chirho: given_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|t_chirho| self.normalize_ty_chirho(t_chirho))
-                    .collect(),
+            .map(|given_chirho| {
+                PredChirho::from_proof_chirho(
+                    given_chirho.class_identity_chirho().clone(),
+                    crate::class_chirho::PredPartsChirho {
+                        kind_tys_chirho: given_chirho
+                            .kind_tys_chirho
+                            .iter()
+                            .map(|kind_chirho| self.normalize_ty_chirho(kind_chirho))
+                            .collect(),
+                        class_name_chirho: given_chirho.class_name_chirho.clone(),
+                        ty_chirho: self.normalize_ty_chirho(&given_chirho.ty_chirho),
+                        extra_tys_chirho: given_chirho
+                            .extra_tys_chirho
+                            .iter()
+                            .map(|t_chirho| self.normalize_ty_chirho(t_chirho))
+                            .collect(),
+                    },
+                )
             })
             .collect();
-        // A proof clears it, two complete negatives make it certain, and a superclass search
-        // a bound stopped leaves it undecided, never a negative (row 694, #31972, #31984).
         let plain_chirho = self.givens_entail_chirho(pred_chirho, &self.given_preds_chirho);
         let normalized_chirho =
             self.givens_entail_chirho(&normalized_pred_chirho, &normalized_givens_chirho);
@@ -331,23 +578,31 @@ impl InferCtxChirho {
         if depth_chirho >= Self::UNSOLVABLE_SUB_GOAL_DEPTH_CHIRHO {
             return pred_chirho.clone();
         }
-        let normalized_pred_chirho = PredChirho {
-            class_name_chirho: pred_chirho.class_name_chirho.clone(),
-            ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
-            extra_tys_chirho: pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .map(|ty_chirho| self.normalize_ty_chirho(ty_chirho))
-                .collect(),
-        };
+        let normalized_pred_chirho = PredChirho::from_proof_chirho(
+            pred_chirho.class_identity_chirho().clone(),
+            crate::class_chirho::PredPartsChirho {
+                kind_tys_chirho: pred_chirho
+                    .kind_tys_chirho
+                    .iter()
+                    .map(|kind_chirho| self.normalize_ty_chirho(kind_chirho))
+                    .collect(),
+                class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
+                extra_tys_chirho: pred_chirho
+                    .extra_tys_chirho
+                    .iter()
+                    .map(|ty_chirho| self.normalize_ty_chirho(ty_chirho))
+                    .collect(),
+            },
+        );
         let Some(instances_chirho) = self
             .class_env_chirho
-            .instances_chirho
-            .get(pred_chirho.class_name_chirho.as_str())
+            .instances_chirho()
+            .get_chirho(pred_chirho.class_name_chirho.as_str())
         else {
             return pred_chirho.clone();
         };
-        for inst_chirho in instances_chirho.iter().filter(|inst_chirho| {
+        for inst_chirho in instances_chirho.iter_chirho().filter(|inst_chirho| {
             Self::instance_could_match_pred_chirho(inst_chirho, &normalized_pred_chirho)
         }) {
             let Some(sub_goals_chirho) =
@@ -376,12 +631,6 @@ impl InferCtxChirho {
         )
     }
 
-    /// Whether `givens_chirho` entail `pred_chirho`: a given entails itself and every
-    /// superclass its class's templates instantiate at its own arguments, `AskChirho Int m`
-    /// giving `Monad m` (row 694, #31909); for a unary class this is the old rule, the same
-    /// argument under a transitive superclass. `Ok(true)` when one does, `Ok(false)` when every
-    /// search ended with nothing left, and the exhaustion when a bound stopped one and none
-    /// proved it (#31972).
     pub(super) fn givens_entail_chirho(
         &self,
         pred_chirho: &PredChirho,

@@ -64,13 +64,31 @@ struct DerivingJudgeChirho<'a> {
 /// Rules 7 to 16 over every deriving clause, standalone deriving declaration and written
 /// instance, with the builtin classes naming proved for the module.
 /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+#[cfg(test)]
 pub(super) fn check_deriving_strategies_chirho(
     module_chirho: &ModuleChirho,
     builtin_classes_chirho: &BuiltinClassScopeChirho,
     errors_chirho: &mut Vec<DeclarationErrorChirho>,
 ) {
-    let identity_chirho =
-        StockIdentityChirho::of_module_chirho(module_chirho, builtin_classes_chirho);
+    check_deriving_strategies_with_type_scope_chirho(
+        module_chirho,
+        builtin_classes_chirho,
+        None,
+        errors_chirho,
+    );
+}
+
+pub(super) fn check_deriving_strategies_with_type_scope_chirho(
+    module_chirho: &ModuleChirho,
+    builtin_classes_chirho: &BuiltinClassScopeChirho,
+    type_scope_chirho: Option<&haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>,
+    errors_chirho: &mut Vec<DeclarationErrorChirho>,
+) {
+    let identity_chirho = StockIdentityChirho::with_type_scope_chirho(
+        module_chirho,
+        builtin_classes_chirho,
+        type_scope_chirho,
+    );
     let judge_chirho = DerivingJudgeChirho {
         extensions_chirho: DerivingExtensionsChirho::of_module_chirho(module_chirho),
         class_shapes_chirho: LocalClassShapesChirho::of_module_chirho(
@@ -175,7 +193,7 @@ fn check_builtin_duplicates_chirho(
         let key_chirho = (type_chirho.to_string(), builtin_name_chirho);
         match seen_chirho.get(&key_chirho) {
             Some(first_chirho) => errors_chirho.push(DeclarationErrorChirho {
-                ghc_code_chirho: "GHC-59692",
+                ghc_code_chirho: Some("GHC-59692"),
                 message_chirho: format!(
                     "Duplicate instance declarations: `{builtin_name_chirho} {type_chirho}` has a second instance, here spelled `{}`",
                     class_chirho.full_name_chirho()
@@ -282,7 +300,7 @@ impl DerivingJudgeChirho<'_> {
             && !extensions_chirho.strategies_chirho
         {
             errors_chirho.push(DeclarationErrorChirho {
-                ghc_code_chirho: "GHC-87139",
+                ghc_code_chirho: Some("GHC-87139"),
                 message_chirho: format!(
                     "Illegal deriving strategy: {}",
                     strategy_chirho.keyword_chirho().text_chirho()
@@ -486,7 +504,7 @@ fn class_error_chirho(
     class_chirho: &NameChirho,
 ) -> DeclarationErrorChirho {
     DeclarationErrorChirho {
-        ghc_code_chirho,
+        ghc_code_chirho: Some(ghc_code_chirho),
         message_chirho,
         span_chirho: class_chirho.span_chirho(),
         related_span_chirho: None,

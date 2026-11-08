@@ -105,7 +105,11 @@ fn codes_in_chirho(module_chirho: ModuleChirho) -> Vec<&'static str> {
     check_role_annotations_chirho(&module_chirho, &mut errors_chirho);
     errors_chirho
         .iter()
-        .map(|error_chirho| error_chirho.ghc_code_chirho)
+        .map(|error_chirho| {
+            error_chirho
+                .ghc_code_chirho
+                .expect("role diagnostic retains its code")
+        })
         .collect()
 }
 
@@ -125,6 +129,7 @@ fn class_chirho(
     families_chirho: &[&str],
 ) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho(class_name_chirho),
         type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("aChirho"))],
@@ -143,8 +148,13 @@ fn class_chirho(
         associated_tfs_chirho: families_chirho
             .iter()
             .map(|family_chirho| AssocTypeFamilyChirho {
+                injectivity_chirho: None,
+                result_kind_chirho: None,
+                data_family_chirho: false,
+                default_arguments_chirho: None,
+                default_binders_chirho: None,
                 name_chirho: name_chirho(family_chirho),
-                type_vars_chirho: vec![name_chirho("aChirho")],
+                type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("aChirho"))],
                 default_rhs_chirho: None,
                 default_params_chirho: vec![],
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -287,6 +297,10 @@ fn a_synonym_or_family_takes_no_roles_chirho() {
         ["GHC-77192"]
     );
     let family_chirho = DeclChirho::TypeFamilyDeclChirho {
+        injectivity_chirho: None,
+        standalone_kind_chirho: None,
+        data_family_chirho: false,
+        closed_chirho: false,
         name_chirho: name_chirho("FamChirho"),
         type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("aChirho"))],
         result_kind_chirho: None,

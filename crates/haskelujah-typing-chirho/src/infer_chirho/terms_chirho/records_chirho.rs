@@ -418,7 +418,7 @@ impl InferCtxChirho {
         } = current_chirho
         {
             let mut instantiation_chirho = SubstChirho::empty_chirho();
-            for var_chirho in vars_chirho {
+            for var_chirho in vars_chirho.iter().copied() {
                 let fresh_chirho = self.fresh_var_chirho();
                 instantiation_chirho.insert_chirho(var_chirho, fresh_chirho);
             }

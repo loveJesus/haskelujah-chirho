@@ -553,6 +553,7 @@ mod tests_chirho {
         key_chirho: &str,
     ) -> haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
         haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
+            ground_pred_chirho: None,
             applied_head_chirho: None,
             class_name_chirho: class_chirho.to_string(),
             ty_key_chirho: Some(key_chirho.to_string()),
@@ -578,18 +579,24 @@ mod tests_chirho {
         let source_var_chirho = TyChirho::VarChirho(TyVarChirho(0));
         let result_var_chirho = TyChirho::VarChirho(TyVarChirho(1));
         SchemeChirho {
-            vars_chirho: vec![TyVarChirho(0), TyVarChirho(1)],
+            vars_chirho: vec![TyVarChirho(0), TyVarChirho(1)].into(),
             preds_chirho: vec![
-                SchemePredChirho {
-                    class_name_chirho: "Integral".to_string(),
-                    ty_chirho: source_var_chirho.clone(),
-                    extra_tys_chirho: Vec::new(),
-                },
-                SchemePredChirho {
-                    class_name_chirho: result_class_chirho.to_string(),
-                    ty_chirho: result_var_chirho.clone(),
-                    extra_tys_chirho: Vec::new(),
-                },
+                SchemePredChirho::legacy_chirho(
+                    haskelujah_typing_chirho::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: "Integral".to_string(),
+                        ty_chirho: source_var_chirho.clone(),
+                        extra_tys_chirho: Vec::new(),
+                    },
+                ),
+                SchemePredChirho::legacy_chirho(
+                    haskelujah_typing_chirho::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: result_class_chirho.to_string(),
+                        ty_chirho: result_var_chirho.clone(),
+                        extra_tys_chirho: Vec::new(),
+                    },
+                ),
             ],
             ty_chirho: TyChirho::fun_chirho(source_var_chirho, result_var_chirho),
         }

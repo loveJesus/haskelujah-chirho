@@ -59,6 +59,10 @@ impl DesugarCtxChirho {
                 success_chirho(self)
             }
             PatChirho::WildcardChirho(_) => success_chirho(self),
+            // Public module desugaring refuses these before publishing Core.
+            PatChirho::SpliceChirho { .. } => {
+                self.case_failure_chirho("unsupported unexpanded executable pattern splice")
+            }
             PatChirho::ParenChirho { inner_chirho, .. } => self.match_row_chirho(
                 inner_chirho,
                 scrutinee_chirho,

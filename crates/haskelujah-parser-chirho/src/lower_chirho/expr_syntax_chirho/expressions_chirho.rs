@@ -286,7 +286,7 @@ impl LowerCtxChirho {
                                 let pat_expr_chirho =
                                     self.lower_expr_chirho(n_chirho, child_chirho.start_chirho);
                                 binders_chirho.push(LambdaBinderChirho::TermChirho(
-                                    Self::expr_to_pat_chirho(&pat_expr_chirho),
+                                    Self::expr_to_pat_chirho(pat_expr_chirho),
                                 ));
                             } else if saw_arrow_chirho && body_chirho.is_none() {
                                 body_chirho = Some(
@@ -819,6 +819,7 @@ impl LowerCtxChirho {
                     })
                     .unwrap_or_else(|| self.placeholder_expr_chirho());
                 ExprChirho::QuoteExprChirho {
+                    typed_chirho: false,
                     expr_chirho: Box::new(inner_chirho),
                     span_chirho,
                 }
@@ -893,6 +894,7 @@ impl LowerCtxChirho {
                     })
                     .unwrap_or_else(|| self.placeholder_expr_chirho());
                 ExprChirho::QuoteExprChirho {
+                    typed_chirho: true,
                     expr_chirho: Box::new(inner_chirho),
                     span_chirho,
                 }

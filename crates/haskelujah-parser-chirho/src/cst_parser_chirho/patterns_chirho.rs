@@ -266,6 +266,7 @@ impl ParserChirho<'_> {
                 self.bump_chirho();
                 self.builder_chirho.finish_node_chirho();
             }
+            Some(RawTokenKindChirho::ThSpliceChirho) => self.parse_splice_pat_chirho(),
             Some(RawTokenKindChirho::UnderscoreChirho) => {
                 self.builder_chirho
                     .start_node_chirho(SyntaxKindChirho::WildcardPatChirho);
@@ -589,6 +590,7 @@ impl ParserChirho<'_> {
         matches!(
             self.current_kind_chirho(),
             Some(RawTokenKindChirho::VarIdChirho)
+                | Some(RawTokenKindChirho::ThSpliceChirho)
                 | Some(RawTokenKindChirho::ConIdChirho)
                 | Some(RawTokenKindChirho::QualifiedIdChirho)
                 | Some(RawTokenKindChirho::IntLitChirho)

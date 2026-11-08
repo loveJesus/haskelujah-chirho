@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 
@@ -30,6 +31,7 @@ pub(super) fn push_mtl_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["mtl"]),
             name_chirho: "Control.Monad.Reader".to_string(),
             exports_chirho,
         });
@@ -63,18 +65,22 @@ pub(super) fn push_mtl_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["mtl"]),
             name_chirho: "Control.Monad.State".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["mtl"]),
             name_chirho: "Control.Monad.State.Class".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["mtl"]),
             name_chirho: "Control.Monad.State.Strict".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["mtl"]),
             name_chirho: "Control.Monad.State.Lazy".to_string(),
             exports_chirho,
         });
@@ -101,18 +107,22 @@ pub(super) fn push_mtl_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["mtl"]),
             name_chirho: "Control.Monad.Writer".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["mtl"]),
             name_chirho: "Control.Monad.Writer.Class".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["mtl"]),
             name_chirho: "Control.Monad.Writer.Strict".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["mtl"]),
             name_chirho: "Control.Monad.Writer.Lazy".to_string(),
             exports_chirho,
         });
@@ -139,6 +149,7 @@ pub(super) fn push_mtl_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["mtl"]),
             name_chirho: "Control.Monad.Except".to_string(),
             exports_chirho,
         });
@@ -157,6 +168,7 @@ pub(super) fn push_mtl_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_val_chirho("Identity");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["mtl"]),
             name_chirho: "Control.Monad.Identity".to_string(),
             exports_chirho,
         });
@@ -195,6 +207,7 @@ pub(super) fn push_mtl_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("SomeException", &["SomeException"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["exceptions"]),
             name_chirho: "Control.Monad.Catch".to_string(),
             exports_chirho,
         });
@@ -224,6 +237,7 @@ pub(super) fn push_mtl_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Control.Monad.Primitive".to_string(),
             exports_chirho,
         });
@@ -277,31 +291,62 @@ pub(super) fn push_mtl_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["mtl"]),
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
         });
     }
 
     // Control.Monad.Reader / Control.Monad.Writer / Control.Monad.State / Control.Monad.Except / Control.Monad.Error (mtl wrappers)
-    for mod_name_chirho in &[
-        "Control.Monad.Reader",
-        "Control.Monad.Reader.Class",
-        "Control.Monad.Writer",
-        "Control.Monad.Writer.Strict",
-        "Control.Monad.Writer.Lazy",
-        "Control.Monad.Writer.Class",
-        "Control.Monad.State",
-        "Control.Monad.State.Strict",
-        "Control.Monad.State.Lazy",
-        "Control.Monad.State.Class",
-        "Control.Monad.Except",
-        "Control.Monad.Error",
-        "Control.Monad.Error.Class",
-        "Control.Monad.Cont",
-        "Control.Monad.Cont.Class",
-        "Control.Monad.Writer.CPS",
-        "Control.Monad.RWS.CPS",
-        "Control.Monad.Identity",
+    for (mod_name_chirho, exposure_chirho) in &[
+        ("Control.Monad.Reader", package_exposure_chirho(&["mtl"])),
+        (
+            "Control.Monad.Reader.Class",
+            package_exposure_chirho(&["mtl"]),
+        ),
+        ("Control.Monad.Writer", package_exposure_chirho(&["mtl"])),
+        (
+            "Control.Monad.Writer.Strict",
+            package_exposure_chirho(&["mtl"]),
+        ),
+        (
+            "Control.Monad.Writer.Lazy",
+            package_exposure_chirho(&["mtl"]),
+        ),
+        (
+            "Control.Monad.Writer.Class",
+            package_exposure_chirho(&["mtl"]),
+        ),
+        ("Control.Monad.State", package_exposure_chirho(&["mtl"])),
+        (
+            "Control.Monad.State.Strict",
+            package_exposure_chirho(&["mtl"]),
+        ),
+        (
+            "Control.Monad.State.Lazy",
+            package_exposure_chirho(&["mtl"]),
+        ),
+        (
+            "Control.Monad.State.Class",
+            package_exposure_chirho(&["mtl"]),
+        ),
+        ("Control.Monad.Except", package_exposure_chirho(&["mtl"])),
+        ("Control.Monad.Error", None),
+        (
+            "Control.Monad.Error.Class",
+            package_exposure_chirho(&["mtl"]),
+        ),
+        ("Control.Monad.Cont", package_exposure_chirho(&["mtl"])),
+        (
+            "Control.Monad.Cont.Class",
+            package_exposure_chirho(&["mtl"]),
+        ),
+        (
+            "Control.Monad.Writer.CPS",
+            package_exposure_chirho(&["mtl"]),
+        ),
+        ("Control.Monad.RWS.CPS", package_exposure_chirho(&["mtl"])),
+        ("Control.Monad.Identity", package_exposure_chirho(&["mtl"])),
     ] {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
@@ -411,6 +456,7 @@ pub(super) fn push_mtl_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: exposure_chirho.clone(),
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
         });

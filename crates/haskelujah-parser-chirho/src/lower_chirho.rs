@@ -14,6 +14,9 @@
 //! helpers, and the three items the child modules name as `super::`.
 
 #[cfg(test)]
+#[path = "lower_chirho/classes_chirho/associated_instance_tests_chirho.rs"]
+mod associated_instance_tests_chirho;
+#[cfg(test)]
 #[path = "lower_chirho/bindings_chirho/binding_tests_chirho.rs"]
 mod binding_tests_chirho;
 #[path = "lower_chirho/bindings_chirho/bindings_chirho.rs"]
@@ -70,6 +73,11 @@ mod expression_parts_chirho;
 mod expression_tests_chirho;
 #[path = "lower_chirho/expr_syntax_chirho/expressions_chirho.rs"]
 mod expressions_chirho;
+#[cfg(test)]
+#[path = "lower_chirho/classes_chirho/family_equation_tests_chirho.rs"]
+mod family_equation_tests_chirho;
+#[path = "lower_chirho/classes_chirho/family_equations_chirho.rs"]
+mod family_equations_chirho;
 #[path = "lower_chirho/expr_syntax_chirho/fixity_chirho.rs"]
 mod fixity_chirho;
 #[cfg(test)]
@@ -79,6 +87,11 @@ mod flat_type_tests_chirho;
 mod flat_types_chirho;
 #[path = "lower_chirho/declarations_chirho/foreign_chirho.rs"]
 mod foreign_chirho;
+#[cfg(test)]
+#[path = "lower_chirho/data_types_chirho/gadt_signature_tests_chirho.rs"]
+mod gadt_signature_tests_chirho;
+#[path = "lower_chirho/data_types_chirho/gadt_signatures_chirho.rs"]
+mod gadt_signatures_chirho;
 #[cfg(test)]
 #[path = "lower_chirho/bindings_chirho/guard_do_tests_chirho.rs"]
 mod guard_do_tests_chirho;
@@ -177,7 +190,17 @@ pub fn lower_module_chirho(
     file_id_chirho: FileIdChirho,
 ) -> ModuleChirho {
     let mut ctx_chirho = LowerCtxChirho::new_chirho(file_id_chirho);
-    ctx_chirho.lower_source_file_chirho(root_chirho)
+    ctx_chirho.lower_source_file_chirho(root_chirho, None)
+}
+
+/// Lower with the already resolved policy used before layout, without rescanning pragmas.
+pub fn lower_module_with_extensions_chirho(
+    root_chirho: &Arc<GreenNodeChirho>,
+    file_id_chirho: FileIdChirho,
+    extensions_chirho: &crate::pragma_chirho::EffectiveExtensionsChirho,
+) -> ModuleChirho {
+    let mut ctx_chirho = LowerCtxChirho::new_chirho(file_id_chirho);
+    ctx_chirho.lower_source_file_chirho(root_chirho, Some(extensions_chirho))
 }
 
 // ---------------------------------------------------------------------------
@@ -247,12 +270,14 @@ fn is_type_kind_chirho(kind_chirho: SyntaxKindChirho) -> bool {
             | SyntaxKindChirho::ListTypeChirho
             | SyntaxKindChirho::VarTypeChirho
             | SyntaxKindChirho::ConTypeChirho
+            | SyntaxKindChirho::GadtFieldTypeChirho
             | SyntaxKindChirho::QualTypeChirho
             | SyntaxKindChirho::ForallTypeChirho
             | SyntaxKindChirho::KindAnnotTypeChirho
             | SyntaxKindChirho::ContextChirho
             | SyntaxKindChirho::PromotedConTypeChirho
             | SyntaxKindChirho::PromotedListTypeChirho
+            | SyntaxKindChirho::PromotedTupleTypeChirho
             | SyntaxKindChirho::InfixTypeChirho
             | SyntaxKindChirho::WildcardTypeChirho
             | SyntaxKindChirho::LitTypeChirho

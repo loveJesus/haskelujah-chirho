@@ -4,8 +4,14 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::mk_data_type_chirho;
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
+use crate::iface_chirho::builtin_chirho::seed_representation_exports_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
+use haskelujah_ast_chirho::name_chirho::{
+    CompilerRepresentationChirho, CompilerTypeConstructorChirho,
+};
 
 /// Push the interfaces for `GHC.Prim` and the other primitive modules.
 pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
@@ -24,6 +30,7 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-prim"]),
             name_chirho: "GHC.CString".to_string(),
             exports_chirho,
         });
@@ -39,6 +46,7 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("ByteOrder", &["LittleEndian", "BigEndian"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.ByteOrder".to_string(),
             exports_chirho,
         });
@@ -47,18 +55,23 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
     // GHC.Types
     {
         let mut exports_chirho = IfaceExportsChirho::default();
-        for name_chirho in &[
-            "Type",
-            "Constraint",
-            "RuntimeRep",
-            "Levity",
-            "Multiplicity",
-            "Symbol",
-        ] {
+        for name_chirho in &["Multiplicity", "Symbol"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
+        for constructor_chirho in [
+            CompilerTypeConstructorChirho::TypeUniverseChirho,
+            CompilerTypeConstructorChirho::ConstraintUniverseChirho,
+        ] {
+            let (key_chirho, type_chirho) = mk_data_type_chirho(constructor_chirho, &[]);
+            exports_chirho.types_chirho.insert(key_chirho, type_chirho);
+        }
+        seed_representation_exports_chirho(
+            &mut exports_chirho,
+            &CompilerRepresentationChirho::ALL_CHIRHO,
+        );
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-prim"]),
             name_chirho: "GHC.Types".to_string(),
             exports_chirho,
         });
@@ -77,6 +90,7 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_val_chirho("Solo");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-prim"]),
             name_chirho: "GHC.Tuple".to_string(),
             exports_chirho,
         });
@@ -97,6 +111,7 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-prim"]),
             name_chirho: "GHC.Classes".to_string(),
             exports_chirho,
         });
@@ -106,8 +121,6 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
-            "Int#",
-            "Word#",
             "Float#",
             "Double#",
             "Char#",
@@ -127,7 +140,6 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             "StableName#",
             "StablePtr#",
             "Proxy#",
-            "TYPE",
             "RuntimeRep",
             "LiftedRep",
             "UnliftedRep",
@@ -135,6 +147,22 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
+        for constructor_chirho in [
+            CompilerTypeConstructorChirho::IntHashChirho,
+            CompilerTypeConstructorChirho::WordHashChirho,
+        ] {
+            let (key_chirho, type_chirho) = mk_data_type_chirho(constructor_chirho, &[]);
+            exports_chirho.types_chirho.insert(key_chirho, type_chirho);
+        }
+        // GHC.Prim exposes TYPE and CONSTRAINT; its historical
+        // RuntimeRep/alias placeholders do not receive declaration authority.
+        seed_representation_exports_chirho(
+            &mut exports_chirho,
+            &[
+                CompilerRepresentationChirho::RuntimeTypeChirho,
+                CompilerRepresentationChirho::RuntimeConstraintChirho,
+            ],
+        );
         for name_chirho in &[
             "seq",
             "realWorld#",
@@ -456,6 +484,7 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-prim"]),
             name_chirho: "GHC.Prim".to_string(),
             exports_chirho,
         });
@@ -469,6 +498,7 @@ pub(super) fn push_prim_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-prim"]),
             name_chirho: "GHC.Magic".to_string(),
             exports_chirho,
         });

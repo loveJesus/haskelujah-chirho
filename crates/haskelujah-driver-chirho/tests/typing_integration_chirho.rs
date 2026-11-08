@@ -11,16 +11,28 @@ use haskelujah_test_harness_chirho::native_chirho::{
 // in this target's own directory is named by path.
 #[path = "typing_integration_chirho/declarations_chirho/annotated_pattern_bindings_chirho.rs"]
 mod annotated_pattern_bindings_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/associated_named_results_chirho.rs"]
+mod associated_named_results_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/builtin_class_kinds_chirho.rs"]
 mod builtin_class_kinds_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/closed_family_equations_chirho.rs"]
+mod closed_family_equations_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/declaration_validity_chirho.rs"]
 mod declaration_validity_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/deriving_strategies_chirho.rs"]
 mod deriving_strategies_chirho;
 #[path = "typing_integration_chirho/dollar_ownership_chirho.rs"]
 mod dollar_ownership_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/equality_scopes_chirho.rs"]
+mod equality_scopes_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/first_class_show_print_chirho.rs"]
 mod first_class_show_print_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/gadt_constructors_chirho.rs"]
+mod gadt_constructors_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/gadt_projection_channels_chirho.rs"]
+mod gadt_projection_channels_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/gadt_selector_scope_chirho.rs"]
+mod gadt_selector_scope_chirho;
 #[path = "typing_integration_chirho/import_scope_chirho.rs"]
 mod import_scope_chirho;
 #[path = "typing_integration_chirho/inferred_evidence_chirho.rs"]
@@ -41,6 +53,8 @@ mod numeric_nominality_chirho;
 mod operator_ownership_chirho;
 #[path = "typing_integration_chirho/paren_infix_definitions_chirho.rs"]
 mod paren_infix_definitions_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/promoted_constructor_identity_chirho.rs"]
+mod promoted_constructor_identity_chirho;
 #[path = "typing_integration_chirho/qualified_alias_agreement_chirho.rs"]
 mod qualified_alias_agreement_chirho;
 #[path = "typing_integration_chirho/qualified_builtin_aliases_chirho.rs"]
@@ -87,6 +101,17 @@ fn rejected_like_ghc_chirho(source_chirho: &str, file_name_chirho: &str, reasons
                 );
             }
         }
+    }
+}
+
+/// GHC accepts the program, so the checker must too.
+fn checks_like_ghc_chirho(file_name_chirho: &str, source_chirho: &str) {
+    if let Err(error_chirho) = haskelujah_driver::typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        file_name_chirho,
+    ) {
+        panic!("{file_name_chirho}: GHC accepts this program; we rejected it: {error_chirho}");
     }
 }
 
@@ -881,3 +906,8 @@ fn explicit_type_arguments_do_not_accept_reversed_operand_types_chirho() {
         "{text_chirho}"
     );
 }
+
+#[path = "typing_integration_chirho/declarations_chirho/ordered_family_reduction_chirho.rs"]
+mod ordered_family_reduction_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/signature_wanteds_chirho.rs"]
+mod signature_wanteds_chirho;

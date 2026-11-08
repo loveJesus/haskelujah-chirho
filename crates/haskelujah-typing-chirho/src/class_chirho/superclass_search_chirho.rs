@@ -53,13 +53,20 @@ impl ClassEnvChirho {
                 return Err(SuperclassSearchExhaustedChirho);
             }
             steps_chirho += 1;
-            let Some(class_chirho) = self.classes_chirho.get(&current_chirho.class_name_chirho)
+            let Some(class_chirho) = self
+                .classes_chirho()
+                .get_chirho(&current_chirho.class_name_chirho)
             else {
                 continue;
             };
-            for derived_chirho in
-                class_chirho.superclass_preds_at_chirho(&current_chirho.all_tys_chirho())
-            {
+            let Some(superclasses_chirho) = class_chirho.superclass_preds_at_chirho(
+                &current_chirho.kind_tys_chirho,
+                &current_chirho.all_tys_chirho(),
+            ) else {
+                stopped_chirho = true;
+                continue;
+            };
+            for derived_chirho in superclasses_chirho {
                 if derived_chirho == *wanted_chirho {
                     return Ok(true);
                 }
@@ -67,8 +74,7 @@ impl ClassEnvChirho {
                     continue;
                 }
                 if derived_chirho
-                    .all_tys_chirho()
-                    .iter()
+                    .semantic_tys_chirho()
                     .any(|ty_chirho| type_size_chirho(ty_chirho) > SUPERCLASS_TYPE_SIZE_CHIRHO)
                 {
                     stopped_chirho = true;
@@ -107,21 +113,49 @@ impl ClassEnvChirho {
 
 /// The number of nodes in `ty_chirho`.
 fn type_size_chirho(ty_chirho: &TyChirho) -> usize {
-    match ty_chirho {
-        TyChirho::AppChirho(left_chirho, right_chirho)
-        | TyChirho::FunChirho(left_chirho, right_chirho, _) => {
-            1 + type_size_chirho(left_chirho) + type_size_chirho(right_chirho)
+    let mut pending_chirho = vec![ty_chirho];
+    let mut count_chirho = 0usize;
+    while let Some(ty_chirho) = pending_chirho.pop() {
+        count_chirho += 1;
+        if count_chirho > SUPERCLASS_TYPE_SIZE_CHIRHO {
+            return count_chirho;
         }
-        TyChirho::ListChirho(element_chirho) => 1 + type_size_chirho(element_chirho),
-        TyChirho::TupleChirho(elements_chirho) => {
-            1 + elements_chirho.iter().map(type_size_chirho).sum::<usize>()
+        match ty_chirho {
+            TyChirho::AppChirho(left_chirho, right_chirho)
+            | TyChirho::FunChirho(left_chirho, right_chirho, _) => {
+                pending_chirho.extend([left_chirho.as_ref(), right_chirho.as_ref()]);
+            }
+            TyChirho::ListChirho(element_chirho) => pending_chirho.push(element_chirho),
+            TyChirho::TupleChirho(elements_chirho) => pending_chirho.extend(elements_chirho),
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                pending_chirho.extend(context_chirho);
+                pending_chirho.push(body_chirho);
+            }
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            }
+            | TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
+                for record_chirho in vars_chirho.records_chirho() {
+                    if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                        pending_chirho.push(kind_chirho.as_ref());
+                    }
+                }
+                pending_chirho.push(body_chirho);
+            }
+            TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => {}
         }
-        TyChirho::VarChirho(_)
-        | TyChirho::ConChirho(_)
-        | TyChirho::ForallVarChirho(_)
-        | TyChirho::ForallChirho { .. }
-        | TyChirho::RequiredForallChirho { .. } => 1,
+        if pending_chirho.len() > SUPERCLASS_TYPE_SIZE_CHIRHO {
+            return SUPERCLASS_TYPE_SIZE_CHIRHO + 1;
+        }
     }
+    count_chirho
 }
 
 #[cfg(test)]

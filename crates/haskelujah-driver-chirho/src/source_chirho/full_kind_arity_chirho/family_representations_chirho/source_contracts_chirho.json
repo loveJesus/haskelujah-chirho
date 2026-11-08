@@ -1,0 +1,75 @@
+[
+  {
+    "case_chirho": "UnliftedNewtypesDifficultUnification",
+    "expected_ghc_chirho": "ACCEPT",
+    "source_sha256_chirho": "ca1f3dd8f131e6c09ebd87b0ae796adaaa9a0e5e8354497a81e872c6d638de15",
+    "original_source_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/ghc-tests-chirho/typecheck-chirho/should_compile/UnliftedNewtypesDifficultUnification.hs",
+    "ghc_receipt_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/required-argument-oracles-chirho/representation-validity-controls-chirho/before-r1-chirho/representation-validity-controls-chirho/UnliftedNewtypesDifficultUnification/ghc_chirho/receipt-chirho.json"
+  },
+  {
+    "case_chirho": "ClosedFamilyNewtypeResultChirho",
+    "expected_ghc_chirho": "ACCEPT",
+    "source_sha256_chirho": "6e75e527b3245e5b5a281ef2c8f2799ed0031aa7b233c12ecd5a265f4466979c",
+    "original_source_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/required-argument-oracles-chirho/representation-default-controls-chirho/fixed-fields-chirho/forall_chirho/result_kinds_chirho/ClosedFamilyNewtypeResultChirho.hs",
+    "ghc_receipt_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/required-argument-oracles-chirho/representation-default-controls-chirho/fixed-fields-chirho/forall_chirho/result_kinds_chirho/ghc-r1-chirho/ClosedFamilyNewtypeResultChirho/receipt-chirho.json"
+  },
+  {
+    "case_chirho": "UnliftedNewtypesMismatchedKindRecord",
+    "expected_ghc_chirho": "REJECT",
+    "source_sha256_chirho": "cafd6fa86e42308fb3782b96672713b5df4bf9e6fe5f0d1f2b906916841de8f9",
+    "original_source_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-chirho/ghc-tests-chirho/typecheck-chirho/should_fail/UnliftedNewtypesMismatchedKindRecord.hs",
+    "ghc_receipt_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/required-argument-oracles-chirho/representation-validity-controls-chirho/before-r1-chirho/representation-validity-controls-chirho/UnliftedNewtypesMismatchedKindRecord/ghc_chirho/receipt-chirho.json"
+  },
+  {
+    "case_chirho": "ClosedFamilyDataResultChirho",
+    "expected_ghc_chirho": "REJECT",
+    "source_sha256_chirho": "bf369b48dfc1bd6549b526b462b450267425598e0c1f13b14fcdb922208fc7d9",
+    "original_source_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/required-argument-oracles-chirho/representation-default-controls-chirho/fixed-fields-chirho/forall_chirho/result_kinds_chirho/ClosedFamilyDataResultChirho.hs",
+    "ghc_receipt_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/required-argument-oracles-chirho/representation-default-controls-chirho/fixed-fields-chirho/forall_chirho/result_kinds_chirho/ghc-r1-chirho/ClosedFamilyDataResultChirho/receipt-chirho.json"
+  },
+  {
+    "case_chirho": "OpenFamilyFieldChirho",
+    "expected_ghc_chirho": "REJECT",
+    "source_sha256_chirho": "8f85b327dee451f8615693cd1bf8cfdd896cdf66d1947ff9cd10385b35bcd9a5",
+    "original_source_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/required-argument-oracles-chirho/representation-default-controls-chirho/fixed-fields-chirho/OpenFamilyFieldChirho.hs",
+    "ghc_receipt_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/required-argument-oracles-chirho/representation-default-controls-chirho/fixed-fields-chirho/ghc-r1-chirho/OpenFamilyFieldChirho/receipt-chirho.json"
+  },
+  {
+    "case_chirho": "ColdCheckedRepresentationFieldChirho",
+    "expected_ghc_chirho": "ACCEPT",
+    "source_sha256_chirho": "93a406a19a819ae69fa9932f47059714ca7d6e9107e020aec2d87052df3655bc",
+    "original_source_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/required-argument-oracles-chirho/representation-default-controls-chirho/fixed-fields-chirho/handoff_chirho/checked_chirho/ColdCheckedRepresentationFieldChirho.hs",
+    "ghc_receipt_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/required-argument-oracles-chirho/representation-default-controls-chirho/fixed-fields-chirho/handoff_chirho/ghc-r1-chirho/ColdCheckedRepresentationFieldChirho/receipt-chirho.json"
+  },
+  {
+    "case_chirho": "ColdWrongRepresentationFieldChirho",
+    "expected_ghc_chirho": "REJECT",
+    "source_sha256_chirho": "b030af011effc320a1c1a55edf06fbaca96929dfe85880553cdd771d6681ae5f",
+    "original_source_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/required-argument-oracles-chirho/representation-default-controls-chirho/fixed-fields-chirho/handoff_chirho/wrong_chirho/ColdWrongRepresentationFieldChirho.hs",
+    "ghc_receipt_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/required-argument-oracles-chirho/representation-default-controls-chirho/fixed-fields-chirho/handoff_chirho/ghc-r1-chirho/ColdWrongRepresentationFieldChirho/receipt-chirho.json"
+  },
+  {
+    "case_chirho": "OrdinaryRecursiveFamilyChirho",
+    "expected_ghc_chirho": "ACCEPT",
+    "original_prediction_chirho": "ACCEPT",
+    "source_sha256_chirho": "5a1afa5138eaa444a245d42787ec1f9518588c836cc4e3245651ffe82311d919",
+    "original_source_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/family-kind-equality-repair-chirho/recursive-scc-chirho/OrdinaryRecursiveFamilyChirho.hs",
+    "ghc_receipt_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/family-kind-equality-repair-chirho/recursive-scc-chirho/ordinary-ghc-r1-chirho/OrdinaryRecursiveFamilyChirho/receipt-chirho.json"
+  },
+  {
+    "case_chirho": "RecursiveFamilyKindChirho",
+    "expected_ghc_chirho": "REJECT",
+    "original_prediction_chirho": "ACCEPT",
+    "source_sha256_chirho": "74f3ba129321dd05943b5bca9b265ccfae8deb7db9d4acaf187d898b433de79b",
+    "original_source_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/family-kind-equality-repair-chirho/recursive-scc-chirho/RecursiveFamilyKindChirho.hs",
+    "ghc_receipt_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/family-kind-equality-repair-chirho/recursive-scc-chirho/ghc-r1-chirho/RecursiveFamilyKindChirho/receipt-chirho.json"
+  },
+  {
+    "case_chirho": "RecursiveCheckedFamilyKindChirho",
+    "expected_ghc_chirho": "REJECT",
+    "original_prediction_chirho": "ACCEPT",
+    "source_sha256_chirho": "4c77dacf35f6b075c25bd20e9c88b87fca1cfd9d750e12095f32c5c427ede410",
+    "original_source_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/family-kind-equality-repair-chirho/recursive-scc-chirho/RecursiveCheckedFamilyKindChirho.hs",
+    "ghc_receipt_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-gpt-kinded-types-chirho/tmp-chirho/kinded-types-688-chirho/family-kind-equality-repair-chirho/recursive-scc-chirho/checked-ghc-r1-chirho/RecursiveCheckedFamilyKindChirho/receipt-chirho.json"
+  }
+]

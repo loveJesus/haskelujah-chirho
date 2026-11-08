@@ -549,9 +549,12 @@ impl DictPassCtxChirho {
         > = HashMap::new();
         // A multi-parameter instance by (class, key): its superclass fields and its registry
         // entry read its whole head (row 694, #31909).
-        let mut multi_heads_chirho: HashMap<(String, String), InstDeclChirho> = HashMap::new();
+        let mut multi_heads_chirho: HashMap<(String, String), std::sync::Arc<InstDeclChirho>> =
+            HashMap::new();
 
-        for (class_name_chirho, instances_chirho) in &class_env_chirho.instances_chirho {
+        for (class_name_chirho, instances_chirho) in
+            class_env_chirho.instances_chirho().iter_chirho()
+        {
             let layout_chirho = match self.layouts_chirho.get(class_name_chirho) {
                 Some(l_chirho) => l_chirho.clone(),
                 None => continue,
@@ -847,8 +850,8 @@ impl DictPassCtxChirho {
         prim_name_chirho: &str,
     ) -> CoreIdChirho {
         let method_scheme_chirho = class_env_chirho
-            .classes_chirho
-            .get(class_name_chirho)
+            .classes_chirho()
+            .get_chirho(class_name_chirho)
             .and_then(|decl_chirho| decl_chirho.methods_chirho.get(method_name_chirho));
 
         let arity_chirho = method_scheme_chirho
@@ -886,10 +889,19 @@ impl DictPassCtxChirho {
             ))],
         };
 
-        let fresh_ty_var_seed_chirho = self.next_id_chirho + 10_000;
+        const TYPE_VARIABLE_SEED_EXHAUSTED_CHIRHO: &str =
+            "Dictionary type-variable seed exhausted Chirho";
+        let fresh_ty_var_seed_chirho = self
+            .next_id_chirho
+            .checked_add(10_000)
+            .expect(TYPE_VARIABLE_SEED_EXHAUSTED_CHIRHO);
         for arg_idx_chirho in (0..arity_chirho).rev() {
             let arg_ty_chirho = TyChirho::VarChirho(TyVarChirho(
-                fresh_ty_var_seed_chirho + arg_idx_chirho as u32,
+                fresh_ty_var_seed_chirho
+                    .checked_add(
+                        u32::try_from(arg_idx_chirho).expect(TYPE_VARIABLE_SEED_EXHAUSTED_CHIRHO),
+                    )
+                    .expect(TYPE_VARIABLE_SEED_EXHAUSTED_CHIRHO),
             ));
             let arg_binder_chirho =
                 self.fresh_binder_chirho(&format!("missing_arg_{arg_idx_chirho}"), arg_ty_chirho);
@@ -948,6 +960,28 @@ mod enum_defaults_chirho;
 #[path = "instance_chirho/defaults_chirho/equality_defaults_chirho.rs"]
 mod equality_defaults_chirho;
 mod generic_heads_chirho;
+// Ground dictionaries for conditional instances live together in
+// `instance_chirho/ground_dictionaries_chirho/`.
+#[path = "instance_chirho/ground_dictionaries_chirho/ground_admission_chirho.rs"]
+mod ground_admission_chirho;
+#[path = "instance_chirho/ground_dictionaries_chirho/ground_budget_chirho.rs"]
+mod ground_budget_chirho;
+#[path = "instance_chirho/ground_dictionaries_chirho/ground_builder_chirho.rs"]
+mod ground_builder_chirho;
+#[path = "instance_chirho/ground_dictionaries_chirho/ground_route_chirho.rs"]
+mod ground_route_chirho;
+#[path = "instance_chirho/ground_dictionaries_chirho/ground_selection_chirho.rs"]
+mod ground_selection_chirho;
+#[cfg(test)]
+#[path = "instance_chirho/ground_dictionaries_chirho/ground_selection_tests_chirho.rs"]
+mod ground_selection_tests_chirho;
+#[path = "instance_chirho/ground_dictionaries_chirho/instance_rows_chirho.rs"]
+mod instance_rows_chirho;
+#[cfg(test)]
+#[path = "instance_chirho/ground_dictionaries_chirho/instance_rows_tests_chirho.rs"]
+mod instance_rows_tests_chirho;
+pub(in crate::dict_chirho) use instance_rows_chirho::InstanceRowsChirho;
+pub use instance_rows_chirho::{InstanceDeclarationChirho, InstanceRowKeyChirho};
 mod list_orders_chirho;
 mod newtype_dicts_chirho;
 pub use newtype_dicts_chirho::NewtypeInfoChirho;

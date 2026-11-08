@@ -19,31 +19,46 @@ impl ParserChirho<'_> {
     pub(super) fn parse_splice_expr_chirho(&mut self) {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::SpliceExprChirho);
-        self.bump_chirho(); // consume ThSpliceChirho ($)
-        self.eat_trivia_chirho();
+        self.parse_untyped_splice_payload_chirho();
+        self.builder_chirho.finish_node_chirho();
+    }
 
-        // Either $name (VarId) or $(expr)
+    /// The same payload grammar in a pattern keeps a distinct CST category.
+    pub(super) fn parse_splice_pat_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::SplicePatChirho);
+        self.parse_untyped_splice_payload_chirho();
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    fn parse_untyped_splice_payload_chirho(&mut self) {
+        self.bump_chirho(); // $
+        self.eat_trivia_chirho();
         if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
-            // $(expr) — parse the parenthesized expression
-            self.bump_chirho(); // (
+            self.bump_chirho();
             self.eat_trivia_chirho();
-            self.parse_expr_chirho();
-            self.eat_trivia_chirho();
-            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
-                self.bump_chirho(); // )
+            if self.at_chirho(RawTokenKindChirho::RightParenChirho) || self.at_eof_chirho() {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                self.builder_chirho.finish_node_chirho();
+            } else {
+                self.parse_expr_chirho();
             }
+            self.eat_trivia_chirho();
+            self.expect_chirho(RawTokenKindChirho::RightParenChirho);
         } else if self.at_chirho(RawTokenKindChirho::VarIdChirho)
             || self.at_chirho(RawTokenKindChirho::ConIdChirho)
             || self.at_chirho(RawTokenKindChirho::QualifiedIdChirho)
         {
-            // $name — just consume the identifier
             self.builder_chirho
                 .start_node_chirho(SyntaxKindChirho::NameExprChirho);
             self.bump_chirho();
             self.builder_chirho.finish_node_chirho();
+        } else {
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+            self.builder_chirho.finish_node_chirho();
         }
-
-        self.builder_chirho.finish_node_chirho();
     }
 
     /// Parse a typed splice expression: `$$name` or `$$(expr)`.
@@ -78,27 +93,7 @@ impl ParserChirho<'_> {
     pub(super) fn parse_splice_decl_chirho(&mut self) {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::SpliceDeclChirho);
-        self.bump_chirho(); // consume ThSpliceChirho ($)
-        self.eat_trivia_chirho();
-
-        if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
-            self.bump_chirho(); // (
-            self.eat_trivia_chirho();
-            self.parse_expr_chirho();
-            self.eat_trivia_chirho();
-            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
-                self.bump_chirho(); // )
-            }
-        } else if self.at_chirho(RawTokenKindChirho::VarIdChirho)
-            || self.at_chirho(RawTokenKindChirho::ConIdChirho)
-            || self.at_chirho(RawTokenKindChirho::QualifiedIdChirho)
-        {
-            self.builder_chirho
-                .start_node_chirho(SyntaxKindChirho::NameExprChirho);
-            self.bump_chirho();
-            self.builder_chirho.finish_node_chirho();
-        }
-
+        self.parse_untyped_splice_payload_chirho();
         self.builder_chirho.finish_node_chirho();
     }
 
@@ -128,6 +123,16 @@ impl ParserChirho<'_> {
             .start_node_chirho(SyntaxKindChirho::QuoteDeclChirho);
         self.bump_chirho(); // consume ThOpenDecQuoteChirho
         self.eat_trivia_chirho();
+
+        if self.at_chirho(RawTokenKindChirho::LeftBraceChirho) {
+            // A written declaration block shares the ordinary declaration
+            // grammar; retaining it must not turn its braces into recovery.
+            self.parse_top_level_decls_chirho();
+            self.eat_trivia_chirho();
+            self.expect_chirho(RawTokenKindChirho::ThCloseQuoteChirho);
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
 
         // Parse declarations inside the quote until |]
         while !self.at_chirho(RawTokenKindChirho::ThCloseQuoteChirho) && !self.at_eof_chirho() {

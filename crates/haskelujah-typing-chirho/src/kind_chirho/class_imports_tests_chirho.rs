@@ -83,6 +83,7 @@ fn data_chirho(
 /// `instance <class> <head>` with no methods.
 fn instance_chirho(class_chirho: NameChirho, head_chirho: TypeChirho) -> DeclChirho {
     DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: vec![],
         context_chirho: vec![],
         class_chirho,
         types_chirho: vec![head_chirho],
@@ -370,6 +371,7 @@ fn a_local_homonym_is_never_seeded_as_the_builtin_class_chirho() {
         &[],
         vec![
             DeclChirho::ClassDeclChirho {
+                standalone_kind_chirho: None,
                 context_chirho: vec![],
                 name_chirho: name_chirho("Functor"),
                 type_vars_chirho: vec![name_chirho("a").into()],

@@ -1,0 +1,13 @@
+-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE NoPolyKinds, KindSignatures, TypeFamilies, FlexibleInstances #-}
+module Main where
+import Data.Kind (Type)
+class CChirho (a :: Type) where
+  type FChirho a
+  type FChirho x = Maybe x
+instance CChirho Int where
+  type FChirho Int = Bool
+valueChirho :: FChirho Int
+valueChirho = True
+main :: IO ()
+main = pure ()

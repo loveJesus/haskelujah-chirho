@@ -25,6 +25,7 @@ fn keyed_proof_chirho(
     key_chirho: &str,
 ) -> haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
     haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
+        ground_pred_chirho: None,
         applied_head_chirho: None,
         class_name_chirho: class_chirho.to_string(),
         ty_key_chirho: Some(key_chirho.to_string()),
@@ -276,12 +277,15 @@ fn instance_chirho(
     head_chirho: TyChirho,
     context_chirho: Vec<PredChirho>,
 ) -> InstDeclChirho {
-    InstDeclChirho {
-        class_name_chirho: class_chirho.to_string(),
-        head_ty_chirho: head_chirho,
-        extra_head_tys_chirho: Vec::new(),
-        context_chirho,
-    }
+    InstDeclChirho::legacy_chirho(
+        haskelujah_typing_chirho::class_chirho::InstDeclPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: class_chirho.to_string(),
+            head_ty_chirho: head_chirho,
+            extra_head_tys_chirho: Vec::new(),
+            context_chirho,
+        },
+    )
 }
 
 fn layout_chirho(class_chirho: &str, method_chirho: &str) -> DictLayoutChirho {
@@ -297,25 +301,21 @@ fn layout_chirho(class_chirho: &str, method_chirho: &str) -> DictLayoutChirho {
 fn context_leading_rows_are_read_from_the_class_environment_chirho() {
     let mut env_chirho = ClassEnvChirho::new_chirho();
     let element_chirho = TyChirho::VarChirho(TyVarChirho(0));
-    env_chirho.instances_chirho.insert(
-        "MarkChirho".to_string(),
-        vec![instance_chirho(
-            "MarkChirho",
-            con_chirho("FooChirho"),
-            vec![PredChirho::new_chirho("Show", con_chirho("Int"))],
-        )],
-    );
-    env_chirho.instances_chirho.insert(
-        "NeedsChirho".to_string(),
-        vec![
-            instance_chirho("NeedsChirho", con_chirho("Int"), Vec::new()),
-            instance_chirho(
-                "NeedsChirho",
-                TyChirho::ListChirho(Box::new(element_chirho.clone())),
-                vec![PredChirho::new_chirho("NeedsChirho", element_chirho)],
-            ),
-        ],
-    );
+    env_chirho.add_instance_chirho(instance_chirho(
+        "MarkChirho",
+        con_chirho("FooChirho"),
+        vec![PredChirho::new_chirho("Show", con_chirho("Int"))],
+    ));
+    for instance_chirho in [
+        instance_chirho("NeedsChirho", con_chirho("Int"), Vec::new()),
+        instance_chirho(
+            "NeedsChirho",
+            TyChirho::ListChirho(Box::new(element_chirho.clone())),
+            vec![PredChirho::new_chirho("NeedsChirho", element_chirho)],
+        ),
+    ] {
+        env_chirho.add_instance_chirho(instance_chirho);
+    }
     let module_chirho = CoreModuleChirho {
         name_chirho: "Main".to_string(),
         bindings_chirho: vec![

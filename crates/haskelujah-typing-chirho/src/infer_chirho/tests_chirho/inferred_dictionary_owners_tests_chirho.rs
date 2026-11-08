@@ -17,19 +17,25 @@ fn num_scheme_chirho(var_chirho: TyVarChirho, preceding_chirho: bool) -> SchemeC
     let ty_chirho = TyChirho::VarChirho(var_chirho);
     let mut preds_chirho = Vec::new();
     if preceding_chirho {
-        preds_chirho.push(SchemePredChirho {
-            class_name_chirho: "Eq".to_string(),
+        preds_chirho.push(SchemePredChirho::legacy_chirho(
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Eq".to_string(),
+                ty_chirho: ty_chirho.clone(),
+                extra_tys_chirho: vec![],
+            },
+        ));
+    }
+    preds_chirho.push(SchemePredChirho::legacy_chirho(
+        crate::ty_chirho::SchemePredPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "Num".to_string(),
             ty_chirho: ty_chirho.clone(),
             extra_tys_chirho: vec![],
-        });
-    }
-    preds_chirho.push(SchemePredChirho {
-        class_name_chirho: "Num".to_string(),
-        ty_chirho: ty_chirho.clone(),
-        extra_tys_chirho: vec![],
-    });
+        },
+    ));
     SchemeChirho {
-        vars_chirho: vec![var_chirho],
+        vars_chirho: vec![var_chirho].into(),
         preds_chirho,
         ty_chirho: TyChirho::fun_chirho(ty_chirho.clone(), ty_chirho),
     }

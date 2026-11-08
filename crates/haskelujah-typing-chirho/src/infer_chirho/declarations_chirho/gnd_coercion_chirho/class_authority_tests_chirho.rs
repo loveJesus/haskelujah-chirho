@@ -33,6 +33,7 @@ fn qualified_chirho(qualifier_chirho: &str, text_chirho: &str) -> NameChirho {
 /// `class <class> aChirho`.
 fn class_decl_chirho(class_name_chirho: &str) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho(class_name_chirho),
         type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("aChirho"))],
@@ -162,11 +163,15 @@ fn a_carried_homonym_under_a_builtin_name_is_a_gap_chirho() {
     // The module-sources path carries the previous module's whole environment: its own `Show`
     // replaced the seed there, and no local homonym or absence of one shows it.
     let mut carried_chirho = seeded_chirho();
-    let homonym_chirho = carried_chirho
-        .classes_chirho
-        .get_mut("Show")
-        .expect("the seed holds Show");
+    let mut homonym_chirho = carried_chirho
+        .classes_chirho()
+        .get_chirho("Show")
+        .expect("the seed holds Show")
+        .as_ref()
+        .clone()
+        .without_identity_chirho();
     homonym_chirho.methods_chirho.clear();
+    carried_chirho.add_class_chirho(homonym_chirho);
     let gap_chirho_text = gap_chirho(vec![], &carried_chirho, &name_chirho("Show"))
         .expect("a carried homonym is not the builtin");
     assert!(

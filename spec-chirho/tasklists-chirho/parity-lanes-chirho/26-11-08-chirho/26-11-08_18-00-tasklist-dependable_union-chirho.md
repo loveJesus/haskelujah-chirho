@@ -6,7 +6,7 @@ This isolated branch starts at exact main acd8baaab60fe2005429cbae72a31ccfd2fd3d
 
 - [x] Verify the new worktree/branch are unused, inspect registrations and preserve canonical dirty state.
 - [x] Pin all source inputs below; freeze the selected-apply BEFORE checkpoint, excluding its future certificate implementation.
-- [ ] Merge the explicit foundation/package/checked-inference input, preserve main nominality/native behavior and record every source adaptation.
+- [x] Merge the explicit foundation/package/checked-inference input, preserve main nominality/native behavior and record every source adaptation.
 - [ ] Merge the complete C10 producer/ABI chain through the mechanical P2 leaf, preserving supplier proofs/input-ID reservation.
 - [ ] Merge the reader interface/physical-field/context-entry chain with C10 entry purpose and the existing selected import payload intact.
 - [ ] Carry the exact fixture-literal leaf, retaining every original assertion.
@@ -38,3 +38,5 @@ flowchart TD
 ```
 
 Merge adaptations are recorded as each source parent is assembled. The final source manifest will name all differences from the frozen input blobs. Old isolated passes stay attached to their original commits; none becomes an execution of this branch.
+
+Foundation merge adaptations: restore28 incoming non-compiler metadata paths from the preceding main-rooted state; retain the new package-ladder compiler fixtures. The native harness conflict is the equivalent jobs option spelling, and main's `-j2` is kept with both branches' surrounding functionality. In the unifier, retain main's ordinary nominal constructor rule while keeping the incoming checked-kind engine. The private branch extracted unifier tests into an existing module; move main's three nominality tests there byte-for-byte except indentation, retaining all existing private tests. The driver integration root merges both registrations without a conflict. No compiler is run.

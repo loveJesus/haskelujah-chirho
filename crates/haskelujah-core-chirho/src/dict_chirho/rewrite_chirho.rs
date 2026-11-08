@@ -50,28 +50,6 @@ impl DictPassCtxChirho {
         None
     }
 
-    /// The context classes a module `$prim` row takes dictionaries for, by the
-    /// one rule that also marks it context-leading (`occurrence_rows_chirho`).
-    /// workflow: language-features-chirho/own-class-method-occurrences-chirho
-    fn conditional_context_classes_for_prim_binding_chirho(
-        &self,
-        class_env_chirho: &ClassEnvChirho,
-        class_name_chirho: &str,
-        parsed_type_key_chirho: &str,
-    ) -> Option<Vec<String>> {
-        Self::conditional_context_preds_chirho(
-            class_env_chirho,
-            class_name_chirho,
-            parsed_type_key_chirho,
-        )
-        .map(|context_chirho| {
-            context_chirho
-                .into_iter()
-                .map(|pred_chirho| pred_chirho.class_name_chirho)
-                .collect()
-        })
-    }
-
     fn expr_contains_numeric_default_marker_chirho(&self, expr_chirho: &CoreExprChirho) -> bool {
         match expr_chirho {
             CoreExprChirho::LitChirho(crate::expr_chirho::CoreLitChirho::IntChirho(_)) => true,
@@ -194,7 +172,7 @@ impl DictPassCtxChirho {
         None
     }
 
-    fn class_method_selector_for_name_chirho(
+    pub(in crate::dict_chirho) fn class_method_selector_for_name_chirho(
         &self,
         name_chirho: &str,
     ) -> Option<(String, CoreIdChirho)> {
@@ -228,7 +206,10 @@ impl DictPassCtxChirho {
     /// return `(fn_id, classes, [arg1, ..., argN])`.
     /// The canonical id behind a reference occurrence id (itself otherwise).
     /// workflow: language-features-chirho/dictionary-evidence-chirho
-    fn canonical_id_chirho(&self, id_chirho: CoreIdChirho) -> CoreIdChirho {
+    pub(in crate::dict_chirho) fn canonical_id_chirho(
+        &self,
+        id_chirho: CoreIdChirho,
+    ) -> CoreIdChirho {
         self.method_occurrence_canon_chirho
             .get(&id_chirho)
             .map(|(_name_chirho, canonical_chirho)| *canonical_chirho)
@@ -330,6 +311,7 @@ impl DictPassCtxChirho {
         type_env_chirho: &TyEnvChirho,
         class_env_chirho: &ClassEnvChirho,
     ) -> CoreModuleChirho {
+        self.reserve_input_ids_chirho(module_chirho);
         self.seed_body_backed_bindings_chirho(module_chirho);
 
         // Build layouts from the class environment
@@ -352,6 +334,7 @@ impl DictPassCtxChirho {
 
         // Generate Prelude function bindings (not, id, const)
         self.generate_prelude_bindings_chirho();
+        self.generate_certified_value_bindings_chirho(module_chirho);
 
         // A type that derives Enum gets GHC's bounded `enumFrom` and `enumFromThen` before any
         // dictionary is filled, so its own pair fills those two slots (rows 669, 671).
@@ -469,6 +452,12 @@ impl DictPassCtxChirho {
             }
         }
 
+        // Ground dictionaries for conditional instances, from the checker's ground goals (S1):
+        // after every other generator, and after the ownership the rewrite admits by (lexical
+        // shadows, dictionary-parameter bindings) is seeded, before any binding is rewritten.
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        self.generate_ground_goal_dictionaries_chirho(class_env_chirho);
+
         // Transform each binding, once its written infix and section Ord operators have
         // taken their answers (row 610).
         // workflow: language-features-chirho/dictionary-evidence-chirho
@@ -511,23 +500,49 @@ impl DictPassCtxChirho {
                             .or_insert(*dict_id_chirho);
                     }
                 }
+                // A context-leading row, by the one mark `record_context_leading_rows_chirho`
+                // made: it leads with one dictionary per context predicate, in order.
+                // workflow: language-features-chirho/own-class-method-occurrences-chirho
                 if let Some((class_name_chirho, _method_name_chirho, parsed_type_key_chirho)) =
                     self.parse_prim_binding_info_chirho(name_chirho)
-                    && let Some(context_classes_chirho) = self
-                        .conditional_context_classes_for_prim_binding_chirho(
-                            class_env_chirho,
-                            &class_name_chirho,
-                            &parsed_type_key_chirho,
-                        )
+                    && let Some(context_chirho) = self
+                        .context_leading_rows_chirho
+                        .get(&binding_chirho.binder_chirho.id_chirho)
+                        .cloned()
                 {
                     let mut dict_binders_chirho = Vec::new();
-                    for context_class_chirho in context_classes_chirho {
+                    for (context_index_chirho, context_pred_chirho) in
+                        context_chirho.iter().enumerate()
+                    {
+                        let context_class_chirho = &context_pred_chirho.class_name_chirho;
                         let dict_binder_chirho = self.fresh_binder_chirho(
                             &format!("$d{}", context_class_chirho),
                             TyChirho::ConChirho(format!("$Dict_{}", context_class_chirho)),
                         );
                         evidence_classes_chirho.insert(context_class_chirho.clone());
-                        dict_vars_chirho.insert(context_class_chirho, dict_binder_chirho.id_chirho);
+                        // By predicate index, as the checker names an occurrence of exactly that
+                        // context predicate (S4). A class the context writes twice is told
+                        // apart only so: no class-wide dictionary may choose between them.
+                        // workflow: language-features-chirho/dictionary-evidence-chirho
+                        dict_vars_chirho.insert(
+                            haskelujah_typing_chirho::infer_chirho::own_dictionary_key_chirho(
+                                Some(context_index_chirho),
+                            ),
+                            dict_binder_chirho.id_chirho,
+                        );
+                        let written_once_chirho = context_chirho
+                            .iter()
+                            .filter(|other_chirho| {
+                                &other_chirho.class_name_chirho == context_class_chirho
+                            })
+                            .count()
+                            == 1;
+                        if written_once_chirho {
+                            dict_vars_chirho
+                                .insert(context_class_chirho.clone(), dict_binder_chirho.id_chirho);
+                        } else {
+                            dict_vars_chirho.remove(context_class_chirho);
+                        }
                         dict_binders_chirho.push(dict_binder_chirho);
                     }
 
@@ -779,6 +794,10 @@ impl DictPassCtxChirho {
     }
 
     pub fn finish_chirho(self, mut module_chirho: CoreModuleChirho) -> DictPassResultChirho {
+        // The refusals whose occurrence no route served, read while occurrence ids still stand
+        // (S2).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        let diagnostics_chirho = self.unserved_ground_refusals_chirho(&module_chirho);
         if !self.method_occurrence_canon_chirho.is_empty() {
             for binding_chirho in module_chirho.bindings_chirho.iter_mut() {
                 self.canonicalize_surviving_occurrences_chirho(&mut binding_chirho.rhs_chirho);
@@ -790,6 +809,7 @@ impl DictPassCtxChirho {
             module_chirho,
             names_chirho: self.names_chirho,
             layouts_chirho: self.layouts_chirho,
+            diagnostics_chirho,
             unsupported_chirho,
         }
     }

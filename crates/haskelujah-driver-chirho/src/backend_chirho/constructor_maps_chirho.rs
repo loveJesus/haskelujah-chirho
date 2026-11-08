@@ -8,23 +8,6 @@
 use super::*;
 
 use haskelujah_core_chirho::dict_chirho::NewtypeInfoChirho;
-
-/// Extract the first argument type from a GADT type signature.
-/// Peels through forall and qualified types, then returns the first `arg` from
-/// `arg -> result`.  Returns `None` for non-function types (nullary GADT ctors).
-fn extract_first_fun_arg_chirho(
-    ty_chirho: &haskelujah_ast_chirho::ty_chirho::TypeChirho,
-) -> Option<haskelujah_ast_chirho::ty_chirho::TypeChirho> {
-    use haskelujah_ast_chirho::ty_chirho::TypeChirho;
-    match ty_chirho {
-        TypeChirho::FunChirho { arg_chirho, .. } => Some((**arg_chirho).clone()),
-        TypeChirho::ForallChirho { body_chirho, .. } => extract_first_fun_arg_chirho(body_chirho),
-        TypeChirho::QualChirho { body_chirho, .. } => extract_first_fun_arg_chirho(body_chirho),
-        TypeChirho::ParenChirho { inner_chirho, .. } => extract_first_fun_arg_chirho(inner_chirho),
-        _ => None,
-    }
-}
-
 /// Build a mapping from data constructor names to their parent type name.
 /// Used by the dictionary-passing transform to select the correct instance
 /// dictionary when a class method is applied to a constructor value.
@@ -100,6 +83,7 @@ pub(crate) fn build_newtype_info_chirho(
     builtin_classes_chirho: &haskelujah_ast_chirho::name_chirho::BuiltinClassScopeChirho,
     coercion_proofs_chirho: &[haskelujah_typing_chirho::GndCoercionProofChirho],
     default_method_rows_chirho: &std::collections::HashSet<String>,
+    promotion_scope_chirho: Option<&PromotionScopeChirho>,
 ) -> std::collections::HashMap<String, NewtypeInfoChirho> {
     let mut map_chirho = std::collections::HashMap::new();
     let mut derived_classes_chirho =
@@ -124,7 +108,7 @@ pub(crate) fn build_newtype_info_chirho(
                     let underlying_chirho = fields_chirho
                         .first()
                         .map(|(_s_chirho, ty_chirho)| {
-                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(ty_chirho)
+                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(ty_chirho, promotion_scope_chirho)
                         })
                         .unwrap_or_else(|| "()".to_string());
                     (cn_chirho.text_chirho().to_string(), underlying_chirho)
@@ -137,22 +121,18 @@ pub(crate) fn build_newtype_info_chirho(
                     let underlying_chirho = fields_chirho
                         .first()
                         .map(|fd_chirho| {
-                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(&fd_chirho.ty_chirho)
+                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(&fd_chirho.ty_chirho, promotion_scope_chirho)
                         })
                         .unwrap_or_else(|| "()".to_string());
                     (cn_chirho.text_chirho().to_string(), underlying_chirho)
                 }
                 haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
                     name_chirho: cn_chirho,
-                    ty_chirho,
+                    signature_chirho,
                     ..
                 } => {
-                    // Extract the first argument type from the GADT type signature.
-                    // E.g. `forall a. Ctx => Int -> T a` → underlying is `Int`.
-                    let underlying_chirho = extract_first_fun_arg_chirho(ty_chirho)
-                        .map(|arg_ty_chirho| {
-                            haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(&arg_ty_chirho)
-                        })
+                    let underlying_chirho = signature_chirho.positional_fields_chirho().next()
+                        .map(|field_chirho| haskelujah_core_chirho::desugar_chirho::DesugarCtxChirho::type_key_from_ast_chirho(field_chirho.ty_chirho, promotion_scope_chirho))
                         .unwrap_or_else(|| "()".to_string());
                     (cn_chirho.text_chirho().to_string(), underlying_chirho)
                 }

@@ -16,7 +16,7 @@ use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
 use haskelujah_span_chirho::{FileIdChirho, SourceMapChirho};
 use haskelujah_typing_chirho::check_module_declaration_validity_chirho;
 
-use super::{assert_prints_everywhere_chirho, rejected_like_ghc_chirho};
+use super::{assert_prints_everywhere_chirho, checks_like_ghc_chirho, rejected_like_ghc_chirho};
 
 // tcfail038 (GHC-10498): each method is bound twice, apart.
 const CONFLICT_SOURCE_CHIRHO: &str = r#"module ConflictChirho where
@@ -165,17 +165,6 @@ main = do
   print (sizeChirho (False <+> True))
   print ((1 :: Int) <+> 2 <+> 3)
 "#;
-
-/// GHC accepts the program, so the checker must too.
-fn checks_like_ghc_chirho(file_name_chirho: &str, source_chirho: &str) {
-    if let Err(error_chirho) = haskelujah_driver::typecheck_source_chirho(
-        source_chirho,
-        &mut SourceMapChirho::new_chirho(),
-        file_name_chirho,
-    ) {
-        panic!("{file_name_chirho}: GHC accepts this program; we rejected it: {error_chirho}");
-    }
-}
 
 /// The module exactly as lowering writes it, before any later phase runs.
 fn lowered_chirho(source_chirho: &str) -> ModuleChirho {

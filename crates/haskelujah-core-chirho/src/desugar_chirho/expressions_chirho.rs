@@ -757,7 +757,10 @@ impl DesugarCtxChirho {
                 ..
             } => {
                 let inner_core_chirho = self.desugar_expr_chirho(inner_chirho);
-                let type_key_chirho = Self::type_key_from_ast_chirho(ty_chirho);
+                let type_key_chirho = Self::type_key_from_ast_chirho(
+                    ty_chirho,
+                    self.promotion_scope_chirho.as_deref(),
+                );
                 if type_key_chirho == "_" {
                     inner_core_chirho
                 } else {
@@ -799,10 +802,7 @@ impl DesugarCtxChirho {
                 } else {
                     self.record_construction_args_chirho(&con_name_chirho, fields_chirho)
                 };
-                CoreExprChirho::ConAppChirho {
-                    con_name_chirho,
-                    args_chirho: con_args_chirho,
-                }
+                self.enforce_strict_fields_chirho(con_name_chirho, con_args_chirho)
             }
 
             ExprChirho::RecordUpdateChirho {

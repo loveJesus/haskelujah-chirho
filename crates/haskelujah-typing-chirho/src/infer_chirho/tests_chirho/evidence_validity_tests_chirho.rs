@@ -86,6 +86,7 @@ fn occurrence_record_defaults_unresolved_standard_class_chirho() {
             ordinal_chirho: 0,
             class_name_chirho: "Num".to_string(),
             ty_key_chirho: "Int".to_string(),
+            ground_pred_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             origin_chirho: None,
             resolved_entry_chirho: None,
@@ -547,12 +548,15 @@ fn certainly_unsolvable_suppressed_by_matching_instance_chirho() {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
     ctx_chirho
         .class_env_chirho
-        .add_instance_chirho(InstDeclChirho {
-            class_name_chirho: "Eq".to_string(),
-            head_ty_chirho: TyChirho::ConChirho("ZzNoSuchType".to_string()),
-            extra_head_tys_chirho: vec![],
-            context_chirho: vec![],
-        });
+        .add_instance_chirho(InstDeclChirho::legacy_chirho(
+            crate::class_chirho::InstDeclPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Eq".to_string(),
+                head_ty_chirho: TyChirho::ConChirho("ZzNoSuchType".to_string()),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            },
+        ));
     let pred_chirho = PredChirho::new_chirho("Eq", TyChirho::ConChirho("ZzNoSuchType".to_string()));
     assert!(
         !ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho),
@@ -565,12 +569,15 @@ fn certainly_unsolvable_suppressed_by_var_headed_instance_chirho() {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
     ctx_chirho
         .class_env_chirho
-        .add_instance_chirho(InstDeclChirho {
-            class_name_chirho: "Eq".to_string(),
-            head_ty_chirho: TyChirho::VarChirho(TyVarChirho(0)),
-            extra_head_tys_chirho: vec![],
-            context_chirho: vec![],
-        });
+        .add_instance_chirho(InstDeclChirho::legacy_chirho(
+            crate::class_chirho::InstDeclPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Eq".to_string(),
+                head_ty_chirho: TyChirho::VarChirho(TyVarChirho(0)),
+                extra_head_tys_chirho: vec![],
+                context_chirho: vec![],
+            },
+        ));
     let pred_chirho = PredChirho::new_chirho("Eq", TyChirho::ConChirho("ZzNoSuchType".to_string()));
     assert!(
         !ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho),
@@ -643,6 +650,237 @@ fn certainly_unsolvable_skips_nonground_pred_chirho() {
         !ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho),
         "a predicate with unification variables has no final verdict"
     );
+}
+
+/// A pure checked kind telescope plus the existing legacy ordinary class arena.
+/// This fixture supplies no source-unit or runtime dictionary identity.
+fn kind_prefix_context_chirho() -> (InferCtxChirho, PredChirho) {
+    use crate::ty_chirho::declarations_chirho::{
+        DeclarationAssociationChirho, DeclarationBinderChirho, DeclarationSchemeChirho,
+        TelescopeVisibilityChirho,
+    };
+    use haskelujah_ast_chirho::name_chirho::{
+        CompilerTypeConstructorChirho, TypeConstructorDeclarationChirho, TypeConstructorRoleChirho,
+        TypeConstructorScopeChirho,
+    };
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    ctx_chirho.local_class_prefix_instances_complete_chirho = true;
+    ctx_chirho.class_env_chirho = ClassEnvChirho::with_registration_limit_chirho(4096);
+    let type_chirho = TyChirho::ConChirho(
+        TypeConstructorDeclarationChirho::compiler_data_chirho(
+            CompilerTypeConstructorChirho::TypeUniverseChirho,
+        )
+        .type_key_chirho(),
+    );
+    let schema_chirho = |proof_chirho: TypeConstructorDeclarationChirho,
+                         binders_chirho: Vec<DeclarationBinderChirho>,
+                         result_chirho: TyChirho| DeclarationSchemeChirho {
+        identity_chirho: std::sync::Arc::from(proof_chirho.type_key_chirho()),
+        owner_chirho: None,
+        role_chirho: proof_chirho.role_chirho,
+        association_chirho: if proof_chirho.role_chirho == TypeConstructorRoleChirho::ClassChirho {
+            DeclarationAssociationChirho::ClassChirho {
+                families_chirho: Vec::new(),
+            }
+        } else {
+            DeclarationAssociationChirho::NoneChirho
+        },
+        declaration_chirho: Some(proof_chirho),
+        injectivity_chirho: None,
+        visible_arity_chirho: binders_chirho
+            .iter()
+            .filter(|binder_chirho| {
+                binder_chirho.visibility_chirho == TelescopeVisibilityChirho::RequiredChirho
+            })
+            .count(),
+        reduction_arity_chirho: binders_chirho.len(),
+        binders_chirho,
+        source_variables_chirho: Vec::new(),
+        result_kind_chirho: result_chirho,
+        synonym_rhs_chirho: None,
+        synonym_syntax_chirho: None,
+        local_binders_chirho: std::sync::Arc::from([]),
+        promoted_chirho: None,
+        held_chirho: false,
+    };
+    for constructor_chirho in [
+        CompilerTypeConstructorChirho::BoolChirho,
+        CompilerTypeConstructorChirho::IntChirho,
+    ] {
+        ctx_chirho
+            .type_families_chirho
+            .declaration_schemes_mut_chirho()
+            .insert_chirho(schema_chirho(
+                TypeConstructorDeclarationChirho::compiler_data_chirho(constructor_chirho),
+                Vec::new(),
+                type_chirho.clone(),
+            ))
+            .unwrap();
+    }
+    let proof_chirho = TypeConstructorDeclarationChirho::source_chirho(
+        "KindsChirho",
+        "HiddenChirho",
+        TypeConstructorRoleChirho::ClassChirho,
+    );
+    let mut scope_chirho = TypeConstructorScopeChirho::default();
+    scope_chirho.bind_chirho("HiddenChirho".to_owned(), Some(proof_chirho.clone()));
+    ctx_chirho.type_constructor_scope_chirho = Some(std::sync::Arc::new(scope_chirho));
+    ctx_chirho
+        .type_families_chirho
+        .declaration_schemes_mut_chirho()
+        .insert_chirho(schema_chirho(
+            proof_chirho,
+            vec![
+                DeclarationBinderChirho {
+                    variable_chirho: TyVarChirho(0),
+                    kind_chirho: type_chirho,
+                    visibility_chirho: TelescopeVisibilityChirho::InferredChirho,
+                    term_specificity_chirho: None,
+                },
+                DeclarationBinderChirho {
+                    variable_chirho: TyVarChirho(1),
+                    kind_chirho: TyChirho::VarChirho(TyVarChirho(0)),
+                    visibility_chirho: TelescopeVisibilityChirho::RequiredChirho,
+                    term_specificity_chirho: None,
+                },
+            ],
+            TyChirho::ConChirho(
+                TypeConstructorDeclarationChirho::compiler_data_chirho(
+                    CompilerTypeConstructorChirho::ConstraintUniverseChirho,
+                )
+                .type_key_chirho(),
+            ),
+        ))
+        .unwrap();
+    ctx_chirho
+        .class_env_chirho
+        .add_class_chirho(ClassDeclChirho::legacy_chirho(
+            crate::class_chirho::ClassDeclPartsChirho {
+                super_templates_chirho: Vec::new(),
+                kind_vars_chirho: vec![TyVarChirho(0)],
+                name_chirho: "HiddenChirho".to_owned(),
+                supers_chirho: Vec::new(),
+                var_chirho: TyVarChirho(1),
+                extra_vars_chirho: Vec::new(),
+                fundeps_chirho: Vec::new(),
+                methods_chirho: HashMap::new(),
+                defaults_chirho: HashMap::new(),
+            },
+        ));
+    ctx_chirho
+        .fully_known_class_names_chirho
+        .insert("HiddenChirho".to_owned());
+    ctx_chirho
+        .class_env_chirho
+        .add_instance_chirho(InstDeclChirho::legacy_chirho(
+            crate::class_chirho::InstDeclPartsChirho {
+                kind_tys_chirho: vec![TyChirho::bool_chirho()],
+                class_name_chirho: "HiddenChirho".to_owned(),
+                head_ty_chirho: TyChirho::VarChirho(TyVarChirho(2)),
+                extra_head_tys_chirho: Vec::new(),
+                context_chirho: Vec::new(),
+            },
+        ));
+    let pred_chirho = PredChirho::from_proof_chirho(
+        haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
+            haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
+        ),
+        crate::class_chirho::PredPartsChirho {
+            kind_tys_chirho: vec![TyChirho::int_chirho()],
+            class_name_chirho: "HiddenChirho".to_owned(),
+            ty_chirho: TyChirho::ConChirho("Opaque#".to_owned()),
+            extra_tys_chirho: Vec::new(),
+        },
+    );
+    (ctx_chirho, pred_chirho)
+}
+
+#[test]
+fn a_checked_kind_prefix_refutes_without_classifying_an_opaque_visible_head_chirho() {
+    let (mut ctx_chirho, pred_chirho) = kind_prefix_context_chirho();
+    assert!(ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho));
+    ctx_chirho.given_preds_chirho.push(pred_chirho.clone());
+    assert!(!ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho));
+}
+
+#[test]
+fn incomplete_or_derived_kind_prefix_metadata_never_certifies_a_refutation_chirho() {
+    for case_chirho in 0..5 {
+        let (mut ctx_chirho, pred_chirho) = kind_prefix_context_chirho();
+        match case_chirho {
+            0 => {
+                ctx_chirho.type_constructor_scope_chirho = None;
+            }
+            1 => {
+                ctx_chirho
+                    .derived_instance_heads_chirho
+                    .insert(("HiddenChirho".to_owned(), "*".to_owned()));
+            }
+            4 => {
+                ctx_chirho.local_class_prefix_instances_complete_chirho = false;
+            }
+            _ => {
+                let prefix_chirho = if case_chirho == 2 {
+                    Vec::new()
+                } else {
+                    vec![TyChirho::ConChirho("UnprovedKindChirho".to_owned())]
+                };
+                ctx_chirho
+                    .class_env_chirho
+                    .add_instance_chirho(InstDeclChirho::legacy_chirho(
+                        crate::class_chirho::InstDeclPartsChirho {
+                            kind_tys_chirho: prefix_chirho,
+                            class_name_chirho: "HiddenChirho".to_owned(),
+                            head_ty_chirho: TyChirho::VarChirho(TyVarChirho(3)),
+                            extra_head_tys_chirho: Vec::new(),
+                            context_chirho: Vec::new(),
+                        },
+                    ));
+            }
+        }
+        assert!(!ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho));
+    }
+}
+
+#[test]
+fn a_truncated_class_arena_never_turns_retained_prefixes_into_a_closed_universe_chirho() {
+    let (mut ctx_chirho, pred_chirho) = kind_prefix_context_chirho();
+    assert!(ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho));
+    for index_chirho in 0..4096 {
+        ctx_chirho
+            .class_env_chirho
+            .add_instance_chirho(InstDeclChirho::legacy_chirho(
+                crate::class_chirho::InstDeclPartsChirho {
+                    kind_tys_chirho: vec![TyChirho::bool_chirho()],
+                    class_name_chirho: "HiddenChirho".to_owned(),
+                    head_ty_chirho: TyChirho::VarChirho(TyVarChirho(index_chirho + 10)),
+                    extra_head_tys_chirho: Vec::new(),
+                    context_chirho: Vec::new(),
+                },
+            ));
+        if ctx_chirho
+            .class_env_chirho
+            .registry_error_chirho()
+            .is_some()
+        {
+            break;
+        }
+    }
+    assert!(
+        ctx_chirho
+            .class_env_chirho
+            .registry_error_chirho()
+            .is_some()
+    );
+    assert!(
+        !ctx_chirho
+            .class_env_chirho
+            .instances_chirho()
+            .get_chirho("HiddenChirho")
+            .unwrap()
+            .is_empty_chirho()
+    );
+    assert!(!ctx_chirho.is_certainly_unsolvable_pred_chirho(&pred_chirho));
 }
 
 /// `head` applied to `args`, as unification leaves a constructor variable's instance.
@@ -772,12 +1010,15 @@ fn a_qualified_capture_keeps_the_entry_its_lookup_resolved_chirho() {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
     let var_chirho = TyVarChirho(0);
     let show_scheme_chirho = SchemeChirho {
-        vars_chirho: vec![var_chirho],
-        preds_chirho: vec![SchemePredChirho {
-            class_name_chirho: "Show".to_string(),
-            ty_chirho: TyChirho::VarChirho(var_chirho),
-            extra_tys_chirho: vec![],
-        }],
+        vars_chirho: vec![var_chirho].into(),
+        preds_chirho: vec![SchemePredChirho::legacy_chirho(
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Show".to_string(),
+                ty_chirho: TyChirho::VarChirho(var_chirho),
+                extra_tys_chirho: vec![],
+            },
+        )],
         ty_chirho: TyChirho::fun_chirho(
             TyChirho::VarChirho(var_chirho),
             TyChirho::io_chirho(TyChirho::unit_chirho()),

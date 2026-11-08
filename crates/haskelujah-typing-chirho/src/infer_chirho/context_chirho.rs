@@ -13,16 +13,60 @@ use crate::class_chirho::ClassEnvChirho;
 use crate::env_chirho::TyEnvChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::TyChirho;
-use haskelujah_diagnostics_chirho::DiagnosticBundleChirho;
+use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho};
+use haskelujah_span_chirho::SpanChirho;
 use std::collections::{HashMap, HashSet};
 
 impl InferCtxChirho {
+    pub(super) fn has_non_deferrable_failure_chirho(&self) -> bool {
+        self.non_deferrable_diagnostics_chirho.has_errors_chirho()
+            || self.elaboration_state_chirho.failure_chirho().is_some()
+            || self.type_normalization_exhausted_chirho.get()
+            || self.class_env_chirho.registry_error_chirho().is_some()
+    }
+
+    pub(super) fn note_registry_failure_chirho(
+        &mut self,
+        error_chirho: crate::class_chirho::ClassRegistryErrorChirho,
+        span_chirho: Option<SpanChirho>,
+    ) {
+        // Sticky across same-module restore points and failed next imports.
+        self.class_env_chirho.fail_module_chirho(error_chirho);
+        if self.non_deferrable_diagnostics_chirho.has_errors_chirho() {
+            return;
+        }
+        let message_chirho = format!("class registry resource limit reached: {error_chirho:?}");
+        let diagnostic_chirho = match span_chirho {
+            Some(span_chirho) => DiagnosticChirho::error_chirho(message_chirho, span_chirho),
+            None => DiagnosticChirho::error_no_span_chirho(message_chirho),
+        };
+        self.non_deferrable_diagnostics_chirho
+            .push_chirho(diagnostic_chirho);
+    }
+
     pub fn new_chirho() -> Self {
+        Self::new_with_registration_limit_chirho(ClassEnvChirho::DEFAULT_REGISTRATION_LIMIT_CHIRHO)
+    }
+
+    fn new_with_registration_limit_chirho(limit_chirho: usize) -> Self {
+        let class_env_chirho =
+            ClassEnvChirho::standard_with_registration_limit_chirho(limit_chirho);
+        Self::new_with_class_env_chirho(class_env_chirho, true)
+    }
+
+    fn new_with_class_env_chirho(class_env_chirho: ClassEnvChirho, own_seed_chirho: bool) -> Self {
         let mut env_chirho = TyEnvChirho::new_chirho();
-        let mut class_env_chirho = ClassEnvChirho::new_chirho();
-        class_env_chirho.seed_standard_chirho();
-        let fully_known_class_names_chirho: HashSet<String> =
-            class_env_chirho.classes_chirho.keys().cloned().collect();
+        let fully_known_class_names_chirho: HashSet<String> = if own_seed_chirho {
+            class_env_chirho
+                .classes_chirho()
+                .keys_chirho()
+                .cloned()
+                .collect()
+        } else {
+            HashSet::new()
+        };
+        // The seed producer's own output (row 686, C08).
+        let seeded_class_names_chirho = fully_known_class_names_chirho.clone();
         seed_builtins_chirho(&mut env_chirho);
         let mut type_synonyms_chirho = HashMap::new();
         // Built-in type synonym: type String = [Char]
@@ -66,15 +110,17 @@ impl InferCtxChirho {
         // type S1 = M1 S
         for (metadata_alias_chirho, metadata_tag_chirho) in [("D1", "D"), ("C1", "C"), ("S1", "S")]
         {
+            let rhs_chirho = TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("M1".to_owned())),
+                Box::new(TyChirho::ConChirho(metadata_tag_chirho.to_owned())),
+            );
             type_synonyms_chirho.insert(
                 metadata_alias_chirho.to_string(),
-                (
-                    vec![],
-                    TyChirho::AppChirho(
-                        Box::new(TyChirho::ConChirho("M1".to_string())),
-                        Box::new(TyChirho::ConChirho(metadata_tag_chirho.to_string())),
-                    ),
-                ),
+                (vec![], rhs_chirho.clone()),
+            );
+            type_synonyms_chirho.insert(
+                format!("GHC.Generics.{metadata_alias_chirho}"),
+                (vec![], rhs_chirho),
             );
         }
         // type FilePath = String
@@ -334,7 +380,12 @@ impl InferCtxChirho {
             ),
         );
         Self {
-            next_var_chirho: 0,
+            non_deferrable_diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
+            type_normalization_exhausted_chirho: std::cell::Cell::new(false),
+            type_validity_license_chirho: None,
+            definition_type_conversion_chirho: false,
+            elaboration_state_chirho:
+                crate::kind_chirho::elaboration_chirho::ElaborationStateChirho::unowned_chirho(),
             env_chirho,
             class_env_chirho,
             deferred_preds_chirho: Vec::new(),
@@ -352,17 +403,30 @@ impl InferCtxChirho {
             given_preds_chirho: Vec::new(),
             diagnostics_chirho: DiagnosticBundleChirho::empty_chirho(),
             type_synonyms_chirho,
-            type_families_chirho: HashMap::new(),
+            type_families_chirho: super::seed_type_family_registry_chirho(),
+            family_module_name_chirho: "Main".to_owned(),
+            family_scope_chirho: None,
             scoped_tyvars_chirho: HashMap::new(),
             checking_binding_pattern_annotations_chirho: false,
             next_skolem_chirho: 0,
             skolem_bindings_chirho: SubstChirho::empty_chirho(),
+            type_pattern_alias_undo_chirho: Vec::new(),
             instance_method_skolems_chirho: HashSet::new(),
+            active_instance_context_chirho: None,
             scoped_type_variables_chirho: true,
             relaxed_poly_rec_chirho: true,
             do_last_expected_chirho: None,
             given_rewrites_chirho: Vec::new(),
             deferred_equalities_chirho: Vec::new(),
+            equality_scopes_chirho: vec![
+                super::equality_scopes_chirho::EqualityScopeChirho::root_chirho(),
+            ],
+            active_equality_scope_chirho: 0,
+            equality_substitutions_chirho: SubstChirho::empty_chirho(),
+            equality_generalizing_owners_chirho: HashSet::new(),
+            equality_pattern_depth_chirho: 0,
+            equality_substitution_events_chirho: Vec::new(),
+            equality_substitution_events_exhausted_chirho: false,
             assoc_type_defaults_chirho: HashMap::new(),
             assoc_type_declared_params_chirho: HashMap::new(),
             tyvar_source_names_chirho: HashMap::new(),
@@ -374,26 +438,42 @@ impl InferCtxChirho {
             module_default_types_chirho: Vec::new(),
             overloaded_strings_chirho: false,
             fully_known_class_names_chirho,
+            local_class_prefix_instances_complete_chirho: false,
+            seeded_class_names_chirho,
+            unmodeled_pattern_evidence_seen_chirho: false,
+            context_constructors_chirho: HashSet::new(),
             constraint_generation_faithful_chirho: true,
             derived_instance_heads_chirho: HashSet::new(),
             safe_unqualified_imported_type_names_chirho: HashSet::new(),
             preferred_qualified_type_names_chirho: HashMap::new(),
+            promotion_scope_chirho: None,
+            type_constructor_scope_chirho: None,
         }
     }
 
     pub fn new_with_imported_class_env_chirho(imported_class_env_chirho: &ClassEnvChirho) -> Self {
-        let mut ctx_chirho = Self::new_chirho();
-        if !imported_class_env_chirho.classes_chirho.is_empty()
-            || !imported_class_env_chirho.instances_chirho.is_empty()
+        if imported_class_env_chirho.registry_error_chirho().is_none()
+            && imported_class_env_chirho.classes_chirho().is_empty_chirho()
+            && imported_class_env_chirho
+                .instances_chirho()
+                .is_empty_chirho()
         {
-            ctx_chirho.class_env_chirho = imported_class_env_chirho.clone();
-            // The seeded env was replaced wholesale; the seeded classes'
-            // instance inventories are no longer trustworthy, and imported
-            // classes may have instances in modules we cannot see. Only
-            // classes declared in THIS module stay fully known.
-            ctx_chirho.fully_known_class_names_chirho.clear();
+            return Self::new_with_registration_limit_chirho(
+                imported_class_env_chirho.registration_limit_chirho(),
+            );
         }
-        ctx_chirho
+        match imported_class_env_chirho.try_import_snapshot_chirho() {
+            Ok(environment_chirho) => Self::new_with_class_env_chirho(environment_chirho, false),
+            Err(error_chirho) => {
+                // This terminal context is never a successful seed replacement:
+                // its fatal status survives both finish and subsequent admission.
+                let mut ctx_chirho = Self::new_with_registration_limit_chirho(
+                    imported_class_env_chirho.registration_limit_chirho(),
+                );
+                ctx_chirho.note_registry_failure_chirho(error_chirho, None);
+                ctx_chirho
+            }
+        }
     }
 
     /// Evidence-threading P2: finalize raw occurrence captures against the
@@ -429,14 +509,34 @@ impl InferCtxChirho {
                 |evidence_chirho::OccurrenceCaptureChirho {
                      name_chirho,
                      ordinal_chirho,
-                     class_name_chirho: class_chirho,
-                     ty_chirho,
+                     pred_chirho,
                      span_chirho,
                      origin_chirho,
+                     instance_context_chirho,
                      resolved_entry_chirho,
                  }| {
-                    let resolved_chirho = final_subst_chirho.apply_ty_chirho(ty_chirho);
-                    let hinted_key_chirho = match &resolved_chirho {
+                    let resolved_predicate_chirho = pred_chirho
+                        .mapped_chirho(|ty_chirho| final_subst_chirho.apply_ty_chirho(ty_chirho));
+                    let class_chirho = &resolved_predicate_chirho.class_name_chirho;
+                    let resolved_chirho = &resolved_predicate_chirho.ty_chirho;
+                    if let Some(key_chirho) = self.instance_context_key_chirho(
+                        &resolved_predicate_chirho,
+                        instance_context_chirho.as_deref(),
+                        final_subst_chirho,
+                    ) {
+                        return Some(MethodOccurrenceRecordChirho {
+                            applied_ty_chirho: None,
+                            resolved_entry_chirho: resolved_entry_chirho.clone(),
+                            name_chirho: name_chirho.clone(),
+                            ordinal_chirho: *ordinal_chirho,
+                            class_name_chirho: class_chirho.clone(),
+                            ty_key_chirho: key_chirho,
+                            ground_pred_chirho: None,
+                            span_chirho: *span_chirho,
+                            origin_chirho: *origin_chirho,
+                        });
+                    }
+                    let hinted_key_chirho = match resolved_chirho {
                         TyChirho::VarChirho(var_chirho) => self
                             .occurrence_default_hints_chirho
                             .get(var_chirho)
@@ -445,7 +545,7 @@ impl InferCtxChirho {
                     };
                     if hinted_key_chirho.is_none()
                         && matches!(
-                            &resolved_chirho,
+                            resolved_chirho,
                             TyChirho::VarChirho(var_chirho)
                                 if self.occurrence_generalized_vars_chirho.contains(var_chirho)
                         )
@@ -454,7 +554,7 @@ impl InferCtxChirho {
                         // top-level binding takes its final scheme's agreed index
                         // (workflow:
                         // language-features-chirho/dictionary-evidence-chirho).
-                        if let TyChirho::VarChirho(var_chirho) = &resolved_chirho
+                        if let TyChirho::VarChirho(var_chirho) = resolved_chirho
                             && let Some(key_chirho) = self
                                 .local_specialization_key_chirho(*var_chirho, final_subst_chirho)
                                 .or_else(|| {
@@ -474,6 +574,7 @@ impl InferCtxChirho {
                                 ordinal_chirho: *ordinal_chirho,
                                 class_name_chirho: class_chirho.clone(),
                                 ty_key_chirho: key_chirho,
+                                ground_pred_chirho: None,
                                 span_chirho: *span_chirho,
                                 origin_chirho: *origin_chirho,
                                 resolved_entry_chirho: resolved_entry_chirho.clone(),
@@ -488,7 +589,7 @@ impl InferCtxChirho {
                     // An instance method's skolem is no such parameter and keys
                     // as the open variable it replaced, below.
                     // workflow: language-features-chirho/dictionary-evidence-chirho
-                    if let TyChirho::ForallVarChirho(skolem_chirho) = &resolved_chirho
+                    if let TyChirho::ForallVarChirho(skolem_chirho) = resolved_chirho
                         && let Some(key_chirho) =
                             self.own_parameter_key_chirho(class_chirho, skolem_chirho)
                     {
@@ -498,6 +599,7 @@ impl InferCtxChirho {
                             ordinal_chirho: *ordinal_chirho,
                             class_name_chirho: class_chirho.clone(),
                             ty_key_chirho: key_chirho,
+                            ground_pred_chirho: None,
                             span_chirho: *span_chirho,
                             origin_chirho: *origin_chirho,
                             resolved_entry_chirho: resolved_entry_chirho.clone(),
@@ -509,20 +611,24 @@ impl InferCtxChirho {
                         (matches!(class_chirho.as_str(), "Show" | "Ord" | "Eq")
                             && !resolved_chirho.contains_var_chirho())
                         .then(|| {
-                            evidence_chirho::concrete_evidence_key_chirho(&resolved_chirho, false)
+                            evidence_chirho::concrete_evidence_key_chirho(resolved_chirho, false)
                         })
                         .flatten();
                     let key_chirho = resolved_structured_key_chirho
-                        .or_else(|| evidence_chirho::ground_list_key_chirho(&resolved_chirho))
-                        .or_else(|| head_key_chirho(&resolved_chirho))
+                        .or_else(|| evidence_chirho::ground_list_key_chirho(resolved_chirho))
+                        .or_else(|| head_key_chirho(resolved_chirho))
                         .or(hinted_key_chirho)
                         .or_else(|| default_occurrence_key_chirho(class_chirho))?;
                     Some(MethodOccurrenceRecordChirho {
-                        applied_ty_chirho: applied_evidence_ty_chirho(&resolved_chirho),
+                        applied_ty_chirho: applied_evidence_ty_chirho(resolved_chirho),
                         name_chirho: name_chirho.clone(),
                         ordinal_chirho: *ordinal_chirho,
                         class_name_chirho: class_chirho.clone(),
                         ty_key_chirho: key_chirho,
+                        ground_pred_chirho: evidence_chirho::ground_pred_chirho(
+                            self,
+                            &resolved_predicate_chirho,
+                        ),
                         span_chirho: *span_chirho,
                         origin_chirho: *origin_chirho,
                         resolved_entry_chirho: resolved_entry_chirho.clone(),
@@ -532,12 +638,48 @@ impl InferCtxChirho {
             .collect()
     }
 
+    pub(super) fn adopt_elaboration_state_chirho(
+        &mut self,
+        state_chirho: crate::kind_chirho::elaboration_chirho::ElaborationStateChirho,
+    ) {
+        self.elaboration_state_chirho = state_chirho;
+    }
+
     /// Consume the context and return the final result.
-    pub fn finish_chirho(self) -> InferResultChirho {
+    pub fn finish_chirho(mut self) -> InferResultChirho {
+        if let Some(error_chirho) = self.elaboration_state_chirho.failure_chirho() {
+            let diagnostic_chirho = error_chirho.clone().into_diagnostic_chirho();
+            if !self
+                .non_deferrable_diagnostics_chirho
+                .diagnostics_chirho()
+                .contains(&diagnostic_chirho)
+            {
+                self.non_deferrable_diagnostics_chirho
+                    .push_chirho(diagnostic_chirho);
+            }
+        }
+        if self.type_normalization_exhausted_chirho.get() {
+            self.non_deferrable_diagnostics_chirho.push_chirho(
+                DiagnosticChirho::error_with_code_chirho(
+                    haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
+                    "type synonym normalization resource bound exhausted",
+                    haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+                ),
+            );
+        }
+        if let Some(error_chirho) = self.class_env_chirho.registry_error_chirho() {
+            self.note_registry_failure_chirho(error_chirho, None);
+        }
         InferResultChirho {
+            non_deferrable_diagnostics_chirho: self.non_deferrable_diagnostics_chirho,
             subst_chirho: SubstChirho::empty_chirho(),
             env_chirho: self.env_chirho,
             class_env_chirho: self.class_env_chirho,
+            source_instances_chirho: self
+                .local_instances_chirho
+                .into_iter()
+                .map(|local_chirho| (local_chirho.span_chirho, local_chirho.instance_chirho))
+                .collect(),
             type_families_chirho: self.type_families_chirho,
             diagnostics_chirho: self.diagnostics_chirho,
             method_occurrences_chirho: Vec::new(),
@@ -546,6 +688,9 @@ impl InferCtxChirho {
             literal_evidence_by_origin_chirho: HashMap::new(),
             reference_evidence_chirho: HashMap::new(),
             reference_evidence_by_origin_chirho: HashMap::new(),
+            promotion_scope_chirho: self.promotion_scope_chirho,
+            type_constructor_scope_chirho: self.type_constructor_scope_chirho,
+            family_scope_chirho: self.family_scope_chirho,
             gnd_coercion_proofs_chirho: Vec::new(),
         }
     }

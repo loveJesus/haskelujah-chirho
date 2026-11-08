@@ -39,7 +39,7 @@ fn assert_scheme_order_chirho(signature_chirho: &TypeChirho, names_chirho: &[&st
         .iter()
         .map(|name_chirho| map_chirho[*name_chirho])
         .collect();
-    assert_eq!(scheme_chirho.vars_chirho, expected_chirho);
+    assert_eq!(scheme_chirho.vars_chirho, expected_chirho.into());
 }
 
 #[test]
@@ -60,6 +60,7 @@ fn normalized_infix_spine_retains_lexical_quantifier_order_chirho() {
 fn constraint_first_occurrences_precede_body_allocation_chirho() {
     let signature_chirho = TypeChirho::QualChirho {
         context_chirho: vec![ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: name_chirho("Eq", 5),
             args_chirho: vec![var_chirho("bChirho", 10)],
             span_chirho: SpanChirho::DUMMY_CHIRHO,

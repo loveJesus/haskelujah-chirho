@@ -4,7 +4,7 @@
 //! Moved from `lower_chirho.rs`'s tests in row 641.
 
 use haskelujah_ast_chirho::decl_chirho::{
-    AstKindChirho, ConDeclChirho, DataKindSigChirho, DeclChirho, StrictnessChirho,
+    ConDeclChirho, DataKindSigChirho, DeclChirho, StrictnessChirho,
 };
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 
@@ -228,8 +228,11 @@ fn lower_kind_sig_data_star_chirho() {
             assert_eq!(type_vars_chirho.len(), 1);
             assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "a");
             assert_eq!(
-                type_vars_chirho[0].kind_annotation_chirho,
-                Some(AstKindChirho::StarChirho)
+                type_vars_chirho[0]
+                    .kind_annotation_chirho
+                    .as_deref()
+                    .map(type_shape_chirho),
+                Some("*".to_string())
             );
             assert_eq!(constructors_chirho.len(), 1);
         }
@@ -248,8 +251,11 @@ fn lower_kind_sig_newtype_chirho() {
             assert_eq!(type_vars_chirho.len(), 1);
             assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "a");
             assert_eq!(
-                type_vars_chirho[0].kind_annotation_chirho,
-                Some(AstKindChirho::StarChirho)
+                type_vars_chirho[0]
+                    .kind_annotation_chirho
+                    .as_deref()
+                    .map(type_shape_chirho),
+                Some("*".to_string())
             );
         }
         other_chirho => panic!("expected NewtypeDecl, got {:?}", other_chirho),
@@ -268,11 +274,11 @@ fn lower_kind_sig_newtype_preserves_type_application_chirho() {
             assert_eq!(type_vars_chirho.len(), 2);
             assert_eq!(type_vars_chirho[1].name_chirho.text_chirho(), "aChirho");
             assert_eq!(
-                type_vars_chirho[1].kind_annotation_chirho,
-                Some(AstKindChirho::AppChirho(
-                    Box::new(AstKindChirho::VarChirho("TYPE".to_string())),
-                    Box::new(AstKindChirho::VarChirho("rChirho".to_string())),
-                ))
+                type_vars_chirho[1]
+                    .kind_annotation_chirho
+                    .as_deref()
+                    .map(type_shape_chirho),
+                Some("(TYPE rChirho)".to_string())
             );
         }
         other_chirho => panic!("expected NewtypeDecl, got {:?}", other_chirho),
@@ -450,9 +456,8 @@ fn lower_newtype_record_function_returning_tuple_application_chirho() {
 
 #[test]
 fn lower_data_binder_kind_never_becomes_the_declaration_kind_chirho() {
-    // `[Symbol]` is a kind our kind grammar cannot read yet. It belongs to the
-    // BINDER; recording it as the declaration's own return kind gave `A` a
-    // fabricated kind (and dropped the brackets on the way).
+    // `[Symbol]` belongs to the binder. Its full syntax must survive there;
+    // recording it as the declaration's return kind fabricated `A`'s kind.
     let module_chirho = parse_and_lower_chirho("module M where\ndata A (b :: [Symbol]) = A\n");
     match &module_chirho.decls_chirho[0] {
         DeclChirho::DataDeclChirho {
@@ -462,7 +467,22 @@ fn lower_data_binder_kind_never_becomes_the_declaration_kind_chirho() {
         } => {
             assert_eq!(type_vars_chirho.len(), 1);
             assert_eq!(type_vars_chirho[0].name_chirho.text_chirho(), "b");
-            assert_eq!(type_vars_chirho[0].kind_annotation_chirho, None);
+            assert_eq!(
+                type_vars_chirho[0]
+                    .kind_annotation_chirho
+                    .as_deref()
+                    .map(type_shape_chirho),
+                Some("[Symbol]".to_string())
+            );
+            let Some(TypeChirho::ListChirho { element_chirho, .. }) =
+                type_vars_chirho[0].kind_annotation_chirho.as_deref()
+            else {
+                panic!("expected the binder's retained list kind");
+            };
+            assert!(
+                matches!(element_chirho.as_ref(), TypeChirho::ConChirho(name_chirho)
+                if name_chirho.text_chirho() == "Symbol")
+            );
             assert!(
                 kind_sig_chirho.is_none(),
                 "a binder's kind must not become the declaration's kind: {kind_sig_chirho:?}"
@@ -611,7 +631,7 @@ data MyList a = Nil | Cons a (MyList a)\n",
 }
 
 #[test]
-fn lower_flat_record_field_visible_type_application_erases_invisible_arg_chirho() {
+fn lower_flat_record_field_visible_type_application_retains_kind_arg_chirho() {
     let module_chirho = parse_and_lower_chirho(
         "{-# LANGUAGE TypeApplications #-}\n\
 module M where\n\
@@ -634,9 +654,39 @@ data BoxChirho fChirho aChirho = BoxChirho { unBoxChirho :: AppChirho @fChirho a
 
     assert_eq!(
         type_shape_chirho(&fields_chirho[0].ty_chirho),
-        "(AppChirho aChirho)",
-        "flat visible @fChirho should not become an ordinary type argument: {:?}",
+        "((AppChirho @fChirho) aChirho)",
+        "flat visible @fChirho must remain separate from the ordinary argument: {:?}",
         fields_chirho[0].ty_chirho
+    );
+    let TypeChirho::AppChirho {
+        fun_chirho,
+        arg_chirho,
+        ..
+    } = &fields_chirho[0].ty_chirho
+    else {
+        panic!("expected one ordinary field type argument");
+    };
+    assert!(
+        matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho)
+        if name_chirho.text_chirho() == "aChirho")
+    );
+    let TypeChirho::KindApplicationChirho {
+        fun_chirho,
+        arg_chirho,
+        written_chirho,
+        ..
+    } = fun_chirho.as_ref()
+    else {
+        panic!("expected the written hidden kind prefix");
+    };
+    assert!(*written_chirho);
+    assert!(
+        matches!(fun_chirho.as_ref(), TypeChirho::ConChirho(name_chirho)
+        if name_chirho.text_chirho() == "AppChirho")
+    );
+    assert!(
+        matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho)
+        if name_chirho.text_chirho() == "fChirho")
     );
 }
 
@@ -738,7 +788,10 @@ data aChirho :-> cChirho where
                 module_chirho.decls_chirho
             );
             match &constructors_chirho[0] {
-                ConDeclChirho::GadtChirho { ty_chirho, .. } => {
+                ConDeclChirho::GadtChirho {
+                    signature_chirho, ..
+                } => {
+                    let ty_chirho = &signature_chirho.try_as_type_chirho(&mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho()).expect("small parser fixture fits projection budget");
                     assert!(
                         matches!(ty_chirho, TypeChirho::FunChirho { .. }),
                         "PairChirho signature should stay a function type, got {:?}",
@@ -862,6 +915,60 @@ fn lower_mixed_strict_lazy_fields_chirho() {
             _ => panic!("expected OrdinaryChirho"),
         },
         _ => panic!("expected DataDeclChirho"),
+    }
+}
+
+#[test]
+fn written_data_and_newtype_headers_carry_their_category_proof_chirho() {
+    use haskelujah_ast_chirho::name_chirho::TypeConstructorRoleChirho;
+    let module_chirho = parse_and_lower_chirho(
+        "module DefChirho where\ndata DataChirho aChirho = DataChirho aChirho\nnewtype NewtypeChirho aChirho = NewtypeChirho aChirho\n",
+    );
+    let roles_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::DataDeclChirho { name_chirho, .. }
+            | DeclChirho::NewtypeDeclChirho { name_chirho, .. } => Some((
+                name_chirho.text_chirho(),
+                name_chirho.written_type_declaration_role_chirho(),
+            )),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        roles_chirho,
+        vec![
+            ("DataChirho", Some(TypeConstructorRoleChirho::DataChirho)),
+            (
+                "NewtypeChirho",
+                Some(TypeConstructorRoleChirho::NewtypeChirho)
+            )
+        ]
+    );
+}
+
+#[test]
+fn skipped_data_instances_never_acquire_an_ordinary_data_role_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE TypeFamilies #-}\nmodule DefChirho where\ndata family FChirho aChirho\ndata instance FChirho Int = MkFChirho Int\n",
+    );
+    for declaration_chirho in &module_chirho.decls_chirho {
+        if let DeclChirho::DataDeclChirho { name_chirho, .. } = declaration_chirho {
+            assert_eq!(name_chirho.written_type_declaration_role_chirho(), None);
+        }
+    }
+}
+
+#[test]
+fn unrepresented_newtype_context_heads_do_not_certify_the_context_class_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE DatatypeContexts #-}\nmodule DefChirho where\nnewtype Eq aChirho => NChirho aChirho = NChirho aChirho\n",
+    );
+    for declaration_chirho in &module_chirho.decls_chirho {
+        if let DeclChirho::NewtypeDeclChirho { name_chirho, .. } = declaration_chirho {
+            assert_eq!(name_chirho.written_type_declaration_role_chirho(), None);
+        }
     }
 }
 

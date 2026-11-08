@@ -38,6 +38,48 @@ fn a_declared_single_parameter_class_adds_exactly_its_methods_chirho() {
 }
 
 #[test]
+fn checked_hidden_kind_binders_do_not_become_visible_class_parameters_chirho() {
+    let source_chirho = include_str!(
+        "../../source_chirho/full_kind_arity_chirho/class_headers_chirho/ScopedClassVisibilityChirho.hs"
+    );
+    let result_chirho = crate::typecheck_source_chirho(
+        source_chirho,
+        &mut crate::SourceMapChirho::new_chirho(),
+        "HiddenClassBindersChirho.hs",
+    )
+    .unwrap_or_else(|error_chirho| {
+        panic!("the real checked class headers must elaborate: {error_chirho}")
+    });
+    let class_chirho = result_chirho
+        .module_chirho
+        .decls_chirho
+        .iter()
+        .find_map(|declaration_chirho| match declaration_chirho {
+            haskelujah_ast_chirho::decl_chirho::DeclChirho::ClassDeclChirho {
+                name_chirho,
+                type_vars_chirho,
+                ..
+            } if name_chirho.text_chirho() == "SizedChirho" => Some(type_vars_chirho),
+            _ => None,
+        })
+        .expect("the actual local class header");
+    assert!(
+        class_chirho.len() > 1,
+        "the checked header must retain its written invisible kind binder"
+    );
+    assert_eq!(
+        class_chirho
+            .iter()
+            .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+            .count(),
+        1
+    );
+    let names_chirho = method_occurrence_names_chirho(&result_chirho.module_chirho);
+    assert!(names_chirho.contains("sizeChirho"));
+    assert!(!names_chirho.contains("pairChirho"));
+}
+
+#[test]
 fn a_multi_parameter_class_and_the_inv_001_names_are_never_added_chirho() {
     // A multi-parameter class keeps its shared id. A single-parameter class
     // that declares `pure` adds its other methods, never `pure` (INV-001).

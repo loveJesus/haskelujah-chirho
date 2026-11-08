@@ -18,6 +18,12 @@ pub(crate) fn compile_backend_chirho(
     ifaces_chirho: &[ModuleIfaceChirho],
     program_modules_chirho: &std::collections::HashSet<String>,
 ) -> Result<CompileResultChirho, DiagnosticBundleChirho> {
+    if infer_result_chirho
+        .non_deferrable_diagnostics_chirho
+        .has_errors_chirho()
+    {
+        return Err(infer_result_chirho.non_deferrable_diagnostics_chirho);
+    }
     // Phase 5: Desugar AST → Core IR (evidence-threading P2b: with
     // per-occurrence ids for the method-occurrence names).
     // Dictionary evidence: every name whose scheme carries class predicates
@@ -32,8 +38,8 @@ pub(crate) fn compile_backend_chirho(
     // workflow: language-features-chirho/own-class-method-occurrences-chirho
     let class_method_names_chirho: std::collections::HashSet<&String> = infer_result_chirho
         .class_env_chirho
-        .classes_chirho
-        .values()
+        .classes_chirho()
+        .values_chirho()
         .flat_map(|class_chirho| class_chirho.methods_chirho.keys())
         .collect();
     let import_suppliers_chirho = native_provenance_chirho::import_suppliers_chirho(
@@ -88,23 +94,43 @@ pub(crate) fn compile_backend_chirho(
             // definer's identity, seen through any re-export (rows 629 and 642).
             // workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
             import_suppliers_chirho,
+            promotion_scope_chirho: infer_result_chirho.promotion_scope_chirho.clone(),
+            type_constructor_scope_chirho: infer_result_chirho
+                .type_constructor_scope_chirho
+                .clone(),
         },
-    );
+    )
+    .map_err(|error_chirho| {
+        let mut diagnostics_chirho = DiagnosticBundleChirho::empty_chirho();
+        diagnostics_chirho.push_chirho(
+            haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(300),
+                error_chirho.to_string(),
+                error_chirho.span_chirho(),
+            ),
+        );
+        diagnostics_chirho
+    })?;
     let reference_evidence_chirho = evidence_join_chirho::join_reference_evidence_chirho(
         &infer_result_chirho,
         &desugar_output_chirho.reference_occurrence_spans_chirho,
         &desugar_output_chirho.occurrence_provenance_chirho,
     );
-    let evidence_join_chirho::OccurrenceJoinChirho {
-        evidence_chirho: mut occurrence_evidence_chirho,
-        applied_tys_chirho: mut occurrence_applied_tys_chirho,
-    } = join_occurrence_evidence_chirho(
+    // One identity decision per occurrence gives both its key and its ground goals (S1).
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    let occurrence_proofs_chirho = evidence_join_chirho::join_occurrence_proofs_chirho(
         &infer_result_chirho,
         &desugar_output_chirho.method_occurrences_chirho,
         &desugar_output_chirho.literal_occurrence_spans_chirho,
         &desugar_output_chirho.method_occurrence_spans_chirho,
         &desugar_output_chirho.occurrence_provenance_chirho,
     );
+    let mut occurrence_evidence_chirho =
+        evidence_join_chirho::occurrence_keys_chirho(&occurrence_proofs_chirho);
+    let mut occurrence_applied_tys_chirho =
+        evidence_join_chirho::occurrence_applied_tys_chirho(&occurrence_proofs_chirho);
+    let mut ground_goals_chirho =
+        evidence_join_chirho::occurrence_ground_goals_chirho(&occurrence_proofs_chirho);
     // Range syntax selected Enum itself, independently of a lexical namesake.
     // workflow: language-features-chirho/dictionary-evidence-chirho
     occurrence_evidence_chirho.retain(|id_chirho, _| {
@@ -112,6 +138,26 @@ pub(crate) fn compile_backend_chirho(
             .range_occurrence_spans_chirho
             .contains_key(id_chirho)
     });
+    // A range keeps its own Enum route; the conditional-dictionary route claims none.
+    ground_goals_chirho.retain(|id_chirho, _| {
+        !desugar_output_chirho
+            .range_occurrence_spans_chirho
+            .contains_key(id_chirho)
+    });
+    for (occ_id_chirho, reference_goals_chirho) in
+        evidence_join_chirho::join_reference_ground_goals_chirho(
+            &infer_result_chirho,
+            &desugar_output_chirho.reference_occurrence_spans_chirho,
+            &desugar_output_chirho.occurrence_provenance_chirho,
+        )
+    {
+        let goals_chirho = ground_goals_chirho.entry(occ_id_chirho).or_default();
+        for goal_chirho in reference_goals_chirho {
+            if !goals_chirho.contains(&goal_chirho) {
+                goals_chirho.push(goal_chirho);
+            }
+        }
+    }
     // An applied type serves only an occurrence that kept its proof.
     occurrence_applied_tys_chirho
         .retain(|id_chirho, _| occurrence_evidence_chirho.contains_key(id_chirho));
@@ -135,6 +181,7 @@ pub(crate) fn compile_backend_chirho(
         &builtin_class_scope_chirho,
         &infer_result_chirho.gnd_coercion_proofs_chirho,
         &desugar_output_chirho.default_method_rows_chirho,
+        infer_result_chirho.promotion_scope_chirho.as_deref(),
     );
     let mut newtype_cons_chirho: std::collections::HashSet<String> = newtype_info_chirho
         .values()
@@ -207,22 +254,76 @@ pub(crate) fn compile_backend_chirho(
             &module_chirho,
             &builtin_class_scope_chirho,
         );
-    let dict_result_chirho = haskelujah_core_chirho::dict_pass_module_full_with_evidence_chirho(
+    // The checker's typed instance per source declaration, every span kept (S3).
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    let instance_declarations_chirho: Vec<haskelujah_core_chirho::InstanceDeclarationChirho> =
+        infer_result_chirho
+            .source_instances_chirho
+            .iter()
+            .map(|(span_chirho, instance_chirho)| {
+                haskelujah_core_chirho::InstanceDeclarationChirho {
+                    span_chirho: *span_chirho,
+                    instance_chirho: instance_chirho.clone(),
+                }
+            })
+            .collect();
+    let dict_result_chirho = haskelujah_core_chirho::dict_pass_module_with_inputs_chirho(
         &desugar_output_chirho.module_chirho,
-        desugar_output_chirho.names_chirho,
-        &infer_result_chirho.env_chirho,
-        &infer_result_chirho.class_env_chirho,
-        con_types_chirho,
-        newtype_info_chirho,
-        extra_dict_param_names_chirho,
-        desugar_output_chirho.method_occurrences_chirho,
-        occurrence_evidence_chirho,
-        occurrence_applied_tys_chirho,
-        reference_evidence_chirho,
-        derived_shows_chirho,
-        derived_enums_chirho,
-        desugar_output_chirho.operator_occurrences_chirho,
+        haskelujah_core_chirho::DictPassInputsChirho {
+            names_chirho: desugar_output_chirho.names_chirho,
+            type_env_chirho: &infer_result_chirho.env_chirho,
+            class_env_chirho: &infer_result_chirho.class_env_chirho,
+            con_types_chirho,
+            newtype_info_chirho,
+            extra_dict_param_names_chirho,
+            evidence_chirho: haskelujah_core_chirho::DictPassEvidenceChirho {
+                method_occurrence_canon_chirho: desugar_output_chirho.method_occurrences_chirho,
+                occurrence_evidence_chirho,
+                occurrence_applied_tys_chirho,
+                reference_evidence_chirho,
+                derived_shows_chirho,
+                derived_enums_chirho,
+                operator_occurrences_chirho: desugar_output_chirho.operator_occurrences_chirho,
+                ground_goals_chirho,
+                instance_declarations_chirho,
+                instance_row_keys_chirho: desugar_output_chirho.instance_row_keys_chirho,
+            },
+        },
     );
+    // A ground goal no route served and the pass refused by name is an error at its
+    // occurrence, with promoted and family keys written as people read them (S2).
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    if !dict_result_chirho.diagnostics_chirho.is_empty() {
+        let mut bundle_chirho = DiagnosticBundleChirho::new_chirho(
+            dict_result_chirho
+                .diagnostics_chirho
+                .iter()
+                .map(|diagnostic_chirho| {
+                    let message_chirho = diagnostic_chirho.to_string();
+                    match desugar_output_chirho
+                        .method_occurrence_spans_chirho
+                        .get(&diagnostic_chirho.occurrence_chirho)
+                        .or_else(|| {
+                            desugar_output_chirho
+                                .reference_occurrence_spans_chirho
+                                .get(&diagnostic_chirho.occurrence_chirho)
+                        }) {
+                        Some(span_chirho) => {
+                            DiagnosticChirho::error_chirho(message_chirho, *span_chirho)
+                        }
+                        None => DiagnosticChirho::error_no_span_chirho(message_chirho),
+                    }
+                })
+                .collect(),
+        );
+        bundle_chirho.map_text_chirho(
+            haskelujah_ast_chirho::promotion_chirho::readable_promoted_keys_chirho,
+        );
+        let families_chirho = &infer_result_chirho.type_families_chirho;
+        bundle_chirho
+            .map_text_chirho(|text_chirho| families_chirho.readable_keys_chirho(text_chirho));
+        return Err(bundle_chirho);
+    }
     // A GND instance whose representation's methods the dictionary pass could not build is
     // refused, never aliased to a missing method (row 694).
     // workflow: compiler-pipeline-chirho/deriving-strategies-chirho

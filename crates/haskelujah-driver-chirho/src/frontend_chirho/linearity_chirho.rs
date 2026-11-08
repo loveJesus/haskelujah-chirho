@@ -75,7 +75,11 @@ pub(crate) fn check_module_linearity_chirho(
                     AstTypeChirho::QualChirho { body_chirho, .. } => {
                         ty_cursor_chirho = body_chirho;
                     }
-                    AstTypeChirho::ParenChirho { inner_chirho, .. } => {
+                    AstTypeChirho::KindAnnotationChirho {
+                        ty_chirho: inner_chirho,
+                        ..
+                    }
+                    | AstTypeChirho::ParenChirho { inner_chirho, .. } => {
                         ty_cursor_chirho = inner_chirho;
                     }
                     _ => break,

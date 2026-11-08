@@ -14,8 +14,10 @@ impl ParserChirho<'_> {
     // Type alias declarations
     // -----------------------------------------------------------------------
 
-    /// Dispatch `type` keyword: check if followed by `family` or `instance`.
-    pub(super) fn parse_type_or_family_decl_chirho(&mut self) {
+    /// Dispatch `type` keyword: check if followed by `family` or `instance`. An
+    /// instance body's own `type` member is an associated instance in either
+    /// spelling, parsed by `parse_associated_type_instance_chirho`.
+    pub(super) fn parse_type_or_family_decl_chirho(&mut self, instance_member_chirho: bool) {
         // Peek ahead past trivia to see if next token is "family" or "instance"
         let mut look_chirho = self.pos_chirho + 1;
         while look_chirho < self.tokens_chirho.len()
@@ -35,6 +37,7 @@ impl ParserChirho<'_> {
         };
         match next_text_chirho {
             "family" => self.parse_type_family_decl_chirho(),
+            "instance" if instance_member_chirho => self.parse_associated_type_instance_chirho(),
             "instance" => self.parse_type_family_instance_decl_chirho(),
             "role" => {
                 // RoleAnnotations: `type role T nominal phantom representational`
@@ -46,23 +49,13 @@ impl ParserChirho<'_> {
             }
             _ => {
                 // StandaloneKindSignatures: `type T :: Kind`
-                // Detect pattern: `type ConId ::` (no `=` before `::`)
+                // Detect pattern: `type ConId ::` or `type (op) ::` (no `=` before `::`)
                 // by scanning ahead for `::` before `=` or decl boundary.
                 let mut scan_chirho = look_chirho;
                 let mut is_kind_sig_chirho = false;
-                // Skip past the name token (ConId) to check for ::
+                // Skip past the declared name, a ConId or `(op)`, to check for ::
                 if scan_chirho < self.tokens_chirho.len() {
-                    scan_chirho += 1; // past ConId
-                    while scan_chirho < self.tokens_chirho.len()
-                        && matches!(
-                            self.tokens_chirho[scan_chirho].kind_chirho,
-                            RawTokenKindChirho::WhitespaceChirho
-                                | RawTokenKindChirho::LineCommentChirho
-                                | RawTokenKindChirho::BlockCommentChirho
-                        )
-                    {
-                        scan_chirho += 1;
-                    }
+                    scan_chirho = self.past_declared_type_name_chirho(scan_chirho);
                     if scan_chirho < self.tokens_chirho.len()
                         && self.tokens_chirho[scan_chirho].kind_chirho
                             == RawTokenKindChirho::ColonColonChirho
@@ -76,11 +69,52 @@ impl ParserChirho<'_> {
                         .start_node_chirho(SyntaxKindChirho::TypeSigDeclChirho);
                     self.eat_until_decl_end_chirho();
                     self.builder_chirho.finish_node_chirho();
+                } else if instance_member_chirho {
+                    self.parse_associated_type_instance_chirho();
                 } else {
                     self.parse_type_alias_decl_chirho();
                 }
             }
         }
+    }
+
+    /// The index after a declared type's name and the trivia that follows it.
+    /// The name is one token, or an operator in parentheses: `type (:==) :: k`
+    /// is a standalone kind signature, not a synonym (row 686, T15079, SplitWD).
+    /// workflow: language-features-chirho/declaration-kinds-chirho
+    fn past_declared_type_name_chirho(&self, name_chirho: usize) -> usize {
+        let kind_at_chirho = |index_chirho: usize| {
+            self.tokens_chirho
+                .get(index_chirho)
+                .map(|token_chirho| token_chirho.kind_chirho)
+        };
+        if kind_at_chirho(name_chirho) == Some(RawTokenKindChirho::LeftParenChirho) {
+            let operator_chirho = self.past_raw_trivia_chirho(name_chirho + 1);
+            let close_chirho = self.past_raw_trivia_chirho(operator_chirho + 1);
+            if matches!(
+                kind_at_chirho(operator_chirho),
+                Some(RawTokenKindChirho::VarSymChirho | RawTokenKindChirho::ConSymChirho)
+            ) && kind_at_chirho(close_chirho) == Some(RawTokenKindChirho::RightParenChirho)
+            {
+                return self.past_raw_trivia_chirho(close_chirho + 1);
+            }
+        }
+        self.past_raw_trivia_chirho(name_chirho + 1)
+    }
+
+    /// The first index at or after `index_chirho` that is not trivia.
+    fn past_raw_trivia_chirho(&self, mut index_chirho: usize) -> usize {
+        while index_chirho < self.tokens_chirho.len()
+            && matches!(
+                self.tokens_chirho[index_chirho].kind_chirho,
+                RawTokenKindChirho::WhitespaceChirho
+                    | RawTokenKindChirho::LineCommentChirho
+                    | RawTokenKindChirho::BlockCommentChirho
+            )
+        {
+            index_chirho += 1;
+        }
+        index_chirho
     }
 
     pub(super) fn parse_type_family_decl_chirho(&mut self) {
@@ -115,7 +149,7 @@ impl ParserChirho<'_> {
         if self.at_chirho(RawTokenKindChirho::WhereChirho) {
             self.bump_chirho(); // where
             self.eat_trivia_chirho();
-            // Parse equations: each is `F lhs_types = rhs_type`
+            // Parse equations: each is `[forall bs.] lhs = rhs`
             if self.at_chirho(RawTokenKindChirho::VirtualLeftBraceChirho)
                 || self.at_chirho(RawTokenKindChirho::LeftBraceChirho)
             {
@@ -137,19 +171,7 @@ impl ParserChirho<'_> {
                 {
                     break;
                 }
-                // Each equation: lhs = rhs
-                self.eat_until_any_chirho(&[
-                    RawTokenKindChirho::EqualsChirho,
-                    RawTokenKindChirho::VirtualSemicolonChirho,
-                    RawTokenKindChirho::SemicolonChirho,
-                    RawTokenKindChirho::VirtualRightBraceChirho,
-                    RawTokenKindChirho::RightBraceChirho,
-                ]);
-                if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
-                    self.bump_chirho(); // =
-                    self.eat_trivia_chirho();
-                    self.parse_type_chirho(); // rhs
-                }
+                self.parse_family_equation_chirho();
             }
             if self.at_chirho(RawTokenKindChirho::VirtualRightBraceChirho)
                 || self.at_chirho(RawTokenKindChirho::RightBraceChirho)
@@ -158,6 +180,105 @@ impl ParserChirho<'_> {
             }
         }
 
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// Parse a declaration's right side with its optional kind annotation
+    /// (`F a = Int :: Type`), kept as one kind-annotated type. A `::` that ends the
+    /// declaration stays a bare token in its node, so an incomplete family equation
+    /// remains incomplete, as GHC rejects it (row 686, KindSigs).
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    fn parse_type_with_optional_kind_chirho(&mut self) {
+        let rhs_start_chirho = self.pos_chirho;
+        let rhs_chirho = self.builder_chirho.checkpoint_chirho();
+        self.parse_type_chirho();
+        if self.pos_chirho == rhs_start_chirho
+            || self.next_non_trivia_kind_chirho(0) != Some(RawTokenKindChirho::ColonColonChirho)
+        {
+            return;
+        }
+        self.eat_trivia_chirho();
+        let kind_follows_chirho = !matches!(
+            self.next_non_trivia_kind_chirho(1),
+            None | Some(
+                RawTokenKindChirho::VirtualSemicolonChirho
+                    | RawTokenKindChirho::SemicolonChirho
+                    | RawTokenKindChirho::VirtualRightBraceChirho
+                    | RawTokenKindChirho::RightBraceChirho
+                    | RawTokenKindChirho::EofChirho
+            )
+        );
+        if !kind_follows_chirho {
+            self.bump_chirho(); // a `::` with no kind
+            return;
+        }
+        self.builder_chirho
+            .start_node_at_chirho(rhs_chirho, SyntaxKindChirho::KindAnnotTypeChirho);
+        self.bump_chirho(); // ::
+        self.eat_trivia_chirho();
+        self.parse_type_chirho(); // the kind
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// The kind of the non-trivia token `skip_chirho` places past the next one at or after
+    /// the cursor: 0 is the next non-trivia token itself.
+    fn next_non_trivia_kind_chirho(&self, skip_chirho: usize) -> Option<RawTokenKindChirho> {
+        self.tokens_chirho[self.pos_chirho.min(self.tokens_chirho.len())..]
+            .iter()
+            .map(|token_chirho| token_chirho.kind_chirho)
+            .filter(|kind_chirho| !kind_chirho.is_trivia_chirho())
+            .nth(skip_chirho)
+    }
+
+    /// Parse a closed equation's left side as one type. A continuation line
+    /// (`F a⏎    b = …`) is still this left side: layout already separates the
+    /// equations, so the value-binding guard in `parse_btype_chirho` stays off.
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    fn parse_family_equation_lhs_chirho(&mut self) {
+        let outer_chirho = std::mem::replace(&mut self.family_equation_lhs_chirho, true);
+        self.parse_type_chirho();
+        self.family_equation_lhs_chirho = outer_chirho;
+    }
+
+    /// One equation node, `[forall bs.] lhs = rhs`, for a closed family's `where`
+    /// block and an instance body's associated instance alike. The left side is a
+    /// type; whatever that grammar leaves before `=` stays in the node, so lowering
+    /// reports an incomplete equation instead of dropping it.
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    fn parse_family_equation_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::TypeFamilyEquationChirho);
+        self.parse_family_equation_lhs_chirho();
+        self.eat_until_any_chirho(&[
+            RawTokenKindChirho::EqualsChirho,
+            RawTokenKindChirho::VirtualSemicolonChirho,
+            RawTokenKindChirho::SemicolonChirho,
+            RawTokenKindChirho::VirtualRightBraceChirho,
+            RawTokenKindChirho::RightBraceChirho,
+        ]);
+        if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
+            self.bump_chirho(); // =
+            self.eat_trivia_chirho();
+            self.parse_type_with_optional_kind_chirho();
+        }
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// An instance body's associated type instance, `type F args = rhs` or
+    /// `type instance F args = rhs`. Its equation is parsed like a closed family's,
+    /// so lowering reads the written arguments in order: wildcards, and arguments
+    /// that are not class parameters, keep their places (row 686: V03, T11401).
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    fn parse_associated_type_instance_chirho(&mut self) {
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::TypeFamilyInstanceDeclChirho);
+        self.expect_chirho(RawTokenKindChirho::TypeChirho); // type
+        self.eat_trivia_chirho();
+        if self.at_chirho(RawTokenKindChirho::InstanceChirho) {
+            self.bump_chirho(); // instance
+            self.eat_trivia_chirho();
+        }
+        self.parse_family_equation_chirho();
         self.builder_chirho.finish_node_chirho();
     }
 
@@ -170,18 +291,9 @@ impl ParserChirho<'_> {
         self.bump_chirho(); // instance
         self.eat_trivia_chirho();
 
-        // LHS patterns until =
-        self.eat_until_any_chirho(&[
-            RawTokenKindChirho::EqualsChirho,
-            RawTokenKindChirho::VirtualSemicolonChirho,
-            RawTokenKindChirho::VirtualRightBraceChirho,
-        ]);
-
-        if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
-            self.bump_chirho(); // =
-            self.eat_trivia_chirho();
-            self.parse_type_chirho(); // RHS type
-        }
+        // Share the structured equation grammar with closed and associated
+        // equations, retaining promotion, kind applications and annotations.
+        self.parse_family_equation_chirho();
 
         self.builder_chirho.finish_node_chirho();
     }
@@ -203,7 +315,19 @@ impl ParserChirho<'_> {
         if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
             self.bump_chirho(); // =
             self.eat_trivia_chirho();
-            self.parse_type_chirho();
+            self.parse_type_with_optional_kind_chirho();
+            // `= r | r -> a` is an injectivity annotation. It belongs to this
+            // declaration, an associated family's result binder, never to the
+            // class body's next member (row 686: T6018, T26255a).
+            if self.next_non_trivia_kind_chirho(0) == Some(RawTokenKindChirho::PipeChirho) {
+                self.eat_trivia_chirho();
+                self.eat_until_any_chirho(&[
+                    RawTokenKindChirho::VirtualSemicolonChirho,
+                    RawTokenKindChirho::SemicolonChirho,
+                    RawTokenKindChirho::VirtualRightBraceChirho,
+                    RawTokenKindChirho::RightBraceChirho,
+                ]);
+            }
         }
 
         self.builder_chirho.finish_node_chirho();
@@ -248,7 +372,10 @@ impl ParserChirho<'_> {
         ]);
 
         if self.at_chirho(RawTokenKindChirho::WhereChirho) {
+            // The block's own members are instance members; see `parse_decl_chirho`.
+            let outer_chirho = std::mem::replace(&mut self.instance_body_chirho, true);
             self.parse_where_block_chirho();
+            self.instance_body_chirho = outer_chirho;
         }
 
         self.builder_chirho.finish_node_chirho();
@@ -316,11 +443,49 @@ impl ParserChirho<'_> {
         self.bump_chirho(); // "pattern" (VarId)
         self.eat_trivia_chirho();
 
-        // Pattern synonym name (ConId)
-        if self.at_chirho(RawTokenKindChirho::ConIdChirho) {
-            self.bump_chirho();
-        }
+        self.expect_chirho(RawTokenKindChirho::ConIdChirho);
         self.eat_trivia_chirho();
+
+        // A signature is a declaration of its own, not a body-less binding.
+        // Keep its whole type so required/provided contexts remain nested.
+        if self.at_chirho(RawTokenKindChirho::ColonColonChirho)
+            || self.at_chirho(RawTokenKindChirho::CommaChirho)
+        {
+            while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+                self.expect_chirho(RawTokenKindChirho::ConIdChirho);
+                self.eat_trivia_chirho();
+            }
+            self.expect_chirho(RawTokenKindChirho::ColonColonChirho);
+            self.eat_trivia_chirho();
+            let start_chirho = self.pos_chirho;
+            self.parse_type_chirho();
+            if start_chirho == self.pos_chirho {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                self.builder_chirho.finish_node_chirho();
+            }
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+
+        if self.at_chirho(RawTokenKindChirho::LeftBraceChirho) {
+            self.bump_chirho();
+            self.eat_trivia_chirho();
+            if !self.at_chirho(RawTokenKindChirho::RightBraceChirho) {
+                self.expect_chirho(RawTokenKindChirho::VarIdChirho);
+                self.eat_trivia_chirho();
+                while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                    self.expect_chirho(RawTokenKindChirho::VarIdChirho);
+                    self.eat_trivia_chirho();
+                }
+            }
+            self.expect_chirho(RawTokenKindChirho::RightBraceChirho);
+            self.eat_trivia_chirho();
+        }
 
         // Pattern variables (VarIds before = or <-)
         while self.at_chirho(RawTokenKindChirho::VarIdChirho) && !self.at_varid_text_chirho("where")
@@ -329,20 +494,30 @@ impl ParserChirho<'_> {
             self.eat_trivia_chirho();
         }
 
+        let body_start_chirho;
         // Direction: = (implicitly bidirectional) or <- (unidirectional/explicitly bidirectional)
         if self.at_chirho(RawTokenKindChirho::EqualsChirho) {
             self.bump_chirho(); // =
             self.eat_trivia_chirho();
+            body_start_chirho = self.pos_chirho;
             self.parse_pat_chirho();
         } else if self.at_chirho(RawTokenKindChirho::LeftArrowChirho) {
             self.bump_chirho(); // <-
             self.eat_trivia_chirho();
+            body_start_chirho = self.pos_chirho;
             self.parse_pat_chirho();
             // Check for explicitly bidirectional where clause
             self.eat_trivia_chirho();
             if self.at_chirho(RawTokenKindChirho::WhereChirho) {
                 self.parse_where_block_chirho();
             }
+        } else {
+            body_start_chirho = self.pos_chirho;
+        }
+        if body_start_chirho == self.pos_chirho {
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+            self.builder_chirho.finish_node_chirho();
         }
 
         self.builder_chirho.finish_node_chirho();

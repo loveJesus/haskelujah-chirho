@@ -14,7 +14,7 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
-use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+use crate::promotion_scope_chirho::{declared_type_names_chirho, spelling_chirho};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{
     BuiltinClassChirho, BuiltinClassScopeChirho, CompilerClassChirho,
@@ -316,10 +316,8 @@ pub fn build_builtin_class_scope_chirho(
     for import_chirho in &module_chirho.imports_chirho {
         let imported_module_chirho = import_chirho.module_chirho.full_name_chirho();
         // Resolution reports a missing interface; its names stay unbound here.
-        let Some(iface_chirho) = ifaces_chirho
-            .iter()
-            .rev()
-            .find(|iface_chirho| iface_chirho.name_chirho == imported_module_chirho)
+        let Some(iface_chirho) =
+            crate::iface_chirho::select_import_iface_chirho(ifaces_chirho, import_chirho)
         else {
             continue;
         };
@@ -410,37 +408,6 @@ fn bind_chirho(
                 occupied_chirho.insert(None);
             }
         }
-    }
-}
-
-/// The names a declaration introduces into the type namespace: its type, family or
-/// class, and a class's associated families.
-fn declared_type_names_chirho(decl_chirho: &DeclChirho) -> Vec<&str> {
-    match decl_chirho {
-        DeclChirho::DataDeclChirho { name_chirho, .. }
-        | DeclChirho::NewtypeDeclChirho { name_chirho, .. }
-        | DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
-        | DeclChirho::TypeFamilyDeclChirho { name_chirho, .. } => vec![name_chirho.text_chirho()],
-        DeclChirho::ClassDeclChirho {
-            name_chirho,
-            associated_tfs_chirho,
-            ..
-        } => std::iter::once(name_chirho.text_chirho())
-            .chain(
-                associated_tfs_chirho
-                    .iter()
-                    .map(|family_chirho| family_chirho.name_chirho.text_chirho()),
-            )
-            .collect(),
-        _ => Vec::new(),
-    }
-}
-
-/// A spelling as a name writes it: `M.T`, or `T` unqualified.
-fn spelling_chirho(qualifier_chirho: Option<&str>, text_chirho: &str) -> String {
-    match qualifier_chirho {
-        Some(qualifier_chirho) => format!("{qualifier_chirho}.{text_chirho}"),
-        None => text_chirho.to_string(),
     }
 }
 

@@ -47,138 +47,418 @@ pub fn skolem_display_name_chirho(name_chirho: &str) -> &str {
         .unwrap_or(name_chirho)
 }
 
-/// Rebuild a type, replacing every skolem `ForallVarChirho` for which
-/// `rewrite_chirho` returns `Some` with the returned type. Non-skolem
-/// `ForallVarChirho` names (synonym pattern variables) are never offered.
-pub fn rewrite_skolems_chirho(
-    ty_chirho: &TyChirho,
-    rewrite_chirho: &mut impl FnMut(&str) -> Option<TyChirho>,
-) -> TyChirho {
-    match ty_chirho {
-        TyChirho::ForallVarChirho(name_chirho) if is_skolem_name_chirho(name_chirho) => {
-            rewrite_chirho(name_chirho).unwrap_or_else(|| ty_chirho.clone())
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SkolemResourceExhaustedChirho;
+
+struct SkolemBudgetChirho<'charge_chirho> {
+    work_chirho: usize,
+    output_chirho: usize,
+    external_chirho: Option<&'charge_chirho mut dyn FnMut(usize, usize) -> Option<()>>,
+}
+impl SkolemBudgetChirho<'_> {
+    fn new_chirho() -> Self {
+        Self {
+            work_chirho: 10_000_000,
+            output_chirho: 16_384,
+            external_chirho: None,
         }
-        TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => {
-            ty_chirho.clone()
+    }
+    fn charge_chirho(
+        &mut self,
+        work_chirho: usize,
+        output_chirho: usize,
+    ) -> Result<(), SkolemResourceExhaustedChirho> {
+        if let Some(external_chirho) = &mut self.external_chirho {
+            external_chirho(work_chirho, output_chirho).ok_or(SkolemResourceExhaustedChirho)?;
         }
-        TyChirho::AppChirho(fun_chirho, arg_chirho) => TyChirho::AppChirho(
-            Box::new(rewrite_skolems_chirho(fun_chirho, rewrite_chirho)),
-            Box::new(rewrite_skolems_chirho(arg_chirho, rewrite_chirho)),
-        ),
-        TyChirho::FunChirho(arg_chirho, result_chirho, mult_chirho) => TyChirho::FunChirho(
-            Box::new(rewrite_skolems_chirho(arg_chirho, rewrite_chirho)),
-            Box::new(rewrite_skolems_chirho(result_chirho, rewrite_chirho)),
-            *mult_chirho,
-        ),
-        TyChirho::TupleChirho(elems_chirho) => TyChirho::TupleChirho(
-            elems_chirho
-                .iter()
-                .map(|elem_chirho| rewrite_skolems_chirho(elem_chirho, rewrite_chirho))
-                .collect(),
-        ),
-        TyChirho::ListChirho(inner_chirho) => TyChirho::ListChirho(Box::new(
-            rewrite_skolems_chirho(inner_chirho, rewrite_chirho),
-        )),
-        TyChirho::ForallChirho {
-            vars_chirho,
-            body_chirho,
-        } => TyChirho::ForallChirho {
-            vars_chirho: vars_chirho.clone(),
-            body_chirho: Box::new(rewrite_skolems_chirho(body_chirho, rewrite_chirho)),
-        },
-        TyChirho::RequiredForallChirho {
-            vars_chirho,
-            body_chirho,
-        } => TyChirho::RequiredForallChirho {
-            vars_chirho: vars_chirho.clone(),
-            body_chirho: Box::new(rewrite_skolems_chirho(body_chirho, rewrite_chirho)),
-        },
+        self.work_chirho = self
+            .work_chirho
+            .checked_sub(work_chirho)
+            .ok_or(SkolemResourceExhaustedChirho)?;
+        self.output_chirho = self
+            .output_chirho
+            .checked_sub(output_chirho)
+            .ok_or(SkolemResourceExhaustedChirho)?;
+        Ok(())
     }
 }
 
-/// Whether a type mentions any skolem.
-pub fn contains_skolem_chirho(ty_chirho: &TyChirho) -> bool {
-    let mut found_chirho = false;
-    rewrite_skolems_chirho(ty_chirho, &mut |_name_chirho| {
-        found_chirho = true;
-        None
-    });
-    found_chirho
+fn visit_terms_chirho(
+    term_chirho: &TyChirho,
+    budget_chirho: &mut SkolemBudgetChirho,
+    action_chirho: &mut impl FnMut(
+        &TyChirho,
+        &mut SkolemBudgetChirho,
+    ) -> Result<(), SkolemResourceExhaustedChirho>,
+) -> Result<(), SkolemResourceExhaustedChirho> {
+    // This borrowed walk does not recurse. Ordinary predicates may exceed the
+    // proof-metadata depth limit without losing their ordinary meaning.
+    let mut pending_chirho = vec![term_chirho];
+    while let Some(term_chirho) = pending_chirho.pop() {
+        budget_chirho.charge_chirho(1, 0)?;
+        action_chirho(term_chirho, budget_chirho)?;
+        match term_chirho {
+            TyChirho::AppChirho(left_chirho, right_chirho)
+            | TyChirho::FunChirho(left_chirho, right_chirho, _) => {
+                budget_chirho.charge_chirho(2, 2)?;
+                pending_chirho.extend([left_chirho.as_ref(), right_chirho.as_ref()]);
+            }
+            TyChirho::ListChirho(element_chirho) => {
+                budget_chirho.charge_chirho(1, 1)?;
+                pending_chirho.push(element_chirho);
+            }
+            TyChirho::TupleChirho(elements_chirho) => {
+                budget_chirho.charge_chirho(elements_chirho.len(), elements_chirho.len())?;
+                pending_chirho.extend(elements_chirho);
+            }
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                budget_chirho.charge_chirho(
+                    context_chirho.len().saturating_add(1),
+                    context_chirho.len().saturating_add(1),
+                )?;
+                pending_chirho.push(body_chirho);
+                pending_chirho.extend(context_chirho);
+            }
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            }
+            | TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
+                budget_chirho.charge_chirho(
+                    vars_chirho.len().saturating_add(1),
+                    vars_chirho.len().saturating_add(1),
+                )?;
+                pending_chirho.push(body_chirho);
+                for record_chirho in vars_chirho.records_chirho() {
+                    if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                        pending_chirho.push(kind_chirho.as_ref());
+                    }
+                }
+            }
+            TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => {}
+        }
+    }
+    Ok(())
 }
 
-/// Replace every skolem in `ty_chirho` by a unification variable so that an
-/// ordinary unifier can *propose* bindings for the skolems. Newly opened
-/// skolems are added to `opened_chirho`; skolems already present reuse their
-/// variable so that the same skolem opens to the same variable across calls.
+enum SkolemImageChirho<'image_chirho> {
+    OwnedChirho(TyChirho),
+    BorrowedChirho(&'image_chirho TyChirho),
+}
+
+impl SkolemImageChirho<'_> {
+    fn term_chirho(&self) -> &TyChirho {
+        match self {
+            Self::OwnedChirho(term_chirho) => term_chirho,
+            Self::BorrowedChirho(term_chirho) => term_chirho,
+        }
+    }
+}
+
+fn rewrite_with_budget_chirho<'image_chirho>(
+    ty_chirho: &TyChirho,
+    rewrite_chirho: &mut impl FnMut(&str) -> Option<SkolemImageChirho<'image_chirho>>,
+    budget_chirho: &mut SkolemBudgetChirho,
+    depth_chirho: usize,
+) -> Result<TyChirho, SkolemResourceExhaustedChirho> {
+    budget_chirho.charge_chirho(1, 1)?;
+    if depth_chirho > 128 {
+        return Err(SkolemResourceExhaustedChirho);
+    }
+    Ok(match ty_chirho {
+        TyChirho::ForallVarChirho(name_chirho) if is_skolem_name_chirho(name_chirho) => {
+            budget_chirho.charge_chirho(name_chirho.len(), 0)?;
+            if let Some(image_chirho) = rewrite_chirho(name_chirho) {
+                SubstChirho::empty_chirho()
+                    .apply_bounded_chirho(
+                        image_chirho.term_chirho(),
+                        &mut |work_chirho, output_chirho| {
+                            budget_chirho.charge_chirho(work_chirho, output_chirho).ok()
+                        },
+                    )
+                    .ok_or(SkolemResourceExhaustedChirho)?
+            } else {
+                budget_chirho.charge_chirho(name_chirho.len(), name_chirho.len())?;
+                ty_chirho.clone()
+            }
+        }
+        TyChirho::VarChirho(_) => ty_chirho.clone(),
+        TyChirho::ConChirho(name_chirho) | TyChirho::ForallVarChirho(name_chirho) => {
+            budget_chirho.charge_chirho(name_chirho.len(), name_chirho.len())?;
+            ty_chirho.clone()
+        }
+        TyChirho::AppChirho(left_chirho, right_chirho) => TyChirho::AppChirho(
+            Box::new(rewrite_with_budget_chirho(
+                left_chirho,
+                rewrite_chirho,
+                budget_chirho,
+                depth_chirho + 1,
+            )?),
+            Box::new(rewrite_with_budget_chirho(
+                right_chirho,
+                rewrite_chirho,
+                budget_chirho,
+                depth_chirho + 1,
+            )?),
+        ),
+        TyChirho::FunChirho(left_chirho, right_chirho, mult_chirho) => TyChirho::FunChirho(
+            Box::new(rewrite_with_budget_chirho(
+                left_chirho,
+                rewrite_chirho,
+                budget_chirho,
+                depth_chirho + 1,
+            )?),
+            Box::new(rewrite_with_budget_chirho(
+                right_chirho,
+                rewrite_chirho,
+                budget_chirho,
+                depth_chirho + 1,
+            )?),
+            *mult_chirho,
+        ),
+        TyChirho::ListChirho(element_chirho) => {
+            TyChirho::ListChirho(Box::new(rewrite_with_budget_chirho(
+                element_chirho,
+                rewrite_chirho,
+                budget_chirho,
+                depth_chirho + 1,
+            )?))
+        }
+        TyChirho::TupleChirho(elements_chirho) => {
+            budget_chirho.charge_chirho(elements_chirho.len(), elements_chirho.len())?;
+            TyChirho::TupleChirho(
+                elements_chirho
+                    .iter()
+                    .map(|term_chirho| {
+                        rewrite_with_budget_chirho(
+                            term_chirho,
+                            rewrite_chirho,
+                            budget_chirho,
+                            depth_chirho + 1,
+                        )
+                    })
+                    .collect::<Result<_, _>>()?,
+            )
+        }
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => {
+            budget_chirho.charge_chirho(context_chirho.len(), context_chirho.len())?;
+            TyChirho::QualChirho {
+                context_chirho: context_chirho
+                    .iter()
+                    .map(|term_chirho| {
+                        rewrite_with_budget_chirho(
+                            term_chirho,
+                            rewrite_chirho,
+                            budget_chirho,
+                            depth_chirho + 1,
+                        )
+                    })
+                    .collect::<Result<_, _>>()?,
+                body_chirho: Box::new(rewrite_with_budget_chirho(
+                    body_chirho,
+                    rewrite_chirho,
+                    budget_chirho,
+                    depth_chirho + 1,
+                )?),
+            }
+        }
+        TyChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+        }
+        | TyChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+        } => {
+            budget_chirho.charge_chirho(vars_chirho.len(), vars_chirho.len())?;
+            let mut records_chirho = Vec::new();
+            for record_chirho in vars_chirho.records_chirho() {
+                let mut mapped_chirho = record_chirho.clone();
+                mapped_chirho.kind_chirho = record_chirho
+                    .kind_chirho
+                    .as_ref()
+                    .map(|kind_chirho| {
+                        rewrite_with_budget_chirho(
+                            kind_chirho,
+                            rewrite_chirho,
+                            budget_chirho,
+                            depth_chirho + 1,
+                        )
+                        .map(std::sync::Arc::new)
+                    })
+                    .transpose()?;
+                records_chirho.push(mapped_chirho);
+            }
+            let vars_chirho =
+                crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(records_chirho);
+            let body_chirho = Box::new(rewrite_with_budget_chirho(
+                body_chirho,
+                rewrite_chirho,
+                budget_chirho,
+                depth_chirho + 1,
+            )?);
+            if matches!(ty_chirho, TyChirho::RequiredForallChirho { .. }) {
+                TyChirho::RequiredForallChirho {
+                    vars_chirho,
+                    body_chirho,
+                }
+            } else {
+                TyChirho::ForallChirho {
+                    vars_chirho,
+                    body_chirho,
+                }
+            }
+        }
+    })
+}
+
+/// Rewrites every rigid occurrence, including ones present only in binder kinds.
+pub fn rewrite_skolems_chirho(
+    ty_chirho: &TyChirho,
+    rewrite_chirho: &mut impl FnMut(&str) -> Option<TyChirho>,
+) -> Result<TyChirho, SkolemResourceExhaustedChirho> {
+    rewrite_with_budget_chirho(
+        ty_chirho,
+        &mut |name_chirho| rewrite_chirho(name_chirho).map(SkolemImageChirho::OwnedChirho),
+        &mut SkolemBudgetChirho::new_chirho(),
+        0,
+    )
+}
+
+/// Reuse the same full-kind writer with borrowed scoped evidence and the
+/// original module allowance. No evidence image is cloned before charging.
+pub(crate) fn rewrite_borrowed_skolems_bounded_chirho<'image_chirho>(
+    ty_chirho: &TyChirho,
+    rewrite_chirho: &mut impl FnMut(&str) -> Option<&'image_chirho TyChirho>,
+    charge_chirho: &mut dyn FnMut(usize, usize) -> Option<()>,
+) -> Result<TyChirho, SkolemResourceExhaustedChirho> {
+    let mut budget_chirho = SkolemBudgetChirho::new_chirho();
+    budget_chirho.external_chirho = Some(charge_chirho);
+    rewrite_with_budget_chirho(
+        ty_chirho,
+        &mut |name_chirho| rewrite_chirho(name_chirho).map(SkolemImageChirho::BorrowedChirho),
+        &mut budget_chirho,
+        0,
+    )
+}
+
+pub fn contains_skolem_chirho(ty_chirho: &TyChirho) -> Result<bool, SkolemResourceExhaustedChirho> {
+    let mut found_chirho = false;
+    visit_terms_chirho(
+        ty_chirho,
+        &mut SkolemBudgetChirho::new_chirho(),
+        &mut |term_chirho, budget_chirho| {
+            if let TyChirho::ForallVarChirho(name_chirho) = term_chirho {
+                budget_chirho.charge_chirho(name_chirho.len(), 0)?;
+                found_chirho |= is_skolem_name_chirho(name_chirho);
+            }
+            Ok(())
+        },
+    )?;
+    Ok(found_chirho)
+}
+
+/// Opens only actual rigid names. All semantic input IDs are reserved first,
+/// including lexical binders/kinds, so the fresh image cannot be captured.
 pub fn open_skolems_chirho(
     ty_chirho: &TyChirho,
     opened_chirho: &mut HashMap<String, TyVarChirho>,
     fresh_chirho: &mut impl FnMut() -> TyVarChirho,
-) -> TyChirho {
-    rewrite_skolems_chirho(ty_chirho, &mut |name_chirho| {
-        let var_chirho = *opened_chirho
-            .entry(name_chirho.to_string())
-            .or_insert_with(&mut *fresh_chirho);
-        Some(TyChirho::VarChirho(var_chirho))
-    })
+) -> Result<TyChirho, SkolemResourceExhaustedChirho> {
+    let mut budget_chirho = SkolemBudgetChirho::new_chirho();
+    let mut reserved_chirho = std::collections::HashSet::new();
+    visit_terms_chirho(
+        ty_chirho,
+        &mut budget_chirho,
+        &mut |term_chirho, budget_chirho| {
+            match term_chirho {
+                TyChirho::VarChirho(variable_chirho) => {
+                    budget_chirho.charge_chirho(1, 1)?;
+                    reserved_chirho.insert(*variable_chirho);
+                }
+                TyChirho::ForallChirho { vars_chirho, .. }
+                | TyChirho::RequiredForallChirho { vars_chirho, .. } => {
+                    budget_chirho.charge_chirho(vars_chirho.len(), vars_chirho.len())?;
+                    reserved_chirho.extend(vars_chirho.iter().copied());
+                }
+                _ => {}
+            }
+            Ok(())
+        },
+    )?;
+    let mut failed_chirho = false;
+    let mut attempts_chirho = 16_384usize;
+    let result_chirho = rewrite_with_budget_chirho(
+        ty_chirho,
+        &mut |name_chirho| {
+            if let Some(variable_chirho) = opened_chirho.get(name_chirho) {
+                return Some(SkolemImageChirho::OwnedChirho(TyChirho::VarChirho(
+                    *variable_chirho,
+                )));
+            }
+            while attempts_chirho > 0 {
+                attempts_chirho -= 1;
+                let variable_chirho = fresh_chirho();
+                if reserved_chirho.insert(variable_chirho) {
+                    opened_chirho.insert(name_chirho.to_owned(), variable_chirho);
+                    return Some(SkolemImageChirho::OwnedChirho(TyChirho::VarChirho(
+                        variable_chirho,
+                    )));
+                }
+            }
+            failed_chirho = true;
+            None
+        },
+        &mut budget_chirho,
+        0,
+    )?;
+    if failed_chirho {
+        Err(SkolemResourceExhaustedChirho)
+    } else {
+        Ok(result_chirho)
+    }
 }
 
-/// Undo `open_skolems_chirho` on a type: variables that stand for opened
-/// skolems become those skolems again; everything else is untouched.
+fn close_with_budget_chirho(
+    ty_chirho: &TyChirho,
+    opened_chirho: &HashMap<String, TyVarChirho>,
+    budget_chirho: &mut SkolemBudgetChirho,
+) -> Result<TyChirho, SkolemResourceExhaustedChirho> {
+    budget_chirho.charge_chirho(opened_chirho.len(), opened_chirho.len())?;
+    let mut substitution_chirho = SubstChirho::empty_chirho();
+    for (name_chirho, variable_chirho) in opened_chirho {
+        budget_chirho.charge_chirho(name_chirho.len(), name_chirho.len())?;
+        substitution_chirho.insert_chirho(
+            *variable_chirho,
+            TyChirho::ForallVarChirho(name_chirho.clone()),
+        );
+    }
+    substitution_chirho
+        .apply_bounded_chirho(ty_chirho, &mut |work_chirho, output_chirho| {
+            budget_chirho.charge_chirho(work_chirho, output_chirho).ok()
+        })
+        .ok_or(SkolemResourceExhaustedChirho)
+}
+
+/// Closing respects every lexical prefix, including dependent binder kinds.
 pub fn close_skolems_chirho(
     ty_chirho: &TyChirho,
     opened_chirho: &HashMap<String, TyVarChirho>,
-) -> TyChirho {
-    let back_chirho: HashMap<TyVarChirho, &str> = opened_chirho
-        .iter()
-        .map(|(name_chirho, var_chirho)| (*var_chirho, name_chirho.as_str()))
-        .collect();
-    close_skolems_with_chirho(ty_chirho, &back_chirho)
-}
-
-fn close_skolems_with_chirho(
-    ty_chirho: &TyChirho,
-    back_chirho: &HashMap<TyVarChirho, &str>,
-) -> TyChirho {
-    match ty_chirho {
-        TyChirho::VarChirho(var_chirho) => match back_chirho.get(var_chirho) {
-            Some(name_chirho) => TyChirho::ForallVarChirho((*name_chirho).to_string()),
-            None => ty_chirho.clone(),
-        },
-        TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => ty_chirho.clone(),
-        TyChirho::AppChirho(fun_chirho, arg_chirho) => TyChirho::AppChirho(
-            Box::new(close_skolems_with_chirho(fun_chirho, back_chirho)),
-            Box::new(close_skolems_with_chirho(arg_chirho, back_chirho)),
-        ),
-        TyChirho::FunChirho(arg_chirho, result_chirho, mult_chirho) => TyChirho::FunChirho(
-            Box::new(close_skolems_with_chirho(arg_chirho, back_chirho)),
-            Box::new(close_skolems_with_chirho(result_chirho, back_chirho)),
-            *mult_chirho,
-        ),
-        TyChirho::TupleChirho(elems_chirho) => TyChirho::TupleChirho(
-            elems_chirho
-                .iter()
-                .map(|elem_chirho| close_skolems_with_chirho(elem_chirho, back_chirho))
-                .collect(),
-        ),
-        TyChirho::ListChirho(inner_chirho) => TyChirho::ListChirho(Box::new(
-            close_skolems_with_chirho(inner_chirho, back_chirho),
-        )),
-        TyChirho::ForallChirho {
-            vars_chirho,
-            body_chirho,
-        } => TyChirho::ForallChirho {
-            vars_chirho: vars_chirho.clone(),
-            body_chirho: Box::new(close_skolems_with_chirho(body_chirho, back_chirho)),
-        },
-        TyChirho::RequiredForallChirho {
-            vars_chirho,
-            body_chirho,
-        } => TyChirho::RequiredForallChirho {
-            vars_chirho: vars_chirho.clone(),
-            body_chirho: Box::new(close_skolems_with_chirho(body_chirho, back_chirho)),
-        },
-    }
+) -> Result<TyChirho, SkolemResourceExhaustedChirho> {
+    close_with_budget_chirho(
+        ty_chirho,
+        opened_chirho,
+        &mut SkolemBudgetChirho::new_chirho(),
+    )
 }
 
 /// What a refinement unification learned: the local equalities on skolems,
@@ -195,7 +475,14 @@ pub struct RefinementOutcomeChirho {
 pub fn split_refinement_unifier_chirho(
     unifier_chirho: &SubstChirho,
     opened_chirho: &HashMap<String, TyVarChirho>,
-) -> RefinementOutcomeChirho {
+) -> Result<RefinementOutcomeChirho, SkolemResourceExhaustedChirho> {
+    let mut budget_chirho = SkolemBudgetChirho::new_chirho();
+    budget_chirho.charge_chirho(
+        opened_chirho
+            .len()
+            .saturating_add(unifier_chirho.len_chirho()),
+        opened_chirho.len(),
+    )?;
     let mut outcome_chirho = RefinementOutcomeChirho::default();
     // DETERMINISM: refinements are recorded in a Vec, so iterate the opened
     // map in a fixed order rather than hash order.
@@ -206,7 +493,8 @@ pub fn split_refinement_unifier_chirho(
         if image_chirho == TyChirho::VarChirho(*var_chirho) {
             continue;
         }
-        let closed_chirho = close_skolems_chirho(&image_chirho, opened_chirho);
+        let closed_chirho =
+            close_with_budget_chirho(&image_chirho, opened_chirho, &mut budget_chirho)?;
         if closed_chirho == TyChirho::ForallVarChirho(name_chirho.clone()) {
             continue;
         }
@@ -219,11 +507,12 @@ pub fn split_refinement_unifier_chirho(
         if opened_vars_chirho.contains(var_chirho) {
             continue;
         }
-        outcome_chirho
-            .residual_subst_chirho
-            .insert_chirho(*var_chirho, close_skolems_chirho(ty_chirho, opened_chirho));
+        outcome_chirho.residual_subst_chirho.insert_chirho(
+            *var_chirho,
+            close_with_budget_chirho(ty_chirho, opened_chirho, &mut budget_chirho)?,
+        );
     }
-    outcome_chirho
+    Ok(outcome_chirho)
 }
 
 /// Whether a data constructor's declared type can *refine* the scrutinee it
@@ -330,11 +619,12 @@ mod tests_chirho {
             TyVarChirho(next_chirho)
         };
         let opened_ty_chirho =
-            open_skolems_chirho(&ty_chirho, &mut opened_chirho, &mut fresh_chirho);
-        assert!(!contains_skolem_chirho(&opened_ty_chirho));
+            open_skolems_chirho(&ty_chirho, &mut opened_chirho, &mut fresh_chirho)
+                .expect("bounded open");
+        assert!(!contains_skolem_chirho(&opened_ty_chirho).expect("bounded inspection"));
         assert_eq!(opened_chirho.len(), 2);
         assert_eq!(
-            close_skolems_chirho(&opened_ty_chirho, &opened_chirho),
+            close_skolems_chirho(&opened_ty_chirho, &opened_chirho).expect("bounded close"),
             ty_chirho
         );
     }
@@ -348,7 +638,8 @@ mod tests_chirho {
         let mut unifier_chirho = SubstChirho::empty_chirho();
         unifier_chirho.insert_chirho(TyVarChirho(50), TyChirho::int_chirho());
         unifier_chirho.insert_chirho(TyVarChirho(1), TyChirho::bool_chirho());
-        let outcome_chirho = split_refinement_unifier_chirho(&unifier_chirho, &opened_chirho);
+        let outcome_chirho = split_refinement_unifier_chirho(&unifier_chirho, &opened_chirho)
+            .expect("bounded split");
         assert_eq!(
             outcome_chirho.refinements_chirho,
             vec![(skolem_name_chirho("a", 7), TyChirho::int_chirho())]
@@ -372,7 +663,8 @@ mod tests_chirho {
         opened_chirho.insert(b_name_chirho.clone(), TyVarChirho(51));
         let mut unifier_chirho = SubstChirho::empty_chirho();
         unifier_chirho.insert_chirho(TyVarChirho(50), TyChirho::VarChirho(TyVarChirho(51)));
-        let outcome_chirho = split_refinement_unifier_chirho(&unifier_chirho, &opened_chirho);
+        let outcome_chirho = split_refinement_unifier_chirho(&unifier_chirho, &opened_chirho)
+            .expect("bounded split");
         assert_eq!(
             outcome_chirho.refinements_chirho,
             vec![(a_name_chirho, TyChirho::ForallVarChirho(b_name_chirho))]
@@ -409,5 +701,69 @@ mod tests_chirho {
             Box::new(TyChirho::VarChirho(TyVarChirho(0))),
         );
         assert!(constructor_result_refines_chirho(&equal_a_a_chirho));
+    }
+    #[test]
+    fn kind_only_rigids_open_without_capturing_lexical_ids_chirho() {
+        let name_chirho = skolem_name_chirho("kChirho", 7);
+        let mut record_chirho =
+            crate::ty_chirho::QuantifiedVariableChirho::unknown_chirho(TyVarChirho(0));
+        record_chirho.kind_chirho = Some(std::sync::Arc::new(TyChirho::ForallVarChirho(
+            name_chirho.clone(),
+        )));
+        let term_chirho = TyChirho::ForallChirho {
+            vars_chirho: crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(vec![
+                record_chirho,
+            ]),
+            body_chirho: Box::new(TyChirho::VarChirho(TyVarChirho(0))),
+        };
+        assert!(contains_skolem_chirho(&term_chirho).expect("bounded scan"));
+        let mut next_chirho = 0;
+        let mut opened_chirho = HashMap::new();
+        let opened_term_chirho = open_skolems_chirho(&term_chirho, &mut opened_chirho, &mut || {
+            let variable_chirho = TyVarChirho(next_chirho);
+            next_chirho += 1;
+            variable_chirho
+        })
+        .expect("bounded open avoids input IDs");
+        assert_ne!(opened_chirho[&name_chirho], TyVarChirho(0));
+        assert_eq!(
+            close_skolems_chirho(&opened_term_chirho, &opened_chirho).expect("bounded close"),
+            term_chirho
+        );
+        let protected_chirho = TyChirho::ForallChirho {
+            vars_chirho: vec![opened_chirho[&name_chirho]].into(),
+            body_chirho: Box::new(TyChirho::VarChirho(opened_chirho[&name_chirho])),
+        };
+        assert_eq!(
+            close_skolems_chirho(&protected_chirho, &opened_chirho).expect("bound IDs stay bound"),
+            protected_chirho
+        );
+    }
+
+    #[test]
+    fn borrowed_skolem_scan_preserves_deep_predicates_and_refuses_excess_work_chirho() {
+        let mut kind_chirho = TyChirho::int_chirho();
+        for _index_chirho in 0..130 {
+            kind_chirho = TyChirho::ListChirho(Box::new(kind_chirho));
+        }
+        let mut record_chirho =
+            crate::ty_chirho::QuantifiedVariableChirho::unknown_chirho(TyVarChirho(0));
+        record_chirho.kind_chirho = Some(std::sync::Arc::new(kind_chirho));
+        let term_chirho = TyChirho::ForallChirho {
+            vars_chirho: crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(vec![
+                record_chirho,
+            ]),
+            body_chirho: Box::new(TyChirho::int_chirho()),
+        };
+        assert_eq!(contains_skolem_chirho(&term_chirho), Ok(false));
+        assert_eq!(
+            rewrite_skolems_chirho(&term_chirho, &mut |_| None),
+            Err(SkolemResourceExhaustedChirho)
+        );
+        let wide_chirho = TyChirho::TupleChirho(vec![TyChirho::int_chirho(); 16_385]);
+        assert_eq!(
+            contains_skolem_chirho(&wide_chirho),
+            Err(SkolemResourceExhaustedChirho)
+        );
     }
 }

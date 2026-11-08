@@ -1,6 +1,7 @@
 // For God so loved the world that he gave his only begotten Son, that whoever
 // believes in him should not perish but have eternal life. — John 3:16
 
+mod install_chirho;
 mod repl_chirho;
 
 use std::env;
@@ -15,7 +16,7 @@ use haskelujah_backend_llvm_chirho::try_compile_core_to_llvm_executable_chirho;
 use haskelujah_backend_wasm_chirho::compile_core_to_wasm_executable_chirho;
 use haskelujah_driver_chirho::rts_snapshot_chirho::{RtsSnapshotChirho, rts_snapshot_chirho};
 use haskelujah_driver_chirho::{
-    check_source_path_with_source_map_chirho, compile_source_chirho, eval_source_outcome_chirho,
+    check_source_path_with_source_map_chirho, eval_source_file_outcome_chirho,
     render_diagnostics_chirho, render_summary_chirho,
 };
 use haskelujah_runtime_chirho::ExecutionModeChirho;
@@ -183,7 +184,9 @@ fn main_chirho() -> ExitCode {
             eprintln!("No executable found in {}", build_dir_chirho.display());
             ExitCode::from(1)
         }
-        "install" => install_command_chirho(program_name_chirho, &positional_chirho),
+        "install" => {
+            install_chirho::install_command_chirho(program_name_chirho, &positional_chirho)
+        }
         "repl" => repl_chirho::repl_command_chirho(),
         "mcp" => mcp_command_chirho(),
         "lsp" => lsp_command_chirho(),
@@ -232,15 +235,21 @@ fn run_command_chirho(
         }
     };
 
-    let file_name_chirho = Path::new(&path_chirho)
-        .file_name()
-        .and_then(|os_str_chirho| os_str_chirho.to_str())
-        .unwrap_or(&path_chirho);
+    let checked_path_chirho = Path::new(&path_chirho);
+    let search_dir_chirho = checked_path_chirho
+        .parent()
+        .filter(|parent_chirho| !parent_chirho.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
 
     // If any dump flags are set, compile first to get Core/LLVM IR.
     if flags_chirho.dump_core_chirho || flags_chirho.dump_llvm_chirho {
         let mut sm_chirho = SourceMapChirho::new_chirho();
-        match compile_source_chirho(&source_text_chirho, &mut sm_chirho, file_name_chirho) {
+        match haskelujah_driver_chirho::compile_source_file_with_search_path_chirho(
+            &source_text_chirho,
+            &mut sm_chirho,
+            checked_path_chirho,
+            search_dir_chirho,
+        ) {
             Ok(result_chirho) => {
                 if flags_chirho.dump_core_chirho {
                     eprintln!("=== Core IR ===");
@@ -265,10 +274,10 @@ fn run_command_chirho(
     // linking successfully.
     let mut source_map_chirho = SourceMapChirho::new_chirho();
 
-    match eval_source_outcome_chirho(
+    match eval_source_file_outcome_chirho(
         &source_text_chirho,
         &mut source_map_chirho,
-        file_name_chirho,
+        checked_path_chirho,
         None,
     ) {
         Ok(outcome_chirho) => {
@@ -327,11 +336,6 @@ fn compile_command_chirho(
             return ExitCode::from(1);
         }
     };
-
-    let file_name_chirho = Path::new(&path_chirho)
-        .file_name()
-        .and_then(|os_str_chirho| os_str_chirho.to_str())
-        .unwrap_or(&path_chirho);
 
     let mut source_map_chirho = SourceMapChirho::new_chirho();
 
@@ -428,10 +432,10 @@ fn compile_command_chirho(
         }
     };
     let search_dir_chirho = search_dir_chirho.as_path();
-    match haskelujah_driver_chirho::compile_source_with_search_path_chirho(
+    match haskelujah_driver_chirho::compile_source_file_with_search_path_chirho(
         &source_text_chirho,
         &mut source_map_chirho,
-        file_name_chirho,
+        Path::new(&path_chirho),
         search_dir_chirho,
     ) {
         Ok(result_chirho) => {
@@ -873,21 +877,32 @@ fn append_rts_link_args_chirho(
         .arg("-lhaskelujah_rts");
 }
 
-/// Build the RTS if it is stale and take this link's private snapshot of it (row 568).
+/// Run the RTS build under the snapshot lock before every native link, a no-op when the archive
+/// is fresh, with the gate's locked, offline, two-job policy, then take this link's private
+/// snapshot of the archive (rows 568, 703).
 /// workflow: testing-chirho/native-fail-loud-chirho
 fn ensure_rts_staticlib_chirho() -> Result<RtsSnapshotChirho, String> {
     let workspace_root_chirho = workspace_root_chirho();
     rts_snapshot_chirho(&workspace_root_chirho.join("target").join("debug"), || {
         let cargo_status_chirho = Command::new("cargo")
             .current_dir(&workspace_root_chirho)
-            .args(["build", "-p", "haskelujah-rts", "--quiet"])
+            .args([
+                "build",
+                "--locked",
+                "--offline",
+                "-j",
+                "2",
+                "-p",
+                "haskelujah-rts",
+                "--quiet",
+            ])
             .status()
             .map_err(|e_chirho| format!("could not build haskelujah-rts: {}", e_chirho))?;
         if cargo_status_chirho.success() {
             Ok(())
         } else {
             Err(format!(
-                "cargo build -p haskelujah-rts failed with exit code {}",
+                "cargo build --locked --offline -j 2 -p haskelujah-rts failed with exit code {}",
                 cargo_status_chirho.code().unwrap_or(-1)
             ))
         }
@@ -1035,116 +1050,6 @@ fn find_cabal_file_chirho(dir_chirho: &std::path::Path) -> Option<std::path::Pat
     None
 }
 
-/// `haskelujah install <package-name> <version>` — fetch a package from Hackage,
-/// compile it, and register it in the local package database.
-fn install_command_chirho(program_name_chirho: &str, positional_chirho: &[&str]) -> ExitCode {
-    // Expect: install <name> <version>
-    let pkg_name_chirho = match positional_chirho.get(1) {
-        Some(name_chirho) => *name_chirho,
-        None => {
-            eprintln!("missing package name for `install`");
-            eprintln!(
-                "usage: {} install <package-name> <version>",
-                program_name_chirho
-            );
-            return ExitCode::from(2);
-        }
-    };
-
-    let version_chirho = if let Some(version_str_chirho) = positional_chirho.get(2) {
-        match haskelujah_package_chirho::parse_version_chirho(version_str_chirho) {
-            Some(v_chirho) => v_chirho,
-            None => {
-                eprintln!("invalid version: `{version_str_chirho}`");
-                return ExitCode::from(2);
-            }
-        }
-    } else {
-        // No version specified — fetch latest from Hackage
-        eprintln!("Fetching latest version of {pkg_name_chirho}...");
-        match haskelujah_package_chirho::hackage_chirho::fetch_latest_version_chirho(
-            pkg_name_chirho,
-        ) {
-            Ok(v_chirho) => {
-                eprintln!("  latest: {v_chirho}");
-                v_chirho
-            }
-            Err(e_chirho) => {
-                eprintln!("error: could not fetch latest version: {e_chirho}");
-                eprintln!(
-                    "usage: {} install <package-name> [version]",
-                    program_name_chirho
-                );
-                return ExitCode::from(2);
-            }
-        }
-    };
-
-    eprintln!("Installing {pkg_name_chirho}-{version_chirho}...");
-
-    // Use a subdirectory of the current directory as the install root.
-    let install_dir_chirho = std::path::PathBuf::from(".haskelujah-packages-chirho");
-    if let Err(e_chirho) = fs::create_dir_all(&install_dir_chirho) {
-        eprintln!("cannot create install directory: {e_chirho}");
-        return ExitCode::from(1);
-    }
-
-    // Load or create the package database.
-    let db_path_chirho = install_dir_chirho.join("pkgdb-chirho.txt");
-    let mut db_chirho = if db_path_chirho.exists() {
-        match fs::read_to_string(&db_path_chirho) {
-            Ok(content_chirho) => {
-                haskelujah_package_chirho::InstalledPkgDbChirho::from_string_chirho(&content_chirho)
-            }
-            Err(_) => haskelujah_package_chirho::InstalledPkgDbChirho::new_chirho(),
-        }
-    } else {
-        haskelujah_package_chirho::InstalledPkgDbChirho::new_chirho()
-    };
-
-    // Empty index for now — real Hackage index would be populated separately.
-    let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
-
-    match haskelujah_driver_chirho::install_package_chirho(
-        pkg_name_chirho,
-        &version_chirho,
-        &install_dir_chirho,
-        &index_chirho,
-        &mut db_chirho,
-    ) {
-        Ok(result_chirho) => {
-            // Save updated package database.
-            if let Err(e_chirho) = fs::write(&db_path_chirho, db_chirho.to_string_chirho()) {
-                eprintln!("warning: could not save package database: {e_chirho}");
-            }
-
-            eprintln!(
-                "Installed {}-{} ({} modules, {} dependencies)",
-                result_chirho.installed_pkg_chirho.name_chirho,
-                result_chirho.installed_pkg_chirho.version_chirho,
-                result_chirho.modules_compiled_chirho,
-                result_chirho.installed_pkg_chirho.depends_chirho.len(),
-            );
-            if !result_chirho
-                .installed_pkg_chirho
-                .exposed_modules_chirho
-                .is_empty()
-            {
-                eprintln!("  exposed modules:");
-                for mod_chirho in &result_chirho.installed_pkg_chirho.exposed_modules_chirho {
-                    eprintln!("    {}", mod_chirho.module_name_chirho);
-                }
-            }
-            eprintln!("Package registered in {}", db_path_chirho.display());
-            ExitCode::SUCCESS
-        }
-        Err(error_chirho) => {
-            eprintln!("error: {error_chirho}");
-            ExitCode::from(1)
-        }
-    }
-}
-
 fn print_usage_chirho(program_name_chirho: &str) {
     eprintln!("Haskelujah Chirho — A Haskell compiler in Rust");
     eprintln!("GHC compatibility: see README (measured in both directions)");
@@ -1159,7 +1064,12 @@ fn print_usage_chirho(program_name_chirho: &str) {
     eprintln!("  check     <file.hs>             type-check without code generation");
     eprintln!("  compile   <file.hs> -o <exe>    compile to native executable");
     eprintln!("  clean     [dir]                 remove build artifacts (dist-chirho/)");
-    eprintln!("  install   <package> <version>   fetch from Hackage and register");
+    eprintln!(
+        "  install   <package> [version]   fetch from Hackage and install a checked source package"
+    );
+    eprintln!(
+        "            --from <dir|tar.gz>   install a local source package (--store <dir> to choose the store)"
+    );
     eprintln!("  repl                            interactive REPL");
     eprintln!("  lsp                             start the Language Server Protocol server");
     eprintln!();

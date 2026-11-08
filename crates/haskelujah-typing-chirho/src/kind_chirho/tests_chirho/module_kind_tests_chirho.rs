@@ -126,9 +126,13 @@ fn type_family_decl_result_kind_guides_later_applications_chirho() {
     let t_var_chirho = TyVarChirho::plain_chirho(mk_name_chirho("t"));
     let mut module_chirho = mk_module_chirho(vec![
         DeclChirho::TypeFamilyDeclChirho {
+            injectivity_chirho: None,
             name_chirho: mk_name_chirho("TrivialFamily"),
             type_vars_chirho: vec![t_var_chirho.clone()],
             result_kind_chirho: Some(TypeChirho::ConChirho(mk_name_chirho("Type"))),
+            data_family_chirho: false,
+            standalone_kind_chirho: None,
+            closed_chirho: false,
             equations_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         },
@@ -166,9 +170,13 @@ fn type_family_decl_result_kind_guides_later_applications_chirho() {
 fn polykinds_unannotated_type_family_result_stays_flexible_chirho() {
     let mut module_chirho = mk_module_chirho(vec![
         DeclChirho::TypeFamilyDeclChirho {
+            injectivity_chirho: None,
             name_chirho: mk_name_chirho("FamilyChirho"),
             type_vars_chirho: vec![TyVarChirho::plain_chirho(mk_name_chirho("a"))],
             result_kind_chirho: None,
+            data_family_chirho: false,
+            standalone_kind_chirho: None,
+            closed_chirho: false,
             equations_chirho: vec![],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         },
@@ -331,9 +339,13 @@ fn gadt_return_type_accepts_promoted_list_cons_chirho() {
         ],
         constructors_chirho: vec![ConDeclChirho::GadtChirho {
             name_chirho: mk_name_chirho("SLayer"),
-            ty_chirho: mk_fun_chirho(
-                mk_app_chirho(t_chirho, l_chirho),
-                mk_fun_chirho(stack_ls_t_chirho, stack_cons_t_chirho),
+            signature_chirho: Box::new(
+                haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
+                    mk_fun_chirho(
+                        mk_app_chirho(t_chirho, l_chirho),
+                        mk_fun_chirho(stack_ls_t_chirho, stack_cons_t_chirho),
+                    ),
+                ),
             ),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],

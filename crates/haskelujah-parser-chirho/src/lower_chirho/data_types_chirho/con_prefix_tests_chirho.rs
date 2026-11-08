@@ -108,11 +108,24 @@ fn a_forall_without_context_binds_only_chirho() {
 }
 
 #[test]
-fn a_kinded_binder_leaves_the_prefix_unread_chirho() {
+fn a_kinded_binder_keeps_its_written_kind_and_context_chirho() {
     let prefix_chirho = first_prefix_chirho(
         "module M where\ndata AnyChirho = forall (bChirho :: Type). Show bChirho => AnyChirho bChirho\n",
     );
-    assert!(prefix_chirho.unread_chirho);
+    assert!(!prefix_chirho.unread_chirho);
+    assert!(prefix_chirho.forall_written_chirho);
+    let [binder_chirho] = prefix_chirho.existential_vars_chirho.as_slice() else {
+        panic!("one written existential binder must be retained");
+    };
+    assert_eq!(binder_chirho.name_chirho.text_chirho(), "bChirho");
+    assert!(matches!(
+        binder_chirho.kind_annotation_chirho.as_deref(),
+        Some(TypeChirho::ConChirho(name_chirho)) if name_chirho.text_chirho() == "Type"
+    ));
+    assert_eq!(
+        constraint_shapes_chirho(&prefix_chirho),
+        vec![("Show".to_string(), vec!["bChirho".to_string()])],
+    );
 }
 
 #[test]
@@ -123,9 +136,38 @@ fn a_constructor_without_forall_has_no_prefix_chirho() {
 }
 
 #[test]
-fn a_gadt_record_constructor_is_unread_chirho() {
-    let prefix_chirho = first_prefix_chirho(
+fn a_gadt_record_constructor_retains_its_complete_signature_chirho() {
+    let module_chirho = parse_and_lower_chirho(
         "module M where\ndata TagChirho aChirho where\n  TagChirho :: { tagChirho :: Int } -> TagChirho Int\n",
     );
-    assert!(prefix_chirho.unread_chirho);
+    let DeclChirho::DataDeclChirho {
+        constructors_chirho,
+        ..
+    } = &module_chirho.decls_chirho[0]
+    else {
+        panic!("the written declaration is data");
+    };
+    let [
+        ConDeclChirho::GadtChirho {
+            signature_chirho, ..
+        },
+    ] = constructors_chirho.as_slice()
+    else {
+        panic!("a GADT record keeps the canonical GADT carrier");
+    };
+    assert!(signature_chirho.malformed_chirho.is_none());
+    assert!(signature_chirho.prefix_chirho.is_empty());
+    let fields_chirho = signature_chirho
+        .record_fields_chirho()
+        .expect("the written record fields");
+    assert_eq!(fields_chirho.len(), 1);
+    assert_eq!(fields_chirho[0].names_chirho[0].text_chirho(), "tagChirho");
+    assert!(matches!(&fields_chirho[0].ty_chirho,
+        TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "Int"));
+    assert!(matches!(&signature_chirho.result_ty_chirho,
+        TypeChirho::AppChirho { fun_chirho, arg_chirho, .. }
+            if matches!(fun_chirho.as_ref(), TypeChirho::ConChirho(name_chirho)
+                if name_chirho.text_chirho() == "TagChirho")
+                && matches!(arg_chirho.as_ref(), TypeChirho::ConChirho(name_chirho)
+                    if name_chirho.text_chirho() == "Int")));
 }

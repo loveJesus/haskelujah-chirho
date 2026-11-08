@@ -34,7 +34,7 @@ fn data_binder_kind_constraint_is_accepted_chirho() {
     // BINDER's kind. Before the data-head binder fix this lowered identically to
     // the case above, which is why the check could not be written.
     let mut binder_chirho: TyVarChirho = mk_name_chirho("_").into();
-    binder_chirho.kind_annotation_chirho = Some(AstKindChirho::ConstraintChirho);
+    binder_chirho.kind_annotation_chirho = Some(Box::new((AstKindChirho::ConstraintChirho).into()));
     let module_chirho = mk_module_chirho(vec![DeclChirho::DataDeclChirho {
         name_chirho: mk_name_chirho("Foo"),
         type_vars_chirho: vec![binder_chirho],

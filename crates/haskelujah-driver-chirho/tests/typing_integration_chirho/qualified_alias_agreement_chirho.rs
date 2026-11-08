@@ -6,7 +6,8 @@
 //! the bare builtin scheme of `name` prints to the same `type` under the normalization contract in
 //! `test-data-chirho/qualified-alias-agreement-chirho/README-chirho.md`. That one contract is
 //! [`normalized_type_chirho`], here. The tests hold the table to it: every entry still agrees with
-//! today's bare scheme, names an unkeyed builtin export, and is the whole of Phase 3.9's decision.
+//! today's bare scheme and names an unkeyed builtin export. Phase 3.9 also preserves a selected
+//! compiler value's actual scheme through certified re-exports (row 709).
 //! The two ignored tests are the generator's Rust steps: `generate_chirho.py` runs them, and no
 //! gate does.
 //! workflow: compiler-pipeline-chirho/builtin-type-environment-chirho
@@ -14,8 +15,11 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 
+use haskelujah_ast_chirho::name_chirho::CompilerValueChirho;
 use haskelujah_driver::qualified_import_alias_scheme_chirho;
-use haskelujah_naming_chirho::iface_chirho::{IfaceExportsChirho, merge_module_ifaces_chirho};
+use haskelujah_naming_chirho::iface_chirho::{
+    IfaceExportsChirho, IfaceExposureChirho, merge_module_ifaces_chirho, select_import_iface_chirho,
+};
 use haskelujah_naming_chirho::{
     IfaceOriginChirho, ModuleIfaceChirho, build_iface_with_imports_chirho,
     builtin_module_ifaces_chirho,
@@ -26,103 +30,12 @@ use haskelujah_span_chirho::FileIdChirho;
 use haskelujah_typing_chirho::infer_chirho::{
     QUALIFIED_ALIAS_AGREEMENT_CHIRHO, builtin_value_schemes_chirho,
 };
-use haskelujah_typing_chirho::{SchemeChirho, TyChirho};
+
+#[path = "qualified_alias_agreement_chirho/surface_projection_chirho.rs"]
+mod surface_projection_chirho;
+use surface_projection_chirho::CheckedSurfaceChirho;
 
 const SYMBOL_CHARS_CHIRHO: &str = "!#$%&*+./<=>?@\\^|-~:";
-
-/// A builtin type printed as Haskell type text, ready for the normalizer.
-fn ty_text_chirho(ty_chirho: &TyChirho, top_chirho: bool) -> String {
-    let wrap_chirho = |text_chirho: String| {
-        if top_chirho {
-            text_chirho
-        } else {
-            format!("({text_chirho})")
-        }
-    };
-    match ty_chirho {
-        TyChirho::VarChirho(var_chirho) => format!("t{}", var_chirho.0),
-        TyChirho::ConChirho(name_chirho) | TyChirho::ForallVarChirho(name_chirho) => {
-            name_chirho.clone()
-        }
-        TyChirho::ListChirho(inner_chirho) => format!("[{}]", ty_text_chirho(inner_chirho, true)),
-        TyChirho::TupleChirho(elements_chirho) => format!(
-            "({})",
-            elements_chirho
-                .iter()
-                .map(|element_chirho| ty_text_chirho(element_chirho, true))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-        TyChirho::FunChirho(arg_chirho, result_chirho, _) => {
-            let arg_text_chirho = match **arg_chirho {
-                TyChirho::FunChirho(..) => format!("({})", ty_text_chirho(arg_chirho, true)),
-                _ => ty_text_chirho(arg_chirho, true),
-            };
-            wrap_chirho(format!(
-                "{arg_text_chirho} -> {}",
-                ty_text_chirho(result_chirho, true)
-            ))
-        }
-        TyChirho::AppChirho(..) => {
-            let mut args_chirho = Vec::new();
-            let mut head_chirho = ty_chirho;
-            while let TyChirho::AppChirho(fun_chirho, arg_chirho) = head_chirho {
-                args_chirho.push(ty_text_chirho(arg_chirho, false));
-                head_chirho = fun_chirho;
-            }
-            args_chirho.reverse();
-            wrap_chirho(format!(
-                "{} {}",
-                ty_text_chirho(head_chirho, false),
-                args_chirho.join(" ")
-            ))
-        }
-        TyChirho::ForallChirho {
-            vars_chirho,
-            body_chirho,
-        }
-        | TyChirho::RequiredForallChirho {
-            vars_chirho,
-            body_chirho,
-        } => format!(
-            "(forall {}. {})",
-            vars_chirho
-                .iter()
-                .map(|var_chirho| format!("t{}", var_chirho.0))
-                .collect::<Vec<_>>()
-                .join(" "),
-            ty_text_chirho(body_chirho, true)
-        ),
-    }
-}
-
-/// A builtin scheme printed as `(C1 a, C2 b) => body`.
-fn scheme_text_chirho(scheme_chirho: &SchemeChirho) -> String {
-    let body_chirho = ty_text_chirho(&scheme_chirho.ty_chirho, true);
-    if scheme_chirho.preds_chirho.is_empty() {
-        return body_chirho;
-    }
-    let preds_chirho: Vec<String> = scheme_chirho
-        .preds_chirho
-        .iter()
-        .map(|pred_chirho| {
-            std::iter::once(pred_chirho.class_name_chirho.clone())
-                .chain(std::iter::once(ty_text_chirho(
-                    &pred_chirho.ty_chirho,
-                    false,
-                )))
-                .chain(
-                    pred_chirho
-                        .extra_tys_chirho
-                        .iter()
-                        .map(|extra_chirho| ty_text_chirho(extra_chirho, false)),
-                )
-                .collect::<Vec<_>>()
-                .join(" ")
-        })
-        .collect();
-    format!("({}) => {body_chirho}", preds_chirho.join(", "))
-}
 
 /// Split type text into tokens: brackets, commas, symbol runs, and names. A name keeps its
 /// module qualifiers (`Data.Map.Internal.Map`, `Prelude..`) until the contract strips them.
@@ -402,6 +315,7 @@ fn source_iface_chirho(
         &lower_module_chirho(&green_chirho, FileIdChirho::SYNTHETIC_CHIRHO),
         imported_chirho,
     )
+    .expect("small source interface fixture fits constructor projection budget")
 }
 
 fn seeded_iface_chirho(name_chirho: &str) -> ModuleIfaceChirho {
@@ -454,6 +368,8 @@ fn write_qualified_alias_table_chirho() {
     let work_chirho = generator_dir_chirho("QUALIFIED_ALIAS_WORK_CHIRHO");
     let evidence_chirho = generator_dir_chirho("QUALIFIED_ALIAS_EVIDENCE_CHIRHO");
     let schemes_chirho = builtin_value_schemes_chirho();
+    let ifaces_chirho = builtin_module_ifaces_chirho();
+    let surface_chirho = CheckedSurfaceChirho::builtin_chirho(&ifaces_chirho);
     let answers_chirho = std::fs::read_to_string(work_chirho.join("ghc-types-chirho.tsv")).unwrap();
     let mut counts_chirho: BTreeMap<&str, usize> = BTreeMap::new();
     let mut table_chirho = Vec::new();
@@ -472,7 +388,15 @@ fn write_qualified_alias_table_chirho() {
             (false, None) => "no bare scheme",
             (false, Some(scheme_chirho)) => {
                 let ghc_type_chirho = normalized_type_chirho(ghc_chirho);
-                let bare_type_chirho = normalized_type_chirho(&scheme_text_chirho(scheme_chirho));
+                let iface_chirho = ifaces_chirho
+                    .iter()
+                    .find(|iface_chirho| iface_chirho.name_chirho == module_chirho)
+                    .expect("the queried module is an actual builtin interface Chirho");
+                let bare_type_chirho = normalized_type_chirho(
+                    &surface_chirho
+                        .scheme_text_chirho(scheme_chirho, iface_chirho)
+                        .expect("agreement requires a checked surface projection Chirho"),
+                );
                 if ghc_type_chirho == bare_type_chirho {
                     table_chirho.push(table_line_chirho(
                         module_chirho,
@@ -581,6 +505,8 @@ fn every_entry_is_an_unkeyed_builtin_export_that_still_agrees_chirho() {
     // A later edit to a bare builtin scheme fails here instead of mistyping an alias.
     let schemes_chirho = builtin_value_schemes_chirho();
     let exports_chirho = builtin_exports_chirho();
+    let ifaces_chirho = builtin_module_ifaces_chirho();
+    let surface_chirho = CheckedSurfaceChirho::builtin_chirho(&ifaces_chirho);
     for (module_chirho, name_chirho, ghc_type_chirho) in QUALIFIED_ALIAS_AGREEMENT_CHIRHO {
         assert_eq!(
             exports_chirho.get(&(module_chirho.to_string(), name_chirho.to_string())),
@@ -591,7 +517,19 @@ fn every_entry_is_an_unkeyed_builtin_export_that_still_agrees_chirho() {
             .get(*name_chirho)
             .unwrap_or_else(|| panic!("{name_chirho} has no bare builtin scheme"));
         assert_eq!(
-            normalized_type_chirho(&scheme_text_chirho(scheme_chirho)),
+            normalized_type_chirho(
+                &surface_chirho
+                    .scheme_text_chirho(
+                        scheme_chirho,
+                        ifaces_chirho
+                            .iter()
+                            .find(|iface_chirho| iface_chirho.name_chirho == *module_chirho)
+                            .expect("agreement row has its actual builtin interface Chirho"),
+                    )
+                    .unwrap_or_else(|error_chirho| panic!(
+                        "{module_chirho}.{name_chirho}: {error_chirho}"
+                    ))
+            ),
             *ghc_type_chirho,
             "{module_chirho}.{name_chirho}: the bare scheme no longer prints to GHC 9.14.1's type; \
              regenerate with generate_chirho.py"
@@ -600,9 +538,9 @@ fn every_entry_is_an_unkeyed_builtin_export_that_still_agrees_chirho() {
 }
 
 #[test]
-fn phase_3_9_reads_the_table_and_nothing_else_chirho() {
+fn ordinary_aliases_use_the_table_and_certified_values_keep_their_scheme_chirho() {
     // Over every unkeyed export of every builtin interface, Phase 3.9's decision gives the bare
-    // scheme exactly for the table's entries, so no curated exception list stands beside it.
+    // scheme only for a table entry or the actual selected compiler-value certificate.
     let schemes_chirho = builtin_value_schemes_chirho();
     let table_chirho: BTreeSet<(&str, &str)> = QUALIFIED_ALIAS_AGREEMENT_CHIRHO
         .iter()
@@ -619,9 +557,18 @@ fn phase_3_9_reads_the_table_and_nothing_else_chirho() {
                 qualified_import_alias_scheme_chirho(&iface_chirho, &name_chirho, &schemes_chirho);
             let listed_chirho =
                 table_chirho.contains(&(module_chirho.as_str(), name_chirho.as_str()));
+            let certified_chirho = iface_chirho
+                .exports_chirho
+                .values_chirho
+                .get(&name_chirho)
+                .is_some_and(|value_chirho| {
+                    value_chirho.compiler_value_chirho
+                        == Some(CompilerValueChirho::ListAppendChirho)
+                        && value_chirho.defining_module_chirho.is_none()
+                });
             assert_eq!(
                 decision_chirho.is_some(),
-                listed_chirho,
+                listed_chirho || certified_chirho,
                 "{module_chirho}.{name_chirho}"
             );
             if let Some(scheme_chirho) = decision_chirho {
@@ -631,6 +578,74 @@ fn phase_3_9_reads_the_table_and_nothing_else_chirho() {
         }
     }
     assert!(decided_chirho > table_chirho.len());
+}
+
+#[test]
+fn selected_append_certificates_keep_the_prelude_scheme_but_namesakes_do_not_chirho() {
+    let schemes_chirho = builtin_value_schemes_chirho();
+    let prelude_chirho = seeded_iface_chirho("Prelude");
+    let data_list_chirho = seeded_iface_chirho("Data.List");
+    let forwarded_chirho = source_iface_chirho(
+        "module ForwardAppendChirho ((++)) where\nimport Prelude ((++))\n",
+        &[prelude_chirho],
+    );
+    for iface_chirho in [&data_list_chirho, &forwarded_chirho] {
+        assert_eq!(
+            qualified_import_alias_scheme_chirho(iface_chirho, "++", &schemes_chirho).as_ref(),
+            schemes_chirho.get("++"),
+        );
+    }
+
+    let owned_chirho = source_iface_chirho(
+        "module Data.List ((++)) where\nimport Prelude hiding ((++))\n(++) :: Int -> Int -> Int\nleftChirho ++ rightChirho = leftChirho - rightChirho\n",
+        &[],
+    );
+    let hidden_chirho = source_iface_chirho(
+        "module HiddenAppendChirho () where\nimport Prelude ((++))\n",
+        &[seeded_iface_chirho("Prelude")],
+    );
+    let mut unknown_chirho = data_list_chirho.clone();
+    unknown_chirho.exposure_chirho = None;
+    unknown_chirho.exports_chirho.origin_chirho = IfaceOriginChirho::SourceChirho;
+    unknown_chirho
+        .exports_chirho
+        .values_chirho
+        .get_mut("++")
+        .unwrap()
+        .compiler_value_chirho = None;
+    let mut missing_chirho = data_list_chirho.clone();
+    missing_chirho.exports_chirho.values_chirho.remove("++");
+    let mut unavailable_chirho = data_list_chirho.clone();
+    unavailable_chirho
+        .exports_chirho
+        .values_chirho
+        .get_mut("++")
+        .unwrap()
+        .availability_chirho =
+        haskelujah_naming_chirho::iface_chirho::IfaceValueAvailabilityChirho::FieldLabelOnlyChirho;
+    let mut conflicting_chirho = data_list_chirho;
+    conflicting_chirho.exports_chirho.origin_chirho = IfaceOriginChirho::SourceChirho;
+    conflicting_chirho
+        .exports_chirho
+        .values_chirho
+        .get_mut("++")
+        .unwrap()
+        .defining_module_chirho = Some("Data.List".to_string());
+    for iface_chirho in [
+        owned_chirho,
+        hidden_chirho,
+        unknown_chirho,
+        missing_chirho,
+        unavailable_chirho,
+        conflicting_chirho,
+    ] {
+        assert_eq!(
+            qualified_import_alias_scheme_chirho(&iface_chirho, "++", &schemes_chirho),
+            None,
+            "{} supplied no consistent selected append certificate",
+            iface_chirho.name_chirho,
+        );
+    }
 }
 
 #[test]
@@ -660,7 +675,9 @@ fn every_builtin_interface_is_builtin_and_the_default_is_source_chirho() {
 #[test]
 fn a_merge_stays_builtin_only_when_every_copy_is_chirho() {
     let seeded_chirho = seeded_iface_chirho("Data.List");
-    let source_chirho = source_iface_chirho(SOURCE_DATA_LIST_CHIRHO, &[]);
+    let mut source_chirho = source_iface_chirho(SOURCE_DATA_LIST_CHIRHO, &[]);
+    // This tests fragments of the SAME admitted exposure, not separate views.
+    source_chirho.exposure_chirho = seeded_chirho.exposure_chirho.clone();
     let merged_origin_chirho = |copies_chirho: Vec<ModuleIfaceChirho>| {
         let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
         assert_eq!(merged_chirho.len(), 1);
@@ -691,11 +708,36 @@ fn only_a_builtin_interface_reads_the_table_chirho() {
         qualified_import_alias_scheme_chirho(&seeded_chirho, "reverse", &schemes_chirho).as_ref(),
         schemes_chirho.get("reverse")
     );
-    let source_chirho = source_iface_chirho(SOURCE_DATA_LIST_CHIRHO, &[]);
+    let mut source_chirho = source_iface_chirho(SOURCE_DATA_LIST_CHIRHO, &[]);
+    let mut source_fragment_chirho = source_chirho.clone();
+    source_fragment_chirho.exposure_chirho = seeded_chirho.exposure_chirho.clone();
+    let caller_chirho = lower_module_chirho(
+        &ParserChirho::new_chirho(
+            "module CallerChirho where\nimport Data.List\nimport \"base\" Data.List\n",
+            FileIdChirho::SYNTHETIC_CHIRHO,
+        )
+        .parse_chirho(),
+        FileIdChirho::SYNTHETIC_CHIRHO,
+    );
+    let selected_source_fragment_chirho = |copies_chirho| {
+        let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
+        assert_eq!(merged_chirho.len(), 1, "same-exposure fragments must join");
+        let selected_chirho =
+            select_import_iface_chirho(&merged_chirho, &caller_chirho.imports_chirho[0])
+                .expect("the actual ordinary import selects the merged view");
+        assert_eq!(
+            selected_chirho.exports_chirho.origin_chirho,
+            IfaceOriginChirho::SourceChirho
+        );
+        selected_chirho.clone()
+    };
     let sourced_chirho = [
-        merge_module_ifaces_chirho(vec![seeded_chirho.clone(), source_chirho.clone()]).remove(0),
-        merge_module_ifaces_chirho(vec![source_chirho.clone(), seeded_chirho]).remove(0),
-        source_chirho,
+        selected_source_fragment_chirho(vec![
+            seeded_chirho.clone(),
+            source_fragment_chirho.clone(),
+        ]),
+        selected_source_fragment_chirho(vec![source_fragment_chirho, seeded_chirho.clone()]),
+        source_chirho.clone(),
         source_iface_chirho(
             REEXPORTING_DATA_LIST_CHIRHO,
             &[seeded_iface_chirho("GHC.List")],
@@ -717,6 +759,50 @@ fn only_a_builtin_interface_reads_the_table_chirho() {
                 qualified_import_alias_scheme_chirho(iface_chirho, name_chirho, &schemes_chirho),
                 None,
                 "a source Data.List must not read the table for {name_chirho}"
+            );
+        }
+    }
+
+    // Different exposures remain distinct. Select the actual home source for
+    // an ordinary import, and the preserved builtin for an explicit base edge.
+    source_chirho.exposure_chirho = Some(IfaceExposureChirho::HomeChirho);
+    for copies_chirho in [
+        vec![seeded_chirho.clone(), source_chirho.clone()],
+        vec![source_chirho, seeded_chirho],
+    ] {
+        let views_chirho = merge_module_ifaces_chirho(copies_chirho);
+        assert_eq!(views_chirho.len(), 2);
+        let source_view_chirho =
+            select_import_iface_chirho(&views_chirho, &caller_chirho.imports_chirho[0])
+                .expect("ordinary import selects the admitted source view");
+        let builtin_view_chirho =
+            select_import_iface_chirho(&views_chirho, &caller_chirho.imports_chirho[1])
+                .expect("explicit base import preserves its builtin view");
+        assert_eq!(
+            source_view_chirho.exports_chirho.origin_chirho,
+            IfaceOriginChirho::SourceChirho
+        );
+        assert_eq!(
+            builtin_view_chirho.exports_chirho.origin_chirho,
+            IfaceOriginChirho::BuiltinChirho
+        );
+        for name_chirho in ["reverse", "lookup"] {
+            assert_eq!(
+                qualified_import_alias_scheme_chirho(
+                    source_view_chirho,
+                    name_chirho,
+                    &schemes_chirho
+                ),
+                None
+            );
+            assert_eq!(
+                qualified_import_alias_scheme_chirho(
+                    builtin_view_chirho,
+                    name_chirho,
+                    &schemes_chirho
+                )
+                .as_ref(),
+                schemes_chirho.get(name_chirho)
             );
         }
     }

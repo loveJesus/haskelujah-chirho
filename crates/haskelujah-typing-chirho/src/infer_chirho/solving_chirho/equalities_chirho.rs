@@ -8,70 +8,18 @@
 use super::*;
 
 impl InferCtxChirho {
-    /// Builtin type families that reduce only on literals; an application to
-    /// an unsolved variable is stuck, not a mismatch.
-    pub(super) const BUILTIN_TYPE_FAMILIES_CHIRHO: &'static [&'static str] = &[
-        "+",
-        "-",
-        "*",
-        "^",
-        "<=?",
-        "Div",
-        "Mod",
-        "Log2",
-        "AppendSymbol",
-        "CharToNat",
-        "NatToChar",
-        "CmpNat",
-        "CmpSymbol",
-        "If",
-        "Not",
-        "&&",
-        "||",
-    ];
-
-    /// Whether `name_chirho` names a type family known here (declared,
-    /// imported, or builtin).
+    /// Exact selected definitions and unresolved family identities remain non-injective.
     pub(super) fn is_type_family_name_chirho(&self, name_chirho: &str) -> bool {
-        if self.type_families_chirho.contains_key(name_chirho) {
-            return true;
-        }
-        let canonical_chirho = canonical_type_family_name_chirho(name_chirho);
-        Self::BUILTIN_TYPE_FAMILIES_CHIRHO.contains(&canonical_chirho.as_str())
-            || self
-                .type_families_chirho
-                .contains_key(canonical_chirho.as_str())
-            || self
-                .type_families_chirho
-                .keys()
-                .any(|key_chirho| strip_name_qualifier_chirho(key_chirho) == canonical_chirho)
+        super::family_definitions_chirho::is_type_family_key_chirho(name_chirho)
+            || self.is_registered_family_chirho(name_chirho)
     }
 
-    /// Whether the type is an application headed by a known type family.
     pub(super) fn ty_is_family_app_chirho(&self, ty_chirho: &TyChirho) -> bool {
-        let (head_chirho, args_chirho) = collect_app_spine_chirho(ty_chirho);
-        match &head_chirho {
-            TyChirho::ConChirho(name_chirho) => {
-                !args_chirho.is_empty() && self.is_type_family_name_chirho(name_chirho)
-                    || (args_chirho.is_empty()
-                        && self.type_families_chirho.contains_key(name_chirho))
-            }
-            _ => false,
+        let mut head_chirho = ty_chirho;
+        while let TyChirho::AppChirho(function_chirho, _) = head_chirho {
+            head_chirho = function_chirho;
         }
-    }
-
-    /// Syntactic shape only (no environment): an application whose head is a
-    /// builtin arithmetic / symbol family.
-    pub(super) fn ty_is_type_family_app_chirho(ty_chirho: &TyChirho) -> bool {
-        let (head_chirho, args_chirho) = collect_app_spine_chirho(ty_chirho);
-        match &head_chirho {
-            TyChirho::ConChirho(name_chirho) => {
-                !args_chirho.is_empty()
-                    && Self::BUILTIN_TYPE_FAMILIES_CHIRHO
-                        .contains(&canonical_type_family_name_chirho(name_chirho).as_str())
-            }
-            _ => false,
-        }
+        matches!(head_chirho, TyChirho::ConChirho(name_chirho) if self.is_type_family_name_chirho(name_chirho))
     }
 
     /// Whether a type family application occurs anywhere in the type.
@@ -80,6 +28,15 @@ impl InferCtxChirho {
             return true;
         }
         match ty_chirho {
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                context_chirho
+                    .iter()
+                    .any(|constraint_chirho| self.ty_mentions_family_chirho(constraint_chirho))
+                    || self.ty_mentions_family_chirho(body_chirho)
+            }
             TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => false,
             TyChirho::AppChirho(fun_chirho, arg_chirho) => {
                 self.ty_mentions_family_chirho(fun_chirho)
@@ -126,66 +83,29 @@ impl InferCtxChirho {
         }
         let assigns_whole_type_chirho = matches!(left_chirho, TyChirho::VarChirho(_))
             || matches!(right_chirho, TyChirho::VarChirho(_));
-        if assigns_whole_type_chirho && unify_chirho(left_chirho, right_chirho, span_chirho).is_ok()
+        if assigns_whole_type_chirho
+            && self
+                .unify_ordinary_chirho(left_chirho, right_chirho, span_chirho)
+                .is_ok()
         {
             return false;
         }
-        self.deferred_equalities_chirho.push((
-            left_chirho.clone(),
-            right_chirho.clone(),
-            span_chirho,
-        ));
+        self.defer_equality_chirho(left_chirho.clone(), right_chirho.clone(), span_chirho);
         true
     }
 
     /// Rewrite every subterm equal to a given equality's left side to its
     /// right side (one pass; normalization iterates).
     pub(super) fn apply_given_rewrites_chirho(&self, ty_chirho: &TyChirho) -> TyChirho {
-        if self.given_rewrites_chirho.is_empty() {
-            return ty_chirho.clone();
-        }
-        for (lhs_chirho, rhs_chirho) in &self.given_rewrites_chirho {
-            if ty_chirho == lhs_chirho {
-                return rhs_chirho.clone();
-            }
-        }
-        match ty_chirho {
-            TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => {
-                ty_chirho.clone()
-            }
-            TyChirho::AppChirho(fun_chirho, arg_chirho) => TyChirho::AppChirho(
-                Box::new(self.apply_given_rewrites_chirho(fun_chirho)),
-                Box::new(self.apply_given_rewrites_chirho(arg_chirho)),
-            ),
-            TyChirho::FunChirho(arg_chirho, result_chirho, mult_chirho) => TyChirho::FunChirho(
-                Box::new(self.apply_given_rewrites_chirho(arg_chirho)),
-                Box::new(self.apply_given_rewrites_chirho(result_chirho)),
-                *mult_chirho,
-            ),
-            TyChirho::TupleChirho(elems_chirho) => TyChirho::TupleChirho(
-                elems_chirho
-                    .iter()
-                    .map(|elem_chirho| self.apply_given_rewrites_chirho(elem_chirho))
-                    .collect(),
-            ),
-            TyChirho::ListChirho(inner_chirho) => {
-                TyChirho::ListChirho(Box::new(self.apply_given_rewrites_chirho(inner_chirho)))
-            }
-            TyChirho::ForallChirho {
-                vars_chirho,
-                body_chirho,
-            } => TyChirho::ForallChirho {
-                vars_chirho: vars_chirho.clone(),
-                body_chirho: Box::new(self.apply_given_rewrites_chirho(body_chirho)),
-            },
-            TyChirho::RequiredForallChirho {
-                vars_chirho,
-                body_chirho,
-            } => TyChirho::RequiredForallChirho {
-                vars_chirho: vars_chirho.clone(),
-                body_chirho: Box::new(self.apply_given_rewrites_chirho(body_chirho)),
-            },
-        }
+        super::equality_normalization_chirho::rewrite_givens_with_budget_chirho(
+            self,
+            ty_chirho,
+            &mut super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho(),
+        )
+        .unwrap_or_else(|| {
+            self.type_normalization_exhausted_chirho.set(true);
+            TyChirho::ConChirho("%normalization:resource-exhausted".to_owned())
+        })
     }
 
     /// Turn the `~` givens of a signature into rewrite rules. A rule rewrites
@@ -242,40 +162,48 @@ impl InferCtxChirho {
             }
         }
         for (lhs_chirho, rhs_chirho) in equalities_chirho {
-            let lhs_norm_chirho = self.normalize_ty_chirho(&lhs_chirho);
-            let rhs_norm_chirho = self.normalize_ty_chirho(&rhs_chirho);
-            if lhs_norm_chirho == rhs_norm_chirho {
-                continue;
-            }
-            let lhs_rigid_chirho = matches!(&lhs_norm_chirho, TyChirho::ForallVarChirho(_))
-                || self.ty_is_family_app_chirho(&lhs_norm_chirho);
-            let rhs_rigid_chirho = matches!(&rhs_norm_chirho, TyChirho::ForallVarChirho(_))
-                || self.ty_is_family_app_chirho(&rhs_norm_chirho);
-            // A rule whose right side contains its own left side
-            // (`b ~ Maybe (Foo b)`) would rewrite forever; such a given is
-            // consistent but is not usable as a rewrite.
-            let rule_chirho = if lhs_rigid_chirho
-                && !ty_contains_subterm_chirho(&rhs_norm_chirho, &lhs_norm_chirho)
-            {
-                Some((lhs_norm_chirho, rhs_norm_chirho))
-            } else if rhs_rigid_chirho
-                && !ty_contains_subterm_chirho(&lhs_norm_chirho, &rhs_norm_chirho)
-            {
-                Some((rhs_norm_chirho, lhs_norm_chirho))
-            } else if !lhs_rigid_chirho
-                && !rhs_rigid_chirho
-                && !lhs_norm_chirho.contains_var_chirho()
-                && !rhs_norm_chirho.contains_var_chirho()
-            {
-                // Two closed types that differ (`Int ~ Bool`): an insoluble
-                // given; the body is typed under the stated equality.
-                Some((lhs_norm_chirho, rhs_norm_chirho))
-            } else {
-                None
-            };
-            if let Some(rule_chirho) = rule_chirho {
+            if let Some(rule_chirho) = self.given_equality_rule_chirho(
+                self.normalize_ty_chirho(&lhs_chirho),
+                self.normalize_ty_chirho(&rhs_chirho),
+            ) {
                 self.given_rewrites_chirho.push(rule_chirho);
             }
+        }
+    }
+
+    /// The same orientation is used by live givens and an isolated source
+    /// signature probe; a probe never installs rules into the live solver.
+    pub(super) fn given_equality_rule_chirho(
+        &self,
+        lhs_norm_chirho: TyChirho,
+        rhs_norm_chirho: TyChirho,
+    ) -> Option<(TyChirho, TyChirho)> {
+        if lhs_norm_chirho == rhs_norm_chirho {
+            return None;
+        }
+        let lhs_rigid_chirho = matches!(&lhs_norm_chirho, TyChirho::ForallVarChirho(_))
+            || self.ty_is_family_app_chirho(&lhs_norm_chirho);
+        let rhs_rigid_chirho = matches!(&rhs_norm_chirho, TyChirho::ForallVarChirho(_))
+            || self.ty_is_family_app_chirho(&rhs_norm_chirho);
+        // A rule whose right side contains its own left side
+        // (`b ~ Maybe (Foo b)`) would rewrite forever; such a given is
+        // consistent but is not usable as a rewrite.
+        if lhs_rigid_chirho && !ty_contains_subterm_chirho(&rhs_norm_chirho, &lhs_norm_chirho) {
+            Some((lhs_norm_chirho, rhs_norm_chirho))
+        } else if rhs_rigid_chirho
+            && !ty_contains_subterm_chirho(&lhs_norm_chirho, &rhs_norm_chirho)
+        {
+            Some((rhs_norm_chirho, lhs_norm_chirho))
+        } else if !lhs_rigid_chirho
+            && !rhs_rigid_chirho
+            && !lhs_norm_chirho.contains_var_chirho()
+            && !rhs_norm_chirho.contains_var_chirho()
+        {
+            // Two closed types that differ (`Int ~ Bool`): an insoluble
+            // given; the body is typed under the stated equality.
+            Some((lhs_norm_chirho, rhs_norm_chirho))
+        } else {
+            None
         }
     }
 
@@ -288,7 +216,7 @@ impl InferCtxChirho {
         let (right_head_chirho, right_args_chirho) = collect_app_spine_chirho(right_chirho);
         let is_plus_chirho = |head_chirho: &TyChirho| {
             matches!(head_chirho, TyChirho::ConChirho(name_chirho)
-                if canonical_type_family_name_chirho(name_chirho) == "+")
+                if *name_chirho == TypeFamilyIdChirho::IntrinsicChirho(IntrinsicTypeFamilyChirho::AddNatChirho).key_chirho())
         };
         if !is_plus_chirho(&left_head_chirho)
             || !is_plus_chirho(&right_head_chirho)
@@ -314,9 +242,23 @@ impl InferCtxChirho {
     /// determine, and ambiguity is not modelled.
     pub(super) fn report_unsolved_deferred_equalities_chirho(&mut self) {
         let pending_chirho = std::mem::take(&mut self.deferred_equalities_chirho);
-        for (left_chirho, right_chirho, span_chirho) in pending_chirho {
-            let left_norm_chirho = self.normalize_ty_chirho(&left_chirho);
-            let right_norm_chirho = self.normalize_ty_chirho(&right_chirho);
+        for wanted_chirho in pending_chirho {
+            if wanted_chirho.generalized_chirho {
+                continue;
+            }
+            let (Ok(left_norm_chirho), Ok(right_norm_chirho)) = (
+                self.normalize_equality_type_chirho(
+                    &wanted_chirho.lhs_chirho,
+                    wanted_chirho.owner_chirho,
+                ),
+                self.normalize_equality_type_chirho(
+                    &wanted_chirho.rhs_chirho,
+                    wanted_chirho.owner_chirho,
+                ),
+            ) else {
+                self.report_equality_normalization_exhausted_chirho(wanted_chirho.span_chirho);
+                continue;
+            };
             if left_norm_chirho == right_norm_chirho
                 || Self::contains_polymorphic_component_chirho(&left_norm_chirho)
                 || Self::contains_polymorphic_component_chirho(&right_norm_chirho)
@@ -324,14 +266,14 @@ impl InferCtxChirho {
                 continue;
             }
             let left_closed_chirho = !left_norm_chirho.contains_var_chirho()
-                && !contains_skolem_chirho(&left_norm_chirho);
+                && !self.type_contains_skolem_chirho(&left_norm_chirho);
             let right_closed_chirho = !right_norm_chirho.contains_var_chirho()
-                && !contains_skolem_chirho(&right_norm_chirho);
+                && !self.type_contains_skolem_chirho(&right_norm_chirho);
             if left_closed_chirho || right_closed_chirho {
                 self.report_unify_error_chirho(&UnifyErrorChirho::MismatchChirho {
                     expected_chirho: left_norm_chirho,
                     actual_chirho: right_norm_chirho,
-                    span_chirho,
+                    span_chirho: wanted_chirho.span_chirho,
                 });
             }
         }
@@ -351,11 +293,21 @@ impl InferCtxChirho {
             let pending_chirho = std::mem::take(&mut self.deferred_equalities_chirho);
             let mut progressed_chirho = false;
             let mut still_pending_chirho = Vec::new();
-            for (left_chirho, right_chirho, span_chirho) in pending_chirho {
-                let left_sub_chirho =
-                    self.normalize_ty_chirho(&total_chirho.apply_ty_chirho(&left_chirho));
-                let right_sub_chirho =
-                    self.normalize_ty_chirho(&total_chirho.apply_ty_chirho(&right_chirho));
+            for mut wanted_chirho in pending_chirho {
+                let span_chirho = wanted_chirho.span_chirho;
+                let (Ok(left_sub_chirho), Ok(right_sub_chirho)) = (
+                    self.normalize_equality_type_chirho(
+                        &wanted_chirho.lhs_chirho,
+                        wanted_chirho.owner_chirho,
+                    ),
+                    self.normalize_equality_type_chirho(
+                        &wanted_chirho.rhs_chirho,
+                        wanted_chirho.owner_chirho,
+                    ),
+                ) else {
+                    still_pending_chirho.push(wanted_chirho);
+                    continue;
+                };
                 if left_sub_chirho == right_sub_chirho {
                     progressed_chirho = true;
                     continue;
@@ -366,17 +318,29 @@ impl InferCtxChirho {
                 if Self::contains_polymorphic_component_chirho(&left_sub_chirho)
                     || Self::contains_polymorphic_component_chirho(&right_sub_chirho)
                 {
-                    progressed_chirho = true;
+                    still_pending_chirho.push(wanted_chirho);
                     continue;
                 }
                 if self.ty_is_stuck_family_on_var_chirho(&left_sub_chirho)
                     || self.ty_is_stuck_family_on_var_chirho(&right_sub_chirho)
                 {
-                    still_pending_chirho.push((left_sub_chirho, right_sub_chirho, span_chirho));
+                    match self.improve_equality_from_owned_givens_chirho(&wanted_chirho) {
+                        Ok(Some(substitution_chirho)) => {
+                            self.apply_subst_all_chirho(&substitution_chirho);
+                            total_chirho = substitution_chirho.compose_chirho(&total_chirho);
+                            progressed_chirho = true;
+                            continue;
+                        }
+                        Err(_) => self.report_equality_normalization_exhausted_chirho(span_chirho),
+                        Ok(None) => {}
+                    }
+                    wanted_chirho.lhs_chirho = left_sub_chirho;
+                    wanted_chirho.rhs_chirho = right_sub_chirho;
+                    still_pending_chirho.push(wanted_chirho);
                     continue;
                 }
                 progressed_chirho = true;
-                match unify_chirho(&left_sub_chirho, &right_sub_chirho, span_chirho) {
+                match self.unify_ordinary_chirho(&left_sub_chirho, &right_sub_chirho, span_chirho) {
                     Ok(subst_chirho) => {
                         self.apply_subst_all_chirho(&subst_chirho);
                         total_chirho = subst_chirho.compose_chirho(&total_chirho);
@@ -387,7 +351,12 @@ impl InferCtxChirho {
                     // consistent and left unsolved.
                     Err(UnifyErrorChirho::OccursCheckChirho { .. })
                         if self.ty_mentions_family_chirho(&left_sub_chirho)
-                            || self.ty_mentions_family_chirho(&right_sub_chirho) => {}
+                            || self.ty_mentions_family_chirho(&right_sub_chirho) =>
+                    {
+                        wanted_chirho.lhs_chirho = left_sub_chirho;
+                        wanted_chirho.rhs_chirho = right_sub_chirho;
+                        still_pending_chirho.push(wanted_chirho);
+                    }
                     Err(err_chirho) => self.report_unify_error_chirho(&err_chirho),
                 }
             }
@@ -413,15 +382,19 @@ impl InferCtxChirho {
         let givens_chirho = self.given_preds_chirho.clone();
         let mut improvement_chirho = SubstChirho::empty_chirho();
         for (pred_chirho, _span_chirho) in &self.deferred_preds_chirho {
-            let pred_sub_chirho = PredChirho {
-                class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                ty_chirho: improvement_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                extra_tys_chirho: pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|t_chirho| improvement_chirho.apply_ty_chirho(t_chirho))
-                    .collect(),
-            };
+            let pred_sub_chirho = PredChirho::from_proof_chirho(
+                pred_chirho.class_identity_chirho().clone(),
+                crate::class_chirho::PredPartsChirho {
+                    kind_tys_chirho: Vec::new(),
+                    class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                    ty_chirho: improvement_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                    extra_tys_chirho: pred_chirho
+                        .extra_tys_chirho
+                        .iter()
+                        .map(|t_chirho| improvement_chirho.apply_ty_chirho(t_chirho))
+                        .collect(),
+                },
+            );
             let step_chirho =
                 self.fundep_improve_from_givens_chirho(&pred_sub_chirho, &givens_chirho);
             if !step_chirho.is_empty_chirho() {
@@ -450,7 +423,7 @@ impl InferCtxChirho {
     fn refuse_undecided_ground_wanteds_chirho(&mut self) {
         let deferred_preds_chirho = std::mem::take(&mut self.deferred_preds_chirho);
         for (pred_chirho, span_chirho) in deferred_preds_chirho {
-            if Self::pred_fully_ground_chirho(&pred_chirho)
+            if self.pred_fully_ground_chirho(&pred_chirho)
                 && matches!(
                     self.ground_pred_verdict_chirho(&pred_chirho, 0),
                     Some(Err(_))
@@ -480,13 +453,7 @@ impl InferCtxChirho {
         match self.pred_entailment_under_givens_chirho(pred_chirho, givens_chirho, 0) {
             None => false,
             Some(true) => true,
-            Some(false) => {
-                contains_skolem_chirho(&pred_chirho.ty_chirho)
-                    || pred_chirho
-                        .extra_tys_chirho
-                        .iter()
-                        .any(contains_skolem_chirho)
-            }
+            Some(false) => self.pred_mentions_rigid_chirho(pred_chirho),
         }
     }
 
@@ -512,23 +479,14 @@ impl InferCtxChirho {
         }
         // Only a wanted whose arguments are settled can be committed to an
         // instance here; one still carrying unification variables waits.
-        if pred_chirho.ty_chirho.contains_var_chirho()
-            || pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .any(|t_chirho| t_chirho.contains_var_chirho())
+        if pred_chirho
+            .semantic_tys_chirho()
+            .any(TyChirho::contains_var_chirho)
         {
             return None;
         }
-        let normalized_chirho = PredChirho {
-            class_name_chirho: pred_chirho.class_name_chirho.clone(),
-            ty_chirho: self.normalize_ty_chirho(&pred_chirho.ty_chirho),
-            extra_tys_chirho: pred_chirho
-                .extra_tys_chirho
-                .iter()
-                .map(|t_chirho| self.normalize_ty_chirho(t_chirho))
-                .collect(),
-        };
+        let normalized_chirho =
+            pred_chirho.mapped_chirho(|ty_chirho| self.normalize_ty_chirho(ty_chirho));
         let sub_goals_chirho = self.class_env_chirho.resolve_chirho(&normalized_chirho)?;
         let mut used_given_chirho = false;
         for sub_goal_chirho in &sub_goals_chirho {
@@ -553,8 +511,8 @@ impl InferCtxChirho {
         let mut improvement_chirho = SubstChirho::empty_chirho();
         let Some(class_chirho) = self
             .class_env_chirho
-            .classes_chirho
-            .get(&pred_chirho.class_name_chirho)
+            .classes_chirho()
+            .get_chirho(&pred_chirho.class_name_chirho)
         else {
             return improvement_chirho;
         };
@@ -597,7 +555,7 @@ impl InferCtxChirho {
                     }
                     let wanted_ty_chirho =
                         improvement_chirho.apply_ty_chirho(&pred_tys_chirho[idx_chirho]);
-                    if let Ok(unifier_chirho) = unify_chirho(
+                    if let Ok(unifier_chirho) = self.unify_ordinary_chirho(
                         &wanted_ty_chirho,
                         &given_tys_chirho[idx_chirho],
                         SpanChirho::DUMMY_CHIRHO,
@@ -621,6 +579,14 @@ fn ty_contains_subterm_chirho(haystack_chirho: &TyChirho, needle_chirho: &TyChir
         return true;
     }
     match haystack_chirho {
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => {
+            context_chirho.iter().any(|constraint_chirho| {
+                ty_contains_subterm_chirho(constraint_chirho, needle_chirho)
+            }) || ty_contains_subterm_chirho(body_chirho, needle_chirho)
+        }
         TyChirho::VarChirho(_) | TyChirho::ConChirho(_) | TyChirho::ForallVarChirho(_) => false,
         TyChirho::AppChirho(fun_chirho, arg_chirho) => {
             ty_contains_subterm_chirho(fun_chirho, needle_chirho)
@@ -650,7 +616,10 @@ mod tests_chirho {
     fn plus_chirho(left_chirho: TyChirho, right_chirho: TyChirho) -> TyChirho {
         TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("+".to_string())),
+                Box::new(TyChirho::ConChirho(
+                    TypeFamilyIdChirho::IntrinsicChirho(IntrinsicTypeFamilyChirho::AddNatChirho)
+                        .key_chirho(),
+                )),
                 Box::new(left_chirho),
             )),
             Box::new(right_chirho),
@@ -659,7 +628,23 @@ mod tests_chirho {
 
     #[test]
     fn imported_boolean_families_reduce_by_their_leading_argument_chirho() {
-        let ctx_chirho = InferCtxChirho::new_chirho();
+        let mut ctx_chirho = InferCtxChirho::new_chirho();
+        let mut scope_chirho = TypeFamilyScopeChirho::new_chirho();
+        for (written_chirho, exported_chirho) in [
+            ("Data.Type.Bool.&&", "Data.Type.Bool.&&"),
+            ("&&", "Data.Type.Bool.&&"),
+            ("If", "Data.Type.Bool.If"),
+            ("Not", "Data.Type.Bool.Not"),
+        ] {
+            scope_chirho.import_export_chirho(
+                written_chirho.to_owned(),
+                exported_chirho,
+                &ctx_chirho.type_families_chirho,
+            );
+        }
+        ctx_chirho.family_scope_chirho = Some(Arc::new(scope_chirho));
+        let and_key_chirho =
+            TypeFamilyIdChirho::IntrinsicChirho(IntrinsicTypeFamilyChirho::AndChirho).key_chirho();
         let true_chirho = TyChirho::ConChirho("True".to_string());
         let false_chirho = TyChirho::ConChirho("False".to_string());
         let value_chirho = TyChirho::ForallVarChirho("value%1".to_string());
@@ -672,8 +657,10 @@ mod tests_chirho {
             Some(value_chirho.clone())
         );
         assert_eq!(
-            ctx_chirho
-                .reduce_type_family_chirho("(&&)", &[false_chirho.clone(), value_chirho.clone()],),
+            ctx_chirho.reduce_type_family_chirho(
+                &and_key_chirho,
+                &[false_chirho.clone(), value_chirho.clone()],
+            ),
             Some(false_chirho.clone())
         );
         assert_eq!(

@@ -132,7 +132,9 @@ fn generic_spine_chirho<'a>(
     class_name_chirho: &str,
     inst_chirho: &'a InstDeclChirho,
 ) -> Option<(&'a str, usize)> {
-    let class_chirho = class_env_chirho.classes_chirho.get(class_name_chirho)?;
+    let class_chirho = class_env_chirho
+        .classes_chirho()
+        .get_chirho(class_name_chirho)?;
     if class_chirho.is_mptc_chirho()
         || !class_chirho.supers_chirho.is_empty()
         || !inst_chirho.extra_head_tys_chirho.is_empty()
@@ -143,9 +145,9 @@ fn generic_spine_chirho<'a>(
     let (constructor_chirho, arity_chirho) =
         distinct_variable_spine_chirho(&inst_chirho.head_ty_chirho)?;
     let competing_heads_chirho = class_env_chirho
-        .instances_chirho
-        .get(class_name_chirho)?
-        .iter()
+        .instances_chirho()
+        .get_chirho(class_name_chirho)?
+        .iter_chirho()
         .filter(|other_chirho| {
             head_constructor_chirho(&other_chirho.head_ty_chirho)
                 .is_none_or(|other_head_chirho| other_head_chirho == constructor_chirho)
@@ -253,8 +255,8 @@ impl DictPassCtxChirho {
         predicate_chirho: &PredChirho,
     ) -> Result<CoreIdChirho, String> {
         let mut matching_chirho: Vec<(String, bool)> = class_env_chirho
-            .instances_chirho
-            .get(&predicate_chirho.class_name_chirho)
+            .instances_chirho()
+            .get_chirho(&predicate_chirho.class_name_chirho)
             .into_iter()
             .flatten()
             .filter_map(|inst_chirho| {
@@ -347,7 +349,7 @@ impl DictPassCtxChirho {
     /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
     pub(super) fn register_multi_head_chirho(
         &mut self,
-        inst_chirho: &InstDeclChirho,
+        inst_chirho: &std::sync::Arc<InstDeclChirho>,
         builder_chirho: CoreIdChirho,
     ) {
         self.conditional_dicts_chirho
@@ -362,7 +364,7 @@ impl DictPassCtxChirho {
                 builder_chirho,
                 formals_chirho: Vec::new(),
                 context_chirho: inst_chirho.context_chirho.clone(),
-                instance_chirho: Some(inst_chirho.clone()),
+                instance_chirho: Some(std::sync::Arc::clone(inst_chirho)),
             });
     }
 }
@@ -389,8 +391,8 @@ pub(super) fn superclass_at_head_chirho(
     index_chirho: usize,
 ) -> Result<PredChirho, String> {
     let class_chirho = class_env_chirho
-        .classes_chirho
-        .get(&inst_chirho.class_name_chirho)
+        .classes_chirho()
+        .get_chirho(&inst_chirho.class_name_chirho)
         .ok_or_else(|| "its class is not in the class environment".to_string())?;
     let (slot_chirho, _) = layout_chirho
         .super_slots_chirho
@@ -410,7 +412,9 @@ pub(super) fn superclass_at_head_chirho(
     let head_chirho: Vec<TyChirho> = std::iter::once(inst_chirho.head_ty_chirho.clone())
         .chain(inst_chirho.extra_head_tys_chirho.iter().cloned())
         .collect();
-    let superclasses_chirho = class_chirho.superclass_preds_at_chirho(&head_chirho);
+    let superclasses_chirho = class_chirho
+        .superclass_preds_at_chirho(&inst_chirho.kind_tys_chirho, &head_chirho)
+        .ok_or_else(|| "its class telescope is incomplete".to_string())?;
     if superclasses_chirho.len() != layout_chirho.super_slots_chirho.len() {
         return Err("its class's superclass templates do not match its layout".to_string());
     }
@@ -423,11 +427,12 @@ pub(super) fn superclass_at_head_chirho(
 
 /// How a diagnostic names an instance: its class and whole head (`ShowSecondChirho Int Bool`).
 pub(super) fn instance_label_chirho(inst_chirho: &InstDeclChirho) -> String {
-    PredChirho {
+    PredChirho::legacy_chirho(haskelujah_typing_chirho::class_chirho::PredPartsChirho {
+        kind_tys_chirho: Vec::new(),
         class_name_chirho: inst_chirho.class_name_chirho.clone(),
         ty_chirho: inst_chirho.head_ty_chirho.clone(),
         extra_tys_chirho: inst_chirho.extra_head_tys_chirho.clone(),
-    }
+    })
     .to_string()
 }
 

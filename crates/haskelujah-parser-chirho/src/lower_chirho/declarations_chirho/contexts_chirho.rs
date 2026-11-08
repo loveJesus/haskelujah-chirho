@@ -115,6 +115,35 @@ impl LowerCtxChirho {
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 Self::type_to_constraints_chirho(inner_chirho, span_chirho)
             }
+            TypeChirho::KindAnnotationChirho {
+                ty_chirho,
+                kind_chirho,
+                span_chirho: annotation_span_chirho,
+            } => {
+                if implicit_parameter_name_chirho(ty_chirho).is_some() {
+                    return vec![ConstraintChirho::ClassChirho {
+                        class_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+                            "?",
+                            *annotation_span_chirho,
+                        )),
+                        kind_args_chirho: vec![],
+                        args_chirho: vec![TypeChirho::KindAnnotationChirho {
+                            ty_chirho: ty_chirho.clone(),
+                            kind_chirho: kind_chirho.clone(),
+                            span_chirho: *annotation_span_chirho,
+                        }],
+                        span_chirho: *annotation_span_chirho,
+                    }];
+                }
+                Self::type_to_constraints_chirho(ty_chirho, *annotation_span_chirho)
+                    .into_iter()
+                    .map(|constraint_chirho| ConstraintChirho::KindAnnotationChirho {
+                        constraint_chirho: Box::new(constraint_chirho),
+                        kind_chirho: kind_chirho.clone(),
+                        span_chirho: *annotation_span_chirho,
+                    })
+                    .collect()
+            }
             // QuantifiedConstraints: preserve `forall a. C a` as quantified
             // evidence rather than falling through to the synthetic `?` class.
             TypeChirho::ForallChirho {
@@ -142,17 +171,21 @@ impl LowerCtxChirho {
                     )
                     .collect()
             }
-            // Application: Eq a, Monad m, etc. — collect class name and args
+            // Application: retain hidden kind arguments separately from
+            // ordinary class arguments; runtime class arity is unchanged.
             TypeChirho::AppChirho {
-                fun_chirho,
-                arg_chirho,
                 span_chirho: app_span_chirho,
+                ..
+            }
+            | TypeChirho::KindApplicationChirho {
+                span_chirho: app_span_chirho,
+                ..
             } => {
-                let (class_name_chirho, mut args_chirho) =
-                    Self::collect_app_class_chirho(fun_chirho);
-                args_chirho.push(arg_chirho.as_ref().clone());
+                let (class_chirho, kind_args_chirho, args_chirho) =
+                    Self::collect_app_class_chirho(ty_chirho);
                 vec![ConstraintChirho::ClassChirho {
-                    class_chirho: class_name_chirho,
+                    class_chirho,
+                    kind_args_chirho,
                     args_chirho,
                     span_chirho: *app_span_chirho,
                 }]
@@ -161,6 +194,7 @@ impl LowerCtxChirho {
             TypeChirho::ConChirho(name_chirho) => {
                 vec![ConstraintChirho::ClassChirho {
                     class_chirho: name_chirho.clone(),
+                    kind_args_chirho: vec![],
                     args_chirho: vec![],
                     span_chirho,
                 }]
@@ -172,6 +206,7 @@ impl LowerCtxChirho {
                         "?",
                         span_chirho,
                     )),
+                    kind_args_chirho: vec![],
                     args_chirho: vec![other_chirho.clone()],
                     span_chirho,
                 }]
@@ -179,31 +214,59 @@ impl LowerCtxChirho {
         }
     }
 
-    /// Walk a left-nested `AppChirho` spine to collect the class name and
-    /// preceding arguments. For `Monad m`, fun is `ConChirho("Monad")` and
-    /// returns `("Monad", [])`. For `MonadReader r m`, fun is
-    /// `AppChirho(ConChirho("MonadReader"), VarChirho("r"))` and returns
-    /// `("MonadReader", [r])`.
-    fn collect_app_class_chirho(ty_chirho: &TypeChirho) -> (NameChirho, Vec<TypeChirho>) {
+    /// Collect a class head and its separate kind/ordinary argument spines.
+    fn collect_app_class_chirho(
+        ty_chirho: &TypeChirho,
+    ) -> (NameChirho, Vec<TypeChirho>, Vec<TypeChirho>) {
         match ty_chirho {
-            TypeChirho::ConChirho(name_chirho) => (name_chirho.clone(), vec![]),
+            TypeChirho::ConChirho(name_chirho) | TypeChirho::VarChirho(name_chirho) => {
+                (name_chirho.clone(), vec![], vec![])
+            }
             TypeChirho::AppChirho {
                 fun_chirho,
                 arg_chirho,
                 ..
             } => {
-                let (name_chirho, mut args_chirho) = Self::collect_app_class_chirho(fun_chirho);
+                let (name_chirho, kinds_chirho, mut args_chirho) =
+                    Self::collect_app_class_chirho(fun_chirho);
                 args_chirho.push(arg_chirho.as_ref().clone());
-                (name_chirho, args_chirho)
+                (name_chirho, kinds_chirho, args_chirho)
             }
-            // Fallback: use the type as a synthetic name
+            TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                let (name_chirho, mut kinds_chirho, args_chirho) =
+                    Self::collect_app_class_chirho(fun_chirho);
+                kinds_chirho.push(arg_chirho.as_ref().clone());
+                (name_chirho, kinds_chirho, args_chirho)
+            }
+            TypeChirho::ParenChirho { inner_chirho, .. } => {
+                Self::collect_app_class_chirho(inner_chirho)
+            }
             other_chirho => (
                 NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
                     "?",
                     other_chirho.span_chirho(),
                 )),
                 vec![],
+                vec![],
             ),
         }
+    }
+}
+
+fn implicit_parameter_name_chirho(ty_chirho: &TypeChirho) -> Option<&NameChirho> {
+    match ty_chirho {
+        TypeChirho::VarChirho(name_chirho) | TypeChirho::ConChirho(name_chirho)
+            if name_chirho.text_chirho().starts_with('?') =>
+        {
+            Some(name_chirho)
+        }
+        TypeChirho::ParenChirho { inner_chirho, .. } => {
+            implicit_parameter_name_chirho(inner_chirho)
+        }
+        _ => None,
     }
 }

@@ -268,23 +268,6 @@ pub(crate) fn cpp_include_dirs_chirho(path_chirho: &Path) -> Vec<PathBuf> {
     include_dirs_chirho
 }
 
-pub(crate) fn source_uses_cpp_chirho(source_chirho: &str) -> bool {
-    source_chirho
-        .lines()
-        .take(64)
-        .any(line_uses_cpp_pragma_chirho)
-}
-
-fn line_uses_cpp_pragma_chirho(line_chirho: &str) -> bool {
-    let folded_line_chirho = line_chirho.to_ascii_uppercase();
-    (folded_line_chirho.contains("{-#")
-        && folded_line_chirho.contains("LANGUAGE")
-        && folded_line_chirho.contains("CPP"))
-        || (folded_line_chirho.contains("{-#")
-            && folded_line_chirho.contains("OPTIONS_GHC")
-            && folded_line_chirho.contains("-CPP"))
-}
-
 pub(crate) fn decode_cpp_stdout_chirho(
     path_chirho: &Path,
     stdout_chirho: Vec<u8>,
@@ -339,6 +322,25 @@ pub(crate) fn preprocess_cpp_source_with_options_chirho(
     source_chirho: &str,
     extra_cpp_options_chirho: &[String],
 ) -> io::Result<String> {
+    let extensions_chirho =
+        haskelujah_parser_chirho::pragma_chirho::EffectiveExtensionsChirho::from_source_chirho(
+            source_chirho,
+            haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
+        );
+    preprocess_cpp_source_under_extensions_chirho(
+        path_chirho,
+        source_chirho,
+        extra_cpp_options_chirho,
+        &extensions_chirho,
+    )
+}
+
+pub(crate) fn preprocess_cpp_source_under_extensions_chirho(
+    path_chirho: &Path,
+    source_chirho: &str,
+    extra_cpp_options_chirho: &[String],
+    extensions_chirho: &haskelujah_parser_chirho::pragma_chirho::EffectiveExtensionsChirho,
+) -> io::Result<String> {
     if path_is_hsc_chirho(path_chirho) {
         return preprocess_hsc_source_with_options_chirho(
             path_chirho,
@@ -347,7 +349,7 @@ pub(crate) fn preprocess_cpp_source_with_options_chirho(
         );
     }
 
-    if !source_uses_cpp_chirho(source_chirho) {
+    if !extensions_chirho.enabled_chirho("CPP") {
         return Ok(source_chirho.to_string());
     }
 

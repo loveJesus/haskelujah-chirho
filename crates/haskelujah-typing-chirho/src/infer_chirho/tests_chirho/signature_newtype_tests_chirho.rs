@@ -229,6 +229,7 @@ fn infer_newtype_record_constructor_with_function_field_chirho() {
                 constructor_chirho: ConDeclChirho::RecordChirho {
                     name_chirho: dummy_name_chirho("WrapChirho"),
                     fields_chirho: vec![haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![dummy_name_chirho("runWrapChirho")],
                         ty_chirho: TypeChirho::FunChirho {
                             arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
@@ -341,6 +342,7 @@ fn infer_writer_newtype_composition_with_tuple_payload_chirho() {
                 constructor_chirho: ConDeclChirho::RecordChirho {
                     name_chirho: dummy_name_chirho("WriterT"),
                     fields_chirho: vec![haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![dummy_name_chirho("runWriterTChirho")],
                         ty_chirho: TypeChirho::AppChirho {
                             fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
@@ -439,6 +441,7 @@ fn infer_state_newtype_composition_with_function_tuple_payload_chirho() {
                 constructor_chirho: ConDeclChirho::RecordChirho {
                     name_chirho: dummy_name_chirho("StateT"),
                     fields_chirho: vec![haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![dummy_name_chirho("runStateTChirho")],
                         ty_chirho: TypeChirho::FunChirho {
                             arg_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
@@ -558,7 +561,7 @@ fn infer_gadt_equations_refine_rigid_signature_vars_per_equation_chirho() {
                 constructors_chirho: vec![
                     ConDeclChirho::GadtChirho {
                         name_chirho: dummy_name_chirho("ANil"),
-                        ty_chirho: TypeChirho::AppChirho {
+                        signature_chirho: Box::new(haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(TypeChirho::AppChirho {
                             fun_chirho: Box::new(TypeChirho::AppChirho {
                                 fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho(
                                     "ASeq",
@@ -573,12 +576,12 @@ fn infer_gadt_equations_refine_rigid_signature_vars_per_equation_chirho() {
                                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                             }),
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
-                        },
+                        })),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                     ConDeclChirho::GadtChirho {
                         name_chirho: dummy_name_chirho("ACons"),
-                        ty_chirho: TypeChirho::FunChirho {
+                        signature_chirho: Box::new(haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(TypeChirho::FunChirho {
                             arg_chirho: Box::new(TypeChirho::AppChirho {
                                 fun_chirho: Box::new(TypeChirho::VarChirho(dummy_name_chirho(
                                     "fChirho",
@@ -628,7 +631,7 @@ fn infer_gadt_equations_refine_rigid_signature_vars_per_equation_chirho() {
                                 span_chirho: SpanChirho::DUMMY_CHIRHO,
                             }),
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
-                        },
+                        })),
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                 ],
@@ -643,6 +646,7 @@ fn infer_gadt_equations_refine_rigid_signature_vars_per_equation_chirho() {
                 // this checker) reports "could not deduce Applicative f".
                 ty_chirho: TypeChirho::QualChirho {
                     context_chirho: vec![AstConstraintChirho::ClassChirho {
+                        kind_args_chirho: Vec::new(),
                         class_chirho: dummy_name_chirho("Applicative"),
                         args_chirho: vec![TypeChirho::VarChirho(dummy_name_chirho("fChirho"))],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -683,7 +687,7 @@ fn infer_gadt_equations_refine_rigid_signature_vars_per_equation_chirho() {
                 name_chirho: dummy_name_chirho("reduceASeqChirho"),
                 matches_chirho: vec![
                     MatchArmChirho {
-                        pats_chirho: vec![PatChirho::ConChirho {
+                        pats_chirho: vec![PatChirho::ConChirho { type_args_chirho: Vec::new(),
                             con_chirho: dummy_name_chirho("ANil"),
                             args_chirho: vec![],
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -700,7 +704,7 @@ fn infer_gadt_equations_refine_rigid_signature_vars_per_equation_chirho() {
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                     MatchArmChirho {
-                        pats_chirho: vec![PatChirho::ConChirho {
+                        pats_chirho: vec![PatChirho::ConChirho { type_args_chirho: Vec::new(),
                             con_chirho: dummy_name_chirho("ACons"),
                             args_chirho: vec![
                                 PatChirho::VarChirho(dummy_name_chirho("xChirho")),

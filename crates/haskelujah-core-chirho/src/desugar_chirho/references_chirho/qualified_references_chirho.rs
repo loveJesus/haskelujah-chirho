@@ -16,19 +16,26 @@
 
 use std::collections::{BTreeSet, HashMap};
 
-use haskelujah_ast_chirho::name_chirho::NameChirho;
+use haskelujah_ast_chirho::name_chirho::{CompilerValueChirho, NameChirho};
 
 use super::DesugarCtxChirho;
 use crate::expr_chirho::{CoreIdChirho, ImportedReferenceChirho};
 
 /// Which program modules define each imported value name, by the qualifier a reference writes:
 /// `None` for an unqualified reference (rows 629 and 642). The driver builds it from the
-/// module's imports and the origins their interfaces record. A value with no program definer,
-/// such as a builtin a program module re-exports, is never recorded here.
+/// module's selected imports and positive value origins. Certified compiler values and
+/// unproven exports share this existing payload; absence never grants builtin authority.
 /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ImportSuppliersChirho {
-    suppliers_chirho: HashMap<(Option<String>, String), BTreeSet<String>>,
+    suppliers_chirho:
+        HashMap<(Option<String>, String), BTreeSet<Option<ImportSupplierOriginChirho>>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum ImportSupplierOriginChirho {
+    SourceChirho(String),
+    CompilerChirho(CompilerValueChirho),
 }
 
 impl ImportSuppliersChirho {
@@ -36,8 +43,16 @@ impl ImportSuppliersChirho {
     /// The producer excludes class selectors, constructors, builtins and dependency stubs.
     pub fn value_names_chirho(&self) -> impl Iterator<Item = &str> {
         self.suppliers_chirho
-            .keys()
-            .map(|(_, name_chirho)| name_chirho.as_str())
+            .iter()
+            .filter(|(_, origins_chirho)| {
+                origins_chirho.iter().any(|origin_chirho| {
+                    matches!(
+                        origin_chirho,
+                        Some(ImportSupplierOriginChirho::SourceChirho(_))
+                    )
+                })
+            })
+            .map(|((_, name_chirho), _)| name_chirho.as_str())
     }
 
     /// Record that program module `module_chirho` defines a value `name_chirho` reaches when
@@ -54,7 +69,56 @@ impl ImportSuppliersChirho {
                 name_chirho.to_string(),
             ))
             .or_default()
-            .insert(module_chirho.to_string());
+            .insert(Some(ImportSupplierOriginChirho::SourceChirho(
+                module_chirho.to_string(),
+            )));
+    }
+
+    /// Positive origin copied from the actual selected exported value.
+    pub fn add_compiler_chirho(
+        &mut self,
+        qualifier_chirho: Option<&str>,
+        name_chirho: &str,
+        value_chirho: CompilerValueChirho,
+    ) {
+        self.suppliers_chirho
+            .entry((
+                qualifier_chirho.map(str::to_string),
+                name_chirho.to_string(),
+            ))
+            .or_default()
+            .insert(Some(ImportSupplierOriginChirho::CompilerChirho(
+                value_chirho,
+            )));
+    }
+
+    /// A selected but unproven namesake must block a conflicting builtin proof.
+    pub fn add_unproven_chirho(&mut self, qualifier_chirho: Option<&str>, name_chirho: &str) {
+        self.suppliers_chirho
+            .entry((
+                qualifier_chirho.map(str::to_string),
+                name_chirho.to_string(),
+            ))
+            .or_default()
+            .insert(None);
+    }
+
+    fn compiler_reference_chirho(
+        &self,
+        qualifier_chirho: Option<&str>,
+        name_chirho: &str,
+    ) -> Option<CompilerValueChirho> {
+        let origins_chirho = self.suppliers_chirho.get(&(
+            qualifier_chirho.map(str::to_string),
+            name_chirho.to_string(),
+        ))?;
+        if origins_chirho.len() != 1 {
+            return None;
+        }
+        match origins_chirho.first()? {
+            Some(ImportSupplierOriginChirho::CompilerChirho(value_chirho)) => Some(*value_chirho),
+            _ => None,
+        }
     }
 
     /// The identity of a reference written `qualifier.name` (or unqualified `name`), when it
@@ -70,7 +134,18 @@ impl ImportSuppliersChirho {
         ))?;
         Some(ImportedReferenceChirho {
             name_chirho: name_chirho.to_string(),
-            defining_modules_chirho: suppliers_chirho.iter().cloned().collect(),
+            defining_modules_chirho: suppliers_chirho
+                .iter()
+                .map(|origin_chirho| {
+                    if let Some(ImportSupplierOriginChirho::SourceChirho(module_chirho)) =
+                        origin_chirho
+                    {
+                        Some(module_chirho.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Option<Vec<_>>>()?,
         })
     }
 }
@@ -96,6 +171,14 @@ impl DesugarCtxChirho {
         let text_chirho = name_chirho.text_chirho().to_string();
         let Some(qualifier_chirho) = name_chirho.qualifier_chirho() else {
             if self.lookup_scope_chirho(&text_chirho).is_none()
+                && let Some(value_chirho) = self
+                    .import_suppliers_chirho
+                    .compiler_reference_chirho(None, &text_chirho)
+            {
+                let id_chirho = self.resolve_certified_compiler_value_chirho(value_chirho);
+                return (value_chirho.core_name_chirho().to_string(), id_chirho);
+            }
+            if self.lookup_scope_chirho(&text_chirho).is_none()
                 && let Some(reference_chirho) = self
                     .import_suppliers_chirho
                     .reference_chirho(None, &text_chirho)
@@ -114,6 +197,13 @@ impl DesugarCtxChirho {
         if let Some(id_chirho) = self.own_top_level_id_chirho(qualifier_chirho, &text_chirho) {
             return (text_chirho, id_chirho);
         }
+        if let Some(value_chirho) = self
+            .import_suppliers_chirho
+            .compiler_reference_chirho(Some(qualifier_chirho), &text_chirho)
+        {
+            let id_chirho = self.resolve_certified_compiler_value_chirho(value_chirho);
+            return (value_chirho.core_name_chirho().to_string(), id_chirho);
+        }
         if let Some(reference_chirho) = self
             .import_suppliers_chirho
             .reference_chirho(Some(qualifier_chirho), &text_chirho)
@@ -123,6 +213,19 @@ impl DesugarCtxChirho {
         }
         let id_chirho = self.resolve_unscoped_var_chirho(&text_chirho);
         (text_chirho, id_chirho)
+    }
+
+    // Only the selected value's positive producer identity reaches this path.
+    // Record its actual reference ID in existing Core provenance. The spelling
+    // alone cannot authorize the body generated by the dictionary pass.
+    fn resolve_certified_compiler_value_chirho(
+        &mut self,
+        value_chirho: CompilerValueChirho,
+    ) -> CoreIdChirho {
+        let id_chirho = self.resolve_unscoped_var_chirho(value_chirho.core_name_chirho());
+        self.compiler_value_references_chirho
+            .insert(id_chirho, value_chirho);
+        id_chirho
     }
 
     /// The id of an imported user reference: one per identity, whatever text names it, and

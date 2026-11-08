@@ -41,6 +41,8 @@ fn import_chirho(
     list_chirho: Option<(bool, Vec<ImportItemChirho>)>,
 ) -> ImportDeclChirho {
     ImportDeclChirho {
+        package_chirho: None,
+        source_chirho: false,
         module_chirho: name_chirho(module_chirho),
         qualified_chirho: false,
         alias_chirho: None,

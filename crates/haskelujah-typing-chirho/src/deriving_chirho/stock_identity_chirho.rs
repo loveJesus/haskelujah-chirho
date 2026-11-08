@@ -55,6 +55,8 @@ pub(crate) const STOCK_DERIVABLE_CLASSES_CHIRHO: &[&str] = &[
 /// classes naming proved (K01) and the type-namespace names the module declares itself.
 pub(crate) struct StockIdentityChirho<'a> {
     builtin_classes_chirho: &'a BuiltinClassScopeChirho,
+    type_scope_chirho: Option<&'a haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>,
+    star_is_type_chirho: bool,
     module_name_chirho: String,
     /// Each local class with its visible parameter count.
     local_classes_chirho: Vec<(String, usize)>,
@@ -63,10 +65,46 @@ pub(crate) struct StockIdentityChirho<'a> {
 }
 
 impl<'a> StockIdentityChirho<'a> {
+    /// A written universe atom needs its actual declaration, or fresh grammar-owned
+    /// star syntax under the shared language policy. Source/opaque copies are not rebound.
+    pub(super) fn proves_type_universe_chirho(&self, name_chirho: &NameChirho) -> bool {
+        use haskelujah_ast_chirho::name_chirho::{
+            CompilerTypeConstructorChirho, TypeConstructorIdentityChirho, TypeConstructorRoleChirho,
+        };
+        if name_chirho.type_constructor_opaque_chirho() {
+            return false;
+        }
+        let proof_chirho = name_chirho.type_constructor_chirho().or_else(|| {
+            self.type_scope_chirho.and_then(|scope_chirho| {
+                scope_chirho.declaration_chirho(&name_chirho.full_name_chirho())
+            })
+        });
+        if let Some(proof_chirho) = proof_chirho {
+            return proof_chirho.role_chirho == TypeConstructorRoleChirho::UniverseChirho
+                && proof_chirho.identity_chirho
+                    == TypeConstructorIdentityChirho::CompilerChirho(
+                        CompilerTypeConstructorChirho::TypeUniverseChirho,
+                    );
+        }
+        self.star_is_type_chirho
+            && name_chirho.qualifier_chirho().is_none()
+            && name_chirho.text_chirho() == "*"
+    }
+
     /// The judgment for `module_chirho`, with the builtin classes naming proved for it.
     pub(crate) fn of_module_chirho(
         module_chirho: &ModuleChirho,
         builtin_classes_chirho: &'a BuiltinClassScopeChirho,
+    ) -> Self {
+        Self::with_type_scope_chirho(module_chirho, builtin_classes_chirho, None)
+    }
+
+    pub(crate) fn with_type_scope_chirho(
+        module_chirho: &ModuleChirho,
+        builtin_classes_chirho: &'a BuiltinClassScopeChirho,
+        type_scope_chirho: Option<
+            &'a haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho,
+        >,
     ) -> Self {
         let mut local_classes_chirho = Vec::new();
         let mut local_types_chirho = HashSet::new();
@@ -94,6 +132,13 @@ impl<'a> StockIdentityChirho<'a> {
         }
         Self {
             builtin_classes_chirho,
+            type_scope_chirho,
+            star_is_type_chirho:
+                haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(
+                    module_chirho,
+                    "StarIsType",
+                    true,
+                ),
             module_name_chirho: module_chirho.name_chirho.full_name_chirho(),
             local_classes_chirho,
             local_types_chirho,
@@ -279,5 +324,5 @@ pub(crate) fn spell_generated_class_chirho(
 }
 
 #[cfg(test)]
-#[path = "stock_identity_tests_chirho.rs"]
+#[path = "tests_chirho/identity_chirho/stock_identity_tests_chirho.rs"]
 mod tests_chirho;

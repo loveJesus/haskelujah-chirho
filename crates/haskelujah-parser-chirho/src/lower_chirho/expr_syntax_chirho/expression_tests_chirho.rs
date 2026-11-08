@@ -130,7 +130,7 @@ fn lower_parallel_list_comp_preserves_qualifier_groups_chirho() {
     assert_eq!(parallel_quals_chirho.len(), 2);
     assert!(
         matches!(
-            parallel_quals_chirho[0].as_slice(),
+            parallel_quals_chirho[0].iter().map(|qualifier_chirho| match qualifier_chirho { haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho::StatementChirho(statement_chirho) => statement_chirho.as_ref(), _ => panic!("expected ordinary qualifier") }).collect::<Vec<_>>().as_slice(),
             [StmtChirho::LetChirho { .. }, StmtChirho::BindChirho { .. }]
         ),
         "unexpected first qualifier group: {:?}",
@@ -138,7 +138,7 @@ fn lower_parallel_list_comp_preserves_qualifier_groups_chirho() {
     );
     assert!(
         matches!(
-            parallel_quals_chirho[1].as_slice(),
+            parallel_quals_chirho[1].iter().map(|qualifier_chirho| match qualifier_chirho { haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho::StatementChirho(statement_chirho) => statement_chirho.as_ref(), _ => panic!("expected ordinary qualifier") }).collect::<Vec<_>>().as_slice(),
             [StmtChirho::BindChirho { .. }]
         ),
         "unexpected second qualifier group: {:?}",

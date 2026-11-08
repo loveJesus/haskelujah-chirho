@@ -11,7 +11,37 @@ use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 
 #[test]
 fn normalize_ty_expands_synonym_exposed_by_family_reduction_chirho() {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
+    // Use the production declaration prepass: a raw result spelling alone is
+    // not nominal proof, even when this low-level fixture writes the family.
+    let module_chirho = ModuleChirho {
+        name_chirho: dummy_name_chirho("SynonymResultFixtureChirho"),
+        exports_chirho: None,
+        imports_chirho: vec![],
+        decls_chirho: vec![DeclChirho::DataDeclChirho {
+            name_chirho: dummy_name_chirho("GRep'"),
+            type_vars_chirho: vec![dummy_name_chirho("fChirho").into()],
+            constructors_chirho: vec![
+                haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
+                    prefix_chirho: Default::default(),
+                    name_chirho: dummy_name_chirho("MkGRepChirho"),
+                    fields_chirho: vec![],
+                    span_chirho: SpanChirho::DUMMY_CHIRHO,
+                },
+            ],
+            deriving_chirho: vec![],
+            kind_sig_chirho: None,
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+        extensions_chirho: vec![],
+        inline_pragmas_chirho: HashMap::new(),
+        specialize_pragmas_chirho: HashMap::new(),
+        foreign_exports_chirho: vec![],
+        deriving_via_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+        origin_supply_chirho: Default::default(),
+    };
+    ctx_chirho.prepare_family_scope_chirho(&module_chirho, None);
     ctx_chirho.register_type_synonym_chirho(
         "GRep".to_string(),
         vec!["f".to_string()],
@@ -23,6 +53,7 @@ fn normalize_ty_expands_synonym_exposed_by_family_reduction_chirho() {
             )),
         ),
     );
+    ctx_chirho.register_open_family_chirho("Rep".to_owned(), 1, SpanChirho::DUMMY_CHIRHO);
     ctx_chirho.register_type_family_instance_chirho(
         "Rep".to_string(),
         vec![TyChirho::ForallVarChirho("f".to_string())],
@@ -30,6 +61,18 @@ fn normalize_ty_expands_synonym_exposed_by_family_reduction_chirho() {
             Box::new(TyChirho::ConChirho("GRep".to_string())),
             Box::new(TyChirho::ForallVarChirho("f".to_string())),
         ),
+    );
+
+    assert_eq!(
+        ctx_chirho.reduce_type_family_chirho("Rep", &[TyChirho::ConChirho("Proxy".to_owned())]),
+        Some(TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("GRep'".to_owned())),
+            Box::new(TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("Rep1".to_owned())),
+                Box::new(TyChirho::ConChirho("Proxy".to_owned())),
+            )),
+        )),
+        "the declared result datatype remains reducible after synonym expansion"
     );
 
     let normalized_chirho = ctx_chirho.normalize_ty_chirho(&TyChirho::AppChirho(
@@ -52,7 +95,7 @@ fn normalize_ty_expands_synonym_exposed_by_family_reduction_chirho() {
 
 #[test]
 fn normalize_ty_expands_ghc_generics_metadata_aliases_chirho() {
-    let ctx_chirho = InferCtxChirho::new_chirho();
+    let ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
     let normalized_d1_chirho = ctx_chirho.normalize_ty_chirho(&TyChirho::AppChirho(
         Box::new(TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
@@ -96,6 +139,7 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
     };
 
     let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: dummy_name_chirho("Representable"),
         type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -125,10 +169,15 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+            injectivity_chirho: None,
+            default_arguments_chirho: None,
             name_chirho: dummy_name_chirho("Rep"),
-            type_vars_chirho: vec![dummy_name_chirho("f")],
+            result_kind_chirho: None,
+            type_vars_chirho: vec![dummy_name_chirho("f").into()],
+            data_family_chirho: false,
             default_rhs_chirho: None,
             default_params_chirho: vec![],
+            default_binders_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         fundeps_chirho: vec![],
@@ -136,11 +185,13 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
     };
 
     let instance_decl_ast_chirho = DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: dummy_name_chirho("Representable"),
         types_chirho: vec![product_head_ast_chirho.clone()],
         methods_chirho: vec![],
         assoc_tf_instances_chirho: vec![AssocTfInstanceChirho {
+            kind_args_chirho: Vec::new(),
             family_name_chirho: dummy_name_chirho("Rep"),
             lhs_types_chirho: vec![product_head_ast_chirho],
             rhs_chirho: TypeChirho::TupleChirho {
@@ -163,14 +214,38 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
 
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
+    // The real module prepass binds this class's Rep before converting method
+    // schemes; GHC.Generics.Rep is a different family with the same bare spelling.
+    let module_chirho = ModuleChirho {
+        name_chirho: dummy_name_chirho("RepresentableFixtureChirho"),
+        exports_chirho: None,
+        imports_chirho: vec![],
+        decls_chirho: vec![
+            class_decl_ast_chirho.clone(),
+            instance_decl_ast_chirho.clone(),
+        ],
+        extensions_chirho: vec![],
+        inline_pragmas_chirho: HashMap::new(),
+        specialize_pragmas_chirho: HashMap::new(),
+        foreign_exports_chirho: vec![],
+        deriving_via_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+        origin_supply_chirho: Default::default(),
+    };
+    ctx_chirho.prepare_family_scope_chirho(&module_chirho, None);
     ctx_chirho.process_class_decl_chirho(&class_decl_ast_chirho);
     ctx_chirho.process_instance_decl_chirho(&instance_decl_ast_chirho);
+    assert!(
+        !ctx_chirho.diagnostics_chirho.has_errors_chirho(),
+        "{}",
+        ctx_chirho.diagnostics_chirho
+    );
 
     let class_decl_chirho = ctx_chirho
         .class_env_chirho
-        .classes_chirho
-        .get("Representable")
+        .classes_chirho()
+        .get_chirho("Representable")
         .cloned()
         .expect("class should register");
     let method_scheme_chirho = class_decl_chirho
@@ -195,7 +270,8 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
                 TyChirho::FunChirho(_, inner_result_chirho, _) => {
                     assert!(
                         matches!(*inner_result_chirho, TyChirho::TupleChirho(ref elems_chirho) if elems_chirho.len() == 2),
-                        "tabulate argument should return a 2-tuple after associated family reduction"
+                        "tabulate argument should return a 2-tuple after associated family reduction; got {inner_result_chirho}; {}",
+                        ctx_chirho.diagnostics_chirho
                     );
                 }
                 other_chirho => panic!("expected function argument, got {:?}", other_chirho),
@@ -220,6 +296,7 @@ fn infer_proxy_index_instance_method_reduces_rep_to_unit_chirho() {
         imports_chirho: vec![],
         decls_chirho: vec![
             DeclChirho::ClassDeclChirho {
+                standalone_kind_chirho: None,
                 context_chirho: vec![],
                 name_chirho: dummy_name_chirho("Representable"),
                 type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -252,10 +329,15 @@ fn infer_proxy_index_instance_method_reduces_rep_to_unit_chirho() {
                 }],
                 associated_tfs_chirho: vec![
                     haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+                        injectivity_chirho: None,
+                        default_arguments_chirho: None,
                         name_chirho: dummy_name_chirho("Rep"),
-                        type_vars_chirho: vec![dummy_name_chirho("f")],
+                        result_kind_chirho: None,
+                        type_vars_chirho: vec![dummy_name_chirho("f").into()],
+                        data_family_chirho: false,
                         default_rhs_chirho: None,
                         default_params_chirho: vec![],
+                        default_binders_chirho: None,
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                 ],
@@ -263,6 +345,7 @@ fn infer_proxy_index_instance_method_reduces_rep_to_unit_chirho() {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             DeclChirho::InstanceDeclChirho {
+                kind_args_chirho: Vec::new(),
                 context_chirho: vec![],
                 class_chirho: dummy_name_chirho("Representable"),
                 types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Proxy"))],
@@ -283,6 +366,7 @@ fn infer_proxy_index_instance_method_reduces_rep_to_unit_chirho() {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 }],
                 assoc_tf_instances_chirho: vec![AssocTfInstanceChirho {
+                    kind_args_chirho: Vec::new(),
                     family_name_chirho: dummy_name_chirho("Rep"),
                     lhs_types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Proxy"))],
                     rhs_chirho: TypeChirho::TupleChirho {
@@ -330,7 +414,7 @@ fn collect_free_type_vars_walks_parenthesized_assoc_family_lhs_chirho() {
 
 #[test]
 fn infer_composition_with_tuple_family_projection_preserves_applied_rep_chirho() {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
     let arg_ty_chirho = ctx_chirho.fresh_var_chirho();
     let h_ty_chirho = TyChirho::fun_chirho(
         arg_ty_chirho,
@@ -374,8 +458,9 @@ fn infer_composition_with_tuple_family_projection_preserves_applied_rep_chirho()
 
 #[test]
 fn infer_tabulate_application_after_tuple_projection_keeps_component_functor_chirho() {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
     let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: dummy_name_chirho("Representable"),
         type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -405,10 +490,15 @@ fn infer_tabulate_application_after_tuple_projection_keeps_component_functor_chi
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         associated_tfs_chirho: vec![haskelujah_ast_chirho::decl_chirho::AssocTypeFamilyChirho {
+            injectivity_chirho: None,
+            default_arguments_chirho: None,
             name_chirho: dummy_name_chirho("Rep"),
-            type_vars_chirho: vec![dummy_name_chirho("f")],
+            result_kind_chirho: None,
+            type_vars_chirho: vec![dummy_name_chirho("f").into()],
+            data_family_chirho: false,
             default_rhs_chirho: None,
             default_params_chirho: vec![],
+            default_binders_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         fundeps_chirho: vec![],
@@ -459,15 +549,7 @@ fn infer_tabulate_application_after_tuple_projection_keeps_component_functor_chi
 
 #[test]
 fn unify_normalized_reduces_primstate_before_occurs_check_chirho() {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
-    ctx_chirho.register_type_family_instance_chirho(
-        "PrimState".to_string(),
-        vec![TyChirho::AppChirho(
-            Box::new(TyChirho::ConChirho("ST".to_string())),
-            Box::new(TyChirho::ForallVarChirho("s".to_string())),
-        )],
-        TyChirho::ForallVarChirho("s".to_string()),
-    );
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
 
     let state_var_ty_chirho = ctx_chirho.fresh_var_chirho();
     let prim_state_ty_chirho = TyChirho::AppChirho(
@@ -499,15 +581,7 @@ fn unify_normalized_reduces_primstate_before_occurs_check_chirho() {
 
 #[test]
 fn app_unification_renormalizes_after_head_substitution_for_primstate_chirho() {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
-    ctx_chirho.register_type_family_instance_chirho(
-        "PrimState".to_string(),
-        vec![TyChirho::AppChirho(
-            Box::new(TyChirho::ConChirho("ST".to_string())),
-            Box::new(TyChirho::ForallVarChirho("s".to_string())),
-        )],
-        TyChirho::ForallVarChirho("s".to_string()),
-    );
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
 
     let monad_ty_chirho = ctx_chirho.fresh_var_chirho();
     let elem_ty_chirho = ctx_chirho.fresh_var_chirho();
@@ -561,15 +635,7 @@ fn app_unification_renormalizes_after_head_substitution_for_primstate_chirho() {
 
 #[test]
 fn unify_normalized_instantiates_forall_before_reducing_primstate_chirho() {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
-    ctx_chirho.register_type_family_instance_chirho(
-        "PrimState".to_string(),
-        vec![TyChirho::AppChirho(
-            Box::new(TyChirho::ConChirho("ST".to_string())),
-            Box::new(TyChirho::ForallVarChirho("s".to_string())),
-        )],
-        TyChirho::ForallVarChirho("s".to_string()),
-    );
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
 
     let monad_ty_chirho = ctx_chirho.fresh_var_chirho();
     let elem_ty_chirho = TyChirho::ConChirho("Int".to_string());
@@ -588,7 +654,7 @@ fn unify_normalized_instantiates_forall_before_reducing_primstate_chirho() {
     );
     let state_var_chirho = TyVarChirho(8000);
     let expected_ty_chirho = TyChirho::ForallChirho {
-        vars_chirho: vec![state_var_chirho],
+        vars_chirho: vec![state_var_chirho].into(),
         body_chirho: Box::new(TyChirho::AppChirho(
             Box::new(TyChirho::AppChirho(
                 Box::new(TyChirho::ConChirho("ST".to_string())),
@@ -659,5 +725,45 @@ fn unify_normalized_instantiates_forall_before_reducing_primstate_chirho() {
             "expected normalized actual type to remain an application, got {:?}",
             other_chirho
         ),
+    }
+}
+
+#[test]
+fn synonym_expansion_and_associated_substitution_preserve_arrow_multiplicity_chirho() {
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
+    for mult_chirho in [
+        crate::ty_chirho::MultChirho::OneChirho,
+        crate::ty_chirho::MultChirho::ManyChirho,
+    ] {
+        let variable_chirho = TyChirho::ForallVarChirho("aChirho".to_owned());
+        let rhs_chirho = TyChirho::FunChirho(
+            Box::new(variable_chirho.clone()),
+            Box::new(variable_chirho),
+            mult_chirho,
+        );
+        ctx_chirho.register_type_synonym_chirho(
+            "IdentityArrowChirho".to_owned(),
+            vec!["aChirho".to_owned()],
+            rhs_chirho.clone(),
+        );
+        let expected_chirho = TyChirho::FunChirho(
+            Box::new(TyChirho::int_chirho()),
+            Box::new(TyChirho::int_chirho()),
+            mult_chirho,
+        );
+        assert_eq!(
+            ctx_chirho.normalize_ty_chirho(&TyChirho::AppChirho(
+                Box::new(TyChirho::ConChirho("IdentityArrowChirho".to_owned())),
+                Box::new(TyChirho::int_chirho())
+            )),
+            expected_chirho
+        );
+        assert_eq!(
+            super::substitute_type_vars_chirho(
+                &rhs_chirho,
+                &HashMap::from([("aChirho".to_owned(), TyChirho::int_chirho())])
+            ),
+            expected_chirho
+        );
     }
 }

@@ -41,6 +41,7 @@ pub use validity_chirho::declarations_chirho::{
     check_module_declaration_validity_diagnostics_chirho,
     check_module_declaration_validity_with_builtins_chirho,
     check_module_declaration_validity_with_builtins_diagnostics_chirho,
+    check_module_declaration_validity_with_type_scope_diagnostics_chirho,
 };
 pub use validity_chirho::{
     ValidityErrorChirho, ValidityResultChirho, check_module_type_validity_chirho,

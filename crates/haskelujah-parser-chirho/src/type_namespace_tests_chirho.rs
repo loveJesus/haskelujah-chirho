@@ -537,10 +537,36 @@ fn injectivity_annotation_does_not_inflate_family_arity_chirho() {
         .expect("operator family should survive lowering");
 
     assert_eq!(parameter_names_chirho, ["valueChirho", "dimensionChirho"]);
+    let dependency_facts_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|declaration_chirho| match declaration_chirho {
+            DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                injectivity_chirho,
+                ..
+            } => Some((name_chirho.text_chirho(), *injectivity_chirho)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        dependency_facts_chirho,
+        [("DimChirho", Some(false)), ("OfDimChirho", Some(true))]
+    );
 }
 
 #[test]
-fn unsupported_applied_binder_kind_remains_inferred_chirho() {
+fn a_named_family_result_does_not_invent_an_injectivity_annotation_chirho() {
+    let module_chirho = lower_source_chirho(
+        "{-# LANGUAGE TypeFamilies, TypeFamilyDependencies #-}\nmodule NamedResultChirho where\ntype family NamedChirho valueChirho = resultChirho\n",
+    );
+    assert!(
+        matches!(module_chirho.decls_chirho.first(), Some(DeclChirho::TypeFamilyDeclChirho { injectivity_chirho: Some(false), type_vars_chirho, .. }) if type_vars_chirho.len() == 1)
+    );
+}
+
+#[test]
+fn applied_binder_kinds_are_retained_as_complete_type_syntax_chirho() {
     let module_chirho = lower_source_chirho(concat!(
         "{-# LANGUAGE KindSignatures #-}\n",
         "{-# LANGUAGE PolyKinds #-}\n",
@@ -566,8 +592,10 @@ fn unsupported_applied_binder_kind_remains_inferred_chirho() {
         .expect("kind-annotated category binder should survive lowering");
 
     assert!(
-        category_binder_chirho.kind_annotation_chirho.is_none(),
-        "an unrepresented named kind application must defer to kind inference"
+        matches!(category_binder_chirho.kind_annotation_chirho.as_deref(), Some(TypeChirho::AppChirho { fun_chirho, arg_chirho, .. })
+        if matches!(fun_chirho.as_ref(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "CatChirho")
+            && matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "indexChirho")),
+        "an applied nominal kind must reach elaboration without loss"
     );
 }
 
@@ -583,6 +611,12 @@ fn visible_kind_binders_do_not_become_family_arguments_chirho() {
         "  type FamilyChirho @kindChirho typeChirho\n",
         "  data DataFamilyChirho @kindChirho typeChirho\n",
     ));
+    assert!(module_chirho.decls_chirho.iter().any(|declaration_chirho| {
+        matches!(declaration_chirho, DeclChirho::ClassDeclChirho { type_vars_chirho, .. }
+            if type_vars_chirho.len() == 2
+                && !type_vars_chirho[0].is_visible_chirho()
+                && type_vars_chirho[1].is_visible_chirho())
+    }));
     let (class_parameters_chirho, family_parameters_chirho) = module_chirho
         .decls_chirho
         .iter()
@@ -594,6 +628,7 @@ fn visible_kind_binders_do_not_become_family_arguments_chirho() {
             } => Some((
                 type_vars_chirho
                     .iter()
+                    .filter(|type_var_chirho| type_var_chirho.is_visible_chirho())
                     .map(|type_var_chirho| type_var_chirho.name_chirho.text_chirho().to_string())
                     .collect::<Vec<_>>(),
                 associated_tfs_chirho
@@ -604,7 +639,10 @@ fn visible_kind_binders_do_not_become_family_arguments_chirho() {
                             family_chirho
                                 .type_vars_chirho
                                 .iter()
-                                .map(|type_var_chirho| type_var_chirho.text_chirho().to_string())
+                                .filter(|type_var_chirho| type_var_chirho.is_visible_chirho())
+                                .map(|type_var_chirho| {
+                                    type_var_chirho.name_chirho.text_chirho().to_string()
+                                })
                                 .collect::<Vec<_>>(),
                         )
                     })

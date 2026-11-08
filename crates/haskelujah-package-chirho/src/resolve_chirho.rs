@@ -9,6 +9,12 @@
 //!
 //! The resolver produces a topologically sorted `BuildPlanChirho` — a list of
 //! `(package, version)` pairs in dependency order (leaves first).
+//!
+//! One solver serves two modes. `resolve_deps_chirho` is best effort: it skips a missing or
+//! unsatisfiable root with a warning and may exceed upper bounds (allow-newer), which the
+//! frontend-only paths rely on. `resolve_build_deps_chirho` is strict: an executable build links
+//! exactly the versions it plans, so every reached bound must hold for the selected version
+//! (row 703).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
@@ -161,10 +167,21 @@ impl std::error::Error for ResolveErrorChirho {}
 // Solver
 // ---------------------------------------------------------------------------
 
+/// Whether the solver may skip unsatisfiable roots and exceed upper bounds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ResolveModeChirho {
+    /// Skip a missing or unsatisfiable root with a warning, and accept a version beyond an
+    /// upper bound (allow-newer).
+    BestEffortChirho,
+    /// Every reached bound must hold for the selected version, and nothing is skipped.
+    StrictChirho,
+}
+
 /// Internal solver state.
 struct SolverChirho<'a> {
     index_chirho: &'a PackageIndexChirho,
     builtin_chirho: &'a BTreeSet<String>,
+    mode_chirho: ResolveModeChirho,
     /// Currently selected versions (package → version).
     selected_chirho: HashMap<String, VersionChirho>,
     /// Accumulated constraints per package from all dependents.
@@ -181,10 +198,12 @@ impl<'a> SolverChirho<'a> {
     fn new_chirho(
         index_chirho: &'a PackageIndexChirho,
         builtin_chirho: &'a BTreeSet<String>,
+        mode_chirho: ResolveModeChirho,
     ) -> Self {
         Self {
             index_chirho,
             builtin_chirho,
+            mode_chirho,
             selected_chirho: HashMap::new(),
             constraints_chirho: HashMap::new(),
             dep_edges_chirho: HashMap::new(),
@@ -218,22 +237,24 @@ impl<'a> SolverChirho<'a> {
         }
 
         // If already fully resolved, check compatibility.
-        // Allow-newer: if the constraint fails but is an upper bound,
-        // accept the existing version anyway (like cabal --allow-newer).
-        if let Some(existing_chirho) = self.selected_chirho.get(name_chirho) {
-            if self.done_chirho.contains(name_chirho) {
-                if constraint_chirho.satisfied_by_chirho(existing_chirho)
-                    || constraint_chirho.is_upper_bound_only_chirho()
-                {
-                    return Ok(());
-                } else {
-                    return Err(ResolveErrorChirho::ConflictChirho {
-                        package_chirho: name_chirho.to_string(),
-                        selected_chirho: existing_chirho.clone(),
-                        required_by_chirho: parent_chirho.to_string(),
-                        constraint_chirho: constraint_chirho.clone(),
-                    });
-                }
+        // Allow-newer, in best effort only: if the constraint fails but is an upper bound,
+        // accept the existing version anyway (like cabal --allow-newer). A strict build checks
+        // this bound against the version already selected like any other.
+        let allow_newer_chirho = self.mode_chirho == ResolveModeChirho::BestEffortChirho;
+        if let Some(existing_chirho) = self.selected_chirho.get(name_chirho)
+            && self.done_chirho.contains(name_chirho)
+        {
+            if constraint_chirho.satisfied_by_chirho(existing_chirho)
+                || (allow_newer_chirho && constraint_chirho.is_upper_bound_only_chirho())
+            {
+                return Ok(());
+            } else {
+                return Err(ResolveErrorChirho::ConflictChirho {
+                    package_chirho: name_chirho.to_string(),
+                    selected_chirho: existing_chirho.clone(),
+                    required_by_chirho: parent_chirho.to_string(),
+                    constraint_chirho: constraint_chirho.clone(),
+                });
             }
         }
 
@@ -258,7 +279,7 @@ impl<'a> SolverChirho<'a> {
             .unwrap_or_default();
 
         // Pick the newest version that satisfies ALL accumulated constraints.
-        // If no version satisfies strict constraints, fall back to allow-newer
+        // If no version satisfies strict constraints, best effort falls back to allow-newer
         // behavior (ignore upper bounds) since we typically have only one version.
         let chosen_chirho = versions_chirho
             .iter()
@@ -268,6 +289,9 @@ impl<'a> SolverChirho<'a> {
                     .all(|c_chirho| c_chirho.satisfied_by_chirho(&meta_chirho.version_chirho))
             })
             .or_else(|| {
+                if !allow_newer_chirho {
+                    return None;
+                }
                 // Allow-newer fallback: ignore Lt/Le/Caret upper bounds
                 versions_chirho.iter().find(|meta_chirho| {
                     all_constraints_chirho.iter().all(|c_chirho| {
@@ -358,7 +382,11 @@ impl<'a> SolverChirho<'a> {
 // Public API
 // ---------------------------------------------------------------------------
 
-/// Resolve a set of root dependencies into a topologically sorted build plan.
+/// Resolve a set of root dependencies into a topologically sorted build plan, best effort.
+///
+/// A missing or unsatisfiable root is skipped with a warning, and an upper bound may be exceeded
+/// (allow-newer). Frontend-only callers rely on this; an executable build uses
+/// [`resolve_build_deps_chirho`].
 ///
 /// `builtin_chirho` is a set of package names that are considered "wired-in"
 /// (e.g. `base`, `ghc-prim`) and are always satisfied without index lookup.
@@ -367,7 +395,43 @@ pub fn resolve_deps_chirho(
     index_chirho: &PackageIndexChirho,
     builtin_chirho: &BTreeSet<String>,
 ) -> Result<BuildPlanChirho, ResolveErrorChirho> {
-    let mut solver_chirho = SolverChirho::new_chirho(index_chirho, builtin_chirho);
+    resolve_with_mode_chirho(
+        root_deps_chirho,
+        index_chirho,
+        builtin_chirho,
+        ResolveModeChirho::BestEffortChirho,
+    )
+}
+
+/// Resolve the dependencies an executable build links, strictly (row 703).
+///
+/// The same solver as [`resolve_deps_chirho`], with no skipped roots and no allow-newer: a
+/// missing or unsatisfiable dependency, direct or transitive, is the error, and every bound that
+/// reaches a package must hold for its selected version, including a package resolved earlier.
+/// Builtins are skipped as before; the compiler declares no version for them, so their bounds
+/// are not checked here. The solver does not backtrack, so when a later dependent excludes a
+/// version already chosen the build is refused even if an older version would suit both.
+/// workflow: development-chirho/package-source-install-chirho
+pub fn resolve_build_deps_chirho(
+    root_deps_chirho: &[DependencyChirho],
+    index_chirho: &PackageIndexChirho,
+    builtin_chirho: &BTreeSet<String>,
+) -> Result<BuildPlanChirho, ResolveErrorChirho> {
+    resolve_with_mode_chirho(
+        root_deps_chirho,
+        index_chirho,
+        builtin_chirho,
+        ResolveModeChirho::StrictChirho,
+    )
+}
+
+fn resolve_with_mode_chirho(
+    root_deps_chirho: &[DependencyChirho],
+    index_chirho: &PackageIndexChirho,
+    builtin_chirho: &BTreeSet<String>,
+    mode_chirho: ResolveModeChirho,
+) -> Result<BuildPlanChirho, ResolveErrorChirho> {
+    let mut solver_chirho = SolverChirho::new_chirho(index_chirho, builtin_chirho, mode_chirho);
 
     for dep_chirho in root_deps_chirho {
         // Skip builtins — they're provided by the runtime.
@@ -388,7 +452,9 @@ pub fn resolve_deps_chirho(
         ) {
             Ok(()) => {}
             Err(ResolveErrorChirho::PackageNotFoundChirho { .. })
-            | Err(ResolveErrorChirho::NoVersionSatisfiesChirho { .. }) => {
+            | Err(ResolveErrorChirho::NoVersionSatisfiesChirho { .. })
+                if mode_chirho == ResolveModeChirho::BestEffortChirho =>
+            {
                 solver_chirho.selected_chirho = selected_snapshot_chirho;
                 solver_chirho.constraints_chirho = constraints_snapshot_chirho;
                 solver_chirho.dep_edges_chirho = dep_edges_snapshot_chirho;
@@ -775,5 +841,126 @@ mod tests_chirho {
             resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho()).unwrap();
 
         assert_eq!(plan_chirho.steps_chirho[0].version_chirho, v_chirho("2.5"));
+    }
+
+    // -----------------------------------------------------------------------
+    // Strict build resolution (row 703)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn strict_resolution_refuses_a_missing_package_chirho() {
+        let index_chirho = PackageIndexChirho::new_chirho();
+        let result_chirho = resolve_build_deps_chirho(
+            &[dep_any_chirho("nonexistent")],
+            &index_chirho,
+            &empty_builtins_chirho(),
+        );
+        assert!(
+            matches!(&result_chirho, Err(ResolveErrorChirho::PackageNotFoundChirho { package_chirho }) if package_chirho == "nonexistent"),
+            "{result_chirho:?}"
+        );
+    }
+
+    #[test]
+    fn strict_resolution_refuses_an_excluded_version_chirho() {
+        let mut index_chirho = PackageIndexChirho::new_chirho();
+        index_chirho.add_package_chirho("text", v_chirho("1.0"), vec![]);
+        let result_chirho = resolve_build_deps_chirho(
+            &[dep_ge_chirho("text", "2.0")],
+            &index_chirho,
+            &empty_builtins_chirho(),
+        );
+        assert!(
+            matches!(&result_chirho, Err(ResolveErrorChirho::NoVersionSatisfiesChirho { package_chirho, .. }) if package_chirho == "text"),
+            "{result_chirho:?}"
+        );
+    }
+
+    #[test]
+    fn strict_resolution_refuses_an_unsatisfiable_transitive_bound_chirho() {
+        let mut index_chirho = PackageIndexChirho::new_chirho();
+        index_chirho.add_package_chirho("A", v_chirho("1.0"), vec![dep_ge_chirho("C", "3.0")]);
+        index_chirho.add_package_chirho("C", v_chirho("1.0"), vec![]);
+        index_chirho.add_package_chirho("C", v_chirho("2.0"), vec![]);
+        let deps_chirho = vec![dep_any_chirho("A")];
+        let best_effort_chirho =
+            resolve_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho()).unwrap();
+        assert!(
+            best_effort_chirho.steps_chirho.is_empty(),
+            "best effort still skips the root"
+        );
+        let result_chirho =
+            resolve_build_deps_chirho(&deps_chirho, &index_chirho, &empty_builtins_chirho());
+        assert!(
+            matches!(&result_chirho, Err(ResolveErrorChirho::NoVersionSatisfiesChirho { package_chirho, .. }) if package_chirho == "C"),
+            "{result_chirho:?}"
+        );
+    }
+
+    #[test]
+    fn strict_resolution_checks_a_bound_on_an_already_resolved_package_chirho() {
+        // The index of resolve_conflict_chirho, which best effort accepts by allow-newer.
+        let mut index_chirho = PackageIndexChirho::new_chirho();
+        index_chirho.add_package_chirho("A", v_chirho("1.0"), vec![dep_ge_chirho("D", "2.0")]);
+        index_chirho.add_package_chirho(
+            "B",
+            v_chirho("1.0"),
+            vec![dep_range_chirho("D", "0.1", "1.5")],
+        );
+        index_chirho.add_package_chirho("D", v_chirho("2.0"), vec![]);
+        index_chirho.add_package_chirho("D", v_chirho("1.0"), vec![]);
+        let result_chirho = resolve_build_deps_chirho(
+            &[dep_any_chirho("A"), dep_any_chirho("B")],
+            &index_chirho,
+            &empty_builtins_chirho(),
+        );
+        assert!(
+            matches!(&result_chirho, Err(ResolveErrorChirho::ConflictChirho { package_chirho, required_by_chirho, .. }) if package_chirho == "D" && required_by_chirho == "B"),
+            "{result_chirho:?}"
+        );
+    }
+
+    #[test]
+    fn strict_resolution_selects_the_newest_version_every_bound_allows_chirho() {
+        let mut index_chirho = PackageIndexChirho::new_chirho();
+        index_chirho.add_package_chirho("D", v_chirho("1.0"), vec![]);
+        index_chirho.add_package_chirho("D", v_chirho("2.0"), vec![]);
+        index_chirho.add_package_chirho(
+            "A",
+            v_chirho("1.0"),
+            vec![dep_range_chirho("D", "0.1", "1.5")],
+        );
+        let plan_chirho = resolve_build_deps_chirho(
+            &[dep_any_chirho("A")],
+            &index_chirho,
+            &empty_builtins_chirho(),
+        )
+        .unwrap();
+        assert_eq!(
+            plan_chirho.steps_chirho,
+            vec![
+                BuildStepChirho {
+                    package_chirho: "D".to_string(),
+                    version_chirho: v_chirho("1.0"),
+                },
+                BuildStepChirho {
+                    package_chirho: "A".to_string(),
+                    version_chirho: v_chirho("1.0"),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn strict_resolution_skips_builtins_without_checking_their_bounds_chirho() {
+        let index_chirho = PackageIndexChirho::new_chirho();
+        let builtins_chirho: BTreeSet<String> = ["base".to_string()].into_iter().collect();
+        let plan_chirho = resolve_build_deps_chirho(
+            &[dep_range_chirho("base", "4.7", "5")],
+            &index_chirho,
+            &builtins_chirho,
+        )
+        .unwrap();
+        assert!(plan_chirho.steps_chirho.is_empty());
     }
 }

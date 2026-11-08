@@ -57,6 +57,10 @@ fn qualified_name_chirho(qualifier_chirho: &str, text_chirho: &str) -> NameChirh
 /// `type family <name> a`.
 fn family_chirho(family_name_chirho: &str) -> DeclChirho {
     DeclChirho::TypeFamilyDeclChirho {
+        injectivity_chirho: None,
+        standalone_kind_chirho: None,
+        data_family_chirho: false,
+        closed_chirho: false,
         name_chirho: name_chirho(family_name_chirho),
         type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("aChirho"))],
         result_kind_chirho: None,
@@ -234,7 +238,9 @@ fn a_constructor_prefix_decides_what_its_variables_are_chirho() {
     // #31811, root's measured `ConstructorContextRoleChirho`: `forall . (aChirho ~ Int) =>`.
     let equality_chirho = ConPrefixChirho {
         existential_vars_chirho: vec![],
+        forall_written_chirho: true,
         context_chirho: vec![ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: name_chirho("~"),
             args_chirho: vec![var_chirho("aChirho"), con_chirho("Int")],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -243,10 +249,20 @@ fn a_constructor_prefix_decides_what_its_variables_are_chirho() {
     };
     // `forall aChirho. HiddenChirho aChirho`: the field's variable is the binder's.
     let shadowing_chirho = ConPrefixChirho {
-        existential_vars_chirho: vec![name_chirho("aChirho")],
+        existential_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("aChirho"))],
+        forall_written_chirho: true,
         ..ConPrefixChirho::default()
     };
+    let mut kinded_chirho = shadowing_chirho.clone();
+    kinded_chirho.existential_vars_chirho[0].kind_annotation_chirho =
+        Some(Box::new(var_chirho("aChirho")));
     let roles_chirho = local_parameter_roles_chirho(&module_chirho(vec![
+        data_with_prefix_chirho(
+            "KindedChirho",
+            &["aChirho"],
+            kinded_chirho,
+            vec![con_chirho("Int")],
+        ),
         data_with_prefix_chirho(
             "HoldChirho",
             &["aChirho"],
@@ -269,6 +285,7 @@ fn a_constructor_prefix_decides_what_its_variables_are_chirho() {
     assert_eq!(roles_chirho["HoldChirho"], [NOMINAL_CHIRHO]);
     assert_eq!(roles_chirho["HiddenChirho"], [PHANTOM_CHIRHO]);
     assert_eq!(roles_chirho["UnreadChirho"], [UNKNOWN_CHIRHO]);
+    assert_eq!(roles_chirho["KindedChirho"], [UNKNOWN_CHIRHO]);
 }
 
 #[test]
@@ -306,7 +323,11 @@ fn a_gadt_parameter_is_unknown_unless_annotated_chirho() {
         type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("aChirho"))],
         constructors_chirho: vec![ConDeclChirho::GadtChirho {
             name_chirho: name_chirho("MkGadtChirho"),
-            ty_chirho: con_chirho("Int"),
+            signature_chirho: Box::new(
+                haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
+                    con_chirho("Int"),
+                ),
+            ),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         deriving_chirho: vec![],
@@ -332,9 +353,9 @@ fn class_env_chirho(
     ty_chirho: TyChirho,
 ) -> ClassEnvChirho {
     let mut class_env_chirho = ClassEnvChirho::new_chirho();
-    class_env_chirho.classes_chirho.insert(
-        class_chirho.to_string(),
-        TypingClassChirho {
+    class_env_chirho.add_class_chirho(TypingClassChirho::legacy_chirho(
+        crate::class_chirho::ClassDeclPartsChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: class_chirho.to_string(),
             supers_chirho: vec![],
             super_templates_chirho: Vec::new(),
@@ -342,12 +363,15 @@ fn class_env_chirho(
             methods_chirho: HashMap::from([(
                 method_chirho.to_string(),
                 SchemeChirho {
-                    vars_chirho: vec![CLASS_VAR_CHIRHO],
-                    preds_chirho: vec![SchemePredChirho {
-                        class_name_chirho: class_chirho.to_string(),
-                        ty_chirho: TyChirho::VarChirho(CLASS_VAR_CHIRHO),
-                        extra_tys_chirho: vec![],
-                    }],
+                    vars_chirho: vec![CLASS_VAR_CHIRHO].into(),
+                    preds_chirho: vec![SchemePredChirho::legacy_chirho(
+                        crate::ty_chirho::SchemePredPartsChirho {
+                            kind_tys_chirho: Vec::new(),
+                            class_name_chirho: class_chirho.to_string(),
+                            ty_chirho: TyChirho::VarChirho(CLASS_VAR_CHIRHO),
+                            extra_tys_chirho: vec![],
+                        },
+                    )],
                     ty_chirho,
                 },
             )]),
@@ -355,7 +379,7 @@ fn class_env_chirho(
             fundeps_chirho: vec![],
             defaults_chirho: HashMap::new(),
         },
-    );
+    ));
     class_env_chirho
 }
 
@@ -417,7 +441,7 @@ fn a_nominal_position_is_ghcs_refusal_and_a_representational_one_proves_chirho()
     // R1 and R2: `wrapChirho :: a -> HoldChirho a` with HoldChirho's parameter nominal.
     let refused_chirho = prove_chirho(&wrap_chirho, Some(NOMINAL_CHIRHO))
         .expect_err("a nominal position never proves");
-    assert_eq!(refused_chirho.ghc_code_chirho, "GHC-18872");
+    assert_eq!(refused_chirho.ghc_code_chirho, Some("GHC-18872"));
     assert!(refused_chirho.message_chirho.contains("`wrapChirho`"));
     // R3: the same method with HoldChirho's parameter representational.
     let proof_chirho =
@@ -428,12 +452,15 @@ fn a_nominal_position_is_ghcs_refusal_and_a_representational_one_proves_chirho()
     // A constructor whose roles the module cannot prove is a named gap, not GHC's refusal,
     // and so is a local parameter whose role is Unknown.
     let unknown_chirho = prove_chirho(&wrap_chirho, None).expect_err("unknown roles never prove");
-    assert_eq!(unknown_chirho.ghc_code_chirho, UNSUPPORTED_SHAPE_CHIRHO);
+    assert_eq!(
+        unknown_chirho.ghc_code_chirho,
+        Some(UNSUPPORTED_SHAPE_CHIRHO)
+    );
     let unknown_role_chirho =
         prove_chirho(&wrap_chirho, Some(UNKNOWN_CHIRHO)).expect_err("an Unknown role never proves");
     assert_eq!(
         unknown_role_chirho.ghc_code_chirho,
-        UNSUPPORTED_SHAPE_CHIRHO
+        Some(UNSUPPORTED_SHAPE_CHIRHO)
     );
 }
 
@@ -461,7 +488,7 @@ fn below_a_blocked_position_every_occurrence_is_blocked_chirho() {
     let refused_chirho =
         prove_with_chirho(&wrap_chirho, &roles_chirho(NOMINAL_CHIRHO), &HashSet::new())
             .expect_err("below a nominal position nothing coerces");
-    assert_eq!(refused_chirho.ghc_code_chirho, "GHC-18872");
+    assert_eq!(refused_chirho.ghc_code_chirho, Some("GHC-18872"));
     assert!(
         prove_with_chirho(
             &wrap_chirho,
@@ -484,11 +511,14 @@ fn a_local_family_argument_is_ghcs_refusal_chirho() {
     let refused_chirho =
         prove_with_chirho(&wrap_chirho, &ParameterRolesChirho::new(), &families_chirho)
             .expect_err("a family's argument never coerces");
-    assert_eq!(refused_chirho.ghc_code_chirho, "GHC-18872");
+    assert_eq!(refused_chirho.ghc_code_chirho, Some("GHC-18872"));
     let unknown_chirho =
         prove_with_chirho(&wrap_chirho, &ParameterRolesChirho::new(), &HashSet::new())
             .expect_err("an undeclared constructor proves nothing");
-    assert_eq!(unknown_chirho.ghc_code_chirho, UNSUPPORTED_SHAPE_CHIRHO);
+    assert_eq!(
+        unknown_chirho.ghc_code_chirho,
+        Some(UNSUPPORTED_SHAPE_CHIRHO)
+    );
 }
 
 #[test]
@@ -528,7 +558,10 @@ fn an_associated_family_or_an_unknown_class_is_a_named_gap_chirho() {
         &associated_chirho,
     )
     .expect_err("R5 waits for the family's forwarding");
-    assert_eq!(refused_chirho.ghc_code_chirho, UNSUPPORTED_SHAPE_CHIRHO);
+    assert_eq!(
+        refused_chirho.ghc_code_chirho,
+        Some(UNSUPPORTED_SHAPE_CHIRHO)
+    );
     assert!(refused_chirho.message_chirho.contains("`ItemChirho`"));
     let unknown_chirho = prove_request_chirho(
         &request_chirho("MissingChirho"),
@@ -537,5 +570,8 @@ fn an_associated_family_or_an_unknown_class_is_a_named_gap_chirho() {
         &HashMap::new(),
     )
     .expect_err("an unknown class never proves");
-    assert_eq!(unknown_chirho.ghc_code_chirho, UNSUPPORTED_SHAPE_CHIRHO);
+    assert_eq!(
+        unknown_chirho.ghc_code_chirho,
+        Some(UNSUPPORTED_SHAPE_CHIRHO)
+    );
 }

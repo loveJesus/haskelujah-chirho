@@ -17,6 +17,7 @@ fn desugar_case_con_binders_chirho() {
         alts_chirho: vec![
             haskelujah_ast_chirho::expr_chirho::AltChirho {
                 pat_chirho: PatChirho::ConChirho {
+                    type_args_chirho: Vec::new(),
                     con_chirho: dummy_name_chirho("Just"),
                     args_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("a"))],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -29,6 +30,7 @@ fn desugar_case_con_binders_chirho() {
             },
             haskelujah_ast_chirho::expr_chirho::AltChirho {
                 pat_chirho: PatChirho::ConChirho {
+                    type_args_chirho: Vec::new(),
                     con_chirho: dummy_name_chirho("Nothing"),
                     args_chirho: vec![],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -75,6 +77,7 @@ fn desugar_case_multi_field_binders_chirho() {
         scrutinee_chirho: Box::new(ExprChirho::VarChirho(dummy_name_chirho("p"))),
         alts_chirho: vec![haskelujah_ast_chirho::expr_chirho::AltChirho {
             pat_chirho: PatChirho::ConChirho {
+                type_args_chirho: Vec::new(),
                 con_chirho: dummy_name_chirho("MkPoint"),
                 args_chirho: vec![
                     PatChirho::VarChirho(dummy_name_chirho("x")),
@@ -238,6 +241,7 @@ fn desugar_case_wildcard_binders_chirho() {
         alts_chirho: vec![
             haskelujah_ast_chirho::expr_chirho::AltChirho {
                 pat_chirho: PatChirho::ConChirho {
+                    type_args_chirho: Vec::new(),
                     con_chirho: dummy_name_chirho("Just"),
                     args_chirho: vec![PatChirho::WildcardChirho(SpanChirho::DUMMY_CHIRHO)],
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -373,6 +377,7 @@ fn desugar_function_con_pattern_binders_chirho() {
             matches_chirho: vec![
                 MatchArmChirho {
                     pats_chirho: vec![PatChirho::ConChirho {
+                        type_args_chirho: Vec::new(),
                         con_chirho: dummy_name_chirho("Just"),
                         args_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("x"))],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -385,6 +390,7 @@ fn desugar_function_con_pattern_binders_chirho() {
                 },
                 MatchArmChirho {
                     pats_chirho: vec![PatChirho::ConChirho {
+                        type_args_chirho: Vec::new(),
                         con_chirho: dummy_name_chirho("Nothing"),
                         args_chirho: vec![],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -406,7 +412,8 @@ fn desugar_function_con_pattern_binders_chirho() {
         span_chirho: SpanChirho::DUMMY_CHIRHO,
         origin_supply_chirho: Default::default(),
     };
-    let output_chirho = desugar_module_chirho(&module_chirho);
+    let output_chirho =
+        desugar_module_chirho(&module_chirho).expect("valid constructor signatures in fixture");
     let f_rhs_chirho = &output_chirho.module_chirho.bindings_chirho[0].rhs_chirho;
     // f = \arg0 -> case arg0 of { Just x -> x; Nothing -> 0 }
     if let CoreExprChirho::LamChirho { body_chirho, .. } = f_rhs_chirho {

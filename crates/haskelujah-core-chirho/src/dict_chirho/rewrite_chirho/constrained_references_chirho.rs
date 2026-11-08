@@ -120,6 +120,13 @@ impl DictPassCtxChirho {
                         })
                         .map(CoreExprChirho::VarChirho)
                 })
+                // A ground goal of a conditional instance (S1), after every keyed route and
+                // before the ambient one.
+                // workflow: language-features-chirho/dictionary-evidence-chirho
+                .or_else(|| {
+                    self.ground_goal_dict_chirho(written_id_chirho, class_name_chirho)
+                        .map(CoreExprChirho::VarChirho)
+                })
                 .or_else(|| {
                     (!proven_ground_chirho)
                         .then(|| {
@@ -133,6 +140,7 @@ impl DictPassCtxChirho {
                         .map(CoreExprChirho::VarChirho)
                 })
                 .unwrap_or_else(|| {
+                    self.note_unserved_slot_chirho(written_id_chirho, class_name_chirho);
                     self.missing_dictionary_chirho(
                         class_name_chirho,
                         evidence_key_chirho.as_deref(),
@@ -457,13 +465,28 @@ impl DictPassCtxChirho {
             } else {
                 &no_context_chirho
             };
-            return Some(self.try_rewrite_method_var_chirho(
+            let keyed_chirho = self.try_rewrite_method_var_chirho(
                 *canonical_id_chirho,
                 dict_vars_chirho,
                 keyed_classes_chirho,
                 local_instance_dicts_chirho,
                 Some(ty_key_chirho),
-            ));
+            );
+            // Every keyed route missed: a ground goal of a conditional instance takes the
+            // dictionary the pre-pass built for this occurrence (S1).
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            if matches!(&keyed_chirho, CoreExprChirho::VarChirho(kept_chirho) if kept_chirho == canonical_id_chirho)
+                && let Some((method_class_chirho, selector_chirho)) =
+                    self.class_method_selector_for_name_chirho(method_name_chirho)
+                && let Some(projection_chirho) = self.ground_goal_projection_chirho(
+                    head_id_chirho,
+                    &method_class_chirho,
+                    selector_chirho,
+                )
+            {
+                return Some(projection_chirho);
+            }
+            return Some(keyed_chirho);
         }
         Some(CoreExprChirho::VarChirho(*canonical_id_chirho))
     }
@@ -730,11 +753,13 @@ impl DictPassCtxChirho {
         if depth_chirho > CONDITIONAL_DICTIONARY_DEPTH_CHIRHO || extras_chirho.is_empty() {
             return None;
         }
-        let wanted_chirho = PredChirho {
-            class_name_chirho: class_name_chirho.to_string(),
-            ty_chirho: first_chirho.clone(),
-            extra_tys_chirho: extras_chirho.to_vec(),
-        };
+        let wanted_chirho =
+            PredChirho::legacy_chirho(haskelujah_typing_chirho::class_chirho::PredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: class_name_chirho.to_string(),
+                ty_chirho: first_chirho.clone(),
+                extra_tys_chirho: extras_chirho.to_vec(),
+            });
         let mut matching_chirho = self
             .conditional_dicts_chirho
             .iter()
@@ -957,6 +982,16 @@ fn instantiated_ty_chirho(
     binding_chirho: &HashMap<TyVarChirho, &TyChirho>,
 ) -> TyChirho {
     match ty_chirho {
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => TyChirho::QualChirho {
+            context_chirho: context_chirho
+                .iter()
+                .map(|constraint_chirho| instantiated_ty_chirho(constraint_chirho, binding_chirho))
+                .collect(),
+            body_chirho: Box::new(instantiated_ty_chirho(body_chirho, binding_chirho)),
+        },
         TyChirho::VarChirho(var_chirho) => binding_chirho
             .get(var_chirho)
             .map(|bound_chirho| (*bound_chirho).clone())

@@ -4,8 +4,14 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::mk_data_type_chirho;
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
+use crate::iface_chirho::builtin_chirho::seed_representation_exports_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
+use haskelujah_ast_chirho::name_chirho::{
+    CompilerRepresentationChirho, CompilerTypeConstructorChirho,
+};
 
 /// Push the interfaces for `GHC.Exts` and `GHC.Base`.
 pub(super) fn push_exts_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
@@ -49,22 +55,25 @@ pub(super) fn push_exts_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        for name_chirho in &[
-            "IsList",
-            "Item",
-            "Constraint",
-            "Type",
-            "RuntimeRep",
-            "Int#",
-            "Word#",
-            "Float#",
-            "Double#",
-            "Char#",
-        ] {
+        for name_chirho in &["IsList", "Item", "Float#", "Double#", "Char#"] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
+        for constructor_chirho in [
+            CompilerTypeConstructorChirho::TypeUniverseChirho,
+            CompilerTypeConstructorChirho::ConstraintUniverseChirho,
+            CompilerTypeConstructorChirho::IntHashChirho,
+            CompilerTypeConstructorChirho::WordHashChirho,
+        ] {
+            let (key_chirho, type_chirho) = mk_data_type_chirho(constructor_chirho, &[]);
+            exports_chirho.types_chirho.insert(key_chirho, type_chirho);
+        }
+        seed_representation_exports_chirho(
+            &mut exports_chirho,
+            &CompilerRepresentationChirho::ALL_CHIRHO,
+        );
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Exts".to_string(),
             exports_chirho,
         });
@@ -394,8 +403,6 @@ pub(super) fn push_exts_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         for name_chirho in &[
-            "Int#",
-            "Word#",
             "Float#",
             "Double#",
             "Char#",
@@ -415,15 +422,23 @@ pub(super) fn push_exts_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             "StableName#",
             "StablePtr#",
             "Proxy#",
-            "TYPE",
-            "RuntimeRep",
-            "LiftedRep",
-            "UnliftedRep",
         ] {
             let (k_chirho, v_chirho) = mk_type_chirho(name_chirho, &[]);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
+        for constructor_chirho in [
+            CompilerTypeConstructorChirho::IntHashChirho,
+            CompilerTypeConstructorChirho::WordHashChirho,
+        ] {
+            let (key_chirho, type_chirho) = mk_data_type_chirho(constructor_chirho, &[]);
+            exports_chirho.types_chirho.insert(key_chirho, type_chirho);
+        }
+        seed_representation_exports_chirho(
+            &mut exports_chirho,
+            &CompilerRepresentationChirho::ALL_CHIRHO,
+        );
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Exts".to_string(),
             exports_chirho,
         });
@@ -489,6 +504,7 @@ pub(super) fn push_exts_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Base".to_string(),
             exports_chirho,
         });
@@ -577,6 +593,7 @@ pub(super) fn push_exts_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "GHC.Base".to_string(),
             exports_chirho,
         });

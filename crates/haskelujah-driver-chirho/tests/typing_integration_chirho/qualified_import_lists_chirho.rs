@@ -33,10 +33,12 @@ fn naming_messages_chirho(source_chirho: &str) -> Vec<String> {
         .any(|import_chirho| import_chirho.module_chirho.text_chirho() == "Prelude")
     {
         module_chirho.imports_chirho.push(ImportDeclChirho {
+            package_chirho: None,
             module_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
                 "Prelude",
                 SpanChirho::DUMMY_CHIRHO,
             )),
+            source_chirho: false,
             qualified_chirho: false,
             alias_chirho: None,
             spec_chirho: None,

@@ -1,13 +1,13 @@
 // For God so loved the world that he gave his only begotten Son, that whoever
 // believes in him should not perish but have eternal life. — John 3:16
 
-//! Tests for the package install pipeline (§50 cabal-install compatibility).
+//! Tests for package discovery, archive extraction and the legacy interface database (§50).
+//! Source install itself is tested in `install_source_chirho.rs` (row 703).
 
 #[cfg(test)]
 mod tests_chirho {
     use crate::{
-        InstallResultChirho, discover_modules_chirho, find_cabal_in_dir_chirho,
-        find_local_dependency_package_dir_chirho,
+        discover_modules_chirho, find_cabal_in_dir_chirho, find_local_dependency_package_dir_chirho,
     };
     use haskelujah_package_chirho::{
         InstalledPkgDbChirho, hackage_chirho::create_test_tarball_chirho,
@@ -100,75 +100,6 @@ library
         let content_chirho = fs::read_to_string(found_chirho.unwrap()).unwrap();
         let pkg_chirho = parse_cabal_chirho(&content_chirho);
         assert_eq!(pkg_chirho.name_chirho, "test-install-pkg");
-    }
-
-    #[test]
-    fn install_result_type_fields_chirho() {
-        // Verify the InstallResultChirho struct has expected fields by constructing one
-        let pkg_chirho = parse_cabal_chirho("name: foo\nversion: 1.0\n");
-        let build_plan_chirho = haskelujah_package_chirho::BuildPlanChirho {
-            steps_chirho: vec![],
-        };
-        let installed_chirho = haskelujah_package_chirho::InstalledPkgChirho {
-            name_chirho: "foo".to_string(),
-            version_chirho: parse_version_chirho("1.0").unwrap(),
-            exposed_modules_chirho: vec![],
-            depends_chirho: vec![],
-            install_dir_chirho: std::path::PathBuf::from("/tmp/foo"),
-        };
-
-        let result_chirho = InstallResultChirho {
-            package_chirho: pkg_chirho,
-            build_plan_chirho,
-            modules_compiled_chirho: 0,
-            installed_pkg_chirho: installed_chirho,
-        };
-
-        assert_eq!(result_chirho.installed_pkg_chirho.name_chirho, "foo");
-        assert_eq!(result_chirho.modules_compiled_chirho, 0);
-    }
-
-    #[test]
-    fn pkgdb_register_after_install_chirho() {
-        // Simulate the registration step of install
-        let v_chirho = parse_version_chirho("2.0.0").unwrap();
-        let mut db_chirho = InstalledPkgDbChirho::new_chirho();
-
-        let installed_chirho = haskelujah_package_chirho::InstalledPkgChirho {
-            name_chirho: "containers".to_string(),
-            version_chirho: v_chirho.clone(),
-            exposed_modules_chirho: vec![
-                haskelujah_package_chirho::InstalledModuleChirho {
-                    module_name_chirho: "Data.Map".to_string(),
-                    iface_path_chirho: std::path::PathBuf::from("Data/Map.rhi"),
-                    object_path_chirho: None,
-                },
-                haskelujah_package_chirho::InstalledModuleChirho {
-                    module_name_chirho: "Data.Set".to_string(),
-                    iface_path_chirho: std::path::PathBuf::from("Data/Set.rhi"),
-                    object_path_chirho: None,
-                },
-            ],
-            depends_chirho: vec![("base".to_string(), v_chirho.clone())],
-            install_dir_chirho: std::path::PathBuf::from("/tmp/containers-2.0.0"),
-        };
-
-        db_chirho.register_chirho(installed_chirho);
-
-        // Verify lookup works
-        let found_chirho = db_chirho.lookup_chirho("containers");
-        assert!(found_chirho.is_some());
-        assert_eq!(found_chirho.unwrap().exposed_modules_chirho.len(), 2);
-
-        // Verify find_module works
-        let mod_found_chirho = db_chirho.find_module_chirho("Data.Map");
-        assert!(mod_found_chirho.is_some());
-        assert_eq!(mod_found_chirho.unwrap().0.name_chirho, "containers");
-
-        // Verify serialization roundtrip
-        let serialized_chirho = db_chirho.to_string_chirho();
-        let db2_chirho = InstalledPkgDbChirho::from_string_chirho(&serialized_chirho);
-        assert_eq!(db2_chirho.total_versions_chirho(), 1);
     }
 
     #[test]

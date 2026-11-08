@@ -47,6 +47,8 @@ pub fn infer_module_kinds_with_imports_chirho(
     imports_chirho: KindImportsChirho<'_>,
 ) -> KindResultChirho {
     let mut ctx_chirho = KindInferCtxChirho::new_chirho(KindEnvChirho::with_builtins_chirho());
+    let mut projection_budget_chirho =
+        haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho();
     let local_kind_decl_names_chirho: std::collections::HashSet<String> = module_chirho
         .decls_chirho
         .iter()
@@ -77,6 +79,21 @@ pub fn infer_module_kinds_with_imports_chirho(
     // Phase 1: Process all type/data/newtype/class declarations to establish
     // the kind of each type constructor.
     for decl_chirho in &module_chirho.decls_chirho {
+        if let Err(error_chirho) =
+            haskelujah_ast_chirho::decl_chirho::check_declaration_projection_chirho(
+                decl_chirho,
+                &mut projection_budget_chirho,
+                1,
+            )
+        {
+            ctx_chirho
+                .diagnostics_chirho
+                .push_chirho(DiagnosticChirho::error_chirho(
+                    error_chirho.to_string(),
+                    error_chirho.span_chirho,
+                ));
+            continue;
+        }
         // Reset kind variable cache between declarations so that kind
         // variables from one declaration don't leak into the next.
         ctx_chirho.kind_var_cache_chirho.clear();
@@ -142,9 +159,23 @@ pub fn infer_module_kinds_with_imports_chirho(
                             }
                         }
                         haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
-                            ty_chirho,
+                            signature_chirho,
                             ..
                         } => {
+                            let ty_chirho = &match signature_chirho
+                                .try_as_type_chirho(&mut projection_budget_chirho)
+                            {
+                                Ok(ty_chirho) => ty_chirho,
+                                Err(error_chirho) => {
+                                    ctx_chirho.diagnostics_chirho.push_chirho(
+                                        DiagnosticChirho::error_chirho(
+                                            error_chirho.to_string(),
+                                            error_chirho.span_chirho(),
+                                        ),
+                                    );
+                                    continue;
+                                }
+                            };
                             // Kind-check the full GADT type signature.
                             let k_chirho = ctx_chirho.infer_type_kind_chirho(ty_chirho);
                             ctx_chirho.unify_chirho(
@@ -211,9 +242,23 @@ pub fn infer_module_kinds_with_imports_chirho(
                         }
                     }
                     haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
-                        ty_chirho,
+                        signature_chirho,
                         ..
                     } => {
+                        let ty_chirho = &match signature_chirho
+                            .try_as_type_chirho(&mut projection_budget_chirho)
+                        {
+                            Ok(ty_chirho) => ty_chirho,
+                            Err(error_chirho) => {
+                                ctx_chirho.diagnostics_chirho.push_chirho(
+                                    DiagnosticChirho::error_chirho(
+                                        error_chirho.to_string(),
+                                        error_chirho.span_chirho(),
+                                    ),
+                                );
+                                continue;
+                            }
+                        };
                         // Kind-check the full GADT type signature.
                         let k_chirho = ctx_chirho.infer_type_kind_chirho(ty_chirho);
                         ctx_chirho.unify_chirho(
@@ -242,6 +287,7 @@ pub fn infer_module_kinds_with_imports_chirho(
                 name_chirho,
                 type_vars_chirho,
                 result_kind_chirho,
+                standalone_kind_chirho,
                 span_chirho,
                 ..
             } => {
@@ -249,6 +295,7 @@ pub fn infer_module_kinds_with_imports_chirho(
                     name_chirho.text_chirho(),
                     type_vars_chirho,
                     result_kind_chirho.as_ref(),
+                    standalone_kind_chirho.as_ref(),
                     *span_chirho,
                     poly_kinds_enabled_chirho,
                 );
@@ -269,28 +316,36 @@ pub fn infer_module_kinds_with_imports_chirho(
                 );
                 for assoc_tf_chirho in associated_tfs_chirho {
                     let mut param_kinds_chirho = Vec::new();
-                    for type_var_name_chirho in &assoc_tf_chirho.type_vars_chirho {
-                        let text_chirho = type_var_name_chirho.text_chirho();
-                        let kind_chirho = if let Some(existing_chirho) =
+                    for type_var_chirho in &assoc_tf_chirho.type_vars_chirho {
+                        let text_chirho = type_var_chirho.name_chirho.text_chirho();
+                        let kind_chirho = if let Some(annotation_chirho) =
+                            &type_var_chirho.kind_annotation_chirho
+                        {
+                            ctx_chirho.type_to_kind_chirho(annotation_chirho)
+                        } else if let Some(existing_chirho) =
                             ctx_chirho.env_chirho.lookup_chirho(text_chirho)
                         {
                             existing_chirho.clone()
                         } else {
-                            let fresh_kind_chirho = ctx_chirho.fresh_kind_chirho();
-                            ctx_chirho
-                                .env_chirho
-                                .bind_chirho(text_chirho.to_string(), fresh_kind_chirho.clone());
-                            fresh_kind_chirho
-                        };
-                        param_kinds_chirho.push(kind_chirho);
-                    }
-
-                    let result_kind_chirho =
-                        if let Some(default_rhs_chirho) = &assoc_tf_chirho.default_rhs_chirho {
-                            ctx_chirho.infer_type_kind_chirho(default_rhs_chirho)
-                        } else {
                             ctx_chirho.fresh_kind_chirho()
                         };
+                        ctx_chirho
+                            .env_chirho
+                            .bind_chirho(text_chirho.to_string(), kind_chirho.clone());
+                        if type_var_chirho.is_visible_chirho() {
+                            param_kinds_chirho.push(kind_chirho);
+                        }
+                    }
+
+                    let result_kind_chirho = if let Some(result_kind_chirho) =
+                        &assoc_tf_chirho.result_kind_chirho
+                    {
+                        ctx_chirho.type_to_kind_chirho(result_kind_chirho)
+                    } else if let Some(default_rhs_chirho) = &assoc_tf_chirho.default_rhs_chirho {
+                        ctx_chirho.infer_type_kind_chirho(default_rhs_chirho)
+                    } else {
+                        ctx_chirho.fresh_kind_chirho()
+                    };
 
                     let family_kind_chirho =
                         KindChirho::arrow_n_chirho(param_kinds_chirho, result_kind_chirho.clone());

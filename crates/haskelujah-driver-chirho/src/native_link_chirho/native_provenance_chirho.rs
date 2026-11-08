@@ -125,11 +125,10 @@ fn imported_names_by_origin_chirho(
     let mut builtin_chirho = HashSet::new();
     for import_chirho in &module_chirho.imports_chirho {
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
-        let Some(iface_chirho) = ifaces_chirho
-            .iter()
-            .rev()
-            .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
-        else {
+        let Some(iface_chirho) = haskelujah_naming_chirho::iface_chirho::select_import_iface_chirho(
+            ifaces_chirho,
+            import_chirho,
+        ) else {
             continue;
         };
         let supplied_chirho =
@@ -185,19 +184,12 @@ pub(crate) fn import_suppliers_chirho(
     let mut suppliers_chirho = ImportSuppliersChirho::default();
     for import_chirho in &module_chirho.imports_chirho {
         let supplier_chirho = import_chirho.module_chirho.full_name_chirho();
-        if !program_modules_chirho.contains(&supplier_chirho) {
-            continue;
-        }
-        let Some(iface_chirho) = ifaces_chirho
-            .iter()
-            .rev()
-            .find(|iface_chirho| iface_chirho.name_chirho == supplier_chirho)
-        else {
+        let Some(iface_chirho) = haskelujah_naming_chirho::iface_chirho::select_import_iface_chirho(
+            ifaces_chirho,
+            import_chirho,
+        ) else {
             continue;
         };
-        if iface_chirho.exports_chirho.origin_chirho != IfaceOriginChirho::SourceChirho {
-            continue;
-        }
         let class_methods_chirho = class_methods_chirho(iface_chirho);
         let values_chirho = values_by_bare_name_chirho(iface_chirho);
         let qualifier_chirho = import_chirho.alias_chirho.as_ref().map_or_else(
@@ -207,6 +199,34 @@ pub(crate) fn import_suppliers_chirho(
         for (name_chirho, namespace_chirho, _) in
             compute_imported_names_chirho(&iface_chirho.exports_chirho, &import_chirho.spec_chirho)
         {
+            let bare_chirho = bare_name_chirho(&name_chirho);
+            let selected_value_chirho = values_chirho.get(&bare_chirho);
+            if namespace_chirho == NamespaceChirho::ValueChirho
+                && let Some(value_chirho) = selected_value_chirho
+                && value_chirho.defining_module_chirho.is_none()
+                && let Some(compiler_chirho) = value_chirho.compiler_value_chirho
+            {
+                suppliers_chirho.add_compiler_chirho(
+                    Some(&qualifier_chirho),
+                    &bare_chirho,
+                    compiler_chirho,
+                );
+                if !import_chirho.qualified_chirho {
+                    suppliers_chirho.add_compiler_chirho(None, &bare_chirho, compiler_chirho);
+                }
+                continue;
+            }
+            if !program_modules_chirho.contains(&supplier_chirho)
+                || iface_chirho.exports_chirho.origin_chirho != IfaceOriginChirho::SourceChirho
+            {
+                if namespace_chirho == NamespaceChirho::ValueChirho && bare_chirho == "++" {
+                    suppliers_chirho.add_unproven_chirho(Some(&qualifier_chirho), &bare_chirho);
+                    if !import_chirho.qualified_chirho {
+                        suppliers_chirho.add_unproven_chirho(None, &bare_chirho);
+                    }
+                }
+                continue;
+            }
             let Some(ImportedValueRouteChirho::DefinedByChirho(definer_chirho)) =
                 imported_value_route_chirho(
                     &name_chirho,
@@ -216,9 +236,14 @@ pub(crate) fn import_suppliers_chirho(
                     program_modules_chirho,
                 )
             else {
+                if namespace_chirho == NamespaceChirho::ValueChirho && bare_chirho == "++" {
+                    suppliers_chirho.add_unproven_chirho(Some(&qualifier_chirho), &bare_chirho);
+                    if !import_chirho.qualified_chirho {
+                        suppliers_chirho.add_unproven_chirho(None, &bare_chirho);
+                    }
+                }
                 continue;
             };
-            let bare_chirho = bare_name_chirho(&name_chirho);
             suppliers_chirho.add_chirho(Some(&qualifier_chirho), &bare_chirho, &definer_chirho);
             if !import_chirho.qualified_chirho {
                 suppliers_chirho.add_chirho(None, &bare_chirho, &definer_chirho);
@@ -275,3 +300,7 @@ pub(crate) fn record_module_provenance_chirho(
         .builtin_references_chirho
         .extend(builtin_references_chirho);
 }
+
+#[cfg(test)]
+#[path = "native_provenance_tests_chirho.rs"]
+mod tests_chirho;

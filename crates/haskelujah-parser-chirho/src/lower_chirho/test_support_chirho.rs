@@ -312,7 +312,7 @@ fn collect_placeholder_expr_paths_in_expr_chirho(
                 paths_chirho,
             );
             for (qual_idx_chirho, qual_chirho) in quals_chirho.iter().enumerate() {
-                collect_placeholder_expr_paths_in_stmt_chirho(
+                collect_placeholder_expr_paths_in_qualifier_chirho(
                     qual_chirho,
                     &format!("{path_prefix_chirho}.qual[{qual_idx_chirho}]"),
                     paths_chirho,
@@ -320,7 +320,7 @@ fn collect_placeholder_expr_paths_in_expr_chirho(
             }
             for (group_idx_chirho, group_chirho) in parallel_quals_chirho.iter().enumerate() {
                 for (qual_idx_chirho, qual_chirho) in group_chirho.iter().enumerate() {
-                    collect_placeholder_expr_paths_in_stmt_chirho(
+                    collect_placeholder_expr_paths_in_qualifier_chirho(
                         qual_chirho,
                         &format!(
                             "{path_prefix_chirho}.parallel[{group_idx_chirho}][{qual_idx_chirho}]"
@@ -484,23 +484,27 @@ fn constraint_shape_chirho(constraint_chirho: &ConstraintChirho) -> String {
     match constraint_chirho {
         ConstraintChirho::ClassChirho {
             class_chirho,
+            kind_args_chirho,
             args_chirho,
             ..
-        } => {
-            if args_chirho.is_empty() {
-                class_chirho.text_chirho().to_string()
-            } else {
-                format!(
-                    "{} {}",
-                    class_chirho.text_chirho(),
-                    args_chirho
-                        .iter()
-                        .map(type_shape_chirho)
-                        .collect::<Vec<_>>()
-                        .join(" ")
-                )
-            }
-        }
+        } => std::iter::once(class_chirho.text_chirho().to_string())
+            .chain(
+                kind_args_chirho
+                    .iter()
+                    .map(|kind_chirho| format!("@{}", type_shape_chirho(kind_chirho))),
+            )
+            .chain(args_chirho.iter().map(type_shape_chirho))
+            .collect::<Vec<_>>()
+            .join(" "),
+        ConstraintChirho::KindAnnotationChirho {
+            constraint_chirho,
+            kind_chirho,
+            ..
+        } => format!(
+            "({} :: {})",
+            constraint_shape_chirho(constraint_chirho),
+            type_shape_chirho(kind_chirho)
+        ),
         ConstraintChirho::QuantifiedChirho {
             vars_chirho,
             context_chirho,
@@ -615,6 +619,24 @@ pub(super) fn type_shape_chirho(ty_chirho: &TypeChirho) -> String {
             type_shape_chirho(fun_chirho),
             type_shape_chirho(arg_chirho)
         ),
+        TypeChirho::KindApplicationChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => format!(
+            "({} @{})",
+            type_shape_chirho(fun_chirho),
+            type_shape_chirho(arg_chirho)
+        ),
+        TypeChirho::KindAnnotationChirho {
+            ty_chirho,
+            kind_chirho,
+            ..
+        } => format!(
+            "({} :: {})",
+            type_shape_chirho(ty_chirho),
+            type_shape_chirho(kind_chirho)
+        ),
         TypeChirho::FunChirho {
             arg_chirho,
             result_chirho,
@@ -692,5 +714,38 @@ pub(super) fn type_shape_chirho(ty_chirho: &TypeChirho) -> String {
         ),
         TypeChirho::WildcardChirho { .. } => "_".to_string(),
         TypeChirho::LitChirho { value_chirho, .. } => value_chirho.clone(),
+    }
+}
+
+fn collect_placeholder_expr_paths_in_qualifier_chirho(
+    qualifier_chirho: &haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho,
+    path_chirho: &str,
+    paths_chirho: &mut Vec<String>,
+) {
+    use haskelujah_ast_chirho::expr_chirho::ComprehensionQualifierChirho;
+    match qualifier_chirho {
+        ComprehensionQualifierChirho::StatementChirho(statement_chirho) => {
+            collect_placeholder_expr_paths_in_stmt_chirho(
+                statement_chirho,
+                path_chirho,
+                paths_chirho,
+            )
+        }
+        ComprehensionQualifierChirho::TransformChirho(transform_chirho) => {
+            if let Some(using_chirho) = &transform_chirho.using_chirho {
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    using_chirho,
+                    &format!("{path_chirho}.using"),
+                    paths_chirho,
+                );
+            }
+            if let Some(by_chirho) = &transform_chirho.by_chirho {
+                collect_placeholder_expr_paths_in_expr_chirho(
+                    by_chirho,
+                    &format!("{path_chirho}.by"),
+                    paths_chirho,
+                );
+            }
+        }
     }
 }

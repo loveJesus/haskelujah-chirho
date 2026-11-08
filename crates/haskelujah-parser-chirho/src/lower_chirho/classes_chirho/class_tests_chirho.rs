@@ -11,6 +11,33 @@ use super::test_support_chirho::{
 use crate::test_fixtures_chirho::CONTRAVARIANT_REP_SOURCE_CHIRHO;
 
 #[test]
+fn standalone_class_kind_retains_the_complete_written_contract_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE PolyKinds, StandaloneKindSignatures #-}\nmodule MChirho where\ntype CChirho :: forall kChirho. kChirho -> Constraint\nclass CChirho aChirho where\n  methodChirho :: Proxy aChirho\n",
+    );
+    let DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: Some(signature_chirho),
+        type_vars_chirho,
+        ..
+    } = find_class_decl_chirho(&module_chirho, "CChirho")
+    else {
+        panic!("class retains its standalone kind")
+    };
+    assert_eq!(type_vars_chirho.len(), 1);
+    let haskelujah_ast_chirho::ty_chirho::TypeChirho::ForallChirho {
+        vars_chirho,
+        body_chirho,
+        ..
+    } = signature_chirho
+    else {
+        panic!("standalone kind retains its universal prefix")
+    };
+    assert_eq!(vars_chirho.len(), 1);
+    assert_eq!(vars_chirho[0].name_chirho.text_chirho(), "kChirho");
+    assert_eq!(type_shape_chirho(body_chirho), "(kChirho -> Constraint)");
+}
+
+#[test]
 fn lower_class_kind_annotation_does_not_collect_kind_vars_chirho() {
     let module_chirho = parse_and_lower_chirho(
         "{-# LANGUAGE ConstraintKinds #-}\n{-# LANGUAGE PolyKinds #-}\n{-# LANGUAGE QuantifiedConstraints #-}\nmodule M where\nclass (forall a. p a) => Forall (p :: k -> Constraint)\nclass ForallF (p :: k2 -> Constraint) (f :: k1 -> k2)\nclass ForallV' p => ForallV_ (p :: k)\n",
@@ -277,13 +304,18 @@ fn lower_class_method_type_preserves_assoc_family_application_chirho() {
 
 #[test]
 fn lower_assoc_type_family_placeholder_rhs_does_not_become_default_chirho() {
+    // random-1.3.1's `FrozenGen` (src/System/Random/Internal.hs:419): a named
+    // result with its injectivity annotation is a bodiless declaration. This
+    // fixture once dropped `| g -> f`; GHC 9.14.1 rejects that pipe-less form
+    // with GHC-58481 (row 686), kept as a frontend negative in the driver suite.
     let module_chirho = parse_and_lower_chirho(
-        "module M where\nclass FrozenGen f m where\n  type MutableGen f m = (g :: Type)\n  thawGen :: f -> m (MutableGen f m)\n",
+        "module M where\nclass FrozenGen f m where\n  type MutableGen f m = (g :: Type) | g -> f\n  thawGen :: f -> m (MutableGen f m)\n",
     );
     let class_decl_chirho = find_class_decl_chirho(&module_chirho, "FrozenGen");
     match class_decl_chirho {
         DeclChirho::ClassDeclChirho {
             associated_tfs_chirho,
+            methods_chirho,
             ..
         } => {
             assert_eq!(associated_tfs_chirho.len(), 1);
@@ -293,9 +325,12 @@ fn lower_assoc_type_family_placeholder_rhs_does_not_become_default_chirho() {
             );
             assert!(
                 associated_tfs_chirho[0].default_rhs_chirho.is_none(),
-                "placeholder associated type family rhs should not lower as a default equation: {:?}",
+                "a named result with its injectivity annotation is no default equation: {:?}",
                 associated_tfs_chirho[0].default_rhs_chirho
             );
+            // The annotation stays with its declaration; the method after it survives.
+            assert_eq!(methods_chirho.len(), 1);
+            assert_eq!(methods_chirho[0].name_chirho.text_chirho(), "thawGen");
         }
         other_chirho => panic!("expected class decl, got {:?}", other_chirho),
     }
@@ -496,4 +531,47 @@ class C a where
     let (methods_chirho, _) =
         class_member_names_chirho(find_class_decl_chirho(&module_chirho, "C"));
     assert_eq!(methods_chirho, ["firstChirho"]);
+}
+
+#[test]
+fn data_family_flavor_survives_top_level_and_associated_lowering_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "{-# LANGUAGE TypeFamilies #-}\nmodule DataCarrierChirho where\ndata family D1Chirho aChirho\ndata family D2Chirho :: Type -> Type\ntype family TChirho aChirho\nclass HasPayloadChirho aChirho where\n  data PayloadChirho aChirho\n  type ResultChirho aChirho\n",
+    );
+    let headers_chirho: Vec<_> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|declaration_chirho| match declaration_chirho {
+            DeclChirho::TypeFamilyDeclChirho {
+                name_chirho,
+                data_family_chirho,
+                ..
+            } => Some((name_chirho.text_chirho(), *data_family_chirho)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        headers_chirho,
+        [("D1Chirho", true), ("D2Chirho", true), ("TChirho", false)]
+    );
+    let DeclChirho::ClassDeclChirho {
+        associated_tfs_chirho,
+        ..
+    } = find_class_decl_chirho(&module_chirho, "HasPayloadChirho")
+    else {
+        panic!("class retained")
+    };
+    let associated_chirho: Vec<_> = associated_tfs_chirho
+        .iter()
+        .map(|family_chirho| {
+            (
+                family_chirho.name_chirho.text_chirho(),
+                family_chirho.data_family_chirho,
+            )
+        })
+        .collect();
+    assert_eq!(
+        associated_chirho,
+        [("PayloadChirho", true), ("ResultChirho", false)]
+    );
 }

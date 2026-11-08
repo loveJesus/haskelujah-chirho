@@ -16,8 +16,8 @@
 
 use crate::decl_chirho::{ClassMethodChirho, DeclChirho, PatSynDirChirho};
 use crate::expr_chirho::{
-    AltChirho, ExprChirho, GuardedExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho,
-    StmtChirho,
+    AltChirho, ComprehensionQualifierChirho, ExprChirho, GuardedExprChirho, LocalBindChirho,
+    MatchArmChirho, RhsChirho, StmtChirho,
 };
 use crate::lit_chirho::LitChirho;
 use crate::name_chirho::NameChirho;
@@ -195,6 +195,7 @@ pub fn visit_decl_walk_chirho(decl_chirho: &mut DeclChirho, walk_chirho: &mut Wa
         }
         // Declarations that hold types, names and kinds but no expression.
         DeclChirho::TypeSigChirho { .. }
+        | DeclChirho::PatSynSigDeclChirho { .. }
         | DeclChirho::DataDeclChirho { .. }
         | DeclChirho::NewtypeDeclChirho { .. }
         | DeclChirho::TypeAliasDeclChirho { .. }
@@ -322,6 +323,36 @@ pub fn visit_expr_chirho(expr_chirho: &mut ExprChirho, visit_chirho: &mut Occurr
         expr_chirho,
         &mut WalkChirho::occurrences_chirho(visit_chirho),
     );
+}
+
+fn visit_comprehension_qualifiers_chirho(
+    qualifiers_chirho: &mut [ComprehensionQualifierChirho],
+    walk_chirho: &mut WalkChirho<'_>,
+) {
+    for qualifier_chirho in qualifiers_chirho {
+        match qualifier_chirho {
+            ComprehensionQualifierChirho::StatementChirho(statement_chirho) => {
+                visit_stmts_chirho(std::slice::from_mut(statement_chirho.as_mut()), walk_chirho)
+            }
+            ComprehensionQualifierChirho::TransformChirho(transform_chirho) => {
+                if transform_chirho.group_chirho {
+                    if let Some(by_chirho) = &mut transform_chirho.by_chirho {
+                        visit_expr_walk_chirho(by_chirho, walk_chirho);
+                    }
+                    if let Some(using_chirho) = &mut transform_chirho.using_chirho {
+                        visit_expr_walk_chirho(using_chirho, walk_chirho);
+                    }
+                } else {
+                    if let Some(using_chirho) = &mut transform_chirho.using_chirho {
+                        visit_expr_walk_chirho(using_chirho, walk_chirho);
+                    }
+                    if let Some(by_chirho) = &mut transform_chirho.by_chirho {
+                        visit_expr_walk_chirho(by_chirho, walk_chirho);
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// The expression traversal both entry points share.
@@ -464,9 +495,9 @@ pub fn visit_expr_walk_chirho(expr_chirho: &mut ExprChirho, walk_chirho: &mut Wa
             ..
         } => {
             visit_expr_walk_chirho(body_chirho, walk_chirho);
-            visit_stmts_chirho(quals_chirho, walk_chirho);
+            visit_comprehension_qualifiers_chirho(quals_chirho, walk_chirho);
             for branch_chirho in parallel_quals_chirho {
-                visit_stmts_chirho(branch_chirho, walk_chirho);
+                visit_comprehension_qualifiers_chirho(branch_chirho, walk_chirho);
             }
         }
         ExprChirho::RecordConChirho {
@@ -503,6 +534,11 @@ pub fn visit_expr_walk_chirho(expr_chirho: &mut ExprChirho, walk_chirho: &mut Wa
 /// function is an expression, so its occurrences are visited.
 fn visit_pat_chirho(pat_chirho: &mut PatChirho, walk_chirho: &mut WalkChirho<'_>) {
     match pat_chirho {
+        PatChirho::SpliceChirho { expr_chirho, .. } => {
+            if let Some(expr_chirho) = expr_chirho {
+                visit_expr_walk_chirho(expr_chirho, walk_chirho);
+            }
+        }
         PatChirho::ViewChirho {
             expr_chirho,
             pat_chirho,

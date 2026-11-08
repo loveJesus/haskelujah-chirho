@@ -560,7 +560,8 @@ fn interfaces_chirho(modules_chirho: &[(&str, &str)]) -> Vec<ModuleIfaceChirho> 
         let green_chirho =
             ParserChirho::new_chirho(source_chirho, FileIdChirho::SYNTHETIC_CHIRHO).parse_chirho();
         let module_chirho = lower_module_chirho(&green_chirho, FileIdChirho::SYNTHETIC_CHIRHO);
-        let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+        let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho)
+            .expect("small source interface fixture fits constructor projection budget");
         ifaces_chirho.push(iface_chirho);
     }
     ifaces_chirho

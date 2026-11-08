@@ -82,7 +82,7 @@ pub(super) fn check_role_annotations_chirho(
         .flat_map(|annotation_chirho| annotation_chirho.words_chirho)
         .filter(|word_chirho| !ROLE_WORDS_CHIRHO.contains(&word_chirho.text_chirho()))
         .map(|word_chirho| DeclarationErrorChirho {
-            ghc_code_chirho: "GHC-09009",
+            ghc_code_chirho: Some("GHC-09009"),
             message_chirho: format!("Illegal role name ‘{}’", word_chirho.text_chirho()),
             span_chirho: word_chirho.span_chirho(),
             related_span_chirho: None,
@@ -129,7 +129,7 @@ fn renamed_annotations_chirho<'a>(
         // Rule 20: GHC reports a repeat at its own declaration.
         if let Some(earlier_chirho) = first_chirho.get(&written_chirho) {
             errors_chirho.push(DeclarationErrorChirho {
-                ghc_code_chirho: "GHC-97170",
+                ghc_code_chirho: Some("GHC-97170"),
                 message_chirho: format!("Duplicate role annotations for ‘{written_chirho}’"),
                 span_chirho: annotation_chirho.span_chirho,
                 related_span_chirho: Some(earlier_chirho.span_chirho),
@@ -146,7 +146,7 @@ fn renamed_annotations_chirho<'a>(
             // Rule 21.
             let error_chirho = if target_chirho.qualifier_chirho().is_some() {
                 DeclarationErrorChirho {
-                    ghc_code_chirho: UNSUPPORTED_SHAPE_CHIRHO,
+                    ghc_code_chirho: Some(UNSUPPORTED_SHAPE_CHIRHO),
                     message_chirho: format!(
                         "Haskelujah does not resolve the qualified role annotation target `{}`",
                         target_chirho.full_name_chirho()
@@ -158,7 +158,7 @@ fn renamed_annotations_chirho<'a>(
                 return true;
             } else {
                 DeclarationErrorChirho {
-                    ghc_code_chirho: "GHC-44432",
+                    ghc_code_chirho: Some("GHC-44432"),
                     message_chirho: format!(
                         "The role annotation for ‘{}’ lacks an accompanying binding",
                         target_chirho.text_chirho()
@@ -279,7 +279,7 @@ impl RoleJudgeChirho {
             });
             errors_chirho.push(if associated_chirho {
                 DeclarationErrorChirho {
-                    ghc_code_chirho: UNSUPPORTED_SHAPE_CHIRHO,
+                    ghc_code_chirho: Some(UNSUPPORTED_SHAPE_CHIRHO),
                     message_chirho: format!(
                         "Haskelujah does not check a role annotation for the associated family `{type_name_chirho}`"
                     ),
@@ -288,7 +288,7 @@ impl RoleJudgeChirho {
                 }
             } else {
                 DeclarationErrorChirho {
-                    ghc_code_chirho: "GHC-77192",
+                    ghc_code_chirho: Some("GHC-77192"),
                     message_chirho: format!(
                         "Illegal role annotation for {type_name_chirho}; they are allowed only for datatypes and classes."
                     ),
@@ -301,7 +301,7 @@ impl RoleJudgeChirho {
         // Rule 22: checking goes on, as GHC's does.
         if !self.role_annotations_chirho {
             errors_chirho.push(DeclarationErrorChirho {
-                ghc_code_chirho: "GHC-17779",
+                ghc_code_chirho: Some("GHC-17779"),
                 message_chirho: format!("Illegal role annotation for {type_name_chirho}"),
                 span_chirho: annotation_chirho.span_chirho,
                 related_span_chirho: None,
@@ -311,7 +311,7 @@ impl RoleJudgeChirho {
         let words_chirho = annotation_chirho.words_chirho;
         if words_chirho.len() != parameters_chirho.len() {
             errors_chirho.push(DeclarationErrorChirho {
-                ghc_code_chirho: "GHC-54298",
+                ghc_code_chirho: Some("GHC-54298"),
                 message_chirho: format!(
                     "Wrong number of roles listed in role annotation; Expected {}, got {}",
                     parameters_chirho.len(),
@@ -347,7 +347,7 @@ impl RoleJudgeChirho {
             }
             errors_chirho.push(match role_word_chirho(*final_chirho) {
                 Some(required_chirho) => DeclarationErrorChirho {
-                    ghc_code_chirho: "GHC-29178",
+                    ghc_code_chirho: Some("GHC-29178"),
                     message_chirho: format!(
                         "Role mismatch on variable {parameter_chirho}: Annotation says {} but role {required_chirho} is required",
                         word_chirho.text_chirho()
@@ -358,7 +358,7 @@ impl RoleJudgeChirho {
                 None => {
                     unsupported_chirho = true;
                     DeclarationErrorChirho {
-                        ghc_code_chirho: UNSUPPORTED_SHAPE_CHIRHO,
+                        ghc_code_chirho: Some(UNSUPPORTED_SHAPE_CHIRHO),
                         message_chirho: format!(
                             "Haskelujah cannot check the role annotation `{}` on variable {parameter_chirho} of `{type_name_chirho}`: it does not prove that parameter's role",
                             word_chirho.text_chirho()
@@ -382,7 +382,7 @@ impl RoleJudgeChirho {
             role_word_chirho(*role_chirho).is_some_and(|word_chirho| word_chirho != "nominal")
         }) {
             errors_chirho.push(DeclarationErrorChirho {
-                ghc_code_chirho: "GHC-18273",
+                ghc_code_chirho: Some("GHC-18273"),
                 message_chirho:
                     "Roles other than ‘nominal’ for class parameters can lead to incoherence."
                         .to_string(),
@@ -391,7 +391,7 @@ impl RoleJudgeChirho {
             });
         } else if !unsupported_chirho {
             errors_chirho.push(DeclarationErrorChirho {
-                ghc_code_chirho: UNSUPPORTED_SHAPE_CHIRHO,
+                ghc_code_chirho: Some(UNSUPPORTED_SHAPE_CHIRHO),
                 message_chirho: format!(
                     "Haskelujah cannot check the role annotation of the class `{type_name_chirho}`: it does not prove every parameter's role"
                 ),

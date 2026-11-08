@@ -145,7 +145,14 @@ fn errors_with_chirho(
 fn codes_at_chirho(errors_chirho: &[DeclarationErrorChirho]) -> Vec<(&'static str, SpanChirho)> {
     errors_chirho
         .iter()
-        .map(|error_chirho| (error_chirho.ghc_code_chirho, error_chirho.span_chirho))
+        .map(|error_chirho| {
+            (
+                error_chirho
+                    .ghc_code_chirho
+                    .expect("declaration diagnostic retains its code"),
+                error_chirho.span_chirho,
+            )
+        })
         .collect()
 }
 
@@ -326,6 +333,7 @@ fn standalone_newtype_deriving_is_judged_against_its_local_target_chirho() {
 /// `class <name> <parameters>` with no methods.
 fn class_decl_chirho(class_chirho: &str, parameters_chirho: &[&str]) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho(class_chirho),
         type_vars_chirho: parameters_chirho

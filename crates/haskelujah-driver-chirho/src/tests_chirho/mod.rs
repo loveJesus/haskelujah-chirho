@@ -13,6 +13,8 @@
 #[path = "suites_chirho/bench_chirho.rs"]
 pub mod bench_chirho;
 pub mod compile_chirho;
+#[path = "features_chirho/declared_modules_chirho.rs"]
+pub mod declared_modules_chirho;
 #[path = "suites_chirho/diff_chirho.rs"]
 pub mod diff_chirho;
 #[path = "evaluation_chirho/eval_advanced_chirho.rs"]
@@ -34,8 +36,12 @@ pub mod eval_prelude_chirho;
 pub mod eval_typeclass_chirho;
 pub mod evidence_chirho;
 pub mod extensions_chirho;
+#[path = "features_chirho/external_bodies_chirho.rs"]
+pub mod external_bodies_chirho;
 #[path = "features_chirho/install_chirho.rs"]
 pub mod install_chirho;
+#[path = "features_chirho/install_source_chirho.rs"]
+pub mod install_source_chirho;
 #[path = "features_chirho/linear_chirho.rs"]
 pub mod linear_chirho;
 #[path = "features_chirho/module_search_chirho.rs"]

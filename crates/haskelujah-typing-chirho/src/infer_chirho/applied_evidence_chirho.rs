@@ -46,6 +46,7 @@ fn ground_ty_chirho(ty_chirho: &TyChirho) -> bool {
         TyChirho::TupleChirho(elements_chirho) => elements_chirho.iter().all(ground_ty_chirho),
         TyChirho::VarChirho(_)
         | TyChirho::ForallVarChirho(_)
+        | TyChirho::QualChirho { .. }
         | TyChirho::ForallChirho { .. }
         | TyChirho::RequiredForallChirho { .. } => false,
     }
@@ -75,6 +76,22 @@ pub(super) fn agreeing_references_chirho<KeyChirho: Hash + Eq>(
             }
             let mut agreed_chirho = first_chirho.clone();
             for (index_chirho, record_chirho) in agreed_chirho.iter_mut().enumerate() {
+                if rest_chirho.iter().any(|other_chirho| {
+                    other_chirho[index_chirho].ground_pred_chirho
+                        != record_chirho.ground_pred_chirho
+                }) {
+                    record_chirho.ground_pred_chirho = None;
+                } else if let Some(predicate_chirho) = &mut record_chirho.ground_pred_chirho {
+                    for other_chirho in rest_chirho {
+                        if let Some(other_predicate_chirho) =
+                            &other_chirho[index_chirho].ground_pred_chirho
+                        {
+                            predicate_chirho.meet_class_identity_chirho(
+                                other_predicate_chirho.class_identity_chirho(),
+                            );
+                        }
+                    }
+                }
                 if rest_chirho.iter().any(|other_chirho| {
                     other_chirho[index_chirho].applied_ty_chirho != record_chirho.applied_ty_chirho
                 }) {

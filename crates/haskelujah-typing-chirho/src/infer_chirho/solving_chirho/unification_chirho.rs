@@ -17,6 +17,22 @@ impl InferCtxChirho {
     /// `F T1` unifies with `Char` when `type instance F T1 = Char`.
     /// The recursive cases re-normalize after intermediate substitutions so
     /// reductions like `PrimState (ST s) ~ s` become visible once `m ~ ST s`.
+    pub(super) fn unify_ordinary_chirho(
+        &self,
+        left_chirho: &TyChirho,
+        right_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<SubstChirho, UnifyErrorChirho> {
+        let result_chirho = unify_chirho(left_chirho, right_chirho, span_chirho);
+        if matches!(
+            result_chirho,
+            Err(UnifyErrorChirho::ResourceExhaustedChirho { .. })
+        ) {
+            self.type_normalization_exhausted_chirho.set(true);
+        }
+        result_chirho
+    }
+
     pub(super) fn unify_normalized_chirho(
         &mut self,
         ty1_chirho: &TyChirho,
@@ -36,16 +52,18 @@ impl InferCtxChirho {
                     body_chirho: body2_chirho,
                 },
             ) if vars1_chirho.len() == vars2_chirho.len() => {
-                let mut rename_chirho = SubstChirho::empty_chirho();
-                for (var1_chirho, var2_chirho) in vars1_chirho.iter().zip(vars2_chirho.iter()) {
-                    rename_chirho.insert_chirho(*var2_chirho, TyChirho::VarChirho(*var1_chirho));
-                }
-                let renamed_body2_chirho = rename_chirho.apply_ty_chirho(body2_chirho);
-                return self.unify_normalized_chirho(
-                    body1_chirho,
-                    &renamed_body2_chirho,
-                    span_chirho,
-                );
+                let (rename_chirho, kinds_chirho) =
+                    crate::unify_chirho::align_forall_prefix_chirho(
+                        vars1_chirho,
+                        vars2_chirho,
+                        span_chirho,
+                    )?;
+                let body1_chirho = kinds_chirho.apply_ty_chirho(body1_chirho);
+                let body2_chirho =
+                    kinds_chirho.apply_ty_chirho(&rename_chirho.apply_ty_chirho(body2_chirho));
+                return Ok(self
+                    .unify_normalized_chirho(&body1_chirho, &body2_chirho, span_chirho)?
+                    .compose_chirho(&kinds_chirho));
             }
             (
                 TyChirho::ForallChirho {
@@ -193,7 +211,7 @@ impl InferCtxChirho {
             (&n1_chirho, &n2_chirho)
         {
             if elems1_chirho.len() != elems2_chirho.len() {
-                return unify_chirho(&n1_chirho, &n2_chirho, span_chirho);
+                return self.unify_ordinary_chirho(&n1_chirho, &n2_chirho, span_chirho);
             }
             let mut subst_chirho = SubstChirho::empty_chirho();
             for (elem1_chirho, elem2_chirho) in elems1_chirho.iter().zip(elems2_chirho.iter()) {
@@ -210,7 +228,7 @@ impl InferCtxChirho {
             }
             return Ok(subst_chirho);
         }
-        unify_chirho(&n1_chirho, &n2_chirho, span_chirho)
+        self.unify_ordinary_chirho(&n1_chirho, &n2_chirho, span_chirho)
     }
 
     pub(super) fn subsume_normalized_chirho(
@@ -230,22 +248,18 @@ impl InferCtxChirho {
                     body_chirho: expected_body_chirho,
                 },
             ) if actual_vars_chirho.len() == expected_vars_chirho.len() => {
-                let mut rename_chirho = SubstChirho::empty_chirho();
-                for (actual_var_chirho, expected_var_chirho) in
-                    actual_vars_chirho.iter().zip(expected_vars_chirho.iter())
-                {
-                    rename_chirho.insert_chirho(
-                        *expected_var_chirho,
-                        TyChirho::VarChirho(*actual_var_chirho),
-                    );
-                }
-                let renamed_expected_body_chirho =
-                    rename_chirho.apply_ty_chirho(expected_body_chirho);
-                self.unify_normalized_chirho(
-                    actual_body_chirho,
-                    &renamed_expected_body_chirho,
-                    span_chirho,
-                )
+                let (rename_chirho, kinds_chirho) =
+                    crate::unify_chirho::align_forall_prefix_chirho(
+                        actual_vars_chirho,
+                        expected_vars_chirho,
+                        span_chirho,
+                    )?;
+                let actual_chirho = kinds_chirho.apply_ty_chirho(actual_body_chirho);
+                let expected_chirho = kinds_chirho
+                    .apply_ty_chirho(&rename_chirho.apply_ty_chirho(expected_body_chirho));
+                Ok(self
+                    .unify_normalized_chirho(&actual_chirho, &expected_chirho, span_chirho)?
+                    .compose_chirho(&kinds_chirho))
             }
             (
                 TyChirho::ForallChirho {
@@ -256,8 +270,9 @@ impl InferCtxChirho {
             ) => {
                 let mut instantiation_chirho = SubstChirho::empty_chirho();
                 for var_chirho in vars_chirho {
-                    let fresh_var_chirho = TyVarChirho(self.next_var_chirho);
-                    self.next_var_chirho += 1;
+                    let fresh_var_chirho =
+                        TyVarChirho(self.elaboration_state_chirho.next_variable_chirho);
+                    self.elaboration_state_chirho.next_variable_chirho += 1;
                     instantiation_chirho
                         .insert_chirho(*var_chirho, TyChirho::VarChirho(fresh_var_chirho));
                 }
@@ -277,8 +292,9 @@ impl InferCtxChirho {
             ) => {
                 let mut instantiation_chirho = SubstChirho::empty_chirho();
                 for var_chirho in vars_chirho {
-                    let fresh_var_chirho = TyVarChirho(self.next_var_chirho);
-                    self.next_var_chirho += 1;
+                    let fresh_var_chirho =
+                        TyVarChirho(self.elaboration_state_chirho.next_variable_chirho);
+                    self.elaboration_state_chirho.next_variable_chirho += 1;
                     instantiation_chirho
                         .insert_chirho(*var_chirho, TyChirho::VarChirho(fresh_var_chirho));
                 }
@@ -297,6 +313,9 @@ impl InferCtxChirho {
     /// Record a unification error as a diagnostic.
     pub(super) fn report_unify_error_chirho(&mut self, err_chirho: &UnifyErrorChirho) {
         match err_chirho {
+            UnifyErrorChirho::ResourceExhaustedChirho { .. } => {
+                self.type_normalization_exhausted_chirho.set(true);
+            }
             UnifyErrorChirho::MismatchChirho {
                 expected_chirho,
                 actual_chirho,

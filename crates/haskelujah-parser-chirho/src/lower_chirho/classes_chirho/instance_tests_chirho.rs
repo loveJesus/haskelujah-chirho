@@ -338,59 +338,59 @@ fn lower_instance_head_keeps_kind_annotated_hetero_eq_prefix_application_chirho(
         .find(|decl_chirho| matches!(decl_chirho, DeclChirho::InstanceDeclChirho { .. }))
         .expect("expected an InstanceDeclChirho");
 
-    match inst_chirho {
-        DeclChirho::InstanceDeclChirho { types_chirho, .. } => {
-            assert_eq!(types_chirho.len(), 1);
-            match &types_chirho[0] {
-                TypeChirho::ParenChirho { inner_chirho, .. } => match inner_chirho.as_ref() {
-                    TypeChirho::AppChirho {
-                        fun_chirho,
-                        arg_chirho,
-                        ..
-                    } => {
-                        assert!(
-                            matches!(
-                                fun_chirho.as_ref(),
-                                TypeChirho::ParenChirho { .. } | TypeChirho::ConChirho(_)
-                            ),
-                            "expected preserved :~~: prefix head, got {:?}",
-                            fun_chirho
-                        );
-                        match arg_chirho.as_ref() {
-                            TypeChirho::ParenChirho { inner_chirho, .. } => {
-                                match inner_chirho.as_ref() {
-                                    TypeChirho::VarChirho(name_chirho) => {
-                                        assert_eq!(name_chirho.text_chirho(), "a");
-                                    }
-                                    other_chirho => {
-                                        panic!(
-                                            "expected annotated argument to lower to `a`, got {:?}",
-                                            other_chirho
-                                        )
-                                    }
-                                }
-                            }
-                            other_chirho => {
-                                panic!(
-                                    "expected preserved parenthesized argument, got {:?}",
-                                    other_chirho
-                                )
-                            }
-                        }
-                    }
-                    other_chirho => panic!(
-                        "expected applied hetero equality head, got {:?}",
-                        other_chirho
-                    ),
-                },
-                other_chirho => panic!(
-                    "expected parenthesized hetero equality instance head, got {:?}",
-                    other_chirho
-                ),
-            }
-        }
-        _ => unreachable!(),
-    }
+    let DeclChirho::InstanceDeclChirho { types_chirho, .. } = inst_chirho else {
+        unreachable!()
+    };
+    assert_eq!(types_chirho.len(), 1);
+    let TypeChirho::ParenChirho { inner_chirho, .. } = &types_chirho[0] else {
+        panic!("expected parenthesized hetero equality instance head");
+    };
+    let TypeChirho::KindAnnotationChirho {
+        ty_chirho,
+        kind_chirho,
+        ..
+    } = inner_chirho.as_ref()
+    else {
+        panic!("the written outer kind must survive lowering");
+    };
+    assert!(
+        matches!(kind_chirho.as_ref(), TypeChirho::FunChirho { arg_chirho, result_chirho, .. }
+        if matches!(arg_chirho.as_ref(), TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "k2")
+            && matches!(result_chirho.as_ref(), TypeChirho::ConChirho(name_chirho) if name_chirho.text_chirho() == "Type")),
+        "the complete k2 -> Type annotation is retained: {kind_chirho:?}"
+    );
+    let TypeChirho::AppChirho {
+        fun_chirho,
+        arg_chirho,
+        ..
+    } = ty_chirho.as_ref()
+    else {
+        panic!("expected applied hetero equality head: {ty_chirho:?}");
+    };
+    assert!(
+        matches!(
+            fun_chirho.as_ref(),
+            TypeChirho::ParenChirho { .. } | TypeChirho::ConChirho(_)
+        ),
+        "expected preserved :~~: prefix head: {fun_chirho:?}"
+    );
+    let TypeChirho::ParenChirho { inner_chirho, .. } = arg_chirho.as_ref() else {
+        panic!("expected preserved parenthesized argument: {arg_chirho:?}");
+    };
+    let TypeChirho::KindAnnotationChirho {
+        ty_chirho,
+        kind_chirho,
+        ..
+    } = inner_chirho.as_ref()
+    else {
+        panic!("the written argument kind must survive lowering");
+    };
+    assert!(
+        matches!(ty_chirho.as_ref(), TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "a")
+    );
+    assert!(
+        matches!(kind_chirho.as_ref(), TypeChirho::VarChirho(name_chirho) if name_chirho.text_chirho() == "k1")
+    );
 }
 
 #[test]
@@ -779,4 +779,22 @@ instance Num T where
         })
         .collect();
     assert_eq!(names_chirho, ["+"]);
+}
+
+#[test]
+fn a_unit_instance_head_is_concrete_beside_a_context_instance_chirho() {
+    let module_chirho = parse_and_lower_chirho(
+        "module Main where\nclass SizeChirho aChirho where\n  sizeChirho :: aChirho -> Int\ninstance SizeChirho () where\n  sizeChirho _ = 0\ninstance SizeChirho aChirho => SizeChirho (Maybe aChirho) where\n  sizeChirho _ = 1\n",
+    );
+    let heads_chirho: Vec<_> = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|decl_chirho| match decl_chirho {
+            DeclChirho::InstanceDeclChirho { types_chirho, .. } => Some(types_chirho),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(heads_chirho.len(), 2);
+    assert_eq!(type_shape_chirho(&heads_chirho[0][0]), "()");
+    assert_eq!(type_shape_chirho(&heads_chirho[1][0]), "(Maybe aChirho)");
 }

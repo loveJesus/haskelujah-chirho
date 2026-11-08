@@ -9,7 +9,7 @@ use super::{
     read_haskell_source_file_chirho, run_frontend_chirho,
     run_frontend_with_type_synonyms_and_type_families_chirho, seed_builtin_type_families_chirho,
 };
-use haskelujah_naming_chirho::iface_chirho::{ModuleIfaceChirho, build_iface_with_imports_chirho};
+use haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho;
 use haskelujah_span_chirho::SourceMapChirho;
 use haskelujah_syntax_chirho::SourceFileChirho;
 use std::path::{Path, PathBuf};
@@ -95,11 +95,20 @@ pub(crate) fn extract_module_name_chirho(source_chirho: &str) -> String {
 
 /// Extract imported module names from a Haskell source string.
 pub(crate) fn extract_imports_chirho(source_chirho: &str) -> Vec<String> {
+    extract_selected_imports_chirho(source_chirho, false)
+}
+
+pub(crate) fn extract_home_imports_chirho(source_chirho: &str) -> Vec<String> {
+    extract_selected_imports_chirho(source_chirho, true)
+}
+
+fn extract_selected_imports_chirho(source_chirho: &str, home_only_chirho: bool) -> Vec<String> {
     let mut imports_chirho = Vec::new();
     for line_chirho in source_chirho.lines() {
         let trimmed_chirho = line_chirho.trim();
         if let Some(rest_chirho) = trimmed_chirho.strip_prefix("import ")
-            && let Some(module_name_chirho) = parse_import_module_name_chirho(rest_chirho)
+            && let Some(module_name_chirho) =
+                parse_import_module_name_chirho(rest_chirho, home_only_chirho)
         {
             imports_chirho.push(module_name_chirho);
         }
@@ -107,7 +116,7 @@ pub(crate) fn extract_imports_chirho(source_chirho: &str) -> Vec<String> {
     imports_chirho
 }
 
-fn parse_import_module_name_chirho(rest_chirho: &str) -> Option<String> {
+fn parse_import_module_name_chirho(rest_chirho: &str, home_only_chirho: bool) -> Option<String> {
     let mut remaining_chirho = rest_chirho.trim();
 
     'scan_modifiers_chirho: loop {
@@ -130,9 +139,27 @@ fn parse_import_module_name_chirho(rest_chirho: &str) -> Option<String> {
             }
         }
 
-        if let Some(package_rest_chirho) = remaining_chirho.strip_prefix('"')
-            && let Some(package_end_chirho) = package_rest_chirho.find('"')
-        {
+        if let Some(package_rest_chirho) = remaining_chirho.strip_prefix('"') {
+            let mut escaped_chirho = false;
+            let package_end_chirho = package_rest_chirho.char_indices().find_map(
+                |(index_chirho, character_chirho)| {
+                    if escaped_chirho {
+                        escaped_chirho = false;
+                        None
+                    } else if character_chirho == '\\' {
+                        escaped_chirho = true;
+                        None
+                    } else {
+                        (character_chirho == '"').then_some(index_chirho)
+                    }
+                },
+            )?;
+            let selector_chirho = haskelujah_ast_chirho::lit_chirho::unescape_string_body_chirho(
+                &package_rest_chirho[..package_end_chirho],
+            );
+            if home_only_chirho && selector_chirho != "this" {
+                return None;
+            }
             remaining_chirho = package_rest_chirho[package_end_chirho + 1..].trim_start();
             continue;
         }
@@ -308,7 +335,14 @@ fn parse_boot_iface_chirho(
         ..
     } = frontend_result_chirho;
 
-    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, existing_ifaces_chirho);
+    let iface_chirho = super::build_family_aware_iface_chirho(
+        &module_chirho,
+        existing_ifaces_chirho,
+        &infer_result_chirho.type_families_chirho,
+    )
+    .map_err(|error_chirho| {
+        error_chirho.source_message_chirho(boot_path_chirho, source_map_chirho)
+    })?;
 
     // Extract type schemes from the boot file
     let mut types_chirho = std::collections::HashMap::new();
@@ -374,7 +408,7 @@ pub fn compile_project_dir_chirho(
         let fp_chirho =
             haskelujah_incremental_chirho::FingerprintChirho::from_str_chirho(source_chirho);
         dep_graph_chirho.add_module_chirho(module_name_chirho, fp_chirho);
-        let imports_chirho = extract_imports_chirho(source_chirho);
+        let imports_chirho = extract_home_imports_chirho(source_chirho);
         for imported_chirho in &imports_chirho {
             // Only add edges for local modules (skip external like Prelude, Data.Map, etc.)
             if known_modules_chirho.contains(imported_chirho) {
@@ -409,7 +443,7 @@ pub fn compile_project_dir_chirho(
             &mut imported_types_chirho,
             &mut imported_type_synonyms_chirho,
             &mut imported_type_families_chirho,
-        );
+        )?;
     }
 
     // The modules this project compiles and links together (row 629).
@@ -442,7 +476,10 @@ pub fn compile_project_dir_chirho(
                     );
                     match boot_iface_chirho {
                         Ok((iface_chirho, types_chirho)) => {
-                            ifaces_chirho.push(iface_chirho);
+                            crate::module_search_chirho::admit_home_iface_chirho(
+                                &mut ifaces_chirho,
+                                iface_chirho,
+                            );
                             imported_types_chirho.extend(types_chirho);
                         }
                         Err(e_chirho) => {
@@ -452,6 +489,7 @@ pub fn compile_project_dir_chirho(
                             ));
                             // Fall back to empty interface
                             ifaces_chirho.push(ModuleIfaceChirho {
+                                exposure_chirho: Some(haskelujah_naming_chirho::iface_chirho::IfaceExposureChirho::HomeChirho),
                                 name_chirho: module_name_chirho.clone(),
                                 exports_chirho: Default::default(),
                             });
@@ -462,6 +500,9 @@ pub fn compile_project_dir_chirho(
                     // at least resolves (names won't be in scope without a boot
                     // file, matching GHC's behavior).
                     ifaces_chirho.push(ModuleIfaceChirho {
+                        exposure_chirho: Some(
+                            haskelujah_naming_chirho::iface_chirho::IfaceExposureChirho::HomeChirho,
+                        ),
                         name_chirho: module_name_chirho.clone(),
                         exports_chirho: Default::default(),
                     });
@@ -515,7 +556,14 @@ pub fn compile_project_dir_chirho(
             all_warnings_chirho.extend(warnings_chirho);
 
             // Build interface for downstream modules
-            let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+            let iface_chirho = super::build_family_aware_iface_chirho(
+                &module_chirho,
+                &ifaces_chirho,
+                &infer_result_chirho.type_families_chirho,
+            )
+            .map_err(|error_chirho| {
+                error_chirho.source_message_chirho(file_name_chirho, source_map_chirho)
+            })?;
 
             let extra_dict_param_names_chirho: std::collections::HashSet<String> =
                 imported_types_chirho.keys().cloned().collect();
@@ -529,14 +577,18 @@ pub fn compile_project_dir_chirho(
                 &mut imported_types_chirho,
             );
 
-            imported_type_synonyms_chirho.extend(exported_type_synonyms_from_module_chirho(
-                &module_chirho,
-                &iface_chirho,
-                &resolved_imported_type_synonyms_chirho,
-            ));
+            imported_type_synonyms_chirho.extend(
+                exported_type_synonyms_from_module_chirho(
+                    &module_chirho,
+                    &iface_chirho,
+                    &resolved_imported_type_synonyms_chirho,
+                    &infer_result_chirho,
+                )
+                .map_err(|error_chirho| format!("{file_name_chirho}: {error_chirho}"))?,
+            );
             imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
 
-            ifaces_chirho.push(iface_chirho);
+            crate::module_search_chirho::admit_home_iface_chirho(&mut ifaces_chirho, iface_chirho);
 
             // Backend compilation
             let compile_result_chirho = compile_backend_chirho(

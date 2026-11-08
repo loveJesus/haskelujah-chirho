@@ -4,12 +4,16 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
-use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
+use crate::iface_chirho::builtin_chirho::{mk_data_type_chirho, mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
+use haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho;
 
 /// Push the interfaces for `Prelude` and the list, character, `Maybe` and `Either` modules.
+/// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
 pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
     // Data.List
+    let data_list_index_chirho = modules_chirho.len();
     {
         let mut exports_chirho = IfaceExportsChirho::default();
         for name_chirho in &[
@@ -97,6 +101,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.List".to_string(),
             exports_chirho,
         });
@@ -208,6 +213,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Char".to_string(),
             exports_chirho,
         });
@@ -220,13 +226,17 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Maybe", &["Nothing", "Just"]);
+        let (k_chirho, v_chirho) = mk_data_type_chirho(
+            CompilerTypeConstructorChirho::MaybeChirho,
+            &["Nothing", "Just"],
+        );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for con_chirho in &["Nothing", "Just"] {
             let (k_chirho, v_chirho) = mk_val_chirho(con_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Maybe".to_string(),
             exports_chirho,
         });
@@ -234,31 +244,53 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
 
     // Prelude — the implicit import every Haskell module gets
     {
-        let mut exports_chirho = IfaceExportsChirho::default();
+        let mut exports_chirho = IfaceExportsChirho {
+            unary_variable_instance_heads_covered_chirho: true,
+            ..IfaceExportsChirho::default()
+        };
         // Core types
         for (type_name_chirho, cons_chirho) in &[
-            ("Bool", &["False", "True"][..]),
-            ("Maybe", &["Nothing", "Just"][..]),
-            ("Either", &["Left", "Right"][..]),
-            ("Ordering", &["LT", "EQ", "GT"][..]),
-            ("()", &["()"][..]),
+            (
+                CompilerTypeConstructorChirho::BoolChirho,
+                &["False", "True"][..],
+            ),
+            (
+                CompilerTypeConstructorChirho::MaybeChirho,
+                &["Nothing", "Just"][..],
+            ),
+            (
+                CompilerTypeConstructorChirho::EitherChirho,
+                &["Left", "Right"][..],
+            ),
+            (
+                CompilerTypeConstructorChirho::OrderingChirho,
+                &["LT", "EQ", "GT"][..],
+            ),
+            (CompilerTypeConstructorChirho::UnitChirho, &["()"][..]),
         ] {
-            let (k_chirho, v_chirho) = mk_type_chirho(type_name_chirho, cons_chirho);
+            let (k_chirho, v_chirho) = mk_data_type_chirho(*type_name_chirho, cons_chirho);
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
             for con_chirho in *cons_chirho {
                 let (k_chirho, v_chirho) = mk_val_chirho(con_chirho);
                 exports_chirho.values_chirho.insert(k_chirho, v_chirho);
             }
         }
+        // Compiler primitive type identities are minted at this actual seed,
+        // independently of whether their constructors are exported.
+        for constructor_chirho in &[
+            CompilerTypeConstructorChirho::IntChirho,
+            CompilerTypeConstructorChirho::IntegerChirho,
+            CompilerTypeConstructorChirho::CharChirho,
+            CompilerTypeConstructorChirho::FloatChirho,
+            CompilerTypeConstructorChirho::DoubleChirho,
+            CompilerTypeConstructorChirho::IoChirho,
+        ] {
+            let (key_chirho, ty_chirho) = mk_data_type_chirho(*constructor_chirho, &[]);
+            exports_chirho.types_chirho.insert(key_chirho, ty_chirho);
+        }
         // Prelude types without data constructors
         for name_chirho in &[
-            "IO",
             "String",
-            "Char",
-            "Int",
-            "Integer",
-            "Float",
-            "Double",
             "Rational",
             "ShowS",
             "ReadS",
@@ -607,10 +639,21 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             "catch",
             "throwIO",
         ] {
-            let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
+            let (k_chirho, mut v_chirho) = mk_val_chirho(name_chirho);
+            if *name_chirho == "(++)" {
+                v_chirho.compiler_value_chirho =
+                    Some(haskelujah_ast_chirho::name_chirho::CompilerValueChirho::ListAppendChirho);
+                // Data.List declares this same Prelude value as a re-export;
+                // forward the actual producer record rather than minting proof.
+                modules_chirho[data_list_index_chirho]
+                    .exports_chirho
+                    .values_chirho
+                    .insert(k_chirho.clone(), v_chirho.clone());
+            }
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Prelude".to_string(),
             exports_chirho,
         });
@@ -636,6 +679,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.List.NonEmpty".to_string(),
             exports_chirho,
         });
@@ -653,6 +697,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-experimental"]),
             name_chirho: "Data.Tuple.Experimental".to_string(),
             exports_chirho,
         });
@@ -668,6 +713,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_val_chirho("vacuous");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Void".to_string(),
             exports_chirho,
         });
@@ -682,11 +728,15 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         }
         let (k_chirho, v_chirho) = mk_type_chirho("Ord", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
-        let (k_chirho, v_chirho) = mk_type_chirho("Ordering", &["LT", "EQ", "GT"]);
+        let (k_chirho, v_chirho) = mk_data_type_chirho(
+            CompilerTypeConstructorChirho::OrderingChirho,
+            &["LT", "EQ", "GT"],
+        );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         let (k_chirho, v_chirho) = mk_type_chirho("Down", &["Down"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Ord".to_string(),
             exports_chirho,
         });
@@ -700,6 +750,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Function".to_string(),
             exports_chirho,
         });
@@ -715,6 +766,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("String", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.String".to_string(),
             exports_chirho,
         });
@@ -735,6 +787,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Tuple".to_string(),
             exports_chirho,
         });
@@ -756,13 +809,17 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Either", &["Left", "Right"]);
+        let (k_chirho, v_chirho) = mk_data_type_chirho(
+            CompilerTypeConstructorChirho::EitherChirho,
+            &["Left", "Right"],
+        );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for con_chirho in &["Left", "Right"] {
             let (k_chirho, v_chirho) = mk_val_chirho(con_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Either".to_string(),
             exports_chirho,
         });
@@ -775,13 +832,17 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             let (k_chirho, v_chirho) = mk_val_chirho(name_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
-        let (k_chirho, v_chirho) = mk_type_chirho("Bool", &["False", "True"]);
+        let (k_chirho, v_chirho) = mk_data_type_chirho(
+            CompilerTypeConstructorChirho::BoolChirho,
+            &["False", "True"],
+        );
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for con_chirho in &["False", "True"] {
             let (k_chirho, v_chirho) = mk_val_chirho(con_chirho);
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Bool".to_string(),
             exports_chirho,
         });
@@ -809,6 +870,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["ghc-experimental"]),
             name_chirho: "Prelude.Experimental".to_string(),
             exports_chirho,
         });
@@ -824,6 +886,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Void".to_string(),
             exports_chirho,
         });
@@ -839,6 +902,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Tuple.Solo".to_string(),
             exports_chirho,
         });
@@ -854,6 +918,7 @@ pub(super) fn push_prelude_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Data.Eq".to_string(),
             exports_chirho,
         });

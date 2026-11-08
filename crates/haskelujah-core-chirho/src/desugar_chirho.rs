@@ -13,10 +13,13 @@
 mod bindings_chirho;
 #[path = "desugar_chirho/references_chirho/builtin_routes_chirho.rs"]
 mod builtin_routes_chirho;
-#[path = "desugar_chirho/sugar_chirho/comprehensions_chirho.rs"]
+#[path = "desugar_chirho/sugar_chirho/comprehensions_chirho/mod.rs"]
 mod comprehensions_chirho;
 #[path = "desugar_chirho/constructors_chirho.rs"]
 mod constructors_chirho;
+#[path = "desugar_chirho/input_chirho.rs"]
+mod input_chirho;
+pub use input_chirho::DesugarInputErrorChirho;
 #[path = "desugar_chirho/sugar_chirho/do_notation_chirho.rs"]
 mod do_notation_chirho;
 #[path = "desugar_chirho/expressions_chirho.rs"]
@@ -50,18 +53,27 @@ mod synonyms_chirho;
 #[path = "desugar_chirho/references_chirho/syntax_methods_chirho.rs"]
 mod syntax_methods_chirho;
 
+#[path = "desugar_chirho/constructors_chirho/metadata_chirho.rs"]
+mod constructor_metadata_chirho;
+#[cfg(test)]
+mod promoted_keys_tests_chirho;
 use match_rows_chirho::{MatchRowChirho, RowBodyChirho};
 
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::sync::Arc;
 
 use haskelujah_ast_chirho::decl_chirho::{
-    ConDeclChirho, DeclChirho, PatSynDirChirho, StrictnessChirho,
+    DeclChirho, GadtProjectionBudgetChirho, PatSynDirChirho, StrictnessChirho,
+    check_module_projection_chirho,
 };
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho};
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
+use haskelujah_ast_chirho::promotion_chirho::{
+    PromotionScopeChirho, quoted_promoted_spelling_chirho, unquoted_promoted_spelling_chirho,
+};
 use haskelujah_ast_chirho::provenance_chirho::{OccurrenceRoleChirho, ProvenanceChirho};
 use haskelujah_ast_chirho::stmt_operation_chirho::SelectedOperationChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
@@ -116,6 +128,10 @@ pub struct DesugarOutputChirho {
     /// gives one that primop back where no row serves its proof.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     pub operator_occurrences_chirho: HashSet<CoreIdChirho>,
+    /// Each source instance declaration's class, span and the key its `$prim` rows were
+    /// named with (S3), for the dictionary pass to pair with the checker's typed instance.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub instance_row_keys_chirho: Vec<crate::dict_chirho::InstanceRowKeyChirho>,
 }
 
 /// A registered pattern synonym definition used during desugaring.
@@ -147,6 +163,8 @@ pub struct DesugarCtxChirho {
     imported_reference_ids_chirho: HashMap<ImportedReferenceChirho, CoreIdChirho>,
     /// Each imported user reference's identity, for the output's provenance (row 629).
     imported_references_chirho: BTreeMap<CoreIdChirho, ImportedReferenceChirho>,
+    compiler_value_references_chirho:
+        BTreeMap<CoreIdChirho, haskelujah_ast_chirho::name_chirho::CompilerValueChirho>,
     /// Active LANGUAGE extensions (e.g. "OverloadedStrings").
     extensions_chirho: Vec<String>,
     /// Name of the module currently being desugared.
@@ -181,6 +199,14 @@ pub struct DesugarCtxChirho {
     occurrence_provenance_chirho: HashMap<CoreIdChirho, ProvenanceChirho>,
     /// Written infix and section Ord operators' minted occurrences (row 610).
     operator_occurrences_chirho: HashSet<CoreIdChirho>,
+    /// Each source instance declaration's row key (S3).
+    instance_row_keys_chirho: Vec<crate::dict_chirho::InstanceRowKeyChirho>,
+    /// The module's promoted-constructor scope (row 686), so a promoted type keys as its
+    /// constructor's identity, as the checker's types do. `None` keeps legacy keys.
+    /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
+    type_constructor_scope_chirho:
+        Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
 }
 
 impl DesugarCtxChirho {
@@ -193,6 +219,7 @@ impl DesugarCtxChirho {
             import_suppliers_chirho: ImportSuppliersChirho::default(),
             imported_reference_ids_chirho: HashMap::new(),
             imported_references_chirho: BTreeMap::new(),
+            compiler_value_references_chirho: BTreeMap::new(),
             extensions_chirho: Vec::new(),
             current_module_name_chirho: None,
             con_strictness_chirho: HashMap::new(),
@@ -208,6 +235,9 @@ impl DesugarCtxChirho {
             method_occurrence_spans_chirho: HashMap::new(),
             occurrence_provenance_chirho: HashMap::new(),
             operator_occurrences_chirho: HashSet::new(),
+            instance_row_keys_chirho: Vec::new(),
+            promotion_scope_chirho: None,
+            type_constructor_scope_chirho: None,
         }
     }
 
@@ -554,7 +584,6 @@ impl DesugarCtxChirho {
             "<=" => Some("<=#"),
             ">" => Some(">#"),
             ">=" => Some(">=#"),
-            "++" => Some("++#"),
             "^" => Some("^#"),
             "**" => Some("**#"),
             _ => None,
@@ -640,7 +669,9 @@ fn extract_var_name_from_pat_chirho(pat_chirho: &PatChirho) -> Option<String> {
 }
 
 /// Desugar a module from AST to Core, returning the Core module and a name map.
-pub fn desugar_module_chirho(module_chirho: &ModuleChirho) -> DesugarOutputChirho {
+pub fn desugar_module_chirho(
+    module_chirho: &ModuleChirho,
+) -> Result<DesugarOutputChirho, DesugarInputErrorChirho> {
     let mut ctx_chirho = DesugarCtxChirho::new_chirho();
     ctx_chirho.extensions_chirho = module_chirho.extensions_chirho.clone();
     ctx_chirho.desugar_module_chirho(module_chirho)
@@ -653,7 +684,7 @@ pub fn desugar_module_chirho(module_chirho: &ModuleChirho) -> DesugarOutputChirh
 pub fn desugar_module_with_method_occurrences_chirho(
     module_chirho: &ModuleChirho,
     method_names_chirho: HashSet<String>,
-) -> DesugarOutputChirho {
+) -> Result<DesugarOutputChirho, DesugarInputErrorChirho> {
     desugar_module_with_inputs_chirho(
         module_chirho,
         DesugarInputsChirho {
@@ -682,6 +713,11 @@ pub struct DesugarInputsChirho {
     /// definer's identity (rows 629 and 642).
     /// workflow: compiler-pipeline-chirho/native-symbol-identity-chirho
     pub import_suppliers_chirho: ImportSuppliersChirho,
+    /// The module's promoted-constructor scope (row 686); `None` keeps legacy type keys.
+    /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    pub promotion_scope_chirho: Option<Arc<PromotionScopeChirho>>,
+    pub type_constructor_scope_chirho:
+        Option<Arc<haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho>>,
 }
 
 /// Like [`desugar_module_with_method_occurrences_chirho`] with the full set of
@@ -689,13 +725,15 @@ pub struct DesugarInputsChirho {
 pub fn desugar_module_with_inputs_chirho(
     module_chirho: &ModuleChirho,
     inputs_chirho: DesugarInputsChirho,
-) -> DesugarOutputChirho {
+) -> Result<DesugarOutputChirho, DesugarInputErrorChirho> {
     let mut ctx_chirho = DesugarCtxChirho::new_chirho();
     ctx_chirho.extensions_chirho = module_chirho.extensions_chirho.clone();
     ctx_chirho.set_method_occurrence_names_chirho(inputs_chirho.method_names_chirho);
     ctx_chirho.set_constrained_names_chirho(inputs_chirho.constrained_names_chirho);
     ctx_chirho.set_constructor_arities_chirho(inputs_chirho.constructor_arities_chirho);
     ctx_chirho.import_suppliers_chirho = inputs_chirho.import_suppliers_chirho;
+    ctx_chirho.promotion_scope_chirho = inputs_chirho.promotion_scope_chirho;
+    ctx_chirho.type_constructor_scope_chirho = inputs_chirho.type_constructor_scope_chirho;
     ctx_chirho.desugar_module_chirho(module_chirho)
 }
 
@@ -725,7 +763,6 @@ fn builtin_primop_name_chirho(op_chirho: &str) -> Option<&'static str> {
         "<=" => Some("<=#"),
         ">" => Some(">#"),
         ">=" => Some(">=#"),
-        "++" => Some("++#"),
         _ => None,
     }
 }

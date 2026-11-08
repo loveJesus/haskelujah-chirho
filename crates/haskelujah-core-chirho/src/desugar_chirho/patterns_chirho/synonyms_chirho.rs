@@ -41,6 +41,7 @@ impl DesugarCtxChirho {
             con_chirho,
             args_chirho,
             span_chirho,
+            ..
         } = pat_chirho
         {
             let name_chirho = con_chirho.text_chirho();
@@ -84,9 +85,11 @@ impl DesugarCtxChirho {
             }
             PatChirho::ConChirho {
                 con_chirho,
+                type_args_chirho,
                 args_chirho,
                 span_chirho,
             } => PatChirho::ConChirho {
+                type_args_chirho: type_args_chirho.clone(),
                 con_chirho: con_chirho.clone(),
                 args_chirho: args_chirho
                     .iter()
@@ -162,6 +165,9 @@ impl DesugarCtxChirho {
         subst_chirho: &HashMap<String, CoreIdChirho>,
     ) -> CoreExprChirho {
         match pat_chirho {
+            PatChirho::SpliceChirho { .. } => {
+                self.case_failure_chirho("unsupported unexpanded executable pattern splice")
+            }
             PatChirho::VarChirho(name_chirho) => {
                 if let Some(id_chirho) = subst_chirho.get(name_chirho.text_chirho()) {
                     CoreExprChirho::VarChirho(*id_chirho)

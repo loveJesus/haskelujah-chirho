@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 
@@ -35,6 +36,7 @@ pub(super) fn push_collections_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Set".to_string(),
             exports_chirho,
         });
@@ -69,6 +71,7 @@ pub(super) fn push_collections_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
         let (k_chirho, v_chirho) = mk_type_chirho("Set", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Set.Internal".to_string(),
             exports_chirho,
         });
@@ -105,6 +108,7 @@ pub(super) fn push_collections_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
         let (k_chirho, v_chirho) = mk_type_chirho("Seq", &["Empty", ":<|"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Sequence".to_string(),
             exports_chirho,
         });
@@ -134,6 +138,7 @@ pub(super) fn push_collections_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
         let (k_chirho, v_chirho) = mk_type_chirho("IntSet", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.IntSet".to_string(),
             exports_chirho,
         });
@@ -183,6 +188,7 @@ pub(super) fn push_collections_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Set".to_string(),
             exports_chirho,
         });
@@ -226,6 +232,7 @@ pub(super) fn push_collections_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Sequence".to_string(),
             exports_chirho,
         });
@@ -260,6 +267,7 @@ pub(super) fn push_collections_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.IntSet".to_string(),
             exports_chirho,
         });
@@ -295,6 +303,7 @@ pub(super) fn push_collections_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Tree".to_string(),
             exports_chirho,
         });
@@ -347,6 +356,7 @@ pub(super) fn push_collections_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Set".to_string(),
             exports_chirho,
         });
@@ -380,6 +390,7 @@ pub(super) fn push_collections_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Sequence".to_string(),
             exports_chirho,
         });
@@ -451,6 +462,7 @@ pub(super) fn push_collections_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
         }
         for mod_name_chirho in &["Data.Sequence", "Data.Sequence.Internal"] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: package_exposure_chirho(&["containers"]),
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -506,6 +518,7 @@ pub(super) fn push_collections_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for mod_name_chirho in &["Data.IntSet", "Data.IntSet.Internal"] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: package_exposure_chirho(&["containers"]),
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -544,6 +557,7 @@ pub(super) fn push_collections_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Graph".to_string(),
             exports_chirho,
         });
@@ -576,6 +590,7 @@ pub(super) fn push_collections_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
         let (k_chirho, v_chirho) = mk_type_chirho("Tree", &["Node"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Tree".to_string(),
             exports_chirho,
         });

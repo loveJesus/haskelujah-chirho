@@ -1,6 +1,6 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
-use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
+use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::FileIdChirho;
 
@@ -30,11 +30,10 @@ fn types_chirho(type_text_chirho: &str, gadt_chirho: bool) -> (TypeChirho, TypeC
                 ..
             } => {
                 for constructor_chirho in constructors_chirho {
-                    if let ConDeclChirho::RecordChirho { fields_chirho, .. } = constructor_chirho {
+                    if let Some(fields_chirho) = constructor_chirho.record_fields_chirho() {
                         field_chirho = fields_chirho
-                            .into_iter()
-                            .next()
-                            .map(|field_chirho| field_chirho.ty_chirho);
+                            .first()
+                            .map(|field_chirho| field_chirho.ty_chirho.clone());
                     }
                 }
             }
@@ -67,6 +66,24 @@ fn shape_chirho(ty_chirho: &TypeChirho) -> String {
             shape_chirho(fun_chirho),
             shape_chirho(arg_chirho)
         ),
+        TypeChirho::KindAnnotationChirho {
+            ty_chirho,
+            kind_chirho,
+            ..
+        } => format!(
+            "({} :: {})",
+            shape_chirho(ty_chirho),
+            shape_chirho(kind_chirho)
+        ),
+        TypeChirho::KindApplicationChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
+        } => format!(
+            "({} @{})",
+            shape_chirho(fun_chirho),
+            shape_chirho(arg_chirho)
+        ),
         TypeChirho::ListChirho { element_chirho, .. } => {
             format!("[{}]", shape_chirho(element_chirho))
         }
@@ -90,6 +107,21 @@ fn shape_chirho(ty_chirho: &TypeChirho) -> String {
                 .join(",")
         ),
         TypeChirho::ParenChirho { inner_chirho, .. } => shape_chirho(inner_chirho),
+        TypeChirho::PromotedConChirho { name_chirho, .. } => {
+            format!("'{}", name_chirho.text_chirho())
+        }
+        TypeChirho::PromotedListChirho {
+            elements_chirho, ..
+        } => format!(
+            "'[{}]",
+            elements_chirho
+                .iter()
+                .map(shape_chirho)
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+        TypeChirho::LitChirho { value_chirho, .. } => value_chirho.clone(),
+        TypeChirho::WildcardChirho { .. } => "_".to_string(),
         TypeChirho::ForallChirho {
             vars_chirho,
             body_chirho,
@@ -250,13 +282,15 @@ fn a_leading_forall_scopes_over_arrows_and_contexts_chirho() {
     ]);
 }
 
-// `(t :: k)` is the type `t`: main keeps no kind annotation on a type, and the
-// flat grammar used to read the annotation as one more argument.
+// `(t :: k)` retains the kind as an annotation, never as one more ordinary argument.
 #[test]
 fn a_kind_annotation_is_not_an_argument_chirho() {
     check_shapes_chirho(&[
-        ("Maybe (a :: Type)", "(Maybe var(a))"),
-        ("Either (a :: Type) (b :: Type)", "((Either var(a)) var(b))"),
+        ("Maybe (a :: Type)", "(Maybe (var(a) :: Type))"),
+        (
+            "Either (a :: Type) (b :: Type)",
+            "((Either (var(a) :: Type)) (var(b) :: Type))",
+        ),
     ]);
 }
 
@@ -309,4 +343,23 @@ fn promoted_lists_survive_flat_heads_and_contexts_chirho() {
     assert!(
         matches!(&elements_chirho[1], TypeChirho::PromotedListChirho { elements_chirho, .. } if elements_chirho.len() == 1)
     );
+}
+
+#[test]
+fn explicit_kind_applications_agree_between_field_and_signature_paths_chirho() {
+    check_shapes_chirho(&[
+        ("Proxy @Type Int", "((Proxy @Type) Int)"),
+        ("F @([Type]) (a :: Type)", "((F @[Type]) (var(a) :: Type))"),
+        ("F @k @Type a", "(((F @var(k)) @Type) var(a))"),
+    ]);
+}
+
+#[test]
+fn promoted_atoms_and_literals_keep_their_identity_in_explicit_kind_arguments_chirho() {
+    check_shapes_chirho(&[
+        ("F @'True a", "((F @'True) var(a))"),
+        ("F @'[Type, Type] a", "((F @'[Type,Type]) var(a))"),
+        ("F @'(Type, Type) a", "((F @(('(,) Type) Type)) var(a))"),
+        ("F @42 a", "((F @42) var(a))"),
+    ]);
 }

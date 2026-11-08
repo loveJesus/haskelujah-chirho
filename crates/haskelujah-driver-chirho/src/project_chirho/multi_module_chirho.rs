@@ -15,7 +15,7 @@ use super::{
     stg_lower_chirho,
 };
 use haskelujah_diagnostics_chirho::DiagnosticBundleChirho;
-use haskelujah_naming_chirho::iface_chirho::{ModuleIfaceChirho, build_iface_with_imports_chirho};
+use haskelujah_naming_chirho::iface_chirho::ModuleIfaceChirho;
 use haskelujah_parser_chirho::cst_parser_chirho::ParserChirho;
 use haskelujah_parser_chirho::lower_chirho::lower_module_chirho;
 use haskelujah_span_chirho::SourceMapChirho;
@@ -88,7 +88,12 @@ pub fn compile_modules_chirho(
 
         // Build interface for downstream modules before consuming module_chirho.
         // Use import-aware variant so `module Foo` re-exports work.
-        let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+        let iface_chirho = super::build_family_aware_iface_chirho(
+            &module_chirho,
+            &ifaces_chirho,
+            &infer_result_chirho.type_families_chirho,
+        )
+        .map_err(|error_chirho| error_chirho.into_diagnostics_chirho(module_chirho.span_chirho))?;
 
         let extra_dict_param_names_chirho: std::collections::HashSet<String> =
             imported_types_chirho.keys().cloned().collect();
@@ -105,10 +110,11 @@ pub fn compile_modules_chirho(
             &module_chirho,
             &iface_chirho,
             &resolved_imported_type_synonyms_chirho,
-        ));
+            &infer_result_chirho,
+        )?);
         imported_type_families_chirho = infer_result_chirho.type_families_chirho.clone();
 
-        ifaces_chirho.push(iface_chirho);
+        crate::module_search_chirho::admit_home_iface_chirho(&mut ifaces_chirho, iface_chirho);
 
         // Phases 5–7: back-end
         let compile_result_chirho = compile_backend_chirho(
@@ -587,14 +593,15 @@ pub fn compile_modules_incremental_chirho(
         );
         let file_id_chirho = source_file_chirho.file_id_chirho();
         let parser_chirho = ParserChirho::new_chirho(source_chirho, file_id_chirho);
-        let green_chirho = parser_chirho.parse_chirho();
+        let green_chirho = parser_chirho.parse_checked_chirho()?;
         let module_chirho = lower_module_chirho(&green_chirho, file_id_chirho);
 
         let module_name_chirho = module_chirho.name_chirho.text_chirho().to_string();
         let imports_chirho: Vec<String> = module_chirho
             .imports_chirho
             .iter()
-            .map(|i_chirho| i_chirho.module_chirho.text_chirho().to_string())
+            .filter(|import_chirho| import_chirho.selects_home_source_chirho())
+            .map(|import_chirho| import_chirho.module_chirho.full_name_chirho())
             .collect();
 
         let import_refs_chirho: Vec<&str> = imports_chirho
@@ -667,7 +674,12 @@ pub fn compile_modules_incremental_chirho(
         } = frontend_result_chirho;
 
         // Build and register the module interface for downstream modules.
-        let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &ifaces_chirho);
+        let iface_chirho = super::build_family_aware_iface_chirho(
+            &module_chirho,
+            &ifaces_chirho,
+            &infer_result_chirho.type_families_chirho,
+        )
+        .map_err(|error_chirho| error_chirho.into_diagnostics_chirho(module_chirho.span_chirho))?;
 
         if recompiled_chirho {
             // Record compilation fingerprint for incremental tracking.
@@ -680,7 +692,7 @@ pub fn compile_modules_incremental_chirho(
         // Cache-hit branch skips fingerprint bookkeeping but still pushes the
         // interface so downstream modules resolve correctly.
 
-        ifaces_chirho.push(iface_chirho);
+        crate::module_search_chirho::admit_home_iface_chirho(&mut ifaces_chirho, iface_chirho);
 
         // Phases 5–7: back-end
         let compile_result_chirho = compile_backend_chirho(

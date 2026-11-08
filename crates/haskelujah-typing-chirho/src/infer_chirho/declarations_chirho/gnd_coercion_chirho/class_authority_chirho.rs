@@ -51,11 +51,12 @@ pub(super) fn class_authority_gap_chirho(
         ));
     }
     let seeded_schema_chirho = match (
-        class_env_chirho.classes_chirho.get(text_chirho),
-        seeded_chirho.classes_chirho.get(text_chirho),
+        class_env_chirho.classes_chirho().get_chirho(text_chirho),
+        seeded_chirho.classes_chirho().get_chirho(text_chirho),
     ) {
         (Some(entry_chirho), Some(seed_chirho)) => {
-            entry_chirho.var_chirho == seed_chirho.var_chirho
+            entry_chirho.kind_vars_chirho == seed_chirho.kind_vars_chirho
+                && entry_chirho.var_chirho == seed_chirho.var_chirho
                 && entry_chirho.extra_vars_chirho == seed_chirho.extra_vars_chirho
                 && entry_chirho.methods_chirho == seed_chirho.methods_chirho
                 // The superclass templates are read authority too (#31914): equal methods

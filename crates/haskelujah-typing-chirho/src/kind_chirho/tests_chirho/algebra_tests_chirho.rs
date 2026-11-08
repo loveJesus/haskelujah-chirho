@@ -315,12 +315,12 @@ fn kind_var_cache_reuses_same_var_chirho() {
     let env_chirho = KindEnvChirho::new_chirho();
     let mut ctx_chirho = KindInferCtxChirho::new_chirho(env_chirho);
     let k1_chirho =
-        ctx_chirho.ast_kind_to_kind_ctx_chirho(&AstKindChirho::VarChirho("k".to_string()));
+        ctx_chirho.ast_kind_to_kind_ctx_chirho(&TypeChirho::VarChirho(mk_name_chirho("k")));
     let k2_chirho =
-        ctx_chirho.ast_kind_to_kind_ctx_chirho(&AstKindChirho::VarChirho("k".to_string()));
+        ctx_chirho.ast_kind_to_kind_ctx_chirho(&TypeChirho::VarChirho(mk_name_chirho("k")));
     assert_eq!(k1_chirho, k2_chirho);
     // Different name gets different var
     let j_chirho =
-        ctx_chirho.ast_kind_to_kind_ctx_chirho(&AstKindChirho::VarChirho("j".to_string()));
+        ctx_chirho.ast_kind_to_kind_ctx_chirho(&TypeChirho::VarChirho(mk_name_chirho("j")));
     assert_ne!(k1_chirho, j_chirho);
 }

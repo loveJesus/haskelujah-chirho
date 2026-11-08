@@ -12,9 +12,11 @@
 
 use std::collections::{HashMap, HashSet};
 
-use haskelujah_ast_chirho::decl_chirho::{AstKindChirho, ConDeclChirho, DeclChirho};
+use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, DeclChirho};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::name_chirho::NameChirho;
+use haskelujah_ast_chirho::name_chirho::{
+    CompilerTypeConstructorChirho, NameChirho, TypeConstructorIdentityChirho,
+};
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, MultiplicityChirho, TypeChirho};
 use haskelujah_diagnostics_chirho::{DiagnosticBundleChirho, DiagnosticChirho, ErrorCodeChirho};
 use haskelujah_span_chirho::SpanChirho;
@@ -51,13 +53,13 @@ impl TypeScopeIssueChirho {
 }
 
 struct TypeScopeWalkerChirho<'scope_chirho> {
+    projection_budget_chirho: haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
     env_chirho: &'scope_chirho NameEnvChirho,
     diagnostics_chirho: &'scope_chirho mut DiagnosticBundleChirho,
     module_name_chirho: String,
     bound_tyvars_chirho: HashMap<String, usize>,
     reported_chirho: HashSet<(TypeScopeIssueChirho, String, SpanChirho)>,
     instance_associated_type_scope_chirho: HashMap<String, HashSet<String>>,
-    existential_quantification_chirho: bool,
     data_kinds_chirho: bool,
     star_is_type_chirho: bool,
     imported_constructor_inventory_may_be_incomplete_chirho: bool,
@@ -72,6 +74,8 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         diagnostics_chirho: &'scope_chirho mut DiagnosticBundleChirho,
     ) -> Self {
         Self {
+            projection_budget_chirho:
+                haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho(),
             env_chirho,
             diagnostics_chirho,
             module_name_chirho: module_chirho.name_chirho.full_name_chirho(),
@@ -80,13 +84,6 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
             instance_associated_type_scope_chirho: collect_instance_associated_type_scope_chirho(
                 module_chirho,
                 available_modules_chirho,
-            ),
-            existential_quantification_chirho: extension_enabled_chirho(
-                module_chirho,
-                "ExistentialQuantification",
-            ) || extension_enabled_chirho(
-                module_chirho,
-                "GADTs",
             ),
             data_kinds_chirho: extension_enabled_chirho(module_chirho, "DataKinds")
                 || extension_enabled_chirho(module_chirho, "TypeInType"),
@@ -113,6 +110,20 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
     }
 
     fn walk_module_chirho(&mut self, module_chirho: &ModuleChirho) {
+        if let Err(error_chirho) =
+            haskelujah_ast_chirho::decl_chirho::check_module_projection_chirho(
+                module_chirho,
+                &mut self.projection_budget_chirho,
+                1,
+            )
+        {
+            self.diagnostics_chirho
+                .push_chirho(DiagnosticChirho::error_chirho(
+                    error_chirho.to_string(),
+                    error_chirho.span_chirho,
+                ));
+            return;
+        }
         for decl_chirho in &module_chirho.decls_chirho {
             self.walk_decl_chirho(decl_chirho);
         }
@@ -125,6 +136,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
     fn walk_decl_chirho(&mut self, decl_chirho: &DeclChirho) {
         match decl_chirho {
             DeclChirho::TypeSigChirho { ty_chirho, .. }
+            | DeclChirho::PatSynSigDeclChirho { ty_chirho, .. }
             | DeclChirho::ForeignDeclChirho { ty_chirho, .. } => {
                 self.walk_signature_type_chirho(ty_chirho);
             }
@@ -213,9 +225,13 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
             DeclChirho::TypeFamilyDeclChirho {
                 type_vars_chirho,
                 result_kind_chirho,
+                standalone_kind_chirho,
                 equations_chirho,
                 ..
             } => {
+                if let Some(signature_chirho) = standalone_kind_chirho {
+                    self.walk_signature_type_chirho(signature_chirho);
+                }
                 let pushed_chirho = self.push_decl_binders_chirho(type_vars_chirho);
                 if let Some(result_kind_chirho) = result_kind_chirho {
                     self.walk_type_chirho(
@@ -225,34 +241,55 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 }
                 self.pop_binders_chirho(&pushed_chirho);
                 for equation_chirho in equations_chirho {
-                    for lhs_ty_chirho in &equation_chirho.lhs_types_chirho {
+                    // GHC resolves the written head before judging that it names
+                    // this family, so an unbound head is a scope error first.
+                    if let Some(head_chirho) = &equation_chirho.head_chirho {
+                        self.check_type_name_chirho(head_chirho, false);
+                    }
+                    let pushed_chirho = self.push_decl_binders_chirho(
+                        equation_chirho
+                            .explicit_binders_chirho
+                            .as_deref()
+                            .unwrap_or_default(),
+                    );
+                    for lhs_ty_chirho in equation_chirho
+                        .kind_args_chirho
+                        .iter()
+                        .chain(&equation_chirho.lhs_types_chirho)
+                    {
                         self.walk_type_chirho(lhs_ty_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
                     }
                     self.walk_type_chirho(
                         &equation_chirho.rhs_chirho,
                         FreeTyVarPolicyChirho::ImplicitChirho,
                     );
+                    self.pop_binders_chirho(&pushed_chirho);
                 }
             }
             DeclChirho::TypeFamilyInstanceDeclChirho {
                 family_name_chirho,
+                kind_args_chirho,
                 lhs_types_chirho,
                 rhs_chirho,
                 ..
             } => {
                 self.check_type_name_chirho(family_name_chirho, false);
-                for lhs_ty_chirho in lhs_types_chirho {
+                for lhs_ty_chirho in kind_args_chirho.iter().chain(lhs_types_chirho) {
                     self.walk_type_chirho(lhs_ty_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
                 }
                 self.walk_type_chirho(rhs_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
             }
             DeclChirho::ClassDeclChirho {
+                standalone_kind_chirho,
                 context_chirho,
                 type_vars_chirho,
                 methods_chirho,
                 associated_tfs_chirho,
                 ..
             } => {
+                if let Some(kind_chirho) = standalone_kind_chirho {
+                    self.walk_signature_type_chirho(kind_chirho);
+                }
                 let pushed_chirho = self.push_decl_binders_chirho(type_vars_chirho);
                 for constraint_chirho in context_chirho {
                     self.walk_constraint_chirho(
@@ -264,18 +301,55 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     self.walk_signature_type_chirho(&method_chirho.ty_chirho);
                 }
                 for associated_tf_chirho in associated_tfs_chirho {
-                    let default_binders_chirho = if associated_tf_chirho.default_params_chirho.len()
-                        == associated_tf_chirho.type_vars_chirho.len()
+                    let header_pushed_chirho =
+                        self.push_decl_binders_chirho(&associated_tf_chirho.type_vars_chirho);
+                    if let Some(kind_chirho) = &associated_tf_chirho.result_kind_chirho {
+                        self.walk_type_chirho(kind_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
+                    }
+                    self.pop_binders_chirho(&header_pushed_chirho);
+                }
+                // Without a recorded default scope (a directly built AST), a
+                // default keeps the class's binders in scope, as before.
+                for associated_tf_chirho in
+                    associated_tfs_chirho.iter().filter(|associated_tf_chirho| {
+                        associated_tf_chirho.default_binders_chirho.is_none()
+                    })
+                {
+                    let visible_arity_chirho = associated_tf_chirho
+                        .type_vars_chirho
+                        .iter()
+                        .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+                        .count();
+                    let legacy_names_chirho = if associated_tf_chirho.default_params_chirho.len()
+                        == visible_arity_chirho
                     {
-                        &associated_tf_chirho.default_params_chirho
-                    } else {
-                        &associated_tf_chirho.type_vars_chirho
-                    };
-                    let associated_pushed_chirho = self.push_name_binders_chirho(
-                        default_binders_chirho
+                        associated_tf_chirho
+                            .default_params_chirho
                             .iter()
-                            .map(|name_chirho| name_chirho.text_chirho().to_string()),
-                    );
+                            .map(|name_chirho| name_chirho.text_chirho().to_string())
+                            .collect::<Vec<_>>()
+                    } else {
+                        associated_tf_chirho
+                            .type_vars_chirho
+                            .iter()
+                            .filter(|binder_chirho| binder_chirho.is_visible_chirho())
+                            .map(|binder_chirho| {
+                                binder_chirho.name_chirho.text_chirho().to_string()
+                            })
+                            .collect::<Vec<_>>()
+                    };
+                    let associated_pushed_chirho =
+                        self.push_name_binders_chirho(legacy_names_chirho);
+                    if let Some((kinds_chirho, types_chirho)) =
+                        &associated_tf_chirho.default_arguments_chirho
+                    {
+                        for argument_chirho in kinds_chirho.iter().chain(types_chirho) {
+                            self.walk_type_chirho(
+                                argument_chirho,
+                                FreeTyVarPolicyChirho::RequireBoundChirho,
+                            );
+                        }
+                    }
                     if let Some(default_rhs_chirho) = &associated_tf_chirho.default_rhs_chirho {
                         self.walk_type_chirho(
                             default_rhs_chirho,
@@ -285,8 +359,46 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     self.pop_binders_chirho(&associated_pushed_chirho);
                 }
                 self.pop_binders_chirho(&pushed_chirho);
+                // A written default is its own equation: its right side sees only
+                // the binders its left side writes and the kind variables they
+                // bind, never the class's other parameters (GHC-76037, row 686).
+                for associated_tf_chirho in associated_tfs_chirho {
+                    if let (Some(binders_chirho), Some(default_rhs_chirho)) = (
+                        &associated_tf_chirho.default_binders_chirho,
+                        &associated_tf_chirho.default_rhs_chirho,
+                    ) {
+                        let default_pushed_chirho =
+                            self.push_name_binders_chirho(binders_chirho.iter().map(
+                                |binder_chirho| binder_chirho.name_chirho.text_chirho().to_string(),
+                            ));
+                        for binder_chirho in binders_chirho {
+                            if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                                self.walk_type_chirho(
+                                    kind_chirho,
+                                    FreeTyVarPolicyChirho::RequireBoundChirho,
+                                );
+                            }
+                        }
+                        if let Some((kinds_chirho, types_chirho)) =
+                            &associated_tf_chirho.default_arguments_chirho
+                        {
+                            for argument_chirho in kinds_chirho.iter().chain(types_chirho) {
+                                self.walk_type_chirho(
+                                    argument_chirho,
+                                    FreeTyVarPolicyChirho::RequireBoundChirho,
+                                );
+                            }
+                        }
+                        self.walk_type_chirho(
+                            default_rhs_chirho,
+                            FreeTyVarPolicyChirho::RequireBoundChirho,
+                        );
+                        self.pop_binders_chirho(&default_pushed_chirho);
+                    }
+                }
             }
             DeclChirho::InstanceDeclChirho {
+                kind_args_chirho,
                 context_chirho,
                 class_chirho,
                 types_chirho,
@@ -300,7 +412,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                         FreeTyVarPolicyChirho::ImplicitChirho,
                     );
                 }
-                for ty_chirho in types_chirho {
+                for ty_chirho in kind_args_chirho.iter().chain(types_chirho) {
                     self.walk_type_chirho(ty_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
                 }
                 for assoc_tf_chirho in assoc_tf_instances_chirho {
@@ -308,7 +420,11 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                         class_chirho,
                         &assoc_tf_chirho.family_name_chirho,
                     );
-                    for lhs_ty_chirho in &assoc_tf_chirho.lhs_types_chirho {
+                    for lhs_ty_chirho in assoc_tf_chirho
+                        .kind_args_chirho
+                        .iter()
+                        .chain(&assoc_tf_chirho.lhs_types_chirho)
+                    {
                         self.walk_type_chirho(lhs_ty_chirho, FreeTyVarPolicyChirho::ImplicitChirho);
                     }
                     self.walk_type_chirho(
@@ -366,7 +482,11 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         // `forall ... .` is the outermost type form. Without one, free
         // variables are implicitly quantified at the signature boundary.
         // A required `forall ... ->` deliberately does not trigger the rule.
-        let free_var_policy_chirho = if matches!(ty_chirho, TypeChirho::ForallChirho { .. }) {
+        let mut outer_chirho = ty_chirho;
+        while let TypeChirho::KindAnnotationChirho { ty_chirho, .. } = outer_chirho {
+            outer_chirho = ty_chirho;
+        }
+        let free_var_policy_chirho = if matches!(outer_chirho, TypeChirho::ForallChirho { .. }) {
             FreeTyVarPolicyChirho::RequireBoundChirho
         } else {
             FreeTyVarPolicyChirho::ImplicitChirho
@@ -375,13 +495,44 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
     }
 
     fn walk_constructor_chirho(&mut self, constructor_chirho: &ConDeclChirho) {
-        let field_policy_chirho = if self.existential_quantification_chirho
-            || constructor_has_unrepresented_scope_prefix_chirho(constructor_chirho)
-        {
-            FreeTyVarPolicyChirho::ImplicitChirho
-        } else {
-            FreeTyVarPolicyChirho::RequireBoundChirho
+        let prefix_chirho = match constructor_chirho {
+            ConDeclChirho::OrdinaryChirho {
+                prefix_chirho,
+                span_chirho,
+                ..
+            }
+            | ConDeclChirho::RecordChirho {
+                prefix_chirho,
+                span_chirho,
+                ..
+            } => Some((prefix_chirho, *span_chirho)),
+            ConDeclChirho::GadtChirho { .. } => None,
         };
+        let pushed_chirho = if let Some((prefix_chirho, span_chirho)) = prefix_chirho {
+            if prefix_chirho.unread_chirho {
+                self.diagnostics_chirho
+                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                        ErrorCodeChirho::error_chirho(UNDEFINED_TYPE_CODE_CHIRHO),
+                        "constructor quantification was not faithfully lowered",
+                        span_chirho,
+                    ));
+                return;
+            }
+            let pushed_chirho = self.push_explicit_binders_chirho(
+                &prefix_chirho.existential_vars_chirho,
+                FreeTyVarPolicyChirho::RequireBoundChirho,
+            );
+            for constraint_chirho in &prefix_chirho.context_chirho {
+                self.walk_constraint_chirho(
+                    constraint_chirho,
+                    FreeTyVarPolicyChirho::RequireBoundChirho,
+                );
+            }
+            pushed_chirho
+        } else {
+            Vec::new()
+        };
+        let field_policy_chirho = FreeTyVarPolicyChirho::RequireBoundChirho;
         match constructor_chirho {
             ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => {
                 for (_, field_ty_chirho) in fields_chirho {
@@ -400,10 +551,26 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                     }
                 }
             }
-            ConDeclChirho::GadtChirho { ty_chirho, .. } => {
+            ConDeclChirho::GadtChirho {
+                signature_chirho, ..
+            } => {
+                let ty_chirho = &match signature_chirho
+                    .try_as_type_chirho(&mut self.projection_budget_chirho)
+                {
+                    Ok(ty_chirho) => ty_chirho,
+                    Err(error_chirho) => {
+                        self.diagnostics_chirho
+                            .push_chirho(DiagnosticChirho::error_chirho(
+                                error_chirho.to_string(),
+                                error_chirho.span_chirho(),
+                            ));
+                        return;
+                    }
+                };
                 self.walk_signature_type_chirho(ty_chirho);
             }
         }
+        self.pop_binders_chirho(&pushed_chirho);
     }
 
     fn walk_type_chirho(
@@ -422,9 +589,22 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 fun_chirho,
                 arg_chirho,
                 ..
+            }
+            | TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
             } => {
                 self.walk_type_chirho(fun_chirho, free_var_policy_chirho);
                 self.walk_type_chirho(arg_chirho, free_var_policy_chirho);
+            }
+            TypeChirho::KindAnnotationChirho {
+                ty_chirho,
+                kind_chirho,
+                ..
+            } => {
+                self.walk_type_chirho(ty_chirho, free_var_policy_chirho);
+                self.walk_type_chirho(kind_chirho, free_var_policy_chirho);
             }
             TypeChirho::FunChirho {
                 arg_chirho,
@@ -494,6 +674,7 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         match constraint_chirho {
             ConstraintChirho::ClassChirho {
                 class_chirho,
+                kind_args_chirho,
                 args_chirho,
                 ..
             } => {
@@ -509,9 +690,17 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
                 {
                     self.check_type_name_chirho(class_chirho, false);
                 }
-                for arg_chirho in args_chirho {
+                for arg_chirho in kind_args_chirho.iter().chain(args_chirho) {
                     self.walk_type_chirho(arg_chirho, free_var_policy_chirho);
                 }
+            }
+            ConstraintChirho::KindAnnotationChirho {
+                constraint_chirho,
+                kind_chirho,
+                ..
+            } => {
+                self.walk_constraint_chirho(constraint_chirho, free_var_policy_chirho);
+                self.walk_type_chirho(kind_chirho, free_var_policy_chirho);
             }
             ConstraintChirho::QuantifiedChirho {
                 vars_chirho,
@@ -553,6 +742,11 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
 
         let mut pushed_chirho = self.push_name_binders_chirho(implicit_kind_names_chirho);
         pushed_chirho.extend(self.push_name_binders_chirho(declared_names_chirho));
+        for var_chirho in vars_chirho {
+            if let Some(kind_chirho) = &var_chirho.kind_annotation_chirho {
+                self.walk_type_chirho(kind_chirho, FreeTyVarPolicyChirho::RequireBoundChirho);
+            }
+        }
         pushed_chirho
     }
 
@@ -564,45 +758,13 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         let mut pushed_chirho = Vec::with_capacity(vars_chirho.len());
         for var_chirho in vars_chirho {
             if let Some(kind_chirho) = &var_chirho.kind_annotation_chirho {
-                self.walk_binder_kind_chirho(
-                    kind_chirho,
-                    var_chirho.name_chirho.span_chirho(),
-                    free_var_policy_chirho,
-                );
+                self.walk_type_chirho(kind_chirho, free_var_policy_chirho);
             }
             let name_chirho = var_chirho.name_chirho.text_chirho().to_string();
             self.push_one_binder_chirho(name_chirho.clone());
             pushed_chirho.push(name_chirho);
         }
         pushed_chirho
-    }
-
-    fn walk_binder_kind_chirho(
-        &mut self,
-        kind_chirho: &AstKindChirho,
-        span_chirho: SpanChirho,
-        free_var_policy_chirho: FreeTyVarPolicyChirho,
-    ) {
-        match kind_chirho {
-            AstKindChirho::VarChirho(name_chirho)
-                if is_lexical_type_variable_chirho(name_chirho)
-                    && free_var_policy_chirho == FreeTyVarPolicyChirho::RequireBoundChirho
-                    && !self.bound_tyvars_chirho.contains_key(name_chirho) =>
-            {
-                self.report_free_type_variable_text_chirho(name_chirho, span_chirho);
-            }
-            AstKindChirho::ArrowChirho(arg_chirho, result_chirho) => {
-                self.walk_binder_kind_chirho(arg_chirho, span_chirho, free_var_policy_chirho);
-                self.walk_binder_kind_chirho(result_chirho, span_chirho, free_var_policy_chirho);
-            }
-            AstKindChirho::AppChirho(fun_chirho, arg_chirho) => {
-                self.walk_binder_kind_chirho(fun_chirho, span_chirho, free_var_policy_chirho);
-                self.walk_binder_kind_chirho(arg_chirho, span_chirho, free_var_policy_chirho);
-            }
-            AstKindChirho::StarChirho
-            | AstKindChirho::ConstraintChirho
-            | AstKindChirho::VarChirho(_) => {}
-        }
     }
 
     fn push_name_binders_chirho(
@@ -708,7 +870,15 @@ impl<'scope_chirho> TypeScopeWalkerChirho<'scope_chirho> {
         if name_chirho.text_chirho().is_empty() {
             return;
         }
-        if is_builtin_type_name_chirho(name_chirho)
+        if matches!(
+            name_chirho
+                .type_constructor_chirho()
+                .map(|declaration_chirho| &declaration_chirho.identity_chirho),
+            Some(TypeConstructorIdentityChirho::CompilerChirho(
+                CompilerTypeConstructorChirho::TypeUniverseChirho
+                    | CompilerTypeConstructorChirho::ConstraintUniverseChirho
+            ))
+        ) || is_builtin_type_name_chirho(name_chirho)
             || (self.star_is_type_chirho && is_unqualified_star_chirho(name_chirho))
         {
             return;
@@ -882,11 +1052,10 @@ fn collect_instance_associated_type_scope_chirho(
 
     for import_chirho in &module_chirho.imports_chirho {
         let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
-        let Some(iface_chirho) = available_modules_chirho
-            .iter()
-            .rev()
-            .find(|iface_chirho| iface_chirho.name_chirho == module_name_chirho)
-        else {
+        let Some(iface_chirho) = crate::iface_chirho::select_import_iface_chirho(
+            available_modules_chirho,
+            import_chirho,
+        ) else {
             continue;
         };
         let visible_types_chirho: HashSet<String> =
@@ -938,9 +1107,22 @@ fn record_field_type_scope_reliable_chirho(ty_chirho: &TypeChirho) -> bool {
             fun_chirho,
             arg_chirho,
             ..
+        }
+        | TypeChirho::KindApplicationChirho {
+            fun_chirho,
+            arg_chirho,
+            ..
         } => {
             record_field_type_scope_reliable_chirho(fun_chirho)
                 && record_field_type_scope_reliable_chirho(arg_chirho)
+        }
+        TypeChirho::KindAnnotationChirho {
+            ty_chirho,
+            kind_chirho,
+            ..
+        } => {
+            record_field_type_scope_reliable_chirho(ty_chirho)
+                && record_field_type_scope_reliable_chirho(kind_chirho)
         }
         TypeChirho::FunChirho {
             arg_chirho,
@@ -981,42 +1163,25 @@ fn record_field_type_scope_reliable_chirho(ty_chirho: &TypeChirho) -> bool {
     }
 }
 
-/// Whether lowering discarded an existential constructor prefix.
-///
-/// For prefix constructors the CST node starts at `forall` or its context,
-/// while the retained constructor name starts later. Infix constructors also
-/// have an earlier node start (their left operand), so they are deliberately
-/// excluded. Until `ConDeclChirho` can carry existential binders and context,
-/// fields behind this exact AST trust boundary must retain implicit scope.
-fn constructor_has_unrepresented_scope_prefix_chirho(constructor_chirho: &ConDeclChirho) -> bool {
-    let (name_chirho, span_chirho) = match constructor_chirho {
-        ConDeclChirho::OrdinaryChirho {
-            name_chirho,
-            span_chirho,
-            ..
-        }
-        | ConDeclChirho::RecordChirho {
-            name_chirho,
-            span_chirho,
-            ..
-        } => (name_chirho, *span_chirho),
-        ConDeclChirho::GadtChirho { .. } => return false,
-    };
-    let name_text_chirho = name_chirho.text_chirho();
-    name_text_chirho
-        .chars()
-        .next()
-        .is_some_and(char::is_uppercase)
-        && name_chirho.span_chirho().file_id_chirho() == span_chirho.file_id_chirho()
-        && name_chirho.span_chirho().start_chirho() > span_chirho.start_chirho()
-}
-
 fn record_field_constraint_scope_reliable_chirho(constraint_chirho: &ConstraintChirho) -> bool {
     match constraint_chirho {
         ConstraintChirho::QuantifiedChirho { .. } => false,
-        ConstraintChirho::ClassChirho { args_chirho, .. } => args_chirho
+        ConstraintChirho::ClassChirho {
+            kind_args_chirho,
+            args_chirho,
+            ..
+        } => kind_args_chirho
             .iter()
+            .chain(args_chirho)
             .all(record_field_type_scope_reliable_chirho),
+        ConstraintChirho::KindAnnotationChirho {
+            constraint_chirho,
+            kind_chirho,
+            ..
+        } => {
+            record_field_constraint_scope_reliable_chirho(constraint_chirho)
+                && record_field_type_scope_reliable_chirho(kind_chirho)
+        }
     }
 }
 
@@ -1043,25 +1208,7 @@ fn extension_enabled_chirho(module_chirho: &ModuleChirho, name_chirho: &str) -> 
     extension_enabled_with_default_chirho(module_chirho, name_chirho, false)
 }
 
-fn extension_enabled_with_default_chirho(
-    module_chirho: &ModuleChirho,
-    name_chirho: &str,
-    default_chirho: bool,
-) -> bool {
-    let disabled_name_chirho = format!("No{name_chirho}");
-    module_chirho.extensions_chirho.iter().fold(
-        default_chirho,
-        |enabled_chirho, extension_chirho| {
-            if extension_chirho == name_chirho {
-                true
-            } else if extension_chirho == &disabled_name_chirho {
-                false
-            } else {
-                enabled_chirho
-            }
-        },
-    )
-}
+use haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho;
 
 fn is_unqualified_star_chirho(name_chirho: &NameChirho) -> bool {
     let (qualifier_chirho, text_chirho) = name_parts_chirho(name_chirho);
@@ -1146,23 +1293,177 @@ fn is_unboxed_tuple_or_sum_constructor_text_chirho(text_chirho: &str) -> bool {
         })
 }
 
-fn collect_kind_variable_names_chirho(kind_chirho: &AstKindChirho, names_chirho: &mut Vec<String>) {
-    match kind_chirho {
-        AstKindChirho::VarChirho(name_chirho) if is_lexical_type_variable_chirho(name_chirho) => {
-            names_chirho.push(name_chirho.clone());
+/// Free kind variables use the same full surface syntax as types. Local
+/// forall/quantified binders shadow only their own lexical scope.
+fn collect_kind_variable_names_chirho(kind_chirho: &TypeChirho, names_chirho: &mut Vec<String>) {
+    fn name_chirho(
+        name_chirho: &NameChirho,
+        bound_chirho: &HashMap<&str, usize>,
+        out_chirho: &mut Vec<String>,
+    ) {
+        let (qualifier_chirho, text_chirho) = name_parts_chirho(name_chirho);
+        if qualifier_chirho.is_none()
+            && is_lexical_type_variable_chirho(text_chirho)
+            && !bound_chirho.contains_key(text_chirho)
+        {
+            out_chirho.push(text_chirho.to_string());
         }
-        AstKindChirho::ArrowChirho(arg_chirho, result_chirho) => {
-            collect_kind_variable_names_chirho(arg_chirho, names_chirho);
-            collect_kind_variable_names_chirho(result_chirho, names_chirho);
-        }
-        AstKindChirho::AppChirho(fun_chirho, arg_chirho) => {
-            collect_kind_variable_names_chirho(fun_chirho, names_chirho);
-            collect_kind_variable_names_chirho(arg_chirho, names_chirho);
-        }
-        AstKindChirho::StarChirho
-        | AstKindChirho::ConstraintChirho
-        | AstKindChirho::VarChirho(_) => {}
     }
+    fn bind_chirho<'syntax_chirho>(
+        vars_chirho: &'syntax_chirho [haskelujah_ast_chirho::decl_chirho::TyVarChirho],
+        bound_chirho: &mut HashMap<&'syntax_chirho str, usize>,
+        out_chirho: &mut Vec<String>,
+    ) {
+        for binder_chirho in vars_chirho {
+            if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                ty_chirho(kind_chirho, bound_chirho, out_chirho);
+            }
+            *bound_chirho
+                .entry(binder_chirho.name_chirho.text_chirho())
+                .or_insert(0) += 1;
+        }
+    }
+    fn unbind_chirho(
+        vars_chirho: &[haskelujah_ast_chirho::decl_chirho::TyVarChirho],
+        bound_chirho: &mut HashMap<&str, usize>,
+    ) {
+        for binder_chirho in vars_chirho.iter().rev() {
+            let text_chirho = binder_chirho.name_chirho.text_chirho();
+            let count_chirho = bound_chirho
+                .get_mut(text_chirho)
+                .expect("lexical binder installed");
+            *count_chirho -= 1;
+            if *count_chirho == 0 {
+                bound_chirho.remove(text_chirho);
+            }
+        }
+    }
+    fn constraint_names_chirho<'syntax_chirho>(
+        constraint_chirho: &'syntax_chirho ConstraintChirho,
+        bound_chirho: &mut HashMap<&'syntax_chirho str, usize>,
+        out_chirho: &mut Vec<String>,
+    ) {
+        match constraint_chirho {
+            ConstraintChirho::ClassChirho {
+                class_chirho,
+                kind_args_chirho,
+                args_chirho,
+                ..
+            } => {
+                name_chirho(class_chirho, bound_chirho, out_chirho);
+                for arg_chirho in kind_args_chirho.iter().chain(args_chirho) {
+                    ty_chirho(arg_chirho, bound_chirho, out_chirho);
+                }
+            }
+            ConstraintChirho::KindAnnotationChirho {
+                constraint_chirho: inner_chirho,
+                kind_chirho,
+                ..
+            } => {
+                constraint_names_chirho(inner_chirho, bound_chirho, out_chirho);
+                ty_chirho(kind_chirho, bound_chirho, out_chirho);
+            }
+            ConstraintChirho::QuantifiedChirho {
+                vars_chirho,
+                context_chirho,
+                body_chirho,
+                ..
+            } => {
+                bind_chirho(vars_chirho, bound_chirho, out_chirho);
+                for inner_chirho in context_chirho {
+                    constraint_names_chirho(inner_chirho, bound_chirho, out_chirho);
+                }
+                constraint_names_chirho(body_chirho, bound_chirho, out_chirho);
+                unbind_chirho(vars_chirho, bound_chirho);
+            }
+        }
+    }
+    fn ty_chirho<'syntax_chirho>(
+        syntax_chirho: &'syntax_chirho TypeChirho,
+        bound_chirho: &mut HashMap<&'syntax_chirho str, usize>,
+        out_chirho: &mut Vec<String>,
+    ) {
+        match syntax_chirho {
+            TypeChirho::VarChirho(var_chirho) => name_chirho(var_chirho, bound_chirho, out_chirho),
+            TypeChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            }
+            | TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                ty_chirho(fun_chirho, bound_chirho, out_chirho);
+                ty_chirho(arg_chirho, bound_chirho, out_chirho);
+            }
+            TypeChirho::KindAnnotationChirho {
+                ty_chirho: inner_chirho,
+                kind_chirho,
+                ..
+            } => {
+                ty_chirho(inner_chirho, bound_chirho, out_chirho);
+                ty_chirho(kind_chirho, bound_chirho, out_chirho);
+            }
+            TypeChirho::FunChirho {
+                arg_chirho,
+                mult_chirho,
+                result_chirho,
+                ..
+            } => {
+                ty_chirho(arg_chirho, bound_chirho, out_chirho);
+                ty_chirho(result_chirho, bound_chirho, out_chirho);
+                if let Some(MultiplicityChirho::MultVarChirho(var_chirho)) = mult_chirho {
+                    name_chirho(var_chirho, bound_chirho, out_chirho);
+                }
+            }
+            TypeChirho::TupleChirho {
+                elements_chirho, ..
+            }
+            | TypeChirho::PromotedListChirho {
+                elements_chirho, ..
+            } => {
+                for element_chirho in elements_chirho {
+                    ty_chirho(element_chirho, bound_chirho, out_chirho);
+                }
+            }
+            TypeChirho::ListChirho { element_chirho, .. }
+            | TypeChirho::ParenChirho {
+                inner_chirho: element_chirho,
+                ..
+            } => ty_chirho(element_chirho, bound_chirho, out_chirho),
+            TypeChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+                ..
+            } => {
+                for inner_chirho in context_chirho {
+                    constraint_names_chirho(inner_chirho, bound_chirho, out_chirho);
+                }
+                ty_chirho(body_chirho, bound_chirho, out_chirho);
+            }
+            TypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            }
+            | TypeChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+                ..
+            } => {
+                bind_chirho(vars_chirho, bound_chirho, out_chirho);
+                ty_chirho(body_chirho, bound_chirho, out_chirho);
+                unbind_chirho(vars_chirho, bound_chirho);
+            }
+            TypeChirho::ConChirho(_)
+            | TypeChirho::PromotedConChirho { .. }
+            | TypeChirho::WildcardChirho { .. }
+            | TypeChirho::LitChirho { .. } => {}
+        }
+    }
+    ty_chirho(kind_chirho, &mut HashMap::new(), names_chirho);
 }
 
 fn name_parts_chirho(name_chirho: &NameChirho) -> (Option<&str>, &str) {
@@ -1178,6 +1479,9 @@ fn name_parts_chirho(name_chirho: &NameChirho) -> (Option<&str>, &str) {
     }
 }
 
+#[cfg(test)]
+#[path = "default_scope_tests_chirho.rs"]
+mod default_scope_tests_chirho;
 #[cfg(test)]
 #[path = "type_scope_tests_chirho.rs"]
 mod tests_chirho;

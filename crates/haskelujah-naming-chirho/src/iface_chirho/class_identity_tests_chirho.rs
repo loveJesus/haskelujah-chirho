@@ -4,6 +4,7 @@
 //! modules and interfaces, and the supplier guard over the real builtin interfaces.
 
 use super::*;
+use crate::iface_chirho::merge_module_ifaces_chirho;
 use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::module_chirho::{
     ExportMembersChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho,
@@ -13,8 +14,7 @@ use haskelujah_span_chirho::SpanChirho;
 
 use crate::iface_chirho::{IfaceExportsChirho, IfaceTypeChirho, builtin_module_ifaces_chirho};
 
-/// Builtin interfaces that export a table class but are not trusted to provide it: module
-/// names GHC 9.14.1 does not ship.
+/// Incidental builtin exports that are not actual permitted providers of the table class.
 const UNTRUSTED_CLASS_EXPORTERS_CHIRHO: &[(&str, &str)] = &[
     ("Show", "Show"),
     ("Monad", "Monad"),
@@ -33,6 +33,7 @@ fn name_chirho(text_chirho: &str) -> NameChirho {
 /// `class <name> a` with no methods.
 fn class_decl_chirho(class_text_chirho: &str) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho(class_text_chirho),
         type_vars_chirho: vec![name_chirho("a").into()],
@@ -68,6 +69,8 @@ fn import_chirho(
     qualified_chirho: bool,
 ) -> ImportDeclChirho {
     ImportDeclChirho {
+        package_chirho: None,
+        source_chirho: false,
         module_chirho: name_chirho(module_text_chirho),
         qualified_chirho,
         alias_chirho: alias_chirho.map(name_chirho),
@@ -91,6 +94,7 @@ fn class_iface_chirho(
     exports_chirho.types_chirho.insert(
         class_text_chirho.to_string(),
         IfaceTypeChirho {
+            declaration_chirho: None,
             name_chirho: class_text_chirho.to_string(),
             constructors_chirho: vec![],
             methods_chirho: methods_chirho
@@ -102,6 +106,7 @@ fn class_iface_chirho(
         },
     );
     ModuleIfaceChirho {
+        exposure_chirho: None,
         name_chirho: module_text_chirho.to_string(),
         exports_chirho,
     }
@@ -330,18 +335,16 @@ fn the_table_names_each_class_once_at_a_known_parameter_kind_chirho() {
             entry_chirho.class_chirho.name_chirho
         );
         let schema_chirho = entry_chirho.class_chirho.schema_chirho();
-        // A deriving clause gives every class exactly one parameter, the derived type.
         assert_eq!(schema_chirho.visible_parameter_count_chirho(), 1);
-        // Typeable's hidden kind binder leaves it no GND head and no kind judgment.
-        assert_eq!(
-            schema_chirho.single_parameter_eta_arity_chirho().is_some(),
-            matches!(
-                entry_chirho.witness_chirho,
-                ClassWitnessChirho::MethodChirho(_)
-            ),
-            "{}",
-            entry_chirho.class_chirho.name_chirho
-        );
+        if entry_chirho.class_chirho.identity_chirho == CompilerClassChirho::TypeableChirho {
+            // A complete polymorphic telescope does not become a closed
+            // Type-only hint merely because it has one visible argument.
+            assert_eq!(schema_chirho.binders_chirho.len(), 2);
+            assert!(schema_chirho.single_parameter_eta_arity_chirho().is_none());
+            assert!(schema_chirho.closed_parameter_kind_chirho(0).is_none());
+        } else {
+            assert!(schema_chirho.single_parameter_eta_arity_chirho().is_some());
+        }
     }
 }
 
@@ -581,6 +584,70 @@ fn each_measured_real_class_provider_proves_its_class_chirho() {
         assert!(
             !proven_chirho(&local_chirho, class_name_chirho),
             "{provider_chirho}.{class_name_chirho}"
+        );
+    }
+}
+
+#[test]
+fn instance_head_coverage_is_a_producer_fact_not_a_builtin_origin_chirho() {
+    let interfaces_chirho = builtin_module_ifaces_chirho();
+    for name_chirho in ["Prelude", "Data.Kind", "Data.Proxy"] {
+        let mut producer_chirho = interfaces_chirho
+            .iter()
+            .find(|interface_chirho| interface_chirho.name_chirho == name_chirho)
+            .unwrap()
+            .clone();
+        // Retain this control's original metadata-free legacy merge lane.
+        producer_chirho.exposure_chirho = None;
+        assert!(
+            producer_chirho
+                .exports_chirho
+                .unary_variable_instance_heads_covered_chirho
+        );
+        let unknown_chirho = ModuleIfaceChirho {
+            exposure_chirho: None,
+            name_chirho: name_chirho.into(),
+            exports_chirho: IfaceExportsChirho {
+                origin_chirho: IfaceOriginChirho::BuiltinChirho,
+                ..IfaceExportsChirho::default()
+            },
+        };
+        for copies_chirho in [
+            vec![producer_chirho.clone(), unknown_chirho.clone()],
+            vec![unknown_chirho.clone(), producer_chirho.clone()],
+        ] {
+            let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
+            assert!(
+                !merged_chirho[0]
+                    .exports_chirho
+                    .unary_variable_instance_heads_covered_chirho
+            );
+        }
+    }
+}
+
+#[test]
+fn source_interface_copies_cannot_acquire_instance_coverage_by_merge_order_chirho() {
+    let mut producer_chirho = builtin_module_ifaces_chirho()
+        .into_iter()
+        .find(|interface_chirho| interface_chirho.name_chirho == "Data.Proxy")
+        .unwrap();
+    // Selection evidence is absent in this original legacy-copy control.
+    producer_chirho.exposure_chirho = None;
+    let source_chirho = ModuleIfaceChirho {
+        exposure_chirho: None,
+        name_chirho: producer_chirho.name_chirho.clone(),
+        exports_chirho: IfaceExportsChirho::default(),
+    };
+    for copies_chirho in [
+        vec![producer_chirho.clone(), source_chirho.clone()],
+        vec![source_chirho.clone(), producer_chirho.clone()],
+    ] {
+        let merged_chirho = merge_module_ifaces_chirho(copies_chirho);
+        assert!(
+            !merged_chirho[0]
+                .exports_chirho
+                .unary_variable_instance_heads_covered_chirho
         );
     }
 }

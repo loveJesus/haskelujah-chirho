@@ -78,6 +78,7 @@ impl InferCtxChirho {
         let mut subst_chirho = SubstChirho::empty_chirho();
         let mut unmet_chirho: Option<TyChirho> = None;
         for arm_chirho in arms_chirho {
+            let type_pattern_scope_mark_chirho = self.type_pattern_alias_undo_chirho.len();
             self.env_chirho.push_scope_chirho();
             let body_ty_chirho = self.infer_guard_arm_chirho(arm_chirho, None, &mut subst_chirho);
             match self.unify_normalized_chirho(
@@ -95,6 +96,7 @@ impl InferCtxChirho {
                     }
                 }
             }
+            self.restore_type_pattern_aliases_chirho(type_pattern_scope_mark_chirho);
             self.env_chirho.pop_scope_chirho();
         }
         (subst_chirho, unmet_chirho)
@@ -115,6 +117,7 @@ impl InferCtxChirho {
             None => self.fresh_var_chirho(),
         };
         for arm_chirho in arms_chirho {
+            let type_pattern_scope_mark_chirho = self.type_pattern_alias_undo_chirho.len();
             self.env_chirho.push_scope_chirho();
             let arm_expected_chirho =
                 expected_chirho.map(|_| subst_chirho.apply_ty_chirho(&result_ty_chirho));
@@ -136,6 +139,7 @@ impl InferCtxChirho {
                     Err(err_chirho) => self.report_unify_error_chirho(&err_chirho),
                 }
             }
+            self.restore_type_pattern_aliases_chirho(type_pattern_scope_mark_chirho);
             self.env_chirho.pop_scope_chirho();
         }
         let final_ty_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);

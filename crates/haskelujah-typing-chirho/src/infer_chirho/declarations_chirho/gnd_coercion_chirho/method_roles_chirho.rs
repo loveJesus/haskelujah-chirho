@@ -49,6 +49,18 @@ pub(crate) fn blocked_method_position_chirho(
     families_chirho: &HashSet<String>,
 ) -> Option<BlockedPositionChirho> {
     let class_var_ty_chirho = TyChirho::VarChirho(class_var_chirho);
+    if scheme_chirho
+        .vars_chirho
+        .records_chirho()
+        .iter()
+        .filter_map(|record_chirho| record_chirho.kind_chirho.as_deref())
+        .any(|kind_chirho| mentions_var_chirho(kind_chirho, class_var_chirho))
+    {
+        return Some(BlockedPositionChirho {
+            under_chirho: "a quantified binder kind".to_owned(),
+            proven_nominal_chirho: false,
+        });
+    }
     for predicate_chirho in &scheme_chirho.preds_chirho {
         // The class's own predicate on its parameter is the dictionary GND replaces.
         let own_predicate_chirho = predicate_chirho.class_name_chirho == class_name_chirho
@@ -57,8 +69,8 @@ pub(crate) fn blocked_method_position_chirho(
         if own_predicate_chirho {
             continue;
         }
-        let mentions_chirho = std::iter::once(&predicate_chirho.ty_chirho)
-            .chain(&predicate_chirho.extra_tys_chirho)
+        let mentions_chirho = predicate_chirho
+            .semantic_tys_chirho()
             .any(|ty_chirho| mentions_var_chirho(ty_chirho, class_var_chirho));
         if mentions_chirho {
             return Some(BlockedPositionChirho {
@@ -103,8 +115,39 @@ impl MethodWalkChirho<'_> {
                 .iter()
                 .find_map(|element_chirho| self.walk_chirho(element_chirho, None)),
             TyChirho::ListChirho(element_chirho) => self.walk_chirho(element_chirho, None),
-            TyChirho::ForallChirho { body_chirho, .. }
-            | TyChirho::RequiredForallChirho { body_chirho, .. } => {
+            TyChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            }
+            | TyChirho::RequiredForallChirho {
+                vars_chirho,
+                body_chirho,
+            } => {
+                if vars_chirho
+                    .records_chirho()
+                    .iter()
+                    .filter_map(|record_chirho| record_chirho.kind_chirho.as_deref())
+                    .any(|kind_chirho| mentions_var_chirho(kind_chirho, self.class_var_chirho))
+                {
+                    return Some(BlockedPositionChirho {
+                        under_chirho: "a quantified binder kind".to_owned(),
+                        proven_nominal_chirho: false,
+                    });
+                }
+                self.walk_chirho(body_chirho, None)
+            }
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                if context_chirho.iter().any(|constraint_chirho| {
+                    mentions_var_chirho(constraint_chirho, self.class_var_chirho)
+                }) {
+                    return Some(BlockedPositionChirho {
+                        under_chirho: "a qualified constraint".to_owned(),
+                        proven_nominal_chirho: false,
+                    });
+                }
                 self.walk_chirho(body_chirho, None)
             }
             TyChirho::AppChirho(..) => self.walk_application_chirho(ty_chirho),
@@ -194,9 +237,29 @@ fn mentions_var_chirho(ty_chirho: &TyChirho, var_chirho: TyVarChirho) -> bool {
             .iter()
             .any(|element_chirho| mentions_var_chirho(element_chirho, var_chirho)),
         TyChirho::ListChirho(element_chirho) => mentions_var_chirho(element_chirho, var_chirho),
-        TyChirho::ForallChirho { body_chirho, .. }
-        | TyChirho::RequiredForallChirho { body_chirho, .. } => {
-            mentions_var_chirho(body_chirho, var_chirho)
+        TyChirho::ForallChirho {
+            vars_chirho,
+            body_chirho,
+        }
+        | TyChirho::RequiredForallChirho {
+            vars_chirho,
+            body_chirho,
+        } => {
+            vars_chirho
+                .records_chirho()
+                .iter()
+                .filter_map(|record_chirho| record_chirho.kind_chirho.as_deref())
+                .any(|kind_chirho| mentions_var_chirho(kind_chirho, var_chirho))
+                || mentions_var_chirho(body_chirho, var_chirho)
+        }
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => {
+            context_chirho
+                .iter()
+                .any(|constraint_chirho| mentions_var_chirho(constraint_chirho, var_chirho))
+                || mentions_var_chirho(body_chirho, var_chirho)
         }
     }
 }

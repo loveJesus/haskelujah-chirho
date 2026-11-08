@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 
@@ -28,6 +29,7 @@ pub(super) fn push_formats_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Text.Show".to_string(),
             exports_chirho,
         });
@@ -64,6 +66,7 @@ pub(super) fn push_formats_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             ];
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Text.Read".to_string(),
             exports_chirho,
         });
@@ -134,6 +137,7 @@ pub(super) fn push_formats_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Text.Printf".to_string(),
             exports_chirho,
         });
@@ -188,6 +192,7 @@ pub(super) fn push_formats_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             ];
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Text.Read".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
@@ -213,6 +218,7 @@ pub(super) fn push_formats_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             show_exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Text.Show".to_string(),
             exports_chirho: show_exports_chirho,
         });
@@ -252,6 +258,7 @@ pub(super) fn push_formats_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["pretty"]),
             name_chirho: "Text.PrettyPrint".to_string(),
             exports_chirho,
         });
@@ -290,6 +297,7 @@ pub(super) fn push_formats_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["parsec"]),
             name_chirho: "Text.Parsec.Prim".to_string(),
             exports_chirho,
         });
@@ -326,6 +334,7 @@ pub(super) fn push_formats_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["parsec"]),
             name_chirho: "Text.Parsec.Combinator".to_string(),
             exports_chirho,
         });
@@ -398,6 +407,7 @@ pub(super) fn push_formats_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["parsec"]),
             name_chirho: "Text.Parsec".to_string(),
             exports_chirho,
         });
@@ -456,10 +466,12 @@ pub(super) fn push_formats_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["parsec"]),
             name_chirho: "Text.ParserCombinators.Parsec".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Text.ParserCombinators.ReadP".to_string(),
             exports_chirho,
         });
@@ -550,10 +562,12 @@ pub(super) fn push_formats_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Prettyprinter".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Prettyprinter.Internal".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
@@ -588,10 +602,12 @@ pub(super) fn push_formats_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
                     .insert(k_chirho, v_chirho);
             }
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: None,
                 name_chirho: "Prettyprinter.Render.Terminal".to_string(),
                 exports_chirho: render_exports_chirho.clone(),
             });
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: None,
                 name_chirho: "Prettyprinter.Render.Text".to_string(),
                 exports_chirho: render_exports_chirho,
             });
@@ -696,6 +712,7 @@ pub(super) fn push_formats_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Text.PrettyPrint.ANSI.Leijen".to_string(),
             exports_chirho,
         });
@@ -760,6 +777,7 @@ pub(super) fn push_formats_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
         });

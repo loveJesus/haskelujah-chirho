@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
@@ -45,16 +46,24 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["stm"]),
             name_chirho: "Control.Concurrent.STM".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         // Also expose as GHC.Conc / Control.Concurrent.STM.TVar
-        for sub_mod_chirho in &[
-            "Control.Concurrent.STM.TVar",
-            "Control.Concurrent.STM.TMVar",
-            "GHC.Conc",
+        for (sub_mod_chirho, exposure_chirho) in &[
+            (
+                "Control.Concurrent.STM.TVar",
+                package_exposure_chirho(&["stm"]),
+            ),
+            (
+                "Control.Concurrent.STM.TMVar",
+                package_exposure_chirho(&["stm"]),
+            ),
+            ("GHC.Conc", package_exposure_chirho(&["base"])),
         ] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: exposure_chirho.clone(),
                 name_chirho: sub_mod_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -107,6 +116,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Control.Exception".to_string(),
             exports_chirho,
         });
@@ -136,6 +146,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
         let (k_chirho, v_chirho) = mk_type_chirho("Eval", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Control.Parallel.Strategies".to_string(),
             exports_chirho,
         });
@@ -181,6 +192,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
         exports_chirho.types_chirho.insert(
             "Exception".to_string(),
             IfaceTypeChirho {
+                declaration_chirho: None,
                 name_chirho: "Exception".to_string(),
                 constructors_chirho: vec![],
                 methods_chirho: vec![
@@ -208,6 +220,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         for mod_name_chirho in &["Control.Exception", "Control.Exception.Base"] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: package_exposure_chirho(&["base"]),
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -243,10 +256,12 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
         let (k_chirho, v_chirho) = mk_type_chirho("TVar", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["stm"]),
             name_chirho: "Control.Concurrent.STM".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["stm"]),
             name_chirho: "Control.Monad.STM".to_string(),
             exports_chirho,
         });
@@ -272,6 +287,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Control.Concurrent".to_string(),
             exports_chirho,
         });
@@ -300,6 +316,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
         let (k_chirho, v_chirho) = mk_type_chirho("MVar", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Control.Concurrent.MVar".to_string(),
             exports_chirho,
         });
@@ -315,6 +332,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
         let (k_chirho, v_chirho) = mk_type_chirho("NFData", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["deepseq"]),
             name_chirho: "Control.DeepSeq".to_string(),
             exports_chirho,
         });
@@ -353,6 +371,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
         }
         for mod_name_chirho in &["GHC.Conc", "GHC.Conc.Sync"] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: package_exposure_chirho(&["base"]),
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -382,6 +401,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Control.Concurrent.MVar".to_string(),
             exports_chirho,
         });
@@ -397,6 +417,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["deepseq"]),
             name_chirho: "Control.DeepSeq".to_string(),
             exports_chirho,
         });
@@ -415,6 +436,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Control.Exception.Context".to_string(),
             exports_chirho,
         });
@@ -449,6 +471,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: "Control.Concurrent".to_string(),
             exports_chirho,
         });
@@ -503,6 +526,7 @@ pub(super) fn push_concurrency_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["base"]),
             name_chirho: mod_name_chirho.to_string(),
             exports_chirho,
         });

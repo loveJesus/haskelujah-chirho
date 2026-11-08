@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 
@@ -48,6 +49,7 @@ pub(super) fn push_maps_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Map".to_string(),
             exports_chirho,
         });
@@ -99,10 +101,12 @@ pub(super) fn push_maps_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Map", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Map.Strict".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Map.Lazy".to_string(),
             exports_chirho,
         });
@@ -146,10 +150,12 @@ pub(super) fn push_maps_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Map.Merge.Lazy".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Map.Merge.Strict".to_string(),
             exports_chirho,
         });
@@ -202,6 +208,7 @@ pub(super) fn push_maps_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Map", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Map.Internal".to_string(),
             exports_chirho,
         });
@@ -237,14 +244,17 @@ pub(super) fn push_maps_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("IntMap", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.IntMap".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.IntMap.Strict".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.IntMap.Lazy".to_string(),
             exports_chirho,
         });
@@ -326,6 +336,7 @@ pub(super) fn push_maps_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         }
         for mod_name_chirho in &["Data.Map", "Data.Map.Strict", "Data.Map.Lazy"] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: package_exposure_chirho(&["containers"]),
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -365,6 +376,7 @@ pub(super) fn push_maps_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.IntMap".to_string(),
             exports_chirho,
         });
@@ -415,6 +427,7 @@ pub(super) fn push_maps_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         }
         for mod_name_chirho in &["Data.IntMap", "Data.IntMap.Strict", "Data.IntMap.Lazy"] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: package_exposure_chirho(&["containers"]),
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -479,6 +492,7 @@ pub(super) fn push_maps_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         }
         for mod_name_chirho in &["Data.Map", "Data.Map.Strict", "Data.Map.Lazy"] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: package_exposure_chirho(&["containers"]),
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -493,6 +507,7 @@ pub(super) fn push_maps_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.Map.Internal.Debug".to_string(),
             exports_chirho,
         });
@@ -506,6 +521,7 @@ pub(super) fn push_maps_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["containers"]),
             name_chirho: "Data.IntMap.Internal.Debug".to_string(),
             exports_chirho,
         });
@@ -609,6 +625,7 @@ pub(super) fn push_maps_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             "Data.IntMap.Internal",
         ] {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: package_exposure_chirho(&["containers"]),
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });

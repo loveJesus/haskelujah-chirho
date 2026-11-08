@@ -169,6 +169,8 @@ impl LowerCtxChirho {
             .collect()
     }
 
+    /// Keep the complete kind after the declaration delimiter, including inner
+    /// binder annotations. Workflow: language-features-chirho/declaration-kinds-chirho.
     pub(super) fn lower_standalone_kind_sig_chirho(
         &self,
         node_chirho: &GreenNodeChirho,
@@ -188,7 +190,9 @@ impl LowerCtxChirho {
                         && tok_chirho.kind_chirho() == TokenKindChirho::TypeKeywordChirho
                     {
                         saw_type_keyword_chirho = true;
-                    } else if tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho {
+                    } else if !saw_double_colon_chirho
+                        && tok_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho
+                    {
                         saw_double_colon_chirho = true;
                     } else if saw_double_colon_chirho {
                         type_children_chirho.push(child_chirho);
@@ -341,6 +345,51 @@ impl LowerCtxChirho {
     ) -> DeclChirho {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
 
+        if children_chirho.iter().any(|child_chirho| {
+            matches!(
+                child_chirho.element_chirho,
+                GreenElementChirho::TokenChirho(token_chirho)
+                    if token_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho
+            )
+        }) {
+            let mut names_chirho = Vec::new();
+            let mut ty_chirho = None;
+            let mut signature_chirho = false;
+            for child_chirho in &children_chirho {
+                match child_chirho.element_chirho {
+                    GreenElementChirho::TokenChirho(token_chirho) => {
+                        if token_chirho.kind_chirho() == TokenKindChirho::DoubleColonChirho {
+                            signature_chirho = true;
+                        } else if !signature_chirho
+                            && token_chirho.kind_chirho() == TokenKindChirho::ConIdChirho
+                        {
+                            names_chirho.push(self.name_from_token_chirho(
+                                token_chirho,
+                                self.span_chirho(
+                                    child_chirho.start_chirho,
+                                    child_chirho.end_chirho,
+                                ),
+                            ));
+                        }
+                    }
+                    GreenElementChirho::NodeChirho(type_chirho)
+                        if signature_chirho && ty_chirho.is_none() =>
+                    {
+                        ty_chirho = Some(self.lower_pattern_signature_type_chirho(
+                            type_chirho,
+                            child_chirho.start_chirho,
+                        ));
+                    }
+                    _ => {}
+                }
+            }
+            return DeclChirho::PatSynSigDeclChirho {
+                names_chirho,
+                ty_chirho: ty_chirho.unwrap_or_else(|| self.placeholder_type_chirho()),
+                span_chirho,
+            };
+        }
+
         let mut name_chirho: Option<NameChirho> = None;
         let mut args_chirho: Vec<NameChirho> = Vec::new();
         let mut saw_keyword_chirho = false;
@@ -348,11 +397,15 @@ impl LowerCtxChirho {
         let mut is_equals_chirho = false;
         let mut pat_chirho: Option<PatChirho> = None;
         let mut has_where_chirho = false;
+        let mut record_chirho = false;
 
         for child_chirho in &children_chirho {
             match child_chirho.element_chirho {
                 GreenElementChirho::TokenChirho(tok_chirho) => {
                     let kind_chirho = tok_chirho.kind_chirho();
+                    if kind_chirho == TokenKindChirho::LeftBraceChirho && !saw_sep_chirho {
+                        record_chirho = true;
+                    }
                     if kind_chirho == TokenKindChirho::VarIdChirho && !saw_keyword_chirho {
                         // "pattern" keyword — skip
                         saw_keyword_chirho = true;
@@ -418,9 +471,68 @@ impl LowerCtxChirho {
         DeclChirho::PatSynDeclChirho {
             name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
             args_chirho,
+            record_chirho,
             dir_chirho,
             pat_chirho: pat_chirho.unwrap_or(PatChirho::WildcardChirho(span_chirho)),
             span_chirho,
+        }
+    }
+
+    /// Pattern signatures give their two contexts different roles. In
+    /// particular, `() => C a => t` must keep its empty required context.
+    fn lower_pattern_signature_type_chirho(
+        &self,
+        node_chirho: &GreenNodeChirho,
+        base_chirho: usize,
+    ) -> TypeChirho {
+        let span_chirho =
+            self.span_chirho(base_chirho, base_chirho + node_chirho.text_len_chirho());
+        match node_chirho.kind_chirho() {
+            SyntaxKindChirho::QualTypeChirho => {
+                let parts_chirho = self.lower_context_parts_chirho(node_chirho, base_chirho);
+                let body_chirho = parts_chirho
+                    .body_chirho
+                    .map(|body_chirho| {
+                        self.lower_pattern_signature_type_chirho(
+                            body_chirho.node_chirho,
+                            body_chirho.base_chirho,
+                        )
+                    })
+                    .unwrap_or_else(|| self.placeholder_type_chirho());
+                TypeChirho::QualChirho {
+                    context_chirho: parts_chirho.constraints_chirho,
+                    body_chirho: Box::new(body_chirho),
+                    span_chirho,
+                }
+            }
+            SyntaxKindChirho::ForallTypeChirho => {
+                let parts_chirho = self.lower_forall_parts_chirho(node_chirho, base_chirho);
+                let body_chirho = Box::new(
+                    parts_chirho
+                        .body_chirho
+                        .map(|body_chirho| {
+                            self.lower_pattern_signature_type_chirho(
+                                body_chirho.node_chirho,
+                                body_chirho.base_chirho,
+                            )
+                        })
+                        .unwrap_or_else(|| self.placeholder_type_chirho()),
+                );
+                if parts_chirho.required_chirho {
+                    TypeChirho::RequiredForallChirho {
+                        vars_chirho: parts_chirho.vars_chirho,
+                        body_chirho,
+                        span_chirho,
+                    }
+                } else {
+                    TypeChirho::ForallChirho {
+                        vars_chirho: parts_chirho.vars_chirho,
+                        body_chirho,
+                        span_chirho,
+                    }
+                }
+            }
+            _ => self.lower_type_chirho(node_chirho, base_chirho),
         }
     }
 

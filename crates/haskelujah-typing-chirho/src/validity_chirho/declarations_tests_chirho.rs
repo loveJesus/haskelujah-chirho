@@ -6,7 +6,7 @@
 use super::*;
 use haskelujah_ast_chirho::decl_chirho::{FieldDeclChirho, StrictnessChirho, TyVarChirho};
 use haskelujah_ast_chirho::name_chirho::RawNameChirho;
-use haskelujah_ast_chirho::ty_chirho::ConstraintChirho;
+use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 use haskelujah_span_chirho::{ByteOffsetChirho, FileIdChirho};
 
 fn span_at_chirho(start_chirho: u32) -> SpanChirho {
@@ -45,6 +45,7 @@ fn arrow_chirho(arg_chirho: TypeChirho, result_chirho: TypeChirho) -> TypeChirho
 fn show_context_chirho(body_chirho: TypeChirho) -> TypeChirho {
     TypeChirho::QualChirho {
         context_chirho: vec![ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: name_chirho("Show"),
             args_chirho: vec![var_ty_chirho("a")],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -105,6 +106,7 @@ fn record_chirho(field_names_chirho: &[&str]) -> ConDeclChirho {
     ConDeclChirho::RecordChirho {
         name_chirho: name_chirho("R"),
         fields_chirho: vec![FieldDeclChirho {
+            multiplicity_chirho: None,
             names_chirho: field_names_chirho
                 .iter()
                 .copied()
@@ -122,7 +124,9 @@ fn record_chirho(field_names_chirho: &[&str]) -> ConDeclChirho {
 fn gadt_chirho(ty_chirho: TypeChirho) -> ConDeclChirho {
     ConDeclChirho::GadtChirho {
         name_chirho: name_chirho("MkN"),
-        ty_chirho,
+        signature_chirho: Box::new(
+            haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(ty_chirho),
+        ),
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     }
 }
@@ -137,6 +141,7 @@ fn fun_bind_chirho(name_text_chirho: &str, start_chirho: u32) -> LocalBindChirho
 
 fn instance_chirho(methods_chirho: Vec<LocalBindChirho>) -> DeclChirho {
     DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: name_chirho("Eq"),
         types_chirho: vec![con_ty_chirho("T")],
@@ -148,6 +153,7 @@ fn instance_chirho(methods_chirho: Vec<LocalBindChirho>) -> DeclChirho {
 
 fn class_chirho(default_sig_chirho: Option<&str>, has_default_chirho: bool) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho("C"),
         type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("a"))],
@@ -168,7 +174,11 @@ fn class_chirho(default_sig_chirho: Option<&str>, has_default_chirho: bool) -> D
 fn codes_chirho(decls_chirho: Vec<DeclChirho>) -> Vec<&'static str> {
     check_module_declaration_validity_chirho(&module_chirho(decls_chirho))
         .iter()
-        .map(|error_chirho| error_chirho.ghc_code_chirho)
+        .map(|error_chirho| {
+            error_chirho
+                .ghc_code_chirho
+                .expect("this semantic declaration rule has a measured GHC code")
+        })
         .collect()
 }
 
@@ -280,7 +290,9 @@ fn a_name_bound_apart_in_one_instance_is_reported_at_each_repeat_chirho() {
         .iter()
         .map(|error_chirho| {
             (
-                error_chirho.ghc_code_chirho,
+                error_chirho
+                    .ghc_code_chirho
+                    .expect("this semantic declaration rule has a measured GHC code"),
                 error_chirho.span_chirho,
                 error_chirho.related_span_chirho,
             )
@@ -364,6 +376,9 @@ fn annotated_record_chirho(strictness_chirho: StrictnessChirho) -> ConDeclChirho
     ConDeclChirho::RecordChirho {
         name_chirho: name_chirho("R"),
         fields_chirho: vec![FieldDeclChirho {
+            multiplicity_chirho: Some(
+                haskelujah_ast_chirho::ty_chirho::MultiplicityChirho::ManyChirho,
+            ),
             names_chirho: vec![name_chirho("fieldChirho")],
             ty_chirho: con_ty_chirho("Int"),
             strictness_chirho,
@@ -397,7 +412,11 @@ fn codes_with_chirho(
         .collect();
     check_module_declaration_validity_chirho(&test_module_chirho)
         .iter()
-        .map(|error_chirho| error_chirho.ghc_code_chirho)
+        .map(|error_chirho| {
+            error_chirho
+                .ghc_code_chirho
+                .expect("strictness controls produce semantic GHC diagnostics")
+        })
         .collect()
 }
 

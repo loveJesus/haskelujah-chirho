@@ -613,6 +613,7 @@ mod tests_chirho {
                 name_chirho: mk_name_chirho("Person"),
                 fields_chirho: vec![
                     FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![mk_name_chirho("_name")],
                         ty_chirho: TypeChirho::ConChirho(mk_name_chirho("String")),
                         strictness_chirho:
@@ -620,6 +621,7 @@ mod tests_chirho {
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
                     },
                     FieldDeclChirho {
+                        multiplicity_chirho: None,
                         names_chirho: vec![mk_name_chirho("_age")],
                         ty_chirho: TypeChirho::ConChirho(mk_name_chirho("Int")),
                         strictness_chirho:
@@ -809,6 +811,7 @@ mod tests_chirho {
                     name_chirho: mk_name_chirho("Config"),
                     fields_chirho: vec![
                         FieldDeclChirho {
+                            multiplicity_chirho: None,
                             names_chirho: vec![mk_name_chirho("verbose")],
                             ty_chirho: TypeChirho::ConChirho(mk_name_chirho("Bool")),
                             strictness_chirho:
@@ -816,6 +819,7 @@ mod tests_chirho {
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                         },
                         FieldDeclChirho {
+                            multiplicity_chirho: None,
                             names_chirho: vec![mk_name_chirho("_port")],
                             ty_chirho: TypeChirho::ConChirho(mk_name_chirho("Int")),
                             strictness_chirho:

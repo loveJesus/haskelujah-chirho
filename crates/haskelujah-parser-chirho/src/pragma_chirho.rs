@@ -16,65 +16,54 @@
 use crate::lexer_chirho::{LexerChirho, RawTokenChirho, RawTokenKindChirho};
 use haskelujah_span_chirho::FileIdChirho;
 
-/// Extensions enabled by GHC2021, and by GHC2024 with `GHC2024_ADDITIONS_CHIRHO`.
-const GHC2021_EXTENSIONS_CHIRHO: &[&str] = &[
-    "BangPatterns",
-    "BinaryLiterals",
-    "ConstrainedClassMethods",
-    "ConstraintKinds",
-    "DeriveDataTypeable",
-    "DeriveFoldable",
-    "DeriveFunctor",
-    "DeriveGeneric",
-    "DeriveLift",
-    "DeriveTraversable",
-    "DoAndIfThenElse",
-    "EmptyCase",
-    "EmptyDataDecls",
-    "EmptyDataDeriving",
-    "ExistentialQuantification",
-    "ExplicitForAll",
-    "FlexibleContexts",
-    "FlexibleInstances",
-    "ForeignFunctionInterface",
-    "GADTSyntax",
-    "GeneralizedNewtypeDeriving",
-    "HexFloatLiterals",
-    "ImportQualifiedPost",
-    "InstanceSigs",
-    "KindSignatures",
-    "MultiParamTypeClasses",
-    "NamedFieldPuns",
-    "NamedWildCards",
-    "NumericUnderscores",
-    "PolyKinds",
-    "PostfixOperators",
-    "RankNTypes",
-    "ScopedTypeVariables",
-    "StandaloneDeriving",
-    "StandaloneKindSignatures",
-    "TupleSections",
-    "TypeApplications",
-    "TypeOperators",
-    "TypeSynonymInstances",
-];
+mod catalogue_chirho;
+use catalogue_chirho::{
+    canonical_extension_chirho, edition_flags_chirho, expand_written_extension_chirho,
+};
 
-/// What GHC2024 adds to GHC2021 that this compiler models so far (row 694): the deriving
-/// strategies (GHC 9.14.1 accepts `deriving stock` under GHC2024, root's A3) and role
-/// annotations (it accepts `type role` under GHC2024 alone, root's RX2). GHC2024's other
-/// additions (DataKinds, GADTs, MonoLocalBinds and the rest) belong to the D03 lane.
-const GHC2024_ADDITIONS_CHIRHO: &[&str] = &["DerivingStrategies", "RoleAnnotations"];
+/// One resolved module extension payload, shared by pre-layout classification and lowering.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EffectiveExtensionsChirho {
+    flags_chirho: Vec<String>,
+}
 
-/// The language editions consumers read by name: they imply none of the flags this compiler
-/// models as extensions.
-const NAMED_EDITIONS_CHIRHO: [&str; 2] = ["Haskell98", "Haskell2010"];
+impl EffectiveExtensionsChirho {
+    /// The default GHC2021 edition, the last selected edition, then explicit overrides.
+    pub fn from_entries_chirho(
+        entries_chirho: impl IntoIterator<Item = PragmaExtensionChirho>,
+    ) -> Self {
+        Self {
+            flags_chirho: module_extensions_chirho(entries_chirho),
+        }
+    }
+
+    pub fn from_source_chirho(source_chirho: &str, file_id_chirho: FileIdChirho) -> Self {
+        Self::from_entries_chirho(
+            header_pragmas_chirho(source_chirho, file_id_chirho).extensions_chirho,
+        )
+    }
+
+    pub fn flags_chirho(&self) -> &[String] {
+        &self.flags_chirho
+    }
+
+    pub fn enabled_chirho(&self, extension_chirho: &str) -> bool {
+        extension_enabled_chirho(&self.flags_chirho, extension_chirho)
+    }
+}
+
+impl Default for EffectiveExtensionsChirho {
+    fn default() -> Self {
+        Self::from_entries_chirho([])
+    }
+}
 
 /// One extension a pragma names: written by the programmer, or implied by a language edition.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PragmaExtensionChirho {
     /// The flag as consumers read it (`GADTs`, `NoGADTs`).
     pub name_chirho: String,
-    /// The edition (`GHC2021`, `GHC2024`) that implied it; `None` for a written flag.
+    /// The language edition that implied it; `None` for a written flag.
     pub edition_chirho: Option<&'static str>,
 }
 
@@ -93,95 +82,100 @@ pub fn pragma_extensions_from_inner_chirho(inner_chirho: &str) -> Vec<String> {
 pub fn pragma_extension_entries_from_inner_chirho(
     inner_chirho: &str,
 ) -> Vec<PragmaExtensionChirho> {
-    let written_chirho = |name_chirho: &str| PragmaExtensionChirho {
-        name_chirho: name_chirho.to_string(),
-        edition_chirho: None,
-    };
     let inner_chirho = inner_chirho.trim();
     let Some((keyword_chirho, rest_chirho)) = inner_chirho.split_once(char::is_whitespace) else {
         return Vec::new();
     };
-
     if keyword_chirho.eq_ignore_ascii_case("LANGUAGE") {
         return rest_chirho
             .split(',')
-            .flat_map(|extension_chirho| {
-                let extension_chirho = extension_chirho.trim();
-                if let Some(edition_chirho) = ["GHC2021", "GHC2024"]
-                    .into_iter()
-                    .find(|edition_chirho| *edition_chirho == extension_chirho)
-                {
-                    let additions_chirho = if edition_chirho == "GHC2024" {
-                        GHC2024_ADDITIONS_CHIRHO
-                    } else {
-                        &[]
-                    };
-                    GHC2021_EXTENSIONS_CHIRHO
-                        .iter()
-                        .chain(additions_chirho)
-                        .map(|implied_chirho| PragmaExtensionChirho {
-                            name_chirho: (*implied_chirho).to_string(),
-                            edition_chirho: Some(edition_chirho),
-                        })
-                        .collect::<Vec<_>>()
-                } else if extension_chirho.is_empty() {
-                    Vec::new()
-                } else {
-                    vec![written_chirho(extension_chirho)]
-                }
-            })
+            .flat_map(|name_chirho| extension_entries_chirho(name_chirho.trim()))
             .collect();
     }
-
     if is_options_keyword_chirho(keyword_chirho) {
-        return rest_chirho
-            .split_whitespace()
-            .filter_map(|word_chirho| word_chirho.strip_prefix("-X"))
-            .filter(|extension_chirho| !extension_chirho.is_empty())
-            .map(written_chirho)
-            .collect();
+        return extension_entries_from_options_chirho(
+            &ghc_option_words_chirho(rest_chirho).unwrap_or_default(),
+        );
     }
-
     Vec::new()
 }
 
-/// A module's extension flags from its pragmas' entries, read last-wins.
-///
-/// GHC keeps only the last language edition a module names (`lang_set`: `GHC2024` then
-/// `GHC2021` is GHC2021, root's RX3), applies it first and every written flag over it in
-/// source order, wherever the flag stands (root's O1-O4, GHC 9.14.1):
-/// `NoGeneralizedNewtypeDeriving, GHC2021` leaves it off, though the edition implies it. So
-/// the flags are the last edition's (a `Haskell98` or `Haskell2010` edition by its name, as
-/// its consumers read it), then every written flag in source order.
+fn extension_entries_chirho(name_chirho: &str) -> Vec<PragmaExtensionChirho> {
+    let canonical_chirho = canonical_extension_chirho(name_chirho);
+    let name_chirho = canonical_chirho.as_ref();
+    if let Some((edition_chirho, flags_chirho)) = edition_flags_chirho(name_chirho) {
+        flags_chirho
+            .iter()
+            .map(|name_chirho| PragmaExtensionChirho {
+                name_chirho: (*name_chirho).to_string(),
+                edition_chirho: Some(edition_chirho),
+            })
+            .collect()
+    } else if name_chirho.is_empty() {
+        Vec::new()
+    } else {
+        vec![PragmaExtensionChirho {
+            name_chirho: name_chirho.to_string(),
+            edition_chirho: None,
+        }]
+    }
+}
+
+/// Caller and OPTIONS_GHC words use the same edition and extension vocabulary.
+pub fn extension_entries_from_options_chirho(
+    options_chirho: &[String],
+) -> Vec<PragmaExtensionChirho> {
+    options_chirho
+        .iter()
+        .filter_map(|option_chirho| {
+            option_chirho
+                .strip_prefix("-X")
+                .or_else(|| (option_chirho == "-cpp").then_some("CPP"))
+        })
+        .flat_map(extension_entries_chirho)
+        .collect()
+}
+
+/// Replace the edition baseline, retaining explicit On/Off flags in their written order.
+/// Edition defaults are not closed under the implications of explicitly enabling a flag.
 /// workflow: compiler-pipeline-chirho/deriving-strategies-chirho
 pub fn module_extensions_chirho(
     entries_chirho: impl IntoIterator<Item = PragmaExtensionChirho>,
 ) -> Vec<String> {
-    let mut edition_flags_chirho: Vec<String> = Vec::new();
-    let mut written_chirho: Vec<String> = Vec::new();
-    // The edition whose implied flags are being read; a new one replaces the last.
-    let mut reading_edition_chirho: Option<&'static str> = None;
+    let mut edition_chirho = "GHC2021";
+    let mut written_chirho = Vec::new();
     for entry_chirho in entries_chirho {
-        match entry_chirho.edition_chirho {
-            Some(edition_chirho) => {
-                if reading_edition_chirho != Some(edition_chirho) {
-                    edition_flags_chirho.clear();
-                    reading_edition_chirho = Some(edition_chirho);
-                }
-                edition_flags_chirho.push(entry_chirho.name_chirho);
-            }
-            None => {
-                reading_edition_chirho = None;
-                if NAMED_EDITIONS_CHIRHO.contains(&entry_chirho.name_chirho.as_str()) {
-                    edition_flags_chirho = vec![entry_chirho.name_chirho];
-                } else {
-                    written_chirho.push(entry_chirho.name_chirho);
-                }
-            }
+        if let Some(selected_chirho) = entry_chirho.edition_chirho {
+            edition_chirho = selected_chirho;
+        } else {
+            expand_written_extension_chirho(&entry_chirho.name_chirho, &mut written_chirho);
         }
     }
-    edition_flags_chirho.extend(written_chirho);
-    edition_flags_chirho
+    let (_, baseline_chirho) = edition_flags_chirho(edition_chirho)
+        .expect("extension entries carry a known language edition");
+    let mut flags_chirho: Vec<_> = baseline_chirho
+        .iter()
+        .map(|flag_chirho| (*flag_chirho).to_string())
+        .collect();
+    flags_chirho.extend(written_chirho);
+    // Publish effective states, so older presence-based consumers cannot observe an
+    // overridden positive flag. Preserve the first slot's order without quadratic scans.
+    let mut positions_chirho = std::collections::HashMap::new();
+    let mut effective_chirho = Vec::new();
+    for flag_chirho in flags_chirho {
+        let key_chirho = flag_chirho
+            .strip_prefix("No")
+            .filter(|name_chirho| name_chirho.starts_with(char::is_uppercase))
+            .unwrap_or(&flag_chirho)
+            .to_string();
+        if let Some(index_chirho) = positions_chirho.get(&key_chirho) {
+            effective_chirho[*index_chirho] = flag_chirho;
+        } else {
+            positions_chirho.insert(key_chirho, effective_chirho.len());
+            effective_chirho.push(flag_chirho);
+        }
+    }
+    effective_chirho
 }
 
 /// `OPTIONS_GHC`, or its legacy spelling `OPTIONS`; pragma keywords ignore case.
@@ -273,8 +267,22 @@ fn split_quoted_chirho(after_open_chirho: &str) -> Option<(String, &str)> {
 /// stops where the header ends.
 /// workflow: compiler-pipeline-chirho/error-deferral-chirho
 pub fn header_ghc_options_chirho(source_chirho: &str, file_id_chirho: FileIdChirho) -> Vec<String> {
+    header_pragmas_chirho(source_chirho, file_id_chirho).ghc_options_chirho
+}
+
+/// Real header tokens, retaining extension provenance until all source views are combined.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct HeaderPragmasChirho {
+    pub extensions_chirho: Vec<PragmaExtensionChirho>,
+    pub ghc_options_chirho: Vec<String>,
+}
+
+pub fn header_pragmas_chirho(
+    source_chirho: &str,
+    file_id_chirho: FileIdChirho,
+) -> HeaderPragmasChirho {
     let mut lexer_chirho = LexerChirho::new_chirho(source_chirho, file_id_chirho);
-    let mut options_chirho = Vec::new();
+    let mut header_chirho = HeaderPragmasChirho::default();
     loop {
         let token_chirho = lexer_chirho.next_token_chirho();
         match token_chirho.kind_chirho {
@@ -286,11 +294,16 @@ pub fn header_ghc_options_chirho(source_chirho: &str, file_id_chirho: FileIdChir
                     .and_then(|text_chirho| text_chirho.strip_prefix("{-#"))
                     .and_then(|text_chirho| text_chirho.strip_suffix("#-}"))
                 {
-                    options_chirho.extend(pragma_ghc_options_from_inner_chirho(inner_chirho));
+                    header_chirho
+                        .extensions_chirho
+                        .extend(pragma_extension_entries_from_inner_chirho(inner_chirho));
+                    header_chirho
+                        .ghc_options_chirho
+                        .extend(pragma_ghc_options_from_inner_chirho(inner_chirho));
                 }
             }
             kind_chirho if kind_chirho.is_trivia_chirho() => {}
-            _ => return options_chirho,
+            _ => return header_chirho,
         }
     }
 }
@@ -312,6 +325,7 @@ pub fn collect_raw_pragma_extensions_chirho(
     module_extensions_chirho(
         tokens_chirho
             .iter()
+            .take_while(|token_chirho| token_chirho.kind_chirho.is_trivia_chirho())
             .filter(|token_chirho| token_chirho.kind_chirho == RawTokenKindChirho::PragmaChirho)
             .flat_map(|token_chirho| {
                 let start_chirho = token_chirho.span_chirho.start_chirho().as_usize_chirho();
@@ -349,12 +363,27 @@ pub fn classify_contextual_keywords_chirho(
     source_chirho: &str,
     tokens_chirho: &mut [RawTokenChirho],
 ) -> Vec<String> {
-    let extensions_chirho = collect_raw_pragma_extensions_chirho(source_chirho, tokens_chirho);
-    let recursive_do_enabled_chirho = extension_enabled_chirho(&extensions_chirho, "RecursiveDo");
-    let qualified_do_enabled_chirho = extension_enabled_chirho(&extensions_chirho, "QualifiedDo");
-    if !recursive_do_enabled_chirho && !qualified_do_enabled_chirho {
-        return extensions_chirho;
-    }
+    let extensions_chirho = EffectiveExtensionsChirho {
+        flags_chirho: collect_raw_pragma_extensions_chirho(source_chirho, tokens_chirho),
+    };
+    classify_contextual_keywords_with_extensions_chirho(
+        source_chirho,
+        tokens_chirho,
+        &extensions_chirho,
+    );
+    extensions_chirho.flags_chirho
+}
+
+pub fn classify_contextual_keywords_with_extensions_chirho(
+    source_chirho: &str,
+    tokens_chirho: &mut [RawTokenChirho],
+    extensions_chirho: &EffectiveExtensionsChirho,
+) {
+    let extensions_chirho = extensions_chirho.flags_chirho();
+    let recursive_do_enabled_chirho = extension_enabled_chirho(extensions_chirho, "RecursiveDo");
+    let qualified_do_enabled_chirho = extension_enabled_chirho(extensions_chirho, "QualifiedDo");
+    let transform_list_comp_enabled_chirho =
+        extension_enabled_chirho(extensions_chirho, "TransformListComp");
 
     for token_chirho in tokens_chirho {
         let start_chirho = token_chirho.span_chirho.start_chirho().as_usize_chirho();
@@ -363,6 +392,21 @@ pub fn classify_contextual_keywords_chirho(
             continue;
         };
 
+        // GHC9.14.1 reserves unqualified by/using when this extension is on.
+        // Qualified identifiers keep their actual qualified spelling. group
+        // remains a legal identifier and is recognized in its then production.
+        if matches!(
+            token_chirho.kind_chirho,
+            RawTokenKindChirho::VarIdChirho
+                | RawTokenKindChirho::TransformByChirho
+                | RawTokenKindChirho::TransformUsingChirho
+        ) {
+            token_chirho.kind_chirho = match (transform_list_comp_enabled_chirho, text_chirho) {
+                (true, "by") => RawTokenKindChirho::TransformByChirho,
+                (true, "using") => RawTokenKindChirho::TransformUsingChirho,
+                _ => RawTokenKindChirho::VarIdChirho,
+            };
+        }
         if recursive_do_enabled_chirho
             && token_chirho.kind_chirho == RawTokenKindChirho::VarIdChirho
         {
@@ -382,10 +426,10 @@ pub fn classify_contextual_keywords_chirho(
             token_chirho.kind_chirho = RawTokenKindChirho::DoChirho;
         }
     }
-
-    extensions_chirho
 }
 
+#[cfg(test)]
+mod effective_tests_chirho;
 #[cfg(test)]
 mod tests_chirho {
     use super::*;

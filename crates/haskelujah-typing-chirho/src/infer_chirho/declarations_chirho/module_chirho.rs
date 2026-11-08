@@ -6,8 +6,8 @@
 use super::InferCtxChirho;
 use super::{
     GeneralizationScopeChirho, SIGNATURE_MISMATCH_CODE_CHIRHO, ast_type_to_syn_rhs_chirho,
-    binding_groups_chirho, canonical_value_name_text_chirho,
-    collect_free_type_vars_from_ast_chirho, collect_module_shadowed_names_chirho, records_chirho,
+    binding_groups_chirho, canonical_value_name_text_chirho, collect_module_shadowed_names_chirho,
+    records_chirho,
 };
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{MultChirho, SchemeChirho, TyChirho};
@@ -20,10 +20,39 @@ use haskelujah_span_chirho::SpanChirho;
 use std::collections::{HashMap, HashSet};
 
 impl InferCtxChirho {
+    /// Checked fields wait for the existing local/associated family producer.
+    /// Data-layout validity uses no GADT givens and is never a deferred type error.
+    pub(super) fn finish_constructor_field_kinds_chirho(&mut self) -> bool {
+        let view_chirho = super::EqualityNormalizationViewChirho {
+            substitutions_chirho: &self.equality_substitutions_chirho,
+            legacy_synonyms_chirho: &self.type_synonyms_chirho,
+            type_scope_chirho: self.type_constructor_scope_chirho.as_deref(),
+            family_scope_chirho: self.family_scope_chirho.as_deref(),
+            family_module_chirho: &self.family_module_name_chirho,
+            promotion_present_chirho: self.promotion_scope_chirho.is_some(),
+            evidence_chirho: Default::default(),
+        };
+        match self
+            .elaboration_state_chirho
+            .finish_constructor_field_kinds_chirho(&self.type_families_chirho, view_chirho)
+        {
+            Ok(()) => true,
+            Err(error_chirho) => {
+                self.non_deferrable_diagnostics_chirho
+                    .push_chirho(error_chirho.into_diagnostic_chirho());
+                false
+            }
+        }
+    }
+
     /// Run type inference on a module. Returns the result with environment,
     /// substitution, and diagnostics.
     pub fn infer_module_chirho(&mut self, module_chirho: &ModuleChirho) -> SubstChirho {
+        self.type_validity_license_chirho = Some(
+            crate::validity_chirho::LicenseChirho::from_module_chirho(module_chirho),
+        );
         let mut subst_chirho = SubstChirho::empty_chirho();
+        self.prepare_family_scope_chirho(module_chirho, self.family_scope_chirho.clone());
 
         // A non-Prelude import can bring instances of SEEDED classes into
         // scope (e.g. a sibling module declaring `instance Show I`) that the
@@ -71,11 +100,27 @@ impl InferCtxChirho {
             } = decl_chirho
             {
                 let syn_name_chirho = name_chirho.text_chirho().to_string();
+                if self.uses_checked_declaration_chirho(&syn_name_chirho) {
+                    continue;
+                }
                 let params_chirho: Vec<String> = type_vars_chirho
                     .iter()
                     .map(|v_chirho| v_chirho.text_chirho().to_string())
                     .collect();
-                let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_chirho, &params_chirho);
+                let mut stamped_rhs_chirho = rhs_chirho.clone();
+                if let Some(scope_chirho) = self.family_scope_chirho.as_deref() {
+                    super::stamp_family_references_chirho(
+                        &mut stamped_rhs_chirho,
+                        scope_chirho,
+                        &self.type_families_chirho,
+                        &self.family_module_name_chirho,
+                    );
+                }
+                let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(
+                    &stamped_rhs_chirho,
+                    &params_chirho,
+                    self.promotion_scope_chirho.as_deref(),
+                );
                 self.register_type_synonym_chirho(syn_name_chirho, params_chirho, rhs_ty_chirho);
             }
         }
@@ -135,64 +180,8 @@ impl InferCtxChirho {
             }
         }
 
-        // Phase -0.5: Register type families and type family instances
-        for decl_chirho in &module_chirho.decls_chirho {
-            match decl_chirho {
-                DeclChirho::TypeFamilyDeclChirho {
-                    name_chirho,
-                    type_vars_chirho,
-                    equations_chirho,
-                    ..
-                } => {
-                    let family_name_chirho = name_chirho.text_chirho().to_string();
-                    let param_names_chirho: Vec<String> = type_vars_chirho
-                        .iter()
-                        .map(|v_chirho| v_chirho.text_chirho().to_string())
-                        .collect();
-                    let eqs_chirho: Vec<(Vec<TyChirho>, TyChirho)> = equations_chirho
-                        .iter()
-                        .map(|eq_chirho| {
-                            let lhs_chirho: Vec<TyChirho> = eq_chirho
-                                .lhs_types_chirho
-                                .iter()
-                                .map(|t_chirho| {
-                                    ast_type_to_syn_rhs_chirho(t_chirho, &param_names_chirho)
-                                })
-                                .collect();
-                            let rhs_chirho = ast_type_to_syn_rhs_chirho(
-                                &eq_chirho.rhs_chirho,
-                                &param_names_chirho,
-                            );
-                            (lhs_chirho, rhs_chirho)
-                        })
-                        .collect();
-                    self.register_type_family_chirho(family_name_chirho, eqs_chirho);
-                }
-                DeclChirho::TypeFamilyInstanceDeclChirho {
-                    family_name_chirho,
-                    lhs_types_chirho,
-                    rhs_chirho,
-                    ..
-                } => {
-                    let fname_chirho = family_name_chirho.text_chirho().to_string();
-                    // Collect free type variables from LHS types so they become
-                    // ForallVarChirho (matchable pattern vars) in the equation.
-                    let inst_params_chirho =
-                        collect_free_type_vars_from_ast_chirho(lhs_types_chirho);
-                    let lhs_chirho: Vec<TyChirho> = lhs_types_chirho
-                        .iter()
-                        .map(|t_chirho| ast_type_to_syn_rhs_chirho(t_chirho, &inst_params_chirho))
-                        .collect();
-                    let rhs_ty_chirho = ast_type_to_syn_rhs_chirho(rhs_chirho, &inst_params_chirho);
-                    self.register_type_family_instance_chirho(
-                        fname_chirho,
-                        lhs_chirho,
-                        rhs_ty_chirho,
-                    );
-                }
-                _ => {}
-            }
-        }
+        // Phase -0.5: immutable family declarations and coherent open rows.
+        self.register_module_families_chirho(module_chirho);
 
         for shadowed_name_chirho in collect_module_shadowed_names_chirho(module_chirho) {
             self.env_chirho.remove_chirho(&shadowed_name_chirho);
@@ -207,6 +196,7 @@ impl InferCtxChirho {
                 ..
             } = decl_chirho
             {
+                self.check_source_signature_ambiguity_chirho(ty_chirho);
                 type_sigs_chirho.insert(
                     canonical_value_name_text_chirho(name_chirho.text_chirho()),
                     ty_chirho.clone(),
@@ -243,11 +233,34 @@ impl InferCtxChirho {
         for decl_chirho in &module_chirho.decls_chirho {
             self.process_instance_decl_chirho(decl_chirho);
         }
+        if !self.finish_constructor_field_kinds_chirho() {
+            return subst_chirho;
+        }
         // workflow: language-features-chirho/instance-obligations-chirho
         self.check_local_instance_obligations_chirho(module_chirho);
 
+        let type_constructor_scope_chirho = self.type_constructor_scope_chirho.clone();
+        let module_name_chirho = module_chirho.name_chirho.full_name_chirho();
+
+        let mut projection_budget_chirho =
+            haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho::new_chirho();
+
         // Phase 2: Bind data and newtype constructor types
         for decl_chirho in &module_chirho.decls_chirho {
+            if let Err(error_chirho) =
+                haskelujah_ast_chirho::decl_chirho::check_declaration_projection_chirho(
+                    decl_chirho,
+                    &mut projection_budget_chirho,
+                    1,
+                )
+            {
+                self.diagnostics_chirho
+                    .push_chirho(DiagnosticChirho::error_chirho(
+                        error_chirho.to_string(),
+                        error_chirho.span_chirho,
+                    ));
+                continue;
+            }
             match decl_chirho {
                 DeclChirho::DataDeclChirho {
                     name_chirho,
@@ -269,6 +282,16 @@ impl InferCtxChirho {
                             );
                     }
                     for con_chirho in constructors_chirho {
+                        if self.bind_written_h98_constructor_chirho(
+                            con_chirho,
+                            (name_chirho, type_vars_chirho),
+                            &tv_map_chirho,
+                            type_constructor_scope_chirho.as_deref(),
+                            &module_name_chirho,
+                            &mut projection_budget_chirho,
+                        ) {
+                            continue;
+                        }
                         match con_chirho {
                             haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                                 name_chirho,
@@ -364,18 +387,16 @@ impl InferCtxChirho {
                             }
                             haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
                                 name_chirho,
-                                ty_chirho,
+                                signature_chirho,
                                 ..
                             } => {
-                                // Convert the full GADT type signature to TyChirho.
-                                // The return type comes from the signature itself,
-                                // NOT from the auto-constructed `T a b c`.
-                                let con_ty_chirho =
-                                    self.ast_type_to_ty_chirho(ty_chirho, &mut tv_map_chirho);
-                                let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
-                                self.env_chirho.bind_chirho(
-                                    name_chirho.text_chirho().to_string(),
-                                    gen_scheme_chirho,
+                                self.bind_gadt_constructor_chirho(
+                                    name_chirho,
+                                    signature_chirho,
+                                    &tv_map_chirho,
+                                    type_constructor_scope_chirho.as_deref(),
+                                    &module_name_chirho,
+                                    &mut projection_budget_chirho,
                                 );
                             }
                         }
@@ -397,6 +418,16 @@ impl InferCtxChirho {
                         );
                     let (result_ty_chirho, mut nt_tv_map_chirho) =
                         self.data_head_type_chirho(name_chirho.text_chirho(), type_vars_chirho);
+                    if self.bind_written_h98_constructor_chirho(
+                        constructor_chirho,
+                        (name_chirho, type_vars_chirho),
+                        &nt_tv_map_chirho,
+                        type_constructor_scope_chirho.as_deref(),
+                        &module_name_chirho,
+                        &mut projection_budget_chirho,
+                    ) {
+                        continue;
+                    }
                     match constructor_chirho {
                         haskelujah_ast_chirho::decl_chirho::ConDeclChirho::OrdinaryChirho {
                             name_chirho: con_name_chirho,
@@ -483,18 +514,16 @@ impl InferCtxChirho {
                         }
                         haskelujah_ast_chirho::decl_chirho::ConDeclChirho::GadtChirho {
                             name_chirho: con_name_chirho,
-                            ty_chirho,
+                            signature_chirho,
                             ..
                         } => {
-                            // Newtype GADT: convert the full type signature.
-                            let con_ty_chirho = self.ast_type_to_ty_chirho(
-                                ty_chirho,
-                                &mut std::collections::HashMap::new(),
-                            );
-                            let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
-                            self.env_chirho.bind_chirho(
-                                con_name_chirho.text_chirho().to_string(),
-                                gen_scheme_chirho,
+                            self.bind_gadt_constructor_chirho(
+                                con_name_chirho,
+                                signature_chirho,
+                                &nt_tv_map_chirho,
+                                type_constructor_scope_chirho.as_deref(),
+                                &module_name_chirho,
+                                &mut projection_budget_chirho,
                             );
                         }
                     }
@@ -601,12 +630,21 @@ impl InferCtxChirho {
         // The rigid form of each checked signature, for the Phase 3c check.
         let mut skolemized_sigs_chirho: HashMap<String, TyChirho> = HashMap::new();
         for group_chirho in &groups_chirho {
+            let mut equality_owners_chirho = Vec::new();
             // Infer each function body in the group
             let mut group_inferred_chirho: Vec<(usize, String, TyChirho, SpanChirho)> = Vec::new();
             for &fi_chirho in group_chirho {
                 let binding_name_chirho = &fun_names_chirho[fi_chirho];
                 let pre_ty_chirho = &fun_pre_tys_chirho[fi_chirho];
                 let span_chirho = fun_spans_chirho[fi_chirho];
+                let equality_owner_chirho = self.begin_equality_scope_chirho(
+                    if type_sigs_chirho.contains_key(binding_name_chirho) {
+                        super::equality_scopes_chirho::EqualityScopeKindChirho::CheckedChirho
+                    } else {
+                        super::equality_scopes_chirho::EqualityScopeKindChirho::BindingChirho
+                    },
+                );
+                equality_owners_chirho.push(equality_owner_chirho);
 
                 // ScopedTypeVariables: an explicit `forall` scopes the
                 // signature's own binders (the same variables the rigid seed
@@ -623,32 +661,41 @@ impl InferCtxChirho {
                         self.scope_signature_for_body_chirho(sig_ast_chirho, &sig_var_map_chirho);
                         skolemized_sigs_chirho
                             .insert(binding_name_chirho.clone(), sig_ty_raw_chirho.clone());
-                        self.with_given_preds_chirho(sig_preds_chirho, |self_chirho| {
-                            self_chirho.infer_matches_against_expected_chirho(
-                                fun_matches_refs_chirho[fi_chirho],
-                                span_chirho,
-                                &sig_ty_raw_chirho,
-                            )
-                        })
+                        self.with_signature_givens_chirho(
+                            sig_preds_chirho,
+                            &sig_ty_raw_chirho,
+                            |self_chirho| {
+                                self_chirho.infer_matches_against_expected_chirho(
+                                    fun_matches_refs_chirho[fi_chirho],
+                                    span_chirho,
+                                    &sig_ty_raw_chirho,
+                                )
+                            },
+                        )
                     } else {
                         self.infer_matches_chirho(fun_matches_refs_chirho[fi_chirho], span_chirho)
                     };
                 subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                 self.apply_subst_all_chirho(&s_chirho);
 
-                // Unify pre-bound type with inferred type
-                let pre_sub_chirho = subst_chirho.apply_ty_chirho(pre_ty_chirho);
-                match self.unify_normalized_chirho(
-                    &pre_sub_chirho,
-                    &inferred_ty_chirho,
-                    span_chirho,
-                ) {
-                    Ok(su_chirho) => {
-                        subst_chirho = su_chirho.compose_chirho(&subst_chirho);
-                        self.apply_subst_all_chirho(&su_chirho);
-                    }
-                    Err(err_chirho) => {
-                        self.report_unify_error_chirho(&err_chirho);
+                // Unsigned recursive placeholders join their inferred result.
+                // A signed binding already uses its full declared scheme and
+                // was checked under that SAME signature's givens. An unrelated
+                // fresh pretype supplies no additional family equality.
+                if !type_sigs_chirho.contains_key(binding_name_chirho) {
+                    let pre_sub_chirho = subst_chirho.apply_ty_chirho(pre_ty_chirho);
+                    match self.unify_normalized_chirho(
+                        &pre_sub_chirho,
+                        &inferred_ty_chirho,
+                        span_chirho,
+                    ) {
+                        Ok(su_chirho) => {
+                            subst_chirho = su_chirho.compose_chirho(&subst_chirho);
+                            self.apply_subst_all_chirho(&su_chirho);
+                        }
+                        Err(err_chirho) => {
+                            self.report_unify_error_chirho(&err_chirho);
+                        }
                     }
                 }
 
@@ -661,12 +708,26 @@ impl InferCtxChirho {
 
                 // Restore scoped type variables
                 self.scoped_tyvars_chirho = prev_scoped_chirho;
+                self.end_equality_scope_chirho(equality_owner_chirho);
             }
 
+            let inferred_equality_types_chirho = group_inferred_chirho
+                .iter()
+                .filter(|(_, name_chirho, _, _)| !type_sigs_chirho.contains_key(name_chirho))
+                .map(|(_, _, ty_chirho, _)| subst_chirho.apply_ty_chirho(ty_chirho))
+                .collect::<Vec<_>>();
+            let previous_generalizing_chirho = std::mem::replace(
+                &mut self.equality_generalizing_owners_chirho,
+                equality_owners_chirho.iter().copied().collect(),
+            );
             // Generalize all functions in the group together
-            for (fi_chirho, binding_name_chirho, inferred_ty_chirho, span_chirho) in
-                &group_inferred_chirho
+            for (
+                (fi_chirho, binding_name_chirho, inferred_ty_chirho, span_chirho),
+                equality_owner_chirho,
+            ) in group_inferred_chirho.iter().zip(&equality_owners_chirho)
             {
+                let previous_owner_chirho = self.active_equality_scope_chirho;
+                self.active_equality_scope_chirho = *equality_owner_chirho;
                 self.env_chirho.remove_chirho(binding_name_chirho);
 
                 let final_ty_chirho = subst_chirho.apply_ty_chirho(inferred_ty_chirho);
@@ -740,7 +801,13 @@ impl InferCtxChirho {
                 );
                 self.env_chirho
                     .bind_chirho(binding_name_chirho.clone(), binding_scheme_chirho);
+                self.active_equality_scope_chirho = previous_owner_chirho;
             }
+            self.equality_generalizing_owners_chirho = previous_generalizing_chirho;
+            self.finish_equality_binding_group_chirho(
+                &equality_owners_chirho,
+                &inferred_equality_types_chirho,
+            );
         }
 
         // Phase 3d: Handle top-level pattern bindings
@@ -865,6 +932,7 @@ impl InferCtxChirho {
         // instance bodies the same expected-type guidance that top-level
         // signature-annotated wrappers already receive.
         self.check_instance_methods_against_class_chirho(module_chirho);
+        self.check_class_default_methods_chirho(module_chirho);
 
         // Deferred equalities whose stuck side has been solved by now are
         // decided here; one still stuck against a closed type is reported,

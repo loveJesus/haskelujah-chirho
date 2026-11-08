@@ -125,6 +125,7 @@ fn infer_top_level_magic_hash_pattern_binder_survives_unsafe_coerce_rhs_chirho()
                 name_chirho: dummy_name_chirho("unsafeThawByteArray"),
                 matches_chirho: vec![MatchArmChirho {
                     pats_chirho: vec![PatChirho::ConChirho {
+                        type_args_chirho: Vec::new(),
                         con_chirho: dummy_name_chirho("ByteArray"),
                         args_chirho: vec![PatChirho::VarChirho(dummy_name_chirho("arr#"))],
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -765,7 +766,8 @@ fn infer_tuple_pattern_function_arg_chirho() {
 
 #[test]
 fn assoc_type_family_instance_uses_lhs_free_vars_as_pattern_vars_chirho() {
-    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    let mut ctx_chirho = super::test_support_chirho::family_fixture_context_chirho();
+    ctx_chirho.register_type_family_chirho("Rep".to_owned(), 1, vec![]);
     let product_lhs_chirho = TypeChirho::AppChirho {
         fun_chirho: Box::new(TypeChirho::AppChirho {
             fun_chirho: Box::new(TypeChirho::ConChirho(dummy_name_chirho("Product"))),
@@ -776,11 +778,13 @@ fn assoc_type_family_instance_uses_lhs_free_vars_as_pattern_vars_chirho() {
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
     let assoc_inst_decl_chirho = DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: dummy_name_chirho("Representable"),
         types_chirho: vec![product_lhs_chirho.clone()],
         methods_chirho: vec![],
         assoc_tf_instances_chirho: vec![AssocTfInstanceChirho {
+            kind_args_chirho: Vec::new(),
             family_name_chirho: dummy_name_chirho("Rep"),
             lhs_types_chirho: vec![product_lhs_chirho],
             rhs_chirho: TypeChirho::TupleChirho {
@@ -816,15 +820,16 @@ fn assoc_type_family_instance_uses_lhs_free_vars_as_pattern_vars_chirho() {
         )],
     );
 
+    let rep_key_chirho = ctx_chirho.family_name_key_chirho("Rep").unwrap();
     assert_eq!(
         reduced_chirho,
         Some(TyChirho::TupleChirho(vec![
             TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("Rep".to_string())),
+                Box::new(TyChirho::ConChirho(rep_key_chirho.clone())),
                 Box::new(TyChirho::ConChirho("Proxy".to_string())),
             ),
             TyChirho::AppChirho(
-                Box::new(TyChirho::ConChirho("Rep".to_string())),
+                Box::new(TyChirho::ConChirho(rep_key_chirho.clone())),
                 Box::new(TyChirho::ConChirho("U1".to_string())),
             ),
         ])),

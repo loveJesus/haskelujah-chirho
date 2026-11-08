@@ -177,7 +177,7 @@ pub fn local_class_roles_chirho(
             let parameters_chirho: Vec<String> =
                 TyVarChirho::visible_binders_chirho(type_vars_chirho)
                     .iter()
-                    .map(|binder_chirho| binder_chirho.text_chirho().to_string())
+                    .map(|binder_chirho| binder_chirho.name_chirho.text_chirho().to_string())
                     .collect();
             let written_chirho = annotations_chirho
                 .get(name_chirho.text_chirho())
@@ -382,7 +382,12 @@ impl RoleWalkChirho<'_> {
                 // Its parameters started at Unknown.
                 ConDeclChirho::GadtChirho { .. } => return,
             };
-        if prefix_chirho.unread_chirho {
+        if prefix_chirho.unread_chirho
+            || prefix_chirho
+                .existential_vars_chirho
+                .iter()
+                .any(|binder_chirho| binder_chirho.kind_annotation_chirho.is_some())
+        {
             for found_chirho in self.found_chirho.iter_mut() {
                 *found_chirho = (*found_chirho).max(ParameterRoleChirho::UNKNOWN_CHIRHO);
             }
@@ -452,6 +457,30 @@ impl RoleWalkChirho<'_> {
         match type_chirho {
             TypeChirho::VarChirho(name_chirho) => {
                 self.raise_chirho(name_chirho.text_chirho(), role_chirho, bound_chirho)
+            }
+            TypeChirho::KindAnnotationChirho {
+                ty_chirho,
+                kind_chirho,
+                ..
+            } => {
+                self.walk_chirho(ty_chirho, role_chirho, bound_chirho);
+                self.mark_all_chirho(
+                    kind_chirho,
+                    ParameterRoleChirho::UNKNOWN_CHIRHO,
+                    bound_chirho,
+                );
+            }
+            TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                self.walk_chirho(fun_chirho, role_chirho, bound_chirho);
+                self.mark_all_chirho(
+                    arg_chirho,
+                    ParameterRoleChirho::UNKNOWN_CHIRHO,
+                    bound_chirho,
+                );
             }
             TypeChirho::ConChirho(_)
             | TypeChirho::PromotedConChirho { .. }
@@ -533,11 +562,16 @@ impl RoleWalkChirho<'_> {
                 ..
             } => {
                 let mut inner_chirho = bound_chirho.clone();
-                inner_chirho.extend(
-                    vars_chirho
-                        .iter()
-                        .map(|binder_chirho| binder_chirho.text_chirho().to_string()),
-                );
+                for binder_chirho in vars_chirho {
+                    if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                        self.mark_all_chirho(
+                            kind_chirho,
+                            ParameterRoleChirho::UNKNOWN_CHIRHO,
+                            &inner_chirho,
+                        );
+                    }
+                    inner_chirho.insert(binder_chirho.name_chirho.text_chirho().to_string());
+                }
                 self.walk_chirho(body_chirho, role_chirho, &inner_chirho);
             }
             // A promoted constructor's roles are not the module's to prove.
@@ -565,7 +599,30 @@ impl RoleWalkChirho<'_> {
         bound_chirho: &HashSet<String>,
     ) {
         match constraint_chirho {
-            ConstraintChirho::ClassChirho { args_chirho, .. } => {
+            ConstraintChirho::KindAnnotationChirho {
+                constraint_chirho,
+                kind_chirho,
+                ..
+            } => {
+                self.walk_constraint_chirho(constraint_chirho, role_chirho, bound_chirho);
+                self.mark_all_chirho(
+                    kind_chirho,
+                    ParameterRoleChirho::UNKNOWN_CHIRHO,
+                    bound_chirho,
+                );
+            }
+            ConstraintChirho::ClassChirho {
+                kind_args_chirho,
+                args_chirho,
+                ..
+            } => {
+                for argument_chirho in kind_args_chirho {
+                    self.mark_all_chirho(
+                        argument_chirho,
+                        ParameterRoleChirho::UNKNOWN_CHIRHO,
+                        bound_chirho,
+                    );
+                }
                 for argument_chirho in args_chirho {
                     self.mark_all_chirho(argument_chirho, role_chirho, bound_chirho);
                 }
@@ -577,11 +634,16 @@ impl RoleWalkChirho<'_> {
                 ..
             } => {
                 let mut inner_chirho = bound_chirho.clone();
-                inner_chirho.extend(
-                    vars_chirho
-                        .iter()
-                        .map(|binder_chirho| binder_chirho.text_chirho().to_string()),
-                );
+                for binder_chirho in vars_chirho {
+                    if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                        self.mark_all_chirho(
+                            kind_chirho,
+                            ParameterRoleChirho::UNKNOWN_CHIRHO,
+                            &inner_chirho,
+                        );
+                    }
+                    inner_chirho.insert(binder_chirho.name_chirho.text_chirho().to_string());
+                }
                 for premise_chirho in context_chirho {
                     self.walk_constraint_chirho(premise_chirho, role_chirho, &inner_chirho);
                 }
@@ -601,6 +663,30 @@ impl RoleWalkChirho<'_> {
         match type_chirho {
             TypeChirho::VarChirho(name_chirho) => {
                 self.raise_chirho(name_chirho.text_chirho(), role_chirho, bound_chirho)
+            }
+            TypeChirho::KindAnnotationChirho {
+                ty_chirho,
+                kind_chirho,
+                ..
+            } => {
+                self.mark_all_chirho(ty_chirho, role_chirho, bound_chirho);
+                self.mark_all_chirho(
+                    kind_chirho,
+                    ParameterRoleChirho::UNKNOWN_CHIRHO,
+                    bound_chirho,
+                );
+            }
+            TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => {
+                self.mark_all_chirho(fun_chirho, role_chirho, bound_chirho);
+                self.mark_all_chirho(
+                    arg_chirho,
+                    ParameterRoleChirho::UNKNOWN_CHIRHO,
+                    bound_chirho,
+                );
             }
             TypeChirho::ConChirho(_)
             | TypeChirho::PromotedConChirho { .. }
@@ -659,11 +745,16 @@ impl RoleWalkChirho<'_> {
                 ..
             } => {
                 let mut inner_chirho = bound_chirho.clone();
-                inner_chirho.extend(
-                    vars_chirho
-                        .iter()
-                        .map(|binder_chirho| binder_chirho.text_chirho().to_string()),
-                );
+                for binder_chirho in vars_chirho {
+                    if let Some(kind_chirho) = &binder_chirho.kind_annotation_chirho {
+                        self.mark_all_chirho(
+                            kind_chirho,
+                            ParameterRoleChirho::UNKNOWN_CHIRHO,
+                            &inner_chirho,
+                        );
+                    }
+                    inner_chirho.insert(binder_chirho.name_chirho.text_chirho().to_string());
+                }
                 self.mark_all_chirho(body_chirho, role_chirho, &inner_chirho);
             }
         }

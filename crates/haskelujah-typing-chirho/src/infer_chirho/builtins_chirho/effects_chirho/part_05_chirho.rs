@@ -17,7 +17,7 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
             Box::new(TyChirho::VarChirho(array_elem_chirho)),
         );
         let unsafe_at_scheme_chirho = SchemeChirho {
-            vars_chirho: vec![array_elem_chirho],
+            vars_chirho: vec![array_elem_chirho].into(),
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![uarray_int_elem_ty_chirho, TyChirho::int_chirho()],
@@ -38,7 +38,7 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             "unsafeIOToST".to_string(),
             SchemeChirho {
-                vars_chirho: vec![a_chirho, s_chirho],
+                vars_chirho: vec![a_chirho, s_chirho].into(),
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::FunChirho(
                     Box::new(TyChirho::io_chirho(TyChirho::VarChirho(a_chirho))),
@@ -70,12 +70,16 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "mkSMGen".to_string(),
         SchemeChirho {
-            vars_chirho: vec![mk_smgen_a_chirho],
-            preds_chirho: vec![SchemePredChirho {
-                class_name_chirho: "Integral".to_string(),
-                ty_chirho: TyChirho::VarChirho(mk_smgen_a_chirho),
-                extra_tys_chirho: vec![],
-            }],
+            vars_chirho: vec![mk_smgen_a_chirho].into(),
+            preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::IntegralChirho,
+                crate::ty_chirho::SchemePredPartsChirho {
+                    kind_tys_chirho: Vec::new(),
+                    class_name_chirho: "Integral".to_string(),
+                    ty_chirho: TyChirho::VarChirho(mk_smgen_a_chirho),
+                    extra_tys_chirho: vec![],
+                },
+            )],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(mk_smgen_a_chirho),
                 smgen_ty_chirho.clone(),
@@ -177,12 +181,17 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
             liftm4_c_chirho,
             liftm4_d_chirho,
             liftm4_r_chirho,
-        ],
-        preds_chirho: vec![SchemePredChirho {
-            class_name_chirho: "Monad".to_string(),
-            ty_chirho: TyChirho::VarChirho(liftm4_m_chirho),
-            extra_tys_chirho: vec![],
-        }],
+        ]
+        .into(),
+        preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Monad".to_string(),
+                ty_chirho: TyChirho::VarChirho(liftm4_m_chirho),
+                extra_tys_chirho: vec![],
+            },
+        )],
         ty_chirho: TyChirho::fun_n_chirho(
             vec![
                 TyChirho::fun_chirho(
@@ -240,12 +249,17 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
             liftm5_d_chirho,
             liftm5_e_chirho,
             liftm5_r_chirho,
-        ],
-        preds_chirho: vec![SchemePredChirho {
-            class_name_chirho: "Monad".to_string(),
-            ty_chirho: TyChirho::VarChirho(liftm5_m_chirho),
-            extra_tys_chirho: vec![],
-        }],
+        ]
+        .into(),
+        preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Monad".to_string(),
+                ty_chirho: TyChirho::VarChirho(liftm5_m_chirho),
+                extra_tys_chirho: vec![],
+            },
+        )],
         ty_chirho: TyChirho::fun_n_chirho(
             vec![
                 TyChirho::fun_chirho(
@@ -304,12 +318,17 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
             zipwithm_a_chirho,
             zipwithm_b_chirho,
             zipwithm_c_chirho,
-        ],
-        preds_chirho: vec![SchemePredChirho {
-            class_name_chirho: "Monad".to_string(),
-            ty_chirho: TyChirho::VarChirho(zipwithm_m_chirho),
-            extra_tys_chirho: vec![],
-        }],
+        ]
+        .into(),
+        preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Monad".to_string(),
+                ty_chirho: TyChirho::VarChirho(zipwithm_m_chirho),
+                extra_tys_chirho: vec![],
+            },
+        )],
         ty_chirho: TyChirho::fun_n_chirho(
             vec![
                 TyChirho::fun_chirho(
@@ -342,12 +361,17 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
             zipwithm_a_chirho,
             zipwithm_b_chirho,
             zipwithm_c_chirho,
-        ],
-        preds_chirho: vec![SchemePredChirho {
-            class_name_chirho: "Monad".to_string(),
-            ty_chirho: TyChirho::VarChirho(zipwithm_m_chirho),
-            extra_tys_chirho: vec![],
-        }],
+        ]
+        .into(),
+        preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Monad".to_string(),
+                ty_chirho: TyChirho::VarChirho(zipwithm_m_chirho),
+                extra_tys_chirho: vec![],
+            },
+        )],
         ty_chirho: TyChirho::fun_n_chirho(
             vec![
                 TyChirho::fun_chirho(
@@ -381,12 +405,16 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "return".to_string(),
         SchemeChirho {
-            vars_chirho: vec![return_m_chirho, return_a_chirho],
-            preds_chirho: vec![SchemePredChirho {
-                class_name_chirho: "Monad".to_string(),
-                ty_chirho: TyChirho::VarChirho(return_m_chirho),
-                extra_tys_chirho: vec![],
-            }],
+            vars_chirho: vec![return_m_chirho, return_a_chirho].into(),
+            preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
+                crate::ty_chirho::SchemePredPartsChirho {
+                    kind_tys_chirho: Vec::new(),
+                    class_name_chirho: "Monad".to_string(),
+                    ty_chirho: TyChirho::VarChirho(return_m_chirho),
+                    extra_tys_chirho: vec![],
+                },
+            )],
             ty_chirho: TyChirho::fun_chirho(
                 TyChirho::VarChirho(return_a_chirho),
                 TyChirho::AppChirho(
@@ -408,12 +436,16 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
     let fail_m_chirho = TyVarChirho(1702);
     let fail_a_chirho = TyVarChirho(1703);
     let fail_scheme_chirho = SchemeChirho {
-        vars_chirho: vec![fail_m_chirho, fail_a_chirho],
-        preds_chirho: vec![SchemePredChirho {
-            class_name_chirho: "MonadFail".to_string(),
-            ty_chirho: TyChirho::VarChirho(fail_m_chirho),
-            extra_tys_chirho: vec![],
-        }],
+        vars_chirho: vec![fail_m_chirho, fail_a_chirho].into(),
+        preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadFailChirho,
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "MonadFail".to_string(),
+                ty_chirho: TyChirho::VarChirho(fail_m_chirho),
+                extra_tys_chirho: vec![],
+            },
+        )],
         ty_chirho: TyChirho::fun_chirho(
             TyChirho::string_chirho(),
             TyChirho::AppChirho(
@@ -433,12 +465,16 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
         Box::new(TyChirho::VarChirho(mfix_a_chirho)),
     );
     let mfix_scheme_chirho = SchemeChirho {
-        vars_chirho: vec![mfix_m_chirho, mfix_a_chirho],
-        preds_chirho: vec![SchemePredChirho {
-            class_name_chirho: "MonadFix".to_string(),
-            ty_chirho: TyChirho::VarChirho(mfix_m_chirho),
-            extra_tys_chirho: vec![],
-        }],
+        vars_chirho: vec![mfix_m_chirho, mfix_a_chirho].into(),
+        preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadFixChirho,
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "MonadFix".to_string(),
+                ty_chirho: TyChirho::VarChirho(mfix_m_chirho),
+                extra_tys_chirho: vec![],
+            },
+        )],
         ty_chirho: TyChirho::fun_chirho(
             TyChirho::fun_chirho(
                 TyChirho::VarChirho(mfix_a_chirho),
@@ -457,12 +493,16 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         ">>=".to_string(),
         SchemeChirho {
-            vars_chirho: vec![bind_m_chirho, bind_a_chirho, bind_b_chirho],
-            preds_chirho: vec![SchemePredChirho {
-                class_name_chirho: "Monad".to_string(),
-                ty_chirho: TyChirho::VarChirho(bind_m_chirho),
-                extra_tys_chirho: vec![],
-            }],
+            vars_chirho: vec![bind_m_chirho, bind_a_chirho, bind_b_chirho].into(),
+            preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
+                crate::ty_chirho::SchemePredPartsChirho {
+                    kind_tys_chirho: Vec::new(),
+                    class_name_chirho: "Monad".to_string(),
+                    ty_chirho: TyChirho::VarChirho(bind_m_chirho),
+                    extra_tys_chirho: vec![],
+                },
+            )],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
                     TyChirho::AppChirho(
@@ -492,12 +532,16 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         ">>".to_string(),
         SchemeChirho {
-            vars_chirho: vec![then_m_chirho, then_a_chirho, then_b_chirho],
-            preds_chirho: vec![SchemePredChirho {
-                class_name_chirho: "Monad".to_string(),
-                ty_chirho: TyChirho::VarChirho(then_m_chirho),
-                extra_tys_chirho: vec![],
-            }],
+            vars_chirho: vec![then_m_chirho, then_a_chirho, then_b_chirho].into(),
+            preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
+                haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
+                crate::ty_chirho::SchemePredPartsChirho {
+                    kind_tys_chirho: Vec::new(),
+                    class_name_chirho: "Monad".to_string(),
+                    ty_chirho: TyChirho::VarChirho(then_m_chirho),
+                    extra_tys_chirho: vec![],
+                },
+            )],
             ty_chirho: TyChirho::fun_n_chirho(
                 vec![
                     TyChirho::AppChirho(
@@ -531,12 +575,17 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
                     kleisli_a_chirho,
                     kleisli_b_chirho,
                     kleisli_c_chirho,
-                ],
-                preds_chirho: vec![SchemePredChirho {
-                    class_name_chirho: "Monad".to_string(),
-                    ty_chirho: TyChirho::VarChirho(kleisli_m_chirho),
-                    extra_tys_chirho: vec![],
-                }],
+                ]
+                .into(),
+                preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
+                    crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: "Monad".to_string(),
+                        ty_chirho: TyChirho::VarChirho(kleisli_m_chirho),
+                        extra_tys_chirho: vec![],
+                    },
+                )],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
                         // a -> m b
@@ -583,12 +632,17 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
                     kleisli_a_chirho,
                     kleisli_b_chirho,
                     kleisli_c_chirho,
-                ],
-                preds_chirho: vec![SchemePredChirho {
-                    class_name_chirho: "Monad".to_string(),
-                    ty_chirho: TyChirho::VarChirho(kleisli_m_chirho),
-                    extra_tys_chirho: vec![],
-                }],
+                ]
+                .into(),
+                preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
+                    haskelujah_ast_chirho::name_chirho::CompilerClassChirho::MonadChirho,
+                    crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: "Monad".to_string(),
+                        ty_chirho: TyChirho::VarChirho(kleisli_m_chirho),
+                        extra_tys_chirho: vec![],
+                    },
+                )],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
                         // b -> m c
@@ -682,7 +736,7 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             "throwErrnoIfMinus1_".to_string(),
             SchemeChirho {
-                vars_chirho: vec![errno_a_chirho],
+                vars_chirho: vec![errno_a_chirho].into(),
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
@@ -701,7 +755,7 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             "newIORef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3200)],
+                vars_chirho: vec![TyVarChirho(3200)].into(),
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     a_chirho,
@@ -717,7 +771,7 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             "readIORef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3201)],
+                vars_chirho: vec![TyVarChirho(3201)].into(),
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::int_chirho(),
@@ -733,7 +787,7 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             "writeIORef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3202)],
+                vars_chirho: vec![TyVarChirho(3202)].into(),
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![TyChirho::int_chirho(), a_chirho],
@@ -749,7 +803,7 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             "modifyIORef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3203)],
+                vars_chirho: vec![TyVarChirho(3203)].into(),
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
@@ -786,7 +840,7 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             "newSTRef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3279), TyVarChirho(3280)],
+                vars_chirho: vec![TyVarChirho(3279), TyVarChirho(3280)].into(),
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(a_chirho, st_ty_chirho),
             },
@@ -814,7 +868,7 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             "readSTRef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3285), TyVarChirho(3281)],
+                vars_chirho: vec![TyVarChirho(3285), TyVarChirho(3281)].into(),
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(stref_ty_chirho, st_ty_chirho),
             },
@@ -842,7 +896,7 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             "writeSTRef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3286), TyVarChirho(3282)],
+                vars_chirho: vec![TyVarChirho(3286), TyVarChirho(3282)].into(),
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(vec![stref_ty_chirho, a_chirho], st_ty_chirho),
             },
@@ -870,7 +924,7 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             "modifySTRef".to_string(),
             SchemeChirho {
-                vars_chirho: vec![TyVarChirho(3287), TyVarChirho(3284)],
+                vars_chirho: vec![TyVarChirho(3287), TyVarChirho(3284)].into(),
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_n_chirho(
                     vec![
@@ -899,11 +953,11 @@ pub(super) fn seed_part_05_chirho(env_chirho: &mut TyEnvChirho) {
         env_chirho.bind_chirho(
             "runST".to_string(),
             SchemeChirho {
-                vars_chirho: vec![a_var_chirho],
+                vars_chirho: vec![a_var_chirho].into(),
                 preds_chirho: vec![],
                 ty_chirho: TyChirho::fun_chirho(
                     TyChirho::ForallChirho {
-                        vars_chirho: vec![s_var_chirho],
+                        vars_chirho: vec![s_var_chirho].into(),
                         body_chirho: Box::new(st_ty_chirho),
                     },
                     a_chirho,

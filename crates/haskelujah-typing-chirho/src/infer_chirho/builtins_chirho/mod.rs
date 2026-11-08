@@ -32,12 +32,16 @@ pub(super) fn enumeration_scheme_chirho(name_chirho: &str) -> Option<SchemeChirh
     };
     let elem_chirho = TyChirho::VarChirho(var_chirho);
     Some(SchemeChirho {
-        vars_chirho: vec![var_chirho],
-        preds_chirho: vec![SchemePredChirho {
-            class_name_chirho: "Enum".to_string(),
-            ty_chirho: elem_chirho.clone(),
-            extra_tys_chirho: Vec::new(),
-        }],
+        vars_chirho: vec![var_chirho].into(),
+        preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
+            haskelujah_ast_chirho::name_chirho::CompilerClassChirho::EnumChirho,
+            crate::ty_chirho::SchemePredPartsChirho {
+                kind_tys_chirho: Vec::new(),
+                class_name_chirho: "Enum".to_string(),
+                ty_chirho: elem_chirho.clone(),
+                extra_tys_chirho: Vec::new(),
+            },
+        )],
         ty_chirho: TyChirho::fun_n_chirho(
             vec![elem_chirho.clone(); arity_chirho],
             TyChirho::ListChirho(Box::new(elem_chirho)),

@@ -22,6 +22,8 @@ pub mod module_chirho;
 pub mod name_chirho;
 pub mod occurrences_chirho;
 pub mod pat_chirho;
+#[path = "promotion_chirho/promotion_chirho.rs"]
+pub mod promotion_chirho;
 pub mod provenance_chirho;
 #[cfg(test)]
 mod provenance_tests_chirho;

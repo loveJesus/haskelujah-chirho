@@ -13,9 +13,56 @@ impl ParserChirho<'_> {
     // Type parsing
     // -----------------------------------------------------------------------
 
+    /// Retain the same complete written binder grammar in type and constructor prefixes.
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    pub(super) fn parse_forall_binders_chirho(&mut self) {
+        while !self.at_dot_chirho()
+            && !self.at_chirho(RawTokenKindChirho::RightArrowChirho)
+            && !self.at_eof_chirho()
+            && !self.at_decl_boundary_chirho()
+        {
+            if self.at_chirho(RawTokenKindChirho::VarIdChirho) {
+                self.bump_chirho();
+            } else if self.at_chirho(RawTokenKindChirho::LeftBraceChirho) {
+                // Braces are the producer of inferred specificity. Keep
+                // the complete binder group, including a written kind.
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ParenTypeChirho);
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+                self.expect_chirho(RawTokenKindChirho::VarIdChirho);
+                self.eat_trivia_chirho();
+                if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
+                    self.bump_chirho();
+                    self.eat_trivia_chirho();
+                    self.parse_type_chirho();
+                }
+                self.expect_chirho(RawTokenKindChirho::RightBraceChirho);
+                self.builder_chirho.finish_node_chirho();
+            } else if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
+                // Retain the complete balanced annotation. Kind inference
+                // decides its validity; lookahead only identifies a binder.
+                if self.has_kind_annotated_forall_binder_chirho() {
+                    self.parse_paren_type_chirho();
+                } else {
+                    break;
+                }
+            } else {
+                break;
+            }
+            self.eat_trivia_chirho();
+        }
+    }
+
     /// Parse a type. Handles qualified types (context => type) and function
     /// types (a -> b). Uses checkpoints for retroactive wrapping.
     pub(super) fn parse_type_chirho(&mut self) {
+        self.parse_type_mode_chirho(false);
+    }
+
+    /// Constructor-only argument forms are legal on the outer arrow spine.
+    /// Parenthesized field types still enter the ordinary type grammar.
+    pub(super) fn parse_type_mode_chirho(&mut self, gadt_fields_chirho: bool) {
         // forall a b . Type
         if self.at_chirho(RawTokenKindChirho::ForallChirho) {
             self.builder_chirho
@@ -25,29 +72,10 @@ impl ParserChirho<'_> {
             // Collect type variables until `.` (invisible forall) or `->`
             // (RequiredTypeArguments).
             // Accepts bare VarId and kind-annotated (VarId :: Kind) binders
-            // where the kind is a simple kind (*, k, * -> *, etc.)
-            while !self.at_dot_chirho()
-                && !self.at_chirho(RawTokenKindChirho::RightArrowChirho)
-                && !self.at_eof_chirho()
-                && !self.at_decl_boundary_chirho()
-            {
-                if self.at_chirho(RawTokenKindChirho::VarIdChirho) {
-                    self.bump_chirho();
-                } else if self.at_chirho(RawTokenKindChirho::LeftParenChirho) {
-                    // Only parse as a kind-annotated binder if we can
-                    // confirm the pattern: ( VarId :: SimpleKind )
-                    // Use a lookahead check to avoid consuming complex
-                    // type expressions that aren't simple kind annotations.
-                    if self.is_simple_kind_annotated_binder_chirho() {
-                        self.parse_paren_type_chirho();
-                    } else {
-                        break;
-                    }
-                } else {
-                    break;
-                }
-                self.eat_trivia_chirho();
-            }
+            // with a balanced kind of any written shape.
+            self.parse_forall_binders_chirho();
+            let delimited_chirho =
+                self.at_dot_chirho() || self.at_chirho(RawTokenKindChirho::RightArrowChirho);
             if self.at_dot_chirho() {
                 self.bump_chirho(); // .
                 self.eat_trivia_chirho();
@@ -55,14 +83,27 @@ impl ParserChirho<'_> {
                 self.bump_chirho(); // required-forall ->
                 self.eat_trivia_chirho();
             }
-            self.parse_type_chirho(); // body type
+            if !delimited_chirho {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::ErrorNodeChirho);
+                self.builder_chirho.finish_node_chirho();
+            }
+            self.parse_type_mode_chirho(gadt_fields_chirho); // body type
             self.builder_chirho.finish_node_chirho();
             return;
         }
 
         let cp_chirho = self.builder_chirho.checkpoint_chirho();
 
-        self.parse_btype_chirho();
+        let record_argument_chirho =
+            gadt_fields_chirho && self.at_chirho(RawTokenKindChirho::LeftBraceChirho);
+        if record_argument_chirho {
+            self.parse_record_fields_chirho();
+        } else if gadt_fields_chirho && self.at_strictness_prefix_chirho() {
+            self.parse_gadt_field_type_chirho();
+        } else {
+            self.parse_btype_chirho();
+        }
         self.eat_trivia_chirho();
 
         // Check for => (qualified type) — but only if we haven't gone
@@ -73,7 +114,7 @@ impl ParserChirho<'_> {
                 .start_node_at_chirho(cp_chirho, SyntaxKindChirho::QualTypeChirho);
             self.bump_chirho(); // =>
             self.eat_trivia_chirho();
-            self.parse_type_chirho(); // the actual type
+            self.parse_type_mode_chirho(gadt_fields_chirho); // the actual type
             self.builder_chirho.finish_node_chirho();
             return;
         }
@@ -82,9 +123,16 @@ impl ParserChirho<'_> {
         if self.at_chirho(RawTokenKindChirho::LinearArrowChirho) {
             self.builder_chirho
                 .start_node_at_chirho(cp_chirho, SyntaxKindChirho::FunTypeChirho);
-            self.bump_chirho(); // ⊸
+            if record_argument_chirho {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::GadtRecordArrowErrorChirho);
+                self.bump_chirho();
+                self.builder_chirho.finish_node_chirho();
+            } else {
+                self.bump_chirho(); // ⊸
+            }
             self.eat_trivia_chirho();
-            self.parse_type_chirho(); // right-recursive
+            self.parse_type_mode_chirho(gadt_fields_chirho); // right-recursive
             self.builder_chirho.finish_node_chirho();
             return;
         }
@@ -93,6 +141,10 @@ impl ParserChirho<'_> {
         if self.at_varsym_chirho("%") {
             self.builder_chirho
                 .start_node_at_chirho(cp_chirho, SyntaxKindChirho::FunTypeChirho);
+            if record_argument_chirho {
+                self.builder_chirho
+                    .start_node_chirho(SyntaxKindChirho::GadtRecordArrowErrorChirho);
+            }
             self.bump_chirho(); // %
             self.eat_trivia_chirho();
             // Consume multiplicity: integer 1, conid Many/One, or varid (poly)
@@ -103,12 +155,15 @@ impl ParserChirho<'_> {
                 self.bump_chirho(); // multiplicity token
                 self.eat_trivia_chirho();
             }
+            if record_argument_chirho {
+                self.builder_chirho.finish_node_chirho();
+            }
             // Expect ->
             if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
                 self.bump_chirho(); // ->
                 self.eat_trivia_chirho();
             }
-            self.parse_type_chirho(); // right-recursive
+            self.parse_type_mode_chirho(gadt_fields_chirho); // right-recursive
             self.builder_chirho.finish_node_chirho();
             return;
         }
@@ -119,7 +174,7 @@ impl ParserChirho<'_> {
                 .start_node_at_chirho(cp_chirho, SyntaxKindChirho::FunTypeChirho);
             self.bump_chirho(); // ->
             self.eat_trivia_chirho();
-            self.parse_type_chirho(); // right-recursive
+            self.parse_type_mode_chirho(gadt_fields_chirho); // right-recursive
             self.builder_chirho.finish_node_chirho();
         }
         // Type equality constraint: a ~ b (parsed as infix type)
@@ -137,7 +192,7 @@ impl ParserChirho<'_> {
                     .start_node_at_chirho(cp_chirho, SyntaxKindChirho::QualTypeChirho);
                 self.bump_chirho(); // =>
                 self.eat_trivia_chirho();
-                self.parse_type_chirho();
+                self.parse_type_mode_chirho(gadt_fields_chirho);
                 self.builder_chirho.finish_node_chirho();
             }
             return;
@@ -160,14 +215,14 @@ impl ParserChirho<'_> {
                     .start_node_at_chirho(cp_chirho, SyntaxKindChirho::FunTypeChirho);
                 self.bump_chirho(); // ->
                 self.eat_trivia_chirho();
-                self.parse_type_chirho();
+                self.parse_type_mode_chirho(gadt_fields_chirho);
                 self.builder_chirho.finish_node_chirho();
             } else if self.at_chirho(RawTokenKindChirho::FatArrowChirho) {
                 self.builder_chirho
                     .start_node_at_chirho(cp_chirho, SyntaxKindChirho::QualTypeChirho);
                 self.bump_chirho(); // =>
                 self.eat_trivia_chirho();
-                self.parse_type_chirho();
+                self.parse_type_mode_chirho(gadt_fields_chirho);
                 self.builder_chirho.finish_node_chirho();
             }
             return;
@@ -199,14 +254,14 @@ impl ParserChirho<'_> {
                     .start_node_at_chirho(cp_chirho, SyntaxKindChirho::FunTypeChirho);
                 self.bump_chirho(); // ->
                 self.eat_trivia_chirho();
-                self.parse_type_chirho();
+                self.parse_type_mode_chirho(gadt_fields_chirho);
                 self.builder_chirho.finish_node_chirho();
             } else if self.at_chirho(RawTokenKindChirho::FatArrowChirho) {
                 self.builder_chirho
                     .start_node_at_chirho(cp_chirho, SyntaxKindChirho::QualTypeChirho);
                 self.bump_chirho(); // =>
                 self.eat_trivia_chirho();
-                self.parse_type_chirho();
+                self.parse_type_mode_chirho(gadt_fields_chirho);
                 self.builder_chirho.finish_node_chirho();
             }
         }
@@ -254,7 +309,7 @@ impl ParserChirho<'_> {
     }
 
     /// Parse a "btype" — type application (juxtaposition of atomic types).
-    fn parse_btype_chirho(&mut self) {
+    pub(super) fn parse_btype_chirho(&mut self) {
         if !self.can_start_atype_chirho() {
             return;
         }
@@ -268,7 +323,9 @@ impl ParserChirho<'_> {
             if self.at_promoted_constructor_operator_chirho() {
                 break;
             }
-            if self.current_starts_unseparated_value_decl_chirho() {
+            if !self.family_equation_lhs_chirho
+                && self.current_starts_unseparated_value_decl_chirho()
+            {
                 break;
             }
             let before_chirho = self.pos_chirho;
@@ -475,23 +532,7 @@ impl ParserChirho<'_> {
                 }
                 self.builder_chirho.finish_node_chirho();
             }
-            Some(RawTokenKindChirho::LeftParenChirho) => {
-                // Promoted tuple or unit: '(), '(,), '(,,)
-                self.builder_chirho
-                    .start_node_chirho(SyntaxKindChirho::PromotedConTypeChirho);
-                self.bump_chirho(); // tick
-                self.bump_chirho(); // (
-                self.eat_trivia_chirho();
-                // Eat commas for promoted tuple constructors
-                while self.at_chirho(RawTokenKindChirho::CommaChirho) {
-                    self.bump_chirho();
-                    self.eat_trivia_chirho();
-                }
-                if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
-                    self.bump_chirho();
-                }
-                self.builder_chirho.finish_node_chirho();
-            }
+            Some(RawTokenKindChirho::LeftParenChirho) => self.parse_promoted_paren_type_chirho(),
             _ => {
                 // Fallback: just consume the tick as an error
                 self.builder_chirho
@@ -500,6 +541,84 @@ impl ParserChirho<'_> {
                 self.builder_chirho.finish_node_chirho();
             }
         }
+    }
+
+    /// Parse a promoted form opening with `'(`. The unit `'()`, the tuple constructors
+    /// `'(,)`, `'(,,)`, … and a prefix operator constructor such as `'(:)` or `'(:+:)` are
+    /// one promoted constructor. Anything else is a promoted tuple `'(t1, t2, …)`, whose
+    /// elements are types (row 686).
+    /// workflow: compiler-pipeline-chirho/promoted-constructor-identity-chirho
+    fn parse_promoted_paren_type_chirho(&mut self) {
+        let [after_paren_chirho, after_operator_chirho] = self.peek_kinds_after_tick_paren_chirho();
+        let constructor_form_chirho = match after_paren_chirho {
+            Some(RawTokenKindChirho::RightParenChirho | RawTokenKindChirho::CommaChirho) => true,
+            Some(RawTokenKindChirho::ConSymChirho) => {
+                after_operator_chirho == Some(RawTokenKindChirho::RightParenChirho)
+            }
+            _ => false,
+        };
+        if constructor_form_chirho {
+            self.builder_chirho
+                .start_node_chirho(SyntaxKindChirho::PromotedConTypeChirho);
+            self.bump_chirho(); // tick
+            self.bump_chirho(); // (
+            self.eat_trivia_chirho();
+            if self.at_chirho(RawTokenKindChirho::ConSymChirho) {
+                self.bump_chirho(); // the operator constructor
+                self.eat_trivia_chirho();
+            }
+            while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+                self.bump_chirho();
+                self.eat_trivia_chirho();
+            }
+            if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+                self.bump_chirho();
+            }
+            self.builder_chirho.finish_node_chirho();
+            return;
+        }
+        self.builder_chirho
+            .start_node_chirho(SyntaxKindChirho::PromotedTupleTypeChirho);
+        self.bump_chirho(); // tick
+        self.bump_chirho(); // (
+        self.eat_trivia_chirho();
+        self.parse_promoted_tuple_element_chirho();
+        while self.at_chirho(RawTokenKindChirho::CommaChirho) {
+            self.bump_chirho(); // ,
+            self.eat_trivia_chirho();
+            self.parse_promoted_tuple_element_chirho();
+        }
+        if self.at_chirho(RawTokenKindChirho::RightParenChirho) {
+            self.bump_chirho(); // )
+        }
+        self.builder_chirho.finish_node_chirho();
+    }
+
+    /// One promoted tuple element: a type with an optional kind annotation, kept as one
+    /// kind-annotated type (`'( [Int, Bool] :: [Type], b )`).
+    fn parse_promoted_tuple_element_chirho(&mut self) {
+        let element_chirho = self.builder_chirho.checkpoint_chirho();
+        self.parse_type_chirho();
+        self.eat_trivia_chirho();
+        if self.at_chirho(RawTokenKindChirho::ColonColonChirho) {
+            self.builder_chirho
+                .start_node_at_chirho(element_chirho, SyntaxKindChirho::KindAnnotTypeChirho);
+            self.bump_chirho(); // ::
+            self.eat_trivia_chirho();
+            self.parse_type_chirho(); // the kind
+            self.builder_chirho.finish_node_chirho();
+            self.eat_trivia_chirho();
+        }
+    }
+
+    /// The kinds of the first two non-trivia tokens after the `'(` at the cursor.
+    fn peek_kinds_after_tick_paren_chirho(&self) -> [Option<RawTokenKindChirho>; 2] {
+        let mut kinds_chirho = self.tokens_chirho[self.pos_chirho..]
+            .iter()
+            .map(|token_chirho| token_chirho.kind_chirho)
+            .filter(|kind_chirho| !kind_chirho.is_trivia_chirho())
+            .skip(2);
+        [kinds_chirho.next(), kinds_chirho.next()]
     }
 
     /// Check if the next non-trivia token after current is a ConId.

@@ -32,7 +32,8 @@ fn desugar_simple_function_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let output_chirho = desugar_module_chirho(&module_chirho);
+    let output_chirho =
+        desugar_module_chirho(&module_chirho).expect("valid constructor signatures in fixture");
     let core_chirho = &output_chirho.module_chirho;
     assert_eq!(core_chirho.name_chirho, "Test");
     assert_eq!(core_chirho.bindings_chirho.len(), 1);
@@ -158,7 +159,8 @@ fn desugar_pretty_prints_chirho() {
         origin_supply_chirho: Default::default(),
     };
 
-    let desugar_out_chirho = desugar_module_chirho(&module_chirho);
+    let desugar_out_chirho =
+        desugar_module_chirho(&module_chirho).expect("valid constructor signatures in fixture");
     let output_chirho =
         crate::pretty_chirho::pretty_module_chirho(&desugar_out_chirho.module_chirho);
     assert!(output_chirho.contains("-- module Pretty"));

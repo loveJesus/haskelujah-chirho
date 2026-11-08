@@ -16,6 +16,9 @@ mod platform_chirho;
 #[cfg(test)]
 mod tests_chirho;
 
+use haskelujah_ast_chirho::name_chirho::{
+    CompilerRepresentationChirho, CompilerTypeConstructorChirho, TypeConstructorDeclarationChirho,
+};
 use haskelujah_span_chirho::SpanChirho;
 
 use super::{
@@ -25,6 +28,16 @@ use super::{
 use crate::type_exports_chirho::{
     canonical_value_name_chirho, normalize_builtin_type_exports_chirho,
 };
+
+/// Attach package exposure at a positive builtin producer. This helper never
+/// accepts a module/type/class spelling or constructs an identity proof.
+pub(in crate::iface_chirho::builtin_chirho) fn package_exposure_chirho(
+    selectors_chirho: &[&str],
+) -> Option<super::IfaceExposureChirho> {
+    Some(super::IfaceExposureChirho::packages_from_producer_chirho(
+        selectors_chirho,
+    ))
+}
 
 /// The builtin class table: each class's methods, which every builtin export of its name lists,
 /// and which mark that export a class. `Typeable` lists none (#32090). Real, RealFrac and
@@ -155,9 +168,12 @@ fn normalize_builtin_class_exports_chirho(modules_chirho: &mut [ModuleIfaceChirh
                         .values_chirho
                         .entry(method_name_chirho.clone())
                         .or_insert_with(|| IfaceValueChirho {
+                            availability_chirho:
+                                crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
                             name_chirho: method_name_chirho,
                             span_chirho: SpanChirho::DUMMY_CHIRHO,
                             defining_module_chirho: None,
+                            compiler_value_chirho: None,
                         });
                 }
             }
@@ -170,9 +186,11 @@ fn mk_val_chirho(name_chirho: &str) -> (String, IfaceValueChirho) {
     (
         canonical_value_name_chirho(name_chirho),
         IfaceValueChirho {
+            availability_chirho: crate::iface_chirho::IfaceValueAvailabilityChirho::AvailableChirho,
             name_chirho: name_chirho.to_string(),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
             defining_module_chirho: None,
+            compiler_value_chirho: None,
         },
     )
 }
@@ -183,6 +201,7 @@ fn mk_type_chirho(name_chirho: &str, cons_chirho: &[&str]) -> (String, IfaceType
     (
         name_chirho.to_string(),
         IfaceTypeChirho {
+            declaration_chirho: None,
             name_chirho: name_chirho.to_string(),
             constructors_chirho: cons_chirho
                 .iter()
@@ -192,6 +211,65 @@ fn mk_type_chirho(name_chirho: &str, cons_chirho: &[&str]) -> (String, IfaceType
             is_class_chirho: false,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         },
+    )
+}
+
+/// Declare a compiler-owned ordinary data type at its actual interface seed
+/// producer. The typed seed supplies the name and identity together; this never
+/// upgrades a generic entry based on its spelling or constructor membership.
+/// Workflow: compiler-pipeline-chirho/type-scope-resolution-chirho#ordinary-type-definition-proof-chirho.
+fn mk_data_type_chirho(
+    constructor_chirho: CompilerTypeConstructorChirho,
+    cons_chirho: &[&str],
+) -> (String, IfaceTypeChirho) {
+    let (name_chirho, mut ty_chirho) =
+        mk_type_chirho(constructor_chirho.name_chirho(), cons_chirho);
+    ty_chirho.declaration_chirho = Some(TypeConstructorDeclarationChirho::compiler_data_chirho(
+        constructor_chirho,
+    ));
+    (name_chirho, ty_chirho)
+}
+
+/// Called only by the actual primitive/re-export producers. An existing opaque
+/// entry elsewhere is never upgraded by its module or public type spelling.
+fn seed_representation_exports_chirho(
+    exports_chirho: &mut super::IfaceExportsChirho,
+    representations_chirho: &[CompilerRepresentationChirho],
+) {
+    for representation_chirho in representations_chirho {
+        let (key_chirho, ty_chirho) = mk_data_type_chirho(
+            CompilerTypeConstructorChirho::RepresentationChirho(*representation_chirho),
+            representation_chirho.constructors_chirho(),
+        );
+        exports_chirho.types_chirho.insert(key_chirho, ty_chirho);
+        for name_chirho in representation_chirho.constructors_chirho() {
+            let (key_chirho, value_chirho) = mk_val_chirho(name_chirho);
+            exports_chirho
+                .values_chirho
+                .insert(key_chirho, value_chirho);
+        }
+    }
+}
+
+/// An actual interface can export another public name for the same compiler
+/// type. The seed supplies both the alias and its typed defining declaration.
+fn mk_data_alias_chirho(
+    alias_chirho: &str,
+    constructor_chirho: CompilerTypeConstructorChirho,
+) -> (String, IfaceTypeChirho) {
+    let (_, mut ty_chirho) = mk_data_type_chirho(constructor_chirho, &[]);
+    ty_chirho.name_chirho = alias_chirho.to_owned();
+    (alias_chirho.to_owned(), ty_chirho)
+}
+
+/// A positive class producer supplies the compiler identity directly. No generic
+/// interface entry is upgraded from its public spelling.
+fn mk_class_type_chirho(
+    class_chirho: haskelujah_ast_chirho::name_chirho::CompilerClassChirho,
+) -> (String, IfaceTypeChirho) {
+    mk_data_type_chirho(
+        CompilerTypeConstructorChirho::ClassChirho(class_chirho),
+        &[],
     )
 }
 

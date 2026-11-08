@@ -3,7 +3,8 @@
 
 use super::*;
 use haskelujah_ast_chirho::decl_chirho::{
-    AssocTfInstanceChirho, AssocTypeFamilyChirho, FieldDeclChirho, StrictnessChirho, TyVarChirho,
+    AssocTfInstanceChirho, AssocTypeFamilyChirho, AstKindChirho, FieldDeclChirho, StrictnessChirho,
+    TyVarChirho,
 };
 use haskelujah_ast_chirho::module_chirho::{
     ExportMembersChirho, ImportDeclChirho, ImportItemChirho, ImportSpecChirho,
@@ -126,15 +127,21 @@ fn resolver_binds_local_associated_family_in_type_namespace_chirho() {
     };
     let module_chirho = module_chirho(vec![
         DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: name_chirho("ClassChirho"),
             type_vars_chirho: vec![tyvar_chirho("aChirho")],
             methods_chirho: vec![],
             associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+                injectivity_chirho: None,
+                default_arguments_chirho: None,
                 name_chirho: name_chirho("FamilyChirho"),
-                type_vars_chirho: vec![name_chirho("aChirho")],
+                result_kind_chirho: None,
+                type_vars_chirho: vec![name_chirho("aChirho").into()],
+                data_family_chirho: false,
                 default_rhs_chirho: None,
                 default_params_chirho: vec![],
+                default_binders_chirho: None,
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             }],
             fundeps_chirho: vec![],
@@ -163,11 +170,13 @@ fn qualified_is_list_instance_chirho(import_spec_chirho: Option<ImportSpecChirho
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         },
         DeclChirho::InstanceDeclChirho {
+            kind_args_chirho: Vec::new(),
             context_chirho: vec![],
             class_chirho: qualified_name_chirho("GHC.Exts", "IsList"),
             types_chirho: vec![TypeChirho::ConChirho(name_chirho("LocalListChirho"))],
             methods_chirho: vec![],
             assoc_tf_instances_chirho: vec![AssocTfInstanceChirho {
+                kind_args_chirho: Vec::new(),
                 family_name_chirho: name_chirho("Item"),
                 lhs_types_chirho: vec![TypeChirho::ConChirho(name_chirho("LocalListChirho"))],
                 rhs_chirho: TypeChirho::ConChirho(name_chirho("LocalListChirho")),
@@ -177,7 +186,9 @@ fn qualified_is_list_instance_chirho(import_spec_chirho: Option<ImportSpecChirho
         },
     ]);
     module_chirho.imports_chirho = vec![ImportDeclChirho {
+        package_chirho: None,
         module_chirho: name_chirho("GHC.Exts"),
+        source_chirho: false,
         qualified_chirho: true,
         alias_chirho: None,
         spec_chirho: import_spec_chirho,
@@ -224,15 +235,21 @@ fn qualified_class_import_without_members_does_not_scope_associated_type_chirho(
 #[test]
 fn associated_family_default_requires_a_declared_variable_chirho() {
     let module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho("ClassChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         methods_chirho: vec![],
         associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+            injectivity_chirho: None,
+            default_arguments_chirho: None,
             name_chirho: name_chirho("FamilyChirho"),
-            type_vars_chirho: vec![name_chirho("aChirho")],
+            result_kind_chirho: None,
+            type_vars_chirho: vec![name_chirho("aChirho").into()],
+            data_family_chirho: false,
             default_rhs_chirho: Some(TypeChirho::VarChirho(name_chirho("bChirho"))),
             default_params_chirho: vec![],
+            default_binders_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         fundeps_chirho: vec![],
@@ -246,15 +263,21 @@ fn associated_family_default_requires_a_declared_variable_chirho() {
 #[test]
 fn associated_family_default_uses_its_equation_binders_chirho() {
     let module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: name_chirho("ClassChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         methods_chirho: vec![],
         associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+            injectivity_chirho: None,
+            default_arguments_chirho: None,
             name_chirho: name_chirho("FamilyChirho"),
-            type_vars_chirho: vec![name_chirho("aChirho"), name_chirho("bChirho")],
+            result_kind_chirho: None,
+            type_vars_chirho: vec![name_chirho("aChirho").into(), name_chirho("bChirho").into()],
+            data_family_chirho: false,
             default_rhs_chirho: Some(TypeChirho::VarChirho(name_chirho("xChirho"))),
             default_params_chirho: vec![name_chirho("aChirho"), name_chirho("xChirho")],
+            default_binders_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         fundeps_chirho: vec![],
@@ -322,7 +345,9 @@ fn datakinds_does_not_treat_a_constructor_as_a_class_chirho() {
         SpanChirho::DUMMY_CHIRHO,
     );
     let mut module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: name_chirho("True"),
             args_chirho: vec![TypeChirho::VarChirho(name_chirho("aChirho"))],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -442,6 +467,7 @@ fn synonym_rhs_requires_lexically_bound_type_variables_chirho() {
 #[test]
 fn family_result_kind_resolves_type_namespace_names_chirho() {
     let decl_chirho = DeclChirho::TypeFamilyDeclChirho {
+        injectivity_chirho: None,
         name_chirho: name_chirho("FamilyChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         result_kind_chirho: Some(TypeChirho::FunChirho {
@@ -450,6 +476,9 @@ fn family_result_kind_resolves_type_namespace_names_chirho() {
             result_chirho: Box::new(TypeChirho::ConChirho(name_chirho("Constraint"))),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }),
+        data_family_chirho: false,
+        standalone_kind_chirho: None,
+        closed_chirho: false,
         equations_chirho: vec![],
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
@@ -781,7 +810,9 @@ fn missing_promoted_constructor_defers_when_import_inventory_is_incomplete_chirh
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     })]);
     module_chirho.imports_chirho.push(ImportDeclChirho {
+        package_chirho: None,
         module_chirho: name_chirho("SourceModuleChirho"),
+        source_chirho: false,
         qualified_chirho: false,
         alias_chirho: None,
         spec_chirho: None,
@@ -812,6 +843,7 @@ fn ordinary_record_field_type_is_still_resolved_chirho() {
         constructors_chirho: vec![ConDeclChirho::RecordChirho {
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![FieldDeclChirho {
+                multiplicity_chirho: None,
                 names_chirho: vec![name_chirho("fieldChirho")],
                 ty_chirho: TypeChirho::ConChirho(name_chirho("MissingChirho")),
                 strictness_chirho: StrictnessChirho::LazyChirho,
@@ -852,6 +884,7 @@ fn parser_sensitive_rank_n_record_field_is_deferred_chirho() {
         constructor_chirho: ConDeclChirho::RecordChirho {
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![FieldDeclChirho {
+                multiplicity_chirho: None,
                 names_chirho: vec![name_chirho("fieldChirho")],
                 ty_chirho: malformed_field_ty_chirho,
                 strictness_chirho: StrictnessChirho::LazyChirho,
@@ -881,6 +914,7 @@ fn required_forall_record_field_remains_checkable_chirho() {
         constructors_chirho: vec![ConDeclChirho::RecordChirho {
             name_chirho: name_chirho("MkTChirho"),
             fields_chirho: vec![FieldDeclChirho {
+                multiplicity_chirho: None,
                 names_chirho: vec![name_chirho("fieldChirho")],
                 ty_chirho: TypeChirho::RequiredForallChirho {
                     vars_chirho: vec![tyvar_chirho("typeChirho")],
@@ -997,7 +1031,7 @@ fn declaration_head_underscore_kind_variable_is_implicitly_bound_chirho() {
 }
 
 #[test]
-fn ordinary_constructor_free_variable_requires_existential_extension_chirho() {
+fn ordinary_constructor_free_variable_requires_written_existential_binding_chirho() {
     let decl_chirho = DeclChirho::DataDeclChirho {
         name_chirho: name_chirho("TChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
@@ -1024,11 +1058,15 @@ fn ordinary_constructor_free_variable_requires_existential_extension_chirho() {
     without_chirho
         .extensions_chirho
         .push("ExistentialQuantification".to_string());
-    assert!(check_chirho(&without_chirho, &env_chirho).is_empty_chirho());
+    // GHC-76037: the extension enables explicit forall syntax, not an unwritten binder.
+    assert_eq!(
+        check_chirho(&without_chirho, &env_chirho).error_count_chirho(),
+        1
+    );
 }
 
 #[test]
-fn dropped_existential_prefix_defers_only_its_constructor_fields_chirho() {
+fn constructor_span_does_not_replace_its_actual_quantifier_prefix_chirho() {
     let declaration_span_chirho = SpanChirho::new_chirho(
         FileIdChirho::SYNTHETIC_CHIRHO,
         ByteOffsetChirho::new_chirho(10),
@@ -1060,9 +1098,31 @@ fn dropped_existential_prefix_defers_only_its_constructor_fields_chirho() {
         span_chirho: declaration_span_chirho,
     };
 
+    let diagnostics_chirho = check_chirho(
+        &module_chirho(vec![decl_chirho.clone()]),
+        &NameEnvChirho::new_chirho(),
+    );
+    assert_eq!(diagnostics_chirho.error_count_chirho(), 1);
+    assert!(format!("{diagnostics_chirho}").contains("hiddenChirho"));
+
+    let mut quantified_chirho = decl_chirho;
+    let DeclChirho::DataDeclChirho {
+        constructors_chirho,
+        ..
+    } = &mut quantified_chirho
+    else {
+        unreachable!()
+    };
+    let ConDeclChirho::OrdinaryChirho { prefix_chirho, .. } = &mut constructors_chirho[0] else {
+        unreachable!()
+    };
+    prefix_chirho.forall_written_chirho = true;
+    prefix_chirho
+        .existential_vars_chirho
+        .push(tyvar_chirho("hiddenChirho"));
     assert!(
         check_chirho(
-            &module_chirho(vec![decl_chirho]),
+            &module_chirho(vec![quantified_chirho]),
             &NameEnvChirho::new_chirho(),
         )
         .is_empty_chirho()
@@ -1076,17 +1136,21 @@ fn gadt_outer_forall_requires_every_variable_binder_chirho() {
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         constructors_chirho: vec![ConDeclChirho::GadtChirho {
             name_chirho: name_chirho("MkTChirho"),
-            ty_chirho: TypeChirho::ForallChirho {
-                vars_chirho: vec![tyvar_chirho("bChirho")],
-                body_chirho: Box::new(TypeChirho::TupleChirho {
-                    elements_chirho: vec![
-                        TypeChirho::VarChirho(name_chirho("aChirho")),
-                        TypeChirho::VarChirho(name_chirho("bChirho")),
-                    ],
-                    span_chirho: SpanChirho::DUMMY_CHIRHO,
-                }),
-                span_chirho: SpanChirho::DUMMY_CHIRHO,
-            },
+            signature_chirho: Box::new(
+                haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
+                    TypeChirho::ForallChirho {
+                        vars_chirho: vec![tyvar_chirho("bChirho")],
+                        body_chirho: Box::new(TypeChirho::TupleChirho {
+                            elements_chirho: vec![
+                                TypeChirho::VarChirho(name_chirho("aChirho")),
+                                TypeChirho::VarChirho(name_chirho("bChirho")),
+                            ],
+                            span_chirho: SpanChirho::DUMMY_CHIRHO,
+                        }),
+                        span_chirho: SpanChirho::DUMMY_CHIRHO,
+                    },
+                ),
+            ),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         deriving_chirho: vec![],
@@ -1108,7 +1172,11 @@ fn gadt_without_outer_forall_quantifies_independently_chirho() {
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
         constructors_chirho: vec![ConDeclChirho::GadtChirho {
             name_chirho: name_chirho("MkTChirho"),
-            ty_chirho: TypeChirho::VarChirho(name_chirho("aChirho")),
+            signature_chirho: Box::new(
+                haskelujah_ast_chirho::decl_chirho::GadtConSignatureChirho::from_type_chirho(
+                    TypeChirho::VarChirho(name_chirho("aChirho")),
+                ),
+            ),
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         deriving_chirho: vec![],
@@ -1127,7 +1195,9 @@ fn gadt_without_outer_forall_quantifies_independently_chirho() {
 #[test]
 fn unknown_superclass_is_resolved_in_the_type_namespace_chirho() {
     let decl_chirho = DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: name_chirho("MissingClassChirho"),
             args_chirho: vec![TypeChirho::VarChirho(name_chirho("aChirho"))],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -1154,6 +1224,7 @@ fn qualified_equality_signature_chirho(
 ) -> ModuleChirho {
     let mut module_chirho = module_chirho(vec![signature_chirho(TypeChirho::QualChirho {
         context_chirho: vec![ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: qualified_name_chirho("Q", operator_chirho),
             args_chirho: vec![
                 TypeChirho::VarChirho(name_chirho("a")),
@@ -1165,7 +1236,9 @@ fn qualified_equality_signature_chirho(
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     })]);
     module_chirho.imports_chirho = vec![ImportDeclChirho {
+        package_chirho: None,
         module_chirho: name_chirho(imported_module_chirho),
+        source_chirho: false,
         qualified_chirho: true,
         alias_chirho: Some(name_chirho("Q")),
         spec_chirho: None,

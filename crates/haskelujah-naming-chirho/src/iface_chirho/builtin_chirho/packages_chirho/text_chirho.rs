@@ -4,6 +4,7 @@
 //! here, in the order the tables were written, so the module's merged interface keeps its copies'
 //! order (row 648).
 
+use crate::iface_chirho::builtin_chirho::package_exposure_chirho;
 use crate::iface_chirho::builtin_chirho::{mk_type_chirho, mk_val_chirho};
 use crate::iface_chirho::{IfaceExportsChirho, ModuleIfaceChirho};
 
@@ -92,6 +93,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         ];
         for mod_name_chirho in &aeson_modules_chirho {
             modules_chirho.push(ModuleIfaceChirho {
+                exposure_chirho: None,
                 name_chirho: mod_name_chirho.to_string(),
                 exports_chirho: exports_chirho.clone(),
             });
@@ -124,6 +126,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["text"]),
             name_chirho: "Data.Text.Array".to_string(),
             exports_chirho,
         });
@@ -190,6 +193,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Text", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["text"]),
             name_chirho: "Data.Text".to_string(),
             exports_chirho: exports_chirho.clone(),
         });
@@ -199,6 +203,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             enc_exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["text"]),
             name_chirho: "Data.Text.Encoding".to_string(),
             exports_chirho: enc_exports_chirho,
         });
@@ -220,6 +225,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["text"]),
             name_chirho: "Data.Text.Internal".to_string(),
             exports_chirho,
         });
@@ -287,6 +293,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Text", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["text"]),
             name_chirho: "Data.Text".to_string(),
             exports_chirho,
         });
@@ -320,6 +327,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Text", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["text"]),
             name_chirho: "Data.Text.Lazy".to_string(),
             exports_chirho,
         });
@@ -333,6 +341,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["text"]),
             name_chirho: "Data.Text.IO".to_string(),
             exports_chirho,
         });
@@ -346,6 +355,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["text"]),
             name_chirho: "Data.Text.Lazy.IO".to_string(),
             exports_chirho,
         });
@@ -364,6 +374,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["binary"]),
             name_chirho: "Data.Binary".to_string(),
             exports_chirho,
         });
@@ -409,6 +420,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["binary"]),
             name_chirho: "Data.Binary.Put".to_string(),
             exports_chirho,
         });
@@ -461,6 +473,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["binary"]),
             name_chirho: "Data.Binary.Get".to_string(),
             exports_chirho,
         });
@@ -484,6 +497,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Builder", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["text"]),
             name_chirho: "Data.Text.Lazy.Builder".to_string(),
             exports_chirho,
         });
@@ -498,6 +512,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("FPFormat", &["Exponent", "Fixed", "Generic"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["text"]),
             name_chirho: "Data.Text.Lazy.Builder.RealFloat".to_string(),
             exports_chirho,
         });
@@ -510,6 +525,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["text"]),
             name_chirho: "Data.Text.Lazy.Builder.Int".to_string(),
             exports_chirho,
         });
@@ -540,6 +556,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Iter", &["Iter"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["text"]),
             name_chirho: "Data.Text.Unsafe".to_string(),
             exports_chirho,
         });
@@ -550,6 +567,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_val_chirho("utf8LengthByLeader");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: package_exposure_chirho(&["text"]),
             name_chirho: "Data.Text.Internal.Encoding.Utf8".to_string(),
             exports_chirho,
         });
@@ -573,6 +591,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Buffer", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Attoparsec.ByteString.Buffer".to_string(),
             exports_chirho,
         });
@@ -598,6 +617,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("Buffer", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Attoparsec.Text.Buffer".to_string(),
             exports_chirho,
         });
@@ -619,6 +639,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("FastSet", &["Sorted", "Table"]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Attoparsec.ByteString.FastSet".to_string(),
             exports_chirho,
         });
@@ -631,6 +652,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Attoparsec.Internal.Compat".to_string(),
             exports_chirho,
         });
@@ -641,6 +663,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_val_chirho("inlinePerformIO");
         exports_chirho.values_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Attoparsec.Internal.Fhthagn".to_string(),
             exports_chirho,
         });
@@ -656,6 +679,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
         let (k_chirho, v_chirho) = mk_type_chirho("CI", &[]);
         exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.CaseInsensitive".to_string(),
             exports_chirho,
         });
@@ -677,6 +701,7 @@ pub(super) fn push_text_chirho(modules_chirho: &mut Vec<ModuleIfaceChirho>) {
             exports_chirho.types_chirho.insert(k_chirho, v_chirho);
         }
         modules_chirho.push(ModuleIfaceChirho {
+            exposure_chirho: None,
             name_chirho: "Data.Text.Builder.Linear".to_string(),
             exports_chirho,
         });

@@ -8,6 +8,16 @@ use haskelujah_span_chirho::SpanChirho;
 use crate::lit_chirho::LitChirho;
 use crate::name_chirho::NameChirho;
 
+/// A written constructor type pattern and its checked formal binder. Raw
+/// syntax has no binder proof; elaboration supplies the same catalogue ID
+/// carried by the constructor's ordinary quantified scheme.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ConstructorTypePatternChirho {
+    pub ty_chirho: crate::ty_chirho::TypeChirho,
+    pub checked_binder_chirho:
+        Option<crate::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho>,
+}
+
 /// A Haskell pattern.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PatChirho {
@@ -17,6 +27,9 @@ pub enum PatChirho {
     ConChirho {
         /// Constructor name being matched.
         con_chirho: NameChirho,
+        /// Written constructor-pattern type arguments. These bind/check type
+        /// variables and never contribute to the constructor's term arity.
+        type_args_chirho: Vec<ConstructorTypePatternChirho>,
         /// Positional subpatterns matched against constructor fields.
         args_chirho: Vec<PatChirho>,
         /// Span covering the whole constructor pattern.
@@ -117,6 +130,14 @@ pub enum PatChirho {
         /// Span covering the whole typed pattern.
         span_chirho: SpanChirho,
     },
+    /// An unexpanded untyped pattern splice. Quoted syntax retains it as data;
+    /// ordinary executable patterns require actual expansion before checking.
+    SpliceChirho {
+        /// Missing only for malformed syntax passed through unchecked lowering.
+        /// No variable, wildcard or fabricated expression replaces an absent payload.
+        expr_chirho: Option<Box<super::expr_chirho::ExprChirho>>,
+        span_chirho: SpanChirho,
+    },
 }
 
 /// A field in a record pattern (`field = pat`).
@@ -148,7 +169,8 @@ impl PatChirho {
             | Self::InfixConChirho { span_chirho, .. }
             | Self::RecordChirho { span_chirho, .. }
             | Self::ViewChirho { span_chirho, .. }
-            | Self::TypeAnnotChirho { span_chirho, .. } => *span_chirho,
+            | Self::TypeAnnotChirho { span_chirho, .. }
+            | Self::SpliceChirho { span_chirho, .. } => *span_chirho,
         }
     }
 }

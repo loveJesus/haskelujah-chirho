@@ -56,6 +56,10 @@ pub enum SyntaxKindChirho {
     TypeFamilyDeclChirho,
     /// `type instance F Int = Bool` — open type family instance.
     TypeFamilyInstanceDeclChirho,
+    /// One closed type-family equation, `[forall bs.] lhs = rhs`, inside a
+    /// `TypeFamilyDeclChirho`'s `where` block. Tokens the left-side type grammar
+    /// could not take stay inside it, so lowering can see an incomplete equation.
+    TypeFamilyEquationChirho,
     /// `newtype Name = Con Type`.
     NewtypeDeclChirho,
     /// `class Ctx => Name a where` — type class declaration.
@@ -205,6 +209,9 @@ pub enum SyntaxKindChirho {
     /// Type constructor.
     ConTypeChirho,
     /// Qualified type with context (`Eq a => a -> a`).
+    GadtFieldTypeChirho,
+    /// An explicitly annotated arrow after a whole GADT record is illegal.
+    GadtRecordArrowErrorChirho,
     QualTypeChirho,
     /// Context (class constraints before `=>`).
     ContextChirho,
@@ -216,6 +223,8 @@ pub enum SyntaxKindChirho {
     PromotedConTypeChirho,
     /// DataKinds promoted list type (`'[Int, Bool]`).
     PromotedListTypeChirho,
+    /// DataKinds promoted tuple type (`'(Int, Bool)`).
+    PromotedTupleTypeChirho,
     /// Infix type operator (`a :+: b`, `a `Either` b`).
     InfixTypeChirho,
     /// PartialTypeSignatures wildcard type (`_`).
@@ -246,6 +255,13 @@ pub enum SyntaxKindChirho {
     LayoutBlockChirho,
     /// Error recovery node — wraps tokens that could not be parsed.
     ErrorNodeChirho,
+    /// An untyped pattern splice, retaining its expression payload.
+    /// Appended to preserve the existing serialized node discriminants.
+    SplicePatChirho,
+    /// Ordered transform/group qualifier and its actual expression payloads.
+    ComprehensionTransformChirho,
+    ComprehensionUsingChirho,
+    ComprehensionByChirho,
 }
 
 impl SyntaxKindChirho {
@@ -341,12 +357,14 @@ impl SyntaxKindChirho {
                 | Self::ListTypeChirho
                 | Self::VarTypeChirho
                 | Self::ConTypeChirho
+                | Self::GadtFieldTypeChirho
                 | Self::QualTypeChirho
                 | Self::ContextChirho
                 | Self::ForallTypeChirho
                 | Self::KindAnnotTypeChirho
                 | Self::PromotedConTypeChirho
                 | Self::PromotedListTypeChirho
+                | Self::PromotedTupleTypeChirho
                 | Self::InfixTypeChirho
                 | Self::WildcardTypeChirho
                 | Self::LitTypeChirho

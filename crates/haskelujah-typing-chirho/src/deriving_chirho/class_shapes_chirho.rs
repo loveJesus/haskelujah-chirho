@@ -113,7 +113,7 @@ fn last_parameter_arity_chirho(
     let mut proofs_chirho: Vec<usize> = last_chirho
         .kind_annotation_chirho
         .as_ref()
-        .and_then(kind_arity_chirho)
+        .and_then(|kind_chirho| written_type_arity_chirho(kind_chirho, identity_chirho))
         .into_iter()
         .collect();
     for constraint_chirho in context_chirho {
@@ -156,6 +156,52 @@ fn last_parameter_arity_chirho(
 
 /// The number of `Type` arguments a written kind takes: `Type -> Type` takes one. `None` for
 /// a kind whose arguments are not all `Type` or whose result is not `Type`.
+/// A bounded view of full written kind syntax, with no name-derived authority.
+fn written_type_arity_chirho(
+    kind_chirho: &TypeChirho,
+    identity_chirho: &StockIdentityChirho<'_>,
+) -> Option<usize> {
+    let mut remaining_chirho =
+        haskelujah_ast_chirho::decl_chirho::GadtProjectionLimitsChirho::default().depth_chirho;
+    let mut current_chirho = kind_chirho;
+    let mut arity_chirho = 0usize;
+    loop {
+        remaining_chirho = remaining_chirho.checked_sub(1)?;
+        match current_chirho {
+            TypeChirho::ParenChirho { inner_chirho, .. } => current_chirho = inner_chirho,
+            TypeChirho::ConChirho(name_chirho) => {
+                return identity_chirho
+                    .proves_type_universe_chirho(name_chirho)
+                    .then_some(arity_chirho);
+            }
+            TypeChirho::FunChirho {
+                arg_chirho,
+                result_chirho,
+                ..
+            } => {
+                let mut argument_chirho = arg_chirho.as_ref();
+                loop {
+                    remaining_chirho = remaining_chirho.checked_sub(1)?;
+                    match argument_chirho {
+                        TypeChirho::ParenChirho { inner_chirho, .. } => {
+                            argument_chirho = inner_chirho
+                        }
+                        TypeChirho::ConChirho(name_chirho)
+                            if identity_chirho.proves_type_universe_chirho(name_chirho) =>
+                        {
+                            break;
+                        }
+                        _ => return None,
+                    }
+                }
+                arity_chirho = arity_chirho.checked_add(1)?;
+                current_chirho = result_chirho;
+            }
+            _ => return None,
+        }
+    }
+}
+
 fn kind_arity_chirho(kind_chirho: &AstKindChirho) -> Option<usize> {
     match kind_chirho {
         AstKindChirho::StarChirho => Some(0),
@@ -197,5 +243,5 @@ fn is_variable_chirho(type_chirho: &TypeChirho, name_chirho: &str) -> bool {
 }
 
 #[cfg(test)]
-#[path = "class_shapes_tests_chirho.rs"]
+#[path = "tests_chirho/identity_chirho/class_shapes_tests_chirho.rs"]
 mod tests_chirho;

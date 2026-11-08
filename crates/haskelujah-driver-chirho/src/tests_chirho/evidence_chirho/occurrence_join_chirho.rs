@@ -31,6 +31,7 @@ pub(super) fn record_chirho(
     span_chirho: SpanChirho,
 ) -> MethodOccurrenceRecordChirho {
     MethodOccurrenceRecordChirho {
+        ground_pred_chirho: None,
         applied_ty_chirho: None,
         name_chirho: name_chirho.to_string(),
         ordinal_chirho,
@@ -56,9 +57,9 @@ pub(super) fn infer_result_chirho(
             haskelujah_typing_chirho::ty_chirho::TyChirho::string_chirho(),
         ),
     );
-    class_env_chirho.classes_chirho.insert(
-        "Show".to_string(),
-        ClassDeclChirho {
+    class_env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
+        haskelujah_typing_chirho::class_chirho::ClassDeclPartsChirho {
+            kind_vars_chirho: Vec::new(),
             name_chirho: "Show".to_string(),
             supers_chirho: vec![],
             super_templates_chirho: Vec::new(),
@@ -68,10 +69,13 @@ pub(super) fn infer_result_chirho(
             fundeps_chirho: vec![],
             defaults_chirho: HashMap::new(),
         },
-    );
+    ));
     let mut totals_chirho = HashMap::new();
     totals_chirho.insert("show".to_string(), records_chirho.len() as u32);
     InferResultChirho {
+        non_deferrable_diagnostics_chirho:
+            haskelujah_diagnostics_chirho::DiagnosticBundleChirho::empty_chirho(),
+        source_instances_chirho: Vec::new(),
         subst_chirho: haskelujah_typing_chirho::subst_chirho::SubstChirho::empty_chirho(),
         env_chirho: haskelujah_typing_chirho::env_chirho::TyEnvChirho::new_chirho(),
         class_env_chirho,
@@ -83,6 +87,9 @@ pub(super) fn infer_result_chirho(
         literal_evidence_by_origin_chirho: HashMap::new(),
         reference_evidence_chirho: HashMap::new(),
         reference_evidence_by_origin_chirho: HashMap::new(),
+        promotion_scope_chirho: None,
+        type_constructor_scope_chirho: None,
+        family_scope_chirho: None,
         gnd_coercion_proofs_chirho: Vec::new(),
     }
 }

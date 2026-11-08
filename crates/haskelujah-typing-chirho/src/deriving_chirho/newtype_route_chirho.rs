@@ -18,8 +18,8 @@ use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 
 use super::{
-    extract_gadt_args_chirho, gen_span_chirho, instance_type_chirho, type_is_var_chirho,
-    type_mentions_var_chirho, var_name_chirho,
+    gen_span_chirho, instance_type_chirho, type_is_var_chirho, type_mentions_var_chirho,
+    var_name_chirho,
 };
 
 /// The GND instance of `class_name_chirho` for a newtype, its head reduced by
@@ -46,7 +46,9 @@ pub(super) fn derive_newtype_instance_chirho(
         return None;
     }
     Some(DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: class_name_chirho.clone(),
             args_chirho: class_arguments_chirho
                 .iter()
@@ -84,9 +86,12 @@ fn representation_type_chirho(constructor_chirho: &ConDeclChirho) -> TypeChirho 
             .first()
             .map(|field_chirho| field_chirho.ty_chirho.clone())
             .unwrap_or_else(unit_chirho),
-        ConDeclChirho::GadtChirho { ty_chirho, .. } => extract_gadt_args_chirho(ty_chirho)
-            .into_iter()
+        ConDeclChirho::GadtChirho {
+            signature_chirho, ..
+        } => signature_chirho
+            .positional_fields_chirho()
             .next()
+            .map(|field_chirho| field_chirho.ty_chirho.clone())
             .unwrap_or_else(unit_chirho),
     }
 }

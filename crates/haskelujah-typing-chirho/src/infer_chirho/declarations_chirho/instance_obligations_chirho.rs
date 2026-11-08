@@ -16,7 +16,7 @@ use super::*;
 /// An instance declared by the module under inference.
 #[derive(Debug, Clone)]
 pub(super) struct LocalInstanceChirho {
-    pub(super) instance_chirho: InstDeclChirho,
+    pub(super) instance_chirho: std::sync::Arc<InstDeclChirho>,
     /// `instance A` of a nullary class: the head type is a placeholder.
     pub(super) nullary_chirho: bool,
     /// The class and every type constructor of the head AS WRITTEN, qualifier
@@ -53,6 +53,16 @@ pub(super) fn written_head_names_chirho(
             TypeChirho::AppChirho {
                 fun_chirho,
                 arg_chirho,
+                ..
+            }
+            | TypeChirho::KindApplicationChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            }
+            | TypeChirho::KindAnnotationChirho {
+                ty_chirho: fun_chirho,
+                kind_chirho: arg_chirho,
                 ..
             } => {
                 collect_chirho(fun_chirho, names_chirho);
@@ -239,11 +249,11 @@ impl InferCtxChirho {
                     .count();
                 let registered_copies_chirho = self
                     .class_env_chirho
-                    .instances_chirho
-                    .get(&later_chirho.instance_chirho.class_name_chirho)
+                    .instances_chirho()
+                    .get_chirho(&later_chirho.instance_chirho.class_name_chirho)
                     .map_or(0, |registered_chirho| {
                         registered_chirho
-                            .iter()
+                            .iter_chirho()
                             .filter(|registered_chirho| equal_to_later_chirho(registered_chirho))
                             .count()
                     });
@@ -281,7 +291,8 @@ enum MethodRouteChirho {
 /// as written, its type variables, and its written context as givens over
 /// those variables.
 struct InstanceUnderCheckChirho {
-    class_decl_chirho: ClassDeclChirho,
+    class_decl_chirho: std::sync::Arc<ClassDeclChirho>,
+    kind_tys_chirho: Vec<TyChirho>,
     head_tys_chirho: Vec<TyChirho>,
     var_map_chirho: HashMap<String, TyVarChirho>,
     context_chirho: Vec<SchemePredChirho>,
@@ -336,6 +347,7 @@ impl InferCtxChirho {
             let DeclChirho::InstanceDeclChirho {
                 context_chirho,
                 class_chirho,
+                kind_args_chirho,
                 types_chirho,
                 methods_chirho,
                 ..
@@ -345,13 +357,17 @@ impl InferCtxChirho {
             };
             let Some(class_decl_chirho) = self
                 .class_env_chirho
-                .classes_chirho
-                .get(class_chirho.text_chirho())
+                .classes_chirho()
+                .get_chirho(class_chirho.text_chirho())
                 .cloned()
             else {
                 continue;
             };
             let mut var_map_chirho = HashMap::new();
+            let kind_tys_chirho: Vec<TyChirho> = kind_args_chirho
+                .iter()
+                .map(|kind_chirho| self.ast_type_to_ty_chirho(kind_chirho, &mut var_map_chirho))
+                .collect();
             let head_tys_chirho: Vec<TyChirho> = types_chirho
                 .iter()
                 .map(|ty_chirho| self.ast_type_to_ty_chirho(ty_chirho, &mut var_map_chirho))
@@ -360,6 +376,7 @@ impl InferCtxChirho {
                 self.instance_context_givens_chirho(context_chirho, &mut var_map_chirho);
             let instance_chirho = InstanceUnderCheckChirho {
                 class_decl_chirho,
+                kind_tys_chirho,
                 head_tys_chirho,
                 var_map_chirho,
                 context_chirho,
@@ -422,10 +439,13 @@ impl InferCtxChirho {
         preds_chirho.extend(
             equalities_chirho
                 .into_iter()
-                .map(|(lhs_chirho, rhs_chirho)| SchemePredChirho {
-                    class_name_chirho: "~".to_string(),
-                    ty_chirho: lhs_chirho,
-                    extra_tys_chirho: vec![rhs_chirho],
+                .map(|(lhs_chirho, rhs_chirho)| {
+                    SchemePredChirho::legacy_chirho(crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: Vec::new(),
+                        class_name_chirho: "~".to_string(),
+                        ty_chirho: lhs_chirho,
+                        extra_tys_chirho: vec![rhs_chirho],
+                    })
                 }),
         );
         (preds_chirho, !unmodelled_chirho && !variable_headed_chirho)
@@ -452,7 +472,13 @@ impl InferCtxChirho {
         span_chirho: SpanChirho,
     ) {
         let env_snapshot_chirho = self.env_chirho.clone();
-        let class_env_snapshot_chirho = self.class_env_chirho.clone();
+        let class_env_snapshot_chirho = match self.class_env_chirho.try_snapshot_chirho() {
+            Ok(snapshot_chirho) => snapshot_chirho,
+            Err(error_chirho) => {
+                self.note_registry_failure_chirho(error_chirho, Some(span_chirho));
+                return;
+            }
+        };
         let scoped_tyvars_snapshot_chirho = self.scoped_tyvars_chirho.clone();
         let skolem_bindings_snapshot_chirho = self.skolem_bindings_chirho.clone();
         let module_preds_chirho = std::mem::take(&mut self.deferred_preds_chirho);
@@ -533,6 +559,7 @@ impl InferCtxChirho {
             .instantiate_instance_method_expected_parts_chirho(
                 &instance_chirho.class_decl_chirho,
                 method_scheme_chirho,
+                &instance_chirho.kind_tys_chirho,
                 &instance_chirho.head_tys_chirho,
                 instance_chirho.local_class_chirho,
             );
@@ -552,10 +579,27 @@ impl InferCtxChirho {
         let mut vars_chirho: Vec<TyVarChirho> =
             instance_chirho.var_map_chirho.values().copied().collect();
         vars_chirho.sort();
-        vars_chirho.extend(method_vars_chirho);
+        vars_chirho.extend(method_vars_chirho.iter().copied());
+        // This is the same checked quantifier operation as written signatures:
+        // retain source owners and kind dependencies before making them rigid.
+        let mut budget_chirho =
+            super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+        let vars_chirho = self.quantify_variables_chirho(
+            vars_chirho,
+            method_vars_chirho.records_chirho(),
+            &[],
+            &SubstChirho::empty_chirho(),
+            haskelujah_ast_chirho::decl_chirho::TyVarSpecificityChirho::SpecifiedChirho,
+            &mut budget_chirho,
+        );
+        if self.type_normalization_exhausted_chirho.get()
+            || self.non_deferrable_diagnostics_chirho.has_errors_chirho()
+        {
+            return MethodRouteChirho::RigidChirho;
+        }
+        let rigid_vars_chirho = vars_chirho.iter().copied().collect::<Vec<_>>();
         let mut preds_chirho = instance_chirho.context_chirho.clone();
         preds_chirho.extend(method_preds_chirho);
-        let rigid_vars_chirho = vars_chirho.clone();
         let (rigid_ty_chirho, givens_chirho) = self.skolemize_scheme_parts_chirho(&SchemeChirho {
             vars_chirho,
             preds_chirho,
@@ -582,14 +626,33 @@ impl InferCtxChirho {
         }
         let judged_chirho = instance_chirho.context_complete_chirho
             && self.givens_reach_their_superclasses_chirho(&givens_chirho);
+        let own_context_chirho = givens_chirho
+            .iter()
+            .take(instance_chirho.context_chirho.len())
+            .cloned()
+            .collect::<Vec<_>>();
 
         self.with_given_preds_chirho(givens_chirho, |self_chirho| {
-            self_chirho.check_method_body_chirho(
-                matches_chirho,
-                span_chirho,
-                &rigid_ty_chirho,
-                judged_chirho,
-            )
+            if instance_chirho.context_complete_chirho {
+                self_chirho.with_instance_context_evidence_chirho(
+                    &own_context_chirho,
+                    |self_chirho| {
+                        self_chirho.check_method_body_chirho(
+                            matches_chirho,
+                            span_chirho,
+                            &rigid_ty_chirho,
+                            judged_chirho,
+                        )
+                    },
+                )
+            } else {
+                self_chirho.check_method_body_chirho(
+                    matches_chirho,
+                    span_chirho,
+                    &rigid_ty_chirho,
+                    judged_chirho,
+                )
+            }
         })
     }
 
@@ -663,20 +726,34 @@ impl InferCtxChirho {
     /// method and accepted at the top (T13142).
     fn judge_ground_leftovers_chirho(&mut self, method_subst_chirho: &SubstChirho) {
         for (pred_chirho, span_chirho) in std::mem::take(&mut self.deferred_preds_chirho) {
-            let resolved_chirho = PredChirho {
-                class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                ty_chirho: self.normalize_ty_chirho(
-                    &method_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                ),
-                extra_tys_chirho: pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|ty_chirho| {
-                        self.normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(ty_chirho))
-                    })
-                    .collect(),
-            };
-            if Self::pred_fully_ground_chirho(&resolved_chirho) {
+            let resolved_chirho = PredChirho::from_proof_chirho(
+                pred_chirho.class_identity_chirho().clone(),
+                crate::class_chirho::PredPartsChirho {
+                    kind_tys_chirho: pred_chirho
+                        .kind_tys_chirho
+                        .iter()
+                        .map(|kind_chirho| {
+                            self.normalize_ty_chirho(
+                                &method_subst_chirho.apply_ty_chirho(kind_chirho),
+                            )
+                        })
+                        .collect(),
+                    class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                    ty_chirho: self.normalize_ty_chirho(
+                        &method_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                    ),
+                    extra_tys_chirho: pred_chirho
+                        .extra_tys_chirho
+                        .iter()
+                        .map(|ty_chirho| {
+                            self.normalize_ty_chirho(
+                                &method_subst_chirho.apply_ty_chirho(ty_chirho),
+                            )
+                        })
+                        .collect(),
+                },
+            );
+            if self.pred_fully_ground_chirho(&resolved_chirho) {
                 self.report_certainly_unsolvable_ground_chirho(&resolved_chirho, span_chirho);
             } else {
                 self.deferred_preds_chirho.push((pred_chirho, span_chirho));
@@ -700,16 +777,22 @@ impl InferCtxChirho {
             .instantiate_instance_method_expected_parts_chirho(
                 &instance_chirho.class_decl_chirho,
                 method_scheme_chirho,
+                &instance_chirho.kind_tys_chirho,
                 &instance_chirho.head_tys_chirho,
                 false,
             );
         let givens_chirho: Vec<PredChirho> = method_preds_chirho
             .into_iter()
             .map(|pred_chirho| {
-                let mut given_chirho =
-                    PredChirho::new_chirho(&pred_chirho.class_name_chirho, pred_chirho.ty_chirho);
-                given_chirho.extra_tys_chirho = pred_chirho.extra_tys_chirho;
-                given_chirho
+                PredChirho::from_proof_chirho(
+                    pred_chirho.class_identity_chirho().clone(),
+                    crate::class_chirho::PredPartsChirho {
+                        kind_tys_chirho: pred_chirho.kind_tys_chirho,
+                        class_name_chirho: pred_chirho.class_name_chirho,
+                        ty_chirho: pred_chirho.ty_chirho,
+                        extra_tys_chirho: pred_chirho.extra_tys_chirho,
+                    },
+                )
             })
             .collect();
         let expected_ty_chirho = self.normalize_ty_chirho(&method_ty_chirho);
@@ -768,10 +851,23 @@ impl InferCtxChirho {
         &mut self,
         class_decl_chirho: &ClassDeclChirho,
         method_scheme_chirho: &SchemeChirho,
+        instance_kind_tys_chirho: &[TyChirho],
         instance_head_tys_chirho: &[TyChirho],
         keep_quantifiers_chirho: bool,
-    ) -> (Vec<SchemePredChirho>, TyChirho, Vec<TyVarChirho>) {
+    ) -> (
+        Vec<SchemePredChirho>,
+        TyChirho,
+        crate::ty_chirho::QuantifiedVariablesChirho,
+    ) {
         let mut head_subst_chirho = SubstChirho::empty_chirho();
+        for (index_chirho, kind_var_chirho) in class_decl_chirho.kind_vars_chirho.iter().enumerate()
+        {
+            let kind_chirho = instance_kind_tys_chirho
+                .get(index_chirho)
+                .cloned()
+                .unwrap_or_else(|| self.fresh_var_chirho());
+            head_subst_chirho.insert_chirho(*kind_var_chirho, kind_chirho);
+        }
         let class_vars_chirho: Vec<TyVarChirho> = std::iter::once(class_decl_chirho.var_chirho)
             .chain(class_decl_chirho.extra_vars_chirho.iter().copied())
             .collect();
@@ -782,38 +878,119 @@ impl InferCtxChirho {
             };
             head_subst_chirho.insert_chirho(*class_var_chirho, head_ty_chirho);
         }
-        let mut method_vars_chirho: Vec<TyVarChirho> = Vec::new();
-        for method_var_chirho in &method_scheme_chirho.vars_chirho {
-            if head_subst_chirho.lookup_chirho(method_var_chirho).is_some() {
-                continue;
-            }
-            if keep_quantifiers_chirho {
-                method_vars_chirho.push(*method_var_chirho);
-            } else {
-                let fresh_chirho = self.fresh_var_chirho();
-                head_subst_chirho.insert_chirho(*method_var_chirho, fresh_chirho);
+        let remaining_chirho = method_scheme_chirho
+            .vars_chirho
+            .filter_chirho(|record_chirho| {
+                head_subst_chirho
+                    .lookup_chirho(&record_chirho.variable_chirho)
+                    .is_none()
+            });
+        let mut budget_chirho =
+            super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
+        let mut charge_chirho = |work_chirho: usize, output_chirho: usize| {
+            budget_chirho.node_chirho(output_chirho)?;
+            budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+        };
+        let opened_chirho = (|| {
+            let copied_body_chirho = crate::subst_chirho::SubstChirho::empty_chirho()
+                .apply_bounded_chirho(&method_scheme_chirho.ty_chirho, &mut charge_chirho)?;
+            let term_chirho = TyChirho::ForallChirho {
+                vars_chirho: remaining_chirho.clone(),
+                body_chirho: Box::new(copied_body_chirho),
+            };
+            head_subst_chirho.apply_freshened_bounded_chirho(
+                &term_chirho,
+                &mut self.elaboration_state_chirho.next_variable_chirho,
+                &mut charge_chirho,
+            )
+        })();
+        let Some(TyChirho::ForallChirho {
+            vars_chirho: opened_variables_chirho,
+            body_chirho: opened_body_chirho,
+        }) = opened_chirho
+        else {
+            self.type_normalization_exhausted_chirho.set(true);
+            return (
+                Vec::new(),
+                TyChirho::VarChirho(TyVarChirho(0)),
+                crate::ty_chirho::QuantifiedVariablesChirho::default(),
+            );
+        };
+        for (source_chirho, actual_chirho) in remaining_chirho
+            .records_chirho()
+            .iter()
+            .zip(opened_variables_chirho.records_chirho())
+        {
+            head_subst_chirho.insert_chirho(
+                source_chirho.variable_chirho,
+                TyChirho::VarChirho(actual_chirho.variable_chirho),
+            );
+            if let Some(kind_chirho) = &actual_chirho.kind_chirho {
+                let Some(kind_chirho) = crate::subst_chirho::SubstChirho::empty_chirho()
+                    .apply_bounded_chirho(kind_chirho, &mut charge_chirho)
+                else {
+                    self.type_normalization_exhausted_chirho.set(true);
+                    return (
+                        Vec::new(),
+                        TyChirho::VarChirho(TyVarChirho(0)),
+                        crate::ty_chirho::QuantifiedVariablesChirho::default(),
+                    );
+                };
+                let mut record_chirho = actual_chirho.clone();
+                record_chirho.kind_chirho = Some(std::sync::Arc::new(kind_chirho));
+                let record_chirho =
+                    crate::kind_chirho::elaboration_chirho::ElaborationVariableChirho {
+                        quantifier_chirho: record_chirho,
+                        binding_chirho: if keep_quantifiers_chirho {
+                            crate::kind_chirho::elaboration_chirho::ElaborationVariableBindingChirho::UniversalChirho
+                        } else {
+                            crate::kind_chirho::elaboration_chirho::ElaborationVariableBindingChirho::MetaChirho
+                        },
+                    };
+                self.elaboration_state_chirho
+                    .variable_kinds_chirho
+                    .insert(actual_chirho.variable_chirho, record_chirho);
             }
         }
+        let method_vars_chirho = if keep_quantifiers_chirho {
+            opened_variables_chirho
+        } else {
+            crate::ty_chirho::QuantifiedVariablesChirho::default()
+        };
         let preds_chirho: Vec<SchemePredChirho> = method_scheme_chirho
             .preds_chirho
             .iter()
-            .map(|pred_chirho| SchemePredChirho {
-                class_name_chirho: pred_chirho.class_name_chirho.clone(),
-                ty_chirho: self.normalize_ty_chirho(
-                    &head_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
-                ),
-                extra_tys_chirho: pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|ty_chirho| {
-                        self.normalize_ty_chirho(&head_subst_chirho.apply_ty_chirho(ty_chirho))
-                    })
-                    .collect(),
+            .map(|pred_chirho| {
+                SchemePredChirho::from_proof_chirho(
+                    pred_chirho.class_identity_chirho().clone(),
+                    crate::ty_chirho::SchemePredPartsChirho {
+                        kind_tys_chirho: pred_chirho
+                            .kind_tys_chirho
+                            .iter()
+                            .map(|kind_chirho| {
+                                self.normalize_ty_chirho(
+                                    &head_subst_chirho.apply_ty_chirho(kind_chirho),
+                                )
+                            })
+                            .collect(),
+                        class_name_chirho: pred_chirho.class_name_chirho.clone(),
+                        ty_chirho: self.normalize_ty_chirho(
+                            &head_subst_chirho.apply_ty_chirho(&pred_chirho.ty_chirho),
+                        ),
+                        extra_tys_chirho: pred_chirho
+                            .extra_tys_chirho
+                            .iter()
+                            .map(|ty_chirho| {
+                                self.normalize_ty_chirho(
+                                    &head_subst_chirho.apply_ty_chirho(ty_chirho),
+                                )
+                            })
+                            .collect(),
+                    },
+                )
             })
             .collect();
-        let ty_chirho = self.normalize_ty_chirho(
-            &head_subst_chirho.apply_ty_chirho(&method_scheme_chirho.ty_chirho),
-        );
+        let ty_chirho = self.normalize_ty_chirho(&opened_body_chirho);
         (preds_chirho, ty_chirho, method_vars_chirho)
     }
 
@@ -828,6 +1005,7 @@ impl InferCtxChirho {
             .instantiate_instance_method_expected_parts_chirho(
                 class_decl_chirho,
                 method_scheme_chirho,
+                &[],
                 instance_head_tys_chirho,
                 false,
             );

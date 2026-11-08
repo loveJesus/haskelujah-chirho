@@ -439,7 +439,7 @@ valueChirho = LazyState.liftCallCC'\n"
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     );
 
@@ -2079,13 +2079,17 @@ fn frontend_seed_batch_propagates_associated_type_families_between_modules_chirh
         ),
     ];
 
-    let result_chirho = crate::compile_module_sources_with_extra_ifaces_chirho(
+    let result_chirho = crate::compile_module_sources_linked_chirho(
         module_sources_chirho,
         &mut source_map_chirho,
-        vec![],
-        HashMap::new(),
-        crate::ImportedTypeSynonymsChirho::new(),
-        crate::ImportedTypeFamiliesChirho::new(),
+        crate::FrontendSeedArtifactsChirho {
+            ifaces_chirho: vec![],
+            interface_sources_chirho: None,
+            imported_types_chirho: HashMap::new(),
+            imported_type_synonyms_chirho: crate::ImportedTypeSynonymsChirho::new(),
+            imported_type_families_chirho: crate::ImportedTypeFamiliesChirho::new_chirho(),
+        },
+        &std::collections::HashSet::new(),
     );
 
     assert!(
@@ -2582,8 +2586,8 @@ fn frontend_parsed_biapplicative_class_method_keeps_applied_result_chirho() {
     let class_decl_chirho = frontend_result_chirho
         .infer_result_chirho
         .class_env_chirho
-        .classes_chirho
-        .get("BiapplicativeChirho")
+        .classes_chirho()
+        .get_chirho("BiapplicativeChirho")
         .expect("class should be registered");
     let scheme_chirho = class_decl_chirho
         .methods_chirho
@@ -3244,7 +3248,8 @@ fn clock_iface_exports_normalize_and_s2ns_chirho() {
         "System.Clock should retain explicit exports; module name={}",
         module_chirho.name_chirho.full_name_chirho()
     );
-    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[]);
+    let iface_chirho = build_iface_with_imports_chirho(&module_chirho, &[])
+        .expect("small source interface fixture fits constructor projection budget");
 
     assert!(
         iface_chirho
@@ -3559,7 +3564,8 @@ answer = withFrozenCallStack id (42 :: Int)
     let safe_util_module_chirho =
         lower_module_chirho(&safe_util_green_chirho, safe_util_file_id_chirho);
     let safe_util_iface_chirho =
-        build_iface_with_imports_chirho(&safe_util_module_chirho, &ifaces_chirho);
+        build_iface_with_imports_chirho(&safe_util_module_chirho, &ifaces_chirho)
+            .expect("small source interface fixture fits constructor projection budget");
     ifaces_chirho.push(safe_util_iface_chirho);
 
     let main_file_chirho = SourceFileChirho::from_source_map_chirho(
@@ -5539,7 +5545,8 @@ fn frontend_text_case_mapping_frontend_survives_generated_module_size_chirho() {
             &mut imported_types_chirho,
             &mut imported_type_synonyms_chirho,
             &mut imported_type_families_chirho,
-        );
+        )
+        .expect("stdlib family snapshots must merge without conflict");
     }
 
     let mut source_map_chirho = SourceMapChirho::new_chirho();
@@ -5904,7 +5911,7 @@ library
 }
 
 #[test]
-fn cabal_project_missing_module_skipped_chirho() {
+fn cabal_project_missing_module_is_refused_chirho() {
     use crate::compile_cabal_project_chirho;
     use std::io::Write;
 
@@ -5934,11 +5941,15 @@ library
 
     let index_chirho = haskelujah_package_chirho::PackageIndexChirho::new_chirho();
 
-    let result_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
-        .expect("should compile what exists");
-
-    // Only Exists should be compiled (DoesNotExist not found on disk)
-    assert_eq!(result_chirho.module_results_chirho.len(), 1);
+    // A declared library module without its source is refused by name, never compiled around
+    // (row 703): a builtin module of the same name could otherwise stand in for it.
+    let error_chirho = compile_cabal_project_chirho(&cabal_path_chirho, &index_chirho)
+        .expect_err("a declared library module without its source must be refused");
+    assert!(
+        error_chirho.contains("declared source modules are missing")
+            && error_chirho.contains("DoesNotExist"),
+        "{error_chirho}"
+    );
 
     let _ = std::fs::remove_dir_all(&temp_dir_chirho);
 }
@@ -9673,7 +9684,7 @@ fn frontend_hashable_ffi_exports_seed_qualified_io_results_chirho() {
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     )
     .expect("hashable FFI frontend artifacts should collect");
@@ -9779,10 +9790,18 @@ fn frontend_hashable_ffi_pair_typechecks_with_dependency_stubs_chirho() {
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     )
     .expect("hashable FFI frontend artifacts should collect");
+
+    artifacts_chirho
+        .validate_scanned_source_chirho(
+            "Data.Hashable.XXH3",
+            &xxh3_path_chirho.display().to_string(),
+            &xxh3_source_chirho,
+        )
+        .expect("XXH3 imports retain the scanned source authority");
 
     let xxh3_file_chirho = SourceFileChirho::from_source_map_chirho(
         &mut source_map_chirho,
@@ -9830,7 +9849,7 @@ fn frontend_hashable_mix_collects_with_stdlib_seed_chirho() {
         vec![],
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     )
     .expect("hashable Mix frontend artifacts should collect with stdlib seed");
@@ -9872,7 +9891,7 @@ fn frontend_package_local_empty_and_insert_override_builtins_chirho() {
         vec![],
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     );
 
@@ -9911,7 +9930,7 @@ fn frontend_warp_multimap_exports_seed_insert_and_empty_chirho() {
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     )
     .expect("warp MultiMap frontend artifacts should collect");
@@ -9997,7 +10016,7 @@ fn frontend_warp_fdcache_typechecks_after_multimap_seed_chirho() {
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     );
 
@@ -10041,10 +10060,18 @@ fn frontend_warp_fdcache_typechecks_with_direct_multimap_artifacts_chirho() {
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     )
     .expect("warp MultiMap frontend artifacts should collect");
+
+    multimap_artifacts_chirho
+        .validate_scanned_source_chirho(
+            "Network.Wai.Handler.Warp.FdCache",
+            &fdcache_path_chirho.display().to_string(),
+            &fdcache_source_chirho,
+        )
+        .expect("FdCache imports retain the scanned source authority");
 
     let fdcache_file_chirho = SourceFileChirho::from_source_map_chirho(
         &mut source_map_chirho,
@@ -10106,10 +10133,18 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
         extra_ifaces_chirho,
         HashMap::new(),
         ImportedTypeSynonymsChirho::new(),
-        ImportedTypeFamiliesChirho::new(),
+        ImportedTypeFamiliesChirho::new_chirho(),
         true,
     )
     .expect("warp MultiMap frontend artifacts should collect");
+
+    multimap_artifacts_chirho
+        .validate_scanned_source_chirho(
+            "Network.Wai.Handler.Warp.FdCache",
+            &fdcache_path_chirho.display().to_string(),
+            &fdcache_source_chirho,
+        )
+        .expect("FdCache imports retain the scanned source authority");
 
     let fdcache_file_chirho = SourceFileChirho::from_source_map_chirho(
         &mut source_map_chirho,
@@ -10121,7 +10156,8 @@ fn frontend_warp_fdcache_seeded_env_prefers_multimap_insert_and_empty_chirho() {
     let green_chirho = parser_chirho.parse_chirho();
     let module_chirho = lower_module_chirho(&green_chirho, fdcache_file_chirho.file_id_chirho());
     let _iface_chirho =
-        build_iface_with_imports_chirho(&module_chirho, &multimap_artifacts_chirho.ifaces_chirho);
+        build_iface_with_imports_chirho(&module_chirho, &multimap_artifacts_chirho.ifaces_chirho)
+            .expect("small source interface fixture fits constructor projection budget");
 
     let mut merged_imported_types_chirho = multimap_artifacts_chirho.imported_types_chirho.clone();
     for (builtin_name_chirho, builtin_scheme_chirho) in

@@ -10,6 +10,7 @@ use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 mod bindings_strictness_tests_chirho;
 mod case_binders_tests_chirho;
 mod expressions_tests_chirho;
+mod input_tests_chirho;
 mod sugar_tests_chirho;
 
 /// The alternatives a case was written with: a trailing default that only

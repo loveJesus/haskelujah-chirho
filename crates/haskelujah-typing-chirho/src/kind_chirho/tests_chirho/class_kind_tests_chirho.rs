@@ -8,6 +8,7 @@ use super::*;
 fn class_single_param_chirho() {
     // class Eq a where eq :: a -> a -> Bool
     let module_chirho = mk_module_chirho(vec![DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: mk_name_chirho("Eq"),
         type_vars_chirho: vec![mk_name_chirho("a").into()],
@@ -45,6 +46,7 @@ fn class_higher_kinded_param_chirho() {
     // class Functor f where fmap :: (a -> b) -> f a -> f b
     // f :: * -> *, Functor :: (* -> *) -> Constraint
     let module_chirho = mk_module_chirho(vec![DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![],
         name_chirho: mk_name_chirho("Functor"),
         type_vars_chirho: vec![mk_name_chirho("f").into()],
@@ -93,6 +95,7 @@ fn class_higher_kinded_param_chirho() {
 fn local_tagged_decl_shadows_builtin_tagged_kind_chirho() {
     let module_chirho = mk_module_chirho(vec![
         DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: mk_name_chirho("SumSize"),
             type_vars_chirho: vec![mk_name_chirho("f").into()],
@@ -122,6 +125,7 @@ fn local_tagged_decl_shadows_builtin_tagged_kind_chirho() {
             constructor_chirho: ConDeclChirho::RecordChirho {
                 name_chirho: mk_name_chirho("Tagged"),
                 fields_chirho: vec![haskelujah_ast_chirho::decl_chirho::FieldDeclChirho {
+                    multiplicity_chirho: None,
                     names_chirho: vec![mk_name_chirho("unTagged")],
                     strictness_chirho: StrictnessChirho::LazyChirho,
                     ty_chirho: TypeChirho::ConChirho(mk_name_chirho("Int")),
@@ -161,7 +165,9 @@ fn local_tagged_decl_shadows_builtin_tagged_kind_chirho() {
 #[test]
 fn class_associated_type_family_shadows_builtin_rep_chirho() {
     let module_chirho = mk_module_chirho(vec![DeclChirho::ClassDeclChirho {
+        standalone_kind_chirho: None,
         context_chirho: vec![ConstraintChirho::ClassChirho {
+            kind_args_chirho: Vec::new(),
             class_chirho: mk_name_chirho("Contravariant"),
             args_chirho: vec![TypeChirho::VarChirho(mk_name_chirho("f"))],
             span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -209,10 +215,15 @@ fn class_associated_type_family_shadows_builtin_rep_chirho() {
             },
         ],
         associated_tfs_chirho: vec![AssocTypeFamilyChirho {
+            injectivity_chirho: None,
+            default_arguments_chirho: None,
             name_chirho: mk_name_chirho("Rep"),
-            type_vars_chirho: vec![mk_name_chirho("f")],
+            result_kind_chirho: None,
+            type_vars_chirho: vec![mk_name_chirho("f").into()],
+            data_family_chirho: false,
             default_rhs_chirho: None,
             default_params_chirho: vec![],
+            default_binders_chirho: None,
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         }],
         fundeps_chirho: vec![],
@@ -241,6 +252,7 @@ fn mk_class_and_instance_module_chirho(
 ) -> ModuleChirho {
     mk_module_chirho(vec![
         DeclChirho::ClassDeclChirho {
+            standalone_kind_chirho: None,
             context_chirho: vec![],
             name_chirho: mk_name_chirho("CChirho"),
             type_vars_chirho: class_param_names_chirho
@@ -253,6 +265,7 @@ fn mk_class_and_instance_module_chirho(
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         },
         DeclChirho::InstanceDeclChirho {
+            kind_args_chirho: Vec::new(),
             context_chirho: vec![],
             class_chirho: mk_name_chirho("CChirho"),
             types_chirho: instance_head_types_chirho,
@@ -314,6 +327,7 @@ fn instance_head_of_undeclared_class_is_not_judged_chirho() {
     // The class is not declared here, so its arity is unknown to us and no
     // verdict may be reached — an imported class could have any arity.
     let module_chirho = mk_module_chirho(vec![DeclChirho::InstanceDeclChirho {
+        kind_args_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: mk_name_chirho("SomeImportedClassChirho"),
         types_chirho: vec![TypeChirho::ConChirho(mk_name_chirho("Int"))],
