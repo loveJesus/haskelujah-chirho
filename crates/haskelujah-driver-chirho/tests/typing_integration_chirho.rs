@@ -65,6 +65,8 @@ mod promoted_constructor_identity_chirho;
 mod qualified_alias_agreement_chirho;
 #[path = "typing_integration_chirho/qualified_builtin_aliases_chirho.rs"]
 mod qualified_builtin_aliases_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/monomorphism_restriction_chirho/qualified_class_keys_chirho/qualified_class_keys_chirho.rs"]
+mod qualified_class_keys_chirho;
 #[path = "typing_integration_chirho/qualified_import_lists_chirho.rs"]
 mod qualified_import_lists_chirho;
 #[path = "typing_integration_chirho/qualified_references_chirho.rs"]
