@@ -5,7 +5,7 @@
 //! workflow: compiler-pipeline-chirho/operator-fixity-chirho
 
 use super::{NativeBackendChirho, assert_compile_success_chirho, assert_prints_everywhere_chirho};
-use haskelujah_test_harness_chirho::native_project_round_trip_chirho;
+use haskelujah_test_harness_chirho::native_chirho::native_project_round_trip_chirho;
 
 /// A program's own `$`, signed and unsigned, a `where`-bound one, a declared `infixr 0` chain,
 /// and one applied to a `do` block.
