@@ -1263,3 +1263,15 @@ structurally equal foreign object, context-bearing elsewhere owner, missing own 
 colliding written route. It prevents the real exact-typed decoy body from filling those slots.
 The original companion remains the end-state runtime control; existing row, generic alias,
 String spelling and multi-parameter/default-method engine controls remain unchanged.
+
+
+The denial side retains **all original written-row claims**, even when no positive S3 join
+survives. Typed head routes are retained only for declaration class/span places with an
+actual original row contribution. A bare declaration without rows leaves the established
+Elsewhere/seed/default fallback unchanged. `InstanceRowsChirho::source_route_claims_chirho`
+borrows this bounded, deduplicated denial-only payload; it grants no owner or identity.
+The pass-local fallback index reads it once, separately from the proven canonical-owner maps.
+This corrects the original index's omission of ambiguous claims. The same eager control now
+executes the actual None method consumer for the ambiguous source plus exact-typed body decoy,
+requiring a callable named refusal, and preserves the no-row Elsewhere fallback. Unmatched
+written claims also deny their route; none can become a positive owner through this path.

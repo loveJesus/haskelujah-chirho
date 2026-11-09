@@ -15,7 +15,6 @@
 use std::collections::{HashMap, HashSet};
 
 use super::DictPassCtxChirho;
-use super::generic_heads_chirho::head_key_chirho;
 use super::ground_selection_chirho::{GroundRefusalChirho, readable_instance_chirho};
 use super::instance_rows_chirho::RowKeyAbsenceChirho;
 use crate::expr_chirho::CoreIdChirho;
@@ -177,15 +176,15 @@ impl DictPassCtxChirho {
                     }
                 })
                 .or_insert(Some(pointer_chirho));
-            let claims_chirho = rows_chirho
+        }
+        // Denial must retain ambiguous/unpaired source claims too. Only the
+        // proven iterator above can fill the positive canonical/owner maps.
+        for (class_chirho, route_chirho) in self.instance_rows_chirho.source_route_claims_chirho() {
+            rows_chirho
                 .fallback_claims_chirho
-                .entry(instance_chirho.class_name_chirho.clone())
-                .or_default();
-            claims_chirho.insert(written_key_chirho.to_string());
-            claims_chirho.insert(head_key_chirho(
-                &instance_chirho.head_ty_chirho,
-                &instance_chirho.extra_head_tys_chirho,
-            ));
+                .entry(class_chirho.to_string())
+                .or_default()
+                .insert(route_chirho.to_string());
         }
         rows_chirho
     }

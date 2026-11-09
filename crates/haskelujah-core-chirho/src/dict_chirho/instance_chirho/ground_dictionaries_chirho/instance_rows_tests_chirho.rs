@@ -206,6 +206,8 @@ fn eager_slots_use_only_their_canonical_declarations_rows_chirho() {
         "elsewhereChirho",
         "missingChirho",
         "collisionChirho",
+        "writtenOnlyChirho",
+        "noRowsChirho",
     ] {
         let instance_chirho = Arc::new(InstDeclChirho::legacy_chirho(parts_chirho.clone()));
         let mut environment_chirho = ClassEnvChirho::new_chirho();
@@ -262,6 +264,14 @@ fn eager_slots_use_only_their_canonical_declarations_rows_chirho() {
             });
             keys_chirho.push(row_key_chirho("Char_String", 200));
         }
+        if case_chirho == "writtenOnlyChirho" {
+            declarations_chirho.clear();
+            keys_chirho = vec![row_key_chirho("Char_[Char]", 100)];
+        }
+        if case_chirho == "noRowsChirho" {
+            // A declaration with NO row contribution must not invent a negative claim.
+            keys_chirho.clear();
+        }
         let module_chirho = CoreModuleChirho {
             name_chirho: "EagerRowsChirho".to_string(),
             bindings_chirho: vec![
@@ -287,20 +297,68 @@ fn eager_slots_use_only_their_canonical_declarations_rows_chirho() {
                 Ok("Char_String")
             );
         }
-        if case_chirho != "ambiguousChirho" {
-            let rows_chirho = pass_chirho.eager_instance_rows_chirho();
+        let mut bootstrap_chirho =
+            DictPassCtxChirho::new_chirho(100, HashMap::new(), HashMap::new());
+        bootstrap_chirho.seed_body_backed_bindings_chirho(&module_chirho);
+        bootstrap_chirho.build_layouts_chirho(&environment_chirho);
+        bootstrap_chirho.instance_rows_chirho =
+            InstanceRowsChirho::join_chirho(&declarations_chirho, &keys_chirho);
+        let rows_chirho = bootstrap_chirho.eager_instance_rows_chirho();
+        let bootstrap_route_chirho = bootstrap_chirho.eager_instance_route_chirho(
+            &rows_chirho,
+            None,
+            "SizeChirho",
+            "Char_[Char]",
+            None,
+        );
+        let bootstrap_method_chirho = bootstrap_chirho.eager_instance_method_chirho(
+            &environment_chirho,
+            "SizeChirho",
+            "sizeChirho",
+            "Char_[Char]",
+            None,
+            &bootstrap_route_chirho,
+        );
+        if case_chirho == "noRowsChirho" {
+            assert_eq!(bootstrap_route_chirho, Ok(None));
+            assert_eq!(bootstrap_method_chirho, CoreIdChirho(20));
+        } else {
+            // Ambiguity is included unconditionally: no synthetic/None route can
+            // inherit the source body merely because positive S3 ownership failed.
+            assert!(bootstrap_route_chirho.is_err(), "{case_chirho}");
+            assert_ne!(bootstrap_method_chirho, CoreIdChirho(10), "{case_chirho}");
+            assert_ne!(bootstrap_method_chirho, CoreIdChirho(20), "{case_chirho}");
             assert!(
-                pass_chirho
-                    .eager_instance_route_chirho(
-                        &rows_chirho,
-                        None,
-                        "SizeChirho",
-                        "Char_[Char]",
-                        None
-                    )
-                    .is_err(),
-                "a bootstrap route cannot borrow the source claim: {case_chirho}"
+                bootstrap_chirho
+                    .missing_method_ids_chirho
+                    .contains(&bootstrap_method_chirho)
             );
+            let mut refusal_chirho = &bootstrap_chirho
+                .generated_bindings_chirho
+                .iter()
+                .find(|binding_chirho| {
+                    binding_chirho.binder_chirho.id_chirho == bootstrap_method_chirho
+                })
+                .unwrap()
+                .rhs_chirho;
+            while let CoreExprChirho::LamChirho { body_chirho, .. } = refusal_chirho {
+                refusal_chirho = body_chirho;
+            }
+            let CoreExprChirho::PrimOpChirho {
+                name_chirho,
+                args_chirho,
+            } = refusal_chirho
+            else {
+                panic!("the None route must return a callable refusal: {case_chirho}");
+            };
+            assert_eq!(name_chirho, "error");
+            let Some(CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(message_chirho))) =
+                args_chirho.first()
+            else {
+                panic!("the None refusal must name the method and head: {case_chirho}");
+            };
+            assert!(message_chirho.contains("SizeChirho.sizeChirho"));
+            assert!(message_chirho.contains("Char_[Char]"));
         }
         pass_chirho.generate_instance_dicts_chirho(&environment_chirho);
         let dictionary_chirho = pass_chirho
@@ -317,6 +375,10 @@ fn eager_slots_use_only_their_canonical_declarations_rows_chirho() {
             },
             other_chirho => panic!("a dictionary must be constructed: {other_chirho:?}"),
         };
+        if case_chirho == "noRowsChirho" {
+            assert_eq!(method_chirho, CoreIdChirho(20));
+            continue;
+        }
         if case_chirho == "joinedChirho" {
             assert_eq!(method_chirho, CoreIdChirho(10));
             let registered_chirho = pass_chirho

@@ -12,7 +12,9 @@
 //! declarations can share a span, so nothing is ever chosen by iteration order.
 //! workflow: language-features-chirho/dictionary-evidence-chirho
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+
+use super::generic_heads_chirho::head_key_chirho;
 use std::sync::Arc;
 
 use haskelujah_span_chirho::SpanChirho;
@@ -47,6 +49,9 @@ pub(in crate::dict_chirho) enum RowKeyAbsenceChirho {
 pub(in crate::dict_chirho) struct InstanceRowsChirho {
     joined_chirho: Vec<(Arc<InstDeclChirho>, String)>,
     ambiguous_chirho: Vec<Arc<InstDeclChirho>>,
+    /// Denial-only source routes, including declarations/row keys the positive join
+    /// could not pair. Membership grants no identity, owner or method body.
+    source_route_claims_chirho: HashSet<(String, String)>,
 }
 
 /// Whether two typed instances are the same object: class, head, extra heads and context
@@ -97,7 +102,41 @@ impl InstanceRowsChirho {
                 keys_chirho.push(row_key_chirho.row_key_chirho.as_str());
             }
         }
-        let mut rows_chirho = Self::default();
+        let mut rows_chirho = Self {
+            source_route_claims_chirho: row_keys_chirho
+                .iter()
+                .map(|row_chirho| {
+                    (
+                        row_chirho.class_name_chirho.clone(),
+                        row_chirho.row_key_chirho.clone(),
+                    )
+                })
+                .chain(
+                    declarations_chirho
+                        .iter()
+                        .filter(|declaration_chirho| {
+                            keys_by_place_chirho.contains_key(&(
+                                declaration_chirho
+                                    .instance_chirho
+                                    .class_name_chirho
+                                    .as_str(),
+                                declaration_chirho.span_chirho,
+                            ))
+                        })
+                        .map(|declaration_chirho| {
+                            let instance_chirho = &declaration_chirho.instance_chirho;
+                            (
+                                instance_chirho.class_name_chirho.clone(),
+                                head_key_chirho(
+                                    &instance_chirho.head_ty_chirho,
+                                    &instance_chirho.extra_head_tys_chirho,
+                                ),
+                            )
+                        }),
+                )
+                .collect(),
+            ..Self::default()
+        };
         for (place_chirho, instances_chirho) in &instances_by_place_chirho {
             match (
                 instances_chirho.as_slice(),
@@ -142,6 +181,17 @@ impl InstanceRowsChirho {
             return Err(RowKeyAbsenceChirho::AmbiguousChirho);
         }
         Ok(row_key_chirho)
+    }
+
+    /// Borrow original source claims only to deny unowned fallback. Ambiguous or
+    /// unpaired inputs stay here; they never enter the positive row iterator.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(in crate::dict_chirho) fn source_route_claims_chirho(
+        &self,
+    ) -> impl Iterator<Item = (&str, &str)> + '_ {
+        self.source_route_claims_chirho
+            .iter()
+            .map(|(class_chirho, route_chirho)| (class_chirho.as_str(), route_chirho.as_str()))
     }
 
     /// Each instance with a proven row key, and that key, for the context-leading marks.
