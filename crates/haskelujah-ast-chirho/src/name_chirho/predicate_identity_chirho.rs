@@ -125,7 +125,8 @@ impl SourceUnitIdentityChirho {
 /// The driver's standalone source authority as an immutable carrier: a unit the driver already
 /// produced and the home modules its checked admission placed in that unit. This type never
 /// mints a unit. Membership is exact module-name equality against the admitted set, never a
-/// prefix, qualifier or alias.
+/// prefix, qualifier or alias. The driver admits no module name that another unit could also
+/// define, because a defining-module account carries no unit (#33316).
 /// Workflow: language-features-chirho/dictionary-evidence-chirho.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceUnitAuthorityChirho {

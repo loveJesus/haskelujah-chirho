@@ -102,7 +102,9 @@ const STANDALONE_HOME_UNIT_CHIRHO: &str = "main";
 
 /// The driver mints the standalone home unit here and nowhere else, and carries it with the
 /// home modules its checked admission produced: this module and every interface admitted as
-/// `HomeChirho`. A package exposure is never a member.
+/// `HomeChirho`. A package exposure is never a member. A defining-module account carries no
+/// unit, so a home module name another unit could also define is withheld and its accounts stay
+/// MissingUnit until their unit is carried (#33316); see `unit_free_definers_chirho`.
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 pub(crate) fn standalone_home_authority_chirho(
     module_chirho: &haskelujah_ast_chirho::module_chirho::ModuleChirho,
@@ -113,20 +115,15 @@ pub(crate) fn standalone_home_authority_chirho(
             std::sync::Arc::from(STANDALONE_HOME_UNIT_CHIRHO),
         )
         .ok()?;
+    let withheld_chirho = unit_free_definers_chirho(ifaces_chirho);
     let home_modules_chirho = std::iter::once(module_chirho.name_chirho.full_name_chirho())
         .chain(
             ifaces_chirho
                 .iter()
-                .filter(|iface_chirho| {
-                    matches!(
-                        iface_chirho.exposure_chirho,
-                        Some(
-                            haskelujah_naming_chirho::iface_chirho::IfaceExposureChirho::HomeChirho
-                        )
-                    )
-                })
+                .filter(|iface_chirho| home_exposed_chirho(iface_chirho))
                 .map(|iface_chirho| iface_chirho.name_chirho.clone()),
         )
+        .filter(|name_chirho| !withheld_chirho.contains(name_chirho.as_str()))
         .map(std::sync::Arc::<str>::from);
     Some(
         haskelujah_ast_chirho::name_chirho::SourceUnitAuthorityChirho::from_driver_chirho(
@@ -134,6 +131,54 @@ pub(crate) fn standalone_home_authority_chirho(
             home_modules_chirho,
         ),
     )
+}
+
+fn home_exposed_chirho(iface_chirho: &ModuleIfaceChirho) -> bool {
+    iface_chirho.exposure_chirho
+        == Some(haskelujah_naming_chirho::iface_chirho::IfaceExposureChirho::HomeChirho)
+}
+
+/// Module names that a unit-free account could name outside the home unit's own declarations
+/// (#33316). GHC identifies an entity by package, module and name, so a home module M and
+/// another unit's M can coexist. The names are:
+/// - every interface name under a non-home exposure (a package view, or no unit claim);
+/// - every module a non-home interface's accounts define in, such as a hidden package module
+///   behind a re-export;
+/// - every module a home interface re-exports from, since no unit proves that re-export's owner.
+///
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+fn unit_free_definers_chirho(
+    ifaces_chirho: &[ModuleIfaceChirho],
+) -> std::collections::BTreeSet<&str> {
+    use haskelujah_ast_chirho::name_chirho::TypeConstructorIdentityChirho;
+    let mut definers_chirho = std::collections::BTreeSet::new();
+    for iface_chirho in ifaces_chirho {
+        let home_chirho = home_exposed_chirho(iface_chirho);
+        if !home_chirho {
+            definers_chirho.insert(iface_chirho.name_chirho.as_str());
+        }
+        let exports_chirho = &iface_chirho.exports_chirho;
+        let types_chirho = exports_chirho
+            .types_chirho
+            .values()
+            .filter_map(|type_chirho| {
+                match &type_chirho.declaration_chirho.as_ref()?.identity_chirho {
+                    TypeConstructorIdentityChirho::SourceChirho {
+                        defining_module_chirho,
+                        ..
+                    } => Some(defining_module_chirho.as_str()),
+                    TypeConstructorIdentityChirho::CompilerChirho(_) => None,
+                }
+            });
+        let values_chirho = exports_chirho
+            .values_chirho
+            .values()
+            .filter_map(|value_chirho| value_chirho.defining_module_chirho.as_deref());
+        definers_chirho.extend(types_chirho.chain(values_chirho).filter(|definer_chirho| {
+            !home_chirho || *definer_chirho != iface_chirho.name_chirho.as_str()
+        }));
+    }
+    definers_chirho
 }
 
 /// The frontend phases under a deferral policy the caller already resolved: the source path

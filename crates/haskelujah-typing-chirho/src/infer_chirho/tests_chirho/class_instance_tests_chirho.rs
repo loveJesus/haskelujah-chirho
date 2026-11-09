@@ -741,3 +741,103 @@ fn method_conversion_on_soft_exhaustion_keeps_written_shape_and_only_refuses_own
     assert!(!ctx_chirho.diagnostics_chirho.has_errors_chirho());
     assert!(!ctx_chirho.has_non_deferrable_failure_chirho());
 }
+
+/// #33315: under the standalone authority, an instance head whose own account is a recognized
+/// source declaration the authority does not admit, an opaque head and a head with no account
+/// never take the active same-text source class's proof by spelling.
+#[test]
+fn no_unadmitted_opaque_or_bare_instance_head_takes_a_same_text_source_proof_chirho() {
+    use haskelujah_ast_chirho::name_chirho::{
+        PredicateClassProofChirho, SourceUnitAuthorityChirho, SourceUnitIdentityChirho,
+        TypeConstructorDeclarationChirho, TypeConstructorRoleChirho,
+    };
+    let unit_chirho = SourceUnitIdentityChirho::from_producer_chirho(Arc::from("main"))
+        .expect("a non-empty unit key");
+    let authority_chirho =
+        SourceUnitAuthorityChirho::from_driver_chirho(unit_chirho.clone(), [Arc::from("Main")]);
+    let mut module_chirho = ModuleChirho {
+        name_chirho: dummy_name_chirho("Main"),
+        exports_chirho: None,
+        imports_chirho: vec![],
+        decls_chirho: vec![],
+        extensions_chirho: vec![],
+        inline_pragmas_chirho: std::collections::HashMap::new(),
+        specialize_pragmas_chirho: std::collections::HashMap::new(),
+        foreign_exports_chirho: vec![],
+        deriving_via_chirho: vec![],
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+        origin_supply_chirho: Default::default(),
+    };
+    let type_scope_chirho =
+        haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho::default();
+    let family_scope_chirho = TypeFamilyScopeChirho::default();
+    let promotion_scope_chirho =
+        haskelujah_ast_chirho::promotion_chirho::PromotionScopeChirho::default();
+    let checked_chirho = crate::kind_chirho::elaboration_chirho::elaborate_module_chirho(
+        &mut module_chirho,
+        crate::kind_chirho::elaboration_chirho::ElaborationImportsChirho {
+            registry_chirho: &TypeFamilyEnvChirho::default(),
+            type_scope_chirho: &type_scope_chirho,
+            family_scope_chirho: &family_scope_chirho,
+            promotion_scope_chirho: &promotion_scope_chirho,
+            builtin_classes_chirho:
+                &haskelujah_ast_chirho::name_chirho::BuiltinClassScopeChirho::default(),
+            source_unit_chirho: Some(&authority_chirho),
+        },
+    )
+    .expect("the empty home module elaborates under the standalone authority");
+    let mut ctx_chirho = InferCtxChirho::new_chirho();
+    ctx_chirho.elaboration_state_chirho = checked_chirho.state_chirho;
+
+    // The record active under the spelling is the home class, proven in the home unit.
+    let active_chirho = PredicateClassProofChirho::source_chirho(
+        Some(unit_chirho),
+        Arc::from("Main"),
+        Arc::from("ShapeChirho"),
+    );
+    ctx_chirho
+        .class_env_chirho
+        .add_class_chirho(ClassDeclChirho::from_producer_chirho(
+            crate::class_chirho::ClassDeclPartsChirho {
+                kind_vars_chirho: Vec::new(),
+                name_chirho: "ShapeChirho".to_string(),
+                supers_chirho: Vec::new(),
+                super_templates_chirho: Vec::new(),
+                var_chirho: TyVarChirho(0),
+                methods_chirho: HashMap::new(),
+                extra_vars_chirho: Vec::new(),
+                fundeps_chirho: Vec::new(),
+                defaults_chirho: HashMap::new(),
+            },
+            active_chirho.clone(),
+        ));
+    assert_eq!(
+        ctx_chirho
+            .class_env_chirho
+            .classes_chirho()
+            .get_chirho("ShapeChirho")
+            .expect("the home class is active under its spelling")
+            .class_identity_chirho(),
+        &active_chirho
+    );
+
+    // A package class of the same text, as its declaration producer stamped it.
+    let mut unadmitted_chirho = dummy_name_chirho("ShapeChirho");
+    unadmitted_chirho.set_type_constructor_chirho(Some(
+        TypeConstructorDeclarationChirho::source_chirho(
+            "PackagedShapeChirho",
+            "ShapeChirho",
+            TypeConstructorRoleChirho::ClassChirho,
+        ),
+    ));
+    let mut opaque_chirho = dummy_name_chirho("ShapeChirho");
+    opaque_chirho.mark_type_constructor_opaque_chirho();
+    let unaccounted_chirho = dummy_name_chirho("ShapeChirho");
+    for head_chirho in [&unadmitted_chirho, &opaque_chirho, &unaccounted_chirho] {
+        let proof_chirho = ctx_chirho.instance_class_proof_chirho(head_chirho);
+        assert!(
+            proof_chirho.identity_chirho().is_none(),
+            "{head_chirho:?} took {proof_chirho:?}"
+        );
+    }
+}
