@@ -600,7 +600,7 @@ impl InferCtxChirho {
                             .bind_chirho(binding_name_chirho.clone(), sig_scheme_chirho);
                         sig_ty_chirho
                     } else {
-                        let fresh_ty_chirho = self.fresh_var_chirho();
+                        let fresh_ty_chirho = self.fresh_value_meta_chirho(*span_chirho);
                         self.env_chirho.bind_chirho(
                             binding_name_chirho.clone(),
                             SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
