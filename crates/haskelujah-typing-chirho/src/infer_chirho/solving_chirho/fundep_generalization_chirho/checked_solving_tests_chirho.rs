@@ -732,7 +732,8 @@ fn checked_reveal_context_chirho() -> (InferCtxChirho, TyChirho) {
     use haskelujah_ast_chirho::decl_chirho::{DeclChirho, TyVarChirho as AstTyVarChirho};
     use haskelujah_ast_chirho::module_chirho::ModuleChirho;
     use haskelujah_ast_chirho::name_chirho::{
-        BuiltinClassScopeChirho, NameChirho, RawNameChirho, TypeConstructorScopeChirho,
+        BuiltinClassScopeChirho, NameChirho, RawNameChirho, TypeConstructorRoleChirho,
+        TypeConstructorScopeChirho,
     };
     use haskelujah_ast_chirho::promotion_chirho::PromotionScopeChirho;
     use haskelujah_ast_chirho::ty_chirho::TypeChirho;
@@ -744,13 +745,22 @@ fn checked_reveal_context_chirho() -> (InferCtxChirho, TyChirho) {
         ))
     };
     let type_chirho = TypeChirho::ConChirho(name_chirho("*"));
+    // The real local declaration producer owns this family account. The same
+    // account must reach its Name and selected type scope before elaboration.
+    let declaration_chirho = TypeConstructorDeclarationChirho::source_chirho(
+        "CheckedFundepChirho",
+        "RevealChirho",
+        TypeConstructorRoleChirho::TypeFamilyChirho,
+    );
+    let mut family_chirho = name_chirho("RevealChirho");
+    family_chirho.set_type_constructor_chirho(Some(declaration_chirho.clone()));
     let mut module_chirho = ModuleChirho {
         name_chirho: name_chirho("CheckedFundepChirho"),
         exports_chirho: None,
         imports_chirho: Vec::new(),
         decls_chirho: vec![DeclChirho::TypeFamilyDeclChirho {
             injectivity_chirho: Some(false),
-            name_chirho: name_chirho("RevealChirho"),
+            name_chirho: family_chirho,
             type_vars_chirho: vec![AstTyVarChirho::annotated_chirho(
                 name_chirho("inputChirho"),
                 type_chirho.clone(),
@@ -770,7 +780,8 @@ fn checked_reveal_context_chirho() -> (InferCtxChirho, TyChirho) {
         span_chirho: SpanChirho::DUMMY_CHIRHO,
         origin_supply_chirho: Default::default(),
     };
-    let type_scope_chirho = TypeConstructorScopeChirho::default();
+    let mut type_scope_chirho = TypeConstructorScopeChirho::default();
+    type_scope_chirho.bind_chirho("RevealChirho".to_string(), Some(declaration_chirho));
     let family_scope_chirho = crate::infer_chirho::TypeFamilyScopeChirho::default();
     let promotion_scope_chirho = PromotionScopeChirho::default();
     let mut context_chirho = context_chirho();
