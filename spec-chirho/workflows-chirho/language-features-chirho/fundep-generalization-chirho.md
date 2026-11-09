@@ -178,8 +178,8 @@ normalization runs. It compares that input with the owned public result through 
 existing bounded strict `same_type_contract_chirho`, charging its actual work to the same
 loan. Equality reuses the public result; inequality retains the original second candidate
 resolve, because a scoped family Given may reveal a candidate-bound Meta. Comparison
-exhaustion returns the existing resource error. No allowance, depth, debit, role or context
-closure changes. The equation loop still performs its full composite normalization; no
+exhaustion returns the existing resource error. That initial R2 reuse changes no allowance,
+depth, debit, role or context closure. The equation loop still performs its full composite normalization; no
 initial-pair reuse assumes that composite is idempotent.
 
 ```mermaid
@@ -207,3 +207,56 @@ reachable, rather than an inference from a future passing count. The missing-Giv
 keeps that wanted at solver return. Prior exhaustion, recursion,
 kind/identity and unclosed-child assertions remain unchanged. This is source-only design
 coverage until executed; any effect on the original tc125 resource outcome is unmeasured.
+
+
+## Public normalization storage handoff Chirho (Work 730)
+
+The shared equality, synonym and family walkers distinguish `UnchangedChirho` from
+`RebuiltChirho(TyChirho)` only after their existing judgments. The marker carries storage
+information, not type/class authority or a cross-call cache. An unchanged result is relative
+to the exact original input, including metadata: an early rebuilt image remains rebuilt
+when a later pass is stable. Every pass still compares its selected next image against the
+current image with the existing bounded equality and preserves that selected return image.
+The 100-pass and depth-128 limits, lexical binders, evidence preparation, checked catalogue
+selection, family matching, cycle/refusal behavior and partial settlement remain in force.
+
+```mermaid
+flowchart TD
+    owned_public_chirho[Owned candidate-resolved input] --> public_walk_chirho[Shared complete public judgments]
+    public_walk_chirho --> representation_chirho{Original representation retained?}
+    representation_chirho -->|Yes| unchanged_public_chirho[Unchanged marker; no replacement AST]
+    representation_chirho -->|No| rebuilt_public_chirho[Rebuilt selected image; charge actual materialization]
+    unchanged_public_chirho --> strict_public_chirho[Existing strict charged FD contract comparison]
+    rebuilt_public_chirho --> strict_public_chirho
+    strict_public_chirho -->|Same| move_public_chirho[Move original owned input or selected rebuilt image]
+    strict_public_chirho -->|Different| resolve_public_chirho[Retain original second candidate resolver]
+    public_walk_chirho --> borrowed_public_chirho[Borrowed wrappers materialize only the final required owned image]
+```
+
+A stable walk allocates no parallel result vector or replacement AST. Reconstruction starts
+at the first changed child; copied sibling terms, names, binder records and changed kinds
+are charged before materialization. Evidence premises remain freshly prepared under the
+same allowance. Borrowed APIs retain their owned-result contract and cannot return a free
+copy of an unchanged input. They do not clone the input before a rule can shrink it.
+
+The intrinsic family producer keeps its original 100,000-work reservation. Its builder uses
+only that already-debited reservation, never a second outer loan or a default/clamped budget;
+unused work is not refunded. Selected body/identity clones, actual escaped symbol payloads,
+scalar names and oversaturated arguments/App nodes debit the caller's live output before
+materialization. Scalar payloads come from the actual bounded rendered/digit/key data;
+AppendSymbol constructs the same escaped bytes whose size it checked. Ordinary stuck
+intrinsics remain distinct from exhaustion. Source-family matcher results retain their own
+existing matching/output ledger and need no duplicate result copy.
+
+The old family depth control charged a speculative List root before its child at depth129
+refused. The lazy path now performs the same refusal and consumes work without allocating
+that root, so its output allowance stays exactly unchanged. A separate real family reduction
+before a later depth failure proves that already materialized output remains debited. This
+is an explicit ownership-cost correction, not a refund or a resource limit change.
+
+Focused controls cover stable owned storage with zero output allowance, the corresponding
+borrowed failure, early rewrite followed by a stable pass, selected metadata ignored by
+semantic equality, and actual sibling/name/kind copy exhaustion. Existing cyclic/growing
+evidence, capture/oversaturation, held/ambiguous/stuck family, depth/partial-cost and FD
+fallback/missing-Given controls remain required. The source handoff has no compiler or
+original tc125 success claim until the root executes those end-state gates.

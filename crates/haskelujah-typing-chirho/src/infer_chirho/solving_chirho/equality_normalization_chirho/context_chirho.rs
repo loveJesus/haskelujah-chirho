@@ -5,7 +5,7 @@
 
 use super::*;
 
-pub(crate) trait NormalizationContextChirho {
+pub(in crate::infer_chirho) trait NormalizationContextChirho {
     fn equality_substitutions_chirho(&self) -> &SubstChirho;
     fn catalogue_chirho(&self) -> &TypeFamilyEnvChirho;
     fn owner_present_chirho(&self) -> bool;
@@ -19,7 +19,7 @@ pub(crate) trait NormalizationContextChirho {
         depth_chirho: usize,
         work_chirho: &mut usize,
         output_chirho: &mut usize,
-    ) -> Option<TyChirho>;
+    ) -> Option<NormalizationChangeChirho>;
 }
 
 impl NormalizationContextChirho for InferCtxChirho {
@@ -50,8 +50,8 @@ impl NormalizationContextChirho for InferCtxChirho {
         depth_chirho: usize,
         work_chirho: &mut usize,
         output_chirho: &mut usize,
-    ) -> Option<TyChirho> {
-        super::super::type_families_chirho::reduce_families_with_context_chirho(
+    ) -> Option<NormalizationChangeChirho> {
+        super::super::type_families_chirho::reduce_families_change_with_context_chirho(
             self,
             term_chirho,
             depth_chirho,
@@ -121,8 +121,8 @@ impl NormalizationContextChirho for BorrowedNormalizationContextChirho<'_, '_> {
         depth_chirho: usize,
         work_chirho: &mut usize,
         output_chirho: &mut usize,
-    ) -> Option<TyChirho> {
-        super::super::type_families_chirho::reduce_families_with_context_chirho(
+    ) -> Option<NormalizationChangeChirho> {
+        super::super::type_families_chirho::reduce_families_change_with_context_chirho(
             self,
             term_chirho,
             depth_chirho,

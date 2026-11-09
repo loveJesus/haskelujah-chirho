@@ -299,5 +299,196 @@ fn normalizer_output_and_depth_refusals_keep_partial_consumption_chirho() {
             .is_none()
     );
     assert!(work_chirho < 4096);
+    // No node was materialized before child depth 129 refused the walk.
+    assert_eq!(output_chirho, 4096);
+    let input_chirho = TyChirho::TupleChirho(vec![
+        super::test_support_chirho::type_family_app1_chirho("StepChirho", TyChirho::int_chirho()),
+        TyChirho::ListChirho(Box::new(TyChirho::ListChirho(Box::new(
+            TyChirho::int_chirho(),
+        )))),
+    ]);
+    let mut work_chirho = 4096;
+    let mut output_chirho = 4096;
+    assert!(
+        context_chirho
+            .reduce_families_bounded_chirho(
+                &input_chirho,
+                126,
+                &mut work_chirho,
+                &mut output_chirho
+            )
+            .is_none()
+    );
+    assert!(work_chirho < 4096);
+    // The first real reduction was already materialized before the later
+    // depth refusal. Its output debit is retained, never refunded.
     assert!(output_chirho < 4096);
+}
+
+#[test]
+fn a_stable_family_walk_borrows_storage_but_the_compatibility_result_still_copies_chirho() {
+    let context_chirho = super::test_support_chirho::family_fixture_context_chirho();
+    let input_chirho = TyChirho::ListChirho(Box::new(TyChirho::int_chirho()));
+    let mut work_chirho = 4096;
+    let mut output_chirho = 0;
+    let change_chirho = super::type_families_chirho::reduce_families_change_with_context_chirho(
+        &context_chirho,
+        &input_chirho,
+        0,
+        &mut work_chirho,
+        &mut output_chirho,
+    )
+    .unwrap();
+    assert!(change_chirho.is_unchanged_chirho());
+    assert!(work_chirho < 4096);
+    assert_eq!(output_chirho, 0);
+    let mut work_chirho = 4096;
+    let mut output_chirho = 0;
+    assert!(
+        context_chirho
+            .reduce_families_bounded_chirho(&input_chirho, 0, &mut work_chirho, &mut output_chirho)
+            .is_none()
+    );
+    assert!(work_chirho < 4096);
+    assert_eq!(output_chirho, 0);
+}
+
+#[test]
+fn actual_intrinsic_selected_clones_and_escaped_symbols_refuse_oversized_output_chirho() {
+    let context_chirho = super::test_support_chirho::family_fixture_context_chirho();
+    let output_chirho = super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho()
+        .remaining_chirho()
+        .1;
+    let if_key_chirho = context_chirho
+        .family_name_key_chirho("Data.Type.Bool.If")
+        .unwrap();
+    assert!(matches!(
+        context_chirho
+            .type_families_chirho
+            .definition_chirho(&if_key_chirho)
+            .unwrap()
+            .reduction_chirho(),
+        TypeFamilyReductionChirho::IntrinsicChirho(_)
+    ));
+    let large_chirho = con_chirho(&"SelectedLargeNameChirho".repeat(output_chirho / 8));
+    assert!(
+        context_chirho
+            .reduce_type_family_chirho(
+                &if_key_chirho,
+                &[
+                    con_chirho("True"),
+                    large_chirho.clone(),
+                    TyChirho::int_chirho()
+                ]
+            )
+            .is_none()
+    );
+    // The unselected large branch is never copied by this producer.
+    assert_eq!(
+        context_chirho.reduce_type_family_chirho(
+            &if_key_chirho,
+            &[con_chirho("False"), large_chirho, TyChirho::int_chirho()]
+        ),
+        Some(TyChirho::int_chirho())
+    );
+    let append_key_chirho = context_chirho
+        .family_name_key_chirho("GHC.TypeLits.AppendSymbol")
+        .unwrap();
+    let body_chirho = "\\\"".repeat(output_chirho / 4);
+    let symbol_chirho = con_chirho(&format!("\"{body_chirho}\""));
+    assert!(
+        context_chirho
+            .reduce_type_family_chirho(&append_key_chirho, &[symbol_chirho, con_chirho("\"x\"")])
+            .is_none()
+    );
+    assert_eq!(
+        context_chirho.reduce_type_family_chirho(
+            &append_key_chirho,
+            &[con_chirho("\"a\\b\""), con_chirho("\"c\"")]
+        ),
+        Some(con_chirho("\"a\\\\bc\""))
+    );
+}
+
+#[test]
+fn actual_intrinsic_oversaturation_preserves_apps_and_charges_extra_sibling_copies_chirho() {
+    let context_chirho = super::test_support_chirho::family_fixture_context_chirho();
+    let key_chirho = context_chirho
+        .family_name_key_chirho("Data.Type.Bool.If")
+        .unwrap();
+    let head_chirho = con_chirho("Maybe");
+    assert_eq!(
+        context_chirho.reduce_type_family_chirho(
+            &key_chirho,
+            &[
+                con_chirho("True"),
+                head_chirho.clone(),
+                head_chirho.clone(),
+                TyChirho::int_chirho()
+            ]
+        ),
+        Some(TyChirho::AppChirho(
+            Box::new(head_chirho.clone()),
+            Box::new(TyChirho::int_chirho())
+        ))
+    );
+    let output_chirho = super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho()
+        .remaining_chirho()
+        .1;
+    let extra_chirho = con_chirho(&"OversaturatedNameChirho".repeat(output_chirho / 8));
+    assert!(
+        context_chirho
+            .reduce_type_family_chirho(
+                &key_chirho,
+                &[
+                    con_chirho("True"),
+                    head_chirho.clone(),
+                    head_chirho,
+                    extra_chirho
+                ]
+            )
+            .is_none()
+    );
+}
+
+#[test]
+fn actual_intrinsic_scalar_builders_cannot_reuse_an_empty_output_allowance_chirho() {
+    let context_chirho = super::test_support_chirho::family_fixture_context_chirho();
+    for (written_chirho, argument_chirho) in [
+        ("GHC.TypeLits.CharToNat", "'a'"),
+        ("GHC.TypeLits.NatToChar", "97"),
+        ("Data.Type.Bool.Not", "True"),
+    ] {
+        let key_chirho = context_chirho
+            .family_name_key_chirho(written_chirho)
+            .unwrap();
+        assert!(matches!(
+            context_chirho
+                .type_families_chirho
+                .definition_chirho(&key_chirho)
+                .unwrap()
+                .reduction_chirho(),
+            TypeFamilyReductionChirho::IntrinsicChirho(_)
+        ));
+        let input_chirho = super::test_support_chirho::type_family_app1_chirho(
+            &key_chirho,
+            con_chirho(argument_chirho),
+        );
+        let mut work_chirho = 1_000_000;
+        // The existing matcher boundary must copy its one argument first;
+        // no output remains for the actual scalar constructor builder.
+        let mut output_chirho = argument_chirho.len() + 1;
+        assert!(
+            super::type_families_chirho::reduce_families_change_with_context_chirho(
+                &context_chirho,
+                &input_chirho,
+                0,
+                &mut work_chirho,
+                &mut output_chirho
+            )
+            .is_none()
+        );
+        assert!(work_chirho < 900_000);
+        assert_eq!(output_chirho, 0);
+    }
 }

@@ -5,6 +5,7 @@
 //! Moved from `infer_chirho.rs` in row 661.
 
 use super::InferCtxChirho;
+use super::equality_normalization_chirho::NormalizationChangeChirho;
 use super::family_definitions_chirho::{IntrinsicTypeFamilyChirho, TypeFamilyReductionChirho};
 use super::family_reduction_chirho::{
     FamilyReductionDecisionChirho, FamilyReductionLimitsChirho, MatchFailureChirho,
@@ -202,20 +203,63 @@ fn nat_type_literal_chirho(ty_chirho: &TyChirho) -> Option<u128> {
     }
 }
 
-fn nat_type_con_chirho(value_chirho: u128) -> TyChirho {
-    TyChirho::ConChirho(value_chirho.to_string())
+fn reserve_intrinsic_name_chirho(
+    length_chirho: usize,
+    work_chirho: &mut usize,
+    output_chirho: &mut usize,
+) -> Option<()> {
+    let size_chirho = length_chirho.checked_add(1)?;
+    *work_chirho = work_chirho.checked_sub(size_chirho)?;
+    *output_chirho = output_chirho.checked_sub(size_chirho)?;
+    Some(())
 }
 
-/// The compiler's promoted `True` or `False`: its builtin identity key when the module's
-/// promoted names are keyed (row 686), the legacy spelling otherwise.
-fn bool_type_con_chirho(value_chirho: bool, keyed_chirho: bool) -> TyChirho {
-    TyChirho::ConChirho(if keyed_chirho {
-        PromotedKeyChirho::builtin_bool_chirho(value_chirho)
-            .as_str_chirho()
-            .to_string()
-    } else {
-        if value_chirho { "True" } else { "False" }.to_string()
-    })
+fn nat_type_con_chirho(
+    mut value_chirho: u128,
+    work_chirho: &mut usize,
+    output_chirho: &mut usize,
+) -> Option<TyChirho> {
+    // Build the actual decimal payload in a fixed stack buffer, then debit
+    // its exact selected bytes before allocating the constructor name.
+    let mut digits_chirho = [0_u8; 39];
+    let mut start_chirho = digits_chirho.len();
+    loop {
+        *work_chirho = work_chirho.checked_sub(1)?;
+        start_chirho = start_chirho.checked_sub(1)?;
+        digits_chirho[start_chirho] = b'0' + (value_chirho % 10) as u8;
+        value_chirho /= 10;
+        if value_chirho == 0 {
+            break;
+        }
+    }
+    let bytes_chirho = &digits_chirho[start_chirho..];
+    reserve_intrinsic_name_chirho(bytes_chirho.len(), work_chirho, output_chirho)?;
+    Some(TyChirho::ConChirho(
+        std::str::from_utf8(bytes_chirho).ok()?.to_owned(),
+    ))
+}
+
+/// The compiler's promoted `True` or `False`: retain the actual producer key
+/// when the module is keyed; debit before copying it into the AST result.
+fn bool_type_con_chirho(
+    value_chirho: bool,
+    keyed_chirho: bool,
+    work_chirho: &mut usize,
+    output_chirho: &mut usize,
+) -> Option<TyChirho> {
+    let key_chirho = keyed_chirho.then(|| PromotedKeyChirho::builtin_bool_chirho(value_chirho));
+    let name_chirho = match &key_chirho {
+        Some(key_chirho) => key_chirho.as_str_chirho(),
+        None => {
+            if value_chirho {
+                "True"
+            } else {
+                "False"
+            }
+        }
+    };
+    reserve_intrinsic_name_chirho(name_chirho.len(), work_chirho, output_chirho)?;
+    Some(TyChirho::ConChirho(name_chirho.to_owned()))
 }
 
 fn bool_type_literal_chirho(ty_chirho: &TyChirho, keyed_chirho: bool) -> Option<bool> {
@@ -251,9 +295,31 @@ fn symbol_type_literal_chirho(ty_chirho: &TyChirho) -> Option<&str> {
     }
 }
 
-fn symbol_type_con_chirho(value_chirho: &str) -> TyChirho {
-    let escaped_chirho = value_chirho.replace('\\', "\\\\").replace('"', "\\\"");
-    TyChirho::ConChirho(format!("\"{escaped_chirho}\""))
+fn symbol_type_con_chirho(
+    left_chirho: &str,
+    right_chirho: &str,
+    work_chirho: &mut usize,
+    output_chirho: &mut usize,
+) -> Option<TyChirho> {
+    let mut length_chirho = 2_usize;
+    for character_chirho in left_chirho.chars().chain(right_chirho.chars()) {
+        *work_chirho = work_chirho.checked_sub(character_chirho.len_utf8())?;
+        length_chirho = length_chirho.checked_add(character_chirho.len_utf8())?;
+        if matches!(character_chirho, '\\' | '"') {
+            length_chirho = length_chirho.checked_add(1)?;
+        }
+    }
+    reserve_intrinsic_name_chirho(length_chirho, work_chirho, output_chirho)?;
+    let mut name_chirho = String::with_capacity(length_chirho);
+    name_chirho.push('"');
+    for character_chirho in left_chirho.chars().chain(right_chirho.chars()) {
+        if matches!(character_chirho, '\\' | '"') {
+            name_chirho.push('\\');
+        }
+        name_chirho.push(character_chirho);
+    }
+    name_chirho.push('"');
+    Some(TyChirho::ConChirho(name_chirho))
 }
 
 fn char_type_literal_chirho(ty_chirho: &TyChirho) -> Option<char> {
@@ -264,204 +330,326 @@ fn char_type_literal_chirho(ty_chirho: &TyChirho) -> Option<char> {
     parse_haskell_char_body_chirho(body_chirho)
 }
 
-fn char_type_con_chirho(value_chirho: char) -> TyChirho {
-    TyChirho::ConChirho(format!(
-        "'{}'",
-        render_haskell_char_body_chirho(value_chirho)
-    ))
+fn char_type_con_chirho(
+    value_chirho: char,
+    work_chirho: &mut usize,
+    output_chirho: &mut usize,
+) -> Option<TyChirho> {
+    // A single character's renderer has a fixed-size payload. Reuse its actual
+    // escaped body instead of independently estimating its spelling.
+    let body_chirho = render_haskell_char_body_chirho(value_chirho);
+    let length_chirho = body_chirho.len().checked_add(2)?;
+    reserve_intrinsic_name_chirho(length_chirho, work_chirho, output_chirho)?;
+    let mut name_chirho = String::with_capacity(length_chirho);
+    name_chirho.push('\'');
+    name_chirho.push_str(&body_chirho);
+    name_chirho.push('\'');
+    Some(TyChirho::ConChirho(name_chirho))
+}
+
+fn copy_intrinsic_type_chirho(
+    ty_chirho: &TyChirho,
+    work_chirho: &mut usize,
+    output_chirho: &mut usize,
+) -> Option<TyChirho> {
+    super::equality_normalization_chirho::copy_term_with_remaining_budget_chirho(
+        ty_chirho,
+        work_chirho,
+        output_chirho,
+    )
 }
 
 fn apply_extra_type_family_args_chirho(
     mut reduced_chirho: TyChirho,
     args_chirho: &[TyChirho],
     consumed_chirho: usize,
-) -> TyChirho {
+    work_chirho: &mut usize,
+    output_chirho: &mut usize,
+) -> Option<TyChirho> {
     for extra_arg_chirho in &args_chirho[consumed_chirho..] {
-        reduced_chirho =
-            TyChirho::AppChirho(Box::new(reduced_chirho), Box::new(extra_arg_chirho.clone()));
+        let argument_chirho =
+            copy_intrinsic_type_chirho(extra_arg_chirho, work_chirho, output_chirho)?;
+        *work_chirho = work_chirho.checked_sub(1)?;
+        *output_chirho = output_chirho.checked_sub(1)?;
+        reduced_chirho = TyChirho::AppChirho(Box::new(reduced_chirho), Box::new(argument_chirho));
     }
-    reduced_chirho
+    Some(reduced_chirho)
 }
 
+/// Outer None is resource exhaustion; inner None is the original stuck result.
+/// Every selected name/clone/App is charged BEFORE its AST materialization.
 fn reduce_builtin_type_family_application_chirho(
     intrinsic_chirho: IntrinsicTypeFamilyChirho,
     args_chirho: &[TyChirho],
     keyed_chirho: bool,
-) -> Option<TyChirho> {
-    match (intrinsic_chirho, args_chirho) {
+    work_chirho: &mut usize,
+    output_chirho: &mut usize,
+) -> Option<Option<TyChirho>> {
+    let (reduced_chirho, consumed_chirho) = match (intrinsic_chirho, args_chirho) {
         // workflow: language-features-chirho/type-level-character-families-chirho
         (IntrinsicTypeFamilyChirho::CharToNatChirho, [value_chirho, ..]) => {
-            char_type_literal_chirho(value_chirho)
-                .map(|value_chirho| nat_type_con_chirho(u128::from(value_chirho as u32)))
-                .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 1))
+            let Some(value_chirho) = char_type_literal_chirho(value_chirho) else {
+                return Some(None);
+            };
+            (
+                nat_type_con_chirho(u128::from(value_chirho as u32), work_chirho, output_chirho)?,
+                1,
+            )
         }
         (IntrinsicTypeFamilyChirho::NatToCharChirho, [value_chirho, ..]) => {
-            nat_type_literal_chirho(value_chirho)
+            let Some(value_chirho) = nat_type_literal_chirho(value_chirho)
                 .and_then(|value_chirho| u32::try_from(value_chirho).ok())
                 .and_then(char::from_u32)
-                .map(char_type_con_chirho)
-                .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 1))
+            else {
+                return Some(None);
+            };
+            (
+                char_type_con_chirho(value_chirho, work_chirho, output_chirho)?,
+                1,
+            )
         }
         (IntrinsicTypeFamilyChirho::AppendSymbolChirho, [left_chirho, right_chirho, ..]) => {
-            let left_symbol_chirho = symbol_type_literal_chirho(left_chirho);
-            let right_symbol_chirho = symbol_type_literal_chirho(right_chirho);
-            match (left_symbol_chirho, right_symbol_chirho) {
-                (Some(""), _) => Some(right_chirho.clone()),
-                (_, Some("")) => Some(left_chirho.clone()),
-                (Some(left_value_chirho), Some(right_value_chirho)) => Some(
-                    symbol_type_con_chirho(&format!("{left_value_chirho}{right_value_chirho}")),
-                ),
-                _ => None,
-            }
-            .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 2))
+            let image_chirho = match (
+                symbol_type_literal_chirho(left_chirho),
+                symbol_type_literal_chirho(right_chirho),
+            ) {
+                (Some(""), _) => {
+                    copy_intrinsic_type_chirho(right_chirho, work_chirho, output_chirho)?
+                }
+                (_, Some("")) => {
+                    copy_intrinsic_type_chirho(left_chirho, work_chirho, output_chirho)?
+                }
+                (Some(left_value_chirho), Some(right_value_chirho)) => symbol_type_con_chirho(
+                    left_value_chirho,
+                    right_value_chirho,
+                    work_chirho,
+                    output_chirho,
+                )?,
+                _ => return Some(None),
+            };
+            (image_chirho, 2)
         }
-        (IntrinsicTypeFamilyChirho::AddNatChirho, [left_chirho, right_chirho, ..]) => match (
-            nat_type_literal_chirho(left_chirho),
-            nat_type_literal_chirho(right_chirho),
-        ) {
-            (Some(0), _) => Some(right_chirho.clone()),
-            (_, Some(0)) => Some(left_chirho.clone()),
-            (Some(left_value_chirho), Some(right_value_chirho)) => left_value_chirho
-                .checked_add(right_value_chirho)
-                .map(nat_type_con_chirho),
-            _ => None,
+        (IntrinsicTypeFamilyChirho::AddNatChirho, [left_chirho, right_chirho, ..]) => {
+            let image_chirho = match (
+                nat_type_literal_chirho(left_chirho),
+                nat_type_literal_chirho(right_chirho),
+            ) {
+                (Some(0), _) => {
+                    copy_intrinsic_type_chirho(right_chirho, work_chirho, output_chirho)?
+                }
+                (_, Some(0)) => {
+                    copy_intrinsic_type_chirho(left_chirho, work_chirho, output_chirho)?
+                }
+                (Some(left_value_chirho), Some(right_value_chirho)) => {
+                    let Some(value_chirho) = left_value_chirho.checked_add(right_value_chirho)
+                    else {
+                        return Some(None);
+                    };
+                    nat_type_con_chirho(value_chirho, work_chirho, output_chirho)?
+                }
+                _ => return Some(None),
+            };
+            (image_chirho, 2)
         }
-        .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 2)),
-        (IntrinsicTypeFamilyChirho::MultiplyNatChirho, [left_chirho, right_chirho, ..]) => match (
-            nat_type_literal_chirho(left_chirho),
-            nat_type_literal_chirho(right_chirho),
-        ) {
-            (Some(0), _) | (_, Some(0)) => Some(nat_type_con_chirho(0)),
-            (Some(1), _) => Some(right_chirho.clone()),
-            (_, Some(1)) => Some(left_chirho.clone()),
-            (Some(left_value_chirho), Some(right_value_chirho)) => left_value_chirho
-                .checked_mul(right_value_chirho)
-                .map(nat_type_con_chirho),
-            _ => None,
+        (IntrinsicTypeFamilyChirho::MultiplyNatChirho, [left_chirho, right_chirho, ..]) => {
+            let image_chirho = match (
+                nat_type_literal_chirho(left_chirho),
+                nat_type_literal_chirho(right_chirho),
+            ) {
+                (Some(0), _) | (_, Some(0)) => nat_type_con_chirho(0, work_chirho, output_chirho)?,
+                (Some(1), _) => {
+                    copy_intrinsic_type_chirho(right_chirho, work_chirho, output_chirho)?
+                }
+                (_, Some(1)) => {
+                    copy_intrinsic_type_chirho(left_chirho, work_chirho, output_chirho)?
+                }
+                (Some(left_value_chirho), Some(right_value_chirho)) => {
+                    let Some(value_chirho) = left_value_chirho.checked_mul(right_value_chirho)
+                    else {
+                        return Some(None);
+                    };
+                    nat_type_con_chirho(value_chirho, work_chirho, output_chirho)?
+                }
+                _ => return Some(None),
+            };
+            (image_chirho, 2)
         }
-        .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 2)),
-        (IntrinsicTypeFamilyChirho::PowerNatChirho, [left_chirho, right_chirho, ..]) => match (
-            nat_type_literal_chirho(left_chirho),
-            nat_type_literal_chirho(right_chirho),
-        ) {
-            (_, Some(0)) => Some(nat_type_con_chirho(1)),
-            (Some(1), _) => Some(nat_type_con_chirho(1)),
-            (_, Some(1)) => Some(left_chirho.clone()),
-            (Some(left_value_chirho), Some(right_value_chirho)) => {
-                u32::try_from(right_value_chirho)
-                    .ok()
-                    .and_then(|exp_chirho| left_value_chirho.checked_pow(exp_chirho))
-                    .map(nat_type_con_chirho)
-            }
-            _ => None,
+        (IntrinsicTypeFamilyChirho::PowerNatChirho, [left_chirho, right_chirho, ..]) => {
+            let image_chirho = match (
+                nat_type_literal_chirho(left_chirho),
+                nat_type_literal_chirho(right_chirho),
+            ) {
+                (_, Some(0)) | (Some(1), _) => nat_type_con_chirho(1, work_chirho, output_chirho)?,
+                (_, Some(1)) => {
+                    copy_intrinsic_type_chirho(left_chirho, work_chirho, output_chirho)?
+                }
+                (Some(left_value_chirho), Some(right_value_chirho)) => {
+                    let Some(value_chirho) = u32::try_from(right_value_chirho)
+                        .ok()
+                        .and_then(|exponent_chirho| left_value_chirho.checked_pow(exponent_chirho))
+                    else {
+                        return Some(None);
+                    };
+                    nat_type_con_chirho(value_chirho, work_chirho, output_chirho)?
+                }
+                _ => return Some(None),
+            };
+            (image_chirho, 2)
         }
-        .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 2)),
-        (IntrinsicTypeFamilyChirho::SubtractNatChirho, [left_chirho, right_chirho, ..]) => match (
-            nat_type_literal_chirho(left_chirho),
-            nat_type_literal_chirho(right_chirho),
-        ) {
-            (_, Some(0)) => Some(left_chirho.clone()),
-            (Some(left_value_chirho), Some(right_value_chirho))
-                if left_value_chirho >= right_value_chirho =>
-            {
-                Some(nat_type_con_chirho(left_value_chirho - right_value_chirho))
-            }
-            _ => None,
+        (IntrinsicTypeFamilyChirho::SubtractNatChirho, [left_chirho, right_chirho, ..]) => {
+            let image_chirho = match (
+                nat_type_literal_chirho(left_chirho),
+                nat_type_literal_chirho(right_chirho),
+            ) {
+                (_, Some(0)) => {
+                    copy_intrinsic_type_chirho(left_chirho, work_chirho, output_chirho)?
+                }
+                (Some(left_value_chirho), Some(right_value_chirho))
+                    if left_value_chirho >= right_value_chirho =>
+                {
+                    nat_type_con_chirho(
+                        left_value_chirho - right_value_chirho,
+                        work_chirho,
+                        output_chirho,
+                    )?
+                }
+                _ => return Some(None),
+            };
+            (image_chirho, 2)
         }
-        .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 2)),
-        (IntrinsicTypeFamilyChirho::DivideNatChirho, [left_chirho, right_chirho, ..]) => match (
-            nat_type_literal_chirho(left_chirho),
-            nat_type_literal_chirho(right_chirho),
-        ) {
-            (_, Some(1)) => Some(left_chirho.clone()),
-            (Some(left_value_chirho), Some(right_value_chirho)) if right_value_chirho != 0 => {
-                Some(nat_type_con_chirho(left_value_chirho / right_value_chirho))
-            }
-            _ => None,
+        (IntrinsicTypeFamilyChirho::DivideNatChirho, [left_chirho, right_chirho, ..]) => {
+            let image_chirho = match (
+                nat_type_literal_chirho(left_chirho),
+                nat_type_literal_chirho(right_chirho),
+            ) {
+                (_, Some(1)) => {
+                    copy_intrinsic_type_chirho(left_chirho, work_chirho, output_chirho)?
+                }
+                (Some(left_value_chirho), Some(right_value_chirho)) if right_value_chirho != 0 => {
+                    nat_type_con_chirho(
+                        left_value_chirho / right_value_chirho,
+                        work_chirho,
+                        output_chirho,
+                    )?
+                }
+                _ => return Some(None),
+            };
+            (image_chirho, 2)
         }
-        .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 2)),
-        (IntrinsicTypeFamilyChirho::ModuloNatChirho, [left_chirho, right_chirho, ..]) => match (
-            nat_type_literal_chirho(left_chirho),
-            nat_type_literal_chirho(right_chirho),
-        ) {
-            (_, Some(1)) => Some(nat_type_con_chirho(0)),
-            (Some(left_value_chirho), Some(right_value_chirho)) if right_value_chirho != 0 => {
-                Some(nat_type_con_chirho(left_value_chirho % right_value_chirho))
-            }
-            _ => None,
+        (IntrinsicTypeFamilyChirho::ModuloNatChirho, [left_chirho, right_chirho, ..]) => {
+            let image_chirho = match (
+                nat_type_literal_chirho(left_chirho),
+                nat_type_literal_chirho(right_chirho),
+            ) {
+                (_, Some(1)) => nat_type_con_chirho(0, work_chirho, output_chirho)?,
+                (Some(left_value_chirho), Some(right_value_chirho)) if right_value_chirho != 0 => {
+                    nat_type_con_chirho(
+                        left_value_chirho % right_value_chirho,
+                        work_chirho,
+                        output_chirho,
+                    )?
+                }
+                _ => return Some(None),
+            };
+            (image_chirho, 2)
         }
-        .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 2)),
         (IntrinsicTypeFamilyChirho::Log2NatChirho, [value_chirho, ..]) => {
-            nat_type_literal_chirho(value_chirho)
-                .and_then(|value_chirho| {
-                    if value_chirho == 0 {
-                        None
-                    } else {
-                        Some(nat_type_con_chirho(
-                            127 - value_chirho.leading_zeros() as u128,
-                        ))
-                    }
-                })
-                .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 1))
+            let Some(value_chirho) =
+                nat_type_literal_chirho(value_chirho).filter(|value_chirho| *value_chirho != 0)
+            else {
+                return Some(None);
+            };
+            (
+                nat_type_con_chirho(
+                    127 - value_chirho.leading_zeros() as u128,
+                    work_chirho,
+                    output_chirho,
+                )?,
+                1,
+            )
         }
         (IntrinsicTypeFamilyChirho::LessEqualNatChirho, [left_chirho, right_chirho, ..]) => {
-            if left_chirho == right_chirho {
-                Some(bool_type_con_chirho(true, keyed_chirho))
+            let value_chirho = if left_chirho == right_chirho {
+                true
             } else {
-                match (
+                let (Some(left_value_chirho), Some(right_value_chirho)) = (
                     nat_type_literal_chirho(left_chirho),
                     nat_type_literal_chirho(right_chirho),
-                ) {
-                    (Some(left_value_chirho), Some(right_value_chirho)) => Some(
-                        bool_type_con_chirho(left_value_chirho <= right_value_chirho, keyed_chirho),
-                    ),
-                    _ => None,
-                }
-            }
-            .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 2))
+                ) else {
+                    return Some(None);
+                };
+                left_value_chirho <= right_value_chirho
+            };
+            (
+                bool_type_con_chirho(value_chirho, keyed_chirho, work_chirho, output_chirho)?,
+                2,
+            )
         }
         (
             IntrinsicTypeFamilyChirho::IfChirho,
             [condition_chirho, true_chirho, false_chirho, ..],
         ) => {
-            bool_type_literal_chirho(condition_chirho, keyed_chirho).map(|condition_chirho| {
-                if condition_chirho {
-                    true_chirho.clone()
-                } else {
-                    false_chirho.clone()
-                }
-            })
+            let Some(condition_chirho) = bool_type_literal_chirho(condition_chirho, keyed_chirho)
+            else {
+                return Some(None);
+            };
+            (
+                copy_intrinsic_type_chirho(
+                    if condition_chirho {
+                        true_chirho
+                    } else {
+                        false_chirho
+                    },
+                    work_chirho,
+                    output_chirho,
+                )?,
+                3,
+            )
         }
-        .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 3)),
         (IntrinsicTypeFamilyChirho::NotChirho, [value_chirho, ..]) => {
-            bool_type_literal_chirho(value_chirho, keyed_chirho)
-                .map(|value_chirho| bool_type_con_chirho(!value_chirho, keyed_chirho))
-                .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 1))
+            let Some(value_chirho) = bool_type_literal_chirho(value_chirho, keyed_chirho) else {
+                return Some(None);
+            };
+            (
+                bool_type_con_chirho(!value_chirho, keyed_chirho, work_chirho, output_chirho)?,
+                1,
+            )
         }
         (IntrinsicTypeFamilyChirho::AndChirho, [left_chirho, right_chirho, ..]) => {
-            bool_type_literal_chirho(left_chirho, keyed_chirho)
-                .map(|left_chirho| {
-                    if left_chirho {
-                        right_chirho.clone()
-                    } else {
-                        bool_type_con_chirho(false, keyed_chirho)
-                    }
-                })
-                .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 2))
+            let Some(left_chirho) = bool_type_literal_chirho(left_chirho, keyed_chirho) else {
+                return Some(None);
+            };
+            (
+                if left_chirho {
+                    copy_intrinsic_type_chirho(right_chirho, work_chirho, output_chirho)?
+                } else {
+                    bool_type_con_chirho(false, keyed_chirho, work_chirho, output_chirho)?
+                },
+                2,
+            )
         }
         (IntrinsicTypeFamilyChirho::OrChirho, [left_chirho, right_chirho, ..]) => {
-            bool_type_literal_chirho(left_chirho, keyed_chirho)
-                .map(|left_chirho| {
-                    if left_chirho {
-                        bool_type_con_chirho(true, keyed_chirho)
-                    } else {
-                        right_chirho.clone()
-                    }
-                })
-                .map(|ty_chirho| apply_extra_type_family_args_chirho(ty_chirho, args_chirho, 2))
+            let Some(left_chirho) = bool_type_literal_chirho(left_chirho, keyed_chirho) else {
+                return Some(None);
+            };
+            (
+                if left_chirho {
+                    bool_type_con_chirho(true, keyed_chirho, work_chirho, output_chirho)?
+                } else {
+                    copy_intrinsic_type_chirho(right_chirho, work_chirho, output_chirho)?
+                },
+                2,
+            )
         }
-        _ => None,
-    }
+        _ => return Some(None),
+    };
+    Some(Some(apply_extra_type_family_args_chirho(
+        reduced_chirho,
+        args_chirho,
+        consumed_chirho,
+        work_chirho,
+        output_chirho,
+    )?))
 }
 
 pub(super) fn substitute_type_vars_chirho(
@@ -521,14 +709,20 @@ fn reduce_family_in_context_chirho(
     if let TypeFamilyReductionChirho::IntrinsicChirho(intrinsic_chirho) =
         definition_chirho.reduction_chirho()
     {
-        // Intrinsic builders have no matching ledger. Keep their existing explicit
-        // reservation; this change never treats their allocation as zero cost.
-        *work_chirho = work_chirho.checked_sub(100_000)?;
-        return Some(reduce_builtin_type_family_application_chirho(
+        // Retain the intrinsic work reservation and debit the selected builder's
+        // actual output before it allocates. Owned reuse cannot erase that cost.
+        let reservation_chirho = 100_000;
+        *work_chirho = work_chirho.checked_sub(reservation_chirho)?;
+        // The builder spends this already-debited reservation, not a second
+        // loan from the remaining outer work. Its unused part is never refunded.
+        let mut reserved_work_chirho = reservation_chirho;
+        return reduce_builtin_type_family_application_chirho(
             intrinsic_chirho,
             arguments_chirho,
             context_chirho.promotion_present_chirho(),
-        ));
+            &mut reserved_work_chirho,
+            output_chirho,
+        );
     }
     *work_chirho = work_chirho.checked_sub(name_chirho.len().checked_add(1)?)?;
     let initial_work_chirho = *work_chirho;
@@ -574,16 +768,37 @@ pub(super) fn reduce_families_with_context_chirho(
     work_chirho: &mut usize,
     output_chirho: &mut usize,
 ) -> Option<TyChirho> {
+    match reduce_families_change_with_context_chirho(
+        context_chirho,
+        ty_chirho,
+        depth_chirho,
+        work_chirho,
+        output_chirho,
+    )? {
+        NormalizationChangeChirho::UnchangedChirho => {
+            clone_stuck_type_chirho(ty_chirho, depth_chirho, output_chirho)
+        }
+        NormalizationChangeChirho::RebuiltChirho(image_chirho) => Some(image_chirho),
+    }
+}
+
+/// The family judgments are unchanged; this outcome describes only storage.
+/// A stable call borrows its exact input instead of copying a stuck tree.
+pub(super) fn reduce_families_change_with_context_chirho(
+    context_chirho: &dyn super::equality_normalization_chirho::NormalizationContextChirho,
+    ty_chirho: &TyChirho,
+    depth_chirho: usize,
+    work_chirho: &mut usize,
+    output_chirho: &mut usize,
+) -> Option<NormalizationChangeChirho> {
     if depth_chirho > 128 {
         return None;
     }
     *work_chirho = work_chirho.checked_sub(1)?;
-    *output_chirho = output_chirho.checked_sub(1)?;
     let child_chirho = depth_chirho.checked_add(1)?;
     match ty_chirho {
         TyChirho::ConChirho(name_chirho) => {
             *work_chirho = work_chirho.checked_sub(name_chirho.len())?;
-            *output_chirho = output_chirho.checked_sub(name_chirho.len())?;
             if context_chirho
                 .family_name_key_chirho(name_chirho)
                 .is_some_and(|key_chirho| {
@@ -600,14 +815,17 @@ pub(super) fn reduce_families_with_context_chirho(
                     output_chirho,
                 )?
             {
-                return context_chirho.reduce_families_bounded_chirho(
+                let next_chirho = context_chirho.reduce_families_bounded_chirho(
                     &reduced_chirho,
                     child_chirho,
                     work_chirho,
                     output_chirho,
-                );
+                )?;
+                return Some(NormalizationChangeChirho::RebuiltChirho(
+                    next_chirho.retain_owned_chirho(reduced_chirho),
+                ));
             }
-            Some(TyChirho::ConChirho(name_chirho.clone()))
+            Some(NormalizationChangeChirho::UnchangedChirho)
         }
         TyChirho::AppChirho(_, _) => {
             let mut head_chirho = ty_chirho;
@@ -625,14 +843,37 @@ pub(super) fn reduce_families_with_context_chirho(
             if head_depth_chirho > 128 {
                 return None;
             }
-            let mut reduced_arguments_chirho = Vec::new();
-            for (index_chirho, argument_chirho) in arguments_chirho.into_iter().enumerate() {
-                reduced_arguments_chirho.push(context_chirho.reduce_families_bounded_chirho(
+            let mut reduced_arguments_chirho = None::<Vec<TyChirho>>;
+            for (index_chirho, argument_chirho) in arguments_chirho.iter().enumerate() {
+                let image_chirho = context_chirho.reduce_families_bounded_chirho(
                     argument_chirho,
                     head_depth_chirho - index_chirho,
                     work_chirho,
                     output_chirho,
-                )?);
+                )?;
+                if !image_chirho.is_unchanged_chirho() && reduced_arguments_chirho.is_none() {
+                    let mut prefix_chirho = Vec::new();
+                    for (prefix_index_chirho, prefix_argument_chirho) in
+                        arguments_chirho[..index_chirho].iter().enumerate()
+                    {
+                        prefix_chirho.push(clone_stuck_type_chirho(
+                            prefix_argument_chirho,
+                            head_depth_chirho - prefix_index_chirho,
+                            output_chirho,
+                        )?);
+                    }
+                    reduced_arguments_chirho = Some(prefix_chirho);
+                }
+                if let Some(reduced_arguments_chirho) = &mut reduced_arguments_chirho {
+                    reduced_arguments_chirho.push(match image_chirho {
+                        NormalizationChangeChirho::UnchangedChirho => clone_stuck_type_chirho(
+                            argument_chirho,
+                            head_depth_chirho - index_chirho,
+                            output_chirho,
+                        )?,
+                        NormalizationChangeChirho::RebuiltChirho(image_chirho) => image_chirho,
+                    });
+                }
             }
             if let TyChirho::ConChirho(name_chirho) = head_chirho
                 && context_chirho
@@ -643,21 +884,48 @@ pub(super) fn reduce_families_with_context_chirho(
                             .definition_chirho(&key_chirho)
                             .is_some()
                     })
-                && let Some(reduced_chirho) = reduce_family_in_context_chirho(
+            {
+                // The existing matcher takes an owned argument slice. Only an
+                // actual family attempt requires these otherwise-stable copies.
+                let arguments_changed_chirho = reduced_arguments_chirho.is_some();
+                let actual_arguments_chirho = match reduced_arguments_chirho.take() {
+                    Some(arguments_chirho) => arguments_chirho,
+                    None => arguments_chirho
+                        .iter()
+                        .enumerate()
+                        .map(|(index_chirho, argument_chirho)| {
+                            clone_stuck_type_chirho(
+                                argument_chirho,
+                                head_depth_chirho - index_chirho,
+                                output_chirho,
+                            )
+                        })
+                        .collect::<Option<Vec<_>>>()?,
+                };
+                if let Some(reduced_chirho) = reduce_family_in_context_chirho(
                     context_chirho,
                     name_chirho,
-                    &reduced_arguments_chirho,
+                    &actual_arguments_chirho,
                     work_chirho,
                     output_chirho,
-                )?
-            {
-                return context_chirho.reduce_families_bounded_chirho(
-                    &reduced_chirho,
-                    child_chirho,
-                    work_chirho,
-                    output_chirho,
-                );
+                )? {
+                    let next_chirho = context_chirho.reduce_families_bounded_chirho(
+                        &reduced_chirho,
+                        child_chirho,
+                        work_chirho,
+                        output_chirho,
+                    )?;
+                    return Some(NormalizationChangeChirho::RebuiltChirho(
+                        next_chirho.retain_owned_chirho(reduced_chirho),
+                    ));
+                }
+                if arguments_changed_chirho {
+                    reduced_arguments_chirho = Some(actual_arguments_chirho);
+                }
             }
+            let Some(reduced_arguments_chirho) = reduced_arguments_chirho else {
+                return Some(NormalizationChangeChirho::UnchangedChirho);
+            };
             let mut rebuilt_chirho =
                 clone_stuck_type_chirho(head_chirho, head_depth_chirho, output_chirho)?;
             for argument_chirho in reduced_arguments_chirho {
@@ -665,46 +933,152 @@ pub(super) fn reduce_families_with_context_chirho(
                 rebuilt_chirho =
                     TyChirho::AppChirho(Box::new(rebuilt_chirho), Box::new(argument_chirho));
             }
-            Some(rebuilt_chirho)
+            Some(NormalizationChangeChirho::RebuiltChirho(rebuilt_chirho))
         }
         TyChirho::FunChirho(argument_chirho, result_chirho, multiplicity_chirho) => {
-            Some(TyChirho::FunChirho(
-                Box::new(context_chirho.reduce_families_bounded_chirho(
-                    argument_chirho,
-                    child_chirho,
-                    work_chirho,
-                    output_chirho,
-                )?),
-                Box::new(context_chirho.reduce_families_bounded_chirho(
-                    result_chirho,
-                    child_chirho,
-                    work_chirho,
-                    output_chirho,
-                )?),
-                *multiplicity_chirho,
+            let argument_image_chirho = context_chirho.reduce_families_bounded_chirho(
+                argument_chirho,
+                child_chirho,
+                work_chirho,
+                output_chirho,
+            )?;
+            let result_image_chirho = context_chirho.reduce_families_bounded_chirho(
+                result_chirho,
+                child_chirho,
+                work_chirho,
+                output_chirho,
+            )?;
+            if argument_image_chirho.is_unchanged_chirho()
+                && result_image_chirho.is_unchanged_chirho()
+            {
+                return Some(NormalizationChangeChirho::UnchangedChirho);
+            }
+            *output_chirho = output_chirho.checked_sub(1)?;
+            let argument_chirho = match argument_image_chirho {
+                NormalizationChangeChirho::UnchangedChirho => {
+                    clone_stuck_type_chirho(argument_chirho, child_chirho, output_chirho)?
+                }
+                NormalizationChangeChirho::RebuiltChirho(image_chirho) => image_chirho,
+            };
+            let result_chirho = match result_image_chirho {
+                NormalizationChangeChirho::UnchangedChirho => {
+                    clone_stuck_type_chirho(result_chirho, child_chirho, output_chirho)?
+                }
+                NormalizationChangeChirho::RebuiltChirho(image_chirho) => image_chirho,
+            };
+            Some(NormalizationChangeChirho::RebuiltChirho(
+                TyChirho::FunChirho(
+                    Box::new(argument_chirho),
+                    Box::new(result_chirho),
+                    *multiplicity_chirho,
+                ),
             ))
         }
-        TyChirho::ListChirho(element_chirho) => Some(TyChirho::ListChirho(Box::new(
-            context_chirho.reduce_families_bounded_chirho(
+        TyChirho::ListChirho(element_chirho) => {
+            let image_chirho = context_chirho.reduce_families_bounded_chirho(
                 element_chirho,
                 child_chirho,
                 work_chirho,
                 output_chirho,
-            )?,
-        ))),
-        TyChirho::TupleChirho(elements_chirho) => Some(TyChirho::TupleChirho(
-            elements_chirho
-                .iter()
-                .map(|element_chirho| {
-                    context_chirho.reduce_families_bounded_chirho(
-                        element_chirho,
-                        child_chirho,
-                        work_chirho,
-                        output_chirho,
-                    )
-                })
-                .collect::<Option<Vec<_>>>()?,
-        )),
-        _ => clone_stuck_type_chirho(ty_chirho, depth_chirho, output_chirho),
+            )?;
+            match image_chirho {
+                NormalizationChangeChirho::UnchangedChirho => {
+                    Some(NormalizationChangeChirho::UnchangedChirho)
+                }
+                NormalizationChangeChirho::RebuiltChirho(element_chirho) => {
+                    *output_chirho = output_chirho.checked_sub(1)?;
+                    Some(NormalizationChangeChirho::RebuiltChirho(
+                        TyChirho::ListChirho(Box::new(element_chirho)),
+                    ))
+                }
+            }
+        }
+        TyChirho::TupleChirho(elements_chirho) => {
+            let mut rebuilt_chirho = None::<Vec<TyChirho>>;
+            for (index_chirho, element_chirho) in elements_chirho.iter().enumerate() {
+                let image_chirho = context_chirho.reduce_families_bounded_chirho(
+                    element_chirho,
+                    child_chirho,
+                    work_chirho,
+                    output_chirho,
+                )?;
+                if !image_chirho.is_unchanged_chirho() && rebuilt_chirho.is_none() {
+                    let mut prefix_chirho = Vec::new();
+                    for prefix_chirho_element_chirho in &elements_chirho[..index_chirho] {
+                        prefix_chirho.push(clone_stuck_type_chirho(
+                            prefix_chirho_element_chirho,
+                            child_chirho,
+                            output_chirho,
+                        )?);
+                    }
+                    rebuilt_chirho = Some(prefix_chirho);
+                }
+                if let Some(rebuilt_chirho) = &mut rebuilt_chirho {
+                    rebuilt_chirho.push(match image_chirho {
+                        NormalizationChangeChirho::UnchangedChirho => {
+                            clone_stuck_type_chirho(element_chirho, child_chirho, output_chirho)?
+                        }
+                        NormalizationChangeChirho::RebuiltChirho(image_chirho) => image_chirho,
+                    });
+                }
+            }
+            match rebuilt_chirho {
+                None => Some(NormalizationChangeChirho::UnchangedChirho),
+                Some(elements_chirho) => {
+                    *output_chirho = output_chirho.checked_sub(1)?;
+                    Some(NormalizationChangeChirho::RebuiltChirho(
+                        TyChirho::TupleChirho(elements_chirho),
+                    ))
+                }
+            }
+        }
+        // This path previously only copied a stuck tree; it must retain its
+        // physical-depth judgment without materializing before that judgment.
+        _ => {
+            inspect_stuck_type_chirho(ty_chirho, depth_chirho, work_chirho)?;
+            Some(NormalizationChangeChirho::UnchangedChirho)
+        }
     }
+}
+
+fn inspect_stuck_type_chirho(
+    ty_chirho: &TyChirho,
+    depth_chirho: usize,
+    work_chirho: &mut usize,
+) -> Option<()> {
+    if depth_chirho > 128 {
+        return None;
+    }
+    *work_chirho = work_chirho.checked_sub(1)?;
+    let child_chirho = depth_chirho.checked_add(1)?;
+    match ty_chirho {
+        TyChirho::AppChirho(left_chirho, right_chirho)
+        | TyChirho::FunChirho(left_chirho, right_chirho, _) => {
+            inspect_stuck_type_chirho(left_chirho, child_chirho, work_chirho)?;
+            inspect_stuck_type_chirho(right_chirho, child_chirho, work_chirho)?;
+        }
+        TyChirho::ListChirho(element_chirho) => {
+            inspect_stuck_type_chirho(element_chirho, child_chirho, work_chirho)?
+        }
+        TyChirho::TupleChirho(elements_chirho) => {
+            for element_chirho in elements_chirho {
+                inspect_stuck_type_chirho(element_chirho, child_chirho, work_chirho)?;
+            }
+        }
+        TyChirho::QualChirho {
+            context_chirho,
+            body_chirho,
+        } => {
+            for constraint_chirho in context_chirho {
+                inspect_stuck_type_chirho(constraint_chirho, child_chirho, work_chirho)?;
+            }
+            inspect_stuck_type_chirho(body_chirho, child_chirho, work_chirho)?;
+        }
+        TyChirho::ForallChirho { body_chirho, .. }
+        | TyChirho::RequiredForallChirho { body_chirho, .. } => {
+            inspect_stuck_type_chirho(body_chirho, child_chirho, work_chirho)?
+        }
+        _ => {}
+    }
+    Some(())
 }

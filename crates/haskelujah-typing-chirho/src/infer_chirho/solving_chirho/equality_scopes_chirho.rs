@@ -732,13 +732,28 @@ impl InferCtxChirho {
         budget_chirho: &mut super::equality_normalization_chirho::EqualityBudgetChirho,
     ) -> Result<TyChirho, super::equality_normalization_chirho::EqualityNormalizationExhaustedChirho>
     {
+        self.normalize_signature_public_image_change_chirho(ty_chirho, budget_chirho)?
+            .materialize_chirho(ty_chirho, budget_chirho)
+            .ok_or(super::equality_normalization_chirho::EqualityNormalizationExhaustedChirho)
+    }
+
+    /// The owned inference caller can retain its exact input after all shared
+    /// judgments. Borrowed callers materialize only the selected final image.
+    pub(super) fn normalize_signature_public_image_change_chirho(
+        &self,
+        ty_chirho: &TyChirho,
+        budget_chirho: &mut super::equality_normalization_chirho::EqualityBudgetChirho,
+    ) -> Result<
+        super::equality_normalization_chirho::NormalizationChangeChirho,
+        super::equality_normalization_chirho::EqualityNormalizationExhaustedChirho,
+    > {
         let evidence_chirho = std::iter::successors(
             self.equality_scopes_chirho[self.active_equality_scope_chirho]
                 .evidence_chirho
                 .as_deref(),
             |node_chirho| node_chirho.parent_chirho.as_deref(),
         );
-        super::equality_normalization_chirho::normalize_owned_equality_with_budget_chirho(
+        super::equality_normalization_chirho::normalize_equality_change_with_budget_chirho(
             self,
             ty_chirho,
             evidence_chirho.map(|node_chirho| node_chirho.rewrites_chirho.as_slice()),

@@ -347,3 +347,61 @@ fn one_shot_checked_alias_oversaturation_finishes_the_lifted_application_chirho(
         type_chirho
     );
 }
+
+#[test]
+fn stable_checked_synonym_walks_retain_the_input_until_an_owned_result_is_needed_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    alias_chirho(
+        &mut context_chirho,
+        "UnusedIdentityChirho",
+        TyChirho::VarChirho(TyVarChirho(0)),
+    );
+    let input_chirho = TyChirho::ListChirho(Box::new(TyChirho::int_chirho()));
+    let mut budget_chirho =
+        equality_normalization_chirho::EqualityBudgetChirho::limited_chirho(100_000, 0);
+    let change_chirho = synonym_expansion_chirho::expand_synonyms_change_with_budget_chirho(
+        &context_chirho,
+        &input_chirho,
+        &mut budget_chirho,
+    )
+    .unwrap();
+    assert!(change_chirho.is_unchanged_chirho());
+    assert!(budget_chirho.remaining_chirho().0 < 100_000);
+    assert_eq!(budget_chirho.remaining_chirho().1, 0);
+    let mut budget_chirho =
+        equality_normalization_chirho::EqualityBudgetChirho::limited_chirho(100_000, 0);
+    assert!(
+        synonym_expansion_chirho::expand_synonyms_with_budget_chirho(
+            &context_chirho,
+            &input_chirho,
+            &mut budget_chirho
+        )
+        .is_none()
+    );
+}
+
+#[test]
+fn checked_synonym_arguments_are_bounded_before_name_materialization_chirho() {
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    let key_chirho = alias_chirho(
+        &mut context_chirho,
+        "CopyIdentityChirho",
+        TyChirho::VarChirho(TyVarChirho(0)),
+    );
+    let input_chirho = apply_chirho(
+        key_chirho,
+        TyChirho::ConChirho("ActualCopiedArgumentChirho".repeat(64)),
+    );
+    let mut budget_chirho =
+        equality_normalization_chirho::EqualityBudgetChirho::limited_chirho(100_000, 32);
+    assert!(
+        synonym_expansion_chirho::expand_synonyms_change_with_budget_chirho(
+            &context_chirho,
+            &input_chirho,
+            &mut budget_chirho
+        )
+        .is_none()
+    );
+    assert!(budget_chirho.remaining_chirho().0 < 100_000);
+    assert!(budget_chirho.remaining_chirho().1 < 32);
+}

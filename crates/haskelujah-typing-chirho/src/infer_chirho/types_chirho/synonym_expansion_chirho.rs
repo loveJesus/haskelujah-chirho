@@ -3,8 +3,8 @@
 //! Capture-avoiding synonym instantiation with one work/output allowance.
 //! The catalogue supplies the complete telescope; names supply no authority.
 
-use super::equality_normalization_chirho::EqualityBudgetChirho;
 use super::equality_normalization_chirho::NormalizationContextChirho;
+use super::equality_normalization_chirho::{EqualityBudgetChirho, NormalizationChangeChirho};
 use crate::ty_chirho::{TyChirho, TyVarChirho};
 
 #[derive(Default)]
@@ -95,7 +95,7 @@ impl SynonymExpansionChirho<'_, '_> {
         bound_chirho: &mut Vec<(TyVarChirho, TyVarChirho)>,
         rename_chirho: bool,
         depth_chirho: usize,
-    ) -> Option<TyChirho> {
+    ) -> Option<NormalizationChangeChirho> {
         self.budget_chirho.work_chirho(1)?;
         if depth_chirho > 128 {
             return None;
@@ -107,8 +107,13 @@ impl SynonymExpansionChirho<'_, '_> {
                 .rev()
                 .find(|(source_chirho, _)| source_chirho == variable_chirho)
             {
+                if image_chirho == variable_chirho {
+                    return Some(NormalizationChangeChirho::UnchangedChirho);
+                }
                 self.budget_chirho.node_chirho(1)?;
-                return Some(TyChirho::VarChirho(*image_chirho));
+                return Some(NormalizationChangeChirho::RebuiltChirho(
+                    TyChirho::VarChirho(*image_chirho),
+                ));
             }
             self.budget_chirho
                 .work_chirho(bindings_chirho.numeric_chirho.len())?;
@@ -117,13 +122,16 @@ impl SynonymExpansionChirho<'_, '_> {
                 .iter()
                 .find(|(source_chirho, _)| source_chirho == variable_chirho)
             {
-                return self.walk_chirho(
-                    image_chirho,
-                    &SynonymBindingsChirho::default(),
-                    &mut Vec::new(),
-                    false,
-                    depth_chirho + 1,
-                );
+                let mapped_chirho = self
+                    .walk_chirho(
+                        image_chirho,
+                        &SynonymBindingsChirho::default(),
+                        &mut Vec::new(),
+                        false,
+                        depth_chirho + 1,
+                    )?
+                    .materialize_chirho(image_chirho, self.budget_chirho)?;
+                return Some(NormalizationChangeChirho::RebuiltChirho(mapped_chirho));
             }
         }
         if let TyChirho::ForallVarChirho(name_chirho) = ty_chirho {
@@ -135,13 +143,16 @@ impl SynonymExpansionChirho<'_, '_> {
                         .saturating_add(1),
                 )?;
                 if parameter_chirho == name_chirho {
-                    return self.walk_chirho(
-                        image_chirho,
-                        &SynonymBindingsChirho::default(),
-                        &mut Vec::new(),
-                        false,
-                        depth_chirho + 1,
-                    );
+                    let mapped_chirho = self
+                        .walk_chirho(
+                            image_chirho,
+                            &SynonymBindingsChirho::default(),
+                            &mut Vec::new(),
+                            false,
+                            depth_chirho + 1,
+                        )?
+                        .materialize_chirho(image_chirho, self.budget_chirho)?;
+                    return Some(NormalizationChangeChirho::RebuiltChirho(mapped_chirho));
                 }
             }
         }
@@ -177,41 +188,50 @@ impl SynonymExpansionChirho<'_, '_> {
                 for (binder_chirho, argument_chirho) in
                     scheme_chirho.binders_chirho.iter().zip(&arguments_chirho)
                 {
-                    replacement_chirho.numeric_chirho.push((
-                        binder_chirho.variable_chirho,
-                        self.walk_chirho(
+                    let image_chirho = self
+                        .walk_chirho(
                             argument_chirho,
                             bindings_chirho,
                             bound_chirho,
                             rename_chirho,
                             depth_chirho + 1,
-                        )?,
-                    ));
+                        )?
+                        .materialize_chirho(argument_chirho, self.budget_chirho)?;
+                    replacement_chirho
+                        .numeric_chirho
+                        .push((binder_chirho.variable_chirho, image_chirho));
                 }
                 self.reserve_variables_chirho(rhs_chirho)?;
                 self.reserve_variables_chirho(&scheme_chirho.result_kind_chirho)?;
-                let mut kind_chirho = Some(self.walk_chirho(
-                    &scheme_chirho.result_kind_chirho,
-                    &replacement_chirho,
-                    &mut Vec::new(),
-                    true,
-                    depth_chirho + 1,
-                )?);
-                let mut expanded_chirho = self.walk_chirho(
-                    rhs_chirho,
-                    &replacement_chirho,
-                    &mut Vec::new(),
-                    true,
-                    depth_chirho + 1,
-                )?;
-                for argument_chirho in &arguments_chirho[scheme_chirho.reduction_arity_chirho..] {
-                    let argument_chirho = self.walk_chirho(
-                        argument_chirho,
-                        bindings_chirho,
-                        bound_chirho,
-                        rename_chirho,
+                let mut kind_chirho = Some(
+                    self.walk_chirho(
+                        &scheme_chirho.result_kind_chirho,
+                        &replacement_chirho,
+                        &mut Vec::new(),
+                        true,
                         depth_chirho + 1,
-                    )?;
+                    )?
+                    .materialize_chirho(&scheme_chirho.result_kind_chirho, self.budget_chirho)?,
+                );
+                let mut expanded_chirho = self
+                    .walk_chirho(
+                        rhs_chirho,
+                        &replacement_chirho,
+                        &mut Vec::new(),
+                        true,
+                        depth_chirho + 1,
+                    )?
+                    .materialize_chirho(rhs_chirho, self.budget_chirho)?;
+                for argument_chirho in &arguments_chirho[scheme_chirho.reduction_arity_chirho..] {
+                    let argument_chirho = self
+                        .walk_chirho(
+                            argument_chirho,
+                            bindings_chirho,
+                            bound_chirho,
+                            rename_chirho,
+                            depth_chirho + 1,
+                        )?
+                        .materialize_chirho(argument_chirho, self.budget_chirho)?;
                     let mut quantified_chirho = false;
                     loop {
                         match kind_chirho.take() {
@@ -277,7 +297,7 @@ impl SynonymExpansionChirho<'_, '_> {
                         }
                     };
                 }
-                return Some(expanded_chirho);
+                return Some(NormalizationChangeChirho::RebuiltChirho(expanded_chirho));
             }
             if let Some((parameters_chirho, rhs_chirho)) =
                 self.context_chirho.lookup_type_synonym_chirho(name_chirho)
@@ -289,34 +309,40 @@ impl SynonymExpansionChirho<'_, '_> {
                 {
                     self.budget_chirho
                         .node_chirho(parameter_chirho.len().saturating_add(1))?;
-                    replacement_chirho.named_chirho.push((
-                        parameter_chirho.clone(),
-                        self.walk_chirho(
+                    let image_chirho = self
+                        .walk_chirho(
                             argument_chirho,
                             bindings_chirho,
                             bound_chirho,
                             rename_chirho,
                             depth_chirho + 1,
-                        )?,
-                    ));
+                        )?
+                        .materialize_chirho(argument_chirho, self.budget_chirho)?;
+                    replacement_chirho
+                        .named_chirho
+                        .push((parameter_chirho.clone(), image_chirho));
                 }
                 self.reserve_variables_chirho(rhs_chirho)?;
-                let mut expanded_chirho = self.walk_chirho(
-                    rhs_chirho,
-                    &replacement_chirho,
-                    &mut Vec::new(),
-                    true,
-                    depth_chirho + 1,
-                )?;
-                for argument_chirho in &arguments_chirho[parameters_chirho.len()..] {
-                    self.budget_chirho.node_chirho(1)?;
-                    let argument_chirho = self.walk_chirho(
-                        argument_chirho,
-                        bindings_chirho,
-                        bound_chirho,
-                        rename_chirho,
+                let mut expanded_chirho = self
+                    .walk_chirho(
+                        rhs_chirho,
+                        &replacement_chirho,
+                        &mut Vec::new(),
+                        true,
                         depth_chirho + 1,
-                    )?;
+                    )?
+                    .materialize_chirho(rhs_chirho, self.budget_chirho)?;
+                for argument_chirho in &arguments_chirho[parameters_chirho.len()..] {
+                    let argument_chirho = self
+                        .walk_chirho(
+                            argument_chirho,
+                            bindings_chirho,
+                            bound_chirho,
+                            rename_chirho,
+                            depth_chirho + 1,
+                        )?
+                        .materialize_chirho(argument_chirho, self.budget_chirho)?;
+                    self.budget_chirho.node_chirho(1)?;
                     expanded_chirho = if let Some(key_chirho) =
                         crate::ty_chirho::representation_chirho::folded_universe_key_chirho(
                             &expanded_chirho,
@@ -328,56 +354,24 @@ impl SynonymExpansionChirho<'_, '_> {
                         TyChirho::AppChirho(Box::new(expanded_chirho), Box::new(argument_chirho))
                     };
                 }
-                return Some(expanded_chirho);
+                return Some(NormalizationChangeChirho::RebuiltChirho(expanded_chirho));
             }
         }
-        self.budget_chirho.node_chirho(1)?;
-        Some(match ty_chirho {
-            TyChirho::QualChirho {
-                context_chirho,
-                body_chirho,
-            } => {
-                self.budget_chirho.work_chirho(context_chirho.len())?;
-                TyChirho::QualChirho {
-                    context_chirho: context_chirho
-                        .iter()
-                        .map(|constraint_chirho| {
-                            self.walk_chirho(
-                                constraint_chirho,
-                                bindings_chirho,
-                                bound_chirho,
-                                rename_chirho,
-                                depth_chirho + 1,
-                            )
-                        })
-                        .collect::<Option<Vec<_>>>()?,
-                    body_chirho: Box::new(self.walk_chirho(
-                        body_chirho,
-                        bindings_chirho,
-                        bound_chirho,
-                        rename_chirho,
-                        depth_chirho + 1,
-                    )?),
-                }
-            }
-            TyChirho::VarChirho(variable_chirho) => TyChirho::VarChirho(*variable_chirho),
+        match ty_chirho {
+            TyChirho::VarChirho(_) => Some(NormalizationChangeChirho::UnchangedChirho),
             TyChirho::ConChirho(name_chirho) | TyChirho::ForallVarChirho(name_chirho) => {
-                self.budget_chirho.node_chirho(name_chirho.len())?;
-                if matches!(ty_chirho, TyChirho::ConChirho(_)) {
-                    TyChirho::ConChirho(name_chirho.clone())
-                } else {
-                    TyChirho::ForallVarChirho(name_chirho.clone())
-                }
+                self.budget_chirho.work_chirho(name_chirho.len())?;
+                Some(NormalizationChangeChirho::UnchangedChirho)
             }
             TyChirho::AppChirho(fun_chirho, argument_chirho) => {
-                let fun_chirho = self.walk_chirho(
+                let fun_image_chirho = self.walk_chirho(
                     fun_chirho,
                     bindings_chirho,
                     bound_chirho,
                     rename_chirho,
                     depth_chirho + 1,
                 )?;
-                let argument_chirho = self.walk_chirho(
+                let argument_image_chirho = self.walk_chirho(
                     argument_chirho,
                     bindings_chirho,
                     bound_chirho,
@@ -386,60 +380,168 @@ impl SynonymExpansionChirho<'_, '_> {
                 )?;
                 if let Some(key_chirho) =
                     crate::ty_chirho::representation_chirho::folded_universe_key_chirho(
-                        &fun_chirho,
-                        &argument_chirho,
+                        fun_image_chirho.image_chirho(fun_chirho),
+                        argument_image_chirho.image_chirho(argument_chirho),
                     )
                 {
-                    self.budget_chirho.node_chirho(key_chirho.len())?;
-                    TyChirho::ConChirho(key_chirho.to_owned())
-                } else {
-                    TyChirho::AppChirho(Box::new(fun_chirho), Box::new(argument_chirho))
+                    self.budget_chirho
+                        .node_chirho(key_chirho.len().saturating_add(1))?;
+                    return Some(NormalizationChangeChirho::RebuiltChirho(
+                        TyChirho::ConChirho(key_chirho.to_owned()),
+                    ));
                 }
+                if fun_image_chirho.is_unchanged_chirho()
+                    && argument_image_chirho.is_unchanged_chirho()
+                {
+                    return Some(NormalizationChangeChirho::UnchangedChirho);
+                }
+                self.budget_chirho.node_chirho(1)?;
+                Some(NormalizationChangeChirho::RebuiltChirho(
+                    TyChirho::AppChirho(
+                        Box::new(
+                            fun_image_chirho.materialize_chirho(fun_chirho, self.budget_chirho)?,
+                        ),
+                        Box::new(
+                            argument_image_chirho
+                                .materialize_chirho(argument_chirho, self.budget_chirho)?,
+                        ),
+                    ),
+                ))
             }
             TyChirho::FunChirho(argument_chirho, result_chirho, multiplicity_chirho) => {
-                TyChirho::FunChirho(
-                    Box::new(self.walk_chirho(
-                        argument_chirho,
-                        bindings_chirho,
-                        bound_chirho,
-                        rename_chirho,
-                        depth_chirho + 1,
-                    )?),
-                    Box::new(self.walk_chirho(
-                        result_chirho,
-                        bindings_chirho,
-                        bound_chirho,
-                        rename_chirho,
-                        depth_chirho + 1,
-                    )?),
-                    *multiplicity_chirho,
-                )
+                let argument_image_chirho = self.walk_chirho(
+                    argument_chirho,
+                    bindings_chirho,
+                    bound_chirho,
+                    rename_chirho,
+                    depth_chirho + 1,
+                )?;
+                let result_image_chirho = self.walk_chirho(
+                    result_chirho,
+                    bindings_chirho,
+                    bound_chirho,
+                    rename_chirho,
+                    depth_chirho + 1,
+                )?;
+                if argument_image_chirho.is_unchanged_chirho()
+                    && result_image_chirho.is_unchanged_chirho()
+                {
+                    return Some(NormalizationChangeChirho::UnchangedChirho);
+                }
+                self.budget_chirho.node_chirho(1)?;
+                Some(NormalizationChangeChirho::RebuiltChirho(
+                    TyChirho::FunChirho(
+                        Box::new(
+                            argument_image_chirho
+                                .materialize_chirho(argument_chirho, self.budget_chirho)?,
+                        ),
+                        Box::new(
+                            result_image_chirho
+                                .materialize_chirho(result_chirho, self.budget_chirho)?,
+                        ),
+                        *multiplicity_chirho,
+                    ),
+                ))
             }
             TyChirho::ListChirho(element_chirho) => {
-                TyChirho::ListChirho(Box::new(self.walk_chirho(
+                let image_chirho = self.walk_chirho(
                     element_chirho,
                     bindings_chirho,
                     bound_chirho,
                     rename_chirho,
                     depth_chirho + 1,
-                )?))
+                )?;
+                if image_chirho.is_unchanged_chirho() {
+                    return Some(NormalizationChangeChirho::UnchangedChirho);
+                }
+                self.budget_chirho.node_chirho(1)?;
+                Some(NormalizationChangeChirho::RebuiltChirho(
+                    TyChirho::ListChirho(Box::new(
+                        image_chirho.materialize_chirho(element_chirho, self.budget_chirho)?,
+                    )),
+                ))
             }
             TyChirho::TupleChirho(elements_chirho) => {
                 self.budget_chirho.work_chirho(elements_chirho.len())?;
-                TyChirho::TupleChirho(
-                    elements_chirho
+                let mut rebuilt_chirho = None;
+                for (index_chirho, element_chirho) in elements_chirho.iter().enumerate() {
+                    self.walk_chirho(
+                        element_chirho,
+                        bindings_chirho,
+                        bound_chirho,
+                        rename_chirho,
+                        depth_chirho + 1,
+                    )?
+                    .append_chirho(
+                        elements_chirho,
+                        index_chirho,
+                        &mut rebuilt_chirho,
+                        self.budget_chirho,
+                    )?;
+                }
+                match rebuilt_chirho {
+                    None => Some(NormalizationChangeChirho::UnchangedChirho),
+                    Some(elements_chirho) => {
+                        self.budget_chirho.node_chirho(1)?;
+                        Some(NormalizationChangeChirho::RebuiltChirho(
+                            TyChirho::TupleChirho(elements_chirho),
+                        ))
+                    }
+                }
+            }
+            TyChirho::QualChirho {
+                context_chirho,
+                body_chirho,
+            } => {
+                self.budget_chirho.work_chirho(context_chirho.len())?;
+                let mut context_image_chirho = None;
+                for (index_chirho, constraint_chirho) in context_chirho.iter().enumerate() {
+                    self.walk_chirho(
+                        constraint_chirho,
+                        bindings_chirho,
+                        bound_chirho,
+                        rename_chirho,
+                        depth_chirho + 1,
+                    )?
+                    .append_chirho(
+                        context_chirho,
+                        index_chirho,
+                        &mut context_image_chirho,
+                        self.budget_chirho,
+                    )?;
+                }
+                let body_image_chirho = self.walk_chirho(
+                    body_chirho,
+                    bindings_chirho,
+                    bound_chirho,
+                    rename_chirho,
+                    depth_chirho + 1,
+                )?;
+                if context_image_chirho.is_none() && body_image_chirho.is_unchanged_chirho() {
+                    return Some(NormalizationChangeChirho::UnchangedChirho);
+                }
+                self.budget_chirho.node_chirho(1)?;
+                let context_image_chirho = match context_image_chirho {
+                    Some(context_chirho) => context_chirho,
+                    None => context_chirho
                         .iter()
-                        .map(|element_chirho| {
-                            self.walk_chirho(
-                                element_chirho,
-                                bindings_chirho,
-                                bound_chirho,
-                                rename_chirho,
-                                depth_chirho + 1,
+                        .map(|constraint_chirho| {
+                            super::equality_normalization_chirho::copy_term_with_budget_chirho(
+                                constraint_chirho,
+                                self.budget_chirho,
                             )
                         })
                         .collect::<Option<Vec<_>>>()?,
-                )
+                };
+                Some(NormalizationChangeChirho::RebuiltChirho(
+                    TyChirho::QualChirho {
+                        context_chirho: context_image_chirho,
+                        body_chirho: Box::new(
+                            body_image_chirho
+                                .materialize_chirho(body_chirho, self.budget_chirho)?,
+                        ),
+                    },
+                ))
             }
             TyChirho::ForallChirho {
                 vars_chirho,
@@ -449,11 +551,14 @@ impl SynonymExpansionChirho<'_, '_> {
                 vars_chirho,
                 body_chirho,
             } => {
-                self.budget_chirho.node_chirho(vars_chirho.len())?;
+                self.budget_chirho.work_chirho(vars_chirho.len())?;
                 let mark_chirho = bound_chirho.len();
                 let result_chirho = (|| {
-                    let mut records_chirho = Vec::with_capacity(vars_chirho.len());
-                    for record_chirho in vars_chirho.records_chirho() {
+                    let mut records_chirho =
+                        None::<Vec<crate::ty_chirho::QuantifiedVariableChirho>>;
+                    for (index_chirho, record_chirho) in
+                        vars_chirho.records_chirho().iter().enumerate()
+                    {
                         let image_chirho = if rename_chirho {
                             let fresh_chirho = TyVarChirho(self.next_bound_chirho);
                             self.next_bound_chirho = self.next_bound_chirho.checked_add(1)?;
@@ -461,54 +566,70 @@ impl SynonymExpansionChirho<'_, '_> {
                         } else {
                             record_chirho.variable_chirho
                         };
-                        let kind_chirho = if let Some(kind_chirho) = &record_chirho.kind_chirho {
-                            Some(std::sync::Arc::new(self.walk_chirho(
+                        let kind_image_chirho = match &record_chirho.kind_chirho {
+                            Some(kind_chirho) => self.walk_chirho(
                                 kind_chirho,
                                 bindings_chirho,
                                 bound_chirho,
                                 rename_chirho,
                                 depth_chirho + 1,
-                            )?))
-                        } else {
-                            None
+                            )?,
+                            None => NormalizationChangeChirho::UnchangedChirho,
                         };
-                        records_chirho.push(crate::ty_chirho::QuantifiedVariableChirho {
-                            variable_chirho: image_chirho,
-                            kind_chirho,
-                            source_chirho: record_chirho.source_chirho.clone(),
-                            specificity_chirho: record_chirho.specificity_chirho,
-                        });
+                        if (rename_chirho || !kind_image_chirho.is_unchanged_chirho())
+                            && records_chirho.is_none()
+                        {
+                            self.budget_chirho.node_chirho(vars_chirho.len())?;
+                            records_chirho =
+                                Some(vars_chirho.records_chirho()[..index_chirho].to_vec());
+                        }
+                        if let Some(records_chirho) = &mut records_chirho {
+                            let mut mapped_chirho = record_chirho.clone();
+                            mapped_chirho.variable_chirho = image_chirho;
+                            if let NormalizationChangeChirho::RebuiltChirho(kind_chirho) =
+                                kind_image_chirho
+                            {
+                                mapped_chirho.kind_chirho = Some(std::sync::Arc::new(kind_chirho));
+                            }
+                            records_chirho.push(mapped_chirho);
+                        }
                         bound_chirho.push((record_chirho.variable_chirho, image_chirho));
                     }
-                    let body_chirho = self.walk_chirho(
+                    let body_image_chirho = self.walk_chirho(
                         body_chirho,
                         bindings_chirho,
                         bound_chirho,
                         rename_chirho,
                         depth_chirho + 1,
                     )?;
-                    Some((
-                        crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(
-                            records_chirho,
-                        ),
-                        body_chirho,
+                    if records_chirho.is_none() && body_image_chirho.is_unchanged_chirho() {
+                        return Some(NormalizationChangeChirho::UnchangedChirho);
+                    }
+                    self.budget_chirho.node_chirho(1)?;
+                    let variables_chirho = records_chirho
+                        .map(crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho)
+                        .unwrap_or_else(|| vars_chirho.clone());
+                    let body_chirho = Box::new(
+                        body_image_chirho.materialize_chirho(body_chirho, self.budget_chirho)?,
+                    );
+                    Some(NormalizationChangeChirho::RebuiltChirho(
+                        if matches!(ty_chirho, TyChirho::ForallChirho { .. }) {
+                            TyChirho::ForallChirho {
+                                vars_chirho: variables_chirho,
+                                body_chirho,
+                            }
+                        } else {
+                            TyChirho::RequiredForallChirho {
+                                vars_chirho: variables_chirho,
+                                body_chirho,
+                            }
+                        },
                     ))
                 })();
                 bound_chirho.truncate(mark_chirho);
-                let (variables_chirho, body_chirho) = result_chirho?;
-                if matches!(ty_chirho, TyChirho::ForallChirho { .. }) {
-                    TyChirho::ForallChirho {
-                        vars_chirho: variables_chirho,
-                        body_chirho: Box::new(body_chirho),
-                    }
-                } else {
-                    TyChirho::RequiredForallChirho {
-                        vars_chirho: variables_chirho,
-                        body_chirho: Box::new(body_chirho),
-                    }
-                }
+                result_chirho
             }
-        })
+        }
     }
 }
 
@@ -517,6 +638,15 @@ pub(super) fn expand_synonyms_with_budget_chirho(
     ty_chirho: &TyChirho,
     budget_chirho: &mut EqualityBudgetChirho,
 ) -> Option<TyChirho> {
+    expand_synonyms_change_with_budget_chirho(context_chirho, ty_chirho, budget_chirho)?
+        .materialize_chirho(ty_chirho, budget_chirho)
+}
+
+pub(super) fn expand_synonyms_change_with_budget_chirho(
+    context_chirho: &dyn NormalizationContextChirho,
+    ty_chirho: &TyChirho,
+    budget_chirho: &mut EqualityBudgetChirho,
+) -> Option<NormalizationChangeChirho> {
     let mut expansion_chirho = SynonymExpansionChirho {
         context_chirho,
         budget_chirho,

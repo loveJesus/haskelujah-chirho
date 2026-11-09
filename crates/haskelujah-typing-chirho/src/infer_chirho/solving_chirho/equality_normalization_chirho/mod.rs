@@ -6,7 +6,8 @@
 use super::*;
 mod context_chirho;
 mod transform_chirho;
-pub(crate) use context_chirho::{EqualityNormalizationViewChirho, NormalizationContextChirho};
+pub(crate) use context_chirho::EqualityNormalizationViewChirho;
+pub(in crate::infer_chirho) use context_chirho::NormalizationContextChirho;
 use transform_chirho::{EqualityTransformPolicyChirho, transform_chirho};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -40,6 +41,85 @@ impl EqualityBudgetChirho {
     pub(crate) fn node_chirho(&mut self, amount_chirho: usize) -> Option<()> {
         self.work_chirho(amount_chirho)?;
         self.output_chirho = self.output_chirho.checked_sub(amount_chirho)?;
+        Some(())
+    }
+}
+
+/// Storage outcome relative to the exact input of ONE normalization call.
+/// It proves no type identity and never replaces a normalization judgment.
+#[derive(Debug)]
+pub(in crate::infer_chirho) enum NormalizationChangeChirho {
+    UnchangedChirho,
+    RebuiltChirho(TyChirho),
+}
+
+impl NormalizationChangeChirho {
+    pub(in crate::infer_chirho) fn image_chirho<'image_chirho>(
+        &'image_chirho self,
+        original_chirho: &'image_chirho TyChirho,
+    ) -> &'image_chirho TyChirho {
+        match self {
+            Self::UnchangedChirho => original_chirho,
+            Self::RebuiltChirho(image_chirho) => image_chirho,
+        }
+    }
+
+    pub(in crate::infer_chirho) fn is_unchanged_chirho(&self) -> bool {
+        matches!(self, Self::UnchangedChirho)
+    }
+
+    pub(in crate::infer_chirho) fn materialize_chirho(
+        self,
+        original_chirho: &TyChirho,
+        budget_chirho: &mut EqualityBudgetChirho,
+    ) -> Option<TyChirho> {
+        match self {
+            Self::UnchangedChirho => copy_term_with_budget_chirho(original_chirho, budget_chirho),
+            Self::RebuiltChirho(image_chirho) => Some(image_chirho),
+        }
+    }
+
+    /// The owned caller already paid for its input. A stable traversal moves it;
+    /// a rebuilt traversal preserves its selected image, including all metadata.
+    pub(in crate::infer_chirho) fn retain_owned_chirho(
+        self,
+        original_chirho: TyChirho,
+    ) -> TyChirho {
+        match self {
+            Self::UnchangedChirho => original_chirho,
+            Self::RebuiltChirho(image_chirho) => image_chirho,
+        }
+    }
+
+    fn then_chirho(self, next_chirho: Self) -> Self {
+        match next_chirho {
+            Self::UnchangedChirho => self,
+            Self::RebuiltChirho(_) => next_chirho,
+        }
+    }
+
+    /// No result vector is allocated on an entirely stable sequence. Once a
+    /// child changes, every copied sibling is charged before it is materialized.
+    pub(in crate::infer_chirho) fn append_chirho(
+        self,
+        original_chirho: &[TyChirho],
+        index_chirho: usize,
+        rebuilt_chirho: &mut Option<Vec<TyChirho>>,
+        budget_chirho: &mut EqualityBudgetChirho,
+    ) -> Option<()> {
+        if rebuilt_chirho.is_none() && self.is_unchanged_chirho() {
+            return Some(());
+        }
+        if rebuilt_chirho.is_none() {
+            let mut prefix_chirho = Vec::new();
+            for child_chirho in &original_chirho[..index_chirho] {
+                prefix_chirho.push(copy_term_with_budget_chirho(child_chirho, budget_chirho)?);
+            }
+            *rebuilt_chirho = Some(prefix_chirho);
+        }
+        rebuilt_chirho
+            .as_mut()?
+            .push(self.materialize_chirho(&original_chirho[index_chirho], budget_chirho)?);
         Some(())
     }
 }
@@ -177,7 +257,8 @@ pub(super) fn rewrite_givens_with_budget_chirho(
         &mut HashSet::new(),
         budget_chirho,
         0,
-    )
+    )?
+    .materialize_chirho(ty_chirho, budget_chirho)
 }
 
 pub(super) fn normalize_owned_equality_chirho<'evidence_chirho>(
@@ -199,9 +280,30 @@ pub(super) fn normalize_owned_equality_with_budget_chirho<'evidence_chirho>(
     evidence_chirho: impl Iterator<Item = &'evidence_chirho [(TyChirho, TyChirho)]>,
     budget_chirho: &mut EqualityBudgetChirho,
 ) -> Result<TyChirho, EqualityNormalizationExhaustedChirho> {
+    normalize_equality_change_with_budget_chirho(
+        ctx_chirho,
+        ty_chirho,
+        evidence_chirho,
+        budget_chirho,
+    )?
+    .materialize_chirho(ty_chirho, budget_chirho)
+    .ok_or(EqualityNormalizationExhaustedChirho)
+}
+
+pub(super) fn normalize_equality_change_with_budget_chirho<'evidence_chirho>(
+    ctx_chirho: &dyn NormalizationContextChirho,
+    ty_chirho: &TyChirho,
+    evidence_chirho: impl Iterator<Item = &'evidence_chirho [(TyChirho, TyChirho)]>,
+    budget_chirho: &mut EqualityBudgetChirho,
+) -> Result<NormalizationChangeChirho, EqualityNormalizationExhaustedChirho> {
     let rewrites_chirho =
         prepare_owned_equality_rewrites_chirho(ctx_chirho, evidence_chirho, budget_chirho)?;
-    normalize_prepared_owned_equality_chirho(ctx_chirho, ty_chirho, &rewrites_chirho, budget_chirho)
+    normalize_prepared_equality_change_chirho(
+        ctx_chirho,
+        ty_chirho,
+        &rewrites_chirho,
+        budget_chirho,
+    )
 }
 
 /// Prepare immutable premises once when a scratch solver checks several goals
@@ -237,6 +339,7 @@ pub(super) fn prepare_owned_equality_rewrites_chirho<'evidence_chirho>(
                 budget_chirho,
                 0,
             )
+            .and_then(|change_chirho| change_chirho.materialize_chirho(lhs_chirho, budget_chirho))
             .ok_or(EqualityNormalizationExhaustedChirho)?;
             let rhs_chirho = transform_chirho(
                 EqualityTransformPolicyChirho {
@@ -251,6 +354,7 @@ pub(super) fn prepare_owned_equality_rewrites_chirho<'evidence_chirho>(
                 budget_chirho,
                 0,
             )
+            .and_then(|change_chirho| change_chirho.materialize_chirho(rhs_chirho, budget_chirho))
             .ok_or(EqualityNormalizationExhaustedChirho)?;
             copied_chirho.push((lhs_chirho, rhs_chirho));
         }
@@ -267,6 +371,22 @@ pub(super) fn normalize_prepared_owned_equality_chirho(
     rewrites_chirho: &[(TyChirho, TyChirho)],
     budget_chirho: &mut EqualityBudgetChirho,
 ) -> Result<TyChirho, EqualityNormalizationExhaustedChirho> {
+    normalize_prepared_equality_change_chirho(
+        ctx_chirho,
+        ty_chirho,
+        rewrites_chirho,
+        budget_chirho,
+    )?
+    .materialize_chirho(ty_chirho, budget_chirho)
+    .ok_or(EqualityNormalizationExhaustedChirho)
+}
+
+fn normalize_prepared_equality_change_chirho(
+    ctx_chirho: &dyn NormalizationContextChirho,
+    ty_chirho: &TyChirho,
+    rewrites_chirho: &[(TyChirho, TyChirho)],
+    budget_chirho: &mut EqualityBudgetChirho,
+) -> Result<NormalizationChangeChirho, EqualityNormalizationExhaustedChirho> {
     let mut current_chirho = transform_chirho(
         EqualityTransformPolicyChirho {
             ctx_chirho,
@@ -282,6 +402,7 @@ pub(super) fn normalize_prepared_owned_equality_chirho(
     )
     .ok_or(EqualityNormalizationExhaustedChirho)?;
     for _iteration_chirho in 0..100 {
+        let current_image_chirho = current_chirho.image_chirho(ty_chirho);
         let transformed_chirho = transform_chirho(
             EqualityTransformPolicyChirho {
                 ctx_chirho,
@@ -289,7 +410,7 @@ pub(super) fn normalize_prepared_owned_equality_chirho(
                 expand_chirho: true,
                 resolve_meta_chirho: true,
             },
-            &current_chirho,
+            current_image_chirho,
             None,
             &mut HashSet::new(),
             budget_chirho,
@@ -298,18 +419,26 @@ pub(super) fn normalize_prepared_owned_equality_chirho(
         .ok_or(EqualityNormalizationExhaustedChirho)?;
         let next_chirho = ctx_chirho
             .reduce_families_bounded_chirho(
-                &transformed_chirho,
+                transformed_chirho.image_chirho(current_image_chirho),
                 0,
                 &mut budget_chirho.work_chirho,
                 &mut budget_chirho.output_chirho,
             )
             .ok_or(EqualityNormalizationExhaustedChirho)?;
-        if equal_chirho(&next_chirho, &current_chirho, budget_chirho)
-            .ok_or(EqualityNormalizationExhaustedChirho)?
-        {
-            return Ok(next_chirho);
+        // Ownership markers NEVER decide convergence. Keep the same comparison
+        // and selected next image, including metadata that equality may ignore.
+        let stable_chirho = equal_chirho(
+            next_chirho.image_chirho(transformed_chirho.image_chirho(current_image_chirho)),
+            current_image_chirho,
+            budget_chirho,
+        )
+        .ok_or(EqualityNormalizationExhaustedChirho)?;
+        current_chirho = current_chirho
+            .then_chirho(transformed_chirho)
+            .then_chirho(next_chirho);
+        if stable_chirho {
+            return Ok(current_chirho);
         }
-        current_chirho = next_chirho;
     }
     Err(EqualityNormalizationExhaustedChirho)
 }
@@ -378,6 +507,22 @@ pub(super) fn copy_term_with_budget_chirho(
         }
     }
     Some(term_chirho.clone())
+}
+
+/// Borrow the caller's exact remaining counters for the existing copier.
+/// There is no new allowance or clamp; partial consumption settles on failure too.
+pub(in crate::infer_chirho) fn copy_term_with_remaining_budget_chirho(
+    term_chirho: &TyChirho,
+    work_chirho: &mut usize,
+    output_chirho: &mut usize,
+) -> Option<TyChirho> {
+    let mut budget_chirho = EqualityBudgetChirho {
+        work_chirho: *work_chirho,
+        output_chirho: *output_chirho,
+    };
+    let result_chirho = copy_term_with_budget_chirho(term_chirho, &mut budget_chirho);
+    (*work_chirho, *output_chirho) = budget_chirho.remaining_chirho();
+    result_chirho
 }
 
 /// Fused trial substitution charges each expanded image BEFORE copying it.
