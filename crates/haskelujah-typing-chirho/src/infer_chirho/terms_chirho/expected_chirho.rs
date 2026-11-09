@@ -398,7 +398,7 @@ impl InferCtxChirho {
                     subst_chirho.apply_ty_chirho(&inferred_fun_sub_chirho);
                 let inferred_arg_final_chirho =
                     subst_chirho.apply_ty_chirho(&inferred_arg_ty_chirho);
-                let result_ty_chirho = self.fresh_var_chirho();
+                let result_ty_chirho = self.fresh_value_meta_chirho(*app_span_chirho);
                 let expected_fun_ty_chirho =
                     TyChirho::fun_chirho(inferred_arg_final_chirho, result_ty_chirho.clone());
                 match self.unify_normalized_chirho(
