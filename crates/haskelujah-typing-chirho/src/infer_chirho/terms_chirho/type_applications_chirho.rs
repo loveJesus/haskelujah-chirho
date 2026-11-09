@@ -320,9 +320,11 @@ impl InferCtxChirho {
                 (expected_chirho, actual_chirho),
             ] {
                 match self.unify_normalized_chirho(&left_chirho, &right_chirho, span_chirho) {
-                    Ok(next_chirho) => {
+                    Ok(mut next_chirho) => {
+                        if self.apply_subst_all_chirho(&mut next_chirho).is_err() {
+                            return None;
+                        };
                         solver_chirho = next_chirho.compose_chirho(&solver_chirho);
-                        self.apply_subst_all_chirho(&next_chirho);
                     }
                     Err(error_chirho) => self.report_unify_error_chirho(&error_chirho),
                 }
@@ -436,7 +438,7 @@ impl InferCtxChirho {
                     span_chirho,
                 }
             })?;
-            let (argument_chirho, links_chirho) =
+            let (argument_chirho, mut links_chirho) =
                 if self.elaboration_state_chirho.owner_chirho.is_some() {
                     let kind_chirho = record_chirho.kind_chirho.as_ref().ok_or_else(|| {
                         crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
@@ -506,7 +508,9 @@ impl InferCtxChirho {
                         SubstChirho::empty_chirho(),
                     )
                 };
-            self.apply_subst_all_chirho(&links_chirho);
+            if self.apply_subst_all_chirho(&mut links_chirho).is_err() {
+                return None;
+            };
             let mut budget_chirho =
                 super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
             let function_chirho = links_chirho
@@ -654,9 +658,11 @@ impl InferCtxChirho {
                 actual_chirho,
                 span_chirho,
             ) {
-                Ok(solution_chirho) => {
+                Ok(mut solution_chirho) => {
+                    if self.apply_subst_all_chirho(&mut solution_chirho).is_err() {
+                        return None;
+                    };
                     substitution_chirho = solution_chirho.compose_chirho(&substitution_chirho);
-                    self.apply_subst_all_chirho(&solution_chirho);
                 }
                 Err(error_chirho) => {
                     self.report_unify_error_chirho(&error_chirho);

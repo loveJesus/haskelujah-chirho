@@ -702,7 +702,7 @@ impl InferCtxChirho {
                 // was built from) over the body; restored afterwards.
                 let prev_scoped_chirho = self.scoped_tyvars_chirho.clone();
 
-                let (s_chirho, inferred_ty_chirho) =
+                let (mut s_chirho, inferred_ty_chirho) =
                     if let Some(sig_ast_chirho) = type_sigs_chirho.get(binding_name_chirho) {
                         let (sig_scheme_chirho, sig_var_map_chirho) =
                             self.ast_type_to_scheme_with_var_map_chirho(sig_ast_chirho);
@@ -726,8 +726,10 @@ impl InferCtxChirho {
                     } else {
                         self.infer_matches_chirho(fun_matches_refs_chirho[fi_chirho], span_chirho)
                     };
+                if self.apply_subst_all_chirho(&mut s_chirho).is_err() {
+                    return SubstChirho::empty_chirho();
+                };
                 subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                self.apply_subst_all_chirho(&s_chirho);
 
                 // Unsigned recursive placeholders join their inferred result.
                 // A signed binding already uses its full declared scheme and
@@ -740,9 +742,11 @@ impl InferCtxChirho {
                         &inferred_ty_chirho,
                         span_chirho,
                     ) {
-                        Ok(su_chirho) => {
+                        Ok(mut su_chirho) => {
+                            if self.apply_subst_all_chirho(&mut su_chirho).is_err() {
+                                return SubstChirho::empty_chirho();
+                            };
                             subst_chirho = su_chirho.compose_chirho(&subst_chirho);
-                            self.apply_subst_all_chirho(&su_chirho);
                         }
                         Err(err_chirho) => {
                             self.report_unify_error_chirho(&err_chirho);
@@ -794,6 +798,7 @@ impl InferCtxChirho {
                     argument_less_chirho,
                     GeneralizationScopeChirho::TopLevelChirho,
                     group_restricted_chirho && !type_sigs_chirho.contains_key(binding_name_chirho),
+                    &mut subst_chirho,
                 );
                 let mut binding_scheme_chirho = inferred_scheme_chirho.clone();
 
@@ -826,9 +831,11 @@ impl InferCtxChirho {
                         &sig_ty_chirho,
                         *span_chirho,
                     ) {
-                        Ok(sig_s_chirho) => {
+                        Ok(mut sig_s_chirho) => {
+                            if self.apply_subst_all_chirho(&mut sig_s_chirho).is_err() {
+                                return SubstChirho::empty_chirho();
+                            };
                             subst_chirho = sig_s_chirho.compose_chirho(&subst_chirho);
-                            self.apply_subst_all_chirho(&sig_s_chirho);
                             binding_scheme_chirho = sig_scheme_chirho;
                         }
                         Err(_err_chirho) => {
@@ -881,13 +888,17 @@ impl InferCtxChirho {
                 }
                 // The WHOLE right-hand side: every arm's qualifiers and body,
                 // not the first arm's body alone.
-                let (s1_chirho, rhs_ty_chirho) = self.infer_rhs_chirho(rhs_chirho);
+                let (mut s1_chirho, rhs_ty_chirho) = self.infer_rhs_chirho(rhs_chirho);
+                if self.apply_subst_all_chirho(&mut s1_chirho).is_err() {
+                    return SubstChirho::empty_chirho();
+                };
                 subst_chirho = s1_chirho.compose_chirho(&subst_chirho);
-                self.apply_subst_all_chirho(&s1_chirho);
 
-                let sp_chirho = self.bind_binding_pat_chirho(pat_chirho, &rhs_ty_chirho);
+                let mut sp_chirho = self.bind_binding_pat_chirho(pat_chirho, &rhs_ty_chirho);
+                if self.apply_subst_all_chirho(&mut sp_chirho).is_err() {
+                    return SubstChirho::empty_chirho();
+                };
                 subst_chirho = sp_chirho.compose_chirho(&subst_chirho);
-                self.apply_subst_all_chirho(&sp_chirho);
 
                 let names_chirho = crate::linearity_chirho::pat_bound_names_chirho(pat_chirho);
                 // The whole pattern binding is generalized together: every
@@ -946,8 +957,13 @@ impl InferCtxChirho {
                                         &sig_ty_chirho,
                                         SpanChirho::DUMMY_CHIRHO,
                                     ) {
-                                        Ok(sig_s_chirho) => {
-                                            self_chirho.apply_subst_all_chirho(&sig_s_chirho);
+                                        Ok(mut sig_s_chirho) => {
+                                            if self_chirho
+                                                .apply_subst_all_chirho(&mut sig_s_chirho)
+                                                .is_err()
+                                            {
+                                                return None;
+                                            };
                                             Some(sig_s_chirho)
                                         }
                                         Err(_err_chirho) => {

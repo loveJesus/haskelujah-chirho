@@ -78,6 +78,9 @@ impl InferCtxChirho {
         result_ty_chirho: TyChirho,
         authoritative_seed_chirho: bool,
     ) -> (SubstChirho, TyChirho) {
+        if self.has_non_deferrable_failure_chirho() {
+            return (SubstChirho::empty_chirho(), result_ty_chirho);
+        }
         if matches_chirho.is_empty() {
             return (SubstChirho::empty_chirho(), self.fresh_var_chirho());
         }
@@ -93,7 +96,15 @@ impl InferCtxChirho {
 
         for match_arm_chirho in matches_chirho {
             self.env_chirho.push_scope_chirho();
-            let pattern_frame_chirho = self.begin_pattern_implication_chirho();
+            let pattern_frame_chirho = self.begin_pattern_implication_with_roots_chirho(
+                param_tys_chirho
+                    .iter()
+                    .chain(std::iter::once(&result_ty_chirho)),
+                span_chirho,
+            );
+            if self.has_non_deferrable_failure_chirho() {
+                return (SubstChirho::empty_chirho(), result_ty_chirho);
+            }
 
             // Each equation gets its own fresh param/result types so GADT
             // pattern matching can refine types independently per equation.
@@ -142,9 +153,11 @@ impl InferCtxChirho {
                 .zip(eq_param_tys_chirho.iter())
             {
                 let pat_ty_sub_chirho = subst_chirho.apply_ty_chirho(pat_ty_chirho);
-                let sp_chirho = self.bind_pat_chirho(pat_chirho, &pat_ty_sub_chirho);
+                let mut sp_chirho = self.bind_pat_chirho(pat_chirho, &pat_ty_sub_chirho);
+                if self.apply_subst_all_chirho(&mut sp_chirho).is_err() {
+                    return (SubstChirho::empty_chirho(), result_ty_chirho);
+                };
                 subst_chirho = sp_chirho.compose_chirho(&subst_chirho);
-                self.apply_subst_all_chirho(&sp_chirho);
             }
 
             let expected_chirho = if authoritative_seed_chirho {
@@ -176,11 +189,13 @@ impl InferCtxChirho {
                 {
                     let eq_p_sub_chirho = subst_chirho.apply_ty_chirho(eq_p_chirho);
                     let p_sub_chirho = subst_chirho.apply_ty_chirho(p_chirho);
-                    if let Ok(s_chirho) =
+                    if let Ok(mut s_chirho) =
                         self.unify_normalized_chirho(&eq_p_sub_chirho, &p_sub_chirho, span_chirho)
                     {
+                        if self.apply_subst_all_chirho(&mut s_chirho).is_err() {
+                            return (SubstChirho::empty_chirho(), result_ty_chirho);
+                        };
                         subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                        self.apply_subst_all_chirho(&s_chirho);
                     }
                 }
                 // Unify per-equation result with overall result type.
@@ -190,9 +205,11 @@ impl InferCtxChirho {
                 let eq_r_sub_chirho = subst_chirho.apply_ty_chirho(&eq_result_ty_chirho);
                 let r_sub_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
                 match self.unify_normalized_chirho(&eq_r_sub_chirho, &r_sub_chirho, span_chirho) {
-                    Ok(s_chirho) => {
+                    Ok(mut s_chirho) => {
+                        if self.apply_subst_all_chirho(&mut s_chirho).is_err() {
+                            return (SubstChirho::empty_chirho(), result_ty_chirho);
+                        };
                         subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                        self.apply_subst_all_chirho(&s_chirho);
                     }
                     Err(err_chirho) => {
                         // For arity-0 bindings (e.g. x = True) there are no
@@ -237,6 +254,12 @@ impl InferCtxChirho {
         matches_chirho: &[MatchArmChirho],
         span_chirho: SpanChirho,
     ) -> (SubstChirho, TyChirho) {
+        if self.has_non_deferrable_failure_chirho() {
+            return (
+                SubstChirho::empty_chirho(),
+                Self::terminal_commit_type_chirho(),
+            );
+        }
         if matches_chirho.is_empty() {
             return (SubstChirho::empty_chirho(), self.fresh_var_chirho());
         }
@@ -309,6 +332,9 @@ impl InferCtxChirho {
         span_chirho: SpanChirho,
         expected_ty_chirho: &TyChirho,
     ) -> (SubstChirho, TyChirho) {
+        if self.has_non_deferrable_failure_chirho() {
+            return (SubstChirho::empty_chirho(), expected_ty_chirho.clone());
+        }
         if matches_chirho.is_empty() {
             return (SubstChirho::empty_chirho(), self.fresh_var_chirho());
         }
@@ -319,7 +345,13 @@ impl InferCtxChirho {
             let mut substitution_chirho = SubstChirho::empty_chirho();
             for arm_chirho in matches_chirho {
                 self.env_chirho.push_scope_chirho();
-                let frame_chirho = self.begin_pattern_implication_chirho();
+                let frame_chirho = self.begin_pattern_implication_with_roots_chirho(
+                    std::iter::once(expected_ty_chirho),
+                    span_chirho,
+                );
+                if self.has_non_deferrable_failure_chirho() {
+                    return (SubstChirho::empty_chirho(), expected_ty_chirho.clone());
+                }
                 let step_chirho = self.check_ordered_patterns_chirho(
                     &arm_chirho.pats_chirho,
                     &arm_chirho.where_binds_chirho,
@@ -392,17 +424,30 @@ impl InferCtxChirho {
         result_ty_chirho: TyChirho,
         span_chirho: SpanChirho,
     ) -> (SubstChirho, TyChirho) {
+        if self.has_non_deferrable_failure_chirho() {
+            return (SubstChirho::empty_chirho(), result_ty_chirho);
+        }
         self.env_chirho.push_scope_chirho();
-        let pattern_frame_chirho = self.begin_pattern_implication_chirho();
+        let pattern_frame_chirho = self.begin_pattern_implication_with_roots_chirho(
+            param_tys_chirho
+                .iter()
+                .chain(std::iter::once(&result_ty_chirho)),
+            span_chirho,
+        );
+        if self.has_non_deferrable_failure_chirho() {
+            return (SubstChirho::empty_chirho(), result_ty_chirho);
+        }
 
         let mut param_subst_chirho = SubstChirho::empty_chirho();
         let parameter_scope_chirho = self.value_parameter_scope_chirho();
         self.check_value_parameters_chirho(pats_chirho, &param_tys_chirho, span_chirho);
         for (pat_chirho, pat_ty_chirho) in pats_chirho.iter().zip(param_tys_chirho.iter()) {
             let pat_ty_sub_chirho = param_subst_chirho.apply_ty_chirho(pat_ty_chirho);
-            let s_chirho = self.bind_pat_chirho(pat_chirho, &pat_ty_sub_chirho);
+            let mut s_chirho = self.bind_pat_chirho(pat_chirho, &pat_ty_sub_chirho);
+            if self.apply_subst_all_chirho(&mut s_chirho).is_err() {
+                return (SubstChirho::empty_chirho(), result_ty_chirho);
+            };
             param_subst_chirho = s_chirho.compose_chirho(&param_subst_chirho);
-            self.apply_subst_all_chirho(&s_chirho);
         }
 
         let mut final_subst_chirho = self.check_pattern_body_chirho(
@@ -449,9 +494,18 @@ impl InferCtxChirho {
         expected_ty_chirho: &TyChirho,
         span_chirho: SpanChirho,
     ) -> Option<(SubstChirho, TyChirho)> {
+        if self.has_non_deferrable_failure_chirho() {
+            return None;
+        }
         if self.has_required_spine_chirho(expected_ty_chirho) {
             self.env_chirho.push_scope_chirho();
-            let frame_chirho = self.begin_pattern_implication_chirho();
+            let frame_chirho = self.begin_pattern_implication_with_roots_chirho(
+                std::iter::once(expected_ty_chirho),
+                span_chirho,
+            );
+            if self.has_non_deferrable_failure_chirho() {
+                return None;
+            }
             let step_chirho = self.check_ordered_patterns_chirho(
                 pats_chirho,
                 &[],

@@ -214,12 +214,14 @@ impl InferCtxChirho {
         if let Some(pairs_chirho) = pairs_chirho {
             let mut combined_chirho = SubstChirho::empty_chirho();
             for (left_part_chirho, right_part_chirho) in pairs_chirho {
-                let part_subst_chirho = self.refine_constructor_indices_chirho(
+                let mut part_subst_chirho = self.refine_constructor_indices_chirho(
                     &combined_chirho.apply_ty_chirho(left_part_chirho),
                     &combined_chirho.apply_ty_chirho(right_part_chirho),
                     span_chirho,
                 );
-                self.apply_subst_all_chirho(&part_subst_chirho);
+                if self.apply_subst_all_chirho(&mut part_subst_chirho).is_err() {
+                    return SubstChirho::empty_chirho();
+                };
                 combined_chirho = part_subst_chirho.compose_chirho(&combined_chirho);
             }
             return combined_chirho;

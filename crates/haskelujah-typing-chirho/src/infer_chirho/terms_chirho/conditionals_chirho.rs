@@ -28,8 +28,13 @@ impl InferCtxChirho {
         else_chirho: &ExprChirho,
         span_chirho: SpanChirho,
     ) -> (SubstChirho, TyChirho) {
-        let (cond_subst_chirho, cond_ty_chirho) = self.infer_expr_chirho(cond_chirho);
-        self.apply_subst_all_chirho(&cond_subst_chirho);
+        let (mut cond_subst_chirho, cond_ty_chirho) = self.infer_expr_chirho(cond_chirho);
+        if self.apply_subst_all_chirho(&mut cond_subst_chirho).is_err() {
+            return (
+                SubstChirho::empty_chirho(),
+                Self::terminal_commit_type_chirho(),
+            );
+        };
 
         // The condition is a Bool, and what that proves is part of the result.
         // In `g v = if v then 1 else 0` it makes `v` a Bool for the whole of
@@ -42,8 +47,13 @@ impl InferCtxChirho {
             &TyChirho::bool_chirho(),
             span_chirho,
         ) {
-            Ok(bool_subst_chirho) => {
-                self.apply_subst_all_chirho(&bool_subst_chirho);
+            Ok(mut bool_subst_chirho) => {
+                if self.apply_subst_all_chirho(&mut bool_subst_chirho).is_err() {
+                    return (
+                        SubstChirho::empty_chirho(),
+                        Self::terminal_commit_type_chirho(),
+                    );
+                };
                 // After unifying condition with Bool, eagerly check if
                 // any deferred numeric predicate now targets Bool (e.g.
                 // `if 42 then ...` → Num Bool). Generalization would
@@ -57,20 +67,30 @@ impl InferCtxChirho {
             }
         };
 
-        let (s2_chirho, then_ty_chirho) = self.infer_expr_chirho(then_chirho);
-        self.apply_subst_all_chirho(&s2_chirho);
+        let (mut s2_chirho, then_ty_chirho) = self.infer_expr_chirho(then_chirho);
+        if self.apply_subst_all_chirho(&mut s2_chirho).is_err() {
+            return (
+                SubstChirho::empty_chirho(),
+                Self::terminal_commit_type_chirho(),
+            );
+        };
 
         let (s3_chirho, else_ty_chirho) = self.infer_expr_chirho(else_chirho);
 
         // Then and else branches must have the same type
         let then_sub_chirho = s3_chirho.apply_ty_chirho(&then_ty_chirho);
         match self.unify_normalized_chirho(&then_sub_chirho, &else_ty_chirho, span_chirho) {
-            Ok(s4_chirho) => {
+            Ok(mut s4_chirho) => {
+                if self.apply_subst_all_chirho(&mut s4_chirho).is_err() {
+                    return (
+                        SubstChirho::empty_chirho(),
+                        Self::terminal_commit_type_chirho(),
+                    );
+                };
                 let combined_chirho = s4_chirho.compose_chirho(
                     &s3_chirho.compose_chirho(&s2_chirho.compose_chirho(&s1_chirho)),
                 );
                 let final_ty_chirho = combined_chirho.apply_ty_chirho(&else_ty_chirho);
-                self.apply_subst_all_chirho(&s4_chirho);
                 (combined_chirho, final_ty_chirho)
             }
             Err(err_chirho) => {
@@ -100,26 +120,32 @@ impl InferCtxChirho {
         let (cond_subst_chirho, _) =
             self.infer_expr_against_expected_chirho(cond_chirho, &bool_ty_chirho, if_span_chirho);
         let mut subst_chirho = cond_subst_chirho;
-        self.apply_subst_all_chirho(&subst_chirho);
+        if self.apply_subst_all_chirho(&mut subst_chirho).is_err() {
+            return (SubstChirho::empty_chirho(), expected_ty_chirho.clone());
+        };
         self.report_deferred_numeric_bool_predicates_chirho();
 
         let then_expected_chirho = subst_chirho.apply_ty_chirho(expected_ty_chirho);
-        let (then_subst_chirho, _) = self.infer_expr_against_expected_chirho(
+        let (mut then_subst_chirho, _) = self.infer_expr_against_expected_chirho(
             then_chirho,
             &then_expected_chirho,
             if_span_chirho,
         );
+        if self.apply_subst_all_chirho(&mut then_subst_chirho).is_err() {
+            return (SubstChirho::empty_chirho(), expected_ty_chirho.clone());
+        };
         subst_chirho = then_subst_chirho.compose_chirho(&subst_chirho);
-        self.apply_subst_all_chirho(&then_subst_chirho);
 
         let else_expected_chirho = subst_chirho.apply_ty_chirho(expected_ty_chirho);
-        let (else_subst_chirho, _) = self.infer_expr_against_expected_chirho(
+        let (mut else_subst_chirho, _) = self.infer_expr_against_expected_chirho(
             else_chirho,
             &else_expected_chirho,
             if_span_chirho,
         );
+        if self.apply_subst_all_chirho(&mut else_subst_chirho).is_err() {
+            return (SubstChirho::empty_chirho(), expected_ty_chirho.clone());
+        };
         subst_chirho = else_subst_chirho.compose_chirho(&subst_chirho);
-        self.apply_subst_all_chirho(&else_subst_chirho);
 
         let final_ty_chirho = subst_chirho.apply_ty_chirho(expected_ty_chirho);
         (subst_chirho, final_ty_chirho)

@@ -278,8 +278,13 @@ impl InferCtxChirho {
                         )
                     },
                 );
-                self.publish_signature_solution_chirho(solution_chirho, &public_chirho);
+                // This route checks a default body; its safe projection is
+                // committed to live captures and has no outward type carrier.
+                self.publish_signature_solution_chirho(solution_chirho, public_chirho);
                 self.scoped_tyvars_chirho = saved_scope_chirho;
+                if self.has_non_deferrable_failure_chirho() {
+                    return;
+                }
             }
         }
     }

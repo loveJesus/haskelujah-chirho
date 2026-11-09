@@ -701,6 +701,9 @@ impl InferCtxChirho {
         carried_chirho: SubstChirho,
         span_chirho: SpanChirho,
     ) -> Option<(SubstChirho, TyChirho)> {
+        if self.has_non_deferrable_failure_chirho() {
+            return None;
+        }
         if let Some(expected_chirho) = expected_chirho
             && matches!(
                 expected_chirho,
@@ -744,7 +747,7 @@ impl InferCtxChirho {
             );
             let (substitution_chirho, _) = checked_chirho?;
             let substitution_chirho =
-                self.publish_signature_solution_chirho(substitution_chirho, &public_chirho);
+                self.publish_signature_solution_chirho(substitution_chirho, public_chirho);
             return Some((
                 substitution_chirho.clone(),
                 substitution_chirho.apply_ty_chirho(expected_chirho),
@@ -790,20 +793,22 @@ impl InferCtxChirho {
         }
         let result_chirho = look_chirho.apply_chirho(&plan_chirho.result_chirho, budget_chirho)?;
         if let Some(expected_chirho) = expected_chirho
-            && let Ok(seed_chirho) = self.unify_normalized_chirho(
+            && let Ok(mut seed_chirho) = self.unify_normalized_chirho(
                 &substitution_chirho.apply_ty_chirho(&result_chirho),
                 expected_chirho,
                 span_chirho,
             )
         {
-            self.apply_subst_all_chirho(&seed_chirho);
+            if self.apply_subst_all_chirho(&mut seed_chirho).is_err() {
+                return None;
+            };
             substitution_chirho = seed_chirho.compose_chirho(&substitution_chirho);
         }
         for argument_chirho in plan_chirho.arguments_chirho {
             let formal_chirho = substitution_chirho.apply_ty_chirho(
                 &look_chirho.apply_chirho(&argument_chirho.formal_chirho, budget_chirho)?,
             );
-            let (checked_chirho, actual_chirho) =
+            let (mut checked_chirho, actual_chirho) =
                 if let Some(prepared_chirho) = argument_chirho.prepared_chirho {
                     self.finish_application_chirho(
                         *prepared_chirho,
@@ -820,15 +825,19 @@ impl InferCtxChirho {
                         argument_chirho.expression_chirho.span_chirho(),
                     )
                 };
+            if self.apply_subst_all_chirho(&mut checked_chirho).is_err() {
+                return None;
+            };
             substitution_chirho = checked_chirho.compose_chirho(&substitution_chirho);
-            self.apply_subst_all_chirho(&checked_chirho);
             match self.unify_normalized_chirho(
                 &substitution_chirho.apply_ty_chirho(&actual_chirho),
                 &substitution_chirho.apply_ty_chirho(&formal_chirho),
                 argument_chirho.expression_chirho.span_chirho(),
             ) {
-                Ok(checked_chirho) => {
-                    self.apply_subst_all_chirho(&checked_chirho);
+                Ok(mut checked_chirho) => {
+                    if self.apply_subst_all_chirho(&mut checked_chirho).is_err() {
+                        return None;
+                    };
                     substitution_chirho = checked_chirho.compose_chirho(&substitution_chirho);
                 }
                 Err(error_chirho) => self.report_unify_error_chirho(&error_chirho),
@@ -841,8 +850,10 @@ impl InferCtxChirho {
                 &substitution_chirho.apply_ty_chirho(expected_chirho),
                 span_chirho,
             ) {
-                Ok(checked_chirho) => {
-                    self.apply_subst_all_chirho(&checked_chirho);
+                Ok(mut checked_chirho) => {
+                    if self.apply_subst_all_chirho(&mut checked_chirho).is_err() {
+                        return None;
+                    };
                     substitution_chirho = checked_chirho.compose_chirho(&substitution_chirho);
                 }
                 Err(error_chirho) => self.report_unify_error_chirho(&error_chirho),

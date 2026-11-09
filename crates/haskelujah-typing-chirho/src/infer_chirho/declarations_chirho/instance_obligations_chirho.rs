@@ -688,11 +688,12 @@ impl InferCtxChirho {
         if self.ty_mentions_family_chirho(&expected_ty_chirho) {
             return MethodRouteChirho::MainChirho;
         }
-        let (method_subst_chirho, inferred_ty_chirho) = self.infer_matches_against_expected_chirho(
-            matches_chirho,
-            span_chirho,
-            &expected_ty_chirho,
-        );
+        let (mut method_subst_chirho, inferred_ty_chirho) = self
+            .infer_matches_against_expected_chirho(
+                matches_chirho,
+                span_chirho,
+                &expected_ty_chirho,
+            );
         let inferred_norm_chirho =
             self.normalize_ty_chirho(&method_subst_chirho.apply_ty_chirho(&inferred_ty_chirho));
         let expected_norm_chirho =
@@ -702,7 +703,12 @@ impl InferCtxChirho {
             &expected_norm_chirho,
             span_chirho,
         ) {
-            Ok(subsumed_chirho) => self.apply_subst_all_chirho(&subsumed_chirho),
+            Ok(mut subsumed_chirho) => {
+                if self.apply_subst_all_chirho(&mut subsumed_chirho).is_err() {
+                    return MethodRouteChirho::RigidChirho;
+                }
+                method_subst_chirho = subsumed_chirho.compose_chirho(&method_subst_chirho);
+            }
             Err(err_chirho) => self.report_unify_error_chirho(&err_chirho),
         }
         if judged_chirho {
@@ -710,7 +716,8 @@ impl InferCtxChirho {
             // Maybe y`, once `t` is known) was already retried at its
             // equation's end (`infer_matches_chirho`), so the wanted it feeds
             // is judged at its settled type.
-            let _improvement_chirho = self.discharge_deferred_with_current_givens_chirho();
+            let improvement_chirho = self.discharge_deferred_with_current_givens_chirho();
+            method_subst_chirho = improvement_chirho.compose_chirho(&method_subst_chirho);
             self.judge_ground_leftovers_chirho(&method_subst_chirho);
             let _defaults_chirho = self.check_deferred_preds_chirho(&method_subst_chirho);
         }

@@ -56,17 +56,28 @@ impl InferCtxChirho {
             };
             match qual_chirho {
                 StmtChirho::ExprChirho { expr_chirho, .. } => {
-                    let (guard_subst_chirho, guard_ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                    let (mut guard_subst_chirho, guard_ty_chirho) =
+                        self.infer_expr_chirho(expr_chirho);
+                    if self
+                        .apply_subst_all_chirho(&mut guard_subst_chirho)
+                        .is_err()
+                    {
+                        return (SubstChirho::empty_chirho(), Vec::new(), Vec::new());
+                    };
                     subst_chirho = guard_subst_chirho.compose_chirho(&subst_chirho);
-                    self.apply_subst_all_chirho(&guard_subst_chirho);
                     let guard_ty_sub_chirho = subst_chirho.apply_ty_chirho(&guard_ty_chirho);
-                    if let Ok(unify_subst_chirho) = self.unify_normalized_chirho(
+                    if let Ok(mut unify_subst_chirho) = self.unify_normalized_chirho(
                         &guard_ty_sub_chirho,
                         &TyChirho::bool_chirho(),
                         span_chirho,
                     ) {
+                        if self
+                            .apply_subst_all_chirho(&mut unify_subst_chirho)
+                            .is_err()
+                        {
+                            return (SubstChirho::empty_chirho(), Vec::new(), Vec::new());
+                        };
                         subst_chirho = unify_subst_chirho.compose_chirho(&subst_chirho);
-                        self.apply_subst_all_chirho(&unify_subst_chirho);
                     }
                 }
                 StmtChirho::BindChirho {
@@ -74,27 +85,39 @@ impl InferCtxChirho {
                     expr_chirho,
                     ..
                 } => {
-                    let (source_subst_chirho, source_ty_chirho) =
+                    let (mut source_subst_chirho, source_ty_chirho) =
                         self.infer_expr_chirho(expr_chirho);
+                    if self
+                        .apply_subst_all_chirho(&mut source_subst_chirho)
+                        .is_err()
+                    {
+                        return (SubstChirho::empty_chirho(), Vec::new(), Vec::new());
+                    };
                     subst_chirho = source_subst_chirho.compose_chirho(&subst_chirho);
-                    self.apply_subst_all_chirho(&source_subst_chirho);
 
                     let elem_ty_chirho = self.fresh_var_chirho();
                     let list_ty_chirho = TyChirho::ListChirho(Box::new(elem_ty_chirho.clone()));
                     let source_ty_sub_chirho = subst_chirho.apply_ty_chirho(&source_ty_chirho);
-                    if let Ok(unify_subst_chirho) = self.unify_normalized_chirho(
+                    if let Ok(mut unify_subst_chirho) = self.unify_normalized_chirho(
                         &source_ty_sub_chirho,
                         &list_ty_chirho,
                         span_chirho,
                     ) {
+                        if self
+                            .apply_subst_all_chirho(&mut unify_subst_chirho)
+                            .is_err()
+                        {
+                            return (SubstChirho::empty_chirho(), Vec::new(), Vec::new());
+                        };
                         subst_chirho = unify_subst_chirho.compose_chirho(&subst_chirho);
-                        self.apply_subst_all_chirho(&unify_subst_chirho);
                     }
 
                     let bound_ty_chirho = subst_chirho.apply_ty_chirho(&elem_ty_chirho);
-                    let pat_subst_chirho = self.bind_pat_chirho(pat_chirho, &bound_ty_chirho);
+                    let mut pat_subst_chirho = self.bind_pat_chirho(pat_chirho, &bound_ty_chirho);
+                    if self.apply_subst_all_chirho(&mut pat_subst_chirho).is_err() {
+                        return (SubstChirho::empty_chirho(), Vec::new(), Vec::new());
+                    };
                     subst_chirho = pat_subst_chirho.compose_chirho(&subst_chirho);
-                    self.apply_subst_all_chirho(&pat_subst_chirho);
                     for name_chirho in crate::linearity_chirho::pat_bound_names_chirho(pat_chirho) {
                         if seen_names_chirho.insert(name_chirho.clone()) {
                             bound_names_chirho.push(name_chirho);
@@ -235,7 +258,9 @@ impl InferCtxChirho {
                     )
                 },
             );
-            self.apply_subst_all_chirho(&public_chirho);
+            if self.has_non_deferrable_failure_chirho() {
+                return (SubstChirho::empty_chirho(), Vec::new());
+            };
             substitution_chirho = public_chirho.compose_chirho(&substitution_chirho);
             prepared_chirho.push(Some(
                 key_chirho.map(|key_chirho| substitution_chirho.apply_ty_chirho(&key_chirho)),
@@ -257,19 +282,29 @@ impl InferCtxChirho {
         if let (Some(expression_chirho), Some(expected_chirho)) =
             (&transform_chirho.by_chirho, key_chirho)
         {
-            let (key_substitution_chirho, actual_chirho) =
+            let (mut key_substitution_chirho, actual_chirho) =
                 self.infer_expr_chirho(expression_chirho);
+            if self
+                .apply_subst_all_chirho(&mut key_substitution_chirho)
+                .is_err()
+            {
+                return;
+            };
             *substitution_chirho = key_substitution_chirho.compose_chirho(substitution_chirho);
-            self.apply_subst_all_chirho(&key_substitution_chirho);
             match self.unify_normalized_chirho(
                 &substitution_chirho.apply_ty_chirho(expected_chirho),
                 &substitution_chirho.apply_ty_chirho(&actual_chirho),
                 transform_chirho.span_chirho,
             ) {
-                Ok(key_substitution_chirho) => {
+                Ok(mut key_substitution_chirho) => {
+                    if self
+                        .apply_subst_all_chirho(&mut key_substitution_chirho)
+                        .is_err()
+                    {
+                        return;
+                    };
                     *substitution_chirho =
                         key_substitution_chirho.compose_chirho(substitution_chirho);
-                    self.apply_subst_all_chirho(&key_substitution_chirho);
                 }
                 Err(error_chirho) => self.report_unify_error_chirho(&error_chirho),
             }
@@ -399,6 +434,12 @@ impl InferCtxChirho {
 
     /// Infer the type of a right-hand side.
     pub(super) fn infer_rhs_chirho(&mut self, rhs_chirho: &RhsChirho) -> (SubstChirho, TyChirho) {
+        if self.has_non_deferrable_failure_chirho() {
+            return (
+                SubstChirho::empty_chirho(),
+                Self::terminal_commit_type_chirho(),
+            );
+        }
         match rhs_chirho {
             RhsChirho::UnguardedChirho(expr_chirho) => self.infer_expr_chirho(expr_chirho),
             RhsChirho::GuardedChirho(guarded_chirho) => {
@@ -430,6 +471,9 @@ impl InferCtxChirho {
         binds_chirho: &[haskelujah_ast_chirho::expr_chirho::LocalBindChirho],
         subst_chirho: &mut SubstChirho,
     ) {
+        if self.has_non_deferrable_failure_chirho() {
+            return;
+        }
         let mut local_sigs_chirho: HashMap<String, haskelujah_ast_chirho::ty_chirho::TypeChirho> =
             HashMap::new();
         for bind_chirho in binds_chirho {
@@ -533,7 +577,7 @@ impl InferCtxChirho {
                 );
                 equality_owners_chirho.push(equality_owner_chirho);
 
-                let (fun_subst_chirho, inferred_ty_chirho) =
+                let (mut fun_subst_chirho, inferred_ty_chirho) =
                     if let Some(sig_ast_chirho) = local_sigs_chirho.get(&name_str_chirho) {
                         let (sig_scheme_chirho, sig_var_map_chirho) =
                             self.ast_type_to_scheme_with_var_map_chirho(sig_ast_chirho);
@@ -560,20 +604,27 @@ impl InferCtxChirho {
                             span_chirho,
                         )
                     };
+                if self.apply_subst_all_chirho(&mut fun_subst_chirho).is_err() {
+                    return;
+                };
                 *subst_chirho = fun_subst_chirho.compose_chirho(subst_chirho);
-                self.apply_subst_all_chirho(&fun_subst_chirho);
 
                 let pre_ty_sub_chirho =
                     subst_chirho.apply_ty_chirho(&fun_pre_tys_chirho[fun_index_chirho]);
                 if !local_sigs_chirho.contains_key(&name_str_chirho)
-                    && let Ok(unify_subst_chirho) = self.unify_normalized_chirho(
+                    && let Ok(mut unify_subst_chirho) = self.unify_normalized_chirho(
                         &pre_ty_sub_chirho,
                         &inferred_ty_chirho,
                         span_chirho,
                     )
                 {
+                    if self
+                        .apply_subst_all_chirho(&mut unify_subst_chirho)
+                        .is_err()
+                    {
+                        return;
+                    };
                     *subst_chirho = unify_subst_chirho.compose_chirho(subst_chirho);
-                    self.apply_subst_all_chirho(&unify_subst_chirho);
                 }
 
                 group_inferred_chirho.push((name_str_chirho, inferred_ty_chirho, span_chirho));
@@ -620,9 +671,11 @@ impl InferCtxChirho {
                         &sig_ty_chirho,
                         span_chirho,
                     ) {
-                        Ok(sig_subst_chirho) => {
+                        Ok(mut sig_subst_chirho) => {
+                            if self.apply_subst_all_chirho(&mut sig_subst_chirho).is_err() {
+                                return;
+                            };
                             *subst_chirho = sig_subst_chirho.compose_chirho(subst_chirho);
-                            self.apply_subst_all_chirho(&sig_subst_chirho);
                             binding_scheme_chirho = Some(sig_scheme_chirho);
                         }
                         Err(err_chirho) => {
@@ -633,8 +686,9 @@ impl InferCtxChirho {
 
                 self.env_chirho.remove_chirho(&name_str_chirho);
                 let inferred_sub_chirho = subst_chirho.apply_ty_chirho(&inferred_ty_chirho);
-                let generalized_chirho = binding_scheme_chirho
-                    .unwrap_or_else(|| self.generalize_local_chirho(&inferred_sub_chirho));
+                let generalized_chirho = binding_scheme_chirho.unwrap_or_else(|| {
+                    self.generalize_local_chirho(&inferred_sub_chirho, subst_chirho)
+                });
                 self.local_generalized_vars_chirho
                     .extend(generalized_chirho.vars_chirho.iter().copied());
                 self.env_chirho
@@ -655,12 +709,17 @@ impl InferCtxChirho {
                     rhs_chirho,
                     ..
                 } => {
-                    let (rhs_subst_chirho, rhs_ty_chirho) = self.infer_rhs_chirho(rhs_chirho);
+                    let (mut rhs_subst_chirho, rhs_ty_chirho) = self.infer_rhs_chirho(rhs_chirho);
+                    if self.apply_subst_all_chirho(&mut rhs_subst_chirho).is_err() {
+                        return;
+                    };
                     *subst_chirho = rhs_subst_chirho.compose_chirho(subst_chirho);
-                    self.apply_subst_all_chirho(&rhs_subst_chirho);
-                    let pat_subst_chirho = self.bind_binding_pat_chirho(pat_chirho, &rhs_ty_chirho);
+                    let mut pat_subst_chirho =
+                        self.bind_binding_pat_chirho(pat_chirho, &rhs_ty_chirho);
+                    if self.apply_subst_all_chirho(&mut pat_subst_chirho).is_err() {
+                        return;
+                    };
                     *subst_chirho = pat_subst_chirho.compose_chirho(subst_chirho);
-                    self.apply_subst_all_chirho(&pat_subst_chirho);
                 }
                 haskelujah_ast_chirho::expr_chirho::LocalBindChirho::FunBindChirho { .. }
                 | haskelujah_ast_chirho::expr_chirho::LocalBindChirho::TypeSigChirho { .. } => {}

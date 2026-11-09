@@ -330,7 +330,9 @@ fn an_existential_cannot_escape_through_an_older_function_parameter_meta_chirho(
         outer_chirho,
         TyChirho::fun_chirho(fields_chirho[0].clone(), TyChirho::int_chirho()),
     );
-    ctx_chirho.apply_subst_all_chirho(&substitution_chirho);
+    ctx_chirho
+        .apply_subst_all_chirho(&mut substitution_chirho)
+        .expect("checked substitution commit");
     ctx_chirho.end_pattern_implication_chirho(
         frame_chirho,
         &TyChirho::int_chirho(),
@@ -433,7 +435,9 @@ fn an_existential_eliminated_by_local_evidence_is_materialized_before_pop_chirho
         outer_chirho,
         TyChirho::ListChirho(Box::new(fields_chirho[0].clone())),
     );
-    ctx_chirho.apply_subst_all_chirho(&substitution_chirho);
+    ctx_chirho
+        .apply_subst_all_chirho(&mut substitution_chirho)
+        .expect("checked substitution commit");
     ctx_chirho.install_pattern_givens_chirho(vec![PredChirho::legacy_chirho(
         crate::class_chirho::PredPartsChirho {
             kind_tys_chirho: Vec::new(),

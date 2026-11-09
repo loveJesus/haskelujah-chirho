@@ -98,6 +98,9 @@ impl InferCtxChirho {
         if remaining_chirho == 0 {
             return;
         }
+        if self.has_non_deferrable_failure_chirho() {
+            return;
+        }
         if depth_chirho >= 128 || budget_chirho.work_chirho(1).is_none() {
             self.type_normalization_exhausted_chirho.set(true);
             return;
@@ -186,6 +189,9 @@ impl InferCtxChirho {
             site_chirho.span_chirho,
             site_chirho.parameter_scope_chirho,
             |context_chirho, opened_chirho, parameter_scope_chirho| {
+                if context_chirho.has_non_deferrable_failure_chirho() {
+                    return SubstChirho::empty_chirho();
+                }
                 if site_chirho.parameter_scope_chirho.is_some() && parameter_scope_chirho.is_none()
                 {
                     return SubstChirho::empty_chirho();
@@ -213,6 +219,9 @@ impl InferCtxChirho {
     ) -> SubstChirho {
         let where_chirho = site_chirho.where_chirho;
         let span_chirho = site_chirho.span_chirho;
+        if self.has_non_deferrable_failure_chirho() {
+            return SubstChirho::empty_chirho();
+        }
         if depth_chirho >= 128 || budget_chirho.work_chirho(1).is_none() {
             self.type_normalization_exhausted_chirho.set(true);
             return SubstChirho::empty_chirho();
@@ -244,7 +253,7 @@ impl InferCtxChirho {
                     };
                     context_chirho.ordered_pattern_cursor_chirho(patterns_chirho, site_chirho, opened_chirho, body_chirho, budget_chirho, depth_chirho + 1)
                 });
-                self.publish_signature_solution_chirho(checked_chirho, &public_chirho)
+                self.publish_signature_solution_chirho(checked_chirho, public_chirho)
             }
             TyChirho::QualChirho {
                 context_chirho,
@@ -374,13 +383,21 @@ impl InferCtxChirho {
                     context_chirho.restore_type_pattern_aliases_chirho(mark_chirho);
                     result_chirho
                 });
-                self.publish_signature_solution_chirho(checked_chirho, &public_chirho)
+                self.publish_signature_solution_chirho(checked_chirho, public_chirho)
             }
             TyChirho::FunChirho(parameter_chirho, next_chirho, _) => {
                 self.env_chirho.push_scope_chirho();
-                let frame_chirho = self.begin_pattern_implication_chirho();
-                let first_chirho = self.bind_pat_chirho(&patterns_chirho[0], &parameter_chirho);
-                self.apply_subst_all_chirho(&first_chirho);
+                let frame_chirho = self.begin_pattern_implication_with_roots_chirho(
+                    [parameter_chirho.as_ref(), next_chirho.as_ref()],
+                    span_chirho,
+                );
+                if self.has_non_deferrable_failure_chirho() {
+                    return SubstChirho::empty_chirho();
+                }
+                let mut first_chirho = self.bind_pat_chirho(&patterns_chirho[0], &parameter_chirho);
+                if self.apply_subst_all_chirho(&mut first_chirho).is_err() {
+                    return SubstChirho::empty_chirho();
+                };
                 let next_chirho = first_chirho.apply_scheme_term_bounded_chirho(
                     &next_chirho,
                     &mut self.elaboration_state_chirho.next_variable_chirho,
@@ -412,7 +429,7 @@ impl InferCtxChirho {
                     result_chirho = child_chirho.compose_chirho(&result_chirho);
                     let exit_chirho = exit_chirho.unwrap_or_else(|| {
                         self.type_normalization_exhausted_chirho.set(true);
-                        self.fresh_var_chirho()
+                        Self::terminal_commit_type_chirho()
                     });
                     let solution_chirho = self.end_pattern_implication_chirho(
                         frame_chirho,
@@ -422,7 +439,7 @@ impl InferCtxChirho {
                     result_chirho = solution_chirho.compose_chirho(&result_chirho);
                 } else {
                     self.type_normalization_exhausted_chirho.set(true);
-                    let result_ty_chirho = self.fresh_var_chirho();
+                    let result_ty_chirho = Self::terminal_commit_type_chirho();
                     let solution_chirho = self.end_pattern_implication_chirho(
                         frame_chirho,
                         &result_ty_chirho,

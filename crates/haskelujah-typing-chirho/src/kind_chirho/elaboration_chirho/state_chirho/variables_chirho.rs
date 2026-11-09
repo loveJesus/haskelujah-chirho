@@ -62,30 +62,280 @@ impl std::ops::DerefMut for ElaborationVariableChirho {
     }
 }
 
+/// One implication's consumed pre-entry capture. Its records are never a
+/// persistent catalogue or a source of new variable-binding authority.
+#[derive(Debug)]
+pub(crate) struct CapturedVariableKindsChirho {
+    owner_chirho: Option<
+        haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ElaborationOwnerChirho,
+    >,
+    records_chirho: HashMap<TyVarChirho, Option<ElaborationVariableChirho>>,
+    outer_capture_chirho: bool,
+    prepared_chirho: Option<PreparedVariableKindsChirho>,
+}
+
+#[derive(Debug)]
+struct PreparedVariableKindsChirho {
+    records_chirho: Option<HashMap<TyVarChirho, ElaborationVariableChirho>>,
+    effective_chirho: Option<SubstChirho>,
+    next_variable_chirho: u32,
+}
+
+impl CapturedVariableKindsChirho {
+    pub(crate) fn effective_chirho(&self) -> Option<&SubstChirho> {
+        self.prepared_chirho
+            .as_ref()
+            .and_then(|prepared_chirho| prepared_chirho.effective_chirho.as_ref())
+    }
+
+    pub(crate) fn contains_pre_entry_chirho(&self, variable_chirho: TyVarChirho) -> bool {
+        self.records_chirho.contains_key(&variable_chirho)
+    }
+
+    pub(crate) fn prepared_kind_chirho(&self, variable_chirho: TyVarChirho) -> Option<&TyChirho> {
+        match self
+            .prepared_chirho
+            .as_ref()
+            .and_then(|prepared_chirho| prepared_chirho.records_chirho.as_ref())
+        {
+            Some(records_chirho) => records_chirho
+                .get(&variable_chirho)
+                .and_then(|record_chirho| record_chirho.kind_chirho.as_deref()),
+            None => self
+                .records_chirho
+                .get(&variable_chirho)
+                .and_then(Option::as_ref)
+                .and_then(|record_chirho| record_chirho.kind_chirho.as_deref()),
+        }
+    }
+
+    pub(crate) fn kinds_chirho(&self) -> impl Iterator<Item = (TyVarChirho, Option<&TyChirho>)> {
+        self.records_chirho
+            .iter()
+            .map(|(variable_chirho, record_chirho)| {
+                (
+                    *variable_chirho,
+                    record_chirho
+                        .as_ref()
+                        .and_then(|record_chirho| record_chirho.kind_chirho.as_deref()),
+                )
+            })
+    }
+}
+
+impl ElaborationVariableBindingChirho {
+    fn meet_chirho(self, other_chirho: Self) -> Self {
+        use ElaborationVariableBindingChirho::{MetaChirho, UniversalChirho, UnknownChirho};
+        match (self, other_chirho) {
+            (UniversalChirho, _) | (_, UniversalChirho) => UniversalChirho,
+            (MetaChirho, MetaChirho) => MetaChirho,
+            _ => UnknownChirho,
+        }
+    }
+}
+
+fn capture_charge_chirho(
+    budget_chirho: &mut crate::infer_chirho::EqualityBudgetChirho,
+    work_chirho: usize,
+    output_chirho: usize,
+) -> Option<()> {
+    budget_chirho.node_chirho(output_chirho)?;
+    budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+}
+
 impl ElaborationStateChirho {
-    /// Follow only an ordinary, committed inference substitution. The existing
-    /// table is staged under this owner's remaining allowance. Exhaustion
-    /// publishes no records; an unclosed kind equation retains unknown image
-    /// metadata and publishes no partial solution. Extra closed kind equations
-    /// return in the effective substitution for the ordinary commit path.
-    /// workflow: type-identity-chirho/committed-meta-kinds-chirho
+    /// Capture only actual outer roots and their checked kind dependencies,
+    /// before local evidence can erase an edge. Absence and roles are retained.
+    /// Cleanup storage/work is owned here, before entering the implication.
+    pub(crate) fn capture_variable_kinds_chirho(
+        &mut self,
+        roots_chirho: &[TyVarChirho],
+        pre_committed_chirho: &SubstChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<CapturedVariableKindsChirho, ElaborationErrorChirho> {
+        let mut budget_chirho = self.lend_equality_budget_chirho(span_chirho)?;
+        let initial_chirho = budget_chirho.remaining_chirho();
+        let captured_chirho = (|| {
+            capture_charge_chirho(&mut budget_chirho, roots_chirho.len(), roots_chirho.len())?;
+            let mut pending_chirho = roots_chirho.to_vec();
+            let mut records_chirho = HashMap::new();
+            while let Some(variable_chirho) = pending_chirho.pop() {
+                capture_charge_chirho(&mut budget_chirho, 1, 0)?;
+                if records_chirho.contains_key(&variable_chirho) {
+                    continue;
+                }
+                capture_charge_chirho(&mut budget_chirho, 3, 1)?;
+                let mut record_chirho = self.variable_kinds_chirho.get(&variable_chirho).cloned();
+                if let Some(record_chirho) = &mut record_chirho {
+                    if let Some(kind_chirho) = &record_chirho.kind_chirho {
+                        let kind_chirho = self.substitution_chirho.resolve_owned_bounded_chirho(
+                            kind_chirho,
+                            &mut |work_chirho, output_chirho| {
+                                capture_charge_chirho(
+                                    &mut budget_chirho,
+                                    work_chirho,
+                                    output_chirho,
+                                )
+                            },
+                        )?;
+                        let kind_chirho = pre_committed_chirho.resolve_owned_bounded_chirho(
+                            &kind_chirho,
+                            &mut |work_chirho, output_chirho| {
+                                capture_charge_chirho(
+                                    &mut budget_chirho,
+                                    work_chirho,
+                                    output_chirho,
+                                )
+                            },
+                        )?;
+                        let dependencies_chirho = SubstChirho::free_variables_bounded_chirho(
+                            &kind_chirho,
+                            &mut |work_chirho, output_chirho| {
+                                capture_charge_chirho(
+                                    &mut budget_chirho,
+                                    work_chirho,
+                                    output_chirho,
+                                )
+                            },
+                        )?;
+                        capture_charge_chirho(
+                            &mut budget_chirho,
+                            dependencies_chirho.len(),
+                            dependencies_chirho.len(),
+                        )?;
+                        pending_chirho.extend(dependencies_chirho);
+                        record_chirho.kind_chirho = Some(Arc::new(kind_chirho));
+                    }
+                }
+                records_chirho.insert(variable_chirho, record_chirho);
+            }
+            // Reserve cleanup work now. Restoration moves owned records into
+            // entries that existed at capture; it allocates no replacement map.
+            capture_charge_chirho(&mut budget_chirho, records_chirho.len().checked_mul(2)?, 0)?;
+            Some(CapturedVariableKindsChirho {
+                owner_chirho: self.owner_chirho,
+                records_chirho,
+                outer_capture_chirho: true,
+                prepared_chirho: None,
+            })
+        })();
+        self.settle_equality_budget_chirho(
+            initial_chirho,
+            &budget_chirho,
+            captured_chirho.is_none(),
+            span_chirho,
+        )?;
+        Ok(captured_chirho.expect("settled complete kind capture"))
+    }
+
+    fn check_capture_owner_chirho(
+        &self,
+        captured_chirho: &CapturedVariableKindsChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        if self.owner_chirho != captured_chirho.owner_chirho
+            || captured_chirho
+                .records_chirho
+                .iter()
+                .any(|(variable_chirho, record_chirho)| {
+                    record_chirho.is_some()
+                        && !self.variable_kinds_chirho.contains_key(variable_chirho)
+                })
+        {
+            return Err(ElaborationErrorChirho {
+                mismatch_chirho: None,
+                message_chirho:
+                    "captured variable kinds lost their solver owner or existing record".into(),
+                span_chirho,
+            });
+        }
+        Ok(())
+    }
+
+    /// Consumed failure cleanup uses already-owned records and prepaid work.
+    /// No local role poisoning or erased private kind image survives the exit.
+    pub(crate) fn restore_variable_kinds_chirho(
+        &mut self,
+        captured_chirho: CapturedVariableKindsChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
+        self.check_capture_owner_chirho(&captured_chirho, span_chirho)?;
+        for (variable_chirho, record_chirho) in captured_chirho.records_chirho {
+            match record_chirho {
+                Some(record_chirho) => {
+                    *self
+                        .variable_kinds_chirho
+                        .get_mut(&variable_chirho)
+                        .expect("preflighted captured entry") = record_chirho
+                }
+                None => {
+                    self.variable_kinds_chirho.remove(&variable_chirho);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Direct state controls use the same preparation and one publication.
+    #[cfg(test)]
     pub(crate) fn follow_committed_variable_kinds_chirho(
         &mut self,
         committed_chirho: &SubstChirho,
         catalogue_chirho: &TypeFamilyEnvChirho,
         span_chirho: SpanChirho,
     ) -> Result<Option<SubstChirho>, ElaborationErrorChirho> {
-        self.charge_chirho(0, 0, span_chirho)?;
-        let Some(owner_chirho) = self.owner_chirho else {
-            return Ok(None);
-        };
-        if committed_chirho.is_empty_chirho() {
-            return Ok(None);
-        }
+        let prepared_chirho = self.prepare_committed_variable_kinds_chirho(
+            committed_chirho,
+            catalogue_chirho,
+            None,
+            span_chirho,
+        )?;
+        self.publish_committed_variable_kinds_chirho(prepared_chirho, span_chirho)
+    }
 
-        // Borrow, never reset, the original owner's remaining allowance. A
-        // complete table traversal is admitted before it allocates a staging
-        // table, and every copied term is separately charged before traversal.
+    /// All fallible transport work precedes publication. A projection's actual
+    /// capture overrides only its outer keys in the single existing scratch map.
+    pub(crate) fn prepare_committed_variable_kinds_chirho(
+        &mut self,
+        committed_chirho: &SubstChirho,
+        catalogue_chirho: &TypeFamilyEnvChirho,
+        captured_chirho: Option<CapturedVariableKindsChirho>,
+        span_chirho: SpanChirho,
+    ) -> Result<CapturedVariableKindsChirho, ElaborationErrorChirho> {
+        let mut captured_chirho = captured_chirho.unwrap_or_else(|| CapturedVariableKindsChirho {
+            owner_chirho: self.owner_chirho,
+            records_chirho: HashMap::new(),
+            outer_capture_chirho: false,
+            prepared_chirho: None,
+        });
+        self.check_capture_owner_chirho(&captured_chirho, span_chirho)?;
+        if captured_chirho.prepared_chirho.is_some() {
+            return Err(ElaborationErrorChirho {
+                mismatch_chirho: None,
+                message_chirho: "variable-kind commit plan was already prepared".into(),
+                span_chirho,
+            });
+        }
+        if let Err(error_chirho) = self.charge_chirho(0, 0, span_chirho) {
+            self.restore_variable_kinds_chirho(captured_chirho, span_chirho)?;
+            return Err(error_chirho);
+        }
+        let Some(owner_chirho) = self.owner_chirho else {
+            captured_chirho.prepared_chirho = Some(PreparedVariableKindsChirho {
+                records_chirho: None,
+                effective_chirho: None,
+                next_variable_chirho: self.next_variable_chirho,
+            });
+            return Ok(captured_chirho);
+        };
+        if committed_chirho.is_empty_chirho() && !captured_chirho.outer_capture_chirho {
+            captured_chirho.prepared_chirho = Some(PreparedVariableKindsChirho {
+                records_chirho: None,
+                effective_chirho: None,
+                next_variable_chirho: self.next_variable_chirho,
+            });
+            return Ok(captured_chirho);
+        }
         let initial_chirho = (self.work_left_chirho, self.output_left_chirho);
         let mut remaining_chirho = initial_chirho;
         let staged_chirho = stage_committed_records_chirho(
@@ -94,6 +344,9 @@ impl ElaborationStateChirho {
             committed_chirho,
             catalogue_chirho,
             owner_chirho,
+            captured_chirho
+                .outer_capture_chirho
+                .then_some(&captured_chirho),
             &mut |work_chirho, output_chirho| {
                 let next_chirho = remaining_chirho
                     .0
@@ -103,22 +356,63 @@ impl ElaborationStateChirho {
                 Some(())
             },
         );
-        self.charge_chirho(
+        if let Err(error_chirho) = self.charge_chirho(
             initial_chirho.0 - remaining_chirho.0,
             initial_chirho.1 - remaining_chirho.1,
             span_chirho,
-        )?;
+        ) {
+            self.restore_variable_kinds_chirho(captured_chirho, span_chirho)?;
+            return Err(error_chirho);
+        }
         let (records_chirho, effective_chirho) = match staged_chirho {
             Ok(staged_chirho) => staged_chirho,
             Err(CommittedKindFailureChirho::ResourceChirho) => {
+                self.restore_variable_kinds_chirho(captured_chirho, span_chirho)?;
                 return Err(self.resource_failure_chirho(
                     "committed variable-kind transport bound exhausted",
                     span_chirho,
                 ));
             }
         };
-        self.variable_kinds_chirho = records_chirho;
-        Ok(effective_chirho)
+        captured_chirho.prepared_chirho = Some(PreparedVariableKindsChirho {
+            records_chirho: Some(records_chirho),
+            effective_chirho,
+            next_variable_chirho: self.next_variable_chirho,
+        });
+        Ok(captured_chirho)
+    }
+
+    /// An inspected complete plan is consumed once. No new work, allocation,
+    /// fresh variable or equation is introduced at this publication boundary.
+    pub(crate) fn publish_committed_variable_kinds_chirho(
+        &mut self,
+        mut prepared_chirho: CapturedVariableKindsChirho,
+        span_chirho: SpanChirho,
+    ) -> Result<Option<SubstChirho>, ElaborationErrorChirho> {
+        self.check_capture_owner_chirho(&prepared_chirho, span_chirho)?;
+        let Some(plan_chirho) = prepared_chirho.prepared_chirho.take() else {
+            return Err(ElaborationErrorChirho {
+                mismatch_chirho: None,
+                message_chirho: "variable-kind commit plan was not prepared".into(),
+                span_chirho,
+            });
+        };
+        if self.next_variable_chirho != plan_chirho.next_variable_chirho {
+            self.restore_variable_kinds_chirho(prepared_chirho, span_chirho)?;
+            return Err(ElaborationErrorChirho {
+                mismatch_chirho: None,
+                message_chirho: "variable-kind commit plan lost its saved supply".into(),
+                span_chirho,
+            });
+        }
+        match plan_chirho.records_chirho {
+            Some(records_chirho) => self.variable_kinds_chirho = records_chirho,
+            None if prepared_chirho.outer_capture_chirho => {
+                self.restore_variable_kinds_chirho(prepared_chirho, span_chirho)?
+            }
+            None => {}
+        }
+        Ok(plan_chirho.effective_chirho)
     }
 
     pub(crate) fn variable_binding_chirho(
@@ -175,16 +469,10 @@ impl ElaborationStateChirho {
         target_chirho: TyVarChirho,
         span_chirho: SpanChirho,
     ) -> Result<(), ElaborationErrorChirho> {
-        use ElaborationVariableBindingChirho::{MetaChirho, UniversalChirho, UnknownChirho};
         let target_binding_chirho = self.variable_binding_chirho(target_chirho);
-        let binding_chirho = match (
-            self.variable_binding_chirho(source_chirho),
-            target_binding_chirho,
-        ) {
-            (UniversalChirho, _) | (_, UniversalChirho) => UniversalChirho,
-            (MetaChirho, MetaChirho) => MetaChirho,
-            _ => UnknownChirho,
-        };
+        let binding_chirho = self
+            .variable_binding_chirho(source_chirho)
+            .meet_chirho(target_binding_chirho);
         if binding_chirho != target_binding_chirho {
             self.charge_chirho(
                 1,
@@ -212,6 +500,7 @@ fn stage_committed_records_chirho(
     committed_chirho: &SubstChirho,
     catalogue_chirho: &TypeFamilyEnvChirho,
     owner_chirho: haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ElaborationOwnerChirho,
+    captured_chirho: Option<&CapturedVariableKindsChirho>,
     charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
 ) -> Result<
     (
@@ -225,11 +514,31 @@ fn stage_committed_records_chirho(
 
     charge_chirho(original_chirho.len(), original_chirho.len()).ok_or(ResourceChirho)?;
     let mut records_chirho = original_chirho.clone();
+    if let Some(captured_chirho) = captured_chirho {
+        charge_chirho(captured_chirho.records_chirho.len(), 0).ok_or(ResourceChirho)?;
+        for (variable_chirho, record_chirho) in &captured_chirho.records_chirho {
+            match record_chirho {
+                Some(record_chirho) => {
+                    records_chirho.insert(*variable_chirho, record_chirho.clone());
+                }
+                None => {
+                    records_chirho.remove(variable_chirho);
+                }
+            }
+        }
+    }
     // The adopted declaration state still owns its earlier checked kind
     // links. Read them before the new term commit; do not copy ordinary term
     // equations back into that separately scoped declaration substitution.
-    for record_chirho in records_chirho.values_mut() {
+    for (variable_chirho, record_chirho) in &mut records_chirho {
         charge_chirho(1, 0).ok_or(ResourceChirho)?;
+        // Captured kinds were closed under the PRE-entry links. Re-reading
+        // declaration links written inside this implication would erase that boundary.
+        if captured_chirho.is_some_and(|captured_chirho| {
+            captured_chirho.records_chirho.contains_key(variable_chirho)
+        }) {
+            continue;
+        }
         if let Some(kind_chirho) = &record_chirho.kind_chirho {
             record_chirho.kind_chirho = Some(Arc::new(
                 checked_links_chirho
@@ -273,17 +582,19 @@ fn stage_committed_records_chirho(
         if *variable_chirho == target_chirho {
             continue;
         }
-        let source_binding_chirho = original_chirho
-            .get(variable_chirho)
-            .map_or(UnknownChirho, |record_chirho| record_chirho.binding_chirho);
+        let source_binding_chirho = match captured_chirho
+            .and_then(|captured_chirho| captured_chirho.records_chirho.get(variable_chirho))
+        {
+            Some(Some(record_chirho)) => record_chirho.binding_chirho,
+            Some(None) => UnknownChirho,
+            None => original_chirho
+                .get(variable_chirho)
+                .map_or(UnknownChirho, |record_chirho| record_chirho.binding_chirho),
+        };
         let target_binding_chirho = records_chirho
             .get(&target_chirho)
             .map_or(UnknownChirho, |record_chirho| record_chirho.binding_chirho);
-        let binding_chirho = match (source_binding_chirho, target_binding_chirho) {
-            (UniversalChirho, _) | (_, UniversalChirho) => UniversalChirho,
-            (MetaChirho, MetaChirho) => MetaChirho,
-            _ => UnknownChirho,
-        };
+        let binding_chirho = source_binding_chirho.meet_chirho(target_binding_chirho);
         if let Some(record_chirho) = records_chirho.get_mut(&target_chirho) {
             record_chirho.binding_chirho = binding_chirho;
         } else if binding_chirho == UniversalChirho {

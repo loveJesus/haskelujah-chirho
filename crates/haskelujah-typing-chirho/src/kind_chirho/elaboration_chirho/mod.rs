@@ -24,6 +24,7 @@ pub(crate) use value_applications_chirho::{
     elaborate_value_parameters_chirho, normalize_value_parameter_equalities_chirho,
 };
 mod values_chirho;
+pub(crate) use state_chirho::CapturedVariableKindsChirho;
 pub use state_chirho::{
     ElaborationErrorChirho, ElaborationStateChirho, ElaborationVariableBindingChirho,
     ElaborationVariableChirho,

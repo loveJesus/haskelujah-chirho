@@ -96,8 +96,10 @@ impl InferCtxChirho {
             self.record_constructor_bundle_by_name_chirho(&con_name_chirho, span_chirho)?;
         let mut subst_chirho =
             match self.unify_normalized_chirho(&result_in_chirho, base_ty_chirho, span_chirho) {
-                Ok(s_chirho) => {
-                    self.apply_subst_all_chirho(&s_chirho);
+                Ok(mut s_chirho) => {
+                    if self.apply_subst_all_chirho(&mut s_chirho).is_err() {
+                        return None;
+                    };
                     s_chirho
                 }
                 Err(err_chirho) => {
@@ -113,14 +115,19 @@ impl InferCtxChirho {
             });
             let unify_result_chirho = match assigned_chirho {
                 Some(field_chirho) => {
-                    let (value_subst_chirho, value_ty_chirho) = self
+                    let (mut value_subst_chirho, value_ty_chirho) = self
                         .infer_expr_against_expected_chirho(
                             &field_chirho.value_chirho,
                             &out_ty_chirho,
                             field_chirho.span_chirho,
                         );
+                    if self
+                        .apply_subst_all_chirho(&mut value_subst_chirho)
+                        .is_err()
+                    {
+                        return None;
+                    };
                     subst_chirho = value_subst_chirho.compose_chirho(&subst_chirho);
-                    self.apply_subst_all_chirho(&value_subst_chirho);
                     let out_ty_chirho = subst_chirho.apply_ty_chirho(&out_ty_chirho);
                     let value_ty_chirho = subst_chirho.apply_ty_chirho(&value_ty_chirho);
                     self.unify_normalized_chirho(
@@ -135,8 +142,10 @@ impl InferCtxChirho {
                 }
             };
             match unify_result_chirho {
-                Ok(s_chirho) => {
-                    self.apply_subst_all_chirho(&s_chirho);
+                Ok(mut s_chirho) => {
+                    if self.apply_subst_all_chirho(&mut s_chirho).is_err() {
+                        return None;
+                    };
                     subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                 }
                 Err(err_chirho) => self.report_unify_error_chirho(&err_chirho),

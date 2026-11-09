@@ -770,7 +770,7 @@ impl InferCtxChirho {
                 .push_chirho(error_chirho.into_diagnostic_chirho());
             return SubstChirho::empty_chirho();
         }
-        let Ok(Some((substitution_chirho, closed_chirho))) = result_chirho else {
+        let Ok(Some((mut substitution_chirho, closed_chirho))) = result_chirho else {
             return SubstChirho::empty_chirho();
         };
         if solver_chirho
@@ -787,9 +787,13 @@ impl InferCtxChirho {
             return SubstChirho::empty_chirho();
         }
         if !substitution_chirho.is_empty_chirho() {
-            solver_chirho
+            if solver_chirho
                 .context_chirho
-                .apply_subst_all_chirho(&substitution_chirho);
+                .apply_subst_all_chirho(&mut substitution_chirho)
+                .is_err()
+            {
+                return SubstChirho::empty_chirho();
+            }
         }
         let mut index_chirho = 0usize;
         solver_chirho

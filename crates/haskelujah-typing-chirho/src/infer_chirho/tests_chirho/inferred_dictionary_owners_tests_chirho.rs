@@ -162,7 +162,9 @@ fn substituted_owners_intersect_and_concrete_targets_disappear_chirho() {
     ctx_chirho.record_inferred_dictionary_owners_chirho(&num_scheme_chirho(right_chirho, true));
     let mut subst_chirho = SubstChirho::empty_chirho();
     subst_chirho.insert_chirho(left_chirho, TyChirho::VarChirho(right_chirho));
-    ctx_chirho.apply_subst_all_chirho(&subst_chirho);
+    ctx_chirho
+        .apply_subst_all_chirho(&mut subst_chirho)
+        .expect("checked substitution commit");
     assert_eq!(ctx_chirho.inferred_dictionary_owners_chirho.len(), 1);
     assert!(ctx_chirho.inferred_dictionary_owners_chirho[&right_chirho].is_empty());
     assert_eq!(
@@ -175,7 +177,9 @@ fn substituted_owners_intersect_and_concrete_targets_disappear_chirho() {
         None
     );
     subst_chirho.insert_chirho(right_chirho, TyChirho::ConChirho("Int".to_string()));
-    ctx_chirho.apply_subst_all_chirho(&subst_chirho);
+    ctx_chirho
+        .apply_subst_all_chirho(&mut subst_chirho)
+        .expect("checked substitution commit");
     assert!(ctx_chirho.inferred_dictionary_owners_chirho.is_empty());
 }
 

@@ -38,6 +38,9 @@ impl InferCtxChirho {
     /// recovery and unknown imports keep fresh_var_chirho's unsorted behavior.
     /// workflow: type-identity-chirho/committed-meta-kinds-chirho
     pub(super) fn fresh_value_meta_chirho(&mut self, span_chirho: SpanChirho) -> TyChirho {
+        if self.has_non_deferrable_failure_chirho() {
+            return Self::terminal_commit_type_chirho();
+        }
         if self.elaboration_state_chirho.owner_chirho.is_none() {
             return self.fresh_var_chirho();
         }
@@ -52,7 +55,7 @@ impl InferCtxChirho {
             Ok(variable_chirho) => TyChirho::VarChirho(variable_chirho),
             Err(error_chirho) => {
                 self.record_body_kind_error_chirho(error_chirho);
-                self.fresh_var_chirho()
+                Self::terminal_commit_type_chirho()
             }
         }
     }
@@ -66,6 +69,9 @@ impl InferCtxChirho {
     /// for an unknown type variable or a lookup by the written name of a type.
     /// workflow: type-identity-chirho/committed-meta-kinds-chirho
     pub(super) fn fresh_list_element_meta_chirho(&mut self, span_chirho: SpanChirho) -> TyChirho {
+        if self.has_non_deferrable_failure_chirho() {
+            return Self::terminal_commit_type_chirho();
+        }
         if self.elaboration_state_chirho.owner_chirho.is_none() {
             return self.fresh_var_chirho();
         }
@@ -76,7 +82,7 @@ impl InferCtxChirho {
             Ok(variable_chirho) => TyChirho::VarChirho(variable_chirho),
             Err(error_chirho) => {
                 self.record_body_kind_error_chirho(error_chirho);
-                self.fresh_var_chirho()
+                Self::terminal_commit_type_chirho()
             }
         }
     }
@@ -85,6 +91,9 @@ impl InferCtxChirho {
         &mut self,
         scheme_chirho: &SchemeChirho,
     ) -> (TyChirho, Vec<PredChirho>) {
+        if self.has_non_deferrable_failure_chirho() {
+            return (Self::terminal_commit_type_chirho(), Vec::new());
+        }
         let mut subst_chirho = SubstChirho::empty_chirho();
         let mut budget_chirho =
             super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
@@ -95,7 +104,7 @@ impl InferCtxChirho {
                 &mut budget_chirho,
             ) else {
                 self.type_normalization_exhausted_chirho.set(true);
-                return (self.fresh_var_chirho(), Vec::new());
+                return (Self::terminal_commit_type_chirho(), Vec::new());
             };
             let v_chirho = &record_chirho.variable_chirho;
             let fresh_chirho = self.fresh_var_chirho();
@@ -175,9 +184,11 @@ impl InferCtxChirho {
                         actual_chirho,
                         span_chirho,
                     ) {
-                        Ok(solution_chirho) => {
+                        Ok(mut solution_chirho) => {
+                            if self.apply_subst_all_chirho(&mut solution_chirho).is_err() {
+                                return None;
+                            };
                             prefix_chirho = solution_chirho.compose_chirho(&prefix_chirho);
-                            self.apply_subst_all_chirho(&solution_chirho);
                         }
                         Err(error_chirho) => {
                             self.report_unify_error_chirho(&error_chirho);
@@ -339,11 +350,17 @@ impl InferCtxChirho {
         )
     }
 
-    pub(super) fn generalize_local_chirho(&mut self, ty_chirho: &TyChirho) -> SchemeChirho {
-        self.generalize_with_io_defaulting_chirho(
+    pub(super) fn generalize_local_chirho(
+        &mut self,
+        ty_chirho: &TyChirho,
+        publication_chirho: &mut SubstChirho,
+    ) -> SchemeChirho {
+        self.generalize_group_member_chirho(
             ty_chirho,
             false,
             GeneralizationScopeChirho::NestedChirho,
+            false,
+            publication_chirho,
         )
     }
 
@@ -353,12 +370,15 @@ impl InferCtxChirho {
         allow_io_defaulting_chirho: bool,
         scope_chirho: GeneralizationScopeChirho,
     ) -> SchemeChirho {
-        self.generalize_group_member_chirho(
+        let mut publication_chirho = SubstChirho::empty_chirho();
+        let scheme_chirho = self.generalize_group_member_chirho(
             ty_chirho,
             allow_io_defaulting_chirho,
             scope_chirho,
             false,
-        )
+            &mut publication_chirho,
+        );
+        publication_chirho.apply_scheme_chirho(&scheme_chirho)
     }
 
     /// Generalize one member of a declaration group. A member of a group the monomorphism
@@ -372,6 +392,7 @@ impl InferCtxChirho {
         allow_io_defaulting_chirho: bool,
         scope_chirho: GeneralizationScopeChirho,
         restricted_chirho: bool,
+        publication_chirho: &mut SubstChirho,
     ) -> SchemeChirho {
         let mut env_fvs_chirho = self.env_chirho.free_vars_chirho();
         for pred_chirho in &self.given_preds_chirho {
@@ -462,21 +483,27 @@ impl InferCtxChirho {
                     SpanChirho::DUMMY_CHIRHO,
                 )
         })();
-        let representation_defaults_chirho = match representation_defaults_chirho {
+        let mut representation_defaults_chirho = match representation_defaults_chirho {
             Ok(defaults_chirho) => defaults_chirho,
             Err(error_chirho) => {
                 self.record_body_kind_error_chirho(error_chirho);
-                SubstChirho::empty_chirho()
+                return SchemeChirho::mono_chirho(Self::terminal_commit_type_chirho());
             }
         };
-        self.apply_subst_all_chirho(&representation_defaults_chirho);
+        if self
+            .apply_subst_all_chirho(&mut representation_defaults_chirho)
+            .is_err()
+        {
+            return SchemeChirho::mono_chirho(Self::terminal_commit_type_chirho());
+        };
+        *publication_chirho = representation_defaults_chirho.compose_chirho(publication_chirho);
         let defaulted_ty_chirho = if representation_defaults_chirho.is_empty_chirho() {
             None
         } else {
-            match self
-                .elaboration_state_chirho
-                .resolve_chirho(ty_chirho, SpanChirho::DUMMY_CHIRHO)
-            {
+            match self.elaboration_state_chirho.resolve_chirho(
+                &representation_defaults_chirho.apply_ty_chirho(ty_chirho),
+                SpanChirho::DUMMY_CHIRHO,
+            ) {
                 Ok(term_chirho) => Some(term_chirho),
                 Err(error_chirho) => {
                     self.record_body_kind_error_chirho(error_chirho);
@@ -676,6 +703,7 @@ impl InferCtxChirho {
                 ty_chirho: defaulted_ty_chirho,
             };
             let scheme_chirho = io_default_subst_chirho.apply_scheme_chirho(&scheme_chirho);
+            let scheme_chirho = representation_defaults_chirho.apply_scheme_chirho(&scheme_chirho);
             if scope_chirho == GeneralizationScopeChirho::TopLevelChirho {
                 self.record_inferred_dictionary_owners_chirho(&scheme_chirho);
             }
@@ -687,6 +715,7 @@ impl InferCtxChirho {
             preds_chirho: scheme_preds_chirho,
             ty_chirho: ty_chirho.clone(),
         };
+        let scheme_chirho = representation_defaults_chirho.apply_scheme_chirho(&scheme_chirho);
         if scope_chirho == GeneralizationScopeChirho::TopLevelChirho {
             self.record_inferred_dictionary_owners_chirho(&scheme_chirho);
         }
@@ -785,114 +814,6 @@ impl InferCtxChirho {
             }
         }
         false
-    }
-
-    /// Apply a substitution to the type environment and deferred predicates.
-    pub(super) fn apply_subst_all_chirho(&mut self, subst_chirho: &SubstChirho) {
-        let effective_chirho = match self
-            .elaboration_state_chirho
-            .follow_committed_variable_kinds_chirho(
-                subst_chirho,
-                &self.type_families_chirho,
-                SpanChirho::DUMMY_CHIRHO,
-            ) {
-            Ok(effective_chirho) => effective_chirho,
-            Err(error_chirho) => {
-                self.record_body_kind_error_chirho(error_chirho);
-                None
-            }
-        };
-        let subst_chirho = effective_chirho.as_ref().unwrap_or(subst_chirho);
-        for (var_chirho, ty_chirho) in subst_chirho.iter_chirho() {
-            if self.equality_pattern_depth_chirho > 0 {
-                if self.equality_substitution_events_chirho.len() < 16_384 {
-                    self.equality_substitution_events_chirho.push(*var_chirho);
-                } else {
-                    self.equality_substitution_events_exhausted_chirho = true;
-                }
-            }
-            self.equality_substitutions_chirho
-                .insert_chirho(*var_chirho, ty_chirho.clone());
-        }
-        self.env_chirho.apply_subst_chirho(subst_chirho);
-        self.restriction_chirho
-            .follow_substitution_chirho(subst_chirho);
-        self.substitute_inferred_dictionary_owners_chirho(subst_chirho);
-        self.recursive_references_chirho
-            .apply_subst_chirho(subst_chirho);
-        // Every argument of a multi-parameter predicate must follow the
-        // substitution, not only the primary one: a functional-dependency
-        // improvement or a solved variable in an extra position would
-        // otherwise be lost (`MyReader r v` with `v := Int`).
-        for (pred_chirho, _span_chirho) in &mut self.deferred_preds_chirho {
-            *pred_chirho =
-                pred_chirho.mapped_chirho(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho));
-        }
-        for pred_chirho in &mut self.given_preds_chirho {
-            *pred_chirho =
-                pred_chirho.mapped_chirho(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho));
-        }
-        for wanted_chirho in &mut self.deferred_equalities_chirho {
-            wanted_chirho.lhs_chirho = subst_chirho.apply_ty_chirho(&wanted_chirho.lhs_chirho);
-            wanted_chirho.rhs_chirho = subst_chirho.apply_ty_chirho(&wanted_chirho.rhs_chirho);
-        }
-        for (lhs_chirho, rhs_chirho) in &mut self.given_rewrites_chirho {
-            *lhs_chirho = subst_chirho.apply_ty_chirho(lhs_chirho);
-            *rhs_chirho = subst_chirho.apply_ty_chirho(rhs_chirho);
-        }
-        for capture_chirho in &mut self.occurrence_captures_chirho {
-            capture_chirho.pred_chirho = capture_chirho
-                .pred_chirho
-                .mapped_chirho(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho));
-        }
-        for capture_chirho in &mut self.reference_captures_chirho {
-            for predicate_chirho in &mut capture_chirho.preds_chirho {
-                *predicate_chirho = predicate_chirho
-                    .mapped_chirho(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho));
-            }
-        }
-        // A literal's minted wanted follows the same substitution events, proof and arguments
-        // kept, so a literal inside an instance method reaches finalization at the solution that
-        // method's check found: the module's composition never holds an instance method's own
-        // (row 692, C10).
-        // workflow: language-features-chirho/dictionary-evidence-chirho
-        for (_span_chirho, _origin_chirho, wanted_chirho, _context_chirho) in
-            &mut self.literal_captures_chirho
-        {
-            *wanted_chirho =
-                wanted_chirho.mapped_chirho(|ty_chirho| subst_chirho.apply_ty_chirho(ty_chirho));
-        }
-        if !self.occurrence_default_hints_chirho.is_empty() {
-            let mut updated_hints_chirho = HashMap::new();
-            // DETERMINISM: substitution can map two distinct vars onto the SAME
-            // updated var, and the later insert then wins. Draining a HashMap
-            // makes "later" depend on a per-process hash seed, so the surviving
-            // defaulting hint — and with it the inferred type — could differ
-            // between runs of the same binary on the same source.
-            // See spec-chirho/bug-nondeterministic-typecheck-chirho.md
-            let mut drained_hints_chirho: Vec<_> =
-                self.occurrence_default_hints_chirho.drain().collect();
-            drained_hints_chirho.sort_by_key(|(var_chirho, _)| *var_chirho);
-            for (var_chirho, key_chirho) in drained_hints_chirho {
-                if let TyChirho::VarChirho(updated_var_chirho) =
-                    subst_chirho.apply_ty_chirho(&TyChirho::VarChirho(var_chirho))
-                {
-                    updated_hints_chirho.insert(updated_var_chirho, key_chirho);
-                }
-            }
-            self.occurrence_default_hints_chirho = updated_hints_chirho;
-        }
-        if !self.occurrence_generalized_vars_chirho.is_empty() {
-            let mut updated_vars_chirho = HashSet::new();
-            for var_chirho in self.occurrence_generalized_vars_chirho.drain() {
-                if let TyChirho::VarChirho(updated_var_chirho) =
-                    subst_chirho.apply_ty_chirho(&TyChirho::VarChirho(var_chirho))
-                {
-                    updated_vars_chirho.insert(updated_var_chirho);
-                }
-            }
-            self.occurrence_generalized_vars_chirho = updated_vars_chirho;
-        }
     }
 }
 

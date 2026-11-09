@@ -81,9 +81,14 @@ pub(super) struct EqualityScopeChirho {
     evidence_chirho: Option<Arc<EqualityEvidenceChirho>>,
     pub(super) skolems_chirho: HashSet<String>,
     pub(super) complete_chirho: bool,
+    pub(super) captured_kinds_chirho:
+        Option<crate::kind_chirho::elaboration_chirho::CapturedVariableKindsChirho>,
 }
 
 impl EqualityScopeChirho {
+    pub(super) fn parent_chirho(&self) -> Option<usize> {
+        self.parent_chirho
+    }
     pub(super) fn evidence_snapshot_chirho(&self) -> EqualityEvidenceSnapshotChirho {
         EqualityEvidenceSnapshotChirho {
             head_chirho: self.evidence_chirho.clone(),
@@ -102,6 +107,7 @@ impl EqualityScopeChirho {
             evidence_chirho: None,
             skolems_chirho: HashSet::new(),
             complete_chirho: true,
+            captured_kinds_chirho: None,
         }
     }
 }
@@ -121,6 +127,7 @@ impl InferCtxChirho {
                 .clone(),
             skolems_chirho: HashSet::new(),
             complete_chirho: self.equality_scopes_chirho[parent_chirho].complete_chirho,
+            captured_kinds_chirho: None,
         });
         self.active_equality_scope_chirho = owner_chirho;
         owner_chirho
@@ -491,37 +498,97 @@ impl InferCtxChirho {
         event_start_chirho: usize,
         span_chirho: SpanChirho,
     ) -> SubstChirho {
-        if self.equality_scopes_chirho[owner_chirho]
-            .skolems_chirho
-            .is_empty()
-        {
+        if self.has_non_deferrable_failure_chirho() {
+            self.restore_active_kind_captures_chirho();
             return SubstChirho::empty_chirho();
         }
-        match self.pattern_equality_escape_chirho(
+        let result_chirho = self.pattern_equality_escape_chirho(
             owner_chirho,
             result_chirho,
             first_meta_chirho,
             event_start_chirho,
-        ) {
-            Ok((false, public_subst_chirho)) => {
-                // These keys already occur in the delta. Materialization is
-                // not another inference event; outer frames read their new
-                // images through the same previously retained keys.
+        );
+        match result_chirho {
+            Ok((false, _, mut public_subst_chirho))
+                if !self.has_non_deferrable_failure_chirho() =>
+            {
+                let captured_chirho = self.equality_scopes_chirho[owner_chirho]
+                    .captured_kinds_chirho
+                    .take();
+                let skolems_chirho =
+                    std::mem::take(&mut self.equality_scopes_chirho[owner_chirho].skolems_chirho);
                 let pattern_depth_chirho = self.equality_pattern_depth_chirho;
                 self.equality_pattern_depth_chirho = 0;
-                self.apply_subst_all_chirho(&public_subst_chirho);
+                let committed_chirho = match captured_chirho {
+                    Some(captured_chirho) => self.apply_projected_subst_all_chirho(
+                        &mut public_subst_chirho,
+                        captured_chirho,
+                        &skolems_chirho,
+                        span_chirho,
+                    ),
+                    None => self.apply_subst_all_chirho(&mut public_subst_chirho),
+                };
                 self.equality_pattern_depth_chirho = pattern_depth_chirho;
+                self.equality_scopes_chirho[owner_chirho].skolems_chirho = skolems_chirho;
+                if committed_chirho.is_err() {
+                    return SubstChirho::empty_chirho();
+                }
                 return public_subst_chirho;
             }
-            Ok((true, _)) => {
-                self.diagnostics_chirho
-                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
-                        ErrorCodeChirho::error_chirho(TYPE_MISMATCH_CODE_CHIRHO),
-                        "constructor pattern's existential type would escape its scope",
-                        span_chirho,
-                    ))
+            Ok((false, _, _)) => {
+                self.restore_active_kind_captures_chirho();
             }
-            Err(_) => self.report_equality_normalization_exhausted_chirho(span_chirho),
+            Ok((true, kind_escape_chirho, _)) => {
+                if let Some(captured_chirho) = self.equality_scopes_chirho[owner_chirho]
+                    .captured_kinds_chirho
+                    .take()
+                {
+                    if let Err(error_chirho) = self
+                        .elaboration_state_chirho
+                        .restore_variable_kinds_chirho(captured_chirho, span_chirho)
+                    {
+                        self.record_commit_failure_chirho(&error_chirho);
+                        return SubstChirho::empty_chirho();
+                    }
+                }
+                if kind_escape_chirho {
+                    self.record_commit_failure_chirho(
+                        &crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho {
+                            mismatch_chirho: None,
+                            message_chirho:
+                                "constructor pattern's existential kind would escape its scope"
+                                    .into(),
+                            span_chirho,
+                        },
+                    );
+                } else {
+                    self.diagnostics_chirho
+                        .push_chirho(DiagnosticChirho::error_with_code_chirho(
+                            ErrorCodeChirho::error_chirho(TYPE_MISMATCH_CODE_CHIRHO),
+                            "constructor pattern's existential type would escape its scope",
+                            span_chirho,
+                        ));
+                }
+            }
+            Err(_) => {
+                if let Some(captured_chirho) = self.equality_scopes_chirho[owner_chirho]
+                    .captured_kinds_chirho
+                    .take()
+                {
+                    if let Err(error_chirho) = self
+                        .elaboration_state_chirho
+                        .restore_variable_kinds_chirho(captured_chirho, span_chirho)
+                    {
+                        self.record_commit_failure_chirho(&error_chirho);
+                        return SubstChirho::empty_chirho();
+                    }
+                }
+                let error_chirho = self.elaboration_state_chirho.resource_failure_chirho(
+                    "pattern public type/kind projection bound exhausted",
+                    span_chirho,
+                );
+                self.record_commit_failure_chirho(&error_chirho);
+            }
         }
         SubstChirho::empty_chirho()
     }
@@ -533,7 +600,7 @@ impl InferCtxChirho {
         first_meta_chirho: u32,
         event_start_chirho: usize,
     ) -> Result<
-        (bool, SubstChirho),
+        (bool, bool, SubstChirho),
         super::equality_normalization_chirho::EqualityNormalizationExhaustedChirho,
     > {
         use super::equality_normalization_chirho::{
@@ -581,8 +648,19 @@ impl InferCtxChirho {
             )?;
             Ok((normalized_chirho, escaping_chirho))
         };
+        if let Some(captured_chirho) =
+            &self.equality_scopes_chirho[owner_chirho].captured_kinds_chirho
+        {
+            for (_, kind_chirho) in captured_chirho.kinds_chirho() {
+                if let Some(kind_chirho) = kind_chirho {
+                    if public_type_chirho(kind_chirho)?.1 {
+                        return Ok((true, true, SubstChirho::empty_chirho()));
+                    }
+                }
+            }
+        }
         if public_type_chirho(result_chirho)?.1 {
-            return Ok((true, SubstChirho::empty_chirho()));
+            return Ok((true, false, SubstChirho::empty_chirho()));
         }
         let mut seen_chirho = HashSet::new();
         let mut public_subst_chirho = SubstChirho::empty_chirho();
@@ -596,12 +674,12 @@ impl InferCtxChirho {
             {
                 let (image_chirho, escaping_chirho) = public_type_chirho(image_chirho)?;
                 if escaping_chirho {
-                    return Ok((true, SubstChirho::empty_chirho()));
+                    return Ok((true, false, SubstChirho::empty_chirho()));
                 }
                 public_subst_chirho.insert_chirho(*var_chirho, image_chirho);
             }
         }
-        Ok((false, public_subst_chirho))
+        Ok((false, false, public_subst_chirho))
     }
 }
 

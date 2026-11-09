@@ -137,10 +137,12 @@ fn a_value_result_solves_its_representation_on_the_existing_commit_path_chirho()
         .expect("fresh record");
     value_record_chirho.source_chirho = Some(source_chirho.clone());
     value_record_chirho.specificity_chirho = Some(TyVarSpecificityChirho::InferredChirho);
-    context_chirho.apply_subst_all_chirho(&SubstChirho::singleton_chirho(
-        variable_chirho(&value_chirho),
-        element_chirho.clone(),
-    ));
+    context_chirho
+        .apply_subst_all_chirho(&mut SubstChirho::singleton_chirho(
+            variable_chirho(&value_chirho),
+            element_chirho.clone(),
+        ))
+        .expect("checked substitution commit");
     assert_eq!(
         context_chirho
             .equality_substitutions_chirho
@@ -200,7 +202,7 @@ fn a_committed_hidden_kind_solution_reaches_dependent_records_chirho() {
                 SpanChirho::DUMMY_CHIRHO,
             )
             .expect("dependent kind meta");
-        let committed_chirho = if prior_checked_chirho {
+        let mut committed_chirho = if prior_checked_chirho {
             context_chirho
                 .elaboration_state_chirho
                 .unify_chirho(
@@ -224,7 +226,9 @@ fn a_committed_hidden_kind_solution_reaches_dependent_records_chirho() {
             .elaboration_state_chirho
             .substitution_chirho
             .clone();
-        context_chirho.apply_subst_all_chirho(&committed_chirho);
+        context_chirho
+            .apply_subst_all_chirho(&mut committed_chirho)
+            .expect("checked substitution commit");
         let record_chirho = &context_chirho
             .elaboration_state_chirho
             .variable_kinds_chirho[&value_chirho];
@@ -294,10 +298,12 @@ fn an_alias_keeps_universal_dominance_and_never_promotes_absence_to_meta_chirho(
             } else {
                 (&barrier_chirho, &meta_chirho)
             };
-            context_chirho.apply_subst_all_chirho(&SubstChirho::singleton_chirho(
-                variable_chirho(source_chirho),
-                target_chirho.clone(),
-            ));
+            context_chirho
+                .apply_subst_all_chirho(&mut SubstChirho::singleton_chirho(
+                    variable_chirho(source_chirho),
+                    target_chirho.clone(),
+                ))
+                .expect("checked substitution commit");
             assert_eq!(
                 context_chirho
                     .elaboration_state_chirho
@@ -334,13 +340,15 @@ fn an_unprojected_compound_does_not_grant_kinds_to_its_free_variables_chirho() {
     let result_chirho = context_chirho.fresh_value_meta_chirho(SpanChirho::DUMMY_CHIRHO);
     let unknown_chirho = context_chirho.fresh_var_chirho();
     let argument_chirho = context_chirho.fresh_list_element_meta_chirho(SpanChirho::DUMMY_CHIRHO);
-    context_chirho.apply_subst_all_chirho(&SubstChirho::singleton_chirho(
-        variable_chirho(&result_chirho),
-        TyChirho::AppChirho(
-            Box::new(unknown_chirho.clone()),
-            Box::new(argument_chirho.clone()),
-        ),
-    ));
+    context_chirho
+        .apply_subst_all_chirho(&mut SubstChirho::singleton_chirho(
+            variable_chirho(&result_chirho),
+            TyChirho::AppChirho(
+                Box::new(unknown_chirho.clone()),
+                Box::new(argument_chirho.clone()),
+            ),
+        ))
+        .expect("checked substitution commit");
     assert!(
         !context_chirho
             .elaboration_state_chirho

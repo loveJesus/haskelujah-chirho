@@ -181,10 +181,12 @@ fn nested_signature_check_reports_capture_before_restoring_skolems_chirho() {
         &scheme_chirho,
         SpanChirho::DUMMY_CHIRHO,
         |context_chirho, expected_chirho| {
-            let substitution_chirho = context_chirho
+            let mut substitution_chirho = context_chirho
                 .unify_normalized_chirho(&outer_chirho, expected_chirho, SpanChirho::DUMMY_CHIRHO)
                 .unwrap();
-            context_chirho.apply_subst_all_chirho(&substitution_chirho);
+            context_chirho
+                .apply_subst_all_chirho(&mut substitution_chirho)
+                .expect("checked substitution commit");
         },
     );
     assert!(context_chirho.diagnostics_chirho.has_errors_chirho());
@@ -218,15 +220,17 @@ fn signature_equality_exports_safe_public_image_before_evidence_leaves_chirho() 
         &scheme_chirho,
         SpanChirho::DUMMY_CHIRHO,
         |context_chirho, expected_chirho| {
-            let substitution_chirho = context_chirho
+            let mut substitution_chirho = context_chirho
                 .unify_ordinary_chirho(&outer_chirho, expected_chirho, SpanChirho::DUMMY_CHIRHO)
                 .unwrap();
-            context_chirho.apply_subst_all_chirho(&substitution_chirho);
+            context_chirho
+                .apply_subst_all_chirho(&mut substitution_chirho)
+                .expect("checked substitution commit");
             substitution_chirho
         },
     );
     let final_chirho =
-        context_chirho.publish_signature_solution_chirho(checked_chirho, &public_chirho);
+        context_chirho.publish_signature_solution_chirho(checked_chirho, public_chirho);
     assert!(!context_chirho.diagnostics_chirho.has_errors_chirho());
     assert!(!context_chirho.type_normalization_exhausted_chirho.get());
     assert_eq!(

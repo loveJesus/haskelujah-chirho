@@ -14,6 +14,7 @@ pub(super) struct TypePatternAliasUndoChirho {
 }
 
 pub(super) struct PatternImplicationChirho {
+    entered_chirho: bool,
     owner_chirho: usize,
     given_start_chirho: usize,
     rewrite_start_chirho: usize,
@@ -51,12 +52,53 @@ pub(super) type TypePatternAliasesChirho = Vec<(
 )>;
 
 impl InferCtxChirho {
+    #[cfg(test)]
     pub(super) fn begin_pattern_implication_chirho(&mut self) -> PatternImplicationChirho {
+        self.begin_pattern_implication_with_roots_chirho(
+            std::iter::empty(),
+            SpanChirho::DUMMY_CHIRHO,
+        )
+    }
+
+    pub(super) fn begin_pattern_implication_with_roots_chirho<'roots_chirho>(
+        &mut self,
+        roots_chirho: impl IntoIterator<Item = &'roots_chirho TyChirho>,
+        span_chirho: SpanChirho,
+    ) -> PatternImplicationChirho {
+        let mut additional_chirho = Vec::new();
+        for root_chirho in roots_chirho {
+            if let Err(error_chirho) =
+                self.elaboration_state_chirho
+                    .charge_chirho(1, 1, span_chirho)
+            {
+                self.record_body_kind_error_chirho(error_chirho);
+                break;
+            }
+            additional_chirho.push(root_chirho);
+        }
+        let captured_chirho = self
+            .capture_scope_metas_chirho(None, &additional_chirho, span_chirho)
+            .and_then(|captured_chirho| captured_chirho.into_kind_capture_chirho());
+        if captured_chirho.is_none() {
+            self.type_normalization_exhausted_chirho.set(true);
+            return PatternImplicationChirho {
+                entered_chirho: false,
+                owner_chirho: self.active_equality_scope_chirho,
+                given_start_chirho: self.given_preds_chirho.len(),
+                rewrite_start_chirho: self.given_rewrites_chirho.len(),
+                first_meta_chirho: self.elaboration_state_chirho.next_variable_chirho,
+                event_start_chirho: self.equality_substitution_events_chirho.len(),
+                alias_mark_chirho: self.type_pattern_alias_undo_chirho.len(),
+            };
+        }
         self.equality_pattern_depth_chirho += 1;
+        let owner_chirho = self.begin_equality_scope_chirho(
+            super::equality_scopes_chirho::EqualityScopeKindChirho::PatternChirho,
+        );
+        self.equality_scopes_chirho[owner_chirho].captured_kinds_chirho = captured_chirho;
         PatternImplicationChirho {
-            owner_chirho: self.begin_equality_scope_chirho(
-                super::equality_scopes_chirho::EqualityScopeKindChirho::PatternChirho,
-            ),
+            entered_chirho: true,
+            owner_chirho,
             given_start_chirho: self.given_preds_chirho.len(),
             rewrite_start_chirho: self.given_rewrites_chirho.len(),
             first_meta_chirho: self.elaboration_state_chirho.next_variable_chirho,
@@ -73,8 +115,22 @@ impl InferCtxChirho {
         result_chirho: &TyChirho,
         span_chirho: SpanChirho,
     ) -> PatternImplicationSolutionChirho {
-        let improvement_chirho = self.discharge_deferred_with_current_givens_chirho();
-        let equalities_chirho = self.retry_deferred_equalities_chirho();
+        if !frame_chirho.entered_chirho {
+            return PatternImplicationSolutionChirho {
+                ordinary_chirho: SubstChirho::empty_chirho(),
+                public_chirho: SubstChirho::empty_chirho(),
+            };
+        }
+        let improvement_chirho = if self.has_non_deferrable_failure_chirho() {
+            SubstChirho::empty_chirho()
+        } else {
+            self.discharge_deferred_with_current_givens_chirho()
+        };
+        let equalities_chirho = if self.has_non_deferrable_failure_chirho() {
+            SubstChirho::empty_chirho()
+        } else {
+            self.retry_deferred_equalities_chirho()
+        };
         let public_subst_chirho = self.check_pattern_equality_scope_chirho(
             frame_chirho.owner_chirho,
             result_chirho,
@@ -770,8 +826,10 @@ impl InferCtxChirho {
                         self.refine_skolems_by_unification_chirho(&left_chirho, &right_chirho)
                     })
             };
-            if let Some(subst_chirho) = ordinary_chirho {
-                self.apply_subst_all_chirho(&subst_chirho);
+            if let Some(mut subst_chirho) = ordinary_chirho {
+                if self.apply_subst_all_chirho(&mut subst_chirho).is_err() {
+                    return None;
+                };
                 combined_chirho = subst_chirho.compose_chirho(&combined_chirho);
             } else {
                 self.install_pattern_givens_chirho(vec![PredChirho::legacy_chirho(

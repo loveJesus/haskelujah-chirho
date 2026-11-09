@@ -45,10 +45,12 @@ fn committed_kind_solutions_are_not_generalized_again_chirho() {
             TyVarChirho(1),
             known_chirho(1, TyChirho::VarChirho(TyVarChirho(0))).into(),
         );
-    context_chirho.apply_subst_all_chirho(&SubstChirho::singleton_chirho(
-        TyVarChirho(0),
-        TyChirho::ConChirho("Type".into()),
-    ));
+    context_chirho
+        .apply_subst_all_chirho(&mut SubstChirho::singleton_chirho(
+            TyVarChirho(0),
+            TyChirho::ConChirho("Type".into()),
+        ))
+        .expect("checked substitution commit");
     let variables_chirho = context_chirho.quantify_variables_chirho(
         vec![TyVarChirho(1)],
         &[],

@@ -137,9 +137,14 @@ impl InferCtxChirho {
                 &rhs_sub_chirho,
                 SpanChirho::DUMMY_CHIRHO,
             ) {
-                Ok(subst_chirho) => {
+                Ok(mut subst_chirho) => {
+                    if self.apply_subst_all_chirho(&mut subst_chirho).is_err() {
+                        return (
+                            SchemeChirho::mono_chirho(Self::terminal_commit_type_chirho()),
+                            HashMap::new(),
+                        );
+                    };
                     equality_subst_chirho = subst_chirho.compose_chirho(&equality_subst_chirho);
-                    self.apply_subst_all_chirho(&subst_chirho);
                 }
                 // `(Int ~ Bool) =>`: an insoluble given. GHC accepts the
                 // binding (its body is unreachable); keep the equality so

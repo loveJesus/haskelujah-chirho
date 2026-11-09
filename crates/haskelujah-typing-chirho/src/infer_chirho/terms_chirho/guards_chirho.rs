@@ -86,9 +86,14 @@ impl InferCtxChirho {
                 &body_ty_chirho,
                 arm_chirho.span_chirho,
             ) {
-                Ok(result_subst_chirho) => {
+                Ok(mut result_subst_chirho) => {
+                    if self
+                        .apply_subst_all_chirho(&mut result_subst_chirho)
+                        .is_err()
+                    {
+                        return (SubstChirho::empty_chirho(), None);
+                    };
                     subst_chirho = result_subst_chirho.compose_chirho(&subst_chirho);
-                    self.apply_subst_all_chirho(&result_subst_chirho);
                 }
                 Err(_) => {
                     if unmet_chirho.is_none() {
@@ -132,9 +137,17 @@ impl InferCtxChirho {
                     &body_ty_chirho,
                     arm_chirho.span_chirho,
                 ) {
-                    Ok(result_subst_chirho) => {
+                    Ok(mut result_subst_chirho) => {
+                        if self
+                            .apply_subst_all_chirho(&mut result_subst_chirho)
+                            .is_err()
+                        {
+                            return (
+                                SubstChirho::empty_chirho(),
+                                Self::terminal_commit_type_chirho(),
+                            );
+                        };
                         subst_chirho = result_subst_chirho.compose_chirho(&subst_chirho);
-                        self.apply_subst_all_chirho(&result_subst_chirho);
                     }
                     Err(err_chirho) => self.report_unify_error_chirho(&err_chirho),
                 }
@@ -160,7 +173,7 @@ impl InferCtxChirho {
             arm_chirho.span_chirho,
             subst_chirho,
         );
-        let (body_subst_chirho, body_ty_chirho) = match expected_chirho {
+        let (mut body_subst_chirho, body_ty_chirho) = match expected_chirho {
             Some(expected_chirho) => self.infer_expr_against_expected_chirho(
                 &arm_chirho.body_chirho,
                 expected_chirho,
@@ -168,8 +181,10 @@ impl InferCtxChirho {
             ),
             None => self.infer_expr_chirho(&arm_chirho.body_chirho),
         };
+        if self.apply_subst_all_chirho(&mut body_subst_chirho).is_err() {
+            return Self::terminal_commit_type_chirho();
+        };
         *subst_chirho = body_subst_chirho.compose_chirho(subst_chirho);
-        self.apply_subst_all_chirho(&body_subst_chirho);
         subst_chirho.apply_ty_chirho(&body_ty_chirho)
     }
 
@@ -183,18 +198,26 @@ impl InferCtxChirho {
         for qual_chirho in quals_chirho {
             match qual_chirho {
                 StmtChirho::ExprChirho { expr_chirho, .. } => {
-                    let (guard_subst_chirho, guard_ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                    let (mut guard_subst_chirho, guard_ty_chirho) =
+                        self.infer_expr_chirho(expr_chirho);
+                    if self
+                        .apply_subst_all_chirho(&mut guard_subst_chirho)
+                        .is_err()
+                    {
+                        return;
+                    };
                     *subst_chirho = guard_subst_chirho.compose_chirho(subst_chirho);
-                    self.apply_subst_all_chirho(&guard_subst_chirho);
                     let guard_ty_sub_chirho = subst_chirho.apply_ty_chirho(&guard_ty_chirho);
                     match self.unify_normalized_chirho(
                         &guard_ty_sub_chirho,
                         &TyChirho::bool_chirho(),
                         span_chirho,
                     ) {
-                        Ok(bool_subst_chirho) => {
+                        Ok(mut bool_subst_chirho) => {
+                            if self.apply_subst_all_chirho(&mut bool_subst_chirho).is_err() {
+                                return;
+                            };
                             *subst_chirho = bool_subst_chirho.compose_chirho(subst_chirho);
-                            self.apply_subst_all_chirho(&bool_subst_chirho);
                             self.report_deferred_numeric_bool_predicates_chirho();
                         }
                         Err(err_chirho) => self.report_unify_error_chirho(&err_chirho),
@@ -205,10 +228,15 @@ impl InferCtxChirho {
                     expr_chirho,
                     ..
                 } => {
-                    let (source_subst_chirho, source_ty_chirho) =
+                    let (mut source_subst_chirho, source_ty_chirho) =
                         self.infer_expr_chirho(expr_chirho);
+                    if self
+                        .apply_subst_all_chirho(&mut source_subst_chirho)
+                        .is_err()
+                    {
+                        return;
+                    };
                     *subst_chirho = source_subst_chirho.compose_chirho(subst_chirho);
-                    self.apply_subst_all_chirho(&source_subst_chirho);
                     self.bind_pat_against_chirho(pat_chirho, &source_ty_chirho, subst_chirho);
                 }
                 StmtChirho::LetChirho { binds_chirho, .. } => {
@@ -229,8 +257,10 @@ impl InferCtxChirho {
         subst_chirho: &mut SubstChirho,
     ) {
         let expected_chirho = subst_chirho.apply_ty_chirho(scrut_ty_chirho);
-        let pat_subst_chirho = self.bind_pat_chirho(pat_chirho, &expected_chirho);
+        let mut pat_subst_chirho = self.bind_pat_chirho(pat_chirho, &expected_chirho);
+        if self.apply_subst_all_chirho(&mut pat_subst_chirho).is_err() {
+            return;
+        };
         *subst_chirho = pat_subst_chirho.compose_chirho(subst_chirho);
-        self.apply_subst_all_chirho(&pat_subst_chirho);
     }
 }

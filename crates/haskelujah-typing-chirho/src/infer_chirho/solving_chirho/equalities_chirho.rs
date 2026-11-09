@@ -325,8 +325,13 @@ impl InferCtxChirho {
                     || self.ty_is_stuck_family_on_var_chirho(&right_sub_chirho)
                 {
                     match self.improve_equality_from_owned_givens_chirho(&wanted_chirho) {
-                        Ok(Some(substitution_chirho)) => {
-                            self.apply_subst_all_chirho(&substitution_chirho);
+                        Ok(Some(mut substitution_chirho)) => {
+                            if self
+                                .apply_subst_all_chirho(&mut substitution_chirho)
+                                .is_err()
+                            {
+                                return SubstChirho::empty_chirho();
+                            }
                             total_chirho = substitution_chirho.compose_chirho(&total_chirho);
                             progressed_chirho = true;
                             continue;
@@ -341,8 +346,10 @@ impl InferCtxChirho {
                 }
                 progressed_chirho = true;
                 match self.unify_ordinary_chirho(&left_sub_chirho, &right_sub_chirho, span_chirho) {
-                    Ok(subst_chirho) => {
-                        self.apply_subst_all_chirho(&subst_chirho);
+                    Ok(mut subst_chirho) => {
+                        if self.apply_subst_all_chirho(&mut subst_chirho).is_err() {
+                            return SubstChirho::empty_chirho();
+                        };
                         total_chirho = subst_chirho.compose_chirho(&total_chirho);
                     }
                     // `x ~ (Arg x -> Res x)` is not an infinite type: the
@@ -402,7 +409,12 @@ impl InferCtxChirho {
             }
         }
         if !improvement_chirho.is_empty_chirho() {
-            self.apply_subst_all_chirho(&improvement_chirho);
+            if self
+                .apply_subst_all_chirho(&mut improvement_chirho)
+                .is_err()
+            {
+                return SubstChirho::empty_chirho();
+            };
         }
         let deferred_preds_chirho = std::mem::take(&mut self.deferred_preds_chirho);
         self.deferred_preds_chirho = deferred_preds_chirho

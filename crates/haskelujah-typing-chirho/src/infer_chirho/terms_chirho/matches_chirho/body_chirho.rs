@@ -23,18 +23,22 @@ impl InferCtxChirho {
         let (expected_chirho, result_chirho) = types_chirho;
         self.infer_local_binds_chirho(where_chirho, &mut substitution_chirho);
         let expected_chirho = substitution_chirho.apply_ty_chirho(expected_chirho);
-        let (step_chirho, body_ty_chirho) = body_chirho(self, &expected_chirho);
+        let (mut step_chirho, body_ty_chirho) = body_chirho(self, &expected_chirho);
+        if self.apply_subst_all_chirho(&mut step_chirho).is_err() {
+            return SubstChirho::empty_chirho();
+        };
         substitution_chirho = step_chirho.compose_chirho(&substitution_chirho);
-        self.apply_subst_all_chirho(&step_chirho);
         let result_chirho = substitution_chirho.apply_ty_chirho(result_chirho);
         let (left_chirho, right_chirho) = match order_chirho {
             BodyOrderChirho::ExpectedFirstChirho => (&result_chirho, &body_ty_chirho),
             BodyOrderChirho::RhsFirstChirho => (&body_ty_chirho, &result_chirho),
         };
         match self.unify_normalized_chirho(left_chirho, right_chirho, span_chirho) {
-            Ok(step_chirho) => {
+            Ok(mut step_chirho) => {
+                if self.apply_subst_all_chirho(&mut step_chirho).is_err() {
+                    return SubstChirho::empty_chirho();
+                };
                 substitution_chirho = step_chirho.compose_chirho(&substitution_chirho);
-                self.apply_subst_all_chirho(&step_chirho);
             }
             Err(error_chirho) => self.report_unify_error_chirho(&error_chirho),
         }

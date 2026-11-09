@@ -295,7 +295,9 @@ impl InferCtxChirho {
                 .collect();
         }
         if !defaults_chirho.is_empty_chirho() {
-            self.apply_subst_all_chirho(&defaults_chirho);
+            if self.apply_subst_all_chirho(&mut defaults_chirho).is_err() {
+                return SubstChirho::empty_chirho();
+            };
         }
         defaults_chirho
     }

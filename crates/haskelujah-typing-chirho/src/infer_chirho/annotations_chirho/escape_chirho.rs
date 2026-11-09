@@ -158,9 +158,18 @@ fn reaches_skolem_chirho(
 
 /// Captures actual surrounding dependencies, not every earlier temporary meta
 /// created while preparing an application. Unused planning metas cannot escape.
-pub(super) struct SignatureCapturesChirho {
+pub(in crate::infer_chirho) struct SignatureCapturesChirho {
     variables_chirho: HashSet<TyVarChirho>,
     budget_chirho: EqualityBudgetChirho,
+    kinds_chirho: Option<crate::kind_chirho::elaboration_chirho::CapturedVariableKindsChirho>,
+}
+
+impl SignatureCapturesChirho {
+    pub(in crate::infer_chirho) fn into_kind_capture_chirho(
+        self,
+    ) -> Option<crate::kind_chirho::elaboration_chirho::CapturedVariableKindsChirho> {
+        self.kinds_chirho
+    }
 }
 
 fn collect_free_chirho(
@@ -263,19 +272,30 @@ fn collect_free_chirho(
 }
 
 impl InferCtxChirho {
+    #[cfg(test)]
     pub(super) fn capture_signature_metas_chirho(
-        &self,
+        &mut self,
         scheme_chirho: &SchemeChirho,
+    ) -> Option<SignatureCapturesChirho> {
+        self.capture_scope_metas_chirho(Some(scheme_chirho), &[], SpanChirho::DUMMY_CHIRHO)
+    }
+
+    pub(in crate::infer_chirho) fn capture_scope_metas_chirho(
+        &mut self,
+        scheme_chirho: Option<&SchemeChirho>,
+        additional_chirho: &[&TyChirho],
+        span_chirho: SpanChirho,
     ) -> Option<SignatureCapturesChirho> {
         let mut captured_chirho = SignatureCapturesChirho {
             variables_chirho: HashSet::new(),
             budget_chirho: EqualityBudgetChirho::new_chirho(),
+            kinds_chirho: None,
         };
         for entry_chirho in self
             .env_chirho
             .bindings_in_scope_order_chirho()
             .map(|(_, entry_chirho)| entry_chirho)
-            .chain(std::iter::once(Some(scheme_chirho)))
+            .chain(scheme_chirho.map(Some))
         {
             captured_chirho.budget_chirho.work_chirho(1)?;
             let Some(entry_chirho) = entry_chirho else {
@@ -326,6 +346,34 @@ impl InferCtxChirho {
         ) {
             collect_free_chirho(term_chirho, &mut Vec::new(), &mut captured_chirho, 0)?;
         }
+        for term_chirho in additional_chirho {
+            collect_free_chirho(term_chirho, &mut Vec::new(), &mut captured_chirho, 0)?;
+        }
+        if let Err(error_chirho) = self.elaboration_state_chirho.charge_chirho(
+            captured_chirho.variables_chirho.len(),
+            captured_chirho.variables_chirho.len(),
+            span_chirho,
+        ) {
+            self.record_body_kind_error_chirho(error_chirho);
+            return None;
+        }
+        let roots_chirho: Vec<_> = captured_chirho.variables_chirho.iter().copied().collect();
+        let kinds_chirho = match self.elaboration_state_chirho.capture_variable_kinds_chirho(
+            &roots_chirho,
+            &self.equality_substitutions_chirho,
+            span_chirho,
+        ) {
+            Ok(kinds_chirho) => kinds_chirho,
+            Err(error_chirho) => {
+                self.record_body_kind_error_chirho(error_chirho);
+                return None;
+            }
+        };
+        for (variable_chirho, _) in kinds_chirho.kinds_chirho() {
+            captured_chirho.budget_chirho.node_chirho(1)?;
+            captured_chirho.variables_chirho.insert(variable_chirho);
+        }
+        captured_chirho.kinds_chirho = Some(kinds_chirho);
         Some(captured_chirho)
     }
 
@@ -364,10 +412,10 @@ impl InferCtxChirho {
     /// already contains its former rigid image. Project those affected schemes
     /// through the same checked evidence before it leaves scope, atomically.
     fn project_signature_environment_chirho(
-        &mut self,
+        &self,
         skolems_chirho: &HashSet<String>,
         budget_chirho: &mut EqualityBudgetChirho,
-    ) -> Option<()> {
+    ) -> Option<Vec<(usize, String, SchemeChirho)>> {
         let mut replacements_chirho = Vec::new();
         for (index_chirho, name_chirho, scheme_chirho) in self.env_chirho.located_bindings_chirho()
         {
@@ -463,14 +511,7 @@ impl InferCtxChirho {
                 },
             ));
         }
-        for (index_chirho, name_chirho, scheme_chirho) in replacements_chirho {
-            self.env_chirho.replace_located_binding_chirho(
-                index_chirho,
-                &name_chirho,
-                scheme_chirho,
-            );
-        }
-        Some(())
+        Some(replacements_chirho)
     }
 
     pub(super) fn check_annotation_escape_chirho(
@@ -480,19 +521,32 @@ impl InferCtxChirho {
         span_chirho: SpanChirho,
     ) -> SubstChirho {
         let Some(mut captured_chirho) = captured_chirho else {
-            self.type_normalization_exhausted_chirho.set(true);
+            if !self.has_non_deferrable_failure_chirho() {
+                self.type_normalization_exhausted_chirho.set(true);
+            }
             return SubstChirho::empty_chirho();
         };
+        if self.has_non_deferrable_failure_chirho() {
+            if let Some(kinds_chirho) = captured_chirho.kinds_chirho.take() {
+                if let Err(error_chirho) = self
+                    .elaboration_state_chirho
+                    .restore_variable_kinds_chirho(kinds_chirho, span_chirho)
+                {
+                    self.record_commit_failure_chirho(&error_chirho);
+                }
+            }
+            return SubstChirho::empty_chirho();
+        }
         let mut public_chirho = SubstChirho::empty_chirho();
         let mut escaped_chirho = Some(false);
-        for variable_chirho in captured_chirho.variables_chirho {
+        for variable_chirho in &captured_chirho.variables_chirho {
             if captured_chirho.budget_chirho.work_chirho(1).is_none() {
                 escaped_chirho = None;
                 break;
             }
             let Some(image_chirho) = self
                 .equality_substitutions_chirho
-                .lookup_chirho(&variable_chirho)
+                .lookup_chirho(variable_chirho)
             else {
                 continue;
             };
@@ -504,55 +558,149 @@ impl InferCtxChirho {
                 &mut captured_chirho.budget_chirho,
                 0,
             );
-            if escaped_chirho == Some(true) {
-                escaped_chirho = self
-                    .normalize_signature_public_image_chirho(
+            let normalized_chirho = if escaped_chirho == Some(true) {
+                self.normalize_signature_public_image_chirho(
+                    image_chirho,
+                    &mut captured_chirho.budget_chirho,
+                )
+                .ok()
+            } else if escaped_chirho == Some(false) {
+                self.equality_substitutions_chirho
+                    .resolve_owned_bounded_chirho(
                         image_chirho,
-                        &mut captured_chirho.budget_chirho,
+                        &mut |work_chirho, output_chirho| {
+                            captured_chirho.budget_chirho.node_chirho(output_chirho)?;
+                            captured_chirho
+                                .budget_chirho
+                                .work_chirho(work_chirho.saturating_sub(output_chirho))
+                        },
                     )
-                    .ok()
-                    .and_then(|normalized_chirho| {
-                        let escaping_chirho = reaches_skolem_chirho(
-                            &normalized_chirho,
-                            &SubstChirho::empty_chirho(),
+            } else {
+                None
+            };
+            let Some(normalized_chirho) = normalized_chirho else {
+                escaped_chirho = None;
+                break;
+            };
+            escaped_chirho = reaches_skolem_chirho(
+                &normalized_chirho,
+                &SubstChirho::empty_chirho(),
+                skolems_chirho,
+                &mut Vec::new(),
+                &mut captured_chirho.budget_chirho,
+                0,
+            );
+            if escaped_chirho != Some(false) {
+                break;
+            }
+            if normalized_chirho != TyChirho::VarChirho(*variable_chirho) {
+                public_chirho.insert_chirho(*variable_chirho, normalized_chirho);
+            }
+        }
+        let mut kind_escape_chirho = false;
+        if escaped_chirho == Some(true) {
+            if let Some(kinds_chirho) = &captured_chirho.kinds_chirho {
+                for (_, kind_chirho) in kinds_chirho.kinds_chirho() {
+                    if let Some(kind_chirho) = kind_chirho {
+                        match reaches_skolem_chirho(
+                            kind_chirho,
+                            &self.equality_substitutions_chirho,
                             skolems_chirho,
                             &mut Vec::new(),
                             &mut captured_chirho.budget_chirho,
                             0,
-                        )?;
-                        if !escaping_chirho {
-                            public_chirho.insert_chirho(variable_chirho, normalized_chirho);
+                        ) {
+                            Some(true) => {
+                                kind_escape_chirho = true;
+                                break;
+                            }
+                            None => {
+                                escaped_chirho = None;
+                                break;
+                            }
+                            Some(false) => {}
                         }
-                        Some(escaping_chirho)
-                    });
-            }
-            if escaped_chirho != Some(false) {
-                break;
+                    }
+                }
             }
         }
-        if escaped_chirho == Some(false)
-            && !public_chirho.is_empty_chirho()
-            && self
-                .project_signature_environment_chirho(
+        let replacements_chirho =
+            if escaped_chirho == Some(false) && !public_chirho.is_empty_chirho() {
+                match self.project_signature_environment_chirho(
                     skolems_chirho,
                     &mut captured_chirho.budget_chirho,
-                )
-                .is_none()
-        {
-            escaped_chirho = None;
+                ) {
+                    Some(replacements_chirho) => replacements_chirho,
+                    None => {
+                        escaped_chirho = None;
+                        Vec::new()
+                    }
+                }
+            } else {
+                Vec::new()
+            };
+        if let Some(kinds_chirho) = captured_chirho.kinds_chirho.take() {
+            if escaped_chirho == Some(false) {
+                if self
+                    .apply_projected_subst_all_chirho(
+                        &mut public_chirho,
+                        kinds_chirho,
+                        skolems_chirho,
+                        span_chirho,
+                    )
+                    .is_err()
+                {
+                    return SubstChirho::empty_chirho();
+                }
+            } else if let Err(error_chirho) = self
+                .elaboration_state_chirho
+                .restore_variable_kinds_chirho(kinds_chirho, span_chirho)
+            {
+                self.record_commit_failure_chirho(&error_chirho);
+                return SubstChirho::empty_chirho();
+            }
         }
         match escaped_chirho {
-            Some(false) => {}
-            Some(true) => {
-                self.diagnostics_chirho
-                    .push_chirho(DiagnosticChirho::error_with_code_chirho(
-                        ErrorCodeChirho::error_chirho(TYPE_MISMATCH_CODE_CHIRHO),
-                        "expression annotation's rigid variable escapes into an enclosing type",
-                        span_chirho,
-                    ))
+            Some(false) => {
+                for (index_chirho, name_chirho, scheme_chirho) in replacements_chirho {
+                    self.env_chirho.replace_located_binding_chirho(
+                        index_chirho,
+                        &name_chirho,
+                        public_chirho.apply_scheme_chirho(&scheme_chirho),
+                    );
+                }
+                public_chirho
             }
-            None => self.type_normalization_exhausted_chirho.set(true),
+            Some(true) => {
+                let diagnostic_chirho = DiagnosticChirho::error_with_code_chirho(
+                    ErrorCodeChirho::error_chirho(TYPE_MISMATCH_CODE_CHIRHO),
+                    if kind_escape_chirho {
+                        "expression annotation's rigid kind variable escapes into an enclosing type"
+                    } else {
+                        "expression annotation's rigid variable escapes into an enclosing type"
+                    },
+                    span_chirho,
+                );
+                if kind_escape_chirho {
+                    if !self
+                        .non_deferrable_diagnostics_chirho
+                        .diagnostics_chirho()
+                        .contains(&diagnostic_chirho)
+                    {
+                        self.non_deferrable_diagnostics_chirho
+                            .push_chirho(diagnostic_chirho);
+                    }
+                } else {
+                    self.diagnostics_chirho.push_chirho(diagnostic_chirho);
+                }
+                SubstChirho::empty_chirho()
+            }
+            None => {
+                if !self.has_non_deferrable_failure_chirho() {
+                    self.type_normalization_exhausted_chirho.set(true);
+                }
+                SubstChirho::empty_chirho()
+            }
         }
-        public_chirho
     }
 }

@@ -145,7 +145,9 @@ fn substitution_maps_kind_only_and_extra_variables_in_both_capture_paths_chirho(
     let mut substitution_chirho = SubstChirho::empty_chirho();
     substitution_chirho.insert_chirho(TyVarChirho(41), TyChirho::bool_chirho());
     substitution_chirho.insert_chirho(TyVarChirho(42), TyChirho::char_chirho());
-    ctx_chirho.apply_subst_all_chirho(&substitution_chirho);
+    ctx_chirho
+        .apply_subst_all_chirho(&mut substitution_chirho)
+        .expect("checked substitution commit");
     let expected_chirho =
         predicate_chirho.mapped_chirho(|ty_chirho| substitution_chirho.apply_ty_chirho(ty_chirho));
     assert_eq!(

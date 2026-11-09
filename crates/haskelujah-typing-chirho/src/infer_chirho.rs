@@ -41,6 +41,8 @@ use std::sync::Arc;
 mod annotations_chirho;
 mod applied_evidence_chirho;
 mod builtins_chirho;
+#[path = "infer_chirho/types_chirho/committed_substitutions_chirho.rs"]
+mod committed_substitutions_chirho;
 #[path = "infer_chirho/context_chirho.rs"]
 mod context_chirho;
 mod evidence_chirho;
@@ -1021,13 +1023,26 @@ fn infer_module_with_elaboration_state_chirho(
     }
     let restricted_subst_chirho = ctx_chirho.resolve_restricted_residuals_chirho(&subst_chirho);
     let subst_chirho = restricted_subst_chirho.compose_chirho(&subst_chirho);
-    let (late_fundep_subst_chirho, default_subst_chirho) =
+    let (late_fundep_subst_chirho, mut default_subst_chirho) =
         ctx_chirho.check_deferred_solutions_chirho(&subst_chirho);
     let subst_chirho = late_fundep_subst_chirho.compose_chirho(&subst_chirho);
     if !default_subst_chirho.is_empty_chirho() {
-        ctx_chirho.apply_subst_all_chirho(&default_subst_chirho);
+        if ctx_chirho
+            .apply_subst_all_chirho(&mut default_subst_chirho)
+            .is_err()
+        {
+            return ctx_chirho.finish_chirho();
+        };
+    }
+    if ctx_chirho.has_non_deferrable_failure_chirho() {
+        return ctx_chirho.finish_chirho();
     }
     let composed_subst_chirho = default_subst_chirho.compose_chirho(&subst_chirho);
+    let composed_subst_chirho =
+        match ctx_chirho.finish_public_substitution_chirho(&composed_subst_chirho) {
+            Ok(composed_chirho) => composed_chirho,
+            Err(_) => return ctx_chirho.finish_chirho(),
+        };
     // Evidence-threading P2: finalize occurrence records through the composed
     // substitution (so Report defaulting from check_deferred_preds_chirho is
     // reflected) before the context is consumed.

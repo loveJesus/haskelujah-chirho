@@ -153,7 +153,9 @@ fn solve_parameter_chirho(
     };
     let mut solution_chirho = SubstChirho::empty_chirho();
     solution_chirho.insert_chirho(*variable_chirho, expected_chirho.clone());
-    context_chirho.apply_subst_all_chirho(&solution_chirho);
+    context_chirho
+        .apply_subst_all_chirho(&mut solution_chirho)
+        .expect("checked substitution commit");
 }
 
 #[test]

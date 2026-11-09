@@ -73,7 +73,7 @@ impl InferCtxChirho {
                 self.infer_local_binds_chirho(binds_chirho, &mut subst_chirho);
             }
         }
-        let (rest_subst_chirho, ty_chirho) = match expected_chirho {
+        let (mut rest_subst_chirho, ty_chirho) = match expected_chirho {
             Some(expected_chirho) => self.infer_expr_against_expected_chirho(
                 &translated_chirho,
                 &subst_chirho.apply_ty_chirho(&expected_chirho),
@@ -81,8 +81,13 @@ impl InferCtxChirho {
             ),
             None => self.infer_expr_chirho(&translated_chirho),
         };
+        if self.apply_subst_all_chirho(&mut rest_subst_chirho).is_err() {
+            return (
+                SubstChirho::empty_chirho(),
+                Self::terminal_commit_type_chirho(),
+            );
+        };
         subst_chirho = rest_subst_chirho.compose_chirho(&subst_chirho);
-        self.apply_subst_all_chirho(&rest_subst_chirho);
         self.restore_type_pattern_aliases_chirho(type_pattern_scope_mark_chirho);
         self.env_chirho.pop_scope_chirho();
         (subst_chirho, ty_chirho)
@@ -130,7 +135,7 @@ impl InferCtxChirho {
 
             match stmt_chirho {
                 StmtChirho::ExprChirho { expr_chirho, .. } => {
-                    let (s_chirho, ty_chirho) = match (&last_expected_chirho, is_last_chirho) {
+                    let (mut s_chirho, ty_chirho) = match (&last_expected_chirho, is_last_chirho) {
                         (Some(expected_chirho), true) => {
                             let expected_sub_chirho = subst_chirho.apply_ty_chirho(expected_chirho);
                             self.infer_expr_against_expected_chirho(
@@ -141,8 +146,13 @@ impl InferCtxChirho {
                         }
                         _ => self.infer_expr_chirho(expr_chirho),
                     };
+                    if self.apply_subst_all_chirho(&mut s_chirho).is_err() {
+                        return (
+                            SubstChirho::empty_chirho(),
+                            Self::terminal_commit_type_chirho(),
+                        );
+                    };
                     subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                    self.apply_subst_all_chirho(&s_chirho);
 
                     if is_last_chirho && !monadic_chirho {
                         // `do {e}` and `do {let decls; e}`: no monad at all.
@@ -160,9 +170,14 @@ impl InferCtxChirho {
                             &subst_chirho.apply_ty_chirho(&expected_chirho),
                             span_chirho,
                         ) {
-                            Ok(su_chirho) => {
+                            Ok(mut su_chirho) => {
+                                if self.apply_subst_all_chirho(&mut su_chirho).is_err() {
+                                    return (
+                                        SubstChirho::empty_chirho(),
+                                        Self::terminal_commit_type_chirho(),
+                                    );
+                                };
                                 subst_chirho = su_chirho.compose_chirho(&subst_chirho);
-                                self.apply_subst_all_chirho(&su_chirho);
                             }
                             Err(_) => { /* allow fallthrough for simple expressions */ }
                         }
@@ -174,13 +189,18 @@ impl InferCtxChirho {
                             Box::new(m_chirho.clone()),
                             Box::new(discard_chirho),
                         );
-                        if let Ok(su_chirho) = self.unify_normalized_chirho(
+                        if let Ok(mut su_chirho) = self.unify_normalized_chirho(
                             &subst_chirho.apply_ty_chirho(&ty_chirho),
                             &subst_chirho.apply_ty_chirho(&expected_chirho),
                             span_chirho,
                         ) {
+                            if self.apply_subst_all_chirho(&mut su_chirho).is_err() {
+                                return (
+                                    SubstChirho::empty_chirho(),
+                                    Self::terminal_commit_type_chirho(),
+                                );
+                            };
                             subst_chirho = su_chirho.compose_chirho(&subst_chirho);
-                            self.apply_subst_all_chirho(&su_chirho);
                         }
                         last_ty_chirho = ty_chirho;
                     }
@@ -190,9 +210,14 @@ impl InferCtxChirho {
                     expr_chirho,
                     ..
                 } => {
-                    let (s_chirho, ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                    let (mut s_chirho, ty_chirho) = self.infer_expr_chirho(expr_chirho);
+                    if self.apply_subst_all_chirho(&mut s_chirho).is_err() {
+                        return (
+                            SubstChirho::empty_chirho(),
+                            Self::terminal_commit_type_chirho(),
+                        );
+                    };
                     subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                    self.apply_subst_all_chirho(&s_chirho);
 
                     // `x <- m`: m has type `M a`, bind x :: a
                     let elem_ty_chirho = self.fresh_var_chirho();
@@ -200,20 +225,30 @@ impl InferCtxChirho {
                         Box::new(m_chirho.clone()),
                         Box::new(elem_ty_chirho.clone()),
                     );
-                    if let Ok(su_chirho) = self.unify_normalized_chirho(
+                    if let Ok(mut su_chirho) = self.unify_normalized_chirho(
                         &subst_chirho.apply_ty_chirho(&ty_chirho),
                         &subst_chirho.apply_ty_chirho(&expected_chirho),
                         span_chirho,
                     ) {
+                        if self.apply_subst_all_chirho(&mut su_chirho).is_err() {
+                            return (
+                                SubstChirho::empty_chirho(),
+                                Self::terminal_commit_type_chirho(),
+                            );
+                        };
                         subst_chirho = su_chirho.compose_chirho(&subst_chirho);
-                        self.apply_subst_all_chirho(&su_chirho);
                     }
 
                     // Bind the pattern variable(s) to the unwrapped type
                     let bound_ty_chirho = subst_chirho.apply_ty_chirho(&elem_ty_chirho);
-                    let sp_chirho = self.bind_pat_chirho(pat_chirho, &bound_ty_chirho);
+                    let mut sp_chirho = self.bind_pat_chirho(pat_chirho, &bound_ty_chirho);
+                    if self.apply_subst_all_chirho(&mut sp_chirho).is_err() {
+                        return (
+                            SubstChirho::empty_chirho(),
+                            Self::terminal_commit_type_chirho(),
+                        );
+                    };
                     subst_chirho = sp_chirho.compose_chirho(&subst_chirho);
-                    self.apply_subst_all_chirho(&sp_chirho);
                     last_ty_chirho = TyChirho::unit_chirho();
                 }
                 StmtChirho::LetChirho { binds_chirho, .. } => {

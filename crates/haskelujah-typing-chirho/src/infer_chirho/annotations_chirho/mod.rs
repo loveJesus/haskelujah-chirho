@@ -27,6 +27,12 @@ impl InferCtxChirho {
         span_chirho: SpanChirho,
     ) -> (SubstChirho, SchemeChirho) {
         let checked_annotation_chirho = self.check_body_type_chirho(annotation_chirho, true);
+        if self.has_non_deferrable_failure_chirho() {
+            return (
+                SubstChirho::empty_chirho(),
+                SchemeChirho::mono_chirho(Self::terminal_commit_type_chirho()),
+            );
+        }
         let annotation_chirho = checked_annotation_chirho
             .as_ref()
             .map_or(annotation_chirho, |checked_chirho| {
@@ -50,7 +56,7 @@ impl InferCtxChirho {
         );
         self.scoped_tyvars_chirho = saved_scope_chirho;
         let substitution_chirho =
-            self.publish_signature_solution_chirho(substitution_chirho, &public_chirho);
+            self.publish_signature_solution_chirho(substitution_chirho, public_chirho);
         let checked_chirho = substitution_chirho.apply_scheme_chirho(&scheme_chirho);
         (substitution_chirho, checked_chirho)
     }
@@ -88,6 +94,22 @@ impl InferCtxChirho {
         ) -> ResultChirho,
     ) -> (ResultChirho, SubstChirho) {
         let saved_skolems_chirho = self.skolem_bindings_chirho.clone();
+        let captured_chirho = if scheme_chirho.vars_chirho.iter().any(|variable_chirho| {
+            saved_skolems_chirho
+                .lookup_chirho(variable_chirho)
+                .is_none()
+        }) {
+            Some(self.capture_scope_metas_chirho(Some(scheme_chirho), &[], span_chirho))
+        } else {
+            None
+        };
+        if captured_chirho.as_ref().is_some_and(Option::is_none)
+            || self.has_non_deferrable_failure_chirho()
+        {
+            self.type_normalization_exhausted_chirho.set(true);
+            let result_chirho = check_chirho(self, &Self::terminal_commit_type_chirho(), None);
+            return (result_chirho, SubstChirho::empty_chirho());
+        }
         let (expected_chirho, givens_chirho) = self.skolemize_scheme_parts_chirho(scheme_chirho);
         let parameter_entry_chirho = entry_chirho.and_then(|entry_chirho| {
             self.extend_value_parameter_scope_chirho(entry_chirho, &givens_chirho, span_chirho)
@@ -108,11 +130,7 @@ impl InferCtxChirho {
                 }
             })
             .collect();
-        let captured_chirho = if local_skolems_chirho.is_empty() {
-            None
-        } else {
-            Some(self.capture_signature_metas_chirho(scheme_chirho))
-        };
+
         let mut public_chirho = SubstChirho::empty_chirho();
         let result_chirho = self.with_signature_givens_and_finish_chirho(
             givens_chirho,
@@ -143,13 +161,15 @@ impl InferCtxChirho {
     pub(super) fn publish_signature_solution_chirho(
         &mut self,
         checked_chirho: SubstChirho,
-        public_chirho: &SubstChirho,
+        public_chirho: SubstChirho,
     ) -> SubstChirho {
+        if self.has_non_deferrable_failure_chirho() {
+            return SubstChirho::empty_chirho();
+        }
         let mut combined_chirho = public_chirho.compose_chirho(&checked_chirho);
         for (variable_chirho, image_chirho) in public_chirho.iter_chirho() {
             combined_chirho.insert_chirho(*variable_chirho, image_chirho.clone());
         }
-        self.apply_subst_all_chirho(public_chirho);
         combined_chirho
     }
 }

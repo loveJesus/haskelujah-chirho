@@ -111,9 +111,11 @@ fn occurrence_record_defaults_fractional_literal_method_to_double_chirho() {
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
     let (subst_chirho, _ty_chirho) = ctx_chirho.infer_expr_chirho(&app_chirho);
-    let default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
+    let mut default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
     if !default_subst_chirho.is_empty_chirho() {
-        ctx_chirho.apply_subst_all_chirho(&default_subst_chirho);
+        ctx_chirho
+            .apply_subst_all_chirho(&mut default_subst_chirho)
+            .expect("checked substitution commit");
     }
     let composed_subst_chirho = default_subst_chirho.compose_chirho(&subst_chirho);
     let records_chirho = ctx_chirho.finalize_occurrence_records_chirho(&composed_subst_chirho);

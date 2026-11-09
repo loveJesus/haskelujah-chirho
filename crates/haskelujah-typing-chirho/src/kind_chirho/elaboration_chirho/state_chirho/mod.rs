@@ -12,6 +12,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 mod continuation_chirho;
 mod representation_chirho;
 mod variables_chirho;
+pub(crate) use variables_chirho::CapturedVariableKindsChirho;
 pub use variables_chirho::{ElaborationVariableBindingChirho, ElaborationVariableChirho};
 
 static NEXT_ELABORATION_OWNER_CHIRHO: AtomicU64 = AtomicU64::new(1);

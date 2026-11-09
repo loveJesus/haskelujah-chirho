@@ -55,7 +55,7 @@ impl InferCtxChirho {
             Box::new(TyChirho::ConChirho("IO".to_string())),
             Box::new(self.fresh_var_chirho()),
         );
-        let Ok(subst_chirho) = self.unify_normalized_chirho(
+        let Ok(mut subst_chirho) = self.unify_normalized_chirho(
             &entry_ty_chirho,
             &action_chirho,
             SpanChirho::DUMMY_CHIRHO,
@@ -68,7 +68,9 @@ impl InferCtxChirho {
             );
             return SubstChirho::empty_chirho();
         };
-        self.apply_subst_all_chirho(&subst_chirho);
+        if self.apply_subst_all_chirho(&mut subst_chirho).is_err() {
+            return SubstChirho::empty_chirho();
+        };
         for wanted_chirho in wanteds_chirho {
             let wanted_chirho = wanted_chirho.mapped_chirho(|ty_chirho| {
                 subst_chirho.apply_ty_chirho(&final_subst_chirho.apply_ty_chirho(ty_chirho))

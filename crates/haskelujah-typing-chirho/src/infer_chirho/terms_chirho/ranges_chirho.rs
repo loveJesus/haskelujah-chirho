@@ -41,18 +41,31 @@ impl InferCtxChirho {
             .into_iter()
             .flatten()
         {
-            let (endpoint_subst_chirho, endpoint_ty_chirho) =
+            let (mut endpoint_subst_chirho, endpoint_ty_chirho) =
                 self.infer_expr_chirho(endpoint_chirho);
+            if self
+                .apply_subst_all_chirho(&mut endpoint_subst_chirho)
+                .is_err()
+            {
+                return (
+                    SubstChirho::empty_chirho(),
+                    Self::terminal_commit_type_chirho(),
+                );
+            };
             subst_chirho = endpoint_subst_chirho.compose_chirho(&subst_chirho);
-            self.apply_subst_all_chirho(&endpoint_subst_chirho);
             match self.unify_normalized_chirho(
                 &subst_chirho.apply_ty_chirho(&elem_chirho),
                 &subst_chirho.apply_ty_chirho(&endpoint_ty_chirho),
                 endpoint_chirho.span_chirho(),
             ) {
-                Ok(unifier_chirho) => {
+                Ok(mut unifier_chirho) => {
+                    if self.apply_subst_all_chirho(&mut unifier_chirho).is_err() {
+                        return (
+                            SubstChirho::empty_chirho(),
+                            Self::terminal_commit_type_chirho(),
+                        );
+                    };
                     subst_chirho = unifier_chirho.compose_chirho(&subst_chirho);
-                    self.apply_subst_all_chirho(&unifier_chirho);
                 }
                 Err(error_chirho) => self.report_unify_error_chirho(&error_chirho),
             }

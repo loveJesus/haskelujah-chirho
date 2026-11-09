@@ -46,7 +46,7 @@ impl InferCtxChirho {
                     .map(|right_chirho| (&predicate_chirho.ty_chirho, right_chirho))
             })
             .collect();
-        let normalized_chirho = self.check_body_syntax_at_scope_chirho(
+        let (normalized_chirho, effective_chirho) = self.check_body_syntax_at_scope_chirho(
             span_chirho,
             Some(entry_chirho),
             |context_chirho| {
@@ -57,12 +57,22 @@ impl InferCtxChirho {
                 )
             },
         )?;
-        let rules_chirho: Vec<_> = normalized_chirho
-            .into_iter()
-            .filter_map(|(left_chirho, right_chirho)| {
-                self.given_equality_rule_chirho(left_chirho, right_chirho)
-            })
-            .collect();
+        let mut rules_chirho = Vec::new();
+        for (left_chirho, right_chirho) in normalized_chirho {
+            let left_chirho = self.materialize_committed_type_chirho(
+                &effective_chirho,
+                &left_chirho,
+                span_chirho,
+            )?;
+            let right_chirho = self.materialize_committed_type_chirho(
+                &effective_chirho,
+                &right_chirho,
+                span_chirho,
+            )?;
+            if let Some(rule_chirho) = self.given_equality_rule_chirho(left_chirho, right_chirho) {
+                rules_chirho.push(rule_chirho);
+            }
+        }
         let allocation_chirho = usize::from(!rules_chirho.is_empty());
         if let Err(error_chirho) = self.elaboration_state_chirho.charge_chirho(
             allocation_chirho,
@@ -124,9 +134,13 @@ impl InferCtxChirho {
                 return;
             }
         };
-        self.check_body_syntax_at_scope_chirho(span_chirho, Some(entry_chirho), |context_chirho| {
-            elaborate_value_parameters_chirho(&entries_chirho, context_chirho)
-        });
+        let Some((_checked_chirho, _committed_chirho)) = self.check_body_syntax_at_scope_chirho(
+            span_chirho,
+            Some(entry_chirho),
+            |context_chirho| elaborate_value_parameters_chirho(&entries_chirho, context_chirho),
+        ) else {
+            return;
+        };
     }
     /// Inspect the whole actual parameter list before any of its patterns can
     /// add givens. Only enclosing implications authorize representation refinement.
@@ -206,9 +220,13 @@ impl InferCtxChirho {
                 }
             }
         }
-        self.check_body_syntax_chirho(span_chirho, |context_chirho| {
-            elaborate_value_parameters_chirho(&entries_chirho, context_chirho)
-        });
+        let Some((_checked_chirho, _committed_chirho)) = self
+            .check_body_syntax_chirho(span_chirho, |context_chirho| {
+                elaborate_value_parameters_chirho(&entries_chirho, context_chirho)
+            })
+        else {
+            return;
+        };
     }
 
     pub(in crate::infer_chirho) fn check_body_type_argument_chirho(
@@ -229,6 +247,12 @@ impl InferCtxChirho {
         &mut self,
         error_chirho: ElaborationErrorChirho,
     ) {
+        if error_chirho.mismatch_chirho.is_none()
+            && self.elaboration_state_chirho.failure_chirho().is_some()
+        {
+            self.record_commit_failure_chirho(&error_chirho);
+            return;
+        }
         let scoped_chirho = (|| {
             let Some(sides_chirho) = error_chirho.mismatch_chirho.as_ref() else {
                 return Ok(false);
@@ -293,9 +317,21 @@ impl InferCtxChirho {
         syntax_chirho: &TypeChirho,
         value_kind_chirho: bool,
     ) -> Option<CheckedBodyTypeChirho> {
-        self.check_body_syntax_chirho(syntax_chirho.span_chirho(), |context_chirho| {
-            elaborate_body_type_chirho(syntax_chirho, value_kind_chirho, context_chirho)
-        })
+        let (mut checked_chirho, effective_chirho) =
+            self.check_body_syntax_chirho(syntax_chirho.span_chirho(), |context_chirho| {
+                elaborate_body_type_chirho(syntax_chirho, value_kind_chirho, context_chirho)
+            })?;
+        checked_chirho.term_chirho = self.materialize_committed_type_chirho(
+            &effective_chirho,
+            &checked_chirho.term_chirho,
+            syntax_chirho.span_chirho(),
+        )?;
+        checked_chirho.kind_chirho = self.materialize_committed_type_chirho(
+            &effective_chirho,
+            &checked_chirho.kind_chirho,
+            syntax_chirho.span_chirho(),
+        )?;
+        Some(checked_chirho)
     }
 
     pub(in crate::infer_chirho) fn check_body_pattern_type_chirho(
@@ -303,9 +339,25 @@ impl InferCtxChirho {
         syntax_chirho: &TypeChirho,
         expected_kind_chirho: &TyChirho,
     ) -> Option<CheckedBodyTypeChirho> {
-        self.check_body_syntax_chirho(syntax_chirho.span_chirho(), |context_chirho| {
-            elaborate_body_pattern_type_chirho(syntax_chirho, expected_kind_chirho, context_chirho)
-        })
+        let (mut checked_chirho, effective_chirho) =
+            self.check_body_syntax_chirho(syntax_chirho.span_chirho(), |context_chirho| {
+                elaborate_body_pattern_type_chirho(
+                    syntax_chirho,
+                    expected_kind_chirho,
+                    context_chirho,
+                )
+            })?;
+        checked_chirho.term_chirho = self.materialize_committed_type_chirho(
+            &effective_chirho,
+            &checked_chirho.term_chirho,
+            syntax_chirho.span_chirho(),
+        )?;
+        checked_chirho.kind_chirho = self.materialize_committed_type_chirho(
+            &effective_chirho,
+            &checked_chirho.kind_chirho,
+            syntax_chirho.span_chirho(),
+        )?;
+        Some(checked_chirho)
     }
 
     fn check_body_syntax_chirho<ResultChirho>(
@@ -315,7 +367,7 @@ impl InferCtxChirho {
             ArgumentElaborationContextChirho<'_>,
         )
             -> Result<(ResultChirho, SubstChirho), ElaborationErrorChirho>,
-    ) -> Option<ResultChirho> {
+    ) -> Option<(ResultChirho, crate::subst_chirho::SubstChirho)> {
         self.check_body_syntax_at_scope_chirho(span_chirho, None, elaborate_chirho)
     }
 
@@ -327,7 +379,10 @@ impl InferCtxChirho {
             ArgumentElaborationContextChirho<'_>,
         )
             -> Result<(ResultChirho, SubstChirho), ElaborationErrorChirho>,
-    ) -> Option<ResultChirho> {
+    ) -> Option<(ResultChirho, crate::subst_chirho::SubstChirho)> {
+        if self.has_non_deferrable_failure_chirho() {
+            return None;
+        }
         self.elaboration_state_chirho.owner_chirho?;
         let (Some(type_scope_chirho), Some(family_scope_chirho), Some(promotion_scope_chirho)) = (
             self.type_constructor_scope_chirho.clone(),
@@ -369,9 +424,11 @@ impl InferCtxChirho {
             },
         });
         match result_chirho {
-            Ok((checked_chirho, links_chirho)) => {
-                self.apply_subst_all_chirho(&links_chirho);
-                Some(checked_chirho)
+            Ok((checked_chirho, mut links_chirho)) => {
+                if self.apply_subst_all_chirho(&mut links_chirho).is_err() {
+                    return None;
+                }
+                Some((checked_chirho, links_chirho))
             }
             Err(error_chirho) => {
                 self.record_body_kind_error_chirho(error_chirho);
