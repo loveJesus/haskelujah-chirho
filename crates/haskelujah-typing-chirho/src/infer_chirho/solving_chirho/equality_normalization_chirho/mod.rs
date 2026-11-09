@@ -31,11 +31,11 @@ impl EqualityBudgetChirho {
             output_chirho: 16_384,
         }
     }
-    pub(super) fn work_chirho(&mut self, amount_chirho: usize) -> Option<()> {
+    pub(crate) fn work_chirho(&mut self, amount_chirho: usize) -> Option<()> {
         self.work_chirho = self.work_chirho.checked_sub(amount_chirho)?;
         Some(())
     }
-    pub(super) fn node_chirho(&mut self, amount_chirho: usize) -> Option<()> {
+    pub(crate) fn node_chirho(&mut self, amount_chirho: usize) -> Option<()> {
         self.work_chirho(amount_chirho)?;
         self.output_chirho = self.output_chirho.checked_sub(amount_chirho)?;
         Some(())

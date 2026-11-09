@@ -508,9 +508,7 @@ impl InferCtxChirho {
                         SubstChirho::empty_chirho(),
                     )
                 };
-            if self.apply_subst_all_chirho(&mut links_chirho).is_err() {
-                return None;
-            };
+            self.apply_subst_all_chirho(&mut links_chirho)?;
             let mut budget_chirho =
                 super::equality_normalization_chirho::EqualityBudgetChirho::new_chirho();
             let function_chirho = links_chirho
