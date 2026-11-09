@@ -723,3 +723,253 @@ fn legacy_deferred_composition_retains_the_already_published_fd_delta_chirho() {
         Some(&TyChirho::bool_chirho())
     );
 }
+
+/// A real empty source family with its checked Type -> Type telescope and scope.
+fn checked_reveal_context_chirho() -> (InferCtxChirho, TyChirho) {
+    use crate::kind_chirho::elaboration_chirho::{
+        ElaborationImportsChirho, elaborate_module_chirho,
+    };
+    use haskelujah_ast_chirho::decl_chirho::{DeclChirho, TyVarChirho as AstTyVarChirho};
+    use haskelujah_ast_chirho::module_chirho::ModuleChirho;
+    use haskelujah_ast_chirho::name_chirho::{
+        BuiltinClassScopeChirho, NameChirho, RawNameChirho, TypeConstructorScopeChirho,
+    };
+    use haskelujah_ast_chirho::promotion_chirho::PromotionScopeChirho;
+    use haskelujah_ast_chirho::ty_chirho::TypeChirho;
+
+    let name_chirho = |text_chirho: &str| {
+        NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+            text_chirho,
+            SpanChirho::DUMMY_CHIRHO,
+        ))
+    };
+    let type_chirho = TypeChirho::ConChirho(name_chirho("*"));
+    let mut module_chirho = ModuleChirho {
+        name_chirho: name_chirho("CheckedFundepChirho"),
+        exports_chirho: None,
+        imports_chirho: Vec::new(),
+        decls_chirho: vec![DeclChirho::TypeFamilyDeclChirho {
+            injectivity_chirho: Some(false),
+            name_chirho: name_chirho("RevealChirho"),
+            type_vars_chirho: vec![AstTyVarChirho::annotated_chirho(
+                name_chirho("inputChirho"),
+                type_chirho.clone(),
+            )],
+            result_kind_chirho: Some(type_chirho),
+            standalone_kind_chirho: None,
+            data_family_chirho: false,
+            closed_chirho: false,
+            equations_chirho: Vec::new(),
+            span_chirho: SpanChirho::DUMMY_CHIRHO,
+        }],
+        extensions_chirho: vec!["TypeFamilies".to_string(), "KindSignatures".to_string()],
+        inline_pragmas_chirho: HashMap::new(),
+        specialize_pragmas_chirho: HashMap::new(),
+        foreign_exports_chirho: Vec::new(),
+        deriving_via_chirho: Vec::new(),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+        origin_supply_chirho: Default::default(),
+    };
+    let type_scope_chirho = TypeConstructorScopeChirho::default();
+    let family_scope_chirho = crate::infer_chirho::TypeFamilyScopeChirho::default();
+    let promotion_scope_chirho = PromotionScopeChirho::default();
+    let mut context_chirho = context_chirho();
+    let checked_chirho = elaborate_module_chirho(
+        &mut module_chirho,
+        ElaborationImportsChirho {
+            registry_chirho: &context_chirho.type_families_chirho,
+            type_scope_chirho: &type_scope_chirho,
+            family_scope_chirho: &family_scope_chirho,
+            promotion_scope_chirho: &promotion_scope_chirho,
+            builtin_classes_chirho: &BuiltinClassScopeChirho::default(),
+            source_unit_chirho: None,
+        },
+    )
+    .expect("the real elaborator must check the family telescope");
+    context_chirho.adopt_elaboration_state_chirho(checked_chirho.state_chirho);
+    context_chirho.type_families_chirho = checked_chirho.registry_chirho;
+    context_chirho.type_constructor_scope_chirho = Some(Arc::new(type_scope_chirho));
+    context_chirho.family_scope_chirho = Some(Arc::new(family_scope_chirho));
+    context_chirho.promotion_scope_chirho = Some(Arc::new(promotion_scope_chirho));
+    context_chirho.infer_module_chirho(&module_chirho);
+    assert!(!context_chirho.has_non_deferrable_failure_chirho());
+    assert!(!context_chirho.diagnostics_chirho.has_errors_chirho());
+    let key_chirho = context_chirho
+        .family_name_key_chirho("RevealChirho")
+        .unwrap();
+    let header_chirho = context_chirho
+        .type_families_chirho
+        .declaration_schemes_chirho()
+        .get_chirho(&key_chirho)
+        .unwrap();
+    assert!(!header_chirho.held_chirho);
+    assert!(header_chirho.declaration_chirho.is_some());
+    assert_eq!(header_chirho.visible_arity_chirho, 1);
+    assert_eq!(header_chirho.reduction_arity_chirho, 1);
+    assert_eq!(
+        header_chirho.binders_chirho[0].kind_chirho,
+        ElaborationStateChirho::type_universe_chirho()
+    );
+    assert_eq!(
+        header_chirho.result_kind_chirho,
+        ElaborationStateChirho::type_universe_chirho()
+    );
+    let reveal_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho(key_chirho)),
+        Box::new(TyChirho::int_chirho()),
+    );
+    (context_chirho, reveal_chirho)
+}
+
+#[test]
+fn public_family_images_reenter_the_same_checked_candidate_chirho() {
+    for with_given_chirho in [true, false] {
+        let (mut context_chirho, reveal_chirho) = checked_reveal_context_chirho();
+        class_chirho(&mut context_chirho, "ConvertChirho", 0);
+        class_chirho(&mut context_chirho, "GivenChirho", 0);
+        let instance_chirho = instance_chirho(
+            &mut context_chirho,
+            "ConvertChirho",
+            TyChirho::int_chirho(),
+            TyChirho::bool_chirho(),
+            Vec::new(),
+            &[],
+        );
+        context_chirho
+            .class_env_chirho
+            .add_instance_chirho(instance_chirho);
+        let variable_chirho = context_chirho
+            .elaboration_state_chirho
+            .fresh_chirho(
+                Some(ElaborationStateChirho::type_universe_chirho()),
+                SpanChirho::DUMMY_CHIRHO,
+            )
+            .unwrap();
+        assert_eq!(
+            context_chirho
+                .elaboration_state_chirho
+                .variable_kinds_chirho[&variable_chirho]
+                .binding_chirho,
+            ElaborationVariableBindingChirho::MetaChirho
+        );
+        let alpha_chirho = TyChirho::VarChirho(variable_chirho);
+        context_chirho.env_chirho.bind_chirho(
+            "answerChirho".to_string(),
+            SchemeChirho::mono_chirho(alpha_chirho.clone()),
+        );
+        let frame_chirho = context_chirho.begin_pattern_implication_with_roots_chirho(
+            std::iter::once(&alpha_chirho),
+            SpanChirho::DUMMY_CHIRHO,
+        );
+        let mut givens_chirho = vec![PredChirho::new_multi_chirho(
+            "~",
+            vec![reveal_chirho.clone(), alpha_chirho.clone()],
+        )];
+        if with_given_chirho {
+            givens_chirho.push(predicate_chirho(
+                "GivenChirho",
+                TyChirho::bool_chirho(),
+                TyChirho::int_chirho(),
+            ));
+        }
+        context_chirho.install_pattern_givens_chirho(givens_chirho);
+        // Validate the installed public rewrite through its actual owner budget.
+        let mut budget_chirho = context_chirho
+            .elaboration_state_chirho
+            .lend_equality_budget_chirho(SpanChirho::DUMMY_CHIRHO)
+            .unwrap();
+        let loan_chirho = budget_chirho.remaining_chirho();
+        let image_chirho = context_chirho
+            .normalize_signature_public_image_chirho(&reveal_chirho, &mut budget_chirho)
+            .unwrap();
+        context_chirho
+            .elaboration_state_chirho
+            .settle_equality_budget_chirho(
+                loan_chirho,
+                &budget_chirho,
+                false,
+                SpanChirho::DUMMY_CHIRHO,
+            )
+            .unwrap();
+        assert_eq!(image_chirho, alpha_chirho);
+        assert_ne!(image_chirho, reveal_chirho);
+        assert!(reveal_chirho.free_vars_chirho().is_empty());
+        assert!(
+            context_chirho
+                .class_env_chirho
+                .instances_chirho()
+                .get_chirho("GivenChirho")
+                .is_none_or(|instances_chirho| instances_chirho.len_chirho() == 0)
+        );
+        assert!(
+            context_chirho
+                .equality_substitutions_chirho
+                .lookup_chirho(&variable_chirho)
+                .is_none()
+        );
+        // The public solver carries Convert's closed candidate across this queue
+        // without publishing it until closure rounds finish. The next input is a
+        // closed family application, so its FIRST candidate resolve stays whole;
+        // public normalization then exposes alpha, and only the final resolve can
+        // follow the candidate's Bool link. Given has no instance/equation branch
+        // that could repair a missed match after that normalization.
+        context_chirho.deferred_preds_chirho.push((
+            predicate_chirho(
+                "ConvertChirho",
+                TyChirho::int_chirho(),
+                alpha_chirho.clone(),
+            ),
+            SpanChirho::DUMMY_CHIRHO,
+        ));
+        let remaining_chirho =
+            predicate_chirho("GivenChirho", reveal_chirho, TyChirho::int_chirho());
+        context_chirho
+            .deferred_preds_chirho
+            .push((remaining_chirho.clone(), SpanChirho::DUMMY_CHIRHO));
+        let next_chirho = context_chirho.elaboration_state_chirho.next_variable_chirho;
+        let delta_chirho =
+            context_chirho.solve_deferred_fundeps_chirho(&SubstChirho::empty_chirho());
+        assert!(
+            !context_chirho.has_non_deferrable_failure_chirho(),
+            "{:?}",
+            context_chirho
+                .non_deferrable_diagnostics_chirho
+                .diagnostics_chirho()
+        );
+        assert_eq!(
+            delta_chirho.apply_ty_chirho(&alpha_chirho),
+            TyChirho::bool_chirho()
+        );
+        assert_eq!(
+            context_chirho
+                .env_chirho
+                .lookup_chirho("answerChirho")
+                .unwrap()
+                .ty_chirho,
+            TyChirho::bool_chirho()
+        );
+        assert_eq!(
+            context_chirho.elaboration_state_chirho.next_variable_chirho,
+            next_chirho
+        );
+        if with_given_chirho {
+            // The public family rewrite exposes alpha only AFTER the first
+            // candidate resolve. Its candidate Bool link is not live yet, so
+            // the retained second resolve is necessary to consume this Given.
+            assert!(context_chirho.deferred_preds_chirho.is_empty());
+        } else {
+            assert_eq!(context_chirho.deferred_preds_chirho.len(), 1);
+            assert_eq!(context_chirho.deferred_preds_chirho[0].0, remaining_chirho);
+        }
+        let solution_chirho = context_chirho.end_pattern_implication_chirho(
+            frame_chirho,
+            &TyChirho::bool_chirho(),
+            SpanChirho::DUMMY_CHIRHO,
+        );
+        assert_eq!(
+            solution_chirho.public_chirho.apply_ty_chirho(&alpha_chirho),
+            TyChirho::bool_chirho()
+        );
+        assert!(context_chirho.given_preds_chirho.is_empty());
+    }
+}

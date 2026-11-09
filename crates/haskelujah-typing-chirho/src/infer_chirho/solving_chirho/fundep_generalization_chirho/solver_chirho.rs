@@ -94,12 +94,24 @@ impl FundepSolveChirho<'_> {
         term_chirho: &TyChirho,
         candidate_chirho: &FundepCandidateChirho,
     ) -> Result<TyChirho, ()> {
-        let term_chirho = candidate_chirho.resolve_chirho(term_chirho, &mut self.budget_chirho)?;
+        let resolved_chirho =
+            candidate_chirho.resolve_chirho(term_chirho, &mut self.budget_chirho)?;
         let term_chirho = self
             .context_chirho
-            .normalize_signature_public_image_chirho(&term_chirho, &mut self.budget_chirho)
+            .normalize_signature_public_image_chirho(&resolved_chirho, &mut self.budget_chirho)
             .map_err(|_| ())?;
-        candidate_chirho.resolve_chirho(&term_chirho, &mut self.budget_chirho)
+        // Workflow: language-features-chirho/fundep-generalization-chirho.
+        // Public normalization can expose a candidate-bound meta, so only an
+        // exact, charged contract comparison proves the second resolve redundant.
+        match crate::ty_chirho::same_type_contract_chirho(
+            &resolved_chirho,
+            &term_chirho,
+            &mut |work_chirho| charge_chirho(&mut self.budget_chirho, work_chirho, 0),
+        ) {
+            Some(true) => Ok(term_chirho),
+            Some(false) => candidate_chirho.resolve_chirho(&term_chirho, &mut self.budget_chirho),
+            None => Err(()),
+        }
     }
 
     fn predicate_chirho(

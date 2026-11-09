@@ -169,3 +169,41 @@ Every embedded program was measured against GHC 9.14.1 exactly as the test
 builds it. tc126 is the corpus file itself. tc231 (GHC-39999, `No instance for
 Zork s (Z [Char]) b0`) is a correct new rejection that sits in the corpus's
 accept bucket. It stays there as an actual membership delta.
+
+
+## Owned normalization reuse Chirho
+
+The checked FD solver keeps the first candidate-resolved owned input while public
+normalization runs. It compares that input with the owned public result through the
+existing bounded strict `same_type_contract_chirho`, charging its actual work to the same
+loan. Equality reuses the public result; inequality retains the original second candidate
+resolve, because a scoped family Given may reveal a candidate-bound Meta. Comparison
+exhaustion returns the existing resource error. No allowance, depth, debit, role or context
+closure changes. The equation loop still performs its full composite normalization; no
+initial-pair reuse assumes that composite is idempotent.
+
+```mermaid
+graph TD
+    input_reuse_chirho[Input term] --> first_reuse_chirho[Owned candidate resolve]
+    first_reuse_chirho --> public_reuse_chirho[Existing public normalization under scoped evidence]
+    first_reuse_chirho --> compare_reuse_chirho[Charged strict type-contract comparison]
+    public_reuse_chirho --> compare_reuse_chirho
+    compare_reuse_chirho -->|Same contract| owned_reuse_chirho[Return already-owned public result]
+    compare_reuse_chirho -->|Different contract| fallback_reuse_chirho[Original second candidate resolve]
+    compare_reuse_chirho -->|Bound exhausted| error_reuse_chirho[Existing resource Err and settlement]
+```
+
+The public-solver control elaborates a real empty `RevealChirho :: Type -> Type`, keeps its
+actual key/telescope/owner/scopes, and opens a real implication with `RevealChirho Int ~ alpha`.
+`ConvertChirho Int Bool` closes alpha in the scratch candidate; the subsequent
+`GivenChirho (RevealChirho Int) Int` can consume the scoped `GivenChirho Bool Int` only after
+public normalization exposes alpha and the second candidate resolve follows its Bool link.
+The fixture explicitly verifies that the family input has no free variables, its public
+image is the distinct unbound alpha, and Given has no instances. Candidate substitution
+therefore cannot alter the first input; the public solver retains Convert's Bool binding
+only in its scratch candidate until all wanted-closing rounds finish. A failed Given match
+has no instance/equation branch to rescue it. This is the source reason the fallback is
+reachable, rather than an inference from a future passing count. The missing-Given twin
+keeps that wanted at solver return. Prior exhaustion, recursion,
+kind/identity and unclosed-child assertions remain unchanged. This is source-only design
+coverage until executed; any effect on the original tc125 resource outcome is unmeasured.
