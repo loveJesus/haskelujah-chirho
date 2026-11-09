@@ -515,3 +515,164 @@ fn numeric_nominality_preserves_same_types_and_meta_substitution_chirho() {
         }
     }
 }
+
+#[test]
+fn reflexive_monotypes_spend_work_without_materializing_type_output_chirho() {
+    let terms_chirho = vec![
+        TyChirho::ConChirho("%universe:type".into()),
+        TyChirho::VarChirho(TyVarChirho(7001)),
+        TyChirho::ForallVarChirho("rigidChirho".into()),
+        TyChirho::ListChirho(Box::new(TyChirho::int_chirho())),
+        TyChirho::TupleChirho(vec![TyChirho::int_chirho(), TyChirho::bool_chirho()]),
+        TyChirho::TupleChirho(Vec::new()),
+        TyChirho::FunChirho(
+            Box::new(TyChirho::int_chirho()),
+            Box::new(TyChirho::bool_chirho()),
+            crate::ty_chirho::MultChirho::OneChirho,
+        ),
+        TyChirho::AppChirho(
+            Box::new(TyChirho::ConChirho("Maybe".into())),
+            Box::new(TyChirho::VarChirho(TyVarChirho(7001))),
+        ),
+    ];
+    for left_chirho in terms_chirho {
+        let right_chirho = left_chirho.clone();
+        let mut work_chirho = 4096usize;
+        let mut output_chirho = 0usize;
+        let result_chirho = unify_monomorphic_bounded_chirho(
+            &left_chirho,
+            &right_chirho,
+            &|_| false,
+            &mut |spent_work_chirho, spent_output_chirho| {
+                work_chirho = work_chirho.checked_sub(spent_work_chirho)?;
+                output_chirho = output_chirho.checked_sub(spent_output_chirho)?;
+                Some(())
+            },
+        )
+        .unwrap()
+        .unwrap();
+        assert!(result_chirho.iter_chirho().next().is_none());
+        assert!(work_chirho < 4096);
+        assert_eq!(output_chirho, 0);
+    }
+    assert!(
+        unify_monomorphic_bounded_chirho(
+            &TyChirho::int_chirho(),
+            &TyChirho::int_chirho(),
+            &|_| false,
+            &mut |_, _| None,
+        )
+        .is_err()
+    );
+    let mut deep_chirho = TyChirho::int_chirho();
+    for _depth_chirho in 0..130 {
+        deep_chirho = TyChirho::ListChirho(Box::new(deep_chirho));
+    }
+    assert!(
+        unify_monomorphic_bounded_chirho(&deep_chirho, &deep_chirho, &|_| false, &mut |_, _| Some(
+            ()
+        ),)
+        .is_err()
+    );
+}
+
+#[test]
+fn reflexive_polytypes_and_singleton_tuples_never_become_monotypes_chirho() {
+    let polytype_chirho = TyChirho::ForallChirho {
+        vars_chirho: crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(Vec::new()),
+        body_chirho: Box::new(TyChirho::int_chirho()),
+    };
+    let required_chirho = TyChirho::RequiredForallChirho {
+        vars_chirho: crate::ty_chirho::QuantifiedVariablesChirho::from_records_chirho(Vec::new()),
+        body_chirho: Box::new(TyChirho::int_chirho()),
+    };
+    let qualified_chirho = TyChirho::QualChirho {
+        context_chirho: Vec::new(),
+        body_chirho: Box::new(TyChirho::int_chirho()),
+    };
+    for term_chirho in [
+        polytype_chirho.clone(),
+        required_chirho,
+        qualified_chirho,
+        TyChirho::TupleChirho(vec![TyChirho::int_chirho()]),
+        TyChirho::ListChirho(Box::new(polytype_chirho)),
+    ] {
+        assert!(
+            unify_monomorphic_bounded_chirho(&term_chirho, &term_chirho, &|_| true, &mut |_, _| {
+                Some(())
+            },)
+            .unwrap()
+            .is_none()
+        );
+    }
+}
+
+#[test]
+fn non_reflexive_monotypes_keep_nominal_multiplicity_and_binding_rules_chirho() {
+    let variable_chirho = TyVarChirho(7002);
+    assert!(
+        unify_monomorphic_bounded_chirho(
+            &TyChirho::VarChirho(variable_chirho),
+            &TyChirho::int_chirho(),
+            &|_| false,
+            &mut |_, _| Some(()),
+        )
+        .unwrap()
+        .is_none()
+    );
+    let solved_chirho = unify_monomorphic_bounded_chirho(
+        &TyChirho::VarChirho(variable_chirho),
+        &TyChirho::int_chirho(),
+        &|_| true,
+        &mut |_, _| Some(()),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(
+        solved_chirho.lookup_chirho(&variable_chirho),
+        Some(&TyChirho::int_chirho())
+    );
+    assert!(
+        unify_monomorphic_bounded_chirho(
+            &TyChirho::ConChirho("%constructor:source:4:Left:9:SameChirho".into()),
+            &TyChirho::ConChirho("%constructor:source:5:Right:9:SameChirho".into()),
+            &|_| true,
+            &mut |_, _| Some(()),
+        )
+        .unwrap()
+        .is_none()
+    );
+    let list_chirho = TyChirho::ListChirho(Box::new(TyChirho::int_chirho()));
+    let application_chirho = TyChirho::AppChirho(
+        Box::new(TyChirho::ConChirho("[]".into())),
+        Box::new(TyChirho::int_chirho()),
+    );
+    assert!(
+        unify_monomorphic_bounded_chirho(
+            &list_chirho,
+            &application_chirho,
+            &|_| false,
+            &mut |_, _| Some(()),
+        )
+        .unwrap()
+        .unwrap()
+        .iter_chirho()
+        .next()
+        .is_none()
+    );
+    let linear_chirho = TyChirho::FunChirho(
+        Box::new(TyChirho::int_chirho()),
+        Box::new(TyChirho::bool_chirho()),
+        crate::ty_chirho::MultChirho::OneChirho,
+    );
+    assert!(
+        unify_monomorphic_bounded_chirho(
+            &linear_chirho,
+            &TyChirho::fun_chirho(TyChirho::int_chirho(), TyChirho::bool_chirho()),
+            &|_| true,
+            &mut |_, _| Some(()),
+        )
+        .unwrap()
+        .is_none()
+    );
+}

@@ -95,6 +95,93 @@ fn monotype_chirho(
     }))
 }
 
+/// Borrowed reflexivity needs no result image. Every visited node/name still
+/// spends work; polytypes and singleton tuples cannot gain admission from equality.
+/// A false result delegates every existing canonicalization and binding decision.
+/// workflow: language-features-chirho/fundep-generalization-chirho
+fn same_borrowed_monotype_chirho(
+    left_chirho: &TyChirho,
+    right_chirho: &TyChirho,
+    depth_chirho: usize,
+    charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
+) -> Result<bool, ()> {
+    charge_chirho(1, 0).ok_or(())?;
+    if depth_chirho > 128 {
+        return Err(());
+    }
+    let next_chirho = depth_chirho + 1;
+    Ok(match (left_chirho, right_chirho) {
+        (TyChirho::VarChirho(left_chirho), TyChirho::VarChirho(right_chirho)) => {
+            left_chirho == right_chirho
+        }
+        (TyChirho::ConChirho(left_chirho), TyChirho::ConChirho(right_chirho))
+        | (TyChirho::ForallVarChirho(left_chirho), TyChirho::ForallVarChirho(right_chirho)) => {
+            charge_chirho(
+                left_chirho
+                    .len()
+                    .checked_add(right_chirho.len())
+                    .ok_or(())?,
+                0,
+            )
+            .ok_or(())?;
+            left_chirho == right_chirho
+        }
+        (TyChirho::ListChirho(left_chirho), TyChirho::ListChirho(right_chirho)) => {
+            same_borrowed_monotype_chirho(left_chirho, right_chirho, next_chirho, charge_chirho)?
+        }
+        (
+            TyChirho::AppChirho(left_head_chirho, left_arg_chirho),
+            TyChirho::AppChirho(right_head_chirho, right_arg_chirho),
+        ) => {
+            same_borrowed_monotype_chirho(
+                left_head_chirho,
+                right_head_chirho,
+                next_chirho,
+                charge_chirho,
+            )? && same_borrowed_monotype_chirho(
+                left_arg_chirho,
+                right_arg_chirho,
+                next_chirho,
+                charge_chirho,
+            )?
+        }
+        (
+            TyChirho::FunChirho(left_arg_chirho, left_result_chirho, left_mult_chirho),
+            TyChirho::FunChirho(right_arg_chirho, right_result_chirho, right_mult_chirho),
+        ) => {
+            left_mult_chirho == right_mult_chirho
+                && same_borrowed_monotype_chirho(
+                    left_arg_chirho,
+                    right_arg_chirho,
+                    next_chirho,
+                    charge_chirho,
+                )?
+                && same_borrowed_monotype_chirho(
+                    left_result_chirho,
+                    right_result_chirho,
+                    next_chirho,
+                    charge_chirho,
+                )?
+        }
+        (TyChirho::TupleChirho(left_chirho), TyChirho::TupleChirho(right_chirho))
+            if left_chirho.len() != 1 && left_chirho.len() == right_chirho.len() =>
+        {
+            for (left_chirho, right_chirho) in left_chirho.iter().zip(right_chirho) {
+                if !same_borrowed_monotype_chirho(
+                    left_chirho,
+                    right_chirho,
+                    next_chirho,
+                    charge_chirho,
+                )? {
+                    return Ok(false);
+                }
+            }
+            true
+        }
+        _ => false,
+    })
+}
+
 /// An exact, nominal monotype equation. The binding callback supplies actual
 /// Meta authority; it is not inferred from an ID range or the type's spelling.
 /// All pending terms, images and copies share the caller's original budget.
@@ -105,6 +192,9 @@ pub(crate) fn unify_monomorphic_bounded_chirho(
     may_bind_chirho: &impl Fn(TyVarChirho) -> bool,
     charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
 ) -> Result<Option<SubstChirho>, ()> {
+    if same_borrowed_monotype_chirho(left_chirho, right_chirho, 0, charge_chirho)? {
+        return Ok(Some(SubstChirho::empty_chirho()));
+    }
     let Some(left_chirho) = monotype_chirho(left_chirho, 0, charge_chirho)? else {
         return Ok(None);
     };

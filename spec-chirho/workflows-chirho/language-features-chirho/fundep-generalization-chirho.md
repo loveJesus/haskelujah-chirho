@@ -260,3 +260,19 @@ semantic equality, and actual sibling/name/kind copy exhaustion. Existing cyclic
 evidence, capture/oversaturation, held/ambiguous/stuck family, depth/partial-cost and FD
 fallback/missing-Given controls remain required. The source handoff has no compiler or
 original tc125 success claim until the root executes those end-state gates.
+
+
+## Borrowed monotype reflexivity Chirho
+
+A nominal equation between already identical valid monotypes returns an empty substitution without reconstructing either type. The bounded borrowed walk still checks every visited shape, multiplicity, identifier and name byte, and retains the depth limit. It refuses to certify forall, required-forall, qualified or singleton-tuple shapes. It creates no binding or identity authority. Every other pair reaches the previous canonicalization and unification path unchanged.
+
+```mermaid
+flowchart TD
+    equation_chirho[Checked monotype equation] --> borrowed_chirho[Bounded borrowed structural reflexivity]
+    borrowed_chirho -->|identical admissible monotypes| empty_chirho[Empty substitution with work charged and no type output]
+    borrowed_chirho -->|not certified| original_chirho[Existing canonicalization and unification]
+    original_chirho --> authority_chirho[Existing binding authority and occurs/multiplicity rules]
+    borrowed_chirho -->|resource or depth exhausted| resource_chirho[Original resource failure channel]
+```
+
+This storage optimization changes no resource ceiling, kind validation, instance selection or solver publication rule. The actual original tc125.hs profile is the resource acceptance gate; library tests alone cannot establish that it now completes.
