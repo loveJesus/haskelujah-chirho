@@ -55,19 +55,8 @@ impl ParserChirho<'_> {
         // Both ordinary types and H98 constructor prefixes use this producer.
         // The visible `forall ... ->` production retains its separate policy.
         // workflow: compiler-pipeline-chirho/declaration-validity-chirho
-        if self.at_dot_chirho()
-            && !self.explicit_for_all_chirho
-            && let Some(span_chirho) = self
-                .current_chirho()
-                .map(|token_chirho| token_chirho.span_chirho)
-        {
-            self.syntax_diagnostics_chirho.push_chirho(
-                haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
-                    haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(2),
-                    "illegal forall syntax: the effective source profile requires ExplicitForAll",
-                    span_chirho,
-                ),
-            );
+        if self.at_dot_chirho() && !self.explicit_for_all_chirho {
+            self.forbidden_forall_chirho = true;
         }
     }
 

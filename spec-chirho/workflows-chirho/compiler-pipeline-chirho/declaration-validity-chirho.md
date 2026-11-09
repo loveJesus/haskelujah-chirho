@@ -81,8 +81,11 @@ nominal-class twins, which print 8.
 
 Work 721 separates three source-policy obligations. The checked parser reads the already
 resolved ExplicitForAll flag for written invisible quantification, independently of
-RankNTypes. It retains `forall` as a keyword and reports a permission diagnostic; the
-visible `forall ... ->` policy is separate. Type validity consumes the resolved
+RankNTypes. It retains `forall` as a keyword and marks the shared lossless CST with a
+module-policy ErrorNode, so checked, recovery and reached-module tree checks all refuse
+the same syntax. The complete SourceFile is retained as that error's child; the common
+syntax checker reports ExplicitForAll. The visible `forall ... ->` policy is separate.
+Type validity consumes the resolved
 RankNTypes state without reconstructing an edition default or an implication that could
 undo a written NoRankNTypes. Constructor prefixes retain declaration contexts separately,
 so DatatypeContexts never exempts actual positional or record fields from type validity.
