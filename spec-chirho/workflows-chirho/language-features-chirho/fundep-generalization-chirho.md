@@ -264,7 +264,7 @@ original tc125 success claim until the root executes those end-state gates.
 
 ## Borrowed monotype reflexivity Chirho
 
-A nominal equation between already identical valid monotypes returns an empty substitution without reconstructing either type. The bounded borrowed walk still checks every visited shape, multiplicity, identifier and name byte, and retains the depth limit. It refuses to certify forall, required-forall, qualified or singleton-tuple shapes. It creates no binding or identity authority. Every other pair reaches the previous canonicalization and unification path unchanged.
+A nominal equation between already identical valid monotypes returns an empty substitution without reconstructing either type. The bounded borrowed walk still checks every visited shape, multiplicity, identifier and name byte, and retains the depth limit. It refuses to certify forall, required-forall, qualified or singleton-tuple shapes. It creates no binding or identity authority. Every other pair reaches the previous canonicalization and unification relation. A miss has spent work on the borrowed prefix, so the old path receives the remaining allowance; an equation near its work bound may now exhaust sooner. No work is refunded. This tradeoff is explicit and must be measured on the original program.
 
 ```mermaid
 flowchart TD
