@@ -153,3 +153,11 @@ fn scoped_type_variables_does_not_license_the_frozen_rank_n_field_chirho() {
         &["RankNTypes", "forall"],
     );
 }
+
+#[test]
+fn a_reached_sibling_cannot_bypass_its_explicit_forall_profile_chirho() {
+    refuses_for_chirho(
+        "negative_chirho/sibling_source_chirho/Main.hs",
+        &["ExplicitForAll", "forall"],
+    );
+}

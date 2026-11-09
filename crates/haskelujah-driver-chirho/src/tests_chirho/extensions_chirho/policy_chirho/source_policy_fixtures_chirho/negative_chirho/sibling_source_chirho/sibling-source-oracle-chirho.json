@@ -1,0 +1,32 @@
+{
+  "codes_chirho": [
+    "[GHC-25955]"
+  ],
+  "ghc_version_chirho": "9.14.1",
+  "product_expectation_chirho": "The public CLI-check/SourceMap/Batch path refuses the reached sibling with forall/ExplicitForAll in diagnostic metadata, never source excerpts or resource failures.",
+  "reason_chirho": "Imported SiblingForallChirho.hs invisible forall forbidden by its own Haskell2010/NoExplicitForAll, GHC-25955.",
+  "reference_fold_chirho": {
+    "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-source-policy-repair-721-chirho/tmp-chirho/source-policy-repair-721-chirho/sibling-reference-go-r1-chirho/reason-fold-chirho.json",
+    "sha256_chirho": "2dbc1564e5d24830531a8d4a5b8fcc8f71569704e673ca1d2b4e8073bdac7524"
+  },
+  "runtime_or_native_scope_chirho": false,
+  "sources_chirho": [
+    {
+      "bytes_chirho": 308,
+      "fixture_chirho": "Main.hs",
+      "sha256_chirho": "c33abfb3f22c4e626f0541d35f00ab436847b2bbe180136be6cf3cbf2dacd950"
+    },
+    {
+      "bytes_chirho": 352,
+      "fixture_chirho": "SiblingForallChirho.hs",
+      "sha256_chirho": "d25d41fca470157982b74dbbbef168af183b7022756b5f7f1afe143fde235f34"
+    }
+  ],
+  "status_chirho": "MEASURED_GHC_REFERENCE_ONLY_RUST_CONTROL_NOT_APPLIED_OR_RUN",
+  "stderr_chirho": {
+    "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-source-policy-repair-721-chirho/tmp-chirho/source-policy-repair-721-chirho/sibling-forall-reference-a5b6ad80-r1-chirho/reference-exec-r1-chirho/sibling-forall-chirho-command-chirho/stderr-chirho.log",
+    "sha256_chirho": "46063bce27fde61f3e6875717bd80799727a7f07a78f64b7b22993ca27fa6c34"
+  },
+  "verdict_chirho": "SEMANTIC_REJECT",
+  "work_chirho": 721
+}
