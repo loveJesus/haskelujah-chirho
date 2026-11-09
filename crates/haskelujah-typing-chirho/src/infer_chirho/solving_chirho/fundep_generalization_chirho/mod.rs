@@ -37,6 +37,11 @@ use crate::class_chirho::{PredChirho, match_ty_chirho};
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemePredChirho, TyChirho, TyVarChirho};
 
+mod candidate_chirho;
+#[cfg(test)]
+mod checked_solving_tests_chirho;
+mod solver_chirho;
+
 /// Where a binding group is generalized. GHC's test for constraints over
 /// newly monomorphic variables applies to top-level declarations only.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

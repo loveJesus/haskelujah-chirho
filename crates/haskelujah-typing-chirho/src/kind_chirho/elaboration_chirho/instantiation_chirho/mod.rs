@@ -6,7 +6,9 @@
 use super::*;
 use crate::subst_chirho::SubstChirho;
 
+mod checked_monotypes_chirho;
 mod value_kinds_chirho;
+pub(crate) use checked_monotypes_chirho::check_monomorphic_kind_chirho;
 
 struct DeclarationInstantiationChirho<'producer_chirho> {
     parameters_chirho: &'producer_chirho SubstChirho,
