@@ -368,7 +368,11 @@ fn complete_staging_rejects_a_new_private_kind_domain_before_any_publication_chi
     let captured_chirho = context_chirho
         .elaboration_state_chirho
         .capture_variable_kinds_chirho(
-            &[variable_chirho(&outer_chirho), outer_rep_chirho],
+            &[
+                variable_chirho(&outer_chirho),
+                variable_chirho(&outer_value_chirho),
+                outer_rep_chirho,
+            ],
             &SubstChirho::empty_chirho(),
             SpanChirho::DUMMY_CHIRHO,
         )
@@ -405,11 +409,28 @@ fn complete_staging_rejects_a_new_private_kind_domain_before_any_publication_chi
             let skolems_chirho = HashSet::from([name_chirho.clone()]);
             let inferred_chirho = context_chirho.fresh_value_meta_chirho(SpanChirho::DUMMY_CHIRHO);
             let inferred_rep_chirho = value_representation_chirho(context_chirho, &inferred_chirho);
-            // The first input produces the same new Lifted equation as the safe
-            // positive. The second carries a genuinely local rigid representation.
+            let rigid_value_chirho = context_chirho
+                .elaboration_state_chirho
+                .fresh_chirho(
+                    Some(TyChirho::AppChirho(
+                        Box::new(TyChirho::ConChirho(
+                            haskelujah_ast_chirho::name_chirho::CompilerRepresentationChirho::RuntimeTypeChirho
+                                .type_key_chirho().into(),
+                        )),
+                        Box::new(rigid_chirho),
+                    )),
+                    SpanChirho::DUMMY_CHIRHO,
+                )
+                .expect("actual Meta at TYPE of the opened RuntimeRep binder");
+            // Only ordinary value equations enter the stage. It must derive
+            // both the safe new Lifted link and outer_rep -> the local rigid
+            // representation from the actual value kinds before validating K.
             let mut public_chirho =
                 SubstChirho::singleton_chirho(variable_chirho(&outer_chirho), inferred_chirho);
-            public_chirho.insert_chirho(outer_rep_chirho, rigid_chirho);
+            public_chirho.insert_chirho(
+                variable_chirho(&outer_value_chirho), TyChirho::VarChirho(rigid_value_chirho),
+            );
+            assert!(public_chirho.lookup_chirho(&outer_rep_chirho).is_none());
             let before_chirho = public_chirho.clone();
             let supply_chirho = context_chirho.elaboration_state_chirho.next_variable_chirho;
             let error_chirho = context_chirho
