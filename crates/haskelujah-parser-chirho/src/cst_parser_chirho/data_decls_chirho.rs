@@ -144,11 +144,13 @@ impl ParserChirho<'_> {
     /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
     fn parse_constructor_prefix_chirho(&mut self) {
         if self.at_chirho(RawTokenKindChirho::ForallChirho) {
+            let checkpoint_chirho = self.builder_chirho.checkpoint_chirho();
             self.bump_chirho();
             self.eat_trivia_chirho();
             self.parse_forall_binders_chirho();
             if self.at_dot_chirho() {
                 self.bump_chirho();
+                self.finish_invisible_forall_prefix_chirho(checkpoint_chirho);
                 self.eat_trivia_chirho();
             } else {
                 self.builder_chirho

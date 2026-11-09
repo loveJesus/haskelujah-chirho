@@ -4,6 +4,7 @@
 //! Part of the CST parser (`cst_parser_chirho.rs`), split by syntactic category in row 640.
 
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
+use haskelujah_syntax_chirho::green_chirho::CheckpointChirho;
 
 use super::ParserChirho;
 use crate::lexer_chirho::RawTokenKindChirho;
@@ -52,11 +53,20 @@ impl ParserChirho<'_> {
             }
             self.eat_trivia_chirho();
         }
-        // Both ordinary types and H98 constructor prefixes use this producer.
-        // The visible `forall ... ->` production retains its separate policy.
-        // workflow: compiler-pipeline-chirho/declaration-validity-chirho
-        if self.at_dot_chirho() && !self.explicit_for_all_chirho {
-            self.forbidden_forall_chirho = true;
+    }
+
+    /// Both written type and H98 constructor prefixes pass their pre-forall
+    /// checkpoint after consuming the invisible dot. Body/header nodes stay put.
+    /// Visible `forall ... ->` never calls this producer and keeps its policy.
+    /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
+    pub(super) fn finish_invisible_forall_prefix_chirho(
+        &mut self,
+        checkpoint_chirho: CheckpointChirho,
+    ) {
+        if !self.explicit_for_all_chirho {
+            self.builder_chirho
+                .start_node_at_chirho(checkpoint_chirho, SyntaxKindChirho::ErrorNodeChirho);
+            self.builder_chirho.finish_node_chirho();
         }
     }
 
@@ -73,6 +83,7 @@ impl ParserChirho<'_> {
         if self.at_chirho(RawTokenKindChirho::ForallChirho) {
             self.builder_chirho
                 .start_node_chirho(SyntaxKindChirho::ForallTypeChirho);
+            let checkpoint_chirho = self.builder_chirho.checkpoint_chirho();
             self.bump_chirho(); // forall
             self.eat_trivia_chirho();
             // Collect type variables until `.` (invisible forall) or `->`
@@ -84,6 +95,7 @@ impl ParserChirho<'_> {
                 self.at_dot_chirho() || self.at_chirho(RawTokenKindChirho::RightArrowChirho);
             if self.at_dot_chirho() {
                 self.bump_chirho(); // .
+                self.finish_invisible_forall_prefix_chirho(checkpoint_chirho);
                 self.eat_trivia_chirho();
             } else if self.at_chirho(RawTokenKindChirho::RightArrowChirho) {
                 self.bump_chirho(); // required-forall ->

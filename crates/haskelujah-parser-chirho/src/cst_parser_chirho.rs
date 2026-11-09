@@ -22,9 +22,7 @@
 use std::sync::Arc;
 
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
-use haskelujah_syntax_chirho::green_chirho::{
-    GreenBuilderChirho, GreenElementChirho, GreenNodeChirho,
-};
+use haskelujah_syntax_chirho::green_chirho::{GreenBuilderChirho, GreenNodeChirho};
 
 mod annotated_bindings_chirho;
 #[cfg(test)]
@@ -84,8 +82,6 @@ pub struct ParserChirho<'src> {
     instance_body_chirho: bool,
     /// The resolved source profile licenses invisible written quantification.
     explicit_for_all_chirho: bool,
-    /// A forbidden quantifier makes the module's shared CST an error result.
-    forbidden_forall_chirho: bool,
 }
 
 impl<'src> ParserChirho<'src> {
@@ -119,7 +115,6 @@ impl<'src> ParserChirho<'src> {
             family_equation_lhs_chirho: false,
             instance_body_chirho: false,
             explicit_for_all_chirho: extensions_chirho.enabled_chirho("ExplicitForAll"),
-            forbidden_forall_chirho: false,
         }
     }
 
@@ -161,19 +156,7 @@ impl<'src> ParserChirho<'src> {
         }
 
         self.builder_chirho.finish_node_chirho();
-        let root_chirho = self.builder_chirho.finish_chirho();
-        // Recovered/sibling callers inspect this same tree, so a source-profile
-        // refusal cannot live only in a checked-entry side channel. The whole
-        // source remains the lossless child of this module-policy error.
-        // workflow: compiler-pipeline-chirho/declaration-validity-chirho
-        if self.forbidden_forall_chirho {
-            Arc::new(GreenNodeChirho::new_chirho(
-                SyntaxKindChirho::ErrorNodeChirho,
-                vec![GreenElementChirho::NodeChirho(root_chirho)],
-            ))
-        } else {
-            root_chirho
-        }
+        self.builder_chirho.finish_chirho()
     }
 }
 
@@ -198,15 +181,27 @@ pub fn check_cst_syntax_chirho(
     file_id_chirho: FileIdChirho,
 ) -> Result<(), haskelujah_diagnostics_chirho::DiagnosticBundleChirho> {
     use haskelujah_span_chirho::{ByteOffsetChirho, SpanChirho};
+    use haskelujah_syntax_chirho::green_chirho::GreenElementChirho;
+    use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
     let mut pending_chirho = vec![(root_chirho, 0usize)];
     while let Some((node_chirho, start_chirho)) = pending_chirho.pop() {
         if node_chirho.kind_chirho() == SyntaxKindChirho::ErrorNodeChirho {
-            // Only the shared module-policy error wraps a complete SourceFile.
-            let message_chirho = if matches!(
-                node_chirho.children_chirho(),
-                [GreenElementChirho::NodeChirho(source_chirho)]
-                    if source_chirho.kind_chirho() == SyntaxKindChirho::SourceFileChirho
-            ) {
+            // The shared producer wraps precisely `forall <binders> .` when
+            // the effective profile forbids it. Module headers remain normal.
+            let mut tokens_chirho =
+                node_chirho
+                    .children_chirho()
+                    .iter()
+                    .filter_map(|element_chirho| match element_chirho {
+                        GreenElementChirho::TokenChirho(token_chirho) => Some(token_chirho),
+                        GreenElementChirho::NodeChirho(_) => None,
+                    });
+            let forbidden_forall_chirho = tokens_chirho.next().is_some_and(|token_chirho| {
+                token_chirho.kind_chirho() == TokenKindChirho::ForallKeywordChirho
+            }) && tokens_chirho
+                .next_back()
+                .is_some_and(|token_chirho| token_chirho.text_chirho() == ".");
+            let message_chirho = if forbidden_forall_chirho {
                 "illegal forall syntax: the effective source profile requires ExplicitForAll"
             } else {
                 "invalid source syntax"
