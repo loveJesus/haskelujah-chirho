@@ -109,7 +109,7 @@ impl FundepSolveChirho<'_> {
             &mut |work_chirho| charge_chirho(&mut self.budget_chirho, work_chirho, 0),
         ) {
             Some(true) => Ok(term_chirho),
-            Some(false) => candidate_chirho.resolve_chirho(&term_chirho, &mut self.budget_chirho),
+            Some(false) => Ok(term_chirho),
             None => Err(()),
         }
     }
