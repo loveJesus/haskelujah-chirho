@@ -124,6 +124,25 @@ pub(crate) fn unify_monomorphic_bounded_chirho(
         if left_chirho == right_chirho {
             continue;
         }
+        // The same sealed TYPE/CONSTRAINT representation equation used by
+        // ordinary and declaration-kind unification retains this operation's
+        // actual Meta admission, occurs check and borrowed allowance.
+        if let Some((representation_chirho, lifted_chirho)) =
+            crate::ty_chirho::representation_chirho::lifted_representation_equation_chirho(
+                &left_chirho,
+                &right_chirho,
+            )
+        {
+            let representation_chirho = SubstChirho::empty_chirho()
+                .apply_bounded_chirho(representation_chirho, charge_chirho)
+                .ok_or(())?;
+            let lifted_chirho = SubstChirho::empty_chirho()
+                .apply_bounded_chirho(lifted_chirho, charge_chirho)
+                .ok_or(())?;
+            charge_chirho(1, 1).ok_or(())?;
+            pending_chirho.push((representation_chirho, lifted_chirho));
+            continue;
+        }
         let binding_chirho = match (&left_chirho, &right_chirho) {
             (TyChirho::VarChirho(variable_chirho), _) if may_bind_chirho(*variable_chirho) => {
                 Some((*variable_chirho, &right_chirho))

@@ -243,7 +243,7 @@ impl InferCtxChirho {
                 } = arg_chirho.as_ref()
                 {
                     let expected_arg_ty_chirho = self.fresh_var_chirho();
-                    let result_ty_chirho = self.fresh_var_chirho();
+                    let result_ty_chirho = self.fresh_value_meta_chirho(*span_chirho);
                     let expected_fun_chirho = TyChirho::fun_chirho(
                         expected_arg_ty_chirho.clone(),
                         result_ty_chirho.clone(),
@@ -302,7 +302,7 @@ impl InferCtxChirho {
                     let (s2_chirho, arg_ty_chirho) = self.infer_expr_chirho(arg_chirho);
                     let fun_ty_sub_chirho = s2_chirho.apply_ty_chirho(&fun_ty_chirho);
 
-                    let result_ty_chirho = self.fresh_var_chirho();
+                    let result_ty_chirho = self.fresh_value_meta_chirho(*span_chirho);
                     let expected_fun_chirho =
                         TyChirho::fun_chirho(arg_ty_chirho, result_ty_chirho.clone());
 
@@ -455,7 +455,7 @@ impl InferCtxChirho {
                 elements_chirho,
                 span_chirho,
             } => {
-                let elem_ty_chirho = self.fresh_var_chirho();
+                let elem_ty_chirho = self.fresh_list_element_meta_chirho(*span_chirho);
                 let mut subst_chirho = SubstChirho::empty_chirho();
 
                 for elem_chirho in elements_chirho {

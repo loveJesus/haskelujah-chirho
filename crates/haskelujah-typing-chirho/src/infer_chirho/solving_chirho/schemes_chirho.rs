@@ -34,9 +34,10 @@ impl InferCtxChirho {
         TyChirho::VarChirho(var_chirho)
     }
 
-    /// Only actual value parameters start with an open runtime representation.
-    /// General inference variables retain their existing unsorted behavior.
-    pub(super) fn fresh_value_parameter_chirho(&mut self, span_chirho: SpanChirho) -> TyChirho {
+    /// Actual value producers share the checked TYPE r producer. Holes, error
+    /// recovery and unknown imports keep fresh_var_chirho's unsorted behavior.
+    /// workflow: type-identity-chirho/committed-meta-kinds-chirho
+    pub(super) fn fresh_value_meta_chirho(&mut self, span_chirho: SpanChirho) -> TyChirho {
         if self.elaboration_state_chirho.owner_chirho.is_none() {
             return self.fresh_var_chirho();
         }
@@ -48,6 +49,30 @@ impl InferCtxChirho {
                     .fresh_chirho(Some(kind_chirho), span_chirho)
             });
         match result_chirho {
+            Ok(variable_chirho) => TyChirho::VarChirho(variable_chirho),
+            Err(error_chirho) => {
+                self.record_body_kind_error_chirho(error_chirho);
+                self.fresh_var_chirho()
+            }
+        }
+    }
+
+    pub(super) fn fresh_value_parameter_chirho(&mut self, span_chirho: SpanChirho) -> TyChirho {
+        self.fresh_value_meta_chirho(span_chirho)
+    }
+
+    /// List expression syntax selects the intrinsic compiler List constructor,
+    /// whose checked required parameter has kind Type. This is not a default
+    /// for an unknown type variable or a lookup by the written name of a type.
+    /// workflow: type-identity-chirho/committed-meta-kinds-chirho
+    pub(super) fn fresh_list_element_meta_chirho(&mut self, span_chirho: SpanChirho) -> TyChirho {
+        if self.elaboration_state_chirho.owner_chirho.is_none() {
+            return self.fresh_var_chirho();
+        }
+        match self.elaboration_state_chirho.fresh_chirho(
+            Some(crate::kind_chirho::elaboration_chirho::ElaborationStateChirho::type_universe_chirho()),
+            span_chirho,
+        ) {
             Ok(variable_chirho) => TyChirho::VarChirho(variable_chirho),
             Err(error_chirho) => {
                 self.record_body_kind_error_chirho(error_chirho);
@@ -764,6 +789,20 @@ impl InferCtxChirho {
 
     /// Apply a substitution to the type environment and deferred predicates.
     pub(super) fn apply_subst_all_chirho(&mut self, subst_chirho: &SubstChirho) {
+        let effective_chirho = match self
+            .elaboration_state_chirho
+            .follow_committed_variable_kinds_chirho(
+                subst_chirho,
+                &self.type_families_chirho,
+                SpanChirho::DUMMY_CHIRHO,
+            ) {
+            Ok(effective_chirho) => effective_chirho,
+            Err(error_chirho) => {
+                self.record_body_kind_error_chirho(error_chirho);
+                None
+            }
+        };
+        let subst_chirho = effective_chirho.as_ref().unwrap_or(subst_chirho);
         for (var_chirho, ty_chirho) in subst_chirho.iter_chirho() {
             if self.equality_pattern_depth_chirho > 0 {
                 if self.equality_substitution_events_chirho.len() < 16_384 {
@@ -860,3 +899,7 @@ impl InferCtxChirho {
 #[cfg(test)]
 #[path = "schemes_resource_tests_chirho.rs"]
 mod resource_tests_chirho;
+
+#[cfg(test)]
+#[path = "../types_chirho/meta_producer_tests_chirho.rs"]
+mod meta_producer_tests_chirho;

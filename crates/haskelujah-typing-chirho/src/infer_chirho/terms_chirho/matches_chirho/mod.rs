@@ -120,7 +120,7 @@ impl InferCtxChirho {
                         (0..arity_chirho)
                             .map(|_| self.fresh_value_parameter_chirho(span_chirho))
                             .collect(),
-                        self.fresh_var_chirho(),
+                        self.fresh_value_meta_chirho(span_chirho),
                         Vec::new(),
                     )
                 };
@@ -245,7 +245,7 @@ impl InferCtxChirho {
         let param_tys_chirho: Vec<TyChirho> = (0..arity_chirho)
             .map(|_| self.fresh_value_parameter_chirho(span_chirho))
             .collect();
-        let result_ty_chirho = self.fresh_var_chirho();
+        let result_ty_chirho = self.fresh_value_meta_chirho(span_chirho);
         self.infer_matches_with_seed_chirho(
             matches_chirho,
             span_chirho,
