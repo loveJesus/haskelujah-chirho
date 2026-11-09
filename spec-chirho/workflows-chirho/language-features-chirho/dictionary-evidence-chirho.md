@@ -1194,20 +1194,23 @@ The early-equality namesake control preserves a scalar elem use despite unused s
 
 ## Standalone source class authority (P1, row 692)
 
-A program's own class is proven only when its unit is real. The driver is the single producer: its standalone routes (the public single-source route and the CLI check entry) mint GHC's default home unit `main` at the real module boundary. Home membership comes only from the driver's checked admission (`admit_home_iface_chirho`, exposure `HomeChirho`); a package exposure is never a member. Library, project and package routes mint nothing, so their source classes stay `MissingUnit`. No spelling, path or module name supplies a unit, and an unknown proof is never upgraded by text.
+A program's own class is proven only when its unit is real. The driver is the single producer: its standalone routes (the public single-source route and the CLI check entry) mint GHC's default home unit `main` at the real module boundary. The authority carries only the exact class declarations of the module being checked. No imported declaration is a member, whatever its interface's exposure or container, because a defining-module account carries no unit (#33339). Library, project and package routes mint nothing, so their source classes stay `MissingUnit`. No spelling, path or module name supplies a unit, and an unknown proof is never upgraded by text.
 
 ```mermaid
 flowchart TD
     route_chirho{Driver route} -- single-source program or CLI check --> flag_chirho[FrontendPolicyChirho standalone_home_chirho = true]
     route_chirho -- library, project or package entry --> none_chirho[No authority: source classes stay MissingUnit, every site keeps its pre-P1 path]
-    flag_chirho --> mint_chirho[pipeline standalone_home_authority_chirho mints unit main]
-    admit_chirho[admit_home_iface_chirho HomeChirho exposure] --> members_chirho[Home candidates: this module plus admitted home ifaces]
-    members_chirho --> withhold_chirho[unit_free_definers_chirho withholds names another unit could define]
-    withhold_chirho --> mint_chirho
+    flag_chirho --> imports_chirho{Each import's interface through select_import_iface_chirho}
+    imports_chirho -- an import has no selected interface --> none_chirho
+    imports_chirho -- every import selected --> exported_chirho[Source declaration identities in each selected import's full export set]
+    scope_chirho[build_type_constructor_scope_chirho records each local declaration's account first] --> current_chirho[The checked module's class declarations, each account checked against its own name and this module]
+    current_chirho --> drop_chirho[Drop every current account whose identity an import also names]
+    exported_chirho --> drop_chirho
+    drop_chirho --> mint_chirho[pipeline standalone_home_authority_chirho mints unit main with the remaining accounts]
     mint_chirho --> carrier_chirho[SourceUnitAuthorityChirho carried by ElaborationImportsChirho into ElaborationPolicyChirho]
     carrier_chirho --> join_chirho[constraint_head_proof_chirho on the creation-time declaration scheme]
-    join_chirho -- defining module admitted --> source_chirho[Proven Source unit main, module, class]
-    join_chirho -- withheld or not admitted --> missing_chirho[MissingUnit]
+    join_chirho -- exact account carried --> source_chirho[Proven Source unit main, module, class]
+    join_chirho -- imported, dropped or not carried --> missing_chirho[MissingUnit]
     source_chirho --> sites_chirho[Class record, method predicates and an instance head's own source account take the join's proof]
     missing_chirho --> sites_chirho
     bare_chirho[Instance head without a source account: none, opaque or compiler] --> selected_chirho[selected_class_proof_chirho by written name]
@@ -1217,7 +1220,11 @@ flowchart TD
     search_chirho --> unknown_chirho[A source proof never meets an unknown side by text]
 ```
 
-- Producer: `pipeline_chirho.rs` `standalone_home_authority_chirho` is the only production caller of `SourceUnitIdentityChirho::from_producer_chirho`. `SourceUnitAuthorityChirho` (ast `predicate_identity_chirho.rs`) only carries an already-produced unit and its admitted home modules. A defining-module account carries no unit, and GHC identifies an entity by package, module and name, so a home module and another unit's module of the same name can coexist. Before minting, `unit_free_definers_chirho` therefore withholds every home name another unit could also define (#33316): an interface name under a non-home exposure, a module that a non-home interface's accounts define in (a hidden package module behind a re-export), and a module that a home interface re-exports from. Their accounts stay `MissingUnit` until a unit is carried.
-- Join: `qualified_types_chirho.rs` `constraint_head_proof_chirho` reads the policy's authority, and `class_instance_chirho.rs` `declared_source_class_proof_chirho` routes the class, its method predicates and an instance head's own source declaration account through it, admitted or not, under the standalone authority only (#33315). An instance head without such an account (none, opaque or a compiler account) takes `selected_class_proof_chirho`, which keeps a compiler proof under its existing rule and never carries a source proof: a selected source record gives the legacy unknown. Without the authority every site keeps its pre-P1 path.
+- Producer: `pipeline_chirho.rs` `standalone_home_authority_chirho` is the only production caller of `SourceUnitIdentityChirho::from_producer_chirho`. `SourceUnitAuthorityChirho` (ast `predicate_identity_chirho.rs`) carries an already-produced unit with exact class declaration accounts and mints neither. The driver reads each `class` declaration's account from the type scope the pipeline already built (`build_type_constructor_scope_chirho`, whose producer records the module's own declarations first). It keeps an account only when it is a source class account of this module under the declaration's own name (#33343).
+  - GHC identifies an entity by package, module and name, so a home module and another unit's module of the same name can coexist (#33316). A defining-module account carries no unit, so the driver carries no imported declaration, whether home, sibling, re-exported or from a package.
+  - It also drops every current account whose identity the full export set of any selected import (`select_import_iface_chirho`) names, whatever that import's exposure, container or alias (#33339). That covers a current class sharing a relayed package class's account. It also covers a home module that forwards a same-named package module's class while the package interface is absent from the view.
+  - An import with no selected interface declines the authority for the module instead of authorizing from absence.
+  - Imported and dropped accounts stay `MissingUnit` until their defining unit travels.
+- Join: `qualified_types_chirho.rs` `constraint_head_proof_chirho` proves a source class only when the policy's authority carries the scheme's exact declaration account. `class_instance_chirho.rs` `declared_source_class_proof_chirho` routes the class, its method predicates and an instance head's own source declaration account through it, carried or not, under the standalone authority only (#33315). An instance head without such an account (none, opaque or a compiler account) takes `selected_class_proof_chirho`, which keeps a compiler proof under its existing rule and never carries a source proof: a selected source record gives the legacy unknown. Without the authority every site keeps its pre-P1 path.
 - Consumer: `superclass_search_chirho.rs` expands a proven identity, compiler or source, through the arena's shared `class_record_by_identity_chirho`; only unproven predicates read the active spelling. A proven source side and an unproven side never match by text.
-- Out of P1: a unit-carrying declaration-owner join (withheld names wait for it), imported-interface unit carriers, package component units (no resolved component key exists), source instance identities, and the fundep solver (P2 binder catalogue, P3 checked primitive).
+- Out of P1: a unit-carrying declaration-owner join (imported home, sibling and re-exported classes wait for it, as does a current class that an import also names), imported-interface unit carriers, package component units (no resolved component key exists), source instance identities, and the fundep solver (P2 binder catalogue, P3 checked primitive).

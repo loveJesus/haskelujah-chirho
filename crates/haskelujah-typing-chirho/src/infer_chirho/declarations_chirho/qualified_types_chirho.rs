@@ -207,10 +207,10 @@ impl InferCtxChirho {
                 PredicateClassIdentityChirho::CompilerChirho(*identity_chirho),
             ),
             // A source declaration is proven only under the driver's standalone authority, and
-            // only when that authority admitted the declaration's defining module as home. The
-            // module and class names are the declaration producer's own; no spelling decides.
-            // Library, project and package contexts, and imported modules the driver did not
-            // admit, stay MissingUnit.
+            // only when that authority carries this exact declaration account: a class the
+            // checked module declares that no selected import also names. The module and class
+            // names are the declaration producer's own; no spelling decides. Library, project and
+            // package contexts, and every imported declaration, stay MissingUnit (#33339).
             // workflow: language-features-chirho/dictionary-evidence-chirho
             Some(TypeConstructorIdentityChirho::SourceChirho {
                 defining_module_chirho,
@@ -221,7 +221,12 @@ impl InferCtxChirho {
                 .as_ref()
                 .and_then(|policy_chirho| policy_chirho.source_unit_chirho.as_ref())
                 .filter(|authority_chirho| {
-                    authority_chirho.admits_module_chirho(defining_module_chirho)
+                    scheme_chirho
+                        .declaration_chirho
+                        .as_ref()
+                        .is_some_and(|declaration_chirho| {
+                            authority_chirho.admits_declaration_chirho(declaration_chirho)
+                        })
                 }) {
                 Some(authority_chirho) => PredicateClassProofChirho::source_chirho(
                     Some(authority_chirho.unit_chirho().clone()),

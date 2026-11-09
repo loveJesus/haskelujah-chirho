@@ -23,6 +23,18 @@ Branch `mr-fundep-chirho` from 784022ac, worktree `haskelujah-workspaces-chirho/
 - [x] Workflow: the `dictionary-evidence-chirho.md` section "Standalone source class authority (P1, row 692)".
 - [x] #33315 correction: a recognized source instance head under the standalone authority keeps its own join result (Source or the join's unknown) and never reaches the spelling fallback. That fallback never carries a source proof (a selected source record gives the legacy unknown). Without the authority every site keeps its pre-P1 path. Focused negative: unadmitted, opaque and unaccounted heads beside an active same-text source class (typing `class_instance_tests_chirho.rs`).
 - [x] #33316 provenance: `unit_free_definers_chirho` withholds home names that another unit could also define. These are names under a non-home exposure, modules that non-home accounts define in (hidden package modules behind re-exports), and modules that home interfaces re-export from. Controls: an end-to-end same-definer-name Home/Packages collision through `PackageImports` stays MissingUnit, and a membership control covers the hidden and re-exported definers.
-- [ ] Stock zero-message first check at the correction leaf (cargo check, workspace, all targets, JSON) on a fresh GO. The 7f0c9ae7 packet stays immutable and UNRUN, and the target is absent.
+- [x] #33339 correction (controls #33340, producer #33343). It replaces module membership in the carrier, join and producer items above, and the #33316 withholding, with exact accounts.
+  - The authority carries the checked module's own class declaration accounts, read from the pipeline's existing type scope and checked against the declaration's name and module.
+  - Every current account whose identity a selected import's full export set also names is dropped. An import with no selected interface declines the authority.
+  - `unit_free_definers_chirho` and the module membership API are gone.
+  - Home siblings now stay MissingUnit. Their earlier Source expectation was never measured, and the driver test records the change.
+  - Controls:
+    - carrier exactness;
+    - an actual-driver home module that forwards a same-named package class, with the package interface absent;
+    - the current module's own class colliding with a relayed package class: local and relayed are both MissingUnit and compiler Num is unchanged, while the same module alone is still proven;
+    - membership over home, relay, hidden and package interfaces;
+    - the #33316 collision.
+  - The typing `class_instance_tests_chirho.rs` carrier call was adapted (cleared in #33355).
+- [ ] Stock zero-message first check at the #33339 leaf (cargo check, workspace, all targets, JSON) on a fresh GO. The 7f0c9ae7 and 08e0943c packets stay immutable and UNRUN, and the target is absent.
 - [ ] Measured preservation on its own GO: N1, N2, T, compiler identity controls, the standard MR controls, and these new controls.
 - [ ] Later dependent bricks: P2 (kinded instance binder catalogue) and P3 (one checked fundep primitive, also used by the legacy caller), then the seven-witness cohort with its runtime dictionary handoff.

@@ -101,84 +101,79 @@ fn caller_policy_chirho(
 const STANDALONE_HOME_UNIT_CHIRHO: &str = "main";
 
 /// The driver mints the standalone home unit here and nowhere else, and carries it with the
-/// home modules its checked admission produced: this module and every interface admitted as
-/// `HomeChirho`. A package exposure is never a member. A defining-module account carries no
-/// unit, so a home module name another unit could also define is withheld and its accounts stay
-/// MissingUnit until their unit is carried (#33316); see `unit_free_definers_chirho`.
+/// exact class declarations of the module being checked. Each `class` declaration's account is
+/// the one the type scope's producer recorded for it, checked against the declaration's own name
+/// and this module. A defining-module account carries no unit, so no imported declaration is
+/// carried, whether home, sibling, re-exported or from a package: it stays MissingUnit until its
+/// defining unit travels. A current account whose identity a selected import's full export set
+/// also names is dropped, whatever that import's exposure, container or alias, and an import
+/// with no selected interface declines the authority instead of authorizing from absence
+/// (#33339).
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 pub(crate) fn standalone_home_authority_chirho(
     module_chirho: &haskelujah_ast_chirho::module_chirho::ModuleChirho,
     ifaces_chirho: &[ModuleIfaceChirho],
+    type_scope_chirho: &haskelujah_ast_chirho::name_chirho::TypeConstructorScopeChirho,
 ) -> Option<haskelujah_ast_chirho::name_chirho::SourceUnitAuthorityChirho> {
+    use haskelujah_ast_chirho::name_chirho::{
+        TypeConstructorIdentityChirho, TypeConstructorRoleChirho,
+    };
     let unit_chirho =
         haskelujah_ast_chirho::name_chirho::SourceUnitIdentityChirho::from_producer_chirho(
             std::sync::Arc::from(STANDALONE_HOME_UNIT_CHIRHO),
         )
         .ok()?;
-    let withheld_chirho = unit_free_definers_chirho(ifaces_chirho);
-    let home_modules_chirho = std::iter::once(module_chirho.name_chirho.full_name_chirho())
-        .chain(
-            ifaces_chirho
-                .iter()
-                .filter(|iface_chirho| home_exposed_chirho(iface_chirho))
-                .map(|iface_chirho| iface_chirho.name_chirho.clone()),
-        )
-        .filter(|name_chirho| !withheld_chirho.contains(name_chirho.as_str()))
-        .map(std::sync::Arc::<str>::from);
+    let mut imported_chirho = Vec::new();
+    for import_chirho in &module_chirho.imports_chirho {
+        let iface_chirho = haskelujah_naming_chirho::iface_chirho::select_import_iface_chirho(
+            ifaces_chirho,
+            import_chirho,
+        )?;
+        imported_chirho.extend(
+            iface_chirho
+                .exports_chirho
+                .types_chirho
+                .values()
+                .filter_map(|type_chirho| type_chirho.declaration_chirho.as_ref())
+                .filter(|declaration_chirho| {
+                    matches!(
+                        declaration_chirho.identity_chirho,
+                        TypeConstructorIdentityChirho::SourceChirho { .. }
+                    )
+                })
+                .map(|declaration_chirho| declaration_chirho.identity_chirho.clone()),
+        );
+    }
+    let module_name_chirho = module_chirho.name_chirho.full_name_chirho();
+    let current_chirho = module_chirho
+        .decls_chirho
+        .iter()
+        .filter_map(|declaration_chirho| match declaration_chirho {
+            haskelujah_ast_chirho::decl_chirho::DeclChirho::ClassDeclChirho {
+                name_chirho, ..
+            } => type_scope_chirho
+                .declaration_chirho(name_chirho.text_chirho())
+                .filter(|account_chirho| {
+                    account_chirho.role_chirho == TypeConstructorRoleChirho::ClassChirho
+                        && matches!(
+                            &account_chirho.identity_chirho,
+                            TypeConstructorIdentityChirho::SourceChirho {
+                                defining_module_chirho,
+                                name_chirho: declared_chirho,
+                            } if *defining_module_chirho == module_name_chirho
+                                && declared_chirho == name_chirho.text_chirho()
+                        )
+                }),
+            _ => None,
+        })
+        .cloned();
     Some(
         haskelujah_ast_chirho::name_chirho::SourceUnitAuthorityChirho::from_driver_chirho(
             unit_chirho,
-            home_modules_chirho,
+            current_chirho,
+            imported_chirho,
         ),
     )
-}
-
-fn home_exposed_chirho(iface_chirho: &ModuleIfaceChirho) -> bool {
-    iface_chirho.exposure_chirho
-        == Some(haskelujah_naming_chirho::iface_chirho::IfaceExposureChirho::HomeChirho)
-}
-
-/// Module names that a unit-free account could name outside the home unit's own declarations
-/// (#33316). GHC identifies an entity by package, module and name, so a home module M and
-/// another unit's M can coexist. The names are:
-/// - every interface name under a non-home exposure (a package view, or no unit claim);
-/// - every module a non-home interface's accounts define in, such as a hidden package module
-///   behind a re-export;
-/// - every module a home interface re-exports from, since no unit proves that re-export's owner.
-///
-/// workflow: language-features-chirho/dictionary-evidence-chirho
-fn unit_free_definers_chirho(
-    ifaces_chirho: &[ModuleIfaceChirho],
-) -> std::collections::BTreeSet<&str> {
-    use haskelujah_ast_chirho::name_chirho::TypeConstructorIdentityChirho;
-    let mut definers_chirho = std::collections::BTreeSet::new();
-    for iface_chirho in ifaces_chirho {
-        let home_chirho = home_exposed_chirho(iface_chirho);
-        if !home_chirho {
-            definers_chirho.insert(iface_chirho.name_chirho.as_str());
-        }
-        let exports_chirho = &iface_chirho.exports_chirho;
-        let types_chirho = exports_chirho
-            .types_chirho
-            .values()
-            .filter_map(|type_chirho| {
-                match &type_chirho.declaration_chirho.as_ref()?.identity_chirho {
-                    TypeConstructorIdentityChirho::SourceChirho {
-                        defining_module_chirho,
-                        ..
-                    } => Some(defining_module_chirho.as_str()),
-                    TypeConstructorIdentityChirho::CompilerChirho(_) => None,
-                }
-            });
-        let values_chirho = exports_chirho
-            .values_chirho
-            .values()
-            .filter_map(|value_chirho| value_chirho.defining_module_chirho.as_deref());
-        definers_chirho.extend(types_chirho.chain(values_chirho).filter(|definer_chirho| {
-            !home_chirho || *definer_chirho != iface_chirho.name_chirho.as_str()
-        }));
-    }
-    definers_chirho
 }
 
 /// The frontend phases under a deferral policy the caller already resolved: the source path
@@ -323,10 +318,15 @@ pub(crate) fn run_frontend_under_policy_chirho(
     // Phase 3.5: Kind inference uses the same selected class scope built before
     // deriving, which appends only instances and cannot change class ownership.
     // workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
-    // The driver's standalone route mints its home authority here, at the real module boundary.
+    // The driver's standalone route mints its home authority here, at the real module boundary,
+    // from the same type scope whose producer recorded this module's own declarations.
     // workflow: language-features-chirho/dictionary-evidence-chirho
     let source_unit_chirho = if policy_chirho.standalone_home_chirho {
-        standalone_home_authority_chirho(&module_chirho, ifaces_chirho)
+        standalone_home_authority_chirho(
+            &module_chirho,
+            ifaces_chirho,
+            &type_constructor_scope_chirho,
+        )
     } else {
         None
     };

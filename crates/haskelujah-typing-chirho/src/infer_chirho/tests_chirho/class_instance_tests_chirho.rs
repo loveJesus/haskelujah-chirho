@@ -753,8 +753,15 @@ fn no_unadmitted_opaque_or_bare_instance_head_takes_a_same_text_source_proof_chi
     };
     let unit_chirho = SourceUnitIdentityChirho::from_producer_chirho(Arc::from("main"))
         .expect("a non-empty unit key");
-    let authority_chirho =
-        SourceUnitAuthorityChirho::from_driver_chirho(unit_chirho.clone(), [Arc::from("Main")]);
+    let authority_chirho = SourceUnitAuthorityChirho::from_driver_chirho(
+        unit_chirho.clone(),
+        [TypeConstructorDeclarationChirho::source_chirho(
+            "Main",
+            "ShapeChirho",
+            TypeConstructorRoleChirho::ClassChirho,
+        )],
+        [],
+    );
     let mut module_chirho = ModuleChirho {
         name_chirho: dummy_name_chirho("Main"),
         exports_chirho: None,
