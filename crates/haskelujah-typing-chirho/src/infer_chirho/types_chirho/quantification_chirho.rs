@@ -70,6 +70,7 @@ impl InferCtxChirho {
     fn with_instance_budget_chirho<ResultChirho>(
         &mut self,
         span_chirho: haskelujah_span_chirho::SpanChirho,
+        borrower_chirho: &'static str,
         action_chirho: impl FnOnce(
             &mut Self,
             &mut EqualityBudgetChirho,
@@ -82,10 +83,11 @@ impl InferCtxChirho {
         let initial_chirho = budget_chirho.remaining_chirho();
         let result_chirho = action_chirho(self, &mut budget_chirho);
         self.elaboration_state_chirho
-            .settle_equality_budget_chirho(
+            .settle_named_equality_budget_chirho(
                 initial_chirho,
                 &budget_chirho,
                 result_chirho.is_err(),
+                Some(borrower_chirho),
                 span_chirho,
             )?;
         // An exhausted action already returned the owner's sticky resource error above.
@@ -110,8 +112,10 @@ impl InferCtxChirho {
         let Some(owner_chirho) = self.elaboration_state_chirho.owner_chirho else {
             return Ok(None);
         };
-        let Some(roots_chirho) =
-            self.with_instance_budget_chirho(span_chirho, |this_chirho, budget_chirho| {
+        let Some(roots_chirho) = self.with_instance_budget_chirho(
+            span_chirho,
+            "P2 checked instance roots",
+            |this_chirho, budget_chirho| {
                 let mut seen_chirho = HashSet::new();
                 let mut roots_chirho = Vec::new();
                 for term_chirho in parts_chirho.terms_chirho() {
@@ -144,14 +148,15 @@ impl InferCtxChirho {
                     }
                 }
                 Ok(Some(roots_chirho))
-            })?
+            },
+        )?
         else {
             return Ok(None);
         };
         let closed_chirho = self
             .elaboration_state_chirho
             .kind_dependency_closure_chirho(&roots_chirho, span_chirho)?;
-        self.with_instance_budget_chirho(span_chirho, |this_chirho, budget_chirho| {
+        self.with_instance_budget_chirho(span_chirho, "P2 checked instance catalogue", |this_chirho, budget_chirho| {
             use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
             budget_chirho.node_chirho(closed_chirho.len()).ok_or(())?;
             let mut pending_chirho: Vec<_> = closed_chirho.iter().copied().collect();
@@ -240,7 +245,7 @@ impl InferCtxChirho {
         }
         let mut local_next_chirho = *next_variable_chirho;
         let opened_chirho =
-            self.with_instance_budget_chirho(span_chirho, |this_chirho, budget_chirho| {
+            self.with_instance_budget_chirho(span_chirho, "P2 staged instance opening", |this_chirho, budget_chirho| {
                 let mut known_chirho = HashSet::new();
                 for record_chirho in variables_chirho.records_chirho() {
                     budget_chirho.node_chirho(1).ok_or(())?;

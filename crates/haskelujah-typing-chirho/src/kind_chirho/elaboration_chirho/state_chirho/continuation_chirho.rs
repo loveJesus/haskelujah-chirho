@@ -118,6 +118,25 @@ impl ElaborationStateChirho {
         exhausted_chirho: bool,
         span_chirho: SpanChirho,
     ) -> Result<(), ElaborationErrorChirho> {
+        self.settle_named_equality_budget_chirho(
+            initial_chirho,
+            budget_chirho,
+            exhausted_chirho,
+            None,
+            span_chirho,
+        )
+    }
+
+    /// Diagnostic-only borrowers share the original settlement debit. Never
+    /// set a sticky error before returning this spent allowance to its owner.
+    pub(crate) fn settle_named_equality_budget_chirho(
+        &mut self,
+        initial_chirho: (usize, usize),
+        budget_chirho: &crate::infer_chirho::EqualityBudgetChirho,
+        exhausted_chirho: bool,
+        borrower_chirho: Option<&str>,
+        span_chirho: SpanChirho,
+    ) -> Result<(), ElaborationErrorChirho> {
         let remaining_chirho = budget_chirho.remaining_chirho();
         self.charge_chirho(
             initial_chirho.0 - remaining_chirho.0,
@@ -125,9 +144,18 @@ impl ElaborationStateChirho {
             span_chirho,
         )?;
         if exhausted_chirho {
-            return Err(
-                self.resource_failure_chirho("kind/type continuation bound exhausted", span_chirho)
-            );
+            let mut message_chirho = "kind/type continuation bound exhausted".to_owned();
+            if let Some(borrower_chirho) = borrower_chirho {
+                message_chirho.push_str("; ");
+                message_chirho.push_str(borrower_chirho);
+                message_chirho.push_str("; ");
+                message_chirho.push_str(
+                    &budget_chirho
+                        .failure_detail_chirho()
+                        .unwrap_or_else(|| "no failed work/output charge recorded; any unnamed nested guard remains unattributed".to_owned()),
+                );
+            }
+            return Err(self.resource_failure_chirho(&message_chirho, span_chirho));
         }
         Ok(())
     }

@@ -13,6 +13,22 @@ pub(crate) struct EqualityNormalizationExhaustedChirho;
 pub(crate) struct EqualityBudgetChirho {
     work_chirho: usize,
     output_chirho: usize,
+    failure_chirho: Option<EqualityBudgetFailureChirho>,
+}
+
+/// A diagnostic payload inside the existing allowance, never a solver input.
+/// The first failed debit is kept even when a caller propagates only `None`.
+enum EqualityBudgetFailureChirho {
+    WorkChirho {
+        requested_chirho: usize,
+        work_before_chirho: usize,
+        output_before_chirho: usize,
+    },
+    OutputChirho {
+        requested_chirho: usize,
+        work_before_chirho: usize,
+        output_before_chirho: usize,
+    },
 }
 
 impl EqualityBudgetChirho {
@@ -20,6 +36,7 @@ impl EqualityBudgetChirho {
         Self {
             work_chirho: work_chirho.min(10_000_000),
             output_chirho: output_chirho.min(16_384),
+            failure_chirho: None,
         }
     }
     pub(crate) fn remaining_chirho(&self) -> (usize, usize) {
@@ -29,16 +46,66 @@ impl EqualityBudgetChirho {
         Self {
             work_chirho: 10_000_000,
             output_chirho: 16_384,
+            failure_chirho: None,
         }
     }
     pub(crate) fn work_chirho(&mut self, amount_chirho: usize) -> Option<()> {
-        self.work_chirho = self.work_chirho.checked_sub(amount_chirho)?;
+        let Some(remaining_chirho) = self.work_chirho.checked_sub(amount_chirho) else {
+            self.failure_chirho
+                .get_or_insert(EqualityBudgetFailureChirho::WorkChirho {
+                    requested_chirho: amount_chirho,
+                    work_before_chirho: self.work_chirho,
+                    output_before_chirho: self.output_chirho,
+                });
+            return None;
+        };
+        self.work_chirho = remaining_chirho;
         Some(())
     }
     pub(crate) fn node_chirho(&mut self, amount_chirho: usize) -> Option<()> {
         self.work_chirho(amount_chirho)?;
-        self.output_chirho = self.output_chirho.checked_sub(amount_chirho)?;
+        let Some(remaining_chirho) = self.output_chirho.checked_sub(amount_chirho) else {
+            // Work was already debited by the original node operation. Keep
+            // that order and report the actual state at this failed guard.
+            self.failure_chirho
+                .get_or_insert(EqualityBudgetFailureChirho::OutputChirho {
+                    requested_chirho: amount_chirho,
+                    work_before_chirho: self.work_chirho,
+                    output_before_chirho: self.output_chirho,
+                });
+            return None;
+        };
+        self.output_chirho = remaining_chirho;
         Some(())
+    }
+
+    pub(crate) fn failure_detail_chirho(&self) -> Option<String> {
+        let (guard_chirho, requested_chirho, work_before_chirho, output_before_chirho) =
+            match self.failure_chirho.as_ref()? {
+                EqualityBudgetFailureChirho::WorkChirho {
+                    requested_chirho,
+                    work_before_chirho,
+                    output_before_chirho,
+                } => (
+                    "work",
+                    requested_chirho,
+                    work_before_chirho,
+                    output_before_chirho,
+                ),
+                EqualityBudgetFailureChirho::OutputChirho {
+                    requested_chirho,
+                    work_before_chirho,
+                    output_before_chirho,
+                } => (
+                    "output",
+                    requested_chirho,
+                    work_before_chirho,
+                    output_before_chirho,
+                ),
+            };
+        Some(format!(
+            "guard={guard_chirho}, requested={requested_chirho}, pre-failure work={work_before_chirho}, pre-failure output={output_before_chirho}"
+        ))
     }
 }
 
