@@ -12,3 +12,5 @@ Root owns the report and DB. This reports actual private engineering progress si
 The original seven-file and full-main failures remain open; no fresh corpus percentage, public release or compiler-resource authority is implied. The earlier frozen report and transport acknowledgment stay intact.
 
 Frozen engineering report 6da7f5d2603f04ede65496dc1696c9ceca31345f / 9e0a466feebaf96f84969d35d75007b08858237c66b6f50b0af4c2bf5a954994. Notification 33483 delivered once. Portfolio intake remains unconfirmed, not engineering acceptance. Transport artifacts are separate from frozen report content.
+
+AICEO DM3718 confirms actual intake of exact frozen6da7/8181/SHA9e0a after notification33483. The user-relayed acknowledgment is retained separately; the frozen engineering report is unchanged. No acknowledgment-only reply was sent and no new authority or queue is inferred.
