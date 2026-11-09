@@ -82,15 +82,16 @@ pub(super) fn copy_predicate_chirho(
         1,
     )
     .ok_or(())?;
-    let terms_chirho = predicate_chirho
-        .terms_chirho()
-        .try_mapped_chirho(&mut |term_chirho| {
-            SubstChirho::empty_chirho()
-                .apply_bounded_chirho(term_chirho, &mut |work_chirho, output_chirho| {
-                    charge_chirho(budget_chirho, work_chirho, output_chirho)
-                })
-                .ok_or(())
-        })?;
+    let terms_chirho =
+        predicate_chirho
+            .terms_chirho()
+            .try_mapped_chirho(&mut |term_chirho: &TyChirho| {
+                SubstChirho::empty_chirho()
+                    .apply_bounded_chirho(term_chirho, &mut |work_chirho, output_chirho| {
+                        charge_chirho(budget_chirho, work_chirho, output_chirho)
+                    })
+                    .ok_or(())
+            })?;
     Ok(crate::class_chirho::PredChirho::from_proof_chirho(
         predicate_chirho.class_identity_chirho().clone(),
         crate::class_chirho::PredPartsChirho {

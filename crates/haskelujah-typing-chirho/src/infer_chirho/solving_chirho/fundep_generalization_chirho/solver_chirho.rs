@@ -80,7 +80,7 @@ impl FundepSolveChirho<'_> {
         else {
             return Ok(false);
         };
-        charge_chirho(&mut self.budget_chirho, instances_chirho.len(), 0).ok_or(())?;
+        charge_chirho(&mut self.budget_chirho, instances_chirho.len_chirho(), 0).ok_or(())?;
         Ok(instances_chirho.iter_chirho().any(|instance_chirho| {
             instance_chirho.class_identity_chirho() == proof_chirho
                 && instance_chirho
@@ -528,8 +528,8 @@ impl FundepSolveChirho<'_> {
         };
         charge_chirho(
             &mut self.budget_chirho,
-            instances_chirho.len(),
-            instances_chirho.len(),
+            instances_chirho.len_chirho(),
+            instances_chirho.len_chirho(),
         )
         .ok_or(())?;
         let instances_chirho: Vec<_> = instances_chirho.iter_chirho().map(Arc::clone).collect();
@@ -687,23 +687,22 @@ impl InferCtxChirho {
                     &mut solver_chirho.budget_chirho,
                 )?;
                 let predicate_chirho = &predicate_chirho;
-                let terms_chirho =
-                    predicate_chirho
-                        .terms_chirho()
-                        .try_mapped_chirho(&mut |term_chirho| {
-                            final_subst_chirho
-                                .resolve_owned_bounded_chirho(
-                                    term_chirho,
-                                    &mut |work_chirho, output_chirho| {
-                                        charge_chirho(
-                                            &mut solver_chirho.budget_chirho,
-                                            work_chirho,
-                                            output_chirho,
-                                        )
-                                    },
-                                )
-                                .ok_or(())
-                        })?;
+                let terms_chirho = predicate_chirho.terms_chirho().try_mapped_chirho(
+                    &mut |term_chirho: &TyChirho| {
+                        final_subst_chirho
+                            .resolve_owned_bounded_chirho(
+                                term_chirho,
+                                &mut |work_chirho, output_chirho| {
+                                    charge_chirho(
+                                        &mut solver_chirho.budget_chirho,
+                                        work_chirho,
+                                        output_chirho,
+                                    )
+                                },
+                            )
+                            .ok_or(())
+                    },
+                )?;
                 charge_chirho(
                     &mut solver_chirho.budget_chirho,
                     predicate_chirho
