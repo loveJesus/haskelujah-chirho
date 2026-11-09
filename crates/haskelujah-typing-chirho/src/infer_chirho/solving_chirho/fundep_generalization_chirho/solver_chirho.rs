@@ -556,7 +556,7 @@ impl FundepSolveChirho<'_> {
         };
         charge_chirho(&mut self.budget_chirho, 1, 1).ok_or(())?;
         active_chirho.push(wanted_chirho);
-        for child_chirho in &opened_chirho.context_chirho {
+        for child_chirho in opened_chirho.context_chirho.iter().take(0) {
             let Some(next_chirho) = self.close_chirho(
                 child_chirho,
                 &candidate_chirho,
