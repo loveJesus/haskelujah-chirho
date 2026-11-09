@@ -202,7 +202,14 @@ fn unsigned_match_results_return_their_intrinsic_list_kind_solution_chirho() {
         }],
         SpanChirho::DUMMY_CHIRHO,
     );
-    assert!(!context_chirho.has_non_deferrable_failure_chirho());
+    assert!(
+        !context_chirho.has_non_deferrable_failure_chirho(),
+        "ordinary={:?}; terminal={:?}; continuation={:?}; normalization_exhausted={}; returned={returned_chirho:?}; type={ty_chirho:?}",
+        context_chirho.diagnostics_chirho,
+        context_chirho.non_deferrable_diagnostics_chirho,
+        context_chirho.elaboration_state_chirho.failure_chirho(),
+        context_chirho.type_normalization_exhausted_chirho.get(),
+    );
     assert!(
         matches!(ty_chirho, TyChirho::FunChirho(_, result_chirho, _) if matches!(result_chirho.as_ref(), TyChirho::ListChirho(_)))
     );
