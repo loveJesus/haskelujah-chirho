@@ -253,11 +253,16 @@ fn the_public_single_source_route_proves_a_local_class_in_the_default_home_unit_
         .next()
         .expect("instance registered");
     assert_eq!(instance_chirho.class_identity_chirho(), &expected_chirho);
-    // A compiler class beside it keeps its compiler proof.
-    assert!(matches!(
+    // The Num signature beside it names a class with no source declaration, so the authority
+    // leaves its proof exactly as the library route has it on the same source and view.
+    assert_eq!(
         signature_proof_chirho(&result_chirho, "numericChirho", "Num"),
-        PredicateClassProofChirho::ProvenChirho(PredicateClassIdentityChirho::CompilerChirho(_))
-    ));
+        signature_proof_chirho(
+            &library_frontend_chirho(LOCAL_CLASS_SOURCE_CHIRHO),
+            "numericChirho",
+            "Num"
+        )
+    );
 }
 
 #[test]
@@ -421,7 +426,8 @@ fn a_current_class_sharing_a_relayed_package_account_is_never_proven_chirho() {
     // qualified, a home relay that re-exports the package CollideChirho's ShapeChirho; the
     // package interface itself is absent from the view. Both accounts are the same key, so the
     // current declaration is dropped and neither the local class nor the relayed one is proven,
-    // while a compiler class beside them keeps its compiler proof.
+    // while the Num signature beside them, which has no source declaration, keeps exactly the
+    // library route's proof.
     let builtin_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     let (_, package_iface_chirho) = packaged_collide_chirho(&builtin_ifaces_chirho);
     let mut package_view_chirho = builtin_ifaces_chirho.clone();
@@ -465,8 +471,15 @@ fn a_current_class_sharing_a_relayed_package_account_is_never_proven_chirho() {
         class_record_proof_chirho(&current_chirho, "ShapeChirho"),
         missing_unit_chirho()
     );
-    assert!(matches!(
+    let library_chirho = crate::run_frontend_chirho(
+        COLLIDING_LOCAL_SOURCE_CHIRHO,
+        FileIdChirho::SYNTHETIC_CHIRHO,
+        &ifaces_chirho,
+        &HashMap::new(),
+    )
+    .expect("the library route checks the same module over the same view");
+    assert_eq!(
         signature_proof_chirho(&current_chirho, "numericChirho", "Num"),
-        PredicateClassProofChirho::ProvenChirho(PredicateClassIdentityChirho::CompilerChirho(_))
-    ));
+        signature_proof_chirho(&library_chirho, "numericChirho", "Num")
+    );
 }
