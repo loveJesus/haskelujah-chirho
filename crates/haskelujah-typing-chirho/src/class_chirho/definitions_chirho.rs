@@ -11,8 +11,11 @@ use haskelujah_ast_chirho::name_chirho::{
 };
 
 use haskelujah_ast_chirho::expr_chirho::MatchArmChirho;
+use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ElaborationOwnerChirho;
 
-use crate::ty_chirho::{SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho};
+use crate::ty_chirho::{
+    QuantifiedVariablesChirho, SchemeChirho, SchemePredChirho, TyChirho, TyVarChirho,
+};
 
 /// A class predicate: `ClassName Type`, e.g. `Eq Int`, `Show a`.
 /// For multi-parameter type classes: `Convert Int String`.
@@ -433,6 +436,7 @@ impl ClassDeclChirho {
 pub struct InstDeclChirho {
     class_identity_chirho: PredicateClassProofChirho,
     instance_identity_chirho: InstanceIdentityChirho,
+    checked_binders_chirho: Option<CheckedInstanceBindersChirho>,
     /// Hidden kind prefix, matched before ordinary class arguments.
     pub kind_tys_chirho: Vec<TyChirho>,
     pub class_name_chirho: String,
@@ -446,6 +450,15 @@ pub struct InstDeclChirho {
     pub context_chirho: Vec<PredChirho>,
 }
 
+/// The actual checked inference owner travels with its immutable binder group.
+/// Presence is not a substitute for matching that owner at an opening.
+/// Workflow: type-identity-chirho/instance-binders-chirho.md.
+#[derive(Debug, Clone)]
+struct CheckedInstanceBindersChirho {
+    owner_chirho: ElaborationOwnerChirho,
+    variables_chirho: QuantifiedVariablesChirho,
+}
+
 /// Instance arguments without an invented class or declaration identity.
 #[derive(Debug, Clone)]
 pub struct InstDeclPartsChirho {
@@ -454,6 +467,36 @@ pub struct InstDeclPartsChirho {
     pub head_ty_chirho: TyChirho,
     pub extra_head_tys_chirho: Vec<TyChirho>,
     pub context_chirho: Vec<PredChirho>,
+}
+
+fn instance_terms_chirho<'instance_chirho>(
+    kinds_chirho: &'instance_chirho [TyChirho],
+    head_chirho: &'instance_chirho TyChirho,
+    extras_chirho: &'instance_chirho [TyChirho],
+    context_chirho: &'instance_chirho [PredChirho],
+) -> impl Iterator<Item = &'instance_chirho TyChirho> {
+    kinds_chirho
+        .iter()
+        .chain(std::iter::once(head_chirho))
+        .chain(extras_chirho)
+        .chain(context_chirho.iter().flat_map(|predicate_chirho| {
+            predicate_chirho
+                .kind_tys_chirho
+                .iter()
+                .chain(std::iter::once(&predicate_chirho.ty_chirho))
+                .chain(&predicate_chirho.extra_tys_chirho)
+        }))
+}
+
+impl InstDeclPartsChirho {
+    pub(crate) fn terms_chirho(&self) -> impl Iterator<Item = &TyChirho> {
+        instance_terms_chirho(
+            &self.kind_tys_chirho,
+            &self.head_ty_chirho,
+            &self.extra_head_tys_chirho,
+            &self.context_chirho,
+        )
+    }
 }
 
 impl InstDeclChirho {
@@ -473,6 +516,7 @@ impl InstDeclChirho {
         Self {
             class_identity_chirho,
             instance_identity_chirho,
+            checked_binders_chirho: None,
             kind_tys_chirho: parts_chirho.kind_tys_chirho,
             class_name_chirho: parts_chirho.class_name_chirho,
             head_ty_chirho: parts_chirho.head_ty_chirho,
@@ -486,6 +530,38 @@ impl InstDeclChirho {
     }
     pub fn instance_identity_chirho(&self) -> &InstanceIdentityChirho {
         &self.instance_identity_chirho
+    }
+
+    pub fn checked_binders_chirho(
+        &self,
+    ) -> Option<(ElaborationOwnerChirho, &QuantifiedVariablesChirho)> {
+        self.checked_binders_chirho.as_ref().map(|binders_chirho| {
+            (
+                binders_chirho.owner_chirho,
+                &binders_chirho.variables_chirho,
+            )
+        })
+    }
+
+    pub(crate) fn with_checked_binders_chirho(
+        mut self,
+        owner_chirho: ElaborationOwnerChirho,
+        variables_chirho: QuantifiedVariablesChirho,
+    ) -> Self {
+        self.checked_binders_chirho = Some(CheckedInstanceBindersChirho {
+            owner_chirho,
+            variables_chirho,
+        });
+        self
+    }
+
+    pub(crate) fn terms_chirho(&self) -> impl Iterator<Item = &TyChirho> {
+        instance_terms_chirho(
+            &self.kind_tys_chirho,
+            &self.head_ty_chirho,
+            &self.extra_head_tys_chirho,
+            &self.context_chirho,
+        )
     }
 }
 

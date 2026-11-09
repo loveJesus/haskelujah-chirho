@@ -755,7 +755,7 @@ impl InferCtxChirho {
             // sides. A quantified premise is still unmodelled and makes the context
             // incomplete rather than empty.
             // workflow: language-features-chirho/instance-obligations-chirho
-            let (context_preds_chirho, context_equalities_chirho, _unmodelled_chirho) =
+            let (context_preds_chirho, context_equalities_chirho, unmodelled_chirho) =
                 self.convert_written_context_chirho(context_chirho, &mut var_map_chirho);
             let mut inst_context_chirho: Vec<PredChirho> = context_preds_chirho
                 .into_iter()
@@ -797,22 +797,41 @@ impl InferCtxChirho {
             // a source proof that way (#33315). The instance identity stays the legacy unknown
             // it was: P1 mints no source instance identity.
             let class_proof_chirho = self.instance_class_proof_chirho(class_chirho);
-            let instance_chirho = InstDeclChirho::from_producer_chirho(
-                crate::class_chirho::InstDeclPartsChirho {
-                    kind_tys_chirho: kind_tys_chirho
-                        .iter()
-                        .map(|kind_chirho| self.expand_type_synonyms_chirho(kind_chirho))
-                        .collect(),
-                    class_name_chirho,
-                    head_ty_chirho,
-                    extra_head_tys_chirho,
-                    context_chirho: inst_context_chirho,
-                },
+            let parts_chirho = crate::class_chirho::InstDeclPartsChirho {
+                kind_tys_chirho: kind_tys_chirho
+                    .iter()
+                    .map(|kind_chirho| self.expand_type_synonyms_chirho(kind_chirho))
+                    .collect(),
+                class_name_chirho,
+                head_ty_chirho,
+                extra_head_tys_chirho,
+                context_chirho: inst_context_chirho,
+            };
+            // Workflow: spec-chirho/workflows-chirho/type-identity-chirho/instance-binders-chirho.md
+            // Converted owner-stamped IDs already name the checked state records.
+            // Legacy or incomplete records remain unproved, never defaulted here.
+            let binders_chirho = if unmodelled_chirho {
+                None
+            } else {
+                match self.checked_instance_binders_chirho(&parts_chirho, *span_chirho) {
+                    Ok(binders_chirho) => binders_chirho,
+                    Err(error_chirho) => {
+                        self.record_body_kind_error_chirho(error_chirho);
+                        return;
+                    }
+                }
+            };
+            let mut instance_chirho = InstDeclChirho::from_producer_chirho(
+                parts_chirho,
                 class_proof_chirho,
                 haskelujah_ast_chirho::name_chirho::InstanceIdentityChirho::UnknownChirho(
                     haskelujah_ast_chirho::name_chirho::ClassIdentityUnknownChirho::LegacyChirho,
                 ),
             );
+            if let Some((owner_chirho, variables_chirho)) = binders_chirho {
+                instance_chirho =
+                    instance_chirho.with_checked_binders_chirho(owner_chirho, variables_chirho);
+            }
             let instance_chirho = std::sync::Arc::new(instance_chirho);
             // workflow: language-features-chirho/instance-obligations-chirho
             self.local_instances_chirho

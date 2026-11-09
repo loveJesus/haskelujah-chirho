@@ -23,6 +23,22 @@ impl InferCtxChirho {
         prefix_chirho: &SubstChirho,
         budget_chirho: &mut EqualityBudgetChirho,
     ) -> Option<Option<Arc<TyChirho>>> {
+        Self::instantiate_quantifier_kind_at_supply_chirho(
+            record_chirho,
+            prefix_chirho,
+            &mut self.elaboration_state_chirho.next_variable_chirho,
+            &self.equality_substitutions_chirho,
+            budget_chirho,
+        )
+    }
+
+    fn instantiate_quantifier_kind_at_supply_chirho(
+        record_chirho: &QuantifiedVariableChirho,
+        prefix_chirho: &SubstChirho,
+        next_variable_chirho: &mut u32,
+        equalities_chirho: &SubstChirho,
+        budget_chirho: &mut EqualityBudgetChirho,
+    ) -> Option<Option<Arc<TyChirho>>> {
         budget_chirho.node_chirho(1)?;
         let Some(kind_chirho) = &record_chirho.kind_chirho else {
             return Some(None);
@@ -33,13 +49,341 @@ impl InferCtxChirho {
         };
         let mapped_chirho = prefix_chirho.apply_freshened_bounded_chirho(
             kind_chirho,
-            &mut self.elaboration_state_chirho.next_variable_chirho,
+            next_variable_chirho,
             &mut charge_chirho,
         )?;
-        let mapped_chirho = self
-            .equality_substitutions_chirho
-            .resolve_owned_bounded_chirho(&mapped_chirho, &mut charge_chirho)?;
+        let mapped_chirho =
+            equalities_chirho.resolve_owned_bounded_chirho(&mapped_chirho, &mut charge_chirho)?;
         Some(Some(Arc::new(mapped_chirho)))
+    }
+
+    fn instance_charge_chirho(
+        budget_chirho: &mut EqualityBudgetChirho,
+        work_chirho: usize,
+        output_chirho: usize,
+    ) -> Option<()> {
+        budget_chirho.node_chirho(output_chirho)?;
+        budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+    }
+
+    /// Return spent work even when an unproved catalogue or failed staging is discarded.
+    fn with_instance_budget_chirho<ResultChirho>(
+        &mut self,
+        span_chirho: haskelujah_span_chirho::SpanChirho,
+        action_chirho: impl FnOnce(
+            &mut Self,
+            &mut EqualityBudgetChirho,
+        ) -> Result<Option<ResultChirho>, ()>,
+    ) -> Result<Option<ResultChirho>, crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho>
+    {
+        let mut budget_chirho = self
+            .elaboration_state_chirho
+            .lend_equality_budget_chirho(span_chirho)?;
+        let initial_chirho = budget_chirho.remaining_chirho();
+        let result_chirho = action_chirho(self, &mut budget_chirho);
+        self.elaboration_state_chirho
+            .settle_equality_budget_chirho(
+                initial_chirho,
+                &budget_chirho,
+                result_chirho.is_err(),
+                span_chirho,
+            )?;
+        // An exhausted action already returned the owner's sticky resource error above.
+        Ok(result_chirho.unwrap_or_default())
+    }
+
+    /// Catalogue only the actual converted instance IDs and their checked kind dependencies.
+    /// Every record is supplied to the common dependency ordering, so that operation has no
+    /// absent record from which to invent a kind or specificity.
+    /// Workflow: type-identity-chirho/instance-binders-chirho.md.
+    pub(super) fn checked_instance_binders_chirho(
+        &mut self,
+        parts_chirho: &crate::class_chirho::InstDeclPartsChirho,
+        span_chirho: haskelujah_span_chirho::SpanChirho,
+    ) -> Result<
+        Option<(
+            haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ElaborationOwnerChirho,
+            QuantifiedVariablesChirho,
+        )>,
+        crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho,
+    > {
+        let Some(owner_chirho) = self.elaboration_state_chirho.owner_chirho else {
+            return Ok(None);
+        };
+        let Some(roots_chirho) =
+            self.with_instance_budget_chirho(span_chirho, |this_chirho, budget_chirho| {
+                let mut seen_chirho = HashSet::new();
+                let mut roots_chirho = Vec::new();
+                for term_chirho in parts_chirho.terms_chirho() {
+                    let resolved_chirho = this_chirho
+                        .elaboration_state_chirho
+                        .substitution_chirho
+                        .resolve_owned_bounded_chirho(
+                            term_chirho,
+                            &mut |work_chirho, output_chirho| {
+                                Self::instance_charge_chirho(
+                                    budget_chirho,
+                                    work_chirho,
+                                    output_chirho,
+                                )
+                            },
+                        )
+                        .ok_or(())?;
+                    for variable_chirho in SubstChirho::free_variables_bounded_chirho(
+                        &resolved_chirho,
+                        &mut |work_chirho, output_chirho| {
+                            Self::instance_charge_chirho(budget_chirho, work_chirho, output_chirho)
+                        },
+                    )
+                    .ok_or(())?
+                    {
+                        budget_chirho.node_chirho(1).ok_or(())?;
+                        if seen_chirho.insert(variable_chirho) {
+                            roots_chirho.push(variable_chirho);
+                        }
+                    }
+                }
+                Ok(Some(roots_chirho))
+            })?
+        else {
+            return Ok(None);
+        };
+        let closed_chirho = self
+            .elaboration_state_chirho
+            .kind_dependency_closure_chirho(&roots_chirho, span_chirho)?;
+        self.with_instance_budget_chirho(span_chirho, |this_chirho, budget_chirho| {
+            use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
+            budget_chirho.node_chirho(closed_chirho.len()).ok_or(())?;
+            let mut pending_chirho: Vec<_> = closed_chirho.iter().copied().collect();
+            let mut seen_chirho = closed_chirho;
+            let mut provided_chirho = Vec::new();
+            let mut cursor_chirho = 0;
+            while let Some(variable_chirho) = pending_chirho.get(cursor_chirho).copied() {
+                cursor_chirho += 1;
+                budget_chirho.node_chirho(1).ok_or(())?;
+                if variable_chirho.0 >= this_chirho.elaboration_state_chirho.next_variable_chirho {
+                    return Ok(None);
+                }
+                let Some(record_chirho) = this_chirho.elaboration_state_chirho.variable_kinds_chirho.get(&variable_chirho) else {
+                    return Ok(None);
+                };
+                let mut record_chirho = record_chirho.quantifier_chirho.clone();
+                let Some(kind_chirho) = &record_chirho.kind_chirho else {
+                    return Ok(None);
+                };
+                match &record_chirho.source_chirho {
+                    Some(ScopedTypeVariableIdChirho::InferenceChirho { owner_chirho: source_owner_chirho, .. }) if *source_owner_chirho != owner_chirho => return Ok(None),
+                    Some(ScopedTypeVariableIdChirho::QuantifiedChirho { declaration_chirho, .. }) => { budget_chirho.node_chirho(declaration_chirho.len()).ok_or(())?; }
+                    _ => {}
+                }
+                let kind_chirho = this_chirho.elaboration_state_chirho.substitution_chirho.resolve_owned_bounded_chirho(
+                    kind_chirho,
+                    &mut |work_chirho, output_chirho| Self::instance_charge_chirho(budget_chirho, work_chirho, output_chirho),
+                ).ok_or(())?;
+                let kind_chirho = this_chirho.equality_substitutions_chirho.resolve_owned_bounded_chirho(
+                    &kind_chirho,
+                    &mut |work_chirho, output_chirho| Self::instance_charge_chirho(budget_chirho, work_chirho, output_chirho),
+                ).ok_or(())?;
+                for dependency_chirho in SubstChirho::free_variables_bounded_chirho(
+                    &kind_chirho,
+                    &mut |work_chirho, output_chirho| Self::instance_charge_chirho(budget_chirho, work_chirho, output_chirho),
+                ).ok_or(())? {
+                    budget_chirho.node_chirho(1).ok_or(())?;
+                    if seen_chirho.insert(dependency_chirho) {
+                        pending_chirho.push(dependency_chirho);
+                    }
+                }
+                record_chirho.kind_chirho = Some(Arc::new(kind_chirho));
+                provided_chirho.push(record_chirho);
+            }
+            let variables_chirho = this_chirho.quantify_variables_chirho(
+                roots_chirho,
+                &provided_chirho,
+                &[],
+                &SubstChirho::empty_chirho(),
+                TyVarSpecificityChirho::SpecifiedChirho,
+                budget_chirho,
+            );
+            if this_chirho.type_normalization_exhausted_chirho.get() {
+                return Err(());
+            }
+            if this_chirho.non_deferrable_diagnostics_chirho.has_errors_chirho() {
+                return Ok(None);
+            }
+            Ok(Some((owner_chirho, variables_chirho)))
+        })
+    }
+
+    /// Open once in the caller's LOCAL tree supply. Only the local cursor advances on
+    /// success; failure/unknown leaves both cursors, live metas and registry untouched.
+    /// The caller publishes a closed successful tree only after checking its saved owner
+    /// and live starting supply. Kinds and source flags remain in the returned catalogue;
+    /// the one prefix also carries each image's checked kind and producer origin.
+    /// Workflow: type-identity-chirho/instance-binders-chirho.md.
+    pub fn stage_instance_opening_chirho(
+        &mut self,
+        instance_chirho: &crate::class_chirho::InstDeclChirho,
+        next_variable_chirho: &mut u32,
+        span_chirho: haskelujah_span_chirho::SpanChirho,
+    ) -> Result<
+        Option<(crate::class_chirho::InstDeclChirho, SubstChirho)>,
+        crate::kind_chirho::elaboration_chirho::ElaborationErrorChirho,
+    > {
+        let Some((owner_chirho, variables_chirho)) = instance_chirho.checked_binders_chirho()
+        else {
+            return Ok(None);
+        };
+        if Some(owner_chirho) != self.elaboration_state_chirho.owner_chirho
+            || *next_variable_chirho < self.elaboration_state_chirho.next_variable_chirho
+        {
+            return Ok(None);
+        }
+        let mut local_next_chirho = *next_variable_chirho;
+        let opened_chirho =
+            self.with_instance_budget_chirho(span_chirho, |this_chirho, budget_chirho| {
+                let mut known_chirho = HashSet::new();
+                for record_chirho in variables_chirho.records_chirho() {
+                    budget_chirho.node_chirho(1).ok_or(())?;
+                    if record_chirho.variable_chirho.0
+                        >= this_chirho.elaboration_state_chirho.next_variable_chirho
+                        || !this_chirho.elaboration_state_chirho.variable_kinds_chirho.contains_key(&record_chirho.variable_chirho)
+                    {
+                        return Ok(None);
+                    }
+                    use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho;
+                    match &record_chirho.source_chirho {
+                        Some(ScopedTypeVariableIdChirho::InferenceChirho { owner_chirho: source_owner_chirho, .. }) if *source_owner_chirho != owner_chirho => return Ok(None),
+                        Some(ScopedTypeVariableIdChirho::QuantifiedChirho { declaration_chirho, .. }) => { budget_chirho.node_chirho(declaration_chirho.len()).ok_or(())?; }
+                        _ => {}
+                    }
+                    let Some(kind_chirho) = &record_chirho.kind_chirho else {
+                        return Ok(None);
+                    };
+                    for dependency_chirho in SubstChirho::free_variables_bounded_chirho(
+                        kind_chirho,
+                        &mut |work_chirho, output_chirho| {
+                            Self::instance_charge_chirho(budget_chirho, work_chirho, output_chirho)
+                        },
+                    )
+                    .ok_or(())?
+                    {
+                        if !known_chirho.contains(&dependency_chirho) {
+                            return Ok(None);
+                        }
+                    }
+                    if !known_chirho.insert(record_chirho.variable_chirho) {
+                        return Ok(None);
+                    }
+                }
+                for term_chirho in instance_chirho.terms_chirho() {
+                    for variable_chirho in SubstChirho::free_variables_bounded_chirho(
+                        term_chirho,
+                        &mut |work_chirho, output_chirho| {
+                            Self::instance_charge_chirho(budget_chirho, work_chirho, output_chirho)
+                        },
+                    )
+                    .ok_or(())?
+                    {
+                        if !known_chirho.contains(&variable_chirho) {
+                            return Ok(None);
+                        }
+                    }
+                }
+                let mut prefix_chirho = SubstChirho::empty_chirho();
+                let mut records_chirho = Vec::new();
+                budget_chirho.node_chirho(instance_chirho.class_name_chirho.len()).ok_or(())?;
+                for predicate_chirho in &instance_chirho.context_chirho {
+                    budget_chirho.node_chirho(predicate_chirho.class_name_chirho.len().checked_add(1).ok_or(())?).ok_or(())?;
+                }
+                for record_chirho in variables_chirho.records_chirho() {
+                    let kind_chirho = Self::instantiate_quantifier_kind_at_supply_chirho(
+                        record_chirho,
+                        &prefix_chirho,
+                        &mut local_next_chirho,
+                        &this_chirho.equality_substitutions_chirho,
+                        budget_chirho,
+                    )
+                    .ok_or(())?;
+                    let variable_chirho = TyVarChirho(local_next_chirho);
+                    local_next_chirho = local_next_chirho.checked_add(1).ok_or(())?;
+                    budget_chirho.node_chirho(2).ok_or(())?;
+                    prefix_chirho.insert_image_chirho(
+                        record_chirho.variable_chirho,
+                        crate::subst_chirho::SubstitutionImageChirho {
+                            image_chirho: TyChirho::VarChirho(variable_chirho),
+                            kind_chirho: kind_chirho.clone(),
+                            source_chirho: record_chirho.source_chirho.clone(),
+                        },
+                    );
+                    records_chirho.push(QuantifiedVariableChirho {
+                        variable_chirho,
+                        kind_chirho,
+                        source_chirho: record_chirho.source_chirho.clone(),
+                        specificity_chirho: record_chirho.specificity_chirho,
+                    });
+                }
+                let mut map_chirho = |term_chirho: &TyChirho| {
+                    prefix_chirho
+                        .apply_scheme_term_bounded_chirho(
+                            term_chirho,
+                            &mut local_next_chirho,
+                            &mut |work_chirho, output_chirho| {
+                                Self::instance_charge_chirho(
+                                    budget_chirho,
+                                    work_chirho,
+                                    output_chirho,
+                                )
+                            },
+                        )
+                        .ok_or(())
+                };
+                let kind_tys_chirho = instance_chirho
+                    .kind_tys_chirho
+                    .iter()
+                    .map(&mut map_chirho)
+                    .collect::<Result<_, _>>()?;
+                let head_ty_chirho = map_chirho(&instance_chirho.head_ty_chirho)?;
+                let extra_head_tys_chirho = instance_chirho
+                    .extra_head_tys_chirho
+                    .iter()
+                    .map(&mut map_chirho)
+                    .collect::<Result<_, _>>()?;
+                let mut context_chirho = Vec::new();
+                for predicate_chirho in &instance_chirho.context_chirho {
+                    let terms_chirho = predicate_chirho
+                        .terms_chirho()
+                        .try_mapped_chirho(&mut map_chirho)?;
+                    context_chirho.push(crate::class_chirho::PredChirho::from_proof_chirho(
+                        predicate_chirho.class_identity_chirho().clone(),
+                        crate::class_chirho::PredPartsChirho {
+                            kind_tys_chirho: terms_chirho.kind_tys_chirho,
+                            class_name_chirho: predicate_chirho.class_name_chirho.clone(),
+                            ty_chirho: terms_chirho.ty_chirho,
+                            extra_tys_chirho: terms_chirho.extra_tys_chirho,
+                        },
+                    ));
+                }
+                let opened_chirho = crate::class_chirho::InstDeclChirho::from_producer_chirho(
+                    crate::class_chirho::InstDeclPartsChirho {
+                        kind_tys_chirho,
+                        class_name_chirho: instance_chirho.class_name_chirho.clone(),
+                        head_ty_chirho,
+                        extra_head_tys_chirho,
+                        context_chirho,
+                    },
+                    instance_chirho.class_identity_chirho().clone(),
+                    instance_chirho.instance_identity_chirho().clone(),
+                )
+                .with_checked_binders_chirho(
+                    owner_chirho,
+                    QuantifiedVariablesChirho::from_records_chirho(records_chirho),
+                );
+                Ok(Some((opened_chirho, prefix_chirho)))
+            })?;
+        if opened_chirho.is_some() {
+            *next_variable_chirho = local_next_chirho;
+        }
+        Ok(opened_chirho)
     }
 
     pub(super) fn note_fresh_quantifier_kind_chirho(
@@ -346,3 +690,7 @@ impl InferCtxChirho {
 #[cfg(test)]
 #[path = "quantification_tests_chirho.rs"]
 mod tests_chirho;
+
+#[cfg(test)]
+#[path = "instance_binders_tests_chirho.rs"]
+mod instance_binders_tests_chirho;
