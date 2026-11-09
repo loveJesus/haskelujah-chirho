@@ -33,6 +33,8 @@ mod dollar_ownership_chirho;
 mod equality_scopes_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/first_class_show_print_chirho.rs"]
 mod first_class_show_print_chirho;
+#[path = "typing_integration_chirho/declarations_chirho/monomorphism_restriction_chirho/fundep_improvement_chirho/fundep_improvement_chirho.rs"]
+mod fundep_improvement_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/gadt_constructors_chirho.rs"]
 mod gadt_constructors_chirho;
 #[path = "typing_integration_chirho/declarations_chirho/gadt_projection_channels_chirho.rs"]
