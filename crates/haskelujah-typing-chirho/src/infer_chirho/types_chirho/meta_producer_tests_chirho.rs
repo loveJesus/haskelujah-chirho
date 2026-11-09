@@ -751,16 +751,32 @@ fn numeric_literal_exhaustion_allocates_no_recovery_variable_or_evidence_chirho(
     let mut context_chirho = checked_literal_context_chirho(&[]);
     let before_chirho = snapshot_chirho(&context_chirho);
     let deferred_chirho = context_chirho.deferred_preds_chirho.len();
-    let remaining_chirho = context_chirho
-        .elaboration_state_chirho
-        .lend_equality_budget_chirho(SpanChirho::DUMMY_CHIRHO)
-        .unwrap()
-        .remaining_chirho()
-        .0;
-    context_chirho
-        .elaboration_state_chirho
-        .charge_chirho(remaining_chirho, 0, SpanChirho::DUMMY_CHIRHO)
-        .unwrap();
+    // Each loan is capped, so drain successive actual loans until the owner has
+    // no work left before exercising terminal numeric-literal allocation.
+    loop {
+        let remaining_chirho = context_chirho
+            .elaboration_state_chirho
+            .lend_equality_budget_chirho(SpanChirho::DUMMY_CHIRHO)
+            .unwrap()
+            .remaining_chirho()
+            .0;
+        if remaining_chirho == 0 {
+            break;
+        }
+        context_chirho
+            .elaboration_state_chirho
+            .charge_chirho(remaining_chirho, 0, SpanChirho::DUMMY_CHIRHO)
+            .unwrap();
+    }
+    assert_eq!(
+        context_chirho
+            .elaboration_state_chirho
+            .lend_equality_budget_chirho(SpanChirho::DUMMY_CHIRHO)
+            .unwrap()
+            .remaining_chirho()
+            .0,
+        0
+    );
     let (returned_chirho, value_chirho) = context_chirho.infer_expr_chirho(&ExprChirho::LitChirho(
         LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO, None),
     ));
