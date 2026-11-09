@@ -37,13 +37,16 @@ fn module_chirho() -> ModuleChirho {
 }
 
 fn context_chirho() -> InferCtxChirho {
+    let type_scope_chirho = TypeConstructorScopeChirho::default();
+    let family_scope_chirho = crate::infer_chirho::TypeFamilyScopeChirho::default();
+    let promotion_scope_chirho = PromotionScopeChirho::default();
     let checked_chirho = elaborate_module_chirho(
         &mut module_chirho(),
         ElaborationImportsChirho {
             registry_chirho: &crate::infer_chirho::TypeFamilyEnvChirho::default(),
-            type_scope_chirho: &TypeConstructorScopeChirho::default(),
-            family_scope_chirho: &crate::infer_chirho::TypeFamilyScopeChirho::default(),
-            promotion_scope_chirho: &PromotionScopeChirho::default(),
+            type_scope_chirho: &type_scope_chirho,
+            family_scope_chirho: &family_scope_chirho,
+            promotion_scope_chirho: &promotion_scope_chirho,
             builtin_classes_chirho: &BuiltinClassScopeChirho::default(),
             source_unit_chirho: None,
         },
@@ -52,6 +55,9 @@ fn context_chirho() -> InferCtxChirho {
     let mut context_chirho = InferCtxChirho::new_chirho();
     context_chirho.adopt_elaboration_state_chirho(checked_chirho.state_chirho);
     context_chirho.type_families_chirho = checked_chirho.registry_chirho;
+    context_chirho.type_constructor_scope_chirho = Some(Arc::new(type_scope_chirho));
+    context_chirho.family_scope_chirho = Some(Arc::new(family_scope_chirho));
+    context_chirho.promotion_scope_chirho = Some(Arc::new(promotion_scope_chirho));
     context_chirho
 }
 
