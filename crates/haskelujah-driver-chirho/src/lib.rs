@@ -462,8 +462,8 @@ fn check_source_file_with_search_path_chirho(
         },
     )?;
 
-    // The CLI check is the driver's standalone route. Discovered modules that family
-    // registration admitted as home interfaces share its default home unit.
+    // The CLI check is the driver's standalone route. Only its own admitted class accounts
+    // share the default home unit; imported source units remain unproved.
     // workflow: language-features-chirho/dictionary-evidence-chirho
     let imported_class_env_chirho =
         haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho();
