@@ -967,7 +967,9 @@ fn public_family_images_reenter_the_same_checked_candidate_chirho() {
             SpanChirho::DUMMY_CHIRHO,
         );
         assert_eq!(
-            solution_chirho.public_chirho.apply_ty_chirho(&alpha_chirho),
+            solution_chirho
+                .compose_chirho(&delta_chirho)
+                .apply_ty_chirho(&alpha_chirho),
             TyChirho::bool_chirho()
         );
         assert!(context_chirho.given_preds_chirho.is_empty());
