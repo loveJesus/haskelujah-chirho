@@ -14,10 +14,10 @@
 
 use std::collections::{HashMap, HashSet};
 
-use super::DictPassCtxChirho;
 use super::ground_selection_chirho::{GroundRefusalChirho, readable_instance_chirho};
 use super::instance_rows_chirho::RowKeyAbsenceChirho;
-use crate::expr_chirho::CoreIdChirho;
+use super::{DictLayoutChirho, DictPassCtxChirho};
+use crate::expr_chirho::{BinderChirho, CoreIdChirho};
 use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho, PredChirho};
 
 /// Which of an occurrence's ground goals the rewrite would serve with a dictionary.
@@ -139,6 +139,16 @@ impl DictPassCtxChirho {
         }
         self.context_leading_rows_chirho.extend(marks_chirho);
     }
+}
+
+/// The existing preregistered dictionary payload, in its original field/move order.
+/// Construction does not allocate an identifier or change canonical ownership.
+pub(super) struct EagerInstanceRegistrationChirho {
+    pub(super) class_name_chirho: String,
+    pub(super) type_key_chirho: String,
+    pub(super) layout_chirho: DictLayoutChirho,
+    pub(super) dict_binder_chirho: BinderChirho,
+    pub(super) instance_chirho: Option<std::sync::Arc<InstDeclChirho>>,
 }
 
 /// Pass-local lookup data from the already-proven S3 join. Pointer keys compare

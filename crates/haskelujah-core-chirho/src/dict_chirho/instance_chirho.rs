@@ -12,6 +12,7 @@ use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::class_chirho::{ClassEnvChirho, InstDeclChirho};
 use haskelujah_typing_chirho::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 
+use self::ground_admission_chirho::EagerInstanceRegistrationChirho;
 use super::{DictLayoutChirho, DictPassCtxChirho};
 use crate::expr_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
@@ -636,13 +637,7 @@ impl DictPassCtxChirho {
         }
 
         // Pass 1: pre-register all dict binder ids.
-        let mut pre_registered_chirho: Vec<(
-            String,
-            String,
-            DictLayoutChirho,
-            BinderChirho,
-            Option<std::sync::Arc<InstDeclChirho>>,
-        )> = Vec::new();
+        let mut pre_registered_chirho: Vec<EagerInstanceRegistrationChirho> = Vec::new();
 
         for (class_name_chirho, type_key_chirho, layout_chirho, instance_chirho) in eligible_chirho
         {
@@ -650,13 +645,13 @@ impl DictPassCtxChirho {
             let dict_ty_chirho = TyChirho::ConChirho(format!("$Dict_{}", class_name_chirho));
             let dict_binder_chirho = self.fresh_binder_chirho(&dict_name_chirho, dict_ty_chirho);
 
-            pre_registered_chirho.push((
+            pre_registered_chirho.push(EagerInstanceRegistrationChirho {
                 class_name_chirho,
                 type_key_chirho,
                 layout_chirho,
                 dict_binder_chirho,
                 instance_chirho,
-            ));
+            });
         }
 
         // The spelled rows each displacing source class may own, which no compiler dictionary
@@ -677,13 +672,13 @@ impl DictPassCtxChirho {
 
         // Pass 2: build dict bodies — super dict ids are now findable via
         // `resolve_or_fresh_id_chirho` because pass 1 registered them.
-        for (
+        for EagerInstanceRegistrationChirho {
             class_name_chirho,
             type_key_chirho,
             layout_chirho,
             dict_binder_chirho,
             instance_chirho,
-        ) in pre_registered_chirho
+        } in pre_registered_chirho
         {
             let con_name_chirho = format!("$Dict_{}", class_name_chirho);
             let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
