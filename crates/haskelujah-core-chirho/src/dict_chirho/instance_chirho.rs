@@ -474,7 +474,14 @@ impl DictPassCtxChirho {
         // Pass 2: build dict bodies that reference the already-registered ids.
 
         // Collect eligible (class, instance, type_key, layout) tuples.
-        let mut eligible_chirho: Vec<(String, String, DictLayoutChirho)> = Vec::new();
+        let mut eligible_chirho: Vec<(
+            String,
+            String,
+            DictLayoutChirho,
+            Option<std::sync::Arc<InstDeclChirho>>,
+        )> = Vec::new();
+        // Workflow: language-features-chirho/dictionary-evidence-chirho.
+        let source_rows_chirho = self.eager_instance_rows_chirho();
         // A generic head (`generic_heads_chirho.rs`) keeps its typed key and
         // name, fills its slots from the rows as written, and is found under
         // its constructor through an alias private to this pass:
@@ -528,6 +535,7 @@ impl DictPassCtxChirho {
                             namespace_chirho,
                             type_key_chirho,
                             compiler_layout_chirho,
+                            Some(inst_chirho.clone()),
                         ));
                     }
                     continue;
@@ -563,6 +571,7 @@ impl DictPassCtxChirho {
                     class_name_chirho.clone(),
                     type_key_chirho,
                     layout_chirho.clone(),
+                    Some(inst_chirho.clone()),
                 ));
             }
         }
@@ -607,7 +616,7 @@ impl DictPassCtxChirho {
                 "(Bool,String)",
                 "(String,Bool)",
             ] {
-                if !eligible_chirho.iter().any(|(c_chirho, t_chirho, _)| {
+                if !eligible_chirho.iter().any(|(c_chirho, t_chirho, _, _)| {
                     *c_chirho == show_name_chirho && t_chirho == *type_key_chirho
                 }) {
                     if displaced_chirho {
@@ -620,16 +629,23 @@ impl DictPassCtxChirho {
                         show_name_chirho.clone(),
                         type_key_chirho.to_string(),
                         show_layout_chirho.clone(),
+                        None,
                     ));
                 }
             }
         }
 
         // Pass 1: pre-register all dict binder ids.
-        let mut pre_registered_chirho: Vec<(String, String, DictLayoutChirho, BinderChirho)> =
-            Vec::new();
+        let mut pre_registered_chirho: Vec<(
+            String,
+            String,
+            DictLayoutChirho,
+            BinderChirho,
+            Option<std::sync::Arc<InstDeclChirho>>,
+        )> = Vec::new();
 
-        for (class_name_chirho, type_key_chirho, layout_chirho) in eligible_chirho {
+        for (class_name_chirho, type_key_chirho, layout_chirho, instance_chirho) in eligible_chirho
+        {
             let dict_name_chirho = format!("$f{}{}", class_name_chirho, type_key_chirho);
             let dict_ty_chirho = TyChirho::ConChirho(format!("$Dict_{}", class_name_chirho));
             let dict_binder_chirho = self.fresh_binder_chirho(&dict_name_chirho, dict_ty_chirho);
@@ -639,6 +655,7 @@ impl DictPassCtxChirho {
                 type_key_chirho,
                 layout_chirho,
                 dict_binder_chirho,
+                instance_chirho,
             ));
         }
 
@@ -660,8 +677,13 @@ impl DictPassCtxChirho {
 
         // Pass 2: build dict bodies — super dict ids are now findable via
         // `resolve_or_fresh_id_chirho` because pass 1 registered them.
-        for (class_name_chirho, type_key_chirho, layout_chirho, dict_binder_chirho) in
-            pre_registered_chirho
+        for (
+            class_name_chirho,
+            type_key_chirho,
+            layout_chirho,
+            dict_binder_chirho,
+            instance_chirho,
+        ) in pre_registered_chirho
         {
             let con_name_chirho = format!("$Dict_{}", class_name_chirho);
             let mut field_args_chirho: Vec<CoreExprChirho> = Vec::new();
@@ -697,6 +719,19 @@ impl DictPassCtxChirho {
                 .get(&(class_name_chirho.clone(), type_key_chirho.clone()));
             let written_key_chirho =
                 generic_head_chirho.map(|head_chirho| head_chirho.written_key_chirho.as_str());
+            let row_route_chirho = if compiler_entries_chirho
+                .contains_key(&(class_name_chirho.clone(), type_key_chirho.clone()))
+            {
+                Ok(None)
+            } else {
+                self.eager_instance_route_chirho(
+                    &source_rows_chirho,
+                    instance_chirho.as_deref(),
+                    &class_name_chirho,
+                    &type_key_chirho,
+                    written_key_chirho,
+                )
+            };
             for (method_name_chirho, _) in &layout_chirho.method_slots_chirho {
                 let prim_name_chirho = format!(
                     "$prim_{}_{}_{}",
@@ -713,13 +748,13 @@ impl DictPassCtxChirho {
                         &type_key_chirho,
                         &namesake_rows_chirho[&identity_chirho],
                     ),
-                    None => self.resolve_or_missing_method_id_chirho(
+                    None => self.eager_instance_method_chirho(
                         class_env_chirho,
                         &class_name_chirho,
                         method_name_chirho,
                         &type_key_chirho,
-                        &prim_name_chirho,
                         written_key_chirho,
+                        &row_route_chirho,
                     ),
                 };
                 field_args_chirho.push(CoreExprChirho::VarChirho(prim_id_chirho));

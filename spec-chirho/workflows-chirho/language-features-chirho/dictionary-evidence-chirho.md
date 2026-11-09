@@ -1228,3 +1228,38 @@ flowchart TD
 - Join: `qualified_types_chirho.rs` `constraint_head_proof_chirho` proves a source class only when the policy's authority carries the scheme's exact declaration account. `class_instance_chirho.rs` `declared_source_class_proof_chirho` routes the class, its method predicates and an instance head's own source declaration account through it, carried or not, under the standalone authority only (#33315). An instance head without such an account (none, opaque or a compiler account) takes `selected_class_proof_chirho`, which keeps a compiler proof under its existing rule and never carries a source proof: a selected source record gives the legacy unknown. Without the authority every site keeps its pre-P1 path.
 - Consumer: `superclass_search_chirho.rs` expands a proven identity, compiler or source, through the arena's shared `class_record_by_identity_chirho`; only unproven predicates read the active spelling. A proven source side and an unproven side never match by text.
 - Out of P1: a unit-carrying declaration-owner join (imported home, sibling and re-exported classes wait for it, as does a current class that an import also names), imported-interface unit carriers, package component units (no resolved component key exists), source instance identities, and the fundep solver (P2 binder catalogue, P3 checked primitive).
+
+
+## Eager canonical instance rows Chirho
+
+The context-free dictionary pass retains the actual canonical `Arc<InstDeclChirho>` through
+both existing passes. Typing expands the complete head (`Char String` becomes `Char [Char]`),
+while desugaring reports its written row key. The existing S3 class/span join supplies that
+association; no String-specific tokenizer or second declaration registry is introduced.
+
+```mermaid
+graph TD
+    source_eager_chirho[Typed canonical instance plus desugared declaration row] --> join_eager_chirho[Existing InstanceRows S3 join]
+    join_eager_chirho --> index_eager_chirho[Pass-local pointer membership and source route claims]
+    index_eager_chirho --> route_eager_chirho[Choose once per eager dictionary]
+    route_eager_chirho -->|Exact canonical owner and unique written key| body_eager_chirho[Own body-backed method or same-key default donor]
+    route_eager_chirho -->|Ambiguous or different source owner| error_eager_chirho[Callable named refusal with method arity]
+    route_eager_chirho -->|Unclaimed legacy seed route| legacy_eager_chirho[Existing exact generic String and default resolution]
+    body_eager_chirho --> dict_eager_chirho[Existing typed dictionary key and canonical instance registration]
+```
+
+`eager_instance_rows_chirho` indexes already-proven rows once. The existing S3 construction
+cost remains; successful owned lookups are O(1), absence uses the existing row check once per
+dictionary, and every slot reuses that route. Pointer keys are never dereferenced or persisted;
+carried Arcs retain all original class proof, instance identity and checked-owner/binder fields.
+A structural lookalike does not own the canonical record's rows. Other declarations' typed,
+written or confirmed generic routes deny fallback; their spelling never supplies authority.
+Compiler namespace selection is unchanged. Missing methods remain callable named errors,
+not unconditional module failures.
+
+The eager-consumer control in `instance_rows_tests_chirho` exercises the actual dictionary
+builder, body-backed joined MPTC/synonym row, canonical registration, ambiguous source place,
+structurally equal foreign object, context-bearing elsewhere owner, missing own body and
+colliding written route. It prevents the real exact-typed decoy body from filling those slots.
+The original companion remains the end-state runtime control; existing row, generic alias,
+String spelling and multi-parameter/default-method engine controls remain unchanged.
