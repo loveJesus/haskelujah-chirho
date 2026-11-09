@@ -206,11 +206,32 @@ impl InferCtxChirho {
             )) => PredicateClassProofChirho::ProvenChirho(
                 PredicateClassIdentityChirho::CompilerChirho(*identity_chirho),
             ),
-            Some(TypeConstructorIdentityChirho::SourceChirho { .. }) => {
-                PredicateClassProofChirho::UnknownChirho(
+            // A source declaration is proven only under the driver's standalone authority, and
+            // only when that authority admitted the declaration's defining module as home. The
+            // module and class names are the declaration producer's own; no spelling decides.
+            // Library, project and package contexts, and imported modules the driver did not
+            // admit, stay MissingUnit.
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            Some(TypeConstructorIdentityChirho::SourceChirho {
+                defining_module_chirho,
+                name_chirho,
+            }) => match self
+                .elaboration_state_chirho
+                .source_policy_chirho
+                .as_ref()
+                .and_then(|policy_chirho| policy_chirho.source_unit_chirho.as_ref())
+                .filter(|authority_chirho| {
+                    authority_chirho.admits_module_chirho(defining_module_chirho)
+                }) {
+                Some(authority_chirho) => PredicateClassProofChirho::source_chirho(
+                    Some(authority_chirho.unit_chirho().clone()),
+                    std::sync::Arc::from(defining_module_chirho.as_str()),
+                    std::sync::Arc::from(name_chirho.as_str()),
+                ),
+                None => PredicateClassProofChirho::UnknownChirho(
                     ClassIdentityUnknownChirho::MissingUnitChirho,
-                )
-            }
+                ),
+            },
             _ => PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::LegacyChirho),
         }
     }

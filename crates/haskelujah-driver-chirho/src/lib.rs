@@ -49,7 +49,9 @@ pub use pipeline_chirho::{
     FrontendImportsChirho, run_frontend_with_options_chirho,
     run_frontend_with_type_synonyms_families_and_class_env_chirho,
 };
-pub(crate) use pipeline_chirho::{inject_prelude_import_chirho, run_frontend_under_policy_chirho};
+pub(crate) use pipeline_chirho::{
+    inject_prelude_import_chirho, run_frontend_under_policy_chirho, run_standalone_frontend_chirho,
+};
 #[path = "project_chirho/project_dir_chirho.rs"]
 mod project_dir_chirho;
 #[path = "native_link_chirho/rts_snapshot_chirho.rs"]
@@ -341,12 +343,25 @@ pub fn check_source_file_chirho(
 
     let builtin_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     let empty_imported_types_chirho = std::collections::HashMap::new();
+    let empty_type_synonyms_chirho = ImportedTypeSynonymsChirho::new();
+    let builtin_type_families_chirho = seed_builtin_type_families_chirho();
+    let empty_class_env_chirho =
+        haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho();
 
-    let frontend_result_chirho = run_frontend_chirho(
+    // The CLI check is the driver's standalone route: the same imports `run_frontend_chirho`
+    // builds, checked as the default home unit.
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    let frontend_result_chirho = run_standalone_frontend_chirho(
         &source_chirho,
         file_id_chirho,
-        &builtin_ifaces_chirho,
-        &empty_imported_types_chirho,
+        FrontendImportsChirho {
+            ifaces_chirho: &builtin_ifaces_chirho,
+            types_chirho: &empty_imported_types_chirho,
+            type_synonyms_chirho: &empty_type_synonyms_chirho,
+            type_families_chirho: &builtin_type_families_chirho,
+            class_env_chirho: &empty_class_env_chirho,
+        },
+        &FrontendOptionsChirho::default(),
     )?;
 
     // Extract module name from the AST (produced by the real parser)
@@ -447,13 +462,22 @@ fn check_source_file_with_search_path_chirho(
         },
     )?;
 
-    let frontend_result_chirho = run_frontend_with_type_synonyms_and_type_families_chirho(
+    // The CLI check is the driver's standalone route. Discovered modules that family
+    // registration admitted as home interfaces share its default home unit.
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    let imported_class_env_chirho =
+        haskelujah_typing_chirho::class_chirho::ClassEnvChirho::new_chirho();
+    let frontend_result_chirho = run_standalone_frontend_chirho(
         &source_chirho,
         file_id_chirho,
-        &all_ifaces_chirho,
-        &imported_types_chirho,
-        &imported_type_synonyms_chirho,
-        &imported_type_families_chirho,
+        FrontendImportsChirho {
+            ifaces_chirho: &all_ifaces_chirho,
+            types_chirho: &imported_types_chirho,
+            type_synonyms_chirho: &imported_type_synonyms_chirho,
+            type_families_chirho: &imported_type_families_chirho,
+            class_env_chirho: &imported_class_env_chirho,
+        },
+        &FrontendOptionsChirho::default(),
     )?;
 
     let module_name_chirho = frontend_result_chirho

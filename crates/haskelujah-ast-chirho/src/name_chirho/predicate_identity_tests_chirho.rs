@@ -235,3 +235,23 @@ fn instance_declaration_origins_stay_distinct_within_one_module_chirho() {
         InstanceIdentityChirho::UnknownChirho(ClassIdentityUnknownChirho::WrittenChirho)
     );
 }
+
+#[test]
+fn a_standalone_authority_admits_exactly_its_home_modules_chirho() {
+    let authority_chirho = SourceUnitAuthorityChirho::from_driver_chirho(
+        unit_chirho("main"),
+        [
+            Arc::from("Main"),
+            Arc::from("Data.ShapeChirho"),
+            Arc::from(""),
+        ],
+    );
+    assert_eq!(authority_chirho.unit_chirho(), &unit_chirho("main"));
+    assert!(authority_chirho.admits_module_chirho("Main"));
+    assert!(authority_chirho.admits_module_chirho("Data.ShapeChirho"));
+    // Exact names only: no prefix, final component, alias or empty name is admitted.
+    assert!(!authority_chirho.admits_module_chirho("Data"));
+    assert!(!authority_chirho.admits_module_chirho("ShapeChirho"));
+    assert!(!authority_chirho.admits_module_chirho("Prelude"));
+    assert!(!authority_chirho.admits_module_chirho(""));
+}

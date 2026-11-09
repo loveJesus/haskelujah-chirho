@@ -4,6 +4,7 @@
 //! recognizes a compiler class from source spelling or invents a source unit.
 //! Workflow: language-features-chirho/dictionary-evidence-chirho.
 
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use haskelujah_span_chirho::SpanChirho;
@@ -118,6 +119,43 @@ impl SourceUnitIdentityChirho {
 
     pub fn as_str_chirho(&self) -> &str {
         &self.0
+    }
+}
+
+/// The driver's standalone source authority as an immutable carrier: a unit the driver already
+/// produced and the home modules its checked admission placed in that unit. This type never
+/// mints a unit. Membership is exact module-name equality against the admitted set, never a
+/// prefix, qualifier or alias.
+/// Workflow: language-features-chirho/dictionary-evidence-chirho.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceUnitAuthorityChirho {
+    unit_chirho: SourceUnitIdentityChirho,
+    home_modules_chirho: BTreeSet<Arc<str>>,
+}
+
+impl SourceUnitAuthorityChirho {
+    /// Carries the driver-produced `unit_chirho` with the home modules the driver admitted.
+    /// An empty module name is never admitted.
+    pub fn from_driver_chirho(
+        unit_chirho: SourceUnitIdentityChirho,
+        home_modules_chirho: impl IntoIterator<Item = Arc<str>>,
+    ) -> Self {
+        Self {
+            unit_chirho,
+            home_modules_chirho: home_modules_chirho
+                .into_iter()
+                .filter(|module_chirho| !module_chirho.is_empty())
+                .collect(),
+        }
+    }
+
+    pub fn unit_chirho(&self) -> &SourceUnitIdentityChirho {
+        &self.unit_chirho
+    }
+
+    /// Whether `module_chirho` is one of this unit's admitted home modules.
+    pub fn admits_module_chirho(&self, module_chirho: &str) -> bool {
+        self.home_modules_chirho.contains(module_chirho)
     }
 }
 

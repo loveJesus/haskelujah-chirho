@@ -87,6 +87,11 @@ pub(crate) struct ElaborationPolicyChirho {
     pub transform_list_comp_chirho: bool,
     pub builtin_classes_chirho:
         std::sync::Arc<haskelujah_ast_chirho::name_chirho::BuiltinClassScopeChirho>,
+    /// The driver's standalone source authority, when the driver's standalone route produced
+    /// one. Library, project and package contexts carry none, so their source classes stay
+    /// MissingUnit. workflow: language-features-chirho/dictionary-evidence-chirho
+    pub source_unit_chirho:
+        Option<std::sync::Arc<haskelujah_ast_chirho::name_chirho::SourceUnitAuthorityChirho>>,
 }
 
 #[derive(Debug)]

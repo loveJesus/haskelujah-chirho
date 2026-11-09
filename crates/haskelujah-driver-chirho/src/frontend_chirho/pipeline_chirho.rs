@@ -59,6 +59,31 @@ pub fn run_frontend_with_options_chirho(
     imports_chirho: FrontendImportsChirho<'_>,
     options_chirho: &FrontendOptionsChirho,
 ) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
+    let policy_chirho = caller_policy_chirho(source_chirho, file_id_chirho, options_chirho);
+    run_frontend_under_policy_chirho(source_chirho, file_id_chirho, imports_chirho, policy_chirho)
+}
+
+/// The driver's standalone frontend: [`run_frontend_with_options_chirho`]'s policy, checked as
+/// the program's default home unit `main`. Only the CLI check entry calls it; library, project
+/// and package callers take the public entry above and stay MissingUnit.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub(crate) fn run_standalone_frontend_chirho(
+    source_chirho: &str,
+    file_id_chirho: haskelujah_span_chirho::FileIdChirho,
+    imports_chirho: FrontendImportsChirho<'_>,
+    options_chirho: &FrontendOptionsChirho,
+) -> Result<FrontendResultChirho, DiagnosticBundleChirho> {
+    let mut policy_chirho = caller_policy_chirho(source_chirho, file_id_chirho, options_chirho);
+    policy_chirho.standalone_home_chirho = true;
+    run_frontend_under_policy_chirho(source_chirho, file_id_chirho, imports_chirho, policy_chirho)
+}
+
+/// The caller's options, then the module header's, with the caller's program entry.
+fn caller_policy_chirho(
+    source_chirho: &str,
+    file_id_chirho: haskelujah_span_chirho::FileIdChirho,
+    options_chirho: &FrontendOptionsChirho,
+) -> FrontendPolicyChirho {
     let mut policy_chirho = FrontendPolicyChirho::resolve_chirho(
         &options_chirho.ghc_options_chirho,
         [
@@ -69,7 +94,46 @@ pub fn run_frontend_with_options_chirho(
         ],
     );
     policy_chirho.program_entry_chirho = options_chirho.program_entry_chirho.clone();
-    run_frontend_under_policy_chirho(source_chirho, file_id_chirho, imports_chirho, policy_chirho)
+    policy_chirho
+}
+
+/// The default home unit's key: GHC's `main`, the unit a standalone compile belongs to.
+const STANDALONE_HOME_UNIT_CHIRHO: &str = "main";
+
+/// The driver mints the standalone home unit here and nowhere else, and carries it with the
+/// home modules its checked admission produced: this module and every interface admitted as
+/// `HomeChirho`. A package exposure is never a member.
+/// workflow: language-features-chirho/dictionary-evidence-chirho
+pub(crate) fn standalone_home_authority_chirho(
+    module_chirho: &haskelujah_ast_chirho::module_chirho::ModuleChirho,
+    ifaces_chirho: &[ModuleIfaceChirho],
+) -> Option<haskelujah_ast_chirho::name_chirho::SourceUnitAuthorityChirho> {
+    let unit_chirho =
+        haskelujah_ast_chirho::name_chirho::SourceUnitIdentityChirho::from_producer_chirho(
+            std::sync::Arc::from(STANDALONE_HOME_UNIT_CHIRHO),
+        )
+        .ok()?;
+    let home_modules_chirho = std::iter::once(module_chirho.name_chirho.full_name_chirho())
+        .chain(
+            ifaces_chirho
+                .iter()
+                .filter(|iface_chirho| {
+                    matches!(
+                        iface_chirho.exposure_chirho,
+                        Some(
+                            haskelujah_naming_chirho::iface_chirho::IfaceExposureChirho::HomeChirho
+                        )
+                    )
+                })
+                .map(|iface_chirho| iface_chirho.name_chirho.clone()),
+        )
+        .map(std::sync::Arc::<str>::from);
+    Some(
+        haskelujah_ast_chirho::name_chirho::SourceUnitAuthorityChirho::from_driver_chirho(
+            unit_chirho,
+            home_modules_chirho,
+        ),
+    )
 }
 
 /// The frontend phases under a deferral policy the caller already resolved: the source path
@@ -214,6 +278,13 @@ pub(crate) fn run_frontend_under_policy_chirho(
     // Phase 3.5: Kind inference uses the same selected class scope built before
     // deriving, which appends only instances and cannot change class ownership.
     // workflow: compiler-pipeline-chirho/builtin-class-identity-chirho
+    // The driver's standalone route mints its home authority here, at the real module boundary.
+    // workflow: language-features-chirho/dictionary-evidence-chirho
+    let source_unit_chirho = if policy_chirho.standalone_home_chirho {
+        standalone_home_authority_chirho(&module_chirho, ifaces_chirho)
+    } else {
+        None
+    };
     let elaboration_chirho =
         haskelujah_typing_chirho::kind_chirho::elaboration_chirho::elaborate_module_chirho(
             &mut module_chirho,
@@ -223,6 +294,7 @@ pub(crate) fn run_frontend_under_policy_chirho(
                 family_scope_chirho: &family_scope_chirho,
                 promotion_scope_chirho: &promotion_scope_chirho,
                 builtin_classes_chirho: &builtin_class_scope_chirho,
+                source_unit_chirho: source_unit_chirho.as_ref(),
             },
         )
         .map_err(|error_chirho| {

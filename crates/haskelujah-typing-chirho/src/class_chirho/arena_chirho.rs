@@ -589,20 +589,31 @@ impl ClassEnvChirho {
         ));
     }
 
-    /// Finite compiler identity lookup for explicit compiler producers. A full
-    /// source-identity query requires Stage B's separate bounded proof API.
+    /// Finite compiler identity lookup for explicit compiler producers, through the shared
+    /// unique identity lookup.
     pub fn compiler_class_record_chirho(
         &self,
         identity_chirho: CompilerClassChirho,
     ) -> Option<&Arc<ClassDeclChirho>> {
+        self.class_record_by_identity_chirho(&PredicateClassIdentityChirho::CompilerChirho(
+            identity_chirho,
+        ))
+    }
+
+    /// The shared unique identity lookup: the one record a proven identity names, compiler or
+    /// source. A failed registry, an ambiguous identity or an identity whose weight overflows
+    /// names no record, so a lookup never picks by order or spelling. The query hashes the
+    /// identity's text once; registration already charged that text to the module's budget.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub fn class_record_by_identity_chirho(
+        &self,
+        identity_chirho: &PredicateClassIdentityChirho,
+    ) -> Option<&Arc<ClassDeclChirho>> {
         if self.registry_error_chirho().is_some() {
             return None;
         }
-        match self
-            .class_identities_chirho
-            .get(&PredicateClassIdentityChirho::CompilerChirho(
-                identity_chirho,
-            ))? {
+        identity_weight_chirho(identity_chirho)?;
+        match self.class_identities_chirho.get(identity_chirho)? {
             ClassIdentityEntryChirho::UniqueChirho(id_chirho) => {
                 self.class_record_chirho(id_chirho)
             }

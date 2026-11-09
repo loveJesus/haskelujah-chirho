@@ -17,8 +17,9 @@
 //! compiler proof expands its own compiler record by identity, never the record that holds its
 //! spelling. An unproven edge out of a compiler record stands only while its spelling is held by
 //! a compiler record. The reachability walk reads the same records, so a displaced compiler class
-//! and the program class holding its spelling are never merged by name. Unproven predicates keep
-//! the spelling rule they had.
+//! and the program class holding its spelling are never merged by name. A proven source class
+//! expands only its own unique record and never meets an unproven side by text (P1, gpt #33309).
+//! Unproven predicates keep the spelling rule they had.
 //! workflow: language-features-chirho/rigid-type-variables-chirho
 
 use std::collections::HashSet;
@@ -164,21 +165,41 @@ impl ClassEnvChirho {
                     PredicateClassIdentityChirho::CompilerChirho(_),
                 ),
             ) => self.active_compiler_record_chirho(right_chirho).is_some(),
+            // A proven source class never meets an unproven side by text: its spelling discharges
+            // no unknown wanted, and no unknown given discharges it (gpt #33309).
+            (
+                PredicateClassProofChirho::ProvenChirho(
+                    PredicateClassIdentityChirho::SourceChirho { .. },
+                ),
+                _,
+            )
+            | (
+                _,
+                PredicateClassProofChirho::ProvenChirho(
+                    PredicateClassIdentityChirho::SourceChirho { .. },
+                ),
+            ) => false,
             _ => true,
         }
     }
 
-    /// The record a predicate of this spelling and proof expands: a compiler proof selects its own
-    /// compiler record by identity, and with no unique compiler record nothing is expanded (a
-    /// named conservative refusal). Any other proof reads the active record of its spelling.
+    /// The record a predicate of this spelling and proof expands: a proven identity, compiler or
+    /// source, selects its own record through the shared unique identity lookup, and with no
+    /// unique record nothing is expanded (a named conservative refusal). Only an unproven
+    /// predicate reads the active record of its spelling.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
     fn record_for_chirho(
         &self,
         spelling_chirho: &str,
         proof_chirho: &PredicateClassProofChirho,
     ) -> Option<&Arc<ClassDeclChirho>> {
-        match compiler_identity_chirho(proof_chirho) {
-            Some(identity_chirho) => self.compiler_class_record_chirho(identity_chirho),
-            None => self.classes_chirho().get_chirho(spelling_chirho),
+        match proof_chirho {
+            PredicateClassProofChirho::ProvenChirho(identity_chirho) => {
+                self.class_record_by_identity_chirho(identity_chirho)
+            }
+            PredicateClassProofChirho::UnknownChirho(_) => {
+                self.classes_chirho().get_chirho(spelling_chirho)
+            }
         }
     }
 

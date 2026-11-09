@@ -57,6 +57,7 @@ fn context_chirho(
                 family_scope_chirho: &imports_chirho.family_scope_chirho,
                 promotion_scope_chirho: &imports_chirho.promotion_scope_chirho,
                 builtin_classes_chirho: &imports_chirho.builtin_classes_chirho,
+                source_unit_chirho: None,
             },
             signature_headers_chirho,
         )

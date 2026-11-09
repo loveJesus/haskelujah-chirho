@@ -37,6 +37,7 @@ fn with_projection_chirho(action_chirho: impl FnOnce(&mut TypeElaboratorChirho<'
             family_scope_chirho: &family_scope_chirho,
             promotion_scope_chirho: &promotion_scope_chirho,
             builtin_classes_chirho: &builtin_classes_chirho,
+            source_unit_chirho: None,
         },
     )
     .unwrap();
