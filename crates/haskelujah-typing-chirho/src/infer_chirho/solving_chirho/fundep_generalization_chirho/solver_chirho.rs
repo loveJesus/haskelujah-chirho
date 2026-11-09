@@ -21,6 +21,74 @@ use haskelujah_span_chirho::SpanChirho;
 use std::collections::HashSet;
 use std::sync::Arc;
 
+const FUNDEP_DEPTH_LIMIT_CHIRHO: usize = 64;
+type FundepResultChirho<ValueChirho> = Result<ValueChirho, FundepFailureChirho>;
+
+/// Private diagnostic reason only. It never decides a candidate's result.
+enum FundepFailureChirho {
+    BoundedChirho(Option<&'static str>),
+    DepthChirho {
+        actual_chirho: usize,
+        limit_chirho: usize,
+    },
+}
+
+impl From<()> for FundepFailureChirho {
+    fn from(_: ()) -> Self {
+        Self::BoundedChirho(None)
+    }
+}
+
+impl FundepFailureChirho {
+    fn bounded_chirho(segment_chirho: &'static str) -> Self {
+        Self::BoundedChirho(Some(segment_chirho))
+    }
+
+    fn detail_chirho(&self) -> String {
+        match self {
+            Self::BoundedChirho(Some(segment_chirho)) => {
+                format!("FD solving; segment={segment_chirho}")
+            }
+            Self::BoundedChirho(None) => {
+                "FD solving; unattributed nested bounded operation".to_owned()
+            }
+            Self::DepthChirho {
+                actual_chirho,
+                limit_chirho,
+            } => format!(
+                "FD solving; guard=FD tree depth, actual={actual_chirho}, limit={limit_chirho}"
+            ),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum FundepNormalizationStageChirho {
+    FirstResolveChirho,
+    PublicNormalizeChirho,
+    ContractCompareChirho,
+    FinalResolveChirho,
+}
+
+impl FundepNormalizationStageChirho {
+    fn label_chirho(self) -> &'static str {
+        match self {
+            Self::FirstResolveChirho => "FirstR",
+            Self::PublicNormalizeChirho => "PublicN",
+            Self::ContractCompareChirho => "ContractCompare",
+            Self::FinalResolveChirho => "FinalR",
+        }
+    }
+}
+
+/// Four fixed diagnostic counters. They never supply authority or allowance.
+#[derive(Clone, Copy, Default)]
+struct FundepNormalizationMetricChirho {
+    calls_chirho: usize,
+    spent_work_chirho: usize,
+    spent_output_chirho: usize,
+}
+
 struct FundepSolveChirho<'context_chirho> {
     context_chirho: &'context_chirho mut InferCtxChirho,
     owner_chirho: ElaborationOwnerChirho,
@@ -28,10 +96,56 @@ struct FundepSolveChirho<'context_chirho> {
     budget_chirho: EqualityBudgetChirho,
     loan_chirho: (usize, usize),
     span_chirho: SpanChirho,
+    normalization_metrics_chirho: [FundepNormalizationMetricChirho; 4],
 }
 
 impl FundepSolveChirho<'_> {
-    fn eligible_chirho(&mut self, proof_chirho: &PredicateClassProofChirho) -> Result<bool, ()> {
+    fn record_normalization_chirho(
+        &mut self,
+        stage_chirho: FundepNormalizationStageChirho,
+        before_chirho: (usize, usize),
+    ) {
+        let after_chirho = self.budget_chirho.remaining_chirho();
+        let metric_chirho = &mut self.normalization_metrics_chirho[stage_chirho as usize];
+        metric_chirho.calls_chirho = metric_chirho.calls_chirho.saturating_add(1);
+        metric_chirho.spent_work_chirho = metric_chirho
+            .spent_work_chirho
+            .saturating_add(before_chirho.0.saturating_sub(after_chirho.0));
+        metric_chirho.spent_output_chirho = metric_chirho
+            .spent_output_chirho
+            .saturating_add(before_chirho.1.saturating_sub(after_chirho.1));
+    }
+
+    fn normalization_detail_chirho(&self) -> String {
+        let stages_chirho = [
+            FundepNormalizationStageChirho::FirstResolveChirho,
+            FundepNormalizationStageChirho::PublicNormalizeChirho,
+            FundepNormalizationStageChirho::ContractCompareChirho,
+            FundepNormalizationStageChirho::FinalResolveChirho,
+        ];
+        let fields_chirho = stages_chirho
+            .into_iter()
+            .map(|stage_chirho| {
+                let metric_chirho = &self.normalization_metrics_chirho[stage_chirho as usize];
+                format!(
+                    "{}(calls={}, work={}, output={})",
+                    stage_chirho.label_chirho(),
+                    metric_chirho.calls_chirho,
+                    metric_chirho.spent_work_chirho,
+                    metric_chirho.spent_output_chirho,
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!(
+            "normalization stage totals=[{fields_chirho}]; other FD/P2 costs excluded; counters are diagnostic only"
+        )
+    }
+
+    fn eligible_chirho(
+        &mut self,
+        proof_chirho: &PredicateClassProofChirho,
+    ) -> FundepResultChirho<bool> {
         let PredicateClassProofChirho::ProvenChirho(identity_chirho) = proof_chirho else {
             return Ok(false);
         };
@@ -48,9 +162,10 @@ impl FundepSolveChirho<'_> {
                 .len()
                 .checked_add(module_chirho.len())
                 .and_then(|weight_chirho| weight_chirho.checked_add(name_chirho.len()))
-                .ok_or(())?,
+                .ok_or(FundepFailureChirho::bounded_chirho("FD eligibility"))?,
         };
-        charge_chirho(&mut self.budget_chirho, weight_chirho, 0).ok_or(())?;
+        charge_chirho(&mut self.budget_chirho, weight_chirho, 0)
+            .ok_or(FundepFailureChirho::bounded_chirho("FD eligibility"))?;
         let Some(class_chirho) = self
             .context_chirho
             .class_env_chirho
@@ -63,7 +178,7 @@ impl FundepSolveChirho<'_> {
             self.context_chirho.given_preds_chirho.len(),
             0,
         )
-        .ok_or(())?;
+        .ok_or(FundepFailureChirho::bounded_chirho("FD eligibility"))?;
         if self
             .context_chirho
             .given_preds_chirho
@@ -80,7 +195,8 @@ impl FundepSolveChirho<'_> {
         else {
             return Ok(false);
         };
-        charge_chirho(&mut self.budget_chirho, instances_chirho.len_chirho(), 0).ok_or(())?;
+        charge_chirho(&mut self.budget_chirho, instances_chirho.len_chirho(), 0)
+            .ok_or(FundepFailureChirho::bounded_chirho("FD eligibility"))?;
         Ok(instances_chirho.iter_chirho().any(|instance_chirho| {
             instance_chirho.class_identity_chirho() == proof_chirho
                 && instance_chirho
@@ -93,30 +209,59 @@ impl FundepSolveChirho<'_> {
         &mut self,
         term_chirho: &TyChirho,
         candidate_chirho: &FundepCandidateChirho,
-    ) -> Result<TyChirho, ()> {
-        let resolved_chirho =
-            candidate_chirho.resolve_chirho(term_chirho, &mut self.budget_chirho)?;
+    ) -> FundepResultChirho<TyChirho> {
+        let before_chirho = self.budget_chirho.remaining_chirho();
+        let resolved_chirho = candidate_chirho.resolve_chirho(term_chirho, &mut self.budget_chirho);
+        self.record_normalization_chirho(
+            FundepNormalizationStageChirho::FirstResolveChirho,
+            before_chirho,
+        );
+        let resolved_chirho = resolved_chirho
+            .map_err(|_| FundepFailureChirho::bounded_chirho("FD normalization FirstR"))?;
+        let before_chirho = self.budget_chirho.remaining_chirho();
         let term_chirho = self
             .context_chirho
             .normalize_signature_public_image_change_chirho(
                 &resolved_chirho,
                 &mut self.budget_chirho,
-            )
-            .map_err(|_| ())?;
+            );
+        self.record_normalization_chirho(
+            FundepNormalizationStageChirho::PublicNormalizeChirho,
+            before_chirho,
+        );
+        let term_chirho = term_chirho
+            .map_err(|_| FundepFailureChirho::bounded_chirho("FD normalization PublicN"))?;
         // Workflow: language-features-chirho/fundep-generalization-chirho.
         // Public normalization can expose a candidate-bound meta, so only an
         // exact, charged contract comparison proves the second resolve redundant.
-        match crate::ty_chirho::same_type_contract_chirho(
+        let before_chirho = self.budget_chirho.remaining_chirho();
+        let comparison_chirho = crate::ty_chirho::same_type_contract_chirho(
             &resolved_chirho,
             term_chirho.image_chirho(&resolved_chirho),
             &mut |work_chirho| charge_chirho(&mut self.budget_chirho, work_chirho, 0),
-        ) {
+        );
+        self.record_normalization_chirho(
+            FundepNormalizationStageChirho::ContractCompareChirho,
+            before_chirho,
+        );
+        match comparison_chirho {
             Some(true) => Ok(term_chirho.retain_owned_chirho(resolved_chirho)),
-            Some(false) => candidate_chirho.resolve_chirho(
-                term_chirho.image_chirho(&resolved_chirho),
-                &mut self.budget_chirho,
-            ),
-            None => Err(()),
+            Some(false) => {
+                let before_chirho = self.budget_chirho.remaining_chirho();
+                let result_chirho = candidate_chirho.resolve_chirho(
+                    term_chirho.image_chirho(&resolved_chirho),
+                    &mut self.budget_chirho,
+                );
+                self.record_normalization_chirho(
+                    FundepNormalizationStageChirho::FinalResolveChirho,
+                    before_chirho,
+                );
+                result_chirho
+                    .map_err(|_| FundepFailureChirho::bounded_chirho("FD normalization FinalR"))
+            }
+            None => Err(FundepFailureChirho::bounded_chirho(
+                "FD normalization ContractCompare",
+            )),
         }
     }
 
@@ -124,17 +269,21 @@ impl FundepSolveChirho<'_> {
         &mut self,
         predicate_chirho: &PredChirho,
         candidate_chirho: &FundepCandidateChirho,
-    ) -> Result<PredChirho, ()> {
+    ) -> FundepResultChirho<PredChirho> {
         charge_chirho(
             &mut self.budget_chirho,
             predicate_chirho
                 .class_name_chirho
                 .len()
                 .checked_add(1)
-                .ok_or(())?,
+                .ok_or(FundepFailureChirho::bounded_chirho(
+                    "FD predicate normalization",
+                ))?,
             1,
         )
-        .ok_or(())?;
+        .ok_or(FundepFailureChirho::bounded_chirho(
+            "FD predicate normalization",
+        ))?;
         let kinds_chirho = predicate_chirho
             .kind_tys_chirho
             .iter()
@@ -181,7 +330,7 @@ impl FundepSolveChirho<'_> {
         term_chirho: &TyChirho,
         candidate_chirho: &FundepCandidateChirho,
         equations_chirho: &mut Vec<(TyChirho, TyChirho)>,
-    ) -> Result<Option<TyChirho>, ()> {
+    ) -> FundepResultChirho<Option<TyChirho>> {
         let records_chirho = &candidate_chirho.records_chirho;
         let live_records_chirho = &self
             .context_chirho
@@ -208,6 +357,7 @@ impl FundepSolveChirho<'_> {
                 charge_chirho(&mut self.budget_chirho, work_chirho, output_chirho)
             },
         )
+        .map_err(|_| FundepFailureChirho::bounded_chirho("FD checked kind"))
     }
 
     fn raw_equation_chirho(
@@ -216,7 +366,7 @@ impl FundepSolveChirho<'_> {
         right_chirho: &TyChirho,
         candidate_chirho: &FundepCandidateChirho,
         live_chirho: bool,
-    ) -> Result<Option<SubstChirho>, ()> {
+    ) -> FundepResultChirho<Option<SubstChirho>> {
         let records_chirho = &candidate_chirho.records_chirho;
         let state_chirho = &self.context_chirho.elaboration_state_chirho;
         let base_next_chirho = self.base_next_chirho;
@@ -235,6 +385,7 @@ impl FundepSolveChirho<'_> {
                 charge_chirho(&mut self.budget_chirho, work_chirho, output_chirho)
             },
         )
+        .map_err(|_| FundepFailureChirho::bounded_chirho("FD monotype equation"))
     }
 
     fn equation_chirho(
@@ -243,7 +394,7 @@ impl FundepSolveChirho<'_> {
         right_chirho: &TyChirho,
         candidate_chirho: &mut FundepCandidateChirho,
         live_chirho: bool,
-    ) -> Result<bool, ()> {
+    ) -> FundepResultChirho<bool> {
         let left_chirho = self.normalize_chirho(left_chirho, candidate_chirho)?;
         let right_chirho = self.normalize_chirho(right_chirho, candidate_chirho)?;
         // Validate both complete operands before decomposition. In particular,
@@ -259,7 +410,8 @@ impl FundepSolveChirho<'_> {
         else {
             return Ok(false);
         };
-        charge_chirho(&mut self.budget_chirho, 2, 2).ok_or(())?;
+        charge_chirho(&mut self.budget_chirho, 2, 2)
+            .ok_or(FundepFailureChirho::bounded_chirho("FD equation"))?;
         pending_chirho.push((left_kind_chirho, right_kind_chirho));
         let mut pending_chirho: Vec<_> = pending_chirho
             .into_iter()
@@ -282,14 +434,16 @@ impl FundepSolveChirho<'_> {
                 if !self.may_bind_chirho(*variable_chirho, candidate_chirho, equation_live_chirho) {
                     return Ok(false);
                 }
-                let image_chirho =
-                    candidate_chirho.resolve_chirho(image_chirho, &mut self.budget_chirho)?;
+                let image_chirho = candidate_chirho
+                    .resolve_chirho(image_chirho, &mut self.budget_chirho)
+                    .map_err(|_| FundepFailureChirho::bounded_chirho("FD candidate resolution"))?;
                 if candidate_chirho
                     .substitution_chirho
                     .lookup_chirho(variable_chirho)
                     .is_some()
                 {
-                    charge_chirho(&mut self.budget_chirho, 1, 1).ok_or(())?;
+                    charge_chirho(&mut self.budget_chirho, 1, 1)
+                        .ok_or(FundepFailureChirho::bounded_chirho("FD equation"))?;
                     pending_chirho.push((
                         TyChirho::VarChirho(*variable_chirho),
                         image_chirho,
@@ -311,8 +465,9 @@ impl FundepSolveChirho<'_> {
                 let Some(expected_chirho) = expected_chirho else {
                     return Ok(false);
                 };
-                let expected_chirho =
-                    candidate_chirho.resolve_chirho(expected_chirho, &mut self.budget_chirho)?;
+                let expected_chirho = candidate_chirho
+                    .resolve_chirho(expected_chirho, &mut self.budget_chirho)
+                    .map_err(|_| FundepFailureChirho::bounded_chirho("FD candidate resolution"))?;
                 let mut kind_equations_chirho = Vec::new();
                 let Some(actual_chirho) =
                     self.kind_chirho(&image_chirho, candidate_chirho, &mut kind_equations_chirho)?
@@ -321,10 +476,16 @@ impl FundepSolveChirho<'_> {
                 };
                 charge_chirho(
                     &mut self.budget_chirho,
-                    kind_equations_chirho.len().checked_add(2).ok_or(())?,
-                    kind_equations_chirho.len().checked_add(2).ok_or(())?,
+                    kind_equations_chirho
+                        .len()
+                        .checked_add(2)
+                        .ok_or(FundepFailureChirho::bounded_chirho("FD equation"))?,
+                    kind_equations_chirho
+                        .len()
+                        .checked_add(2)
+                        .ok_or(FundepFailureChirho::bounded_chirho("FD equation"))?,
                 )
-                .ok_or(())?;
+                .ok_or(FundepFailureChirho::bounded_chirho("FD equation"))?;
                 pending_chirho.extend(
                     kind_equations_chirho
                         .into_iter()
@@ -343,7 +504,7 @@ impl FundepSolveChirho<'_> {
         &mut self,
         instance_chirho: &InstDeclChirho,
         candidate_chirho: &mut FundepCandidateChirho,
-    ) -> Result<Option<InstDeclChirho>, ()> {
+    ) -> FundepResultChirho<Option<InstDeclChirho>> {
         // P2 borrows the same owner's allowance. Settle our current loan first,
         // then re-lend what remains; two independent budgets never overlap.
         self.context_chirho
@@ -354,7 +515,7 @@ impl FundepSolveChirho<'_> {
                 false,
                 self.span_chirho,
             )
-            .map_err(|_| ())?;
+            .map_err(|_| FundepFailureChirho::bounded_chirho("FD instance opening"))?;
         self.loan_chirho = (0, 0);
         self.budget_chirho = EqualityBudgetChirho::limited_chirho(0, 0);
         let opened_chirho = self.context_chirho.stage_instance_opening_chirho(
@@ -366,9 +527,11 @@ impl FundepSolveChirho<'_> {
             .context_chirho
             .elaboration_state_chirho
             .lend_equality_budget_chirho(self.span_chirho)
-            .map_err(|_| ())?;
+            .map_err(|_| FundepFailureChirho::bounded_chirho("FD instance opening"))?;
         self.loan_chirho = self.budget_chirho.remaining_chirho();
-        let Some((opened_chirho, _prefix_chirho)) = opened_chirho.map_err(|_| ())? else {
+        let Some((opened_chirho, _prefix_chirho)) = opened_chirho
+            .map_err(|_| FundepFailureChirho::bounded_chirho("FD instance opening"))?
+        else {
             return Ok(None);
         };
         let Some((owner_chirho, variables_chirho)) = opened_chirho.checked_binders_chirho() else {
@@ -378,7 +541,8 @@ impl FundepSolveChirho<'_> {
             return Ok(None);
         }
         for record_chirho in variables_chirho.records_chirho() {
-            charge_chirho(&mut self.budget_chirho, 1, 1).ok_or(())?;
+            charge_chirho(&mut self.budget_chirho, 1, 1)
+                .ok_or(FundepFailureChirho::bounded_chirho("FD instance opening"))?;
             if candidate_chirho
                 .records_chirho
                 .insert(record_chirho.variable_chirho, record_chirho.clone())
@@ -395,7 +559,7 @@ impl FundepSolveChirho<'_> {
         wanted_chirho: &PredChirho,
         instance_chirho: &InstDeclChirho,
         candidate_chirho: &mut FundepCandidateChirho,
-    ) -> Result<bool, ()> {
+    ) -> FundepResultChirho<bool> {
         let Some(groups_chirho) = self
             .context_chirho
             .class_env_chirho
@@ -414,7 +578,9 @@ impl FundepSolveChirho<'_> {
             groups_chirho.len(),
             groups_chirho.len(),
         )
-        .ok_or(())?;
+        .ok_or(FundepFailureChirho::bounded_chirho(
+            "FD determinant matching",
+        ))?;
         let mut matched_chirho = false;
         let mut used_chirho = HashSet::new();
         // One FD may make another determinant known. Retry only unapplied
@@ -425,7 +591,9 @@ impl FundepSolveChirho<'_> {
                 if used_chirho.contains(&index_chirho) {
                     continue;
                 }
-                let mut trial_chirho = candidate_chirho.copy_chirho(&mut self.budget_chirho)?;
+                let mut trial_chirho = candidate_chirho
+                    .copy_chirho(&mut self.budget_chirho)
+                    .map_err(|_| FundepFailureChirho::bounded_chirho("FD candidate copy"))?;
                 let mut determinant_chirho = true;
                 for (pattern_chirho, target_chirho) in &group_chirho.hidden_kinds_chirho {
                     if !self.equation_chirho(
@@ -497,10 +665,15 @@ impl FundepSolveChirho<'_> {
         original_chirho: &FundepCandidateChirho,
         active_chirho: &mut Vec<PredChirho>,
         depth_chirho: usize,
-    ) -> Result<Option<FundepCandidateChirho>, ()> {
-        charge_chirho(&mut self.budget_chirho, 1, 0).ok_or(())?;
-        if depth_chirho > 64 {
-            return Err(());
+    ) -> FundepResultChirho<Option<FundepCandidateChirho>> {
+        charge_chirho(&mut self.budget_chirho, 1, 0).ok_or(FundepFailureChirho::BoundedChirho(
+            Some("FD context closure"),
+        ))?;
+        if depth_chirho > FUNDEP_DEPTH_LIMIT_CHIRHO {
+            return Err(FundepFailureChirho::DepthChirho {
+                actual_chirho: depth_chirho,
+                limit_chirho: FUNDEP_DEPTH_LIMIT_CHIRHO,
+            });
         }
         if !self.eligible_chirho(wanted_chirho.class_identity_chirho())? {
             return Ok(None);
@@ -523,16 +696,26 @@ impl FundepSolveChirho<'_> {
             let given_chirho = copy_predicate_chirho(
                 &self.context_chirho.given_preds_chirho[given_index_chirho],
                 &mut self.budget_chirho,
-            )?;
+            )
+            .map_err(|_| FundepFailureChirho::bounded_chirho("FD predicate copy or comparison"))?;
             let given_chirho = self.predicate_chirho(&given_chirho, original_chirho)?;
-            if same_predicate_chirho(&given_chirho, &wanted_chirho, &mut self.budget_chirho)? {
+            if same_predicate_chirho(&given_chirho, &wanted_chirho, &mut self.budget_chirho)
+                .map_err(|_| {
+                    FundepFailureChirho::bounded_chirho("FD predicate copy or comparison")
+                })?
+            {
                 return original_chirho
                     .copy_chirho(&mut self.budget_chirho)
+                    .map_err(|_| FundepFailureChirho::bounded_chirho("FD candidate copy"))
                     .map(Some);
             }
         }
         for ancestor_chirho in active_chirho.iter() {
-            if same_predicate_chirho(ancestor_chirho, &wanted_chirho, &mut self.budget_chirho)? {
+            if same_predicate_chirho(ancestor_chirho, &wanted_chirho, &mut self.budget_chirho)
+                .map_err(|_| {
+                    FundepFailureChirho::bounded_chirho("FD predicate copy or comparison")
+                })?
+            {
                 return Ok(None);
             }
         }
@@ -549,14 +732,16 @@ impl FundepSolveChirho<'_> {
             instances_chirho.len_chirho(),
             instances_chirho.len_chirho(),
         )
-        .ok_or(())?;
+        .ok_or(FundepFailureChirho::bounded_chirho("FD context closure"))?;
         let instances_chirho: Vec<_> = instances_chirho.iter_chirho().map(Arc::clone).collect();
         let mut selected_chirho = None;
         for instance_chirho in instances_chirho {
             if instance_chirho.class_identity_chirho() != wanted_chirho.class_identity_chirho() {
                 continue;
             }
-            let mut candidate_chirho = original_chirho.copy_chirho(&mut self.budget_chirho)?;
+            let mut candidate_chirho = original_chirho
+                .copy_chirho(&mut self.budget_chirho)
+                .map_err(|_| FundepFailureChirho::bounded_chirho("FD candidate copy"))?;
             let Some(opened_chirho) = self.open_chirho(&instance_chirho, &mut candidate_chirho)?
             else {
                 continue;
@@ -572,7 +757,9 @@ impl FundepSolveChirho<'_> {
         let Some((opened_chirho, mut candidate_chirho)) = selected_chirho else {
             return Ok(None);
         };
-        charge_chirho(&mut self.budget_chirho, 1, 1).ok_or(())?;
+        charge_chirho(&mut self.budget_chirho, 1, 1).ok_or(FundepFailureChirho::BoundedChirho(
+            Some("FD context closure"),
+        ))?;
         active_chirho.push(wanted_chirho);
         for child_chirho in &opened_chirho.context_chirho {
             let Some(next_chirho) = self.close_chirho(
@@ -594,7 +781,7 @@ impl FundepSolveChirho<'_> {
     fn export_chirho(
         &mut self,
         candidate_chirho: &FundepCandidateChirho,
-    ) -> Result<Option<SubstChirho>, ()> {
+    ) -> FundepResultChirho<Option<SubstChirho>> {
         let mut result_chirho = SubstChirho::empty_chirho();
         for (variable_chirho, image_chirho) in candidate_chirho.substitution_chirho.iter_chirho() {
             if variable_chirho.0 >= self.base_next_chirho {
@@ -610,7 +797,7 @@ impl FundepSolveChirho<'_> {
                     charge_chirho(&mut self.budget_chirho, work_chirho, output_chirho)
                 },
             )
-            .ok_or(())?;
+            .ok_or(FundepFailureChirho::bounded_chirho("FD export"))?;
             if variables_chirho
                 .iter()
                 .any(|variable_chirho| variable_chirho.0 >= self.base_next_chirho)
@@ -626,15 +813,16 @@ impl FundepSolveChirho<'_> {
             else {
                 return Ok(None);
             };
-            let kind_chirho =
-                candidate_chirho.resolve_chirho(kind_chirho, &mut self.budget_chirho)?;
+            let kind_chirho = candidate_chirho
+                .resolve_chirho(kind_chirho, &mut self.budget_chirho)
+                .map_err(|_| FundepFailureChirho::bounded_chirho("FD candidate resolution"))?;
             let variables_chirho = SubstChirho::free_variables_bounded_chirho(
                 &kind_chirho,
                 &mut |work_chirho, output_chirho| {
                     charge_chirho(&mut self.budget_chirho, work_chirho, output_chirho)
                 },
             )
-            .ok_or(())?;
+            .ok_or(FundepFailureChirho::bounded_chirho("FD export"))?;
             if variables_chirho
                 .iter()
                 .any(|variable_chirho| variable_chirho.0 >= self.base_next_chirho)
@@ -686,8 +874,9 @@ impl InferCtxChirho {
             budget_chirho,
             loan_chirho,
             span_chirho,
+            normalization_metrics_chirho: [FundepNormalizationMetricChirho::default(); 4],
         };
-        let result_chirho = (|| -> Result<Option<(SubstChirho, HashSet<usize>)>, ()> {
+        let result_chirho = (|| -> FundepResultChirho<Option<(SubstChirho, HashSet<usize>)>> {
             let mut wanted_chirho = Vec::new();
             for index_chirho in 0..solver_chirho.context_chirho.deferred_preds_chirho.len() {
                 let proof_chirho = solver_chirho.context_chirho.deferred_preds_chirho[index_chirho]
@@ -718,7 +907,7 @@ impl InferCtxChirho {
                                     )
                                 },
                             )
-                            .ok_or(())
+                            .ok_or(FundepFailureChirho::bounded_chirho("FD wanted staging"))
                     },
                 )?;
                 charge_chirho(
@@ -727,10 +916,10 @@ impl InferCtxChirho {
                         .class_name_chirho
                         .len()
                         .checked_add(1)
-                        .ok_or(())?,
+                        .ok_or(FundepFailureChirho::bounded_chirho("FD wanted staging"))?,
                     1,
                 )
-                .ok_or(())?;
+                .ok_or(FundepFailureChirho::bounded_chirho("FD wanted staging"))?;
                 wanted_chirho.push((
                     index_chirho,
                     PredChirho::from_proof_chirho(
@@ -772,13 +961,21 @@ impl InferCtxChirho {
                 .export_chirho(&candidate_chirho)?
                 .map(|substitution_chirho| (substitution_chirho, closed_chirho)))
         })();
+        let failure_detail_chirho = result_chirho.as_ref().err().map(|failure_chirho| {
+            format!(
+                "{}; {}",
+                failure_chirho.detail_chirho(),
+                solver_chirho.normalization_detail_chirho(),
+            )
+        });
         let settled_chirho = solver_chirho
             .context_chirho
             .elaboration_state_chirho
-            .settle_equality_budget_chirho(
+            .settle_named_equality_budget_chirho(
                 solver_chirho.loan_chirho,
                 &solver_chirho.budget_chirho,
                 result_chirho.is_err(),
+                failure_detail_chirho.as_deref(),
                 span_chirho,
             );
         if let Err(error_chirho) = settled_chirho {

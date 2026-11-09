@@ -16,6 +16,30 @@ pub(crate) struct EqualityNormalizationExhaustedChirho;
 pub(crate) struct EqualityBudgetChirho {
     work_chirho: usize,
     output_chirho: usize,
+    failure_chirho: Option<EqualityBudgetFailureChirho>,
+    public_failure_chirho: Option<PublicNormalizationFailureChirho>,
+}
+
+/// A diagnostic payload inside the existing allowance, never a solver input.
+/// The first failed debit is kept even when a caller propagates only `None`.
+enum EqualityBudgetFailureChirho {
+    WorkChirho {
+        requested_chirho: usize,
+        work_before_chirho: usize,
+        output_before_chirho: usize,
+    },
+    OutputChirho {
+        requested_chirho: usize,
+        work_before_chirho: usize,
+        output_before_chirho: usize,
+    },
+}
+
+/// Names only an operation that has already returned its original exhausted result.
+/// Raw family counters do not expose the failed inner guard or requested debit.
+enum PublicNormalizationFailureChirho {
+    OperationChirho(&'static str),
+    RawFamilyChirho,
 }
 
 impl EqualityBudgetChirho {
@@ -23,6 +47,8 @@ impl EqualityBudgetChirho {
         Self {
             work_chirho: work_chirho.min(10_000_000),
             output_chirho: output_chirho.min(16_384),
+            failure_chirho: None,
+            public_failure_chirho: None,
         }
     }
     pub(crate) fn remaining_chirho(&self) -> (usize, usize) {
@@ -32,16 +58,73 @@ impl EqualityBudgetChirho {
         Self {
             work_chirho: 10_000_000,
             output_chirho: 16_384,
+            failure_chirho: None,
+            public_failure_chirho: None,
         }
     }
     pub(crate) fn work_chirho(&mut self, amount_chirho: usize) -> Option<()> {
-        self.work_chirho = self.work_chirho.checked_sub(amount_chirho)?;
+        let Some(remaining_chirho) = self.work_chirho.checked_sub(amount_chirho) else {
+            self.failure_chirho
+                .get_or_insert(EqualityBudgetFailureChirho::WorkChirho {
+                    requested_chirho: amount_chirho,
+                    work_before_chirho: self.work_chirho,
+                    output_before_chirho: self.output_chirho,
+                });
+            return None;
+        };
+        self.work_chirho = remaining_chirho;
         Some(())
     }
     pub(crate) fn node_chirho(&mut self, amount_chirho: usize) -> Option<()> {
         self.work_chirho(amount_chirho)?;
-        self.output_chirho = self.output_chirho.checked_sub(amount_chirho)?;
+        let Some(remaining_chirho) = self.output_chirho.checked_sub(amount_chirho) else {
+            // Work was already debited by the original node operation. Keep
+            // that order and report the actual state at this failed guard.
+            self.failure_chirho
+                .get_or_insert(EqualityBudgetFailureChirho::OutputChirho {
+                    requested_chirho: amount_chirho,
+                    work_before_chirho: self.work_chirho,
+                    output_before_chirho: self.output_chirho,
+                });
+            return None;
+        };
+        self.output_chirho = remaining_chirho;
         Some(())
+    }
+
+    fn note_public_failure_chirho(&mut self, failure_chirho: PublicNormalizationFailureChirho) {
+        self.public_failure_chirho.get_or_insert(failure_chirho);
+    }
+
+    pub(crate) fn failure_detail_chirho(&self) -> Option<String> {
+        let operation_chirho = match self.public_failure_chirho.as_ref() {
+            Some(PublicNormalizationFailureChirho::RawFamilyChirho) => {
+                return Some("PublicN operation=family reduction; inner guard=UNOBSERVED; inner requested=UNOBSERVED".to_owned());
+            }
+            Some(PublicNormalizationFailureChirho::OperationChirho(operation_chirho)) => {
+                Some(format!("PublicN operation={operation_chirho}"))
+            }
+            None => None,
+        };
+        let charge_chirho = self.failure_chirho.as_ref().map(|failure_chirho| {
+            let (guard_chirho, requested_chirho, work_before_chirho, output_before_chirho) = match failure_chirho {
+                EqualityBudgetFailureChirho::WorkChirho { requested_chirho, work_before_chirho, output_before_chirho } =>
+                    ("work", requested_chirho, work_before_chirho, output_before_chirho),
+                EqualityBudgetFailureChirho::OutputChirho { requested_chirho, work_before_chirho, output_before_chirho } =>
+                    ("output", requested_chirho, work_before_chirho, output_before_chirho),
+            };
+            format!("observed guard={guard_chirho}, requested={requested_chirho}, pre-failure work={work_before_chirho}, pre-failure output={output_before_chirho}")
+        });
+        match (operation_chirho, charge_chirho) {
+            (Some(operation_chirho), Some(charge_chirho)) => {
+                Some(format!("{operation_chirho}; {charge_chirho}"))
+            }
+            (Some(operation_chirho), None) => Some(format!(
+                "{operation_chirho}; inner guard=UNOBSERVED; inner requested=UNOBSERVED"
+            )),
+            (None, Some(charge_chirho)) => Some(charge_chirho),
+            (None, None) => None,
+        }
     }
 }
 
@@ -315,17 +398,26 @@ pub(super) fn prepare_owned_equality_rewrites_chirho<'evidence_chirho>(
 ) -> Result<Vec<(TyChirho, TyChirho)>, EqualityNormalizationExhaustedChirho> {
     let mut chunks_chirho = Vec::new();
     for chunk_chirho in evidence_chirho {
-        budget_chirho
-            .work_chirho(1)
-            .ok_or(EqualityNormalizationExhaustedChirho)?;
+        budget_chirho.work_chirho(1).ok_or_else(|| {
+            budget_chirho.note_public_failure_chirho(
+                PublicNormalizationFailureChirho::OperationChirho("evidence preparation work"),
+            );
+            EqualityNormalizationExhaustedChirho
+        })?;
         if chunk_chirho.is_empty() {
             continue;
         }
-        budget_chirho
-            .node_chirho(1)
-            .ok_or(EqualityNormalizationExhaustedChirho)?;
+        budget_chirho.node_chirho(1).ok_or_else(|| {
+            budget_chirho.note_public_failure_chirho(
+                PublicNormalizationFailureChirho::OperationChirho(
+                    "evidence container materialization",
+                ),
+            );
+            EqualityNormalizationExhaustedChirho
+        })?;
         let mut copied_chirho = Vec::new();
         for (lhs_chirho, rhs_chirho) in chunk_chirho {
+            let original_lhs_chirho = lhs_chirho;
             let lhs_chirho = transform_chirho(
                 EqualityTransformPolicyChirho {
                     ctx_chirho,
@@ -339,8 +431,23 @@ pub(super) fn prepare_owned_equality_rewrites_chirho<'evidence_chirho>(
                 budget_chirho,
                 0,
             )
-            .and_then(|change_chirho| change_chirho.materialize_chirho(lhs_chirho, budget_chirho))
-            .ok_or(EqualityNormalizationExhaustedChirho)?;
+            .ok_or_else(|| {
+                budget_chirho.note_public_failure_chirho(
+                    PublicNormalizationFailureChirho::OperationChirho("evidence LHS transform"),
+                );
+                EqualityNormalizationExhaustedChirho
+            })?;
+            let lhs_chirho = lhs_chirho
+                .materialize_chirho(original_lhs_chirho, budget_chirho)
+                .ok_or_else(|| {
+                    budget_chirho.note_public_failure_chirho(
+                        PublicNormalizationFailureChirho::OperationChirho(
+                            "evidence LHS materialization",
+                        ),
+                    );
+                    EqualityNormalizationExhaustedChirho
+                })?;
+            let original_rhs_chirho = rhs_chirho;
             let rhs_chirho = transform_chirho(
                 EqualityTransformPolicyChirho {
                     ctx_chirho,
@@ -354,8 +461,22 @@ pub(super) fn prepare_owned_equality_rewrites_chirho<'evidence_chirho>(
                 budget_chirho,
                 0,
             )
-            .and_then(|change_chirho| change_chirho.materialize_chirho(rhs_chirho, budget_chirho))
-            .ok_or(EqualityNormalizationExhaustedChirho)?;
+            .ok_or_else(|| {
+                budget_chirho.note_public_failure_chirho(
+                    PublicNormalizationFailureChirho::OperationChirho("evidence RHS transform"),
+                );
+                EqualityNormalizationExhaustedChirho
+            })?;
+            let rhs_chirho = rhs_chirho
+                .materialize_chirho(original_rhs_chirho, budget_chirho)
+                .ok_or_else(|| {
+                    budget_chirho.note_public_failure_chirho(
+                        PublicNormalizationFailureChirho::OperationChirho(
+                            "evidence RHS materialization",
+                        ),
+                    );
+                    EqualityNormalizationExhaustedChirho
+                })?;
             copied_chirho.push((lhs_chirho, rhs_chirho));
         }
         chunks_chirho.push(copied_chirho);
@@ -400,7 +521,12 @@ fn normalize_prepared_equality_change_chirho(
         budget_chirho,
         0,
     )
-    .ok_or(EqualityNormalizationExhaustedChirho)?;
+    .ok_or_else(|| {
+        budget_chirho.note_public_failure_chirho(
+            PublicNormalizationFailureChirho::OperationChirho("initial meta transform"),
+        );
+        EqualityNormalizationExhaustedChirho
+    })?;
     for _iteration_chirho in 0..100 {
         let current_image_chirho = current_chirho.image_chirho(ty_chirho);
         let transformed_chirho = transform_chirho(
@@ -416,7 +542,14 @@ fn normalize_prepared_equality_change_chirho(
             budget_chirho,
             0,
         )
-        .ok_or(EqualityNormalizationExhaustedChirho)?;
+        .ok_or_else(|| {
+            budget_chirho.note_public_failure_chirho(
+                PublicNormalizationFailureChirho::OperationChirho(
+                    "repeated evidence/synonym transform",
+                ),
+            );
+            EqualityNormalizationExhaustedChirho
+        })?;
         let next_chirho = ctx_chirho
             .reduce_families_bounded_chirho(
                 transformed_chirho.image_chirho(current_image_chirho),
@@ -424,7 +557,11 @@ fn normalize_prepared_equality_change_chirho(
                 &mut budget_chirho.work_chirho,
                 &mut budget_chirho.output_chirho,
             )
-            .ok_or(EqualityNormalizationExhaustedChirho)?;
+            .ok_or_else(|| {
+                budget_chirho
+                    .note_public_failure_chirho(PublicNormalizationFailureChirho::RawFamilyChirho);
+                EqualityNormalizationExhaustedChirho
+            })?;
         // Ownership markers NEVER decide convergence. Keep the same comparison
         // and selected next image, including metadata that equality may ignore.
         let stable_chirho = equal_chirho(
@@ -432,7 +569,12 @@ fn normalize_prepared_equality_change_chirho(
             current_image_chirho,
             budget_chirho,
         )
-        .ok_or(EqualityNormalizationExhaustedChirho)?;
+        .ok_or_else(|| {
+            budget_chirho.note_public_failure_chirho(
+                PublicNormalizationFailureChirho::OperationChirho("fixed-point comparison"),
+            );
+            EqualityNormalizationExhaustedChirho
+        })?;
         current_chirho = current_chirho
             .then_chirho(transformed_chirho)
             .then_chirho(next_chirho);
@@ -440,6 +582,9 @@ fn normalize_prepared_equality_change_chirho(
             return Ok(current_chirho);
         }
     }
+    budget_chirho.note_public_failure_chirho(PublicNormalizationFailureChirho::OperationChirho(
+        "100-pass fixed-point limit",
+    ));
     Err(EqualityNormalizationExhaustedChirho)
 }
 
@@ -519,6 +664,8 @@ pub(in crate::infer_chirho) fn copy_term_with_remaining_budget_chirho(
     let mut budget_chirho = EqualityBudgetChirho {
         work_chirho: *work_chirho,
         output_chirho: *output_chirho,
+        failure_chirho: None,
+        public_failure_chirho: None,
     };
     let result_chirho = copy_term_with_budget_chirho(term_chirho, &mut budget_chirho);
     (*work_chirho, *output_chirho) = budget_chirho.remaining_chirho();
