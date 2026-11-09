@@ -39,6 +39,8 @@ fn same_tycon_name_chirho(left_name_chirho: &str, right_name_chirho: &str) -> bo
 
 mod quantifiers_chirho;
 pub(crate) use quantifiers_chirho::align_forall_prefix_chirho;
+mod checked_monotypes_chirho;
+pub(crate) use checked_monotypes_chirho::unify_monomorphic_bounded_chirho;
 
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{TyChirho, TyVarChirho};

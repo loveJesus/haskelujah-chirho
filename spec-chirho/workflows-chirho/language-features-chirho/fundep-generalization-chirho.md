@@ -7,7 +7,38 @@ A fundep `a -> b` makes `b` a function of `a`. In a wanted `C Ex t` of
 and it does not quantify a constraint that mentions such a variable (Note [Do
 not quantify over constraints that determine a variable] in GHC.Tc.Solver). The
 constraint is left over and becomes "No instance for C Ex t0" (should_fail
-T18398). Code: `crates/haskelujah-typing-chirho/src/infer_chirho/fundep_generalization_chirho.rs`.
+T18398). Code: `crates/haskelujah-typing-chirho/src/infer_chirho/solving_chirho/fundep_generalization_chirho/`.
+
+## Checked instance improvement (Work 722, P3)
+
+The standalone driver's P1 authority proves only actual current class declarations. P2 retains each source instance's real owner and checked binder kinds. P3 consumes both at the deferred-wanted boundary, before restriction Rule 2. The legacy deferred handler calls the same solve; its returned FD delta is retained separately from caller-published legacy defaults in final module composition.
+
+```mermaid
+flowchart TD
+    wanted_chirho[Deferred wanteds after entry-role checking] --> identity_chirho[Unique proven class record and same-proof instances]
+    identity_chirho --> opening_chirho[P2 opening into LOCAL supply and checked records]
+    opening_chirho --> equations_chirho[One FD-equation producer: hidden kinds, determinants, consequences]
+    equations_chirho --> kinds_chirho[Bounded strict monotypes and complete telescope argument-kind checks]
+    kinds_chirho --> unique_chirho{Exactly one matching instance?}
+    unique_chirho -- no --> decline_chirho[No improvement; original wanted remains]
+    unique_chirho -- yes --> context_chirho[Close every context child using the same checked path]
+    context_chirho --> closure_chirho{All exported images and their kinds contain only existing checked variables?}
+    closure_chirho -- no --> decline_chirho
+    closure_chirho -- yes --> publication_chirho[Recheck owner and live supply; apply_subst_all once; remove only closed wanteds]
+    publication_chirho --> restriction_chirho[Restriction Rule 2]
+    restriction_chirho --> legacy_chirho[Legacy handler: same checked solve, then existing defaults and refusals]
+    kinds_chirho --> budget_chirho[Resource exhaustion is terminal; never an empty successful solution]
+    context_chirho --> budget_chirho
+```
+
+- A class-name lookup does not authorize equations. Wanted, unique class record and instance must carry the same proven identity. Hidden kinds and ordinary class arities must agree.
+- Ordinary determining type positions match only the opened instance's fresh variables. Hidden-kind and checked application-kind equations may solve an actual current Meta when uniquely justified. Universal and Unknown variables never become binding domains.
+- All matching FD groups share one consistent substitution. Consequences are checked jointly, including repeated variables, occurs checks, nominal constructor identities, multiplicities and monotypes. A second eligible instance declines the whole candidate; this introduces no overlap policy.
+- Kind checking uses the existing immutable declaration catalogue and actual variable records. It checks every supplied argument against its telescope kind, rather than merely projecting the result kind. Missing, held, foreign and unknown metadata supplies no improvement. Unresolved families and polymorphic operands are not decomposed, opened or deferred by this path.
+- The complete candidate tree owns its substitution and P2 records. Every new ID must zonk out of public images and their kinds before publication. Consequently no speculative supply or binder record reaches the live state. A failed or cyclic child discards its parent's tentative equations. The owner's spent budget remains monotone; P2 and P3 loans are settled sequentially, never overlapped.
+- The extracted `mod.rs` retains the earlier generalization/refutation behavior. The old `ClassEnv::fundep_improve_chirho` substitution writer and its per-predicate local-copy caller are removed. Its class unit controls now test equation production; separate checked-solver controls test actual publication and failure preservation.
+
+This is a source checkpoint, not measured compiler or semantic acceptance. The seven original GHC-accepted fundep witnesses and companion runtime dictionary handoff remain required end-state gates. Provenance is not backfilled for bare `fresh_var_chirho` results: an empty-list element or application result lacking an actual checked Meta/kind record stays unsupported by P3 until its real producer supplies that record. Imported owners, overlapping candidates, unclosed contexts and rank-n operands likewise receive no new acceptance from this brick. The historical observations below retain their named source scopes.
 
 ```mermaid
 flowchart TD
@@ -19,7 +50,9 @@ flowchart TD
     P -- yes, top level --> D[stays deferred]
     P -- yes, nested, mentions a quantified variable --> S[quantified into the scheme]
     P -- yes, nested, no quantified variable --> D
-    D --> F[check_deferred_preds_chirho, at the module end]
+    D --> checked_fd_chirho[solve_deferred_fundeps_chirho, checked closed trees]
+    checked_fd_chirho --> restriction_chirho[restriction Rule 2]
+    restriction_chirho --> F[check_deferred_solutions_chirho: same solve, legacy defaults]
     F --> B{report_unsatisfiable_fundep_wanted_chirho:<br/>fully known and faithful, not magic, not entailed by givens,<br/>no other class extends it, no variable a nested binding quantified,<br/>a fundep with ALL determining arguments closed and a determined<br/>argument holding a variable, and no instance matches the<br/>determining positions under ONE substitution<br/>(an uncertain position counts as a match)}
     B -- yes --> R[no instance for ...]
     B -- no --> X[existing module-end checks]

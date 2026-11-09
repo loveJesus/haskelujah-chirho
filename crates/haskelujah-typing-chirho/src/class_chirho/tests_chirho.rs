@@ -1,7 +1,7 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
 use super::*;
-use crate::ty_chirho::SchemeChirho;
+use crate::ty_chirho::{SchemeChirho, TyVarChirho};
 
 #[test]
 fn pred_display_chirho() {
@@ -447,96 +447,108 @@ fn mptc_fundeps_stored_chirho() {
     assert_eq!(decl_chirho.fundeps_chirho[0], (vec![0], vec![1]));
 }
 
-#[test]
-fn mptc_fundep_improvement_chirho() {
-    // class Convert a b | a -> b
-    // instance Convert Int Double
-    // Given predicate Convert Int t42, improvement should yield t42 = Double
-    let mut env_chirho = ClassEnvChirho::new_chirho();
-
-    let a_chirho = TyVarChirho(100);
-    let b_chirho = TyVarChirho(101);
-    env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
+fn checked_fundep_fixture_chirho() -> (
+    ClassEnvChirho,
+    InstDeclChirho,
+    haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho,
+) {
+    use haskelujah_ast_chirho::name_chirho::{
+        ClassIdentityUnknownChirho, InstanceIdentityChirho, PredicateClassProofChirho,
+        SourceUnitIdentityChirho,
+    };
+    use std::sync::Arc;
+    let proof_chirho = PredicateClassProofChirho::source_chirho(
+        Some(
+            SourceUnitIdentityChirho::from_producer_chirho(Arc::from("class-tests-chirho"))
+                .unwrap(),
+        ),
+        Arc::from("ClassTestsChirho"),
+        Arc::from("ConvertChirho"),
+    );
+    let mut environment_chirho = ClassEnvChirho::new_chirho();
+    environment_chirho.add_class_chirho(ClassDeclChirho::from_producer_chirho(
         crate::class_chirho::ClassDeclPartsChirho {
             super_templates_chirho: Vec::new(),
             kind_vars_chirho: Vec::new(),
-            name_chirho: "Convert".to_string(),
-            supers_chirho: vec![],
-            var_chirho: a_chirho,
+            name_chirho: "ConvertChirho".into(),
+            supers_chirho: Vec::new(),
+            var_chirho: TyVarChirho(100),
             methods_chirho: HashMap::new(),
-            extra_vars_chirho: vec![b_chirho],
-            fundeps_chirho: vec![(vec![0], vec![1])], // a -> b
+            extra_vars_chirho: vec![TyVarChirho(101)],
+            fundeps_chirho: vec![(vec![0], vec![1])],
             defaults_chirho: HashMap::new(),
         },
+        proof_chirho.clone(),
     ));
-
-    env_chirho.add_instance_chirho(InstDeclChirho::legacy_chirho(
+    let instance_chirho = InstDeclChirho::from_producer_chirho(
         crate::class_chirho::InstDeclPartsChirho {
             kind_tys_chirho: Vec::new(),
-            class_name_chirho: "Convert".to_string(),
+            class_name_chirho: "ConvertChirho".into(),
             head_ty_chirho: TyChirho::int_chirho(),
-            extra_head_tys_chirho: vec![TyChirho::ConChirho("Double".to_string())],
-            context_chirho: vec![],
+            extra_head_tys_chirho: vec![TyChirho::double_chirho()],
+            context_chirho: Vec::new(),
         },
-    ));
-
-    // Convert Int ?t42 — fundep should determine ?t42 = Double
-    let unknown_chirho = TyVarChirho(42);
-    let pred_chirho = PredChirho::new_multi_chirho(
-        "Convert",
-        vec![TyChirho::int_chirho(), TyChirho::VarChirho(unknown_chirho)],
+        proof_chirho.clone(),
+        InstanceIdentityChirho::UnknownChirho(ClassIdentityUnknownChirho::LegacyChirho),
     );
+    (environment_chirho, instance_chirho, proof_chirho)
+}
 
-    let improvement_chirho = env_chirho.fundep_improve_chirho(&pred_chirho);
+#[test]
+fn mptc_fundep_produces_equations_without_publishing_a_substitution_chirho() {
+    let (environment_chirho, instance_chirho, proof_chirho) = checked_fundep_fixture_chirho();
+    let wanted_chirho = PredChirho::from_proof_chirho(
+        proof_chirho,
+        crate::class_chirho::PredPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: "ConvertChirho".into(),
+            ty_chirho: TyChirho::int_chirho(),
+            extra_tys_chirho: vec![TyChirho::VarChirho(TyVarChirho(42))],
+        },
+    );
+    let equations_chirho = environment_chirho
+        .fundep_equations_chirho(&wanted_chirho, &instance_chirho, &mut |_, _| Some(()))
+        .unwrap()
+        .unwrap();
+    assert_eq!(equations_chirho.len(), 1);
     assert_eq!(
-        improvement_chirho.apply_ty_chirho(&TyChirho::VarChirho(unknown_chirho)),
-        TyChirho::ConChirho("Double".to_string())
+        equations_chirho[0].determinants_chirho,
+        vec![(&TyChirho::int_chirho(), &TyChirho::int_chirho())]
+    );
+    assert_eq!(
+        equations_chirho[0].consequences_chirho,
+        vec![(
+            &TyChirho::double_chirho(),
+            &TyChirho::VarChirho(TyVarChirho(42))
+        )]
     );
 }
 
 #[test]
-fn mptc_fundep_no_improvement_on_mismatch_chirho() {
-    // class Convert a b | a -> b
-    // instance Convert Int Double
-    // Given predicate Convert Bool t42 — no match, no improvement
-    let mut env_chirho = ClassEnvChirho::new_chirho();
-
-    let a_chirho = TyVarChirho(100);
-    let b_chirho = TyVarChirho(101);
-    env_chirho.add_class_chirho(ClassDeclChirho::legacy_chirho(
-        crate::class_chirho::ClassDeclPartsChirho {
-            super_templates_chirho: Vec::new(),
-            kind_vars_chirho: Vec::new(),
-            name_chirho: "Convert".to_string(),
-            supers_chirho: vec![],
-            var_chirho: a_chirho,
-            methods_chirho: HashMap::new(),
-            extra_vars_chirho: vec![b_chirho],
-            fundeps_chirho: vec![(vec![0], vec![1])],
-            defaults_chirho: HashMap::new(),
-        },
-    ));
-
-    env_chirho.add_instance_chirho(InstDeclChirho::legacy_chirho(
-        crate::class_chirho::InstDeclPartsChirho {
+fn mptc_fundep_mismatching_determinants_never_determine_a_result_chirho() {
+    let (environment_chirho, instance_chirho, proof_chirho) = checked_fundep_fixture_chirho();
+    let wanted_chirho = PredChirho::from_proof_chirho(
+        proof_chirho,
+        crate::class_chirho::PredPartsChirho {
             kind_tys_chirho: Vec::new(),
-            class_name_chirho: "Convert".to_string(),
-            head_ty_chirho: TyChirho::int_chirho(),
-            extra_head_tys_chirho: vec![TyChirho::ConChirho("Double".to_string())],
-            context_chirho: vec![],
+            class_name_chirho: "ConvertChirho".into(),
+            ty_chirho: TyChirho::bool_chirho(),
+            extra_tys_chirho: vec![TyChirho::VarChirho(TyVarChirho(42))],
         },
-    ));
-
-    let unknown_chirho = TyVarChirho(42);
-    let pred_chirho = PredChirho::new_multi_chirho(
-        "Convert",
-        vec![TyChirho::bool_chirho(), TyChirho::VarChirho(unknown_chirho)],
     );
-
-    let improvement_chirho = env_chirho.fundep_improve_chirho(&pred_chirho);
-    // t42 should remain unimproved
-    assert_eq!(
-        improvement_chirho.apply_ty_chirho(&TyChirho::VarChirho(unknown_chirho)),
-        TyChirho::VarChirho(unknown_chirho)
+    let equations_chirho = environment_chirho
+        .fundep_equations_chirho(&wanted_chirho, &instance_chirho, &mut |_, _| Some(()))
+        .unwrap()
+        .unwrap();
+    let (left_chirho, right_chirho) = equations_chirho[0].determinants_chirho[0];
+    assert!(
+        crate::unify_chirho::unify_monomorphic_bounded_chirho(
+            left_chirho,
+            right_chirho,
+            &|_| false,
+            &mut |_, _| Some(())
+        )
+        .unwrap()
+        .is_none()
     );
 }

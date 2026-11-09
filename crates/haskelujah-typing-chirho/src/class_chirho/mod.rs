@@ -14,11 +14,8 @@
 
 use std::collections::HashMap;
 
-use haskelujah_span_chirho::SpanChirho;
-
 use crate::subst_chirho::SubstChirho;
-use crate::ty_chirho::{TyChirho, TyVarChirho};
-use crate::unify_chirho::unify_chirho;
+use crate::ty_chirho::TyChirho;
 
 mod arena_chirho;
 mod definitions_chirho;
@@ -41,6 +38,14 @@ pub use tuple_instances_chirho::MAX_TUPLE_INSTANCE_ARITY_CHIRHO;
 pub use views_chirho::{
     ClassNamesViewChirho, InstanceListViewChirho, InstanceNamesViewChirho, InstanceRecordsChirho,
 };
+
+/// Determinants and consequences borrow the same opened instance and wanted.
+/// An equation is a request to check, never a completed substitution.
+pub(crate) struct FundepEquationsChirho<'terms_chirho> {
+    pub hidden_kinds_chirho: Vec<(&'terms_chirho TyChirho, &'terms_chirho TyChirho)>,
+    pub determinants_chirho: Vec<(&'terms_chirho TyChirho, &'terms_chirho TyChirho)>,
+    pub consequences_chirho: Vec<(&'terms_chirho TyChirho, &'terms_chirho TyChirho)>,
+}
 
 impl ClassEnvChirho {
     /// Check if a class exists.
@@ -74,115 +79,107 @@ impl ClassEnvChirho {
             .find_map(|inst_chirho| Self::instance_sub_goals_chirho(inst_chirho, pred_chirho))
     }
 
-    /// Apply functional dependency improvement to a predicate.
-    ///
-    /// Given a predicate like `Convert Int b` and a class `Convert a b | a -> b`
-    /// with an instance `instance Convert Int Double`, the functional dependency
-    /// `a -> b` lets us determine that `b = Double`. Returns a substitution
-    /// that improves the unknown type variables.
-    pub fn fundep_improve_chirho(&self, pred_chirho: &PredChirho) -> SubstChirho {
-        let class_chirho = match self
-            .classes_chirho()
-            .get_chirho(&pred_chirho.class_name_chirho)
-        {
-            Some(c_chirho) => c_chirho,
-            None => return SubstChirho::empty_chirho(),
+    /// Return declaration-owned FD equations without selecting an instance or publishing a
+    /// substitution. The caller opens the instance once and checks determinants consistently,
+    /// all consequences jointly, and the complete context before committing anything.
+    /// workflow: language-features-chirho/fundep-generalization-chirho
+    pub(crate) fn fundep_equations_chirho<'terms_chirho>(
+        &self,
+        wanted_chirho: &'terms_chirho PredChirho,
+        instance_chirho: &'terms_chirho InstDeclChirho,
+        charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
+    ) -> Result<Option<Vec<FundepEquationsChirho<'terms_chirho>>>, ()> {
+        use haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho;
+        let PredicateClassProofChirho::ProvenChirho(identity_chirho) =
+            wanted_chirho.class_identity_chirho()
+        else {
+            return Ok(None);
         };
-
-        if class_chirho.fundeps_chirho.is_empty() {
-            return SubstChirho::empty_chirho();
+        let Some(class_chirho) = self.class_record_by_identity_chirho(identity_chirho) else {
+            return Ok(None);
+        };
+        if class_chirho.class_identity_chirho() != wanted_chirho.class_identity_chirho()
+            || instance_chirho.class_identity_chirho() != wanted_chirho.class_identity_chirho()
+            || wanted_chirho.extra_tys_chirho.len() != class_chirho.extra_vars_chirho.len()
+            || instance_chirho.extra_head_tys_chirho.len() != wanted_chirho.extra_tys_chirho.len()
+            || wanted_chirho.kind_tys_chirho.len() != class_chirho.kind_vars_chirho.len()
+            || instance_chirho.kind_tys_chirho.len() != wanted_chirho.kind_tys_chirho.len()
+        {
+            return Ok(None);
         }
-
-        let instances_chirho = match self
-            .instances_chirho()
-            .get_chirho(&pred_chirho.class_name_chirho)
-        {
-            Some(i_chirho) => i_chirho,
-            None => return SubstChirho::empty_chirho(),
+        charge_chirho(
+            class_chirho.fundeps_chirho.len().checked_add(1).ok_or(())?,
+            class_chirho.fundeps_chirho.len().checked_add(1).ok_or(())?,
+        )
+        .ok_or(())?;
+        let wanted_arguments_chirho =
+            || std::iter::once(&wanted_chirho.ty_chirho).chain(&wanted_chirho.extra_tys_chirho);
+        let instance_arguments_chirho = || {
+            std::iter::once(&instance_chirho.head_ty_chirho)
+                .chain(&instance_chirho.extra_head_tys_chirho)
         };
-
-        let pred_tys_chirho = pred_chirho.all_tys_chirho();
-        let mut improvement_chirho = SubstChirho::empty_chirho();
-
-        for inst_chirho in instances_chirho {
-            let mut inst_tys_chirho = vec![inst_chirho.head_ty_chirho.clone()];
-            inst_tys_chirho.extend(inst_chirho.extra_head_tys_chirho.iter().cloned());
-
+        let argument_count_chirho = wanted_chirho
+            .extra_tys_chirho
+            .len()
+            .checked_add(1)
+            .ok_or(())?;
+        charge_chirho(argument_count_chirho, argument_count_chirho).ok_or(())?;
+        let all_chirho: Vec<_> = instance_arguments_chirho()
+            .zip(wanted_arguments_chirho())
+            .collect();
+        charge_chirho(
+            instance_chirho.kind_tys_chirho.len(),
+            instance_chirho.kind_tys_chirho.len(),
+        )
+        .ok_or(())?;
+        let kinds_chirho: Vec<_> = instance_chirho
+            .kind_tys_chirho
+            .iter()
+            .zip(&wanted_chirho.kind_tys_chirho)
+            .collect();
+        let mut groups_chirho = Vec::new();
+        if class_chirho.fundeps_chirho.is_empty() {
+            groups_chirho.push(FundepEquationsChirho {
+                hidden_kinds_chirho: kinds_chirho,
+                determinants_chirho: all_chirho,
+                consequences_chirho: Vec::new(),
+            });
+        } else {
             for (from_chirho, to_chirho) in &class_chirho.fundeps_chirho {
-                // Check if "from" positions in the predicate match the instance
-                let mut from_subst_chirho = SubstChirho::empty_chirho();
-                let mut from_matches_chirho = true;
-
-                for &idx_chirho in from_chirho {
-                    if idx_chirho >= pred_tys_chirho.len() || idx_chirho >= inst_tys_chirho.len() {
-                        from_matches_chirho = false;
-                        break;
-                    }
-                    match match_ty_chirho(
-                        &inst_tys_chirho[idx_chirho],
-                        &pred_tys_chirho[idx_chirho],
-                    ) {
-                        Some(s_chirho) => {
-                            if !from_subst_chirho.merge_chirho(&s_chirho) {
-                                from_matches_chirho = false;
-                                break;
-                            }
-                        }
-                        None => {
-                            from_matches_chirho = false;
-                            break;
-                        }
-                    }
+                charge_chirho(
+                    from_chirho.len().checked_add(to_chirho.len()).ok_or(())?,
+                    from_chirho
+                        .len()
+                        .checked_add(to_chirho.len())
+                        .and_then(|size_chirho| size_chirho.checked_add(kinds_chirho.len()))
+                        .ok_or(())?,
+                )
+                .ok_or(())?;
+                if from_chirho.is_empty()
+                    || to_chirho.is_empty()
+                    || from_chirho
+                        .iter()
+                        .chain(to_chirho)
+                        .any(|index_chirho| *index_chirho >= all_chirho.len())
+                {
+                    return Ok(None);
                 }
-
-                if !from_matches_chirho {
-                    continue;
-                }
-
-                // "from" positions match — the "to" positions are determined
-                for &idx_chirho in to_chirho {
-                    if idx_chirho >= pred_tys_chirho.len() || idx_chirho >= inst_tys_chirho.len() {
-                        continue;
-                    }
-                    let determined_ty_chirho =
-                        from_subst_chirho.apply_ty_chirho(&inst_tys_chirho[idx_chirho]);
-                    let pred_ty_chirho = &pred_tys_chirho[idx_chirho];
-
-                    match pred_ty_chirho {
-                        // A bare variable in the determined position is improved
-                        // to what the instance determines.
-                        TyChirho::VarChirho(v_chirho) => {
-                            improvement_chirho.insert_chirho(*v_chirho, determined_ty_chirho);
-                        }
-                        // Otherwise the instance still determines it: unify, which
-                        // binds the unification variables the matched "from"
-                        // positions carried into the determined type (`Y [[t]] a`
-                        // against `instance Y [[b]] b` yields `t := a`). Only the
-                        // predicate's own variables may be bound.
-                        _ => {
-                            if let Ok(unifier_chirho) = unify_chirho(
-                                &determined_ty_chirho,
-                                pred_ty_chirho,
-                                SpanChirho::DUMMY_CHIRHO,
-                            ) {
-                                let pred_vars_chirho: Vec<TyVarChirho> = pred_tys_chirho
-                                    .iter()
-                                    .flat_map(|t_chirho| t_chirho.free_vars_chirho())
-                                    .collect();
-                                for (var_chirho, ty_chirho) in unifier_chirho.iter_chirho() {
-                                    if pred_vars_chirho.contains(var_chirho) {
-                                        improvement_chirho
-                                            .insert_chirho(*var_chirho, ty_chirho.clone());
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                let determinants_chirho = from_chirho
+                    .iter()
+                    .map(|index_chirho| all_chirho[*index_chirho])
+                    .collect();
+                let consequences_chirho = to_chirho
+                    .iter()
+                    .map(|index_chirho| all_chirho[*index_chirho])
+                    .collect();
+                groups_chirho.push(FundepEquationsChirho {
+                    hidden_kinds_chirho: kinds_chirho.clone(),
+                    determinants_chirho,
+                    consequences_chirho,
+                });
             }
         }
-
-        improvement_chirho
+        Ok(Some(groups_chirho))
     }
 
     /// Check if a predicate is entailed by the class environment
@@ -256,9 +253,9 @@ impl ClassEnvChirho {
     }
 }
 
-/// Legacy one-way matching used by functional-dependency improvement. Its
-/// sub-match composition is not a consistent instance-head substitution;
-/// instance selection uses `instance_matching_chirho` instead.
+/// Legacy one-way matching retained by conservative generalization/refutation.
+/// Its sub-match composition is not a consistent instance-head substitution;
+/// checked FD solving does not use it.
 pub(crate) fn match_ty_chirho(
     pattern_chirho: &TyChirho,
     target_chirho: &TyChirho,

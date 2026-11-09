@@ -94,7 +94,7 @@ mod equality_normalization_tests_chirho;
 mod equality_scope_tests_chirho;
 #[path = "infer_chirho/solving_chirho/equality_scopes_chirho.rs"]
 mod equality_scopes_chirho;
-#[path = "infer_chirho/solving_chirho/fundep_generalization_chirho.rs"]
+#[path = "infer_chirho/solving_chirho/fundep_generalization_chirho/mod.rs"]
 mod fundep_generalization_chirho;
 #[path = "infer_chirho/solving_chirho/inferred_dictionary_owners_chirho.rs"]
 mod inferred_dictionary_owners_chirho;
@@ -1014,9 +1014,16 @@ fn infer_module_with_elaboration_state_chirho(
     let subst_chirho = entry_subst_chirho.compose_chirho(&subst_chirho);
     // Rule 2 of the monomorphism restriction, at the module's end only, before the legacy
     // defaults: instance-method checks reach check_deferred_preds_chirho mid-module (row 692).
+    let fundep_subst_chirho = ctx_chirho.solve_deferred_fundeps_chirho(&subst_chirho);
+    let subst_chirho = fundep_subst_chirho.compose_chirho(&subst_chirho);
+    if ctx_chirho.has_non_deferrable_failure_chirho() {
+        return ctx_chirho.finish_chirho();
+    }
     let restricted_subst_chirho = ctx_chirho.resolve_restricted_residuals_chirho(&subst_chirho);
     let subst_chirho = restricted_subst_chirho.compose_chirho(&subst_chirho);
-    let default_subst_chirho = ctx_chirho.check_deferred_preds_chirho(&subst_chirho);
+    let (late_fundep_subst_chirho, default_subst_chirho) =
+        ctx_chirho.check_deferred_solutions_chirho(&subst_chirho);
+    let subst_chirho = late_fundep_subst_chirho.compose_chirho(&subst_chirho);
     if !default_subst_chirho.is_empty_chirho() {
         ctx_chirho.apply_subst_all_chirho(&default_subst_chirho);
     }

@@ -47,6 +47,25 @@ impl InferCtxChirho {
         &mut self,
         final_subst_chirho: &SubstChirho,
     ) -> SubstChirho {
+        let (fundep_chirho, defaults_chirho) =
+            self.check_deferred_solutions_chirho(final_subst_chirho);
+        defaults_chirho.compose_chirho(&fundep_chirho)
+    }
+
+    /// The FD delta has already been published once; legacy defaults retain
+    /// their caller-owned publication. Return both so module composition loses
+    /// neither and does not apply the checked FD events a second time.
+    pub(super) fn check_deferred_solutions_chirho(
+        &mut self,
+        final_subst_chirho: &SubstChirho,
+    ) -> (SubstChirho, SubstChirho) {
+        // Instance-method checks also enter here mid-module. Reuse the same
+        // checked solve and carry its delta into the returned module solution.
+        let fundep_subst_chirho = self.solve_deferred_fundeps_chirho(final_subst_chirho);
+        let final_subst_chirho = &fundep_subst_chirho.compose_chirho(final_subst_chirho);
+        if self.has_non_deferrable_failure_chirho() {
+            return (fundep_subst_chirho, SubstChirho::empty_chirho());
+        }
         let preds_chirho: Vec<(PredChirho, SpanChirho)> =
             self.deferred_preds_chirho.drain(..).collect();
         let resolved_given_preds_chirho: Vec<PredChirho> = self
@@ -127,7 +146,7 @@ impl InferCtxChirho {
                 .into_iter()
                 .map(|t_chirho| self.normalize_ty_chirho(&t_chirho))
                 .collect();
-            let mut resolved_pred_chirho = PredChirho::from_proof_chirho(
+            let resolved_pred_chirho = PredChirho::from_proof_chirho(
                 pred_chirho.class_identity_chirho().clone(),
                 crate::class_chirho::PredPartsChirho {
                     kind_tys_chirho: pred_chirho
@@ -144,25 +163,6 @@ impl InferCtxChirho {
                     extra_tys_chirho: resolved_extra_tys_chirho,
                 },
             );
-
-            // Apply functional dependency improvement
-            let improvement_chirho = self
-                .class_env_chirho
-                .fundep_improve_chirho(&resolved_pred_chirho);
-            if !improvement_chirho.is_empty_chirho() {
-                resolved_pred_chirho.kind_tys_chirho = resolved_pred_chirho
-                    .kind_tys_chirho
-                    .iter()
-                    .map(|kind_chirho| improvement_chirho.apply_ty_chirho(kind_chirho))
-                    .collect();
-                resolved_pred_chirho.ty_chirho =
-                    improvement_chirho.apply_ty_chirho(&resolved_pred_chirho.ty_chirho);
-                resolved_pred_chirho.extra_tys_chirho = resolved_pred_chirho
-                    .extra_tys_chirho
-                    .iter()
-                    .map(|t_chirho| improvement_chirho.apply_ty_chirho(t_chirho))
-                    .collect();
-            }
 
             // Collect bare type-variable constraints for defaulting
             if let TyChirho::VarChirho(v_chirho) = &resolved_pred_chirho.ty_chirho {
@@ -413,6 +413,6 @@ impl InferCtxChirho {
                     ));
             }
         }
-        default_subst_chirho
+        (fundep_subst_chirho, default_subst_chirho)
     }
 }
