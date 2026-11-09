@@ -34,7 +34,9 @@ use crate::ty_chirho::declarations_chirho::{
 };
 use crate::ty_chirho::{TyChirho, TyVarChirho};
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::name_chirho::{BuiltinClassScopeChirho, TypeConstructorScopeChirho};
+use haskelujah_ast_chirho::name_chirho::{
+    BuiltinClassScopeChirho, SourceUnitAuthorityChirho, TypeConstructorScopeChirho,
+};
 use haskelujah_ast_chirho::promotion_chirho::PromotionScopeChirho;
 use haskelujah_span_chirho::SpanChirho;
 use state_chirho::ValueRepresentationChirho;
@@ -47,6 +49,9 @@ pub struct ElaborationImportsChirho<'imports_chirho> {
     pub family_scope_chirho: &'imports_chirho TypeFamilyScopeChirho,
     pub promotion_scope_chirho: &'imports_chirho PromotionScopeChirho,
     pub builtin_classes_chirho: &'imports_chirho BuiltinClassScopeChirho,
+    /// The driver's standalone source authority. Only the driver's real-module standalone
+    /// route supplies one; every other builder passes `None`.
+    pub source_unit_chirho: Option<&'imports_chirho SourceUnitAuthorityChirho>,
 }
 
 /// The caller keeps the module it already owns, so there is no unchecked
@@ -446,6 +451,9 @@ impl<'scope_chirho> TypeElaboratorChirho<'scope_chirho> {
         }
         let policy_chirho = Arc::new(state_chirho::ElaborationPolicyChirho {
             builtin_classes_chirho: Arc::new(imports_chirho.builtin_classes_chirho.clone()),
+            source_unit_chirho: imports_chirho
+                .source_unit_chirho
+                .map(|authority_chirho| Arc::new(authority_chirho.clone())),
             star_is_type_chirho:
                 haskelujah_ast_chirho::module_chirho::extension_enabled_with_default_chirho(
                     module_chirho,

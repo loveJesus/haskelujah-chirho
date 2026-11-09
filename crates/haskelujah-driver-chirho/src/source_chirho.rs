@@ -103,6 +103,10 @@ pub(crate) fn typecheck_source_with_ifaces_and_options_chirho(
         ],
     );
     policy_chirho.program_entry_chirho = options_chirho.program_entry_chirho.clone();
+    // This single-source route has no filesystem search: the module is a standalone program
+    // source, checked as the default home unit `main`. Project and package modules never take
+    // this route. workflow: language-features-chirho/dictionary-evidence-chirho
+    policy_chirho.standalone_home_chirho = true;
 
     let mut builtin_ifaces_chirho = haskelujah_naming_chirho::builtin_module_ifaces_chirho();
     let mut imported_types_chirho = std::collections::HashMap::new();

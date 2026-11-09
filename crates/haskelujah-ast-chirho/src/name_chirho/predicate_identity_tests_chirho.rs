@@ -235,3 +235,62 @@ fn instance_declaration_origins_stay_distinct_within_one_module_chirho() {
         InstanceIdentityChirho::UnknownChirho(ClassIdentityUnknownChirho::WrittenChirho)
     );
 }
+
+#[test]
+fn a_standalone_authority_carries_exactly_the_unshared_current_class_accounts_chirho() {
+    let class_chirho = |module_chirho: &str, name_chirho: &str| {
+        TypeConstructorDeclarationChirho::source_chirho(
+            module_chirho,
+            name_chirho,
+            TypeConstructorRoleChirho::ClassChirho,
+        )
+    };
+    let data_chirho = |module_chirho: &str, name_chirho: &str| {
+        TypeConstructorDeclarationChirho::source_chirho(
+            module_chirho,
+            name_chirho,
+            TypeConstructorRoleChirho::DataChirho,
+        )
+    };
+    let authority_chirho = SourceUnitAuthorityChirho::from_driver_chirho(
+        unit_chirho("main"),
+        [
+            class_chirho("Main", "ShapeChirho"),
+            class_chirho("Main", "SharedChirho"),
+            class_chirho("Main", "ColorChirho"),
+            data_chirho("Main", "PointChirho"),
+            TypeConstructorDeclarationChirho::compiler_data_chirho(
+                crate::name_chirho::CompilerTypeConstructorChirho::ClassChirho(
+                    CompilerClassChirho::EqChirho,
+                ),
+            ),
+            class_chirho("", "EmptyModuleChirho"),
+            class_chirho("Main", ""),
+        ],
+        [
+            class_chirho("Main", "SharedChirho").identity_chirho,
+            // An imported account under another role still names the class's identity.
+            data_chirho("Main", "ColorChirho").identity_chirho,
+        ],
+    );
+    assert_eq!(authority_chirho.unit_chirho(), &unit_chirho("main"));
+    assert!(authority_chirho.admits_declaration_chirho(&class_chirho("Main", "ShapeChirho")));
+    // A current account an import also names is dropped, whatever the imported role.
+    assert!(!authority_chirho.admits_declaration_chirho(&class_chirho("Main", "SharedChirho")));
+    assert!(!authority_chirho.admits_declaration_chirho(&class_chirho("Main", "ColorChirho")));
+    // Exact accounts only: another role, module or qualifier, a compiler account or an empty
+    // name is never carried.
+    assert!(!authority_chirho.admits_declaration_chirho(&data_chirho("Main", "PointChirho")));
+    assert!(!authority_chirho.admits_declaration_chirho(&data_chirho("Main", "ShapeChirho")));
+    assert!(!authority_chirho.admits_declaration_chirho(&class_chirho("Data.Main", "ShapeChirho")));
+    assert!(!authority_chirho.admits_declaration_chirho(&class_chirho("", "EmptyModuleChirho")));
+    assert!(!authority_chirho.admits_declaration_chirho(&class_chirho("Main", "")));
+    assert_eq!(
+        authority_chirho,
+        SourceUnitAuthorityChirho::from_driver_chirho(
+            unit_chirho("main"),
+            [class_chirho("Main", "ShapeChirho")],
+            [],
+        )
+    );
+}

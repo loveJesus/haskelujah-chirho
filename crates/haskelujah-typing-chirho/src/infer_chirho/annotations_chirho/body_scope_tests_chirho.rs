@@ -44,6 +44,7 @@ fn context_chirho() -> InferCtxChirho {
             family_scope_chirho: &family_scope_chirho,
             promotion_scope_chirho: &promotion_scope_chirho,
             builtin_classes_chirho: &BuiltinClassScopeChirho::default(),
+            source_unit_chirho: None,
         },
     )
     .unwrap();

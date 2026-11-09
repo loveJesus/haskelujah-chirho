@@ -39,6 +39,7 @@ fn quotation_depth_failure_is_sticky_and_restores_its_original_stage_chirho() {
             family_scope_chirho: &family_scope_chirho,
             promotion_scope_chirho: &promotion_scope_chirho,
             builtin_classes_chirho: &builtin_classes_chirho,
+            source_unit_chirho: None,
         },
     )
     .unwrap();

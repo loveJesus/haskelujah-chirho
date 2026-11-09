@@ -37,6 +37,8 @@ mod required_type_arguments_chirho;
 mod role_annotation_checks_chirho;
 #[path = "extensions_chirho/policy_chirho/role_surface_checks_chirho.rs"]
 mod role_surface_checks_chirho;
+#[path = "extensions_chirho/policy_chirho/source_unit_authority_chirho.rs"]
+mod source_unit_authority_chirho;
 #[path = "extensions_chirho/legacy_chirho/syntax_chirho.rs"]
 mod syntax_chirho;
 mod type_level_character_families_chirho;

@@ -4,11 +4,15 @@
 //! recognizes a compiler class from source spelling or invents a source unit.
 //! Workflow: language-features-chirho/dictionary-evidence-chirho.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use haskelujah_span_chirho::SpanChirho;
 
-use super::CompilerClassChirho;
+use super::{
+    CompilerClassChirho, TypeConstructorDeclarationChirho, TypeConstructorIdentityChirho,
+    TypeConstructorRoleChirho,
+};
 use crate::provenance_chirho::OriginIdChirho;
 
 /// What an actual compiler-class producer must provide at an evidence use.
@@ -118,6 +122,64 @@ impl SourceUnitIdentityChirho {
 
     pub fn as_str_chirho(&self) -> &str {
         &self.0
+    }
+}
+
+/// The driver's standalone source authority as an immutable carrier: a unit the driver already
+/// produced and the exact class declaration accounts of the module it is checking. This type
+/// never mints a unit or an account. Admission is exact account equality, never a module,
+/// prefix, qualifier or alias. A defining-module account carries no unit, so no imported
+/// declaration is carried, whether home, sibling, re-exported or from a package, and a current
+/// account that an import also names is dropped. Both stay MissingUnit until their defining unit
+/// travels (#33339).
+/// Workflow: language-features-chirho/dictionary-evidence-chirho.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceUnitAuthorityChirho {
+    unit_chirho: SourceUnitIdentityChirho,
+    declarations_chirho: HashSet<TypeConstructorDeclarationChirho>,
+}
+
+impl SourceUnitAuthorityChirho {
+    /// Carries the driver-produced `unit_chirho` with the current module's class declaration
+    /// accounts, less every one whose identity `imported_chirho` also names, whatever role that
+    /// imported account has. Another role, a compiler account and an empty module or class name
+    /// are never carried.
+    pub fn from_driver_chirho(
+        unit_chirho: SourceUnitIdentityChirho,
+        current_chirho: impl IntoIterator<Item = TypeConstructorDeclarationChirho>,
+        imported_chirho: impl IntoIterator<Item = TypeConstructorIdentityChirho>,
+    ) -> Self {
+        let imported_chirho = imported_chirho.into_iter().collect::<HashSet<_>>();
+        let declarations_chirho = current_chirho
+            .into_iter()
+            .filter(|declaration_chirho| {
+                declaration_chirho.role_chirho == TypeConstructorRoleChirho::ClassChirho
+                    && matches!(
+                        &declaration_chirho.identity_chirho,
+                        TypeConstructorIdentityChirho::SourceChirho {
+                            defining_module_chirho,
+                            name_chirho,
+                        } if !defining_module_chirho.is_empty() && !name_chirho.is_empty()
+                    )
+                    && !imported_chirho.contains(&declaration_chirho.identity_chirho)
+            })
+            .collect();
+        Self {
+            unit_chirho,
+            declarations_chirho,
+        }
+    }
+
+    pub fn unit_chirho(&self) -> &SourceUnitIdentityChirho {
+        &self.unit_chirho
+    }
+
+    /// Whether `declaration_chirho` is exactly one of the carried current class declarations.
+    pub fn admits_declaration_chirho(
+        &self,
+        declaration_chirho: &TypeConstructorDeclarationChirho,
+    ) -> bool {
+        self.declarations_chirho.contains(declaration_chirho)
     }
 }
 

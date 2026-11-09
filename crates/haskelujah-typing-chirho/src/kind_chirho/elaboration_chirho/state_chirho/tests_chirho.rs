@@ -57,6 +57,7 @@ fn checked_chirho(
             family_scope_chirho: &TypeFamilyScopeChirho::default(),
             promotion_scope_chirho: &PromotionScopeChirho::default(),
             builtin_classes_chirho: &BuiltinClassScopeChirho::default(),
+            source_unit_chirho: None,
         },
     )
     .unwrap()

@@ -421,6 +421,10 @@ impl InferCtxChirho {
                 .map(|predicate_chirho| predicate_chirho.class_name_chirho.clone())
                 .collect();
 
+            // The class, its method predicates and its instances take one proof: the
+            // creation-time declaration scheme every written constraint decodes with.
+            let declared_proof_chirho = self.declared_source_class_proof_chirho(name_chirho);
+
             // Method signatures and optional default implementations
             let mut method_map_chirho = HashMap::new();
             let mut defaults_map_chirho = HashMap::new();
@@ -433,17 +437,23 @@ impl InferCtxChirho {
                         false,
                     );
 
-                let class_pred_chirho =
-                    SchemePredChirho::legacy_chirho(crate::ty_chirho::SchemePredPartsChirho {
-                        kind_tys_chirho: kind_tys_chirho.clone(),
-                        class_name_chirho: class_name_chirho.clone(),
-                        ty_chirho: TyChirho::VarChirho(class_tv_chirho),
-                        extra_tys_chirho: extra_vars_chirho
-                            .iter()
-                            .copied()
-                            .map(TyChirho::VarChirho)
-                            .collect(),
-                    });
+                let class_pred_parts_chirho = crate::ty_chirho::SchemePredPartsChirho {
+                    kind_tys_chirho: kind_tys_chirho.clone(),
+                    class_name_chirho: class_name_chirho.clone(),
+                    ty_chirho: TyChirho::VarChirho(class_tv_chirho),
+                    extra_tys_chirho: extra_vars_chirho
+                        .iter()
+                        .copied()
+                        .map(TyChirho::VarChirho)
+                        .collect(),
+                };
+                let class_pred_chirho = match &declared_proof_chirho {
+                    Some(proof_chirho) => SchemePredChirho::from_proof_chirho(
+                        proof_chirho.clone(),
+                        class_pred_parts_chirho,
+                    ),
+                    None => SchemePredChirho::legacy_chirho(class_pred_parts_chirho),
+                };
                 let _metadata_refusal_chirho = crate::ty_chirho::append_enclosing_predicate_chirho(
                     &mut scheme_chirho.preds_chirho,
                     class_pred_chirho,
@@ -535,20 +545,24 @@ impl InferCtxChirho {
                 .insert(class_name_chirho.clone());
             // A source declaration replaces the seed's class of that name (row 686, C08).
             self.seeded_class_names_chirho.remove(&class_name_chirho);
+            let class_parts_chirho = crate::class_chirho::ClassDeclPartsChirho {
+                kind_vars_chirho,
+                name_chirho: class_name_chirho.clone(),
+                supers_chirho,
+                super_templates_chirho,
+                var_chirho: class_tv_chirho,
+                methods_chirho: method_map_chirho,
+                extra_vars_chirho,
+                fundeps_chirho: resolved_fundeps_chirho,
+                defaults_chirho: defaults_map_chirho,
+            };
             self.class_env_chirho
-                .add_class_chirho(ClassDeclChirho::legacy_chirho(
-                    crate::class_chirho::ClassDeclPartsChirho {
-                        kind_vars_chirho,
-                        name_chirho: class_name_chirho.clone(),
-                        supers_chirho,
-                        super_templates_chirho,
-                        var_chirho: class_tv_chirho,
-                        methods_chirho: method_map_chirho,
-                        extra_vars_chirho,
-                        fundeps_chirho: resolved_fundeps_chirho,
-                        defaults_chirho: defaults_map_chirho,
-                    },
-                ));
+                .add_class_chirho(match declared_proof_chirho {
+                    Some(proof_chirho) => {
+                        ClassDeclChirho::from_producer_chirho(class_parts_chirho, proof_chirho)
+                    }
+                    None => ClassDeclChirho::legacy_chirho(class_parts_chirho),
+                });
 
             // The live frontend already registered these checked declarations;
             // defaults and slot correspondence live only in that catalogue.
@@ -622,12 +636,53 @@ impl InferCtxChirho {
         }
     }
 
-    /// Process an instance declaration from the AST and register it.
+    /// Under the driver's standalone authority, the proof the creation-time declaration scheme
+    /// gives `name_chirho`'s own SOURCE declaration account, so a class, every predicate written
+    /// against it and its instances agree. An admitted home declaration gets its source proof. A
+    /// recognized source declaration the authority does not admit keeps the join's unknown
+    /// (MissingUnit, or legacy without a class scheme) and never reaches a spelling fallback
+    /// (#33315). `None` means there is no such account: no account, an opaque name, a compiler
+    /// account, or a route without the authority, whose legacy path stays exactly as it was.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    fn declared_source_class_proof_chirho(
+        &self,
+        name_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
+    ) -> Option<haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho> {
+        use haskelujah_ast_chirho::name_chirho::TypeConstructorIdentityChirho;
+        let declaration_chirho = name_chirho.type_constructor_chirho()?;
+        let standalone_chirho = self
+            .elaboration_state_chirho
+            .source_policy_chirho
+            .as_ref()
+            .is_some_and(|policy_chirho| policy_chirho.source_unit_chirho.is_some());
+        (standalone_chirho
+            && matches!(
+                declaration_chirho.identity_chirho,
+                TypeConstructorIdentityChirho::SourceChirho { .. }
+            ))
+        .then(|| self.constraint_head_proof_chirho(&declaration_chirho.type_key_chirho()))
+    }
+
+    /// An instance head's class proof: its own source declaration account through the
+    /// creation-time scheme when it has one, else the compatibility selection by its written
+    /// name (row 692), which never carries a source proof (#33315).
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(in crate::infer_chirho) fn instance_class_proof_chirho(
+        &self,
+        class_chirho: &haskelujah_ast_chirho::name_chirho::NameChirho,
+    ) -> haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho {
+        self.declared_source_class_proof_chirho(class_chirho)
+            .unwrap_or_else(|| self.selected_class_proof_chirho(class_chirho.text_chirho()))
+    }
+
     /// The proof of the class record a source instance's written class name selects at its
     /// registration (row 692), as that record carries it. A compiler proof stands only when
     /// the selected record is the compiler record for that identity, so a program's own class
-    /// spelled like a compiler class keeps its own proof. No record selected stays the legacy
-    /// unknown. Nothing is resolved from the spelling beyond the selection registration makes.
+    /// spelled like a compiler class keeps its own proof. A source proof is never carried: only
+    /// a declaration's own account joins its scheme, so a name without one stays the legacy
+    /// unknown this path gave before any source proof existed (#33315). No record selected
+    /// stays the legacy unknown. Nothing is resolved from the spelling beyond the selection
+    /// registration makes.
     /// workflow: language-features-chirho/dictionary-evidence-chirho
     fn selected_class_proof_chirho(
         &self,
@@ -659,10 +714,14 @@ impl InferCtxChirho {
                     ClassIdentityUnknownChirho::UnsupportedChirho,
                 )
             }
+            PredicateClassProofChirho::ProvenChirho(
+                PredicateClassIdentityChirho::SourceChirho { .. },
+            ) => PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::LegacyChirho),
             proof_chirho => proof_chirho.clone(),
         }
     }
 
+    /// Process an instance declaration from the AST and register it.
     pub(super) fn process_instance_decl_chirho(&mut self, decl_chirho: &DeclChirho) {
         if let DeclChirho::InstanceDeclChirho {
             context_chirho,
@@ -732,10 +791,12 @@ impl InferCtxChirho {
                 .map(|t_chirho| self.expand_type_synonyms_chirho(&t_chirho))
                 .collect();
 
-            // The instance's class is the record its written name selects (row 692). That
-            // record's own proof is carried, and its instance identity stays the legacy unknown
-            // it was: no unit producer exists for a source instance.
-            let class_proof_chirho = self.selected_class_proof_chirho(&class_name_chirho);
+            // The instance head's own source declaration account decides its class proof
+            // through the creation-time declaration scheme, admitted or not. Only a head with
+            // no such account takes the record its written name selects (row 692), and never
+            // a source proof that way (#33315). The instance identity stays the legacy unknown
+            // it was: P1 mints no source instance identity.
+            let class_proof_chirho = self.instance_class_proof_chirho(class_chirho);
             let instance_chirho = InstDeclChirho::from_producer_chirho(
                 crate::class_chirho::InstDeclPartsChirho {
                     kind_tys_chirho: kind_tys_chirho

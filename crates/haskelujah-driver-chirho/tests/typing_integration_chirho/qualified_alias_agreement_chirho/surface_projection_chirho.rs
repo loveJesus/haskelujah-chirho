@@ -52,6 +52,7 @@ impl CheckedSurfaceChirho {
                 family_scope_chirho: &TypeFamilyScopeChirho::default(),
                 promotion_scope_chirho: &PromotionScopeChirho::default(),
                 builtin_classes_chirho: &classes_chirho,
+                source_unit_chirho: None,
             },
         )
         .expect("surface fixture must have an actual checked declaration catalogue Chirho");

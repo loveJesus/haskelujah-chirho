@@ -8,8 +8,12 @@
 //! spelling.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
-use haskelujah_ast_chirho::name_chirho::CompilerClassChirho;
+use haskelujah_ast_chirho::name_chirho::{
+    ClassIdentityUnknownChirho, CompilerClassChirho, PredicateClassProofChirho,
+    SourceUnitIdentityChirho,
+};
 
 use super::SuperclassSearchExhaustedChirho;
 use crate::class_chirho::{ClassDeclChirho, ClassEnvChirho, PredChirho};
@@ -345,4 +349,129 @@ fn an_undisplaced_compiler_class_keeps_its_spelling_entailment_chirho() {
             Ok(true)
         );
     }
+}
+
+/// A source class proof under the driver's default home unit.
+fn source_proof_chirho(module_chirho: &str, class_name_chirho: &str) -> PredicateClassProofChirho {
+    PredicateClassProofChirho::source_chirho(
+        Some(
+            SourceUnitIdentityChirho::from_producer_chirho(Arc::from("main"))
+                .expect("a non-empty unit key"),
+        ),
+        Arc::from(module_chirho),
+        Arc::from(class_name_chirho),
+    )
+}
+
+/// A unary source class as its declaration producer registers it under `proof_chirho`.
+fn source_class_chirho(
+    name_chirho: &str,
+    templates_chirho: Vec<SchemePredChirho>,
+    proof_chirho: PredicateClassProofChirho,
+) -> ClassDeclChirho {
+    ClassDeclChirho::from_producer_chirho(
+        crate::class_chirho::ClassDeclPartsChirho {
+            kind_vars_chirho: Vec::new(),
+            name_chirho: name_chirho.to_string(),
+            supers_chirho: templates_chirho
+                .iter()
+                .map(|template_chirho| template_chirho.class_name_chirho.clone())
+                .collect(),
+            super_templates_chirho: templates_chirho,
+            var_chirho: TyVarChirho(0),
+            methods_chirho: HashMap::new(),
+            extra_vars_chirho: Vec::new(),
+            fundeps_chirho: vec![],
+            defaults_chirho: HashMap::new(),
+        },
+        proof_chirho,
+    )
+}
+
+fn proven_pred_chirho(
+    proof_chirho: PredicateClassProofChirho,
+    class_name_chirho: &str,
+    ty_chirho: TyChirho,
+) -> PredChirho {
+    PredChirho::from_proof_chirho(
+        proof_chirho,
+        crate::class_chirho::PredPartsChirho {
+            kind_tys_chirho: Vec::new(),
+            class_name_chirho: class_name_chirho.to_string(),
+            ty_chirho,
+            extra_tys_chirho: vec![],
+        },
+    )
+}
+
+#[test]
+fn a_source_given_never_expands_a_same_text_source_records_superclass_chirho() {
+    // P1 (gpt #33309): two home modules each declare a class spelled `ShapeChirho`. The first
+    // has no superclass; the second, active under the spelling, has `EqChirho`. A given proven
+    // as the first expands only its own record, never the active same-text record.
+    let mut env_chirho = env_chirho(vec![class_chirho("EqChirho", 1, vec![])]);
+    env_chirho.add_class_chirho(source_class_chirho(
+        "ShapeChirho",
+        vec![],
+        source_proof_chirho("FirstChirho", "ShapeChirho"),
+    ));
+    env_chirho.add_class_chirho(source_class_chirho(
+        "ShapeChirho",
+        vec![template_chirho("EqChirho", var_chirho(0))],
+        source_proof_chirho("SecondChirho", "ShapeChirho"),
+    ));
+    let wanted_chirho = pred_chirho("EqChirho", vec![var_chirho(7)]);
+    let first_chirho = proven_pred_chirho(
+        source_proof_chirho("FirstChirho", "ShapeChirho"),
+        "ShapeChirho",
+        var_chirho(7),
+    );
+    assert_eq!(
+        env_chirho.superclass_entails_chirho(&first_chirho, &wanted_chirho),
+        Ok(false)
+    );
+    // The second record's own given still reaches its own superclass.
+    let second_chirho = proven_pred_chirho(
+        source_proof_chirho("SecondChirho", "ShapeChirho"),
+        "ShapeChirho",
+        var_chirho(7),
+    );
+    assert_eq!(
+        env_chirho.superclass_entails_chirho(&second_chirho, &wanted_chirho),
+        Ok(true)
+    );
+}
+
+#[test]
+fn a_source_given_never_discharges_a_missing_unit_wanted_by_spelling_chirho() {
+    let mut env_chirho = ClassEnvChirho::new_chirho();
+    env_chirho.add_class_chirho(source_class_chirho(
+        "ShapeChirho",
+        vec![],
+        source_proof_chirho("FirstChirho", "ShapeChirho"),
+    ));
+    let source_chirho = proven_pred_chirho(
+        source_proof_chirho("FirstChirho", "ShapeChirho"),
+        "ShapeChirho",
+        var_chirho(7),
+    );
+    let missing_chirho = proven_pred_chirho(
+        PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::MissingUnitChirho),
+        "ShapeChirho",
+        var_chirho(7),
+    );
+    // Equal text never joins a proven source side to an unproven one, in either direction.
+    assert_eq!(
+        env_chirho.superclass_entails_chirho(&source_chirho, &missing_chirho),
+        Ok(false)
+    );
+    assert_eq!(
+        env_chirho.superclass_entails_chirho(&missing_chirho, &source_chirho),
+        Ok(false)
+    );
+    // The same proven identity still meets itself.
+    assert_eq!(
+        env_chirho.superclass_entails_chirho(&source_chirho, &source_chirho),
+        Ok(true)
+    );
 }

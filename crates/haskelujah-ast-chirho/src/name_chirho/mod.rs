@@ -26,7 +26,7 @@ mod representation_chirho;
 pub use predicate_identity_chirho::{
     ClassIdentityUnknownChirho, CompilerClassEvidenceChirho, InstanceDeclarationOriginChirho,
     InstanceIdentityChirho, PredicateClassIdentityChirho, PredicateClassProofChirho,
-    PredicateMetadataRefusalChirho, SourceUnitIdentityChirho,
+    PredicateMetadataRefusalChirho, SourceUnitAuthorityChirho, SourceUnitIdentityChirho,
 };
 pub use representation_chirho::CompilerRepresentationChirho;
 

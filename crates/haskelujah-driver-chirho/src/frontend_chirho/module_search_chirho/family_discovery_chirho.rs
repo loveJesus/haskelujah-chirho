@@ -433,7 +433,7 @@ pub(crate) fn register_discovered_type_families_chirho(
             module_chirho,
             &declaration_ifaces_chirho,
         );
-        let dependencies_chirho = haskelujah_typing_chirho::kind_chirho::elaboration_chirho::source_declaration_dependencies_chirho(module_chirho, haskelujah_typing_chirho::kind_chirho::elaboration_chirho::ElaborationImportsChirho { registry_chirho: &registry_chirho, type_scope_chirho: &type_scope_chirho, family_scope_chirho: &family_scope_chirho, promotion_scope_chirho: &promotion_scope_chirho, builtin_classes_chirho: &builtin_classes_chirho }, &ordered_chirho).map_err(|error_chirho| family_frontend_diagnostics_chirho(error_chirho.message_chirho, error_chirho.span_chirho))?;
+        let dependencies_chirho = haskelujah_typing_chirho::kind_chirho::elaboration_chirho::source_declaration_dependencies_chirho(module_chirho, haskelujah_typing_chirho::kind_chirho::elaboration_chirho::ElaborationImportsChirho { registry_chirho: &registry_chirho, type_scope_chirho: &type_scope_chirho, family_scope_chirho: &family_scope_chirho, promotion_scope_chirho: &promotion_scope_chirho, builtin_classes_chirho: &builtin_classes_chirho, source_unit_chirho: None }, &ordered_chirho).map_err(|error_chirho| family_frontend_diagnostics_chirho(error_chirho.message_chirho, error_chirho.span_chirho))?;
         kind_dependencies_chirho.insert(
             module_chirho.name_chirho.full_name_chirho(),
             dependencies_chirho,

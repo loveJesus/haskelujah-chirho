@@ -155,6 +155,7 @@ fn published_context_chirho() -> (
             family_scope_chirho: &Default::default(),
             promotion_scope_chirho: &Default::default(),
             builtin_classes_chirho: &Default::default(),
+            source_unit_chirho: None,
         },
         true,
     )

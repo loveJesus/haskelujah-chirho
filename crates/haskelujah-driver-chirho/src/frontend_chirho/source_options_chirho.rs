@@ -16,6 +16,12 @@ pub(crate) struct FrontendPolicyChirho {
     /// The caller's program entry for this module as the program root; never a header's
     /// (row 692). See `FrontendOptionsChirho::program_entry_chirho`.
     pub(crate) program_entry_chirho: Option<String>,
+    /// Whether the driver's own standalone route checks this module as the program's default
+    /// home unit `main`. Only that route sets it: the public single-source route and the CLI
+    /// check entry. Library, project and package callers keep `false`, so their source classes
+    /// stay MissingUnit; no caller option can request it.
+    /// workflow: language-features-chirho/dictionary-evidence-chirho
+    pub(crate) standalone_home_chirho: bool,
 }
 
 impl FrontendPolicyChirho {
@@ -38,6 +44,7 @@ impl FrontendPolicyChirho {
             ),
             extensions_chirho: EffectiveExtensionsChirho::from_entries_chirho(extensions_chirho),
             program_entry_chirho: None,
+            standalone_home_chirho: false,
         }
     }
 }

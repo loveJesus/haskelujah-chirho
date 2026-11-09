@@ -206,11 +206,37 @@ impl InferCtxChirho {
             )) => PredicateClassProofChirho::ProvenChirho(
                 PredicateClassIdentityChirho::CompilerChirho(*identity_chirho),
             ),
-            Some(TypeConstructorIdentityChirho::SourceChirho { .. }) => {
-                PredicateClassProofChirho::UnknownChirho(
+            // A source declaration is proven only under the driver's standalone authority, and
+            // only when that authority carries this exact declaration account: a class the
+            // checked module declares that no selected import also names. The module and class
+            // names are the declaration producer's own; no spelling decides. Library, project and
+            // package contexts, and every imported declaration, stay MissingUnit (#33339).
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            Some(TypeConstructorIdentityChirho::SourceChirho {
+                defining_module_chirho,
+                name_chirho,
+            }) => match self
+                .elaboration_state_chirho
+                .source_policy_chirho
+                .as_ref()
+                .and_then(|policy_chirho| policy_chirho.source_unit_chirho.as_ref())
+                .filter(|authority_chirho| {
+                    scheme_chirho
+                        .declaration_chirho
+                        .as_ref()
+                        .is_some_and(|declaration_chirho| {
+                            authority_chirho.admits_declaration_chirho(declaration_chirho)
+                        })
+                }) {
+                Some(authority_chirho) => PredicateClassProofChirho::source_chirho(
+                    Some(authority_chirho.unit_chirho().clone()),
+                    std::sync::Arc::from(defining_module_chirho.as_str()),
+                    std::sync::Arc::from(name_chirho.as_str()),
+                ),
+                None => PredicateClassProofChirho::UnknownChirho(
                     ClassIdentityUnknownChirho::MissingUnitChirho,
-                )
-            }
+                ),
+            },
             _ => PredicateClassProofChirho::UnknownChirho(ClassIdentityUnknownChirho::LegacyChirho),
         }
     }
