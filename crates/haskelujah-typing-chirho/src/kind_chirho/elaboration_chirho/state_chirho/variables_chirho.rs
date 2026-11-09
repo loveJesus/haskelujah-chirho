@@ -238,7 +238,8 @@ fn stage_committed_records_chirho(
             ));
         }
     }
-    charge_chirho(committed_chirho.len(), committed_chirho.len()).ok_or(ResourceChirho)?;
+    charge_chirho(committed_chirho.len_chirho(), committed_chirho.len_chirho())
+        .ok_or(ResourceChirho)?;
     let mut domains_chirho: Vec<_> = committed_chirho
         .iter_chirho()
         .map(|(variable_chirho, _)| *variable_chirho)
@@ -449,7 +450,7 @@ fn compose_committed_substitution_chirho(
 ) -> Result<SubstChirho, CommittedKindFailureChirho> {
     use CommittedKindFailureChirho::ResourceChirho;
     let mut composed_chirho = SubstChirho::empty_chirho();
-    charge_chirho(before_chirho.len(), before_chirho.len()).ok_or(ResourceChirho)?;
+    charge_chirho(before_chirho.len_chirho(), before_chirho.len_chirho()).ok_or(ResourceChirho)?;
     for (variable_chirho, image_chirho) in before_chirho.iter_chirho() {
         let entry_chirho = before_chirho
             .lookup_image_chirho(variable_chirho)
@@ -475,7 +476,7 @@ fn compose_committed_substitution_chirho(
             },
         );
     }
-    charge_chirho(after_chirho.len(), after_chirho.len()).ok_or(ResourceChirho)?;
+    charge_chirho(after_chirho.len_chirho(), after_chirho.len_chirho()).ok_or(ResourceChirho)?;
     for (variable_chirho, image_chirho) in after_chirho.iter_chirho() {
         if composed_chirho.lookup_chirho(variable_chirho).is_some() {
             continue;
