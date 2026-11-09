@@ -9,6 +9,8 @@ use haskelujah_span_chirho::SourceMapChirho;
 mod bindings_control_flow_chirho;
 #[path = "extensions_chirho/legacy_chirho/builtin_values_chirho.rs"]
 mod builtin_values_chirho;
+#[path = "extensions_chirho/policy_chirho/consequence_a_chirho/product-probe-chirho/consequence_a_probe_chirho.rs"]
+mod consequence_a_probe_chirho;
 mod corpus_kind_transport_chirho;
 #[path = "extensions_chirho/policy_chirho/deferral_flags_chirho.rs"]
 mod deferral_flags_chirho;
