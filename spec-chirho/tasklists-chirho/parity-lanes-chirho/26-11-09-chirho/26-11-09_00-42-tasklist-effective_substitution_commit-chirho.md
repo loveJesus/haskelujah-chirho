@@ -1,0 +1,36 @@
+<!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
+
+# Effective substitution commit Chirho
+
+Authority: L.J.'s continuing “do it” direction for a broadly verified landable compiler. Root owns main, the DB, integration and compiler admission. The reader lane is the sole implementation writer for this migration; existing source checkpoints and raw results remain retained. This is a private reversible compiler change with strict scope, authority, resource and failure-recovery obligations.
+
+Problem: committed kind/representation equations reach the live metadata, equality and evidence views, while the void commit API leaves callers returning their original substitution. Neither P3's returned delta nor the final InferResult substitution is guaranteed to contain those equations. Unioning the working equality map into public output would bypass pattern/signature projection boundaries.
+
+Decision: keep one shared mutable substitution carrier. Change apply_subst_all_chirho to accept a mutable SubstChirho and return Result<(), ElaborationErrorChirho>. Stage under the original owner budget; fail before changing caller or live views, recording the terminal non-deferrable error once. Publish the same effective carrier to every live consumer and update the caller in place. Commit BEFORE composition or deriving outward values. Preserve the existing pattern/signature projections, capturing actual checked kind dependencies before local evidence enters. Never add a canonical-map provenance system, second registry, blanket result-discard wrapper, metadata-only success or equality-map export. Final outward substitution is bounded-zonked through itself, without adding private/given domains.
+
+Placement: move the common commit implementation out of schemes into infer_chirho/types_chirho/committed_substitutions_chirho.rs, paired with effective_commit_tests_chirho.rs, registered at infer_chirho.rs. The directory grows from12 to14 entries; no fundep-specific placement. Existing schemes wrappers retain their generic responsibilities. Any further structural or error-carrier prerequisite is named before editing.
+
+- [x] Identify the lost return carrier and choose explicit effective dataflow over a working-map export or new registry.
+- [x] Establish the current written-kernel baseline: a606 check33395/33396 has415 JSON records, zero compiler messages, build-finished true; wholetyping33397/33398 has884/884 ok, zero ignored, every fresh name once, including11 solver,8 metadata and6 instance-opening controls. These do not cover final K-return completeness or the seven original programs.
+- [ ] Author the shared in-place commit, adapt all production callers, preserve terminal failures and pre-composition ordering, and materialize effective equations in outward types/predicates/quantifier kinds.
+- [ ] Preserve pattern/signature public projection with actual pre-entry checked kind dependency capture; keep private/skolem/local domains private and universal/unknown barriers intact.
+- [ ] Check the source and exercise naked returned lookups, P3/public result consistency, kind-only escapes, safe projection and tiny-budget no-partial-publication behavior.
+- [ ] Measure the seven exact GHC-backed source witnesses and positive/negative companion, including the positive on interpreter, LLVM and Cranelift; retain remaining unsupported contexts and actual first-wrongs.
+- [ ] Complete appropriate whole-suite, identity/MR preservation, mutation and full-delta quality gates before the overall compiler landing. This migration does not waive the fifteen unresolved main-delta suffix findings.
+
+Production footprint under crates/haskelujah-typing-chirho/src (29 existing files):
+
+- infer_chirho.rs.
+- infer_chirho/annotations_chirho/: body_types_chirho.rs, mod.rs, escape_chirho.rs.
+- infer_chirho/declarations_chirho/: instance_obligations_chirho.rs, module_chirho.rs, signature_conversion_chirho.rs.
+- infer_chirho/restriction_chirho/: entry_obligation_chirho.rs, restriction_chirho.rs.
+- infer_chirho/solving_chirho/: equalities_chirho.rs, equality_scopes_chirho.rs, rigid_chirho.rs, schemes_chirho.rs, fundep_generalization_chirho/solver_chirho.rs.
+- infer_chirho/terms_chirho/: applications_chirho.rs, bindings_chirho.rs, conditionals_chirho.rs, do_blocks_chirho.rs, expected_chirho.rs, expressions_chirho.rs, guards_chirho.rs, pattern_bindings_chirho.rs, ranges_chirho.rs, records_chirho.rs, type_applications_chirho.rs, constructor_patterns_chirho/mod.rs, matches_chirho/body_chirho.rs, matches_chirho/mod.rs, matches_chirho/ordered_chirho.rs.
+
+Existing test call adapters: annotations_chirho/tests_chirho.rs and body_scope_tests_chirho.rs; solving_chirho/equality_scope_tests_chirho.rs; evidence_chirho/ground_goals_tests_chirho.rs; tests_chirho/evidence_validity_tests_chirho.rs and inferred_dictionary_owners_tests_chirho.rs; types_chirho/quantification_tests_chirho.rs and meta_producer_tests_chirho.rs. Keep their assertions and add explicit success/failure handling. Two new shared commit/test files and the existing committed-meta-kinds workflow are cleared. No AST/naming/driver/Core/registry change is implied.
+
+Result seams: generalization representation defaults join the caller's existing mutable SCC accumulator before materializing the returned Scheme; visible instantiation and signature conversion retain their existing updated prefix/equality substitution; checked-body syntax carries its checked result and effective links to concrete same-file value/kind/equality materialization. Genuinely check-only routes explicitly handle commit failure and keep the updated local carrier without inventing a public method route. Capture signature roots and their checked kind dependencies before skolems/givens; pattern scope keeps its existing pre-entry older-key/event boundary. Check public images and their actual kind dependency images before projecting and returning.
+
+Focused behavioral obligations: returned naked representation lookup agrees with live records; application/list/match composition keeps kind equations; P3 and InferResult agree with evidence/environment; signature and GADT kind-only escape refuse while safe older projection retains its kind equations; rank-n binders retain rigidity/specificity; exhausted stage leaves caller and live views unchanged apart from spent allowance and one terminal diagnostic. No source edit or compiler launch is implied by this plan until root releases the writer after the baseline closure.
+
+Writer release: after actual884/884 baseline closure33398, the reader lane switched a new effective-substitution-commit-chirho branch from exacta606 while retaining890. Source-only implementation is released in the named footprint, compiler launches remain root-owned. Terminal recovery uses an existing error term when there is no existing expected/result type, with no new recovery variable/supply/authority after failure. Existing outward API shapes are preserved; the common commit Result is explicitly handled at every call. Missing once-only reporting or further structural/error-conversion APIs are named before editing.
