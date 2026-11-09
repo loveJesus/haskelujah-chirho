@@ -56,6 +56,8 @@ use super::ValidityResultChirho;
 #[path = "deriving_strategy_chirho.rs"]
 mod deriving_strategy_chirho;
 // Rules 17 to 19: role annotations (row 694).
+#[path = "pattern_synonyms_chirho.rs"]
+mod pattern_synonyms_chirho;
 #[path = "role_annotations_chirho.rs"]
 mod role_annotations_chirho;
 
@@ -288,6 +290,10 @@ fn check_module_declaration_validity_with_type_scope_chirho(
         &mut errors_chirho,
     );
     role_annotations_chirho::check_role_annotations_chirho(module_chirho, &mut errors_chirho);
+    pattern_synonyms_chirho::check_pattern_synonym_signatures_chirho(
+        module_chirho,
+        &mut errors_chirho,
+    );
     errors_chirho
 }
 

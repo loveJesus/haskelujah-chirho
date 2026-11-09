@@ -9,7 +9,8 @@
 //! qualified type (`ctx =>`) is only legal in certain syntactic positions.
 //! Tuple source types also obey GHC's 64-element limit (`GHC-94803`).
 //!
-//! Haskell2010 allows a `forall`/context only at the very top of a signature.
+//! A signature's leading context is rank one; the checked parser separately
+//! licenses written `forall` syntax from the effective ExplicitForAll flag.
 //! Nesting one under an arrow is rank-N and needs `RankNTypes`; putting one in
 //! a type-constructor argument is impredicative and needs `ImpredicativeTypes`.
 //!
@@ -107,10 +108,6 @@ pub(crate) struct LicenseChirho {
     impredicative_chirho: bool,
     /// `QuantifiedConstraints` is on.
     quantified_constraints_chirho: bool,
-    /// `DatatypeContexts` is on. When it is, constructor fields are skipped: a
-    /// datatype "stupid theta" is written on the declaration *head*, and we
-    /// will not risk judging a head context as if it were a field.
-    datatype_contexts_chirho: bool,
 }
 
 impl LicenseChirho {
@@ -123,25 +120,17 @@ impl LicenseChirho {
     }
 
     pub(crate) fn from_module_chirho(module_chirho: &ModuleChirho) -> Self {
-        // GHC: ImpredicativeTypes implies RankNTypes. `Rank2Types` is a legacy
-        // spelling of `RankNTypes` and still widely used in real source.
+        // The parser publishes the resolved edition/implication/override state.
+        // Re-inferring an implication here would undo an explicit NoRankNTypes.
         let impredicative_chirho = extension_enabled_chirho(module_chirho, "ImpredicativeTypes");
         Self {
             allow_ambiguous_chirho: extension_enabled_chirho(module_chirho, "AllowAmbiguousTypes"),
-            rank_n_chirho: impredicative_chirho
-            || extension_enabled_chirho(module_chirho, "RankNTypes")
-            || extension_enabled_chirho(module_chirho, "Rank2Types")
-            // A module that never declares a language edition is compiled by
-            // modern GHC under GHC2021, which enables RankNTypes. We do not
-            // model language editions, so assuming rank-N is OFF would reject
-            // ordinary modern code. Only an explicit legacy edition turns it off.
-            || !declares_legacy_edition_chirho(module_chirho),
+            rank_n_chirho: extension_enabled_chirho(module_chirho, "RankNTypes"),
             impredicative_chirho,
             quantified_constraints_chirho: extension_enabled_chirho(
                 module_chirho,
                 "QuantifiedConstraints",
             ),
-            datatype_contexts_chirho: extension_enabled_chirho(module_chirho, "DatatypeContexts"),
         }
     }
 }
@@ -154,13 +143,6 @@ impl LicenseChirho {
 ///
 /// Deliberately NOT walked, because our own lowering cannot represent the form
 /// and a check there would be vacuous or actively wrong:
-///   * **record** constructor fields — `lower_record_field_chirho` (parser
-///     `lower_chirho.rs:7350`) takes a flat token path that splits on the
-///     top-level `=>` *before* it lifts a leading `forall`, so
-///     `fld :: forall a. C a => t` arrives as a quantified constraint the
-///     source never wrote. Judging it wrongly rejects six files GHC accepts
-///     (`Vta1`, `LocalGivenEqs`, `T3018`, `T11339`, `T11339b`, `T11339c`).
-///     Positional and GADT fields lower structurally and stay covered.
 ///   * instance head types — `lower_instance_head_types_chirho`
 ///     (`lower_chirho.rs:3969`) drops the `forall` token entirely;
 ///   * class/instance declaration contexts —
@@ -263,9 +245,8 @@ fn walk_con_decl_chirho(
     errors_chirho: &mut Vec<ValidityErrorChirho>,
     projection_budget_chirho: &mut haskelujah_ast_chirho::decl_chirho::GadtProjectionBudgetChirho,
 ) {
-    if license_chirho.datatype_contexts_chirho {
-        return;
-    }
+    // Constructor prefixes retain declaration contexts apart from actual fields.
+    // workflow: compiler-pipeline-chirho/declaration-validity-chirho
     match con_chirho {
         ConDeclChirho::OrdinaryChirho { fields_chirho, .. } => {
             for (_, ty_chirho) in fields_chirho {
@@ -277,8 +258,16 @@ fn walk_con_decl_chirho(
                 );
             }
         }
-        // Skipped on purpose — see the note on `check_module_type_validity_chirho`.
-        ConDeclChirho::RecordChirho { .. } => {}
+        ConDeclChirho::RecordChirho { fields_chirho, .. } => {
+            for field_chirho in fields_chirho {
+                walk_type_chirho(
+                    &field_chirho.ty_chirho,
+                    TyPositionChirho::RANK_N_CHIRHO,
+                    license_chirho,
+                    errors_chirho,
+                );
+            }
+        }
         ConDeclChirho::GadtChirho {
             signature_chirho, ..
         } => {
@@ -375,11 +364,6 @@ fn walk_constraint_chirho(
 
 /// True when the module explicitly asks for a pre-GHC2021 language edition,
 /// where rank-N types are genuinely off unless requested.
-fn declares_legacy_edition_chirho(module_chirho: &ModuleChirho) -> bool {
-    extension_enabled_chirho(module_chirho, "Haskell2010")
-        || extension_enabled_chirho(module_chirho, "Haskell98")
-}
-
 /// Evaluate an extension flag with GHC's `NoFoo` override order: the last
 /// mention wins, so `{-# LANGUAGE MagicHash, NoMagicHash #-}` leaves it off.
 ///
@@ -1117,9 +1101,9 @@ mod tests_chirho {
     }
 
     #[test]
-    fn impredicative_types_implies_rank_n_types_chirho() {
-        // GHC: ImpredicativeTypes implies RankNTypes, so a rank-2 argument is
-        // licensed by ImpredicativeTypes alone.
+    fn resolved_impredicative_profile_licenses_rank_n_chirho() {
+        // The parser resolves ImpredicativeTypes to include RankNTypes before
+        // this hand-built AST reaches validity.
         let ty_chirho = TypeChirho::FunChirho {
             arg_chirho: Box::new(mk_poly_id_chirho()),
             mult_chirho: None,
@@ -1128,7 +1112,7 @@ mod tests_chirho {
         };
         let module_chirho = mk_module_chirho(
             vec![mk_sig_chirho(ty_chirho)],
-            vec!["ImpredicativeTypes".to_string()],
+            vec!["ImpredicativeTypes".to_string(), "RankNTypes".to_string()],
         );
         assert!(check_module_type_validity_chirho(&module_chirho).is_empty());
     }
@@ -1195,11 +1179,8 @@ mod tests_chirho {
     }
 
     #[test]
-    fn record_constructor_fields_are_never_judged_chirho() {
-        // The parser lowers record fields through a flat path that splits on
-        // `=>` before lifting a leading `forall`, manufacturing a constraint the
-        // source never wrote. Judging them regresses six files GHC accepts, so
-        // this site stays skipped until the parser is fixed.
+    fn record_constructor_fields_require_their_rank_n_license_chirho() {
+        // Structured record lowering now preserves the field's actual forall.
         let decl_chirho = DeclChirho::DataDeclChirho {
             name_chirho: mk_name_chirho("T"),
             type_vars_chirho: vec![],
@@ -1220,11 +1201,16 @@ mod tests_chirho {
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         };
         let module_chirho = mk_module_chirho(vec![decl_chirho], vec!["Haskell2010".to_string()]);
-        assert!(check_module_type_validity_chirho(&module_chirho).is_empty());
+        let errors_chirho = check_module_type_validity_chirho(&module_chirho);
+        assert_eq!(errors_chirho.len(), 1);
+        assert_eq!(
+            errors_chirho[0].suggested_extension_chirho,
+            Some("RankNTypes")
+        );
     }
 
     #[test]
-    fn datatype_contexts_skips_constructor_fields_chirho() {
+    fn datatype_contexts_never_licenses_a_rank_n_field_chirho() {
         let decl_chirho = DeclChirho::DataDeclChirho {
             name_chirho: mk_name_chirho("T"),
             type_vars_chirho: vec![],
@@ -1237,7 +1223,12 @@ mod tests_chirho {
             vec![decl_chirho],
             vec!["Haskell2010".to_string(), "DatatypeContexts".to_string()],
         );
-        assert!(check_module_type_validity_chirho(&module_chirho).is_empty());
+        let errors_chirho = check_module_type_validity_chirho(&module_chirho);
+        assert_eq!(errors_chirho.len(), 1);
+        assert_eq!(
+            errors_chirho[0].suggested_extension_chirho,
+            Some("RankNTypes")
+        );
     }
 
     #[test]
@@ -1465,20 +1456,20 @@ mod tests_edition_chirho {
         check_module_type_validity_chirho(&module_chirho).is_empty()
     }
 
-    // Regression guard: the first version of this check assumed rank-N types
-    // were off whenever `RankNTypes` was absent. That wrongly rejected 13
-    // previously-passing GHC should_compile files, because modern GHC compiles
-    // an undeclared module under GHC2021, which enables RankNTypes — and
-    // because `Rank2Types` is a legacy spelling of the same extension.
+    // These hand-built modules state the parser-resolved effective premise.
+    // Edition selection and legacy spelling normalization belong to the parser.
     #[test]
     fn modern_default_edition_allows_rank_n_chirho() {
-        assert!(rank_two_is_accepted_with_chirho(vec![]));
+        assert!(rank_two_is_accepted_with_chirho(vec![
+            "GHC2021".to_string(),
+            "RankNTypes".to_string(),
+        ]));
     }
 
     #[test]
-    fn legacy_rank2types_spelling_is_honoured_chirho() {
+    fn resolved_legacy_rank2types_profile_is_honoured_chirho() {
         assert!(rank_two_is_accepted_with_chirho(vec![
-            "Rank2Types".to_string()
+            "RankNTypes".to_string()
         ]));
     }
 

@@ -80,6 +80,10 @@ pub struct ParserChirho<'src> {
     /// for that block's own members only, whose `type` declarations are associated
     /// instances; a declaration nested inside a member parses as usual (row 686).
     instance_body_chirho: bool,
+    /// The resolved source profile licenses invisible written quantification.
+    explicit_for_all_chirho: bool,
+    /// Checked compilation reports syntax licences; editor CSTs remain lossless.
+    syntax_diagnostics_chirho: haskelujah_diagnostics_chirho::DiagnosticBundleChirho,
 }
 
 impl<'src> ParserChirho<'src> {
@@ -112,6 +116,9 @@ impl<'src> ParserChirho<'src> {
             builder_chirho: GreenBuilderChirho::new_chirho(),
             family_equation_lhs_chirho: false,
             instance_body_chirho: false,
+            explicit_for_all_chirho: extensions_chirho.enabled_chirho("ExplicitForAll"),
+            syntax_diagnostics_chirho:
+                haskelujah_diagnostics_chirho::DiagnosticBundleChirho::empty_chirho(),
         }
     }
 
@@ -125,13 +132,25 @@ impl<'src> ParserChirho<'src> {
             .first()
             .map(|token_chirho| token_chirho.span_chirho.file_id_chirho())
             .unwrap_or(FileIdChirho::SYNTHETIC_CHIRHO);
-        let root_chirho = self.parse_chirho();
+        let (root_chirho, diagnostics_chirho) = self.parse_with_diagnostics_chirho();
         check_cst_syntax_chirho(&root_chirho, file_id_chirho)?;
+        if diagnostics_chirho.has_errors_chirho() {
+            return Err(diagnostics_chirho);
+        }
         Ok(root_chirho)
     }
 
     /// Parse the entire source file and return the root green node.
-    pub fn parse_chirho(mut self) -> Arc<GreenNodeChirho> {
+    pub fn parse_chirho(self) -> Arc<GreenNodeChirho> {
+        self.parse_with_diagnostics_chirho().0
+    }
+
+    fn parse_with_diagnostics_chirho(
+        mut self,
+    ) -> (
+        Arc<GreenNodeChirho>,
+        haskelujah_diagnostics_chirho::DiagnosticBundleChirho,
+    ) {
         self.builder_chirho
             .start_node_chirho(SyntaxKindChirho::SourceFileChirho);
 
@@ -153,7 +172,10 @@ impl<'src> ParserChirho<'src> {
         }
 
         self.builder_chirho.finish_node_chirho();
-        self.builder_chirho.finish_chirho()
+        (
+            self.builder_chirho.finish_chirho(),
+            self.syntax_diagnostics_chirho,
+        )
     }
 }
 

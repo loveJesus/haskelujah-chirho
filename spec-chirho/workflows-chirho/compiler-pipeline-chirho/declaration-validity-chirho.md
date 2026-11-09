@@ -10,16 +10,21 @@ finding is reported as `E0209`.
 
 ```mermaid
 flowchart TD
-    lower_chirho["Lowering: CST to AST, no diagnostics"] --> prelude_chirho["2.1 implicit Prelude import"]
+    profile_chirho["One effective edition/options profile"] --> syntax_chirho{"Written invisible forall licensed?"}
+    syntax_chirho -->|no| syntax_stop_chirho["reject: ExplicitForAll syntax"]
+    syntax_chirho -->|yes| lower_chirho["Lowering: CST to AST, retain fields and both pattern contexts"]
+    lower_chirho --> prelude_chirho["2.1 implicit Prelude import"]
     prelude_chirho --> splices_chirho["2.2 Template Haskell splices"]
     splices_chirho --> compute_chirho["2.4 declaration rules on the module as written"]
-    compute_chirho --> deriving_chirho["2.5 deriving appends generated instances"]
+    compute_chirho --> pattern_chirho["Pattern existential result after declared argument count"]
+    pattern_chirho --> deriving_chirho["2.5 deriving appends generated instances"]
     deriving_chirho --> naming_chirho["3 name resolution"]
     naming_chirho -->|naming errors| naming_stop_chirho["reject: renamer errors first"]
     naming_chirho --> report_chirho{"E0209 findings?"}
     compute_chirho -. findings held .-> report_chirho
     report_chirho -->|yes, never deferred| validity_stop_chirho["reject: E0209"]
     report_chirho -->|no| kinds_chirho["3.5 kinds, then 4 inference, 4.4 type forms"]
+    kinds_chirho --> fields_chirho["Actual positional/record fields obey effective RankNTypes"]
 ```
 
 ## Rules
@@ -74,6 +79,23 @@ rewrites an annotation. root measured RA1 to RA4 with GHC 9.14.1
 (`role-surfaces-and-direct-gnd-r1-chirho`, #31865): every refusal above and the GHC2024 and
 nominal-class twins, which print 8.
 
+Work 721 separates three source-policy obligations. The checked parser reads the already
+resolved ExplicitForAll flag for written invisible quantification, independently of
+RankNTypes. It retains `forall` as a keyword and reports a permission diagnostic; the
+visible `forall ... ->` policy is separate. Type validity consumes the resolved
+RankNTypes state without reconstructing an edition default or an implication that could
+undo a written NoRankNTypes. Constructor prefixes retain declaration contexts separately,
+so DatatypeContexts never exempts actual positional or record fields from type validity.
+
+`pattern_synonyms_chirho.rs` reads the retained universal/required-context/existential/
+provided-context prefix and matches each signature to its local pattern definition.
+After consuming exactly the definition's ordinary argument count, the entire remaining
+result is checked for escaping existentials, including any arrows still in that result.
+The bounded lexical walk honors nested quantifiers and their kind/constraint scopes;
+universal result variables and existential argument variables remain permitted. A
+signature without its definition supplies no arity to this check. No class proof, type
+constructor identity or inference substitution is created by this structural rule.
+
 Rule 4 depends on lowering reading the whole class body. `collect_instance_methods_chirho`
 ends its walk at the first non-method member after a method, a defence against sibling
 declarations leaked by layout. Row 683 held the rule because a legal fixity declaration
@@ -106,8 +128,8 @@ resolution keeps GHC's order: a renamer error is reported before a validity erro
 
 ## Boundaries
 
-- Shapes lowering drops are not judged: a Haskell 98 constructor's `forall` and context,
-  a missing newtype constructor, class-body bindings without a signature, instance pattern
+- Shapes lowering drops are not judged: a missing newtype constructor,
+  class-body bindings without a signature, instance pattern
   bindings and operator-class heads. They wait on the AST
   (`spec-chirho/bug-existential-constructor-scope-dropped-chirho.md`).
 - Special-class instances, deriving eligibility and the DatatypeContexts head name are
