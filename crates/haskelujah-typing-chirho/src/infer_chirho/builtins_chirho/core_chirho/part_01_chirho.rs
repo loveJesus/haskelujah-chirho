@@ -433,7 +433,7 @@ pub(super) fn seed_part_01_chirho(env_chirho: &mut TyEnvChirho) {
     // Numeric operators: forall a. Num a => a -> a -> a
     let num_v_chirho = TyVarChirho(1100);
     let num_binop_chirho = SchemeChirho {
-        vars_chirho: vec![num_v_chirho].into(),
+        vars_chirho: super::declared_type_parameter_chirho(num_v_chirho),
         preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
             haskelujah_ast_chirho::name_chirho::CompilerClassChirho::NumChirho,
             crate::ty_chirho::SchemePredPartsChirho {

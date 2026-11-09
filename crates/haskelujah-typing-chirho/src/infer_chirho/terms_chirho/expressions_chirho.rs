@@ -36,6 +36,47 @@ impl InferCtxChirho {
         }
     }
 
+    /// Ordinary numeric syntax selects the compiler class independently of
+    /// lexical names. Its sealed closed Type parameter supplies this fresh
+    /// Meta's actual kind, only in an owned checked module. OriginId is an
+    /// occurrence identity, not a primitive-literal or permission marker.
+    /// Workflow: type-identity-chirho/committed-meta-kinds-chirho.md.
+    fn fresh_numeric_literal_chirho(
+        &mut self,
+        identity_chirho: CompilerClassChirho,
+        span_chirho: haskelujah_span_chirho::SpanChirho,
+    ) -> TyChirho {
+        use haskelujah_ast_chirho::name_chirho::{
+            CompilerClassGroundKindChirho, CompilerClassKindAtomChirho, CompilerClassKindChirho,
+        };
+        let schema_chirho = identity_chirho.schema_chirho();
+        let closed_type_chirho = schema_chirho.visible_parameter_count_chirho() == 1
+            && matches!(schema_chirho.closed_parameter_kind_chirho(0),
+                Some(CompilerClassKindChirho::AtomChirho(CompilerClassKindAtomChirho::GroundChirho(kind_chirho)))
+                if *kind_chirho == CompilerClassGroundKindChirho::TYPE_CHIRHO);
+        if !self.compiler_literals_chirho
+            || !matches!(
+                identity_chirho,
+                CompilerClassChirho::NumChirho | CompilerClassChirho::FractionalChirho
+            )
+            || !closed_type_chirho
+            || self.elaboration_state_chirho.owner_chirho.is_none()
+            || self.elaboration_state_chirho.source_policy_chirho.is_none()
+        {
+            return self.fresh_var_chirho();
+        }
+        match self.elaboration_state_chirho.fresh_chirho(
+            Some(crate::kind_chirho::elaboration_chirho::ElaborationStateChirho::type_universe_chirho()),
+            span_chirho,
+        ) {
+            Ok(variable_chirho) => TyChirho::VarChirho(variable_chirho),
+            Err(error_chirho) => {
+                self.record_body_kind_error_chirho(error_chirho);
+                Self::terminal_commit_type_chirho()
+            }
+        }
+    }
+
     /// Infer the type of an expression, returning (substitution, type).
     pub fn infer_expr_chirho(&mut self, expr_chirho: &ExprChirho) -> (SubstChirho, TyChirho) {
         if self.has_non_deferrable_failure_chirho() {
@@ -53,7 +94,11 @@ impl InferCtxChirho {
         match expr_chirho {
             ExprChirho::LitChirho(lit_chirho) => match lit_chirho {
                 LitChirho::IntChirho(_, span_chirho, _) => {
-                    let lit_ty_chirho = self.fresh_var_chirho();
+                    let lit_ty_chirho = self
+                        .fresh_numeric_literal_chirho(CompilerClassChirho::NumChirho, *span_chirho);
+                    if self.has_non_deferrable_failure_chirho() {
+                        return (SubstChirho::empty_chirho(), lit_ty_chirho);
+                    }
                     let wanted_chirho = self
                         .literal_predicate_chirho(CompilerClassChirho::NumChirho, &lit_ty_chirho);
                     self.capture_literal_evidence_chirho(lit_chirho, &wanted_chirho);
@@ -62,7 +107,13 @@ impl InferCtxChirho {
                     (SubstChirho::empty_chirho(), lit_ty_chirho)
                 }
                 LitChirho::FloatChirho(_, span_chirho, _) => {
-                    let lit_ty_chirho = self.fresh_var_chirho();
+                    let lit_ty_chirho = self.fresh_numeric_literal_chirho(
+                        CompilerClassChirho::FractionalChirho,
+                        *span_chirho,
+                    );
+                    if self.has_non_deferrable_failure_chirho() {
+                        return (SubstChirho::empty_chirho(), lit_ty_chirho);
+                    }
                     let wanted_chirho = self.literal_predicate_chirho(
                         CompilerClassChirho::FractionalChirho,
                         &lit_ty_chirho,

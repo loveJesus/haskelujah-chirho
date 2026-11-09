@@ -988,7 +988,7 @@ pub(super) fn seed_part_03_chirho(env_chirho: &mut TyEnvChirho) {
     env_chirho.bind_chirho(
         "print".to_string(),
         SchemeChirho {
-            vars_chirho: vec![print_v_chirho].into(),
+            vars_chirho: super::declared_type_parameter_chirho(print_v_chirho),
             preds_chirho: vec![SchemePredChirho::from_compiler_chirho(
                 haskelujah_ast_chirho::name_chirho::CompilerClassChirho::ShowChirho,
                 crate::ty_chirho::SchemePredPartsChirho {

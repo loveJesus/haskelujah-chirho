@@ -504,3 +504,275 @@ fn representation_equation_exhaustion_does_not_publish_a_solution_chirho() {
     assert!(result_chirho.is_err());
     assert_eq!(snapshot_chirho(&context_chirho), before_chirho);
 }
+
+fn literal_module_chirho(
+    extensions_chirho: &[&str],
+) -> haskelujah_ast_chirho::module_chirho::ModuleChirho {
+    use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
+    haskelujah_ast_chirho::module_chirho::ModuleChirho {
+        name_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
+            "LiteralProducerChirho",
+            SpanChirho::DUMMY_CHIRHO,
+        )),
+        exports_chirho: None,
+        imports_chirho: Vec::new(),
+        decls_chirho: Vec::new(),
+        extensions_chirho: extensions_chirho
+            .iter()
+            .map(|extension_chirho| (*extension_chirho).to_owned())
+            .collect(),
+        inline_pragmas_chirho: std::collections::HashMap::new(),
+        specialize_pragmas_chirho: std::collections::HashMap::new(),
+        foreign_exports_chirho: Vec::new(),
+        deriving_via_chirho: Vec::new(),
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+        origin_supply_chirho: Default::default(),
+    }
+}
+
+fn checked_literal_context_chirho(extensions_chirho: &[&str]) -> InferCtxChirho {
+    use crate::kind_chirho::elaboration_chirho::{
+        ElaborationImportsChirho, elaborate_module_chirho,
+    };
+    use haskelujah_ast_chirho::name_chirho::{BuiltinClassScopeChirho, TypeConstructorScopeChirho};
+    let mut module_chirho = literal_module_chirho(extensions_chirho);
+    let type_scope_chirho = TypeConstructorScopeChirho::default();
+    let family_scope_chirho = crate::infer_chirho::TypeFamilyScopeChirho::default();
+    let promotion_scope_chirho =
+        haskelujah_ast_chirho::promotion_chirho::PromotionScopeChirho::default();
+    let checked_chirho = elaborate_module_chirho(
+        &mut module_chirho,
+        ElaborationImportsChirho {
+            registry_chirho: &crate::infer_chirho::TypeFamilyEnvChirho::default(),
+            type_scope_chirho: &type_scope_chirho,
+            family_scope_chirho: &family_scope_chirho,
+            promotion_scope_chirho: &promotion_scope_chirho,
+            builtin_classes_chirho: &BuiltinClassScopeChirho::default(),
+            source_unit_chirho: None,
+        },
+    )
+    .expect("actual checked owner, import scopes and literal policy");
+    let mut context_chirho = InferCtxChirho::new_chirho();
+    context_chirho.adopt_elaboration_state_chirho(checked_chirho.state_chirho);
+    context_chirho.type_families_chirho = checked_chirho.registry_chirho;
+    context_chirho.type_constructor_scope_chirho = Some(std::sync::Arc::new(type_scope_chirho));
+    context_chirho.family_scope_chirho = Some(std::sync::Arc::new(family_scope_chirho));
+    context_chirho.promotion_scope_chirho = Some(std::sync::Arc::new(promotion_scope_chirho));
+    context_chirho.infer_module_chirho(&module_chirho);
+    assert!(!context_chirho.has_non_deferrable_failure_chirho());
+    context_chirho
+}
+
+#[test]
+fn declared_compiler_value_parameters_instantiate_with_their_actual_type_kind_chirho() {
+    for name_chirho in ["+", "-", "*", "print"] {
+        let mut context_chirho = checked_literal_context_chirho(&[]);
+        let scheme_chirho = context_chirho
+            .env_chirho
+            .lookup_chirho(name_chirho)
+            .unwrap()
+            .clone();
+        assert_eq!(scheme_chirho.vars_chirho.len(), 1);
+        let record_chirho = &scheme_chirho.vars_chirho.records_chirho()[0];
+        assert_eq!(
+            record_chirho.kind_chirho.as_deref(),
+            Some(&ElaborationStateChirho::type_universe_chirho())
+        );
+        assert!(record_chirho.source_chirho.is_none());
+        assert!(record_chirho.specificity_chirho.is_none());
+        let (opened_chirho, _predicates_chirho) =
+            context_chirho.instantiate_scheme_parts_chirho(&scheme_chirho);
+        let TyChirho::FunChirho(parameter_chirho, _, _) = opened_chirho else {
+            panic!("actual compiler value signature")
+        };
+        let parameter_variable_chirho = variable_chirho(&parameter_chirho);
+        let instantiated_chirho = &context_chirho
+            .elaboration_state_chirho
+            .variable_kinds_chirho[&parameter_variable_chirho];
+        assert_eq!(
+            instantiated_chirho.binding_chirho,
+            ElaborationVariableBindingChirho::MetaChirho
+        );
+        assert_eq!(
+            instantiated_chirho.kind_chirho.as_deref(),
+            Some(&ElaborationStateChirho::type_universe_chirho())
+        );
+        let result_chirho = context_chirho.fresh_value_meta_chirho(SpanChirho::DUMMY_CHIRHO);
+        let mut alias_chirho =
+            SubstChirho::singleton_chirho(parameter_variable_chirho, result_chirho.clone());
+        context_chirho
+            .apply_subst_all_chirho(&mut alias_chirho)
+            .unwrap();
+        assert_eq!(
+            context_chirho
+                .elaboration_state_chirho
+                .variable_binding_chirho(variable_chirho(&result_chirho)),
+            ElaborationVariableBindingChirho::MetaChirho
+        );
+    }
+}
+
+#[test]
+fn unknown_value_shadows_and_higher_kind_parameters_are_not_given_type_by_name_chirho() {
+    let mut context_chirho = checked_literal_context_chirho(&[]);
+    let higher_chirho = context_chirho
+        .env_chirho
+        .lookup_chirho("return")
+        .unwrap()
+        .clone();
+    let (opened_chirho, _predicates_chirho) =
+        context_chirho.instantiate_scheme_parts_chirho(&higher_chirho);
+    let TyChirho::FunChirho(_, result_chirho, _) = opened_chirho else {
+        panic!("actual return signature")
+    };
+    let TyChirho::AppChirho(constructor_chirho, _) = result_chirho.as_ref() else {
+        panic!("actual higher-kind result")
+    };
+    let constructor_kind_chirho = context_chirho
+        .elaboration_state_chirho
+        .variable_kinds_chirho
+        .get(&variable_chirho(constructor_chirho))
+        .and_then(|record_chirho| record_chirho.kind_chirho.as_deref());
+    assert_ne!(
+        constructor_kind_chirho,
+        Some(&ElaborationStateChirho::type_universe_chirho())
+    );
+    let unknown_chirho = TyVarChirho(91_000);
+    context_chirho.env_chirho.bind_chirho(
+        "print".into(),
+        crate::ty_chirho::SchemeChirho {
+            vars_chirho: vec![unknown_chirho].into(),
+            preds_chirho: Vec::new(),
+            ty_chirho: TyChirho::VarChirho(unknown_chirho),
+        },
+    );
+    let name_chirho = haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
+        haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
+            "print",
+            SpanChirho::DUMMY_CHIRHO,
+        ),
+    );
+    let (_, value_chirho) = context_chirho.infer_expr_chirho(&ExprChirho::VarChirho(name_chirho));
+    assert!(
+        !context_chirho
+            .elaboration_state_chirho
+            .variable_kinds_chirho
+            .contains_key(&variable_chirho(&value_chirho))
+    );
+}
+
+#[test]
+fn owned_numeric_literals_use_the_sealed_class_premise_independently_of_origin_and_shadow_chirho() {
+    use haskelujah_ast_chirho::lit_chirho::LitChirho;
+    use haskelujah_ast_chirho::name_chirho::{
+        CompilerClassChirho, PredicateClassIdentityChirho, PredicateClassProofChirho,
+    };
+    let mut origins_chirho =
+        haskelujah_ast_chirho::provenance_chirho::OriginSupplyChirho::new_chirho();
+    for origin_chirho in [None, Some(origins_chirho.fresh_chirho())] {
+        for (literal_chirho, identity_chirho) in [
+            (
+                LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO, origin_chirho),
+                CompilerClassChirho::NumChirho,
+            ),
+            (
+                LitChirho::FloatChirho(1.5, SpanChirho::DUMMY_CHIRHO, origin_chirho),
+                CompilerClassChirho::FractionalChirho,
+            ),
+        ] {
+            let mut context_chirho = checked_literal_context_chirho(&[]);
+            for name_chirho in ["fromInteger", "fromRational"] {
+                context_chirho.env_chirho.bind_chirho(
+                    name_chirho.into(),
+                    crate::ty_chirho::SchemeChirho::mono_chirho(TyChirho::bool_chirho()),
+                );
+            }
+            let (_, value_chirho) =
+                context_chirho.infer_expr_chirho(&ExprChirho::LitChirho(literal_chirho));
+            let record_chirho = &context_chirho
+                .elaboration_state_chirho
+                .variable_kinds_chirho[&variable_chirho(&value_chirho)];
+            assert_eq!(
+                record_chirho.binding_chirho,
+                ElaborationVariableBindingChirho::MetaChirho
+            );
+            assert_eq!(
+                record_chirho.kind_chirho.as_deref(),
+                Some(&ElaborationStateChirho::type_universe_chirho())
+            );
+            assert_eq!(
+                context_chirho
+                    .deferred_preds_chirho
+                    .last()
+                    .unwrap()
+                    .0
+                    .class_identity_chirho(),
+                &PredicateClassProofChirho::ProvenChirho(
+                    PredicateClassIdentityChirho::CompilerChirho(identity_chirho)
+                )
+            );
+        }
+    }
+}
+
+#[test]
+fn raw_unproven_rebindable_and_hash_literal_routes_retain_unknown_metavariables_chirho() {
+    use haskelujah_ast_chirho::lit_chirho::LitChirho;
+    let mut contexts_chirho = vec![
+        InferCtxChirho::new_chirho(),
+        context_chirho(),
+        checked_literal_context_chirho(&["RebindableSyntax"]),
+        checked_literal_context_chirho(&["MagicHash"]),
+    ];
+    // Real module preparation can set the translation mode, but an unowned or
+    // merely new state still has no checked module-policy premise.
+    contexts_chirho[0].infer_module_chirho(&literal_module_chirho(&[]));
+    contexts_chirho[1].infer_module_chirho(&literal_module_chirho(&[]));
+    for mut context_chirho in contexts_chirho {
+        for literal_chirho in [
+            LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO, None),
+            LitChirho::FloatChirho(1.5, SpanChirho::DUMMY_CHIRHO, None),
+        ] {
+            let (_, value_chirho) =
+                context_chirho.infer_expr_chirho(&ExprChirho::LitChirho(literal_chirho));
+            assert!(
+                !context_chirho
+                    .elaboration_state_chirho
+                    .variable_kinds_chirho
+                    .contains_key(&variable_chirho(&value_chirho))
+            );
+        }
+    }
+}
+
+#[test]
+fn numeric_literal_exhaustion_allocates_no_recovery_variable_or_evidence_chirho() {
+    use haskelujah_ast_chirho::lit_chirho::LitChirho;
+    let mut context_chirho = checked_literal_context_chirho(&[]);
+    let before_chirho = snapshot_chirho(&context_chirho);
+    let deferred_chirho = context_chirho.deferred_preds_chirho.len();
+    let remaining_chirho = context_chirho
+        .elaboration_state_chirho
+        .lend_equality_budget_chirho(SpanChirho::DUMMY_CHIRHO)
+        .unwrap()
+        .remaining_chirho()
+        .0;
+    context_chirho
+        .elaboration_state_chirho
+        .charge_chirho(remaining_chirho, 0, SpanChirho::DUMMY_CHIRHO)
+        .unwrap();
+    let (returned_chirho, value_chirho) = context_chirho.infer_expr_chirho(&ExprChirho::LitChirho(
+        LitChirho::IntChirho(1, SpanChirho::DUMMY_CHIRHO, None),
+    ));
+    assert_eq!(snapshot_chirho(&context_chirho), before_chirho);
+    assert!(returned_chirho.is_empty_chirho());
+    assert_eq!(value_chirho, InferCtxChirho::terminal_commit_type_chirho());
+    assert_eq!(context_chirho.deferred_preds_chirho.len(), deferred_chirho);
+    assert_eq!(
+        context_chirho
+            .non_deferrable_diagnostics_chirho
+            .diagnostics_chirho()
+            .len(),
+        1
+    );
+}
