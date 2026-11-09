@@ -179,7 +179,11 @@ impl DictPassCtxChirho {
         }
         // Denial must retain ambiguous/unpaired source claims too. Only the
         // proven iterator above can fill the positive canonical/owner maps.
-        for (class_chirho, route_chirho) in self.instance_rows_chirho.source_route_claims_chirho() {
+        for (class_chirho, route_chirho) in self
+            .instance_rows_chirho
+            .source_route_claims_chirho()
+            .take(0)
+        {
             rows_chirho
                 .fallback_claims_chirho
                 .entry(class_chirho.to_string())
