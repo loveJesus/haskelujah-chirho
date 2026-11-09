@@ -403,6 +403,11 @@ impl InferCtxChirho {
         let initial_chirho = budget_chirho.remaining_chirho();
         let effective_chirho = prepared_chirho.effective_chirho().unwrap_or(input_chirho);
         let valid_chirho = (|| {
+            let input_variables_chirho = self.input_rooted_kind_variables_chirho(
+                input_chirho,
+                prepared_chirho,
+                &mut budget_chirho,
+            )?;
             let mut view_chirho = ProjectedKindViewChirho {
                 effective_chirho,
                 prepared_chirho,
@@ -410,28 +415,28 @@ impl InferCtxChirho {
                 budget_chirho: &mut budget_chirho,
             };
             for (variable_chirho, image_chirho) in effective_chirho.iter_chirho() {
-                if input_chirho.lookup_chirho(variable_chirho).is_none()
-                    && !prepared_chirho.contains_pre_entry_chirho(*variable_chirho)
-                {
-                    return Some(false);
+                if !input_variables_chirho.contains(variable_chirho) {
+                    return Some(Err(
+                        "public kind solution has no input-rooted dependency proof",
+                    ));
                 }
                 if !view_chirho.closed_chirho(image_chirho, &mut Vec::new(), 0)? {
-                    return Some(false);
+                    return Some(Err("public kind solution reaches a private rigid variable"));
                 }
                 if let Some(kind_chirho) = prepared_chirho.prepared_kind_chirho(*variable_chirho) {
                     if !view_chirho.closed_chirho(kind_chirho, &mut Vec::new(), 0)? {
-                        return Some(false);
+                        return Some(Err("public kind solution reaches a private rigid variable"));
                     }
                 }
             }
             for (_, kind_chirho) in prepared_chirho.kinds_chirho() {
                 if let Some(kind_chirho) = kind_chirho {
                     if !view_chirho.closed_chirho(kind_chirho, &mut Vec::new(), 0)? {
-                        return Some(false);
+                        return Some(Err("public kind solution reaches a private rigid variable"));
                     }
                 }
             }
-            Some(true)
+            Some(Ok(()))
         })();
         self.elaboration_state_chirho
             .settle_equality_budget_chirho(
@@ -440,10 +445,98 @@ impl InferCtxChirho {
                 valid_chirho.is_none(),
                 span_chirho,
             )?;
-        if valid_chirho != Some(true) {
-            return Err(ElaborationErrorChirho { mismatch_chirho: None, message_chirho: "public kind solution reaches a private rigid variable or uncaptured kind domain".into(), span_chirho });
+        if let Some(Err(message_chirho)) = valid_chirho {
+            return Err(ElaborationErrorChirho {
+                mismatch_chirho: None,
+                message_chirho: message_chirho.into(),
+                span_chirho,
+            });
         }
         Ok(())
+    }
+
+    /// This temporary dependency walk admits no binding authority. A new K
+    /// domain must be reachable from the explicit public solution and actual
+    /// checked kind edges; the strict stage still requires its genuine Meta
+    /// record. Read a new image's live pre-publication kind, not its already
+    /// zonked plan kind, so TYPE r -> Type does not erase the reason for r.
+    fn input_rooted_kind_variables_chirho(
+        &self,
+        input_chirho: &SubstChirho,
+        prepared_chirho: &CapturedVariableKindsChirho,
+        budget_chirho: &mut crate::infer_chirho::EqualityBudgetChirho,
+    ) -> Option<HashSet<TyVarChirho>> {
+        fn append_chirho(
+            term_chirho: &TyChirho,
+            pending_chirho: &mut Vec<TyVarChirho>,
+            budget_chirho: &mut crate::infer_chirho::EqualityBudgetChirho,
+        ) -> Option<()> {
+            let variables_chirho = SubstChirho::free_variables_bounded_chirho(
+                term_chirho,
+                &mut |work_chirho, output_chirho| {
+                    budget_chirho.node_chirho(output_chirho)?;
+                    budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+                },
+            )?;
+            budget_chirho.node_chirho(variables_chirho.len())?;
+            pending_chirho.extend(variables_chirho);
+            Some(())
+        }
+
+        let mut pending_chirho = Vec::new();
+        for (variable_chirho, image_chirho) in input_chirho.iter_chirho() {
+            budget_chirho.node_chirho(1)?;
+            pending_chirho.push(*variable_chirho);
+            append_chirho(image_chirho, &mut pending_chirho, budget_chirho)?;
+            if let Some(kind_chirho) = input_chirho
+                .lookup_image_chirho(variable_chirho)?
+                .kind_chirho
+                .as_deref()
+            {
+                append_chirho(kind_chirho, &mut pending_chirho, budget_chirho)?;
+            }
+        }
+        for (variable_chirho, kind_chirho) in prepared_chirho.kinds_chirho() {
+            budget_chirho.node_chirho(1)?;
+            pending_chirho.push(variable_chirho);
+            if let Some(kind_chirho) = kind_chirho {
+                append_chirho(kind_chirho, &mut pending_chirho, budget_chirho)?;
+            }
+        }
+        let mut variables_chirho = HashSet::new();
+        while let Some(variable_chirho) = pending_chirho.pop() {
+            budget_chirho.work_chirho(1)?;
+            if variables_chirho.contains(&variable_chirho) {
+                continue;
+            }
+            budget_chirho.node_chirho(1)?;
+            variables_chirho.insert(variable_chirho);
+            // Their actual PRE-entry edges were added above. Current private
+            // links may not replace the captured permission/kind boundary.
+            if prepared_chirho.contains_pre_entry_chirho(variable_chirho) {
+                continue;
+            }
+            if let Some(kind_chirho) = self
+                .elaboration_state_chirho
+                .variable_kinds_chirho
+                .get(&variable_chirho)
+                .and_then(|record_chirho| record_chirho.kind_chirho.as_deref())
+            {
+                append_chirho(kind_chirho, &mut pending_chirho, budget_chirho)?;
+                let checked_chirho = self
+                    .elaboration_state_chirho
+                    .substitution_chirho
+                    .resolve_owned_bounded_chirho(
+                        kind_chirho,
+                        &mut |work_chirho, output_chirho| {
+                            budget_chirho.node_chirho(output_chirho)?;
+                            budget_chirho.work_chirho(work_chirho.saturating_sub(output_chirho))
+                        },
+                    )?;
+                append_chirho(&checked_chirho, &mut pending_chirho, budget_chirho)?;
+            }
+        }
+        Some(variables_chirho)
     }
 
     /// Close only the explicitly threaded outward domains. This never exports

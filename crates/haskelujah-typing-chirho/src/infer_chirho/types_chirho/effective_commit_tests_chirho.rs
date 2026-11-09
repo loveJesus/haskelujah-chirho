@@ -363,6 +363,93 @@ fn private_alias_role_poisoning_does_not_remove_a_safe_outer_meta_permission_chi
 fn complete_staging_rejects_a_new_private_kind_domain_before_any_publication_chirho() {
     let mut context_chirho = context_chirho();
     let outer_chirho = context_chirho.fresh_list_element_meta_chirho(SpanChirho::DUMMY_CHIRHO);
+    let outer_value_chirho = outer_value_chirho(&mut context_chirho);
+    let outer_rep_chirho = value_representation_chirho(&context_chirho, &outer_value_chirho);
+    let captured_chirho = context_chirho
+        .elaboration_state_chirho
+        .capture_variable_kinds_chirho(
+            &[variable_chirho(&outer_chirho), outer_rep_chirho],
+            &SubstChirho::empty_chirho(),
+            SpanChirho::DUMMY_CHIRHO,
+        )
+        .unwrap();
+    let binder_value_chirho = context_chirho.fresh_value_meta_chirho(SpanChirho::DUMMY_CHIRHO);
+    let binder_rep_chirho = value_representation_chirho(&context_chirho, &binder_value_chirho);
+    context_chirho
+        .elaboration_state_chirho
+        .mark_universal_chirho(binder_rep_chirho, SpanChirho::DUMMY_CHIRHO)
+        .unwrap();
+    let scheme_chirho = SchemeChirho {
+        vars_chirho: QuantifiedVariablesChirho::from_records_chirho(vec![
+            context_chirho
+                .elaboration_state_chirho
+                .variable_kinds_chirho[&binder_rep_chirho]
+                .quantifier_chirho
+                .clone(),
+        ]),
+        preds_chirho: Vec::new(),
+        ty_chirho: TyChirho::bool_chirho(),
+    };
+    context_chirho.with_rigid_signature_chirho(
+        &scheme_chirho,
+        SpanChirho::DUMMY_CHIRHO,
+        |context_chirho, _expected_chirho| {
+            let rigid_chirho = context_chirho
+                .skolem_bindings_chirho
+                .lookup_chirho(&binder_rep_chirho)
+                .unwrap()
+                .clone();
+            let TyChirho::ForallVarChirho(name_chirho) = &rigid_chirho else {
+                panic!("actual opened rigid representation")
+            };
+            let skolems_chirho = HashSet::from([name_chirho.clone()]);
+            let inferred_chirho = context_chirho.fresh_value_meta_chirho(SpanChirho::DUMMY_CHIRHO);
+            let inferred_rep_chirho = value_representation_chirho(context_chirho, &inferred_chirho);
+            // The first input produces the same new Lifted equation as the safe
+            // positive. The second carries a genuinely local rigid representation.
+            let mut public_chirho =
+                SubstChirho::singleton_chirho(variable_chirho(&outer_chirho), inferred_chirho);
+            public_chirho.insert_chirho(outer_rep_chirho, rigid_chirho);
+            let before_chirho = public_chirho.clone();
+            let supply_chirho = context_chirho.elaboration_state_chirho.next_variable_chirho;
+            let error_chirho = context_chirho
+                .apply_projected_subst_all_chirho(
+                    &mut public_chirho,
+                    captured_chirho,
+                    &skolems_chirho,
+                    SpanChirho::DUMMY_CHIRHO,
+                )
+                .expect_err("actual private rigid kind must refuse before publication");
+            assert!(
+                error_chirho.message_chirho.contains("private rigid"),
+                "{error_chirho:?}"
+            );
+            assert_eq!(public_chirho, before_chirho);
+            assert!(
+                context_chirho
+                    .equality_substitutions_chirho
+                    .lookup_chirho(&inferred_rep_chirho)
+                    .is_none()
+            );
+            assert!(
+                context_chirho
+                    .equality_substitutions_chirho
+                    .lookup_chirho(&outer_rep_chirho)
+                    .is_none()
+            );
+            assert_eq!(
+                context_chirho.elaboration_state_chirho.next_variable_chirho,
+                supply_chirho
+            );
+        },
+    );
+    assert!(context_chirho.has_non_deferrable_failure_chirho());
+}
+
+#[test]
+fn a_new_input_rooted_meta_can_publish_its_closed_representation_solution_chirho() {
+    let mut context_chirho = context_chirho();
+    let outer_chirho = context_chirho.fresh_list_element_meta_chirho(SpanChirho::DUMMY_CHIRHO);
     let captured_chirho = context_chirho
         .elaboration_state_chirho
         .capture_variable_kinds_chirho(
@@ -371,34 +458,42 @@ fn complete_staging_rejects_a_new_private_kind_domain_before_any_publication_chi
             SpanChirho::DUMMY_CHIRHO,
         )
         .unwrap();
-    let private_chirho = context_chirho.fresh_value_meta_chirho(SpanChirho::DUMMY_CHIRHO);
-    let private_rep_chirho = value_representation_chirho(&context_chirho, &private_chirho);
+    let inferred_chirho = context_chirho.fresh_value_meta_chirho(SpanChirho::DUMMY_CHIRHO);
+    let inferred_rep_chirho = value_representation_chirho(&context_chirho, &inferred_chirho);
     let mut public_chirho =
-        SubstChirho::singleton_chirho(variable_chirho(&outer_chirho), private_chirho);
-    let before_chirho = public_chirho.clone();
-    let supply_chirho = context_chirho.elaboration_state_chirho.next_variable_chirho;
-    assert!(
-        context_chirho
-            .apply_projected_subst_all_chirho(
-                &mut public_chirho,
-                captured_chirho,
-                &HashSet::new(),
-                SpanChirho::DUMMY_CHIRHO
-            )
-            .is_err()
-    );
-    assert_eq!(public_chirho, before_chirho);
-    assert!(
-        context_chirho
-            .equality_substitutions_chirho
-            .lookup_chirho(&private_rep_chirho)
-            .is_none()
-    );
+        SubstChirho::singleton_chirho(variable_chirho(&outer_chirho), inferred_chirho.clone());
+    context_chirho
+        .apply_projected_subst_all_chirho(
+            &mut public_chirho,
+            captured_chirho,
+            &HashSet::new(),
+            SpanChirho::DUMMY_CHIRHO,
+        )
+        .expect("genuine new inference Meta is not a private rigid binder");
+    let lifted_chirho = crate::ty_chirho::representation_chirho::boxed_representation_chirho(true);
     assert_eq!(
-        context_chirho.elaboration_state_chirho.next_variable_chirho,
-        supply_chirho
+        public_chirho.lookup_chirho(&inferred_rep_chirho),
+        Some(lifted_chirho)
     );
-    assert!(context_chirho.has_non_deferrable_failure_chirho());
+    for (variable_chirho, image_chirho) in public_chirho.iter_chirho() {
+        assert_eq!(
+            context_chirho
+                .equality_substitutions_chirho
+                .lookup_chirho(variable_chirho),
+            Some(image_chirho)
+        );
+    }
+    for value_chirho in [&outer_chirho, &inferred_chirho] {
+        let record_chirho = &context_chirho
+            .elaboration_state_chirho
+            .variable_kinds_chirho[&variable_chirho(value_chirho)];
+        assert_eq!(record_chirho.kind_chirho.as_deref(), Some(&crate::kind_chirho::elaboration_chirho::ElaborationStateChirho::type_universe_chirho()));
+        assert_eq!(
+            record_chirho.binding_chirho,
+            ElaborationVariableBindingChirho::MetaChirho
+        );
+    }
+    assert!(!context_chirho.has_non_deferrable_failure_chirho());
 }
 
 #[test]
