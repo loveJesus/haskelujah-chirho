@@ -147,3 +147,33 @@ fn an_instance_head_variable_is_not_rebound_by_a_method_pattern_chirho() {
         "{error_chirho:?}"
     );
 }
+
+#[test]
+fn the_original_dependent_pattern_negative_reaches_a_type_refusal_chirho() {
+    let error_chirho = check_original_chirho(
+        "T12785b.hs",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../ghc-tests-chirho/typecheck-chirho/should_fail/T12785b.hs"
+        )),
+    )
+    .err()
+    .expect("the dependent pattern negative must still be refused");
+    assert!(
+        error_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|diagnostic_chirho| diagnostic_chirho
+                .code_chirho
+                .is_some_and(|code_chirho| code_chirho
+                    == haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(200))),
+        "{error_chirho:?}"
+    );
+    assert!(
+        error_chirho
+            .diagnostics_chirho()
+            .iter()
+            .all(|diagnostic_chirho| !diagnostic_chirho.message_chirho.contains("bound exhausted")),
+        "{error_chirho:?}"
+    );
+}

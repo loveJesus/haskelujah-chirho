@@ -504,3 +504,49 @@ fn bounded_scheme_transport_refuses_capture_and_generated_body_depth_chirho() {
             .is_none()
     );
 }
+
+#[test]
+fn an_owned_identity_image_resolves_through_compound_aliases_chirho() {
+    let mut substitution_chirho =
+        SubstChirho::singleton_chirho(TyVarChirho(0), TyChirho::VarChirho(TyVarChirho(0)));
+    substitution_chirho.insert_chirho(TyVarChirho(1), TyChirho::VarChirho(TyVarChirho(0)));
+    let term_chirho = TyChirho::FunChirho(
+        Box::new(TyChirho::VarChirho(TyVarChirho(1))),
+        Box::new(TyChirho::ListChirho(Box::new(TyChirho::VarChirho(
+            TyVarChirho(0),
+        )))),
+        crate::ty_chirho::MultChirho::ManyChirho,
+    );
+    let expected_chirho = TyChirho::FunChirho(
+        Box::new(TyChirho::VarChirho(TyVarChirho(0))),
+        Box::new(TyChirho::ListChirho(Box::new(TyChirho::VarChirho(
+            TyVarChirho(0),
+        )))),
+        crate::ty_chirho::MultChirho::ManyChirho,
+    );
+    assert_eq!(
+        substitution_chirho.resolve_owned_bounded_chirho(&term_chirho, &mut |_, _| Some(())),
+        Some(expected_chirho)
+    );
+    assert!(
+        substitution_chirho
+            .resolve_owned_bounded_chirho(&term_chirho, &mut |_, _| None)
+            .is_none()
+    );
+}
+
+#[test]
+fn an_owned_structural_self_occurrence_is_still_a_cycle_chirho() {
+    let substitution_chirho = SubstChirho::singleton_chirho(
+        TyVarChirho(0),
+        TyChirho::ListChirho(Box::new(TyChirho::VarChirho(TyVarChirho(0)))),
+    );
+    assert!(
+        substitution_chirho
+            .resolve_owned_bounded_chirho(
+                &TyChirho::VarChirho(TyVarChirho(0)),
+                &mut |_, _| Some(())
+            )
+            .is_none()
+    );
+}

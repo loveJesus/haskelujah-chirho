@@ -239,6 +239,13 @@ impl<ChargeChirho: FnMut(usize, usize) -> Option<()>>
                 {
                     if self.resolve_owned_chirho {
                         (self.charge_chirho)(2, 1)?;
+                        // An identity image is already resolved. Keep its entry
+                        // payload; only nontrivial recursion enters cycle checking.
+                        // workflow: type-identity-chirho/committed-meta-kinds-chirho
+                        if matches!(image_chirho, TyChirho::VarChirho(image_chirho) if image_chirho == variable_chirho)
+                        {
+                            return Some(TyChirho::VarChirho(*variable_chirho));
+                        }
                         if !self.active_variables_chirho.insert(*variable_chirho) {
                             return None;
                         }
