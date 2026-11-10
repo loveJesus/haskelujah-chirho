@@ -32,6 +32,8 @@ mod kind_repair_chirho;
 #[path = "extensions_chirho/legacy_chirho/language_policy_chirho.rs"]
 mod language_policy_chirho;
 mod ordinary_elaboration_chirho;
+#[path = "extensions_chirho/policy_chirho/pattern_signature_scope_chirho.rs"]
+mod pattern_signature_scope_chirho;
 mod qualified_do_chirho;
 mod recursive_do_chirho;
 mod required_type_arguments_chirho;
