@@ -13,6 +13,8 @@ use haskelujah_span_chirho::SpanChirho;
 
 mod body_chirho;
 mod ordered_chirho;
+mod results_chirho;
+pub(in crate::infer_chirho) use results_chirho::InferredResultChirho;
 
 impl InferCtxChirho {
     /// Infer the type of a set of match arms (function equations).
@@ -94,12 +96,15 @@ impl InferCtxChirho {
             Vec::new()
         };
 
+        let mut inferred_result_chirho =
+            InferredResultChirho::new_chirho(self.active_equality_scope_chirho);
         for match_arm_chirho in matches_chirho {
             self.env_chirho.push_scope_chirho();
             let pattern_frame_chirho = self.begin_pattern_implication_with_roots_chirho(
                 param_tys_chirho
                     .iter()
-                    .chain(std::iter::once(&result_ty_chirho)),
+                    .chain(std::iter::once(&result_ty_chirho))
+                    .chain(inferred_result_chirho.ty_chirho()),
                 span_chirho,
             );
             if self.has_non_deferrable_failure_chirho() {
@@ -160,25 +165,38 @@ impl InferCtxChirho {
                 subst_chirho = sp_chirho.compose_chirho(&subst_chirho);
             }
 
-            let expected_chirho = if authoritative_seed_chirho {
-                &eq_result_ty_chirho
+            let inferred_body_chirho = if authoritative_seed_chirho {
+                subst_chirho = self.check_pattern_body_chirho(
+                    &match_arm_chirho.where_binds_chirho,
+                    (&eq_result_ty_chirho, &eq_result_ty_chirho),
+                    subst_chirho,
+                    body_chirho::BodyOrderChirho::ExpectedFirstChirho,
+                    &mut |context_chirho, expected_chirho| {
+                        context_chirho.infer_rhs_against_expected_chirho(
+                            &match_arm_chirho.rhs_chirho,
+                            expected_chirho,
+                            span_chirho,
+                        )
+                    },
+                    span_chirho,
+                );
+                subst_chirho.apply_ty_chirho(&eq_result_ty_chirho)
             } else {
-                &result_ty_chirho
+                self.infer_local_binds_chirho(
+                    &match_arm_chirho.where_binds_chirho,
+                    &mut subst_chirho,
+                );
+                let (mut body_subst_chirho, body_ty_chirho) =
+                    self.infer_rhs_chirho(&match_arm_chirho.rhs_chirho);
+                if self.apply_subst_all_chirho(&mut body_subst_chirho).is_err() {
+                    return (
+                        SubstChirho::empty_chirho(),
+                        Self::terminal_commit_type_chirho(),
+                    );
+                }
+                subst_chirho = body_subst_chirho.compose_chirho(&subst_chirho);
+                body_ty_chirho
             };
-            subst_chirho = self.check_pattern_body_chirho(
-                &match_arm_chirho.where_binds_chirho,
-                (expected_chirho, &eq_result_ty_chirho),
-                subst_chirho,
-                body_chirho::BodyOrderChirho::ExpectedFirstChirho,
-                &mut |context_chirho, expected_chirho| {
-                    context_chirho.infer_rhs_against_expected_chirho(
-                        &match_arm_chirho.rhs_chirho,
-                        expected_chirho,
-                        span_chirho,
-                    )
-                },
-                span_chirho,
-            );
 
             if !authoritative_seed_chirho {
                 // Unify per-equation function type with overall function type.
@@ -198,30 +216,13 @@ impl InferCtxChirho {
                         subst_chirho = s_chirho.compose_chirho(&subst_chirho);
                     }
                 }
-                // Unify per-equation result with overall result type.
-                // For non-GADT cases this propagates the body type to the
-                // function result; for GADTs the signature check provides
-                // the authoritative type.
-                let eq_r_sub_chirho = subst_chirho.apply_ty_chirho(&eq_result_ty_chirho);
-                let r_sub_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
-                match self.unify_normalized_chirho(&eq_r_sub_chirho, &r_sub_chirho, span_chirho) {
-                    Ok(mut s_chirho) => {
-                        if self.apply_subst_all_chirho(&mut s_chirho).is_err() {
-                            return (SubstChirho::empty_chirho(), result_ty_chirho);
-                        };
-                        subst_chirho = s_chirho.compose_chirho(&subst_chirho);
-                    }
-                    Err(err_chirho) => {
-                        // For arity-0 bindings (e.g. x = True) there are no
-                        // GADT patterns to refine types, so a mismatch between
-                        // inferred and expected result is a real type error.
-                        // For higher-arity matches, GADT pattern matching can
-                        // refine per-equation types, so we allow the mismatch.
-                        if arity_chirho == 0 {
-                            self.report_unify_error_chirho(&err_chirho);
-                        }
-                    }
-                }
+                let result_subst_chirho = self.fill_inferred_result_chirho(
+                    &mut inferred_result_chirho,
+                    &inferred_body_chirho,
+                    &subst_chirho,
+                    span_chirho,
+                );
+                subst_chirho = result_subst_chirho.compose_chirho(&subst_chirho);
             }
 
             self.check_solved_value_parameters_chirho(
@@ -231,7 +232,13 @@ impl InferCtxChirho {
             );
             let solved_chirho = self.end_pattern_implication_chirho(
                 pattern_frame_chirho,
-                &subst_chirho.apply_ty_chirho(&eq_result_ty_chirho),
+                &subst_chirho.apply_ty_chirho(if authoritative_seed_chirho {
+                    &inferred_body_chirho
+                } else {
+                    inferred_result_chirho
+                        .ty_chirho()
+                        .unwrap_or(&inferred_body_chirho)
+                }),
                 span_chirho,
             );
             subst_chirho = solved_chirho.compose_chirho(&subst_chirho);
@@ -243,6 +250,13 @@ impl InferCtxChirho {
             .iter()
             .map(|t_chirho| subst_chirho.apply_ty_chirho(t_chirho))
             .collect();
+        let result_ty_chirho = if authoritative_seed_chirho {
+            result_ty_chirho
+        } else {
+            inferred_result_chirho
+                .finish_chirho()
+                .unwrap_or(result_ty_chirho)
+        };
         let final_result_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
         let fun_ty_chirho = TyChirho::fun_n_chirho(final_params_chirho, final_result_chirho);
 

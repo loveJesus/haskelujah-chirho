@@ -85,6 +85,9 @@ impl InferCtxChirho {
             });
         let first_match_chirho = suffix_matches_chirho.next();
         if first_match_chirho.is_some() && suffix_matches_chirho.next().is_none() {
+            if let Some((Some(entry_chirho), _, _)) = &first_match_chirho {
+                self.env_chirho.lookup_value_chirho(entry_chirho);
+            }
             return first_match_chirho;
         }
 

@@ -81,11 +81,18 @@ pub(super) struct EqualityScopeChirho {
     evidence_chirho: Option<Arc<EqualityEvidenceChirho>>,
     pub(super) skolems_chirho: HashSet<String>,
     pub(super) complete_chirho: bool,
+    pub(super) monomorphic_result_chirho: bool,
     pub(super) captured_kinds_chirho:
         Option<crate::kind_chirho::elaboration_chirho::CapturedVariableKindsChirho>,
 }
 
 impl EqualityScopeChirho {
+    pub(super) fn requires_monomorphic_result_chirho(&self) -> bool {
+        self.kind_chirho == EqualityScopeKindChirho::PatternChirho
+            && (self.monomorphic_result_chirho
+                || !self.complete_chirho
+                || !self.skolems_chirho.is_empty())
+    }
     pub(super) fn parent_chirho(&self) -> Option<usize> {
         self.parent_chirho
     }
@@ -107,6 +114,7 @@ impl EqualityScopeChirho {
             evidence_chirho: None,
             skolems_chirho: HashSet::new(),
             complete_chirho: true,
+            monomorphic_result_chirho: false,
             captured_kinds_chirho: None,
         }
     }
@@ -127,6 +135,7 @@ impl InferCtxChirho {
                 .clone(),
             skolems_chirho: HashSet::new(),
             complete_chirho: self.equality_scopes_chirho[parent_chirho].complete_chirho,
+            monomorphic_result_chirho: false,
             captured_kinds_chirho: None,
         });
         self.active_equality_scope_chirho = owner_chirho;
@@ -593,6 +602,42 @@ impl InferCtxChirho {
         SubstChirho::empty_chirho()
     }
 
+    /// Preserve an outer type's public identity. Local evidence may erase an
+    /// owned skolem, but may never replace an already public outer variable.
+    /// workflow: language-features-chirho/stuck-family-equalities-chirho
+    pub(super) fn project_pattern_result_type_chirho(
+        &self,
+        owner_chirho: usize,
+        ty_chirho: &TyChirho,
+        budget_chirho: &mut super::equality_normalization_chirho::EqualityBudgetChirho,
+    ) -> Result<
+        (TyChirho, bool),
+        super::equality_normalization_chirho::EqualityNormalizationExhaustedChirho,
+    > {
+        use super::equality_normalization_chirho::normalize_owned_equality_with_budget_chirho;
+        let skolems_chirho = &self.equality_scopes_chirho[owner_chirho].skolems_chirho;
+        let raw_chirho = normalize_owned_equality_with_budget_chirho(
+            self,
+            ty_chirho,
+            std::iter::empty(),
+            budget_chirho,
+        )?;
+        if !type_mentions_owned_skolem_chirho(&raw_chirho, skolems_chirho, budget_chirho)? {
+            return Ok((raw_chirho, false));
+        }
+        let normalized_chirho = normalize_owned_equality_with_budget_chirho(
+            self,
+            &raw_chirho,
+            self.equality_scopes_chirho[owner_chirho]
+                .evidence_view_chirho()
+                .iter_chirho(),
+            budget_chirho,
+        )?;
+        let escaping_chirho =
+            type_mentions_owned_skolem_chirho(&normalized_chirho, skolems_chirho, budget_chirho)?;
+        Ok((normalized_chirho, escaping_chirho))
+    }
+
     fn pattern_equality_escape_chirho(
         &self,
         owner_chirho: usize,
@@ -605,48 +650,13 @@ impl InferCtxChirho {
     > {
         use super::equality_normalization_chirho::{
             EqualityBudgetChirho, EqualityNormalizationExhaustedChirho,
-            normalize_owned_equality_with_budget_chirho,
         };
         if self.equality_substitution_events_exhausted_chirho {
             return Err(EqualityNormalizationExhaustedChirho);
         }
         let mut budget_chirho = EqualityBudgetChirho::new_chirho();
-        let skolems_chirho = &self.equality_scopes_chirho[owner_chirho].skolems_chirho;
-        let mut public_type_chirho = |ty_chirho: &TyChirho| -> Result<
-            (TyChirho, bool),
-            EqualityNormalizationExhaustedChirho,
-        > {
-            // Preserve an outer signature variable's public identity. A local
-            // refinement may expose existential components without exporting
-            // those components from the implication.
-            let raw_chirho = normalize_owned_equality_with_budget_chirho(
-                self,
-                ty_chirho,
-                std::iter::empty(),
-                &mut budget_chirho,
-            )?;
-            if !type_mentions_owned_skolem_chirho(&raw_chirho, skolems_chirho, &mut budget_chirho)?
-            {
-                return Ok((raw_chirho, false));
-            }
-            let evidence_chirho = std::iter::successors(
-                self.equality_scopes_chirho[owner_chirho]
-                    .evidence_chirho
-                    .as_deref(),
-                |node_chirho| node_chirho.parent_chirho.as_deref(),
-            );
-            let normalized_chirho = normalize_owned_equality_with_budget_chirho(
-                self,
-                &raw_chirho,
-                evidence_chirho.map(|node_chirho| node_chirho.rewrites_chirho.as_slice()),
-                &mut budget_chirho,
-            )?;
-            let escaping_chirho = type_mentions_owned_skolem_chirho(
-                &normalized_chirho,
-                skolems_chirho,
-                &mut budget_chirho,
-            )?;
-            Ok((normalized_chirho, escaping_chirho))
+        let mut public_type_chirho = |ty_chirho: &TyChirho| {
+            self.project_pattern_result_type_chirho(owner_chirho, ty_chirho, &mut budget_chirho)
         };
         if let Some(captured_chirho) =
             &self.equality_scopes_chirho[owner_chirho].captured_kinds_chirho

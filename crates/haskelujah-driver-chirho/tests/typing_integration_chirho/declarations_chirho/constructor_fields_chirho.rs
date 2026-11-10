@@ -773,3 +773,27 @@ fn required_clause_dictionary_cannot_borrow_an_enclosing_class_dictionary_chirho
         )),
     );
 }
+
+#[test]
+fn inferred_results_keep_ordinary_branch_higher_rank_values_everywhere_chirho() {
+    super::assert_prints_everywhere_chirho(
+        "InferredResultRuntimeChirho.hs",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/impredicative-application-chirho/inferred-results-chirho/InferredResultRuntimeChirho.hs"
+        )),
+        "((True,7),(True,7))\n",
+    );
+}
+
+#[test]
+fn inferred_results_keep_user_constructor_branch_values_everywhere_chirho() {
+    super::assert_prints_everywhere_chirho(
+        "OrdinaryConstructorResultChirho.hs",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/impredicative-application-chirho/inferred-results-chirho/OrdinaryConstructorResultChirho.hs"
+        )),
+        "((True,7),(True,7))\n",
+    );
+}

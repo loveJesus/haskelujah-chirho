@@ -335,9 +335,10 @@ impl InferCtxChirho {
                                     result_ty_chirho.clone(),
                                 );
                                 let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
-                                self.env_chirho.bind_chirho(
+                                self.env_chirho.bind_pattern_constructor_chirho(
                                     name_chirho.text_chirho().to_string(),
                                     gen_scheme_chirho,
+                                    false,
                                 );
                             }
                             haskelujah_ast_chirho::decl_chirho::ConDeclChirho::RecordChirho {
@@ -360,9 +361,10 @@ impl InferCtxChirho {
                                     result_ty_chirho.clone(),
                                 );
                                 let gen_scheme_chirho = self.generalize_chirho(&con_ty_chirho);
-                                self.env_chirho.bind_chirho(
+                                self.env_chirho.bind_pattern_constructor_chirho(
                                     name_chirho.text_chirho().to_string(),
                                     gen_scheme_chirho,
+                                    false,
                                 );
                                 // Store field names for RecordWildCards expansion
                                 let field_names_chirho: Vec<String> = fields_chirho
@@ -580,6 +582,7 @@ impl InferCtxChirho {
         let mut fun_matches_refs_chirho: Vec<&[MatchArmChirho]> = Vec::new();
         let mut fun_spans_chirho: Vec<SpanChirho> = Vec::new();
         let mut fun_pre_tys_chirho: Vec<TyChirho> = Vec::new();
+        let mut fun_assumptions_chirho = Vec::new();
 
         for decl_chirho in &module_chirho.decls_chirho {
             if let DeclChirho::FunBindChirho {
@@ -598,13 +601,15 @@ impl InferCtxChirho {
                             self.instantiate_scheme_parts_chirho(&sig_scheme_chirho);
                         self.env_chirho
                             .bind_chirho(binding_name_chirho.clone(), sig_scheme_chirho);
+                        fun_assumptions_chirho.push(None);
                         sig_ty_chirho
                     } else {
                         let fresh_ty_chirho = self.fresh_value_meta_chirho(*span_chirho);
-                        self.env_chirho.bind_chirho(
+                        let assumption_chirho = self.env_chirho.bind_recursive_assumption_chirho(
                             binding_name_chirho.clone(),
                             SchemeChirho::mono_chirho(fresh_ty_chirho.clone()),
                         );
+                        fun_assumptions_chirho.push(Some(assumption_chirho));
                         self.recursive_references_chirho
                             .assumptions_chirho
                             .insert(binding_name_chirho.clone(), fresh_ty_chirho.clone());
@@ -686,7 +691,6 @@ impl InferCtxChirho {
             let mut group_inferred_chirho: Vec<(usize, String, TyChirho, SpanChirho)> = Vec::new();
             for &fi_chirho in group_chirho {
                 let binding_name_chirho = &fun_names_chirho[fi_chirho];
-                let pre_ty_chirho = &fun_pre_tys_chirho[fi_chirho];
                 let span_chirho = fun_spans_chirho[fi_chirho];
                 let equality_owner_chirho = self.begin_equality_scope_chirho(
                     if type_sigs_chirho.contains_key(binding_name_chirho) {
@@ -731,29 +735,6 @@ impl InferCtxChirho {
                 };
                 subst_chirho = s_chirho.compose_chirho(&subst_chirho);
 
-                // Unsigned recursive placeholders join their inferred result.
-                // A signed binding already uses its full declared scheme and
-                // was checked under that SAME signature's givens. An unrelated
-                // fresh pretype supplies no additional family equality.
-                if !type_sigs_chirho.contains_key(binding_name_chirho) {
-                    let pre_sub_chirho = subst_chirho.apply_ty_chirho(pre_ty_chirho);
-                    match self.unify_normalized_chirho(
-                        &pre_sub_chirho,
-                        &inferred_ty_chirho,
-                        span_chirho,
-                    ) {
-                        Ok(mut su_chirho) => {
-                            if self.apply_subst_all_chirho(&mut su_chirho).is_err() {
-                                return SubstChirho::empty_chirho();
-                            };
-                            subst_chirho = su_chirho.compose_chirho(&subst_chirho);
-                        }
-                        Err(err_chirho) => {
-                            self.report_unify_error_chirho(&err_chirho);
-                        }
-                    }
-                }
-
                 group_inferred_chirho.push((
                     fi_chirho,
                     binding_name_chirho.clone(),
@@ -764,6 +745,33 @@ impl InferCtxChirho {
                 // Restore scoped type variables
                 self.scoped_tyvars_chirho = prev_scoped_chirho;
                 self.end_equality_scope_chirho(equality_owner_chirho);
+            }
+
+            // Every body has now read the group's actual lexical entries.
+            // Unread prebindings were inference holes, not monomorphic uses.
+            for ((fi_chirho, _, inferred_ty_chirho, span_chirho), owner_chirho) in
+                group_inferred_chirho.iter().zip(&equality_owners_chirho)
+            {
+                if fun_assumptions_chirho[*fi_chirho]
+                    .as_ref()
+                    .is_some_and(|assumption_chirho| assumption_chirho.was_read_chirho())
+                {
+                    let previous_chirho = self.active_equality_scope_chirho;
+                    self.active_equality_scope_chirho = *owner_chirho;
+                    let pre_chirho = subst_chirho.apply_ty_chirho(&fun_pre_tys_chirho[*fi_chirho]);
+                    let inferred_chirho = subst_chirho.apply_ty_chirho(inferred_ty_chirho);
+                    match self.unify_normalized_chirho(&pre_chirho, &inferred_chirho, *span_chirho)
+                    {
+                        Ok(mut step_chirho) => {
+                            if self.apply_subst_all_chirho(&mut step_chirho).is_err() {
+                                return SubstChirho::empty_chirho();
+                            }
+                            subst_chirho = step_chirho.compose_chirho(&subst_chirho);
+                        }
+                        Err(error_chirho) => self.report_unify_error_chirho(&error_chirho),
+                    }
+                    self.active_equality_scope_chirho = previous_chirho;
+                }
             }
 
             let inferred_equality_types_chirho = group_inferred_chirho
@@ -786,6 +794,9 @@ impl InferCtxChirho {
                 self.env_chirho.remove_chirho(binding_name_chirho);
 
                 let final_ty_chirho = subst_chirho.apply_ty_chirho(inferred_ty_chirho);
+                if !type_sigs_chirho.contains_key(binding_name_chirho) {
+                    self.check_inferred_binding_validity_chirho(&final_ty_chirho, *span_chirho);
+                }
                 // IO defaulting of a lone Monad/Functor-constrained variable is a
                 // `main`-style convenience for argument-less bindings (where the
                 // monomorphism restriction would block generalization anyway); a

@@ -277,14 +277,9 @@ impl InferCtxChirho {
                 scrutinee_chirho,
                 alts_chirho,
                 ..
-            } if Self::contains_polymorphic_component_chirho(expected_ty_chirho)
-                || self.type_contains_skolem_chirho(expected_ty_chirho) =>
-            {
-                // A rigid expected type must reach every alternative, because a
-                // GADT alternative sees it through its own refinement.
-                // Preserve ordinary/GADT case leniency by entering this path
-                // only when a nested polymorphic type actually needs to reach
-                // alternative lambdas.
+            } if !matches!(expected_ty_chirho, TyChirho::VarChirho(_)) => {
+                // A known expected type is checked independently in every
+                // alternative's scope. It is not an inferred result hole.
                 // workflow: language-features-chirho/rank-n-visible-type-application-chirho
                 let (mut scrut_subst_chirho, scrut_ty_chirho) =
                     self.infer_expr_chirho(scrutinee_chirho);

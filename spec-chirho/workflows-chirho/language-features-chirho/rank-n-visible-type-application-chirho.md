@@ -108,7 +108,7 @@ flowchart TD
   family-dependent argument types, so `F Char ~ Bool` can guide a `Bool` argument.
 - Polymorphic expected types flow through `if` branches and scoped `case` alternatives before
   branch lambdas are inferred; each use of a rank-N lambda parameter is freshly instantiated.
-- Monomorphic and GADT branch inference keeps its established lenient merge path.
+- Explicitly checked branches retain their expected-type path. Inferred branches join independent results; pattern implications require monotypes on every join.
 - An expected invisible forall uses the same checked prefix and rigid-signature operation
   for lists, annotations, lambdas and branches as prepared variable/application spines.
   Predicates and equality givens move into that scope; they are never discarded to force
@@ -179,3 +179,37 @@ flowchart TD
   added to the scoped type-variable environment of the equation body.
 - Template Haskell reification currently maps required and invisible foralls to the existing
   `ForallTChirho` representation because the TH type AST does not yet encode binder visibility.
+
+## Inferred binding and branch results
+
+```mermaid
+flowchart TD
+    owner_chirho[Create linear result hole before pattern frames]
+    owner_chirho --> independent_chirho[Infer each equation or alternative independently]
+    independent_chirho --> pattern_chirho{Intervening Pattern implication}
+    pattern_chirho -->|producer says GADT or context, existential, or unknown| mono_chirho[Require old ordinary-meta monotype relation on every fill and join]
+    pattern_chirho -->|known ordinary pattern| join_chirho[Join actual inferred types without a placeholder variable]
+    mono_chirho --> join_chirho
+    join_chirho --> escape_chirho[Validate owned-skolem escape before restoring the pattern scope]
+    escape_chirho --> group_chirho[All binding-group bodies have been inferred]
+    group_chirho --> read_chirho{Actual recursive lexical entry was read}
+    read_chirho -->|yes| assumption_chirho[Join the existing monomorphic recursive assumption]
+    read_chirho -->|no| validity_chirho[Validate inferred result under the effective extension licence]
+    assumption_chirho --> validity_chirho
+    validity_chirho --> publish_chirho[Generalize and publish actual inferred result]
+    builtin_chirho[Actual builtin constructor environment] --> selected_chirho[Existing selected import payload]
+    selected_chirho --> fact_chirho[Ordinary-pattern fact beside the exact lexical scheme]
+    fact_chirho --> pattern_chirho
+```
+
+The result hole is not a TyChirho and is never an environment variable or a substitution image. Parameters and recursive uses retain the ordinary-meta guard. No branch is checked against a previously inferred branch merely because the hole is filled: eta-expanded branches must still infer their own type. The GHC reference is Note [fillInferResult] at peeled GHC 9.14.1 release commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886.
+
+Pattern classification is a declaration-owned fact on the actual lexical entry, plus the active scope's existential and completeness facts. A GADT with an already-equal index still opens the monotype-only boundary. Unknown imported constructor metadata is conservative. The present written-H98-prefix producer is conservative too; importing a source constructor without this carrier does not acquire ordinary-pattern authority from an empty predicate list or a matching spelling. Selected builtin facts survive only the already-admitted builtin producer and a meet across all selected copies.
+
+Recursive assumptions carry one shared read token per lexical entry. Ordinary rebinding and masking drop it. Substitution retains the token on the same entry. A group's join is decided after every body, so a later mutual-recursion read cannot evade the monotype restriction. Copies and ancestry walks charge and settle the existing owner allowance before the unifier borrows its loan. Failed joins produce diagnostics and never publish a successful program.
+
+A cell keeps its first published type. A later GADT alternative checks that type under its own local refinement and never replaces it. First publication uses the same public type projection as equality-scope escape: preserve an outer variable; normalize with local evidence only to erase an owned skolem, and refuse if it remains. Scope exit validates the stored public result. A case with a known non-variable expected type uses the checked alternative route, including a monomorphic expected type. Only inference uses the result hole.
+
+Unsigned top-level and local bindings pass their inferred result through the existing expanded-type validity check before generalization. The module's resolved extension licence governs this check, including explicit Haskell2010 and extensions that imply RankNTypes. Importing a rank-N value does not grant that extension to its caller. Legacy contexts without an adopted licence retain their existing behaviour.
+
+The first-fill rule remains order-dependent for the two functions in the retained PinnedResultChirho control; deferred owner-scoped equality belongs to the planned solver. T14605 is a separate named residual: the builtin coerce scheme has no Coercible obligation, so the older accidental refusal is lost. The attempted predicate/check repair was withdrawn under the lead's bounded fallback; the new checker owns the broader Coercible class. No runtime coercion or dictionary support is claimed here.

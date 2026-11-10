@@ -10,22 +10,25 @@ use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 
 pub(super) fn seed_constructors_chirho(env_chirho: &mut TyEnvChirho) {
     // True :: Bool, False :: Bool
-    env_chirho.bind_chirho(
+    env_chirho.bind_pattern_constructor_chirho(
         "True".to_string(),
         SchemeChirho::mono_chirho(TyChirho::bool_chirho()),
+        false,
     );
-    env_chirho.bind_chirho(
+    env_chirho.bind_pattern_constructor_chirho(
         "False".to_string(),
         SchemeChirho::mono_chirho(TyChirho::bool_chirho()),
+        false,
     );
 
     // LT, EQ, GT :: Ordering. Unbound, each was a fresh type variable whose Eq and Ord
     // occurrences defaulted to Int evidence, so `compare LT GT` dispatched at Int.
     // workflow: language-features-chirho/dictionary-evidence-chirho
     for name_chirho in ["LT", "EQ", "GT"] {
-        env_chirho.bind_chirho(
+        env_chirho.bind_pattern_constructor_chirho(
             name_chirho.to_string(),
             SchemeChirho::mono_chirho(TyChirho::ConChirho("Ordering".to_string())),
+            false,
         );
     }
 
@@ -36,21 +39,23 @@ pub(super) fn seed_constructors_chirho(env_chirho: &mut TyEnvChirho) {
         Box::new(TyChirho::ConChirho("Maybe".to_string())),
         Box::new(TyChirho::VarChirho(maybe_arg_chirho)),
     );
-    env_chirho.bind_chirho(
+    env_chirho.bind_pattern_constructor_chirho(
         "Nothing".to_string(),
         SchemeChirho {
             vars_chirho: vec![maybe_arg_chirho].into(),
             preds_chirho: vec![],
             ty_chirho: maybe_ty_chirho.clone(),
         },
+        false,
     );
-    env_chirho.bind_chirho(
+    env_chirho.bind_pattern_constructor_chirho(
         "Just".to_string(),
         SchemeChirho {
             vars_chirho: vec![maybe_arg_chirho].into(),
             preds_chirho: vec![],
             ty_chirho: TyChirho::fun_chirho(TyChirho::VarChirho(maybe_arg_chirho), maybe_ty_chirho),
         },
+        false,
     );
 
     // (:|) :: forall a. a -> [a] -> NonEmpty a, under both spellings the interface exports.
@@ -65,7 +70,7 @@ pub(super) fn seed_constructors_chirho(env_chirho: &mut TyEnvChirho) {
         Box::new(TyChirho::VarChirho(non_empty_arg_chirho)),
     );
     for name_chirho in ["Data.List.NonEmpty.:|", "Data.List.NonEmpty.(:|)"] {
-        env_chirho.bind_chirho(
+        env_chirho.bind_pattern_constructor_chirho(
             name_chirho.to_string(),
             SchemeChirho {
                 vars_chirho: vec![non_empty_arg_chirho].into(),
@@ -78,6 +83,7 @@ pub(super) fn seed_constructors_chirho(env_chirho: &mut TyEnvChirho) {
                     ),
                 ),
             },
+            false,
         );
     }
 }

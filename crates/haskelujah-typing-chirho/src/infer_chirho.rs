@@ -21,7 +21,7 @@ use haskelujah_ast_chirho::decl_chirho::DeclChirho;
 use haskelujah_ast_chirho::expr_chirho::{ExprChirho, MatchArmChirho};
 use haskelujah_ast_chirho::lit_chirho::LitChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
-use haskelujah_ast_chirho::name_chirho::{CompilerValueChirho, NameChirho};
+use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
 use haskelujah_ast_chirho::promotion_chirho::{
     PromotionScopeChirho, readable_promoted_keys_chirho,
@@ -688,10 +688,16 @@ pub struct InferCtxChirho {
 // Built-in type environment
 // ---------------------------------------------------------------------------
 
-pub fn builtin_value_schemes_chirho() -> HashMap<String, SchemeChirho> {
+/// The actual builtin entries, including their constructor-pattern facts.
+/// Import selection transports these facts only from an admitted builtin.
+pub fn builtin_value_environment_chirho() -> TyEnvChirho {
     let mut env_chirho = TyEnvChirho::new_chirho();
     seed_builtins_chirho(&mut env_chirho);
     env_chirho
+}
+
+pub fn builtin_value_schemes_chirho() -> HashMap<String, SchemeChirho> {
+    builtin_value_environment_chirho()
         .all_bindings_chirho()
         .into_iter()
         .map(|(name_chirho, scheme_chirho)| (name_chirho.clone(), scheme_chirho.clone()))
@@ -843,8 +849,7 @@ pub struct InferenceImportContextChirho<'imports_chirho> {
     pub imported_types_chirho: &'imports_chirho HashMap<String, SchemeChirho>,
     /// Actual import-selected spellings and their complete schemes, consumed once
     /// after broad compatibility seeds. Unknown is a binding, not builtin authority.
-    pub selected_imported_value_schemes_chirho:
-        Vec<(String, SchemeChirho, Option<CompilerValueChirho>)>,
+    pub selected_imported_value_schemes_chirho: Vec<crate::env_chirho::SelectedValueSchemeChirho>,
     pub imported_type_synonyms_chirho: &'imports_chirho HashMap<String, (Vec<String>, TypeChirho)>,
     pub imported_type_families_chirho: &'imports_chirho TypeFamilyEnvChirho,
     pub imported_class_env_chirho: &'imports_chirho ClassEnvChirho,

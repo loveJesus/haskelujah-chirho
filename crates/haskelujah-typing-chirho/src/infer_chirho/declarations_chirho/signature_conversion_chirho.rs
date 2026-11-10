@@ -16,6 +16,28 @@ use crate::ty_chirho::{
 };
 
 impl InferCtxChirho {
+    /// Inferred bindings obey the same effective extension licence as written
+    /// and expanded signatures; a result hole cannot license rank-N syntax.
+    /// workflow: language-features-chirho/rank-n-visible-type-application-chirho
+    pub(super) fn check_inferred_binding_validity_chirho(
+        &mut self,
+        ty_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+    ) {
+        if let Some(license_chirho) = self.type_validity_license_chirho {
+            let validity_chirho = crate::validity_chirho::check_expanded_type_chirho(
+                ty_chirho,
+                license_chirho,
+                self.type_families_chirho.declaration_schemes_chirho(),
+                span_chirho,
+            );
+            for diagnostic_chirho in validity_chirho.diagnostics_chirho() {
+                self.non_deferrable_diagnostics_chirho
+                    .push_chirho(diagnostic_chirho.clone());
+            }
+        }
+    }
+
     /// Convert an AST `TypeChirho` to a `SchemeChirho` (with quantified variables
     /// and constraints extracted).
     pub fn ast_type_to_scheme_chirho(&mut self, ast_ty_chirho: &TypeChirho) -> SchemeChirho {

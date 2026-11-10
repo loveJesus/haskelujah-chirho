@@ -182,6 +182,16 @@ fn same_borrowed_monotype_chirho(
     })
 }
 
+/// The existing borrowed admission walk, without constructing a substitution
+/// or changing the ordinary binding policy. Result holes use it only to retain
+/// the established kind-projection path for their monomorphic values.
+pub(crate) fn is_monotype_bounded_chirho(
+    term_chirho: &TyChirho,
+    charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
+) -> Result<bool, ()> {
+    same_borrowed_monotype_chirho(term_chirho, term_chirho, 0, charge_chirho)
+}
+
 /// An exact, nominal monotype equation. The binding callback supplies actual
 /// Meta authority; it is not inferred from an ID range or the type's spelling.
 /// All pending terms, images and copies share the caller's original budget.

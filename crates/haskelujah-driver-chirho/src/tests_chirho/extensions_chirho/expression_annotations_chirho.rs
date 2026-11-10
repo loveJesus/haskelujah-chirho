@@ -278,3 +278,134 @@ fn aligned_and_explicit_case_blocks_keep_valid_syntax_chirho() {
         frontend_chirho(source_chirho).unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
     }
 }
+
+#[test]
+fn inferred_results_accept_original_qualified_elements_and_ordinary_case_branches_chirho() {
+    for (name_chirho, source_chirho) in [
+        (
+            "T2846.hs",
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../ghc-tests-chirho/typecheck-chirho/should_compile/T2846.hs"
+            )),
+        ),
+        (
+            "T18412.hs",
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../ghc-tests-chirho/typecheck-chirho/should_compile/T18412.hs"
+            )),
+        ),
+    ] {
+        crate::typecheck_source_chirho(
+            source_chirho,
+            &mut haskelujah_span_chirho::SourceMapChirho::new_chirho(),
+            name_chirho,
+        )
+        .unwrap_or_else(|error_chirho| {
+            panic!("GHC accepts original {name_chirho}: {error_chirho}")
+        });
+    }
+}
+
+#[test]
+fn inferred_results_preserve_a_higher_rank_branch_result_chirho() {
+    frontend_chirho(include_str!("kind_repair_fixtures_chirho/impredicative-application-chirho/inferred-results-chirho/InferredResultRuntimeChirho.hs"))
+        .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn inferred_results_do_not_turn_parameters_recursion_or_implications_into_polytypes_chirho() {
+    for (name_chirho, source_chirho) in [
+        (
+            "ordinary parameter",
+            include_str!(
+                "kind_repair_fixtures_chirho/impredicative-application-chirho/inferred-results-chirho/OrdinaryParameterChirho.hs"
+            ),
+        ),
+        (
+            "recursive result",
+            include_str!(
+                "kind_repair_fixtures_chirho/impredicative-application-chirho/inferred-results-chirho/RecursiveResultChirho.hs"
+            ),
+        ),
+        (
+            "existential after ordinary",
+            include_str!(
+                "kind_repair_fixtures_chirho/impredicative-application-chirho/inferred-results-chirho/ExistentialAfterOrdinaryChirho.hs"
+            ),
+        ),
+        (
+            "existential before ordinary",
+            include_str!(
+                "kind_repair_fixtures_chirho/impredicative-application-chirho/inferred-results-chirho/ExistentialBeforeOrdinaryChirho.hs"
+            ),
+        ),
+        (
+            "already equal GADT index",
+            include_str!(
+                "kind_repair_fixtures_chirho/impredicative-application-chirho/inferred-results-chirho/GadtEqualIndexChirho.hs"
+            ),
+        ),
+        (
+            "case eta",
+            include_str!(
+                "kind_repair_fixtures_chirho/impredicative-application-chirho/inferred-results-chirho/CaseEtaChirho.hs"
+            ),
+        ),
+    ] {
+        let error_chirho = frontend_chirho(source_chirho)
+            .err()
+            .unwrap_or_else(|| panic!("{name_chirho} must retain GHC's monotype restriction"));
+        assert!(
+            error_chirho.contains("error[E020"),
+            "{name_chirho}: {error_chirho}"
+        );
+    }
+}
+
+#[test]
+fn inferred_results_do_not_publish_a_later_gadt_alternatives_refinement_chirho() {
+    for source_chirho in [
+        include_str!(
+            "kind_repair_fixtures_chirho/impredicative-application-chirho/inferred-results-chirho/RefinementLeakChirho.hs"
+        ),
+        include_str!(
+            "kind_repair_fixtures_chirho/impredicative-application-chirho/inferred-results-chirho/RefinementRhsLeakChirho.hs"
+        ),
+    ] {
+        let error_chirho = frontend_chirho(source_chirho)
+            .err()
+            .expect("a branch-local equality cannot change the public result");
+        assert!(error_chirho.contains("error[E020"), "{error_chirho}");
+    }
+}
+
+#[test]
+fn inferred_results_preserve_an_outer_result_under_existential_refinement_chirho() {
+    frontend_chirho(include_str!("kind_repair_fixtures_chirho/impredicative-application-chirho/inferred-results-chirho/RefinementEscapeChirho.hs"))
+        .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn inferred_results_keep_user_ordinary_constructor_patterns_polymorphic_chirho() {
+    frontend_chirho(include_str!("kind_repair_fixtures_chirho/impredicative-application-chirho/inferred-results-chirho/OrdinaryConstructorResultChirho.hs"))
+        .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn inferred_results_require_rank_n_permission_at_the_importing_binding_chirho() {
+    let path_chirho = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../ghc-tests-chirho/typecheck-chirho/should_fail/T17213.hs");
+    let error_chirho =
+        crate::check_source_path_chirho(path_chirho, crate::ExecutionModeChirho::BatchChirho)
+            .err()
+            .expect("the importing Haskell2010 module cannot infer a rank-N binding")
+            .to_string();
+    assert!(error_chirho.contains("RankNTypes"), "{error_chirho}");
+
+    frontend_chirho(
+        "{-# LANGUAGE RankNTypes #-}\nmodule InferredRankChirho where\nrankChirho :: (forall aChirho. aChirho -> aChirho) -> Int\nrankChirho _ = 3\ninferredChirho = rankChirho\n",
+    )
+    .unwrap_or_else(|error_chirho| panic!("RankNTypes licenses the inferred type: {error_chirho}"));
+}

@@ -400,8 +400,16 @@ pub(crate) fn run_frontend_under_policy_chirho(
             &module_chirho,
             ifaces_chirho,
         );
-    let builtin_value_schemes_chirho =
-        haskelujah_typing_chirho::infer_chirho::builtin_value_schemes_chirho();
+    let builtin_value_environment_chirho =
+        haskelujah_typing_chirho::infer_chirho::builtin_value_environment_chirho();
+    let builtin_value_schemes_chirho: std::collections::HashMap<
+        String,
+        haskelujah_typing_chirho::SchemeChirho,
+    > = builtin_value_environment_chirho
+        .all_bindings_chirho()
+        .into_iter()
+        .map(|(name_chirho, scheme_chirho)| (name_chirho.clone(), scheme_chirho.clone()))
+        .collect();
     for (builtin_name_chirho, builtin_scheme_chirho) in &builtin_value_schemes_chirho {
         merged_imported_types_chirho
             .entry(builtin_name_chirho.clone())
@@ -545,6 +553,11 @@ pub(crate) fn run_frontend_under_policy_chirho(
                             )
                         })
                         .flatten();
+                    let pattern_implication_chirho = trusted_builtin_seed_chirho
+                        .then(|| {
+                            builtin_value_environment_chirho.pattern_implication_chirho(name_chirho)
+                        })
+                        .flatten();
                     let base_scheme_chirho = builtin_seed_chirho
                         .map(std::borrow::Cow::Owned)
                         .or_else(|| {
@@ -601,21 +614,27 @@ pub(crate) fn run_frontend_under_policy_chirho(
                         // module can pin an unqualified name like `choice` or
                         // `pack` to the wrong specialized scheme in later
                         // modules that explicitly import a different source.
-                        selected_imported_value_schemes_chirho.push((
-                            qualification_chirho.key_chirho(name_chirho)?,
-                            qualification_chirho.scheme_chirho(
-                                &in_scope_seed_scheme_chirho,
-                                trusted_builtin_seed_chirho,
-                            )?,
-                            compiler_value_chirho,
-                        ));
+                        selected_imported_value_schemes_chirho.push(
+                            haskelujah_typing_chirho::env_chirho::SelectedValueSchemeChirho {
+                                name_chirho: qualification_chirho.key_chirho(name_chirho)?,
+                                scheme_chirho: qualification_chirho.scheme_chirho(
+                                    &in_scope_seed_scheme_chirho,
+                                    trusted_builtin_seed_chirho,
+                                )?,
+                                compiler_value_chirho,
+                                pattern_implication_chirho,
+                            },
+                        );
                     }
                     let qualified_name_chirho = format!("{qualifier_chirho}.{name_chirho}");
-                    selected_imported_value_schemes_chirho.push((
-                        qualified_name_chirho,
-                        in_scope_seed_scheme_chirho,
-                        compiler_value_chirho,
-                    ));
+                    selected_imported_value_schemes_chirho.push(
+                        haskelujah_typing_chirho::env_chirho::SelectedValueSchemeChirho {
+                            name_chirho: qualified_name_chirho,
+                            scheme_chirho: in_scope_seed_scheme_chirho,
+                            compiler_value_chirho,
+                            pattern_implication_chirho,
+                        },
+                    );
                 }
             }
         }
@@ -627,7 +646,7 @@ pub(crate) fn run_frontend_under_policy_chirho(
     // This produces only absence, never compiler authority from spelling.
     if !selected_imported_value_schemes_chirho
         .iter()
-        .any(|(name_chirho, _, _)| name_chirho == "$")
+        .any(|entry_chirho| entry_chirho.name_chirho == "$")
     {
         unavailable_values_chirho.insert("$".to_string());
     }

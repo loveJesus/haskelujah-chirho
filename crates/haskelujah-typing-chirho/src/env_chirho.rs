@@ -7,11 +7,36 @@
 //! a scope stack that can be pushed/popped for let bindings and lambdas.
 
 use std::collections::HashMap;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 
 use crate::skolem_chirho::rewrite_skolems_chirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 use haskelujah_ast_chirho::name_chirho::CompilerValueChirho;
+
+/// A recursive assumption belongs to one lexical entry, including through
+/// environment substitutions. A shadowing binder always starts without it.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct RecursiveAssumptionChirho(Arc<AtomicBool>);
+
+impl RecursiveAssumptionChirho {
+    pub(crate) fn was_read_chirho(&self) -> bool {
+        self.0.load(Ordering::Relaxed)
+    }
+}
+
+/// One import-selected entry carries its existing authorities together. An
+/// unknown copy absorbs a fact even if another same-named copy has one.
+#[derive(Clone)]
+pub struct SelectedValueSchemeChirho {
+    pub name_chirho: String,
+    pub scheme_chirho: SchemeChirho,
+    pub compiler_value_chirho: Option<CompilerValueChirho>,
+    pub pattern_implication_chirho: Option<bool>,
+}
 
 /// A lexical entry is either a value or an explicit absence. A masked field
 /// label must stop lookup before an outer Prelude seed can be considered.
@@ -20,6 +45,8 @@ enum EnvEntryChirho {
     ValueChirho {
         scheme_chirho: SchemeChirho,
         compiler_value_chirho: Option<CompilerValueChirho>,
+        recursive_chirho: Option<RecursiveAssumptionChirho>,
+        pattern_implication_chirho: Option<bool>,
     },
     MaskedChirho,
 }
@@ -191,35 +218,112 @@ impl TyEnvChirho {
                 EnvEntryChirho::ValueChirho {
                     scheme_chirho,
                     compiler_value_chirho,
+                    recursive_chirho: None,
+                    pattern_implication_chirho: None,
                 },
             );
         }
+    }
+
+    /// Prebinding is monomorphic only when this exact entry is read before
+    /// its body has been inferred. The token never follows a spelling shadow.
+    pub(crate) fn bind_recursive_assumption_chirho(
+        &mut self,
+        name_chirho: String,
+        scheme_chirho: SchemeChirho,
+    ) -> RecursiveAssumptionChirho {
+        let recursive_chirho = RecursiveAssumptionChirho::default();
+        self.bind_chirho(name_chirho.clone(), scheme_chirho);
+        if let Some(EnvEntryChirho::ValueChirho {
+            recursive_chirho: slot_chirho,
+            ..
+        }) = self
+            .scopes_chirho
+            .last_mut()
+            .and_then(|scope_chirho| scope_chirho.get_mut(&name_chirho))
+        {
+            *slot_chirho = Some(recursive_chirho.clone());
+        }
+        recursive_chirho
+    }
+
+    /// This fact is installed only by a constructor's declaration producer.
+    /// An ordinary value, import without this carrier or shadow has no fact.
+    pub(crate) fn bind_pattern_constructor_chirho(
+        &mut self,
+        name_chirho: String,
+        scheme_chirho: SchemeChirho,
+        implication_chirho: bool,
+    ) {
+        self.bind_chirho(name_chirho.clone(), scheme_chirho);
+        if let Some(EnvEntryChirho::ValueChirho {
+            pattern_implication_chirho,
+            ..
+        }) = self
+            .scopes_chirho
+            .last_mut()
+            .and_then(|scope_chirho| scope_chirho.get_mut(&name_chirho))
+        {
+            *pattern_implication_chirho = Some(implication_chirho);
+        }
+    }
+
+    pub fn pattern_implication_chirho(&self, name_chirho: &str) -> Option<bool> {
+        self.scopes_chirho
+            .iter()
+            .rev()
+            .find_map(|scope_chirho| scope_chirho.get(name_chirho))
+            .and_then(|entry_chirho| match entry_chirho {
+                EnvEntryChirho::ValueChirho {
+                    pattern_implication_chirho,
+                    ..
+                } => *pattern_implication_chirho,
+                EnvEntryChirho::MaskedChirho => None,
+            })
     }
 
     /// Consume the existing import payload once. Equal-name copies retain the
     /// old last-scheme policy, but every copy must agree positively on authority.
     pub(crate) fn bind_selected_imports_chirho(
         &mut self,
-        mut selected_chirho: Vec<(String, SchemeChirho, Option<CompilerValueChirho>)>,
+        mut selected_chirho: Vec<SelectedValueSchemeChirho>,
     ) {
-        selected_chirho.sort_by(|left_chirho, right_chirho| left_chirho.0.cmp(&right_chirho.0));
+        selected_chirho.sort_by(|left_chirho, right_chirho| {
+            left_chirho.name_chirho.cmp(&right_chirho.name_chirho)
+        });
         let mut selected_chirho = selected_chirho.into_iter().peekable();
-        while let Some((name_chirho, mut scheme_chirho, mut compiler_value_chirho)) =
-            selected_chirho.next()
-        {
+        while let Some(mut entry_chirho) = selected_chirho.next() {
             while selected_chirho
                 .peek()
-                .is_some_and(|entry_chirho| entry_chirho.0 == name_chirho)
+                .is_some_and(|next_chirho| next_chirho.name_chirho == entry_chirho.name_chirho)
             {
-                let (_, next_scheme_chirho, next_value_chirho) = selected_chirho
+                let next_chirho = selected_chirho
                     .next()
                     .expect("peeked selected value Chirho");
-                scheme_chirho = next_scheme_chirho;
-                if compiler_value_chirho != next_value_chirho {
-                    compiler_value_chirho = None;
+                entry_chirho.scheme_chirho = next_chirho.scheme_chirho;
+                if entry_chirho.compiler_value_chirho != next_chirho.compiler_value_chirho {
+                    entry_chirho.compiler_value_chirho = None;
+                }
+                if entry_chirho.pattern_implication_chirho != next_chirho.pattern_implication_chirho
+                {
+                    entry_chirho.pattern_implication_chirho = None;
                 }
             }
-            self.bind_selected_value_chirho(name_chirho, scheme_chirho, compiler_value_chirho);
+            self.bind_selected_value_chirho(
+                entry_chirho.name_chirho.clone(),
+                entry_chirho.scheme_chirho,
+                entry_chirho.compiler_value_chirho,
+            );
+            if let Some(EnvEntryChirho::ValueChirho {
+                pattern_implication_chirho,
+                ..
+            }) = self
+                .scopes_chirho
+                .last_mut()
+                .and_then(|scope_chirho| scope_chirho.get_mut(&entry_chirho.name_chirho))
+            {
+                *pattern_implication_chirho = entry_chirho.pattern_implication_chirho;
+            }
         }
     }
 
@@ -255,7 +359,16 @@ impl TyEnvChirho {
         self.scopes_chirho
             .first()
             .and_then(|scope_chirho| scope_chirho.get(name_chirho))
-            .and_then(EnvEntryChirho::scheme_chirho)
+            .and_then(|entry_chirho| {
+                if let EnvEntryChirho::ValueChirho {
+                    recursive_chirho: Some(recursive_chirho),
+                    ..
+                } = entry_chirho
+                {
+                    recursive_chirho.0.store(true, Ordering::Relaxed);
+                }
+                entry_chirho.scheme_chirho()
+            })
     }
 
     /// Look up a name, searching from innermost to outermost scope.
@@ -276,7 +389,14 @@ impl TyEnvChirho {
                     EnvEntryChirho::ValueChirho {
                         scheme_chirho,
                         compiler_value_chirho,
-                    } => Some((scheme_chirho, *compiler_value_chirho)),
+                        recursive_chirho,
+                        ..
+                    } => {
+                        if let Some(recursive_chirho) = recursive_chirho {
+                            recursive_chirho.0.store(true, Ordering::Relaxed);
+                        }
+                        Some((scheme_chirho, *compiler_value_chirho))
+                    }
                     EnvEntryChirho::MaskedChirho => None,
                 };
             }
@@ -442,12 +562,18 @@ mod tests_chirho {
     fn every_selected_copy_must_agree_and_an_unproven_copy_stays_absorbing_chirho() {
         let int_chirho = SchemeChirho::mono_chirho(TyChirho::int_chirho());
         let bool_chirho = SchemeChirho::mono_chirho(TyChirho::bool_chirho());
-        let compiler_chirho = (
-            "$".to_string(),
-            int_chirho.clone(),
-            Some(CompilerValueChirho::ApplyChirho),
-        );
-        let unproven_chirho = ("$".to_string(), int_chirho.clone(), None);
+        let compiler_chirho = SelectedValueSchemeChirho {
+            name_chirho: "$".to_string(),
+            scheme_chirho: int_chirho.clone(),
+            compiler_value_chirho: Some(CompilerValueChirho::ApplyChirho),
+            pattern_implication_chirho: None,
+        };
+        let unproven_chirho = SelectedValueSchemeChirho {
+            name_chirho: "$".to_string(),
+            scheme_chirho: int_chirho.clone(),
+            compiler_value_chirho: None,
+            pattern_implication_chirho: None,
+        };
         for selected_chirho in [
             vec![
                 compiler_chirho.clone(),
@@ -471,12 +597,96 @@ mod tests_chirho {
             Some(CompilerValueChirho::ApplyChirho)
         );
         env_chirho.bind_selected_imports_chirho(vec![
-            ("applyChirho".to_string(), int_chirho, None),
-            ("applyChirho".to_string(), bool_chirho, None),
+            SelectedValueSchemeChirho {
+                name_chirho: "applyChirho".to_string(),
+                scheme_chirho: int_chirho,
+                compiler_value_chirho: None,
+                pattern_implication_chirho: None,
+            },
+            SelectedValueSchemeChirho {
+                name_chirho: "applyChirho".to_string(),
+                scheme_chirho: bool_chirho,
+                compiler_value_chirho: None,
+                pattern_implication_chirho: None,
+            },
         ]);
         assert_eq!(
             env_chirho.lookup_chirho("applyChirho").unwrap().ty_chirho,
             TyChirho::bool_chirho()
+        );
+    }
+
+    #[test]
+    fn recursive_assumptions_follow_the_read_entry_through_substitution_and_shadowing_chirho() {
+        let mut env_chirho = TyEnvChirho::new_chirho();
+        let variable_chirho = TyVarChirho(97);
+        let assumption_chirho = env_chirho.bind_recursive_assumption_chirho(
+            "valueChirho".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::VarChirho(variable_chirho)),
+        );
+        env_chirho.push_scope_chirho();
+        env_chirho.bind_chirho(
+            "valueChirho".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::bool_chirho()),
+        );
+        assert_eq!(
+            env_chirho.lookup_chirho("valueChirho").unwrap().ty_chirho,
+            TyChirho::bool_chirho()
+        );
+        assert!(!assumption_chirho.was_read_chirho());
+        env_chirho.pop_scope_chirho();
+        env_chirho.apply_subst_chirho(&SubstChirho::singleton_chirho(
+            variable_chirho,
+            TyChirho::int_chirho(),
+        ));
+        assert_eq!(
+            env_chirho.lookup_chirho("valueChirho").unwrap().ty_chirho,
+            TyChirho::int_chirho()
+        );
+        assert!(assumption_chirho.was_read_chirho());
+    }
+
+    #[test]
+    fn constructor_pattern_facts_meet_all_selected_copies_and_do_not_survive_a_shadow_chirho() {
+        let mut env_chirho = TyEnvChirho::new_chirho();
+        let ordinary_chirho = SelectedValueSchemeChirho {
+            name_chirho: "ConstructorChirho".to_string(),
+            scheme_chirho: SchemeChirho::mono_chirho(TyChirho::bool_chirho()),
+            compiler_value_chirho: None,
+            pattern_implication_chirho: Some(false),
+        };
+        let unknown_chirho = SelectedValueSchemeChirho {
+            pattern_implication_chirho: None,
+            ..ordinary_chirho.clone()
+        };
+        for selected_chirho in [
+            vec![ordinary_chirho.clone(), unknown_chirho.clone()],
+            vec![unknown_chirho, ordinary_chirho.clone()],
+        ] {
+            env_chirho.bind_selected_imports_chirho(selected_chirho);
+            assert_eq!(
+                env_chirho.pattern_implication_chirho("ConstructorChirho"),
+                None
+            );
+        }
+        env_chirho.bind_selected_imports_chirho(vec![ordinary_chirho]);
+        assert_eq!(
+            env_chirho.pattern_implication_chirho("ConstructorChirho"),
+            Some(false)
+        );
+        env_chirho.push_scope_chirho();
+        env_chirho.bind_chirho(
+            "ConstructorChirho".to_string(),
+            SchemeChirho::mono_chirho(TyChirho::bool_chirho()),
+        );
+        assert_eq!(
+            env_chirho.pattern_implication_chirho("ConstructorChirho"),
+            None
+        );
+        env_chirho.pop_scope_chirho();
+        assert_eq!(
+            env_chirho.pattern_implication_chirho("ConstructorChirho"),
+            Some(false)
         );
     }
 

@@ -589,13 +589,17 @@ impl InferCtxChirho {
                 };
 
                 let result_ty_chirho = self.fresh_var_chirho();
+                let mut inferred_result_chirho =
+                    super::matches_chirho::InferredResultChirho::new_chirho(
+                        self.active_equality_scope_chirho,
+                    );
                 let mut subst_chirho = s1_chirho;
 
                 for alt_chirho in alts_chirho {
                     let type_pattern_scope_mark_chirho = self.type_pattern_alias_undo_chirho.len();
                     self.env_chirho.push_scope_chirho();
                     let pattern_frame_chirho = self.begin_pattern_implication_with_roots_chirho(
-                        [&scrut_ty_chirho, &result_ty_chirho],
+                        std::iter::once(&scrut_ty_chirho).chain(inferred_result_chirho.ty_chirho()),
                         alt_chirho.span_chirho,
                     );
                     if self.has_non_deferrable_failure_chirho() {
@@ -623,30 +627,21 @@ impl InferCtxChirho {
                     };
                     subst_chirho = sr_chirho.compose_chirho(&subst_chirho);
 
-                    // Every alternative must meet the common result under
-                    // its own evidence. A later signature sees only the shared
-                    // result and cannot recover an ignored branch mismatch.
-                    let result_sub_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
-                    match self.unify_normalized_chirho(
-                        &result_sub_chirho,
+                    let result_subst_chirho = self.fill_inferred_result_chirho(
+                        &mut inferred_result_chirho,
                         &alt_ty_chirho,
+                        &subst_chirho,
                         alt_chirho.span_chirho,
-                    ) {
-                        Ok(mut sa_chirho) => {
-                            if self.apply_subst_all_chirho(&mut sa_chirho).is_err() {
-                                return (
-                                    SubstChirho::empty_chirho(),
-                                    Self::terminal_commit_type_chirho(),
-                                );
-                            };
-                            subst_chirho = sa_chirho.compose_chirho(&subst_chirho);
-                        }
-                        Err(error_chirho) => self.report_unify_error_chirho(&error_chirho),
-                    }
+                    );
+                    subst_chirho = result_subst_chirho.compose_chirho(&subst_chirho);
 
                     let solved_chirho = self.end_pattern_implication_chirho(
                         pattern_frame_chirho,
-                        &subst_chirho.apply_ty_chirho(&result_ty_chirho),
+                        &subst_chirho.apply_ty_chirho(
+                            inferred_result_chirho
+                                .ty_chirho()
+                                .unwrap_or(&result_ty_chirho),
+                        ),
                         *span_chirho,
                     );
                     subst_chirho = solved_chirho.compose_chirho(&subst_chirho);
@@ -654,6 +649,9 @@ impl InferCtxChirho {
                     self.env_chirho.pop_scope_chirho();
                 }
 
+                let result_ty_chirho = inferred_result_chirho
+                    .finish_chirho()
+                    .unwrap_or(result_ty_chirho);
                 let final_ty_chirho = subst_chirho.apply_ty_chirho(&result_ty_chirho);
                 (subst_chirho, final_ty_chirho)
             }

@@ -9,6 +9,20 @@ use super::*;
 pub(super) const PATTERN_SIGNATURE_CODE_CHIRHO: u16 = 208;
 
 impl InferCtxChirho {
+    /// Only the exact constructor entry's producer may certify an ordinary
+    /// pattern. Missing import metadata stays monotype-only, even if a
+    /// dropped written context left the scheme with no predicates.
+    fn note_inferred_pattern_implication_chirho(&mut self, con_chirho: &NameChirho) {
+        if self
+            .env_chirho
+            .pattern_implication_chirho(&con_chirho.full_name_chirho())
+            != Some(false)
+        {
+            self.equality_scopes_chirho[self.active_equality_scope_chirho]
+                .monomorphic_result_chirho = true;
+        }
+    }
+
     /// A declaration's pattern signature checks its right-hand side, including annotations
     /// nested below tuples, lists or constructors. The binding scope deliberately excludes
     /// function arguments and lambda patterns (row 675).
@@ -180,6 +194,7 @@ impl InferCtxChirho {
                 span_chirho: pat_span_chirho,
             } => {
                 self.note_constructor_pattern_evidence_chirho(con_chirho);
+                self.note_inferred_pattern_implication_chirho(con_chirho);
                 self.report_record_pattern_fields_chirho(con_chirho, fields_chirho);
                 let mut subst_chirho = SubstChirho::empty_chirho();
                 let mut field_type_map_chirho = HashMap::new();
@@ -444,6 +459,7 @@ impl InferCtxChirho {
         span_chirho: SpanChirho,
     ) -> SubstChirho {
         self.note_constructor_pattern_evidence_chirho(con_chirho);
+        self.note_inferred_pattern_implication_chirho(con_chirho);
         let scheme_chirho = self
             .lookup_value_scheme_with_qualified_suffix_fallback_chirho(
                 &con_chirho.full_name_chirho(),

@@ -455,7 +455,10 @@ impl InferCtxChirho {
                 }
             }
         }
-        self.env_chirho
-            .bind_chirho(name_chirho.text_chirho().to_string(), scheme_chirho);
+        self.env_chirho.bind_pattern_constructor_chirho(
+            name_chirho.text_chirho().to_string(),
+            scheme_chirho,
+            true,
+        );
     }
 }
