@@ -19,12 +19,14 @@ fn make_images_chirho(entries_chirho: &[(&str, Option<TyChirho>)]) -> SubstChirh
     images_chirho
 }
 
+type KindProjectionChirho = (Result<Option<TyChirho>, ()>, Vec<(TyChirho, TyChirho)>);
+
 fn project_chirho(
     term_chirho: &TyChirho,
     images_chirho: Option<&SubstChirho>,
     substitution_chirho: &SubstChirho,
     allowance_chirho: usize,
-) -> (Result<Option<TyChirho>, ()>, Vec<(TyChirho, TyChirho)>) {
+) -> KindProjectionChirho {
     let state_chirho = ElaborationStateChirho::new_chirho().unwrap();
     let registry_chirho = TypeFamilyEnvChirho::default();
     let mut equations_chirho = Vec::new();
