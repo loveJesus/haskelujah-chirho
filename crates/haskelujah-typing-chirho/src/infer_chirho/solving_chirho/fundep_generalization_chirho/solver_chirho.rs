@@ -263,12 +263,22 @@ impl FundepSolveChirho<'_> {
         pending_chirho.push((left_kind_chirho, right_kind_chirho));
         let mut pending_chirho: Vec<_> = pending_chirho
             .into_iter()
-            .map(|(left_chirho, right_chirho)| (left_chirho, right_chirho, true))
+            .map(|(left_chirho, right_chirho)| (left_chirho, right_chirho, true, false))
             .collect();
-        pending_chirho.push((left_chirho, right_chirho, live_chirho));
-        while let Some((left_chirho, right_chirho, equation_live_chirho)) = pending_chirho.pop() {
-            let left_chirho = self.normalize_chirho(&left_chirho, candidate_chirho)?;
-            let right_chirho = self.normalize_chirho(&right_chirho, candidate_chirho)?;
+        // The main pair is already normalized and kind-checked above. It is
+        // popped first, before any candidate binding can change its image.
+        pending_chirho.push((left_chirho, right_chirho, live_chirho, true));
+        while let Some((left_chirho, right_chirho, equation_live_chirho, prepared_chirho)) =
+            pending_chirho.pop()
+        {
+            let (left_chirho, right_chirho) = if prepared_chirho {
+                (left_chirho, right_chirho)
+            } else {
+                (
+                    self.normalize_chirho(&left_chirho, candidate_chirho)?,
+                    self.normalize_chirho(&right_chirho, candidate_chirho)?,
+                )
+            };
             let Some(part_chirho) = self.raw_equation_chirho(
                 &left_chirho,
                 &right_chirho,
@@ -294,6 +304,7 @@ impl FundepSolveChirho<'_> {
                         TyChirho::VarChirho(*variable_chirho),
                         image_chirho,
                         equation_live_chirho,
+                        false,
                     ));
                     continue;
                 }
@@ -328,9 +339,11 @@ impl FundepSolveChirho<'_> {
                 pending_chirho.extend(
                     kind_equations_chirho
                         .into_iter()
-                        .map(|(left_chirho, right_chirho)| (left_chirho, right_chirho, true)),
+                        .map(|(left_chirho, right_chirho)| {
+                            (left_chirho, right_chirho, true, false)
+                        }),
                 );
-                pending_chirho.push((expected_chirho, actual_chirho, true));
+                pending_chirho.push((expected_chirho, actual_chirho, true, false));
                 candidate_chirho
                     .substitution_chirho
                     .insert_chirho(*variable_chirho, image_chirho);
@@ -417,6 +430,7 @@ impl FundepSolveChirho<'_> {
         .ok_or(())?;
         let mut matched_chirho = false;
         let mut used_chirho = HashSet::new();
+        let mut checked_positions_chirho = HashSet::new();
         // One FD may make another determinant known. Retry only unapplied
         // groups; every successful group contributes to the SAME candidate.
         for _round_chirho in 0..=groups_chirho.len() {
@@ -466,6 +480,13 @@ impl FundepSolveChirho<'_> {
                     }
                 }
                 *candidate_chirho = trial_chirho;
+                for position_chirho in &group_chirho.positions_chirho {
+                    charge_chirho(&mut self.budget_chirho, 1, 0).ok_or(())?;
+                    if !checked_positions_chirho.contains(position_chirho) {
+                        charge_chirho(&mut self.budget_chirho, 1, 1).ok_or(())?;
+                        checked_positions_chirho.insert(*position_chirho);
+                    }
+                }
                 used_chirho.insert(index_chirho);
                 matched_chirho = true;
             }
@@ -476,14 +497,23 @@ impl FundepSolveChirho<'_> {
         if !matched_chirho {
             return Ok(false);
         }
-        for (pattern_chirho, target_chirho) in
-            std::iter::once((&instance_chirho.head_ty_chirho, &wanted_chirho.ty_chirho)).chain(
-                instance_chirho
-                    .extra_head_tys_chirho
-                    .iter()
-                    .zip(&wanted_chirho.extra_tys_chirho),
-            )
+        // Successful groups already checked both types and kinds under the same
+        // monotone candidate. Recheck only positions no successful group covered;
+        // an unrelated head parameter must still match before any tree can close.
+        for (position_chirho, (pattern_chirho, target_chirho)) in
+            std::iter::once((&instance_chirho.head_ty_chirho, &wanted_chirho.ty_chirho))
+                .chain(
+                    instance_chirho
+                        .extra_head_tys_chirho
+                        .iter()
+                        .zip(&wanted_chirho.extra_tys_chirho),
+                )
+                .enumerate()
         {
+            charge_chirho(&mut self.budget_chirho, 1, 0).ok_or(())?;
+            if checked_positions_chirho.contains(&position_chirho) {
+                continue;
+            }
             if !self.equation_chirho(pattern_chirho, target_chirho, candidate_chirho, false)? {
                 return Ok(false);
             }

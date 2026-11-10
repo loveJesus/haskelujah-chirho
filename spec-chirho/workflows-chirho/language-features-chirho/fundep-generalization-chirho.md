@@ -276,3 +276,39 @@ flowchart TD
 ```
 
 This storage optimization changes no resource ceiling, kind validation, instance selection or solver publication rule. The actual original tc125.hs profile is the resource acceptance gate; library tests alone cannot establish that it now completes.
+
+
+## Compiler tuple declaration handoff Chirho
+
+Module predeclaration publishes the supported compiler tuple telescopes (arities 2 through 62) through the existing charged compiler-header producer, alongside unit, list and function declarations. Sugared type tuples and tuple-valued expressions therefore carry the same compiler identity and Required Type parameters as prefix tuple constructors. This is bounded per-module catalogue work; it creates no new spelling authority and changes no resource ceiling.
+
+```mermaid
+flowchart TD
+    module_headers_chirho[Module predeclaration] --> compiler_tuple_headers_chirho[Existing compiler-header publisher for supported tuple identities]
+    compiler_tuple_headers_chirho --> tuple_catalogue_chirho[Checked canonical declaration telescopes]
+    tuple_catalogue_chirho --> checked_tuple_kind_chirho[Existing intrinsic monotype kind check]
+    checked_tuple_kind_chirho --> checked_fd_context_chirho[Existing FD matching and complete context closure]
+    checked_tuple_kind_chirho -->|absent or invalid proof| unchanged_decline_chirho[Decline without a default kind]
+```
+
+The kind consumer, solver, instance transaction, unknown-identity refusal and ambiguity policy remain unchanged. The original tc177/tc180 frontend cases are the semantic regression gates; original tc125 must still complete under the unchanged profile. A value-only tuple witness is preservation coverage, not an asserted old semantic failure.
+
+
+### Reuse checked equations and kind dependencies Chirho
+
+Each declaration-owned FD equation group carries its visible argument positions. A matches call records those positions only after the complete determinant and consequence group succeeds on the same local candidate. The head pass still checks every uncovered position with improvement disabled; failed groups never confer coverage. The no-FD group checks every argument. Coverage ends with that one wanted/instance attempt.
+
+The main equation owns its normalized input pair before kind preparation. It is processed first, while the candidate is unchanged, so the work item moves those prepared images instead of normalizing them again. New kind equations and later work still resolve against the updated candidate.
+
+Checked telescope kinds also determine which prefix images can be read. Every actual argument is kind-checked, while a full argument copy is retained only when a binder variable occurs in a telescope kind or the result kind. This removes unused size-times-depth copies for ordinary Type-kinded constructors, and retains hidden-kind arguments for dependent telescopes such as Proxy. Identical sealed Type/Constraint universes discharge reflexively with comparison work charged; arbitrary names, variables, families and unlike universes still take the existing equation path. No resource ceiling, loan policy, refund, class proof or failure-publication rule changes.
+
+```mermaid
+flowchart TD
+    fd_group_chirho[Identity-owned FD equation group] --> successful_group_chirho[All determinants and consequences checked on one candidate]
+    successful_group_chirho --> covered_arguments_chirho[Record only that group's visible positions]
+    covered_arguments_chirho --> head_remainder_chirho[Match every uncovered head position without improvement]
+    telescope_chirho[Checked telescope kinds] --> dependencies_chirho[Charged free-variable dependency walk]
+    dependencies_chirho --> argument_checks_chirho[Kind-check every argument]
+    argument_checks_chirho -->|binder used by a kind| retained_prefix_chirho[Retain the charged argument image]
+    argument_checks_chirho -->|binder unused by kinds| no_prefix_copy_chirho[No argument image to materialize]
+```

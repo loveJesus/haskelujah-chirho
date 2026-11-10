@@ -986,3 +986,6 @@ fn public_family_images_reenter_the_same_checked_candidate_chirho() {
         assert!(context_chirho.given_preds_chirho.is_empty());
     }
 }
+
+#[path = "head_coverage_tests_chirho.rs"]
+mod head_coverage_tests_chirho;

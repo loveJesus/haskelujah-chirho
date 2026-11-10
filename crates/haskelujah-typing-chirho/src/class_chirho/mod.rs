@@ -42,6 +42,8 @@ pub use views_chirho::{
 /// Determinants and consequences borrow the same opened instance and wanted.
 /// An equation is a request to check, never a completed substitution.
 pub(crate) struct FundepEquationsChirho<'terms_chirho> {
+    /// Visible argument positions justified only when this whole group succeeds.
+    pub positions_chirho: Vec<usize>,
     pub hidden_kinds_chirho: Vec<(&'terms_chirho TyChirho, &'terms_chirho TyChirho)>,
     pub determinants_chirho: Vec<(&'terms_chirho TyChirho, &'terms_chirho TyChirho)>,
     pub consequences_chirho: Vec<(&'terms_chirho TyChirho, &'terms_chirho TyChirho)>,
@@ -139,7 +141,9 @@ impl ClassEnvChirho {
             .collect();
         let mut groups_chirho = Vec::new();
         if class_chirho.fundeps_chirho.is_empty() {
+            charge_chirho(argument_count_chirho, argument_count_chirho).ok_or(())?;
             groups_chirho.push(FundepEquationsChirho {
+                positions_chirho: (0..argument_count_chirho).collect(),
                 hidden_kinds_chirho: kinds_chirho,
                 determinants_chirho: all_chirho,
                 consequences_chirho: Vec::new(),
@@ -151,6 +155,7 @@ impl ClassEnvChirho {
                     from_chirho
                         .len()
                         .checked_add(to_chirho.len())
+                        .and_then(|size_chirho| size_chirho.checked_mul(2))
                         .and_then(|size_chirho| size_chirho.checked_add(kinds_chirho.len()))
                         .ok_or(())?,
                 )
@@ -173,6 +178,7 @@ impl ClassEnvChirho {
                     .map(|index_chirho| all_chirho[*index_chirho])
                     .collect();
                 groups_chirho.push(FundepEquationsChirho {
+                    positions_chirho: from_chirho.iter().chain(to_chirho).copied().collect(),
                     hidden_kinds_chirho: kinds_chirho.clone(),
                     determinants_chirho,
                     consequences_chirho,

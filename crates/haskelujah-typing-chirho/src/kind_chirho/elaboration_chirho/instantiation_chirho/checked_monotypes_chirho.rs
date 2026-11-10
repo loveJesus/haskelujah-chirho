@@ -6,6 +6,9 @@
 
 use crate::infer_chirho::TypeFamilyEnvChirho;
 use crate::kind_chirho::elaboration_chirho::ElaborationStateChirho;
+use crate::kind_chirho::elaboration_chirho::state_chirho::{
+    CONSTRAINT_UNIVERSE_KEY_CHIRHO, TYPE_UNIVERSE_KEY_CHIRHO,
+};
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::declarations_chirho::TelescopeVisibilityChirho;
 use crate::ty_chirho::{TyChirho, TyVarChirho};
@@ -64,6 +67,30 @@ where
         expected_chirho: TyChirho,
         actual_chirho: TyChirho,
     ) -> Result<(), ()> {
+        // These two sealed universes are already canonical checked kinds.
+        // Reflexivity creates no constraint, binding or copied result image.
+        // Arbitrary names, variables and family kinds keep the pending path.
+        // workflow: language-features-chirho/fundep-generalization-chirho
+        if let (TyChirho::ConChirho(left_chirho), TyChirho::ConChirho(right_chirho)) =
+            (&expected_chirho, &actual_chirho)
+        {
+            (self.charge_chirho)(
+                left_chirho
+                    .len()
+                    .checked_add(right_chirho.len())
+                    .ok_or(())?,
+                0,
+            )
+            .ok_or(())?;
+            if left_chirho == right_chirho
+                && matches!(
+                    left_chirho.as_str(),
+                    TYPE_UNIVERSE_KEY_CHIRHO | CONSTRAINT_UNIVERSE_KEY_CHIRHO
+                )
+            {
+                return Ok(());
+            }
+        }
         (self.charge_chirho)(1, 1).ok_or(())?;
         self.equations_chirho.push((expected_chirho, actual_chirho));
         Ok(())
@@ -224,6 +251,27 @@ where
             scheme_chirho.binders_chirho.len(),
         )
         .ok_or(())?;
+        // Prefix images are read only by telescope kinds. Closed Type-kinded
+        // binders must still validate every argument, but need no copied type
+        // image when no later kind or result can reference that binder.
+        let mut kind_dependencies_chirho = HashSet::new();
+        for kind_chirho in scheme_chirho
+            .binders_chirho
+            .iter()
+            .map(|binder_chirho| &binder_chirho.kind_chirho)
+            .chain(std::iter::once(&scheme_chirho.result_kind_chirho))
+        {
+            for variable_chirho in
+                SubstChirho::free_variables_bounded_chirho(kind_chirho, self.charge_chirho)
+                    .ok_or(())?
+            {
+                (self.charge_chirho)(1, 0).ok_or(())?;
+                if !kind_dependencies_chirho.contains(&variable_chirho) {
+                    (self.charge_chirho)(1, 1).ok_or(())?;
+                    kind_dependencies_chirho.insert(variable_chirho);
+                }
+            }
+        }
         let mut unique_chirho = HashSet::new();
         let mut parameters_chirho = SubstChirho::empty_chirho();
         for (binder_chirho, argument_chirho) in
@@ -242,10 +290,13 @@ where
                 return Ok(None);
             };
             self.equation_chirho(expected_chirho, actual_chirho)?;
-            let argument_chirho = SubstChirho::empty_chirho()
-                .apply_bounded_chirho(argument_chirho, self.charge_chirho)
-                .ok_or(())?;
-            parameters_chirho.insert_chirho(binder_chirho.variable_chirho, argument_chirho);
+            (self.charge_chirho)(1, 0).ok_or(())?;
+            if kind_dependencies_chirho.contains(&binder_chirho.variable_chirho) {
+                let argument_chirho = SubstChirho::empty_chirho()
+                    .apply_bounded_chirho(argument_chirho, self.charge_chirho)
+                    .ok_or(())?;
+                parameters_chirho.insert_chirho(binder_chirho.variable_chirho, argument_chirho);
+            }
         }
         let mut result_chirho = parameters_chirho
             .apply_bounded_chirho(&scheme_chirho.result_kind_chirho, self.charge_chirho)

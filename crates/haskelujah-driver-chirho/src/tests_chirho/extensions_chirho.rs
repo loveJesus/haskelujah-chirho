@@ -17,6 +17,8 @@ mod deriving_policy_chirho;
 #[path = "extensions_chirho/policy_chirho/deriving_strategies_chirho.rs"]
 mod deriving_strategies_chirho;
 mod expression_annotations_chirho;
+#[path = "extensions_chirho/policy_chirho/fundep_context_closure_chirho.rs"]
+mod fundep_context_closure_chirho;
 #[path = "extensions_chirho/policy_chirho/gnd_coercion_chirho.rs"]
 mod gnd_coercion_chirho;
 mod impredicative_application_chirho;

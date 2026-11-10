@@ -284,6 +284,16 @@ impl TypeElaboratorChirho<'_> {
         ] {
             self.seed_compiler_header_chirho(constructor_chirho, span_chirho)?;
         }
+        // Tuple syntax and tuple-valued expressions need the same checked compiler
+        // declaration as a prefix constructor. Publish every supported intrinsic
+        // arity here, including those with no written type-constructor occurrence.
+        // workflow: language-features-chirho/fundep-generalization-chirho
+        for arity_chirho in 2..=62 {
+            self.seed_compiler_header_chirho(
+                CompilerTypeConstructorChirho::TupleChirho(arity_chirho),
+                span_chirho,
+            )?;
+        }
         // Only actual typed compiler data producers and the naming-proven class
         // supplier scope seed these schemes. No unfamiliar spelling gains one.
         for (_, proof_chirho) in self.type_scope_chirho.iter_chirho() {

@@ -4,7 +4,7 @@ use super::*;
 use haskelujah_ast_chirho::name_chirho::CompilerRepresentationChirho;
 
 fn with_elaborator_chirho(action_chirho: impl FnOnce(&mut TypeElaboratorChirho<'_>)) {
-    let module_chirho = ModuleChirho {
+    let mut module_chirho = ModuleChirho {
         name_chirho: NameChirho::RawChirho(RawNameChirho::unqualified_chirho(
             "CheckingBoundaryChirho",
             SpanChirho::DUMMY_CHIRHO,
@@ -37,6 +37,9 @@ fn with_elaborator_chirho(action_chirho: impl FnOnce(&mut TypeElaboratorChirho<'
         },
     )
     .unwrap();
+    elaborator_chirho
+        .predeclare_chirho(&mut module_chirho)
+        .expect("the module's real header producer runs before its bodies");
     action_chirho(&mut elaborator_chirho);
 }
 
@@ -126,5 +129,112 @@ fn kind_level_and_original_resource_failure_survive_a_failed_check_chirho() {
                 .unwrap_err(),
             error_chirho
         );
+    });
+}
+
+#[test]
+fn structural_tuple_syntax_carries_its_checked_compiler_telescope_chirho() {
+    use haskelujah_ast_chirho::name_chirho::CompilerTypeConstructorChirho;
+
+    for arity_chirho in [0, 2, 3] {
+        with_elaborator_chirho(|elaborator_chirho| {
+            let span_chirho = SpanChirho::DUMMY_CHIRHO;
+            let mut syntax_chirho = TypeChirho::TupleChirho {
+                elements_chirho: (0..arity_chirho)
+                    .map(|_| TypeChirho::WildcardChirho { span_chirho })
+                    .collect(),
+                span_chirho,
+            };
+            let checked_chirho = elaborator_chirho
+                .infer_type_chirho(&mut syntax_chirho)
+                .expect("valid structural tuple syntax elaborates");
+            let mut equations_chirho = Vec::new();
+            let kind_chirho =
+                crate::kind_chirho::elaboration_chirho::check_monomorphic_kind_chirho(
+                    &elaborator_chirho.registry_chirho,
+                    elaborator_chirho.state_chirho.owner_chirho.unwrap(),
+                    &checked_chirho.term_chirho,
+                    &SubstChirho::empty_chirho(),
+                    &|variable_chirho| {
+                        elaborator_chirho
+                            .state_chirho
+                            .variable_kinds_chirho
+                            .get(&variable_chirho)
+                            .and_then(|record_chirho| record_chirho.kind_chirho.as_deref())
+                    },
+                    &mut equations_chirho,
+                    &mut |_, _| Some(()),
+                )
+                .unwrap();
+            assert_eq!(
+                kind_chirho,
+                Some(ElaborationStateChirho::type_universe_chirho())
+            );
+            let identity_chirho = if arity_chirho == 0 {
+                CompilerTypeConstructorChirho::UnitChirho
+            } else {
+                CompilerTypeConstructorChirho::TupleChirho(arity_chirho)
+            };
+            let declaration_chirho = elaborator_chirho
+                .registry_chirho
+                .declaration_schemes_chirho()
+                .get_chirho(identity_chirho.name_chirho())
+                .expect("the syntax's checked producer publishes its own declaration");
+            assert_eq!(
+                declaration_chirho.declaration_chirho,
+                Some(TypeConstructorDeclarationChirho::compiler_data_chirho(
+                    identity_chirho
+                ))
+            );
+        });
+    }
+}
+
+#[test]
+fn dependent_telescope_arguments_keep_their_checked_prefix_images_chirho() {
+    with_elaborator_chirho(|elaborator_chirho| {
+        for (kind_argument_chirho, expected_chirho) in [
+            (ElaborationStateChirho::type_universe_chirho(), true),
+            (TyChirho::bool_chirho(), false),
+            (ElaborationStateChirho::constraint_universe_chirho(), false),
+        ] {
+            let term_chirho = TyChirho::AppChirho(
+                Box::new(TyChirho::AppChirho(
+                    Box::new(TyChirho::ConChirho("Proxy".into())),
+                    Box::new(kind_argument_chirho),
+                )),
+                Box::new(TyChirho::bool_chirho()),
+            );
+            let mut equations_chirho = Vec::new();
+            let result_chirho =
+                crate::kind_chirho::elaboration_chirho::check_monomorphic_kind_chirho(
+                    &elaborator_chirho.registry_chirho,
+                    elaborator_chirho.state_chirho.owner_chirho.unwrap(),
+                    &term_chirho,
+                    &SubstChirho::empty_chirho(),
+                    &|_| None,
+                    &mut equations_chirho,
+                    &mut |_, _| Some(()),
+                )
+                .unwrap();
+            assert_eq!(
+                result_chirho,
+                Some(ElaborationStateChirho::type_universe_chirho())
+            );
+            let consistent_chirho = equations_chirho.iter().all(|(left_chirho, right_chirho)| {
+                crate::unify_chirho::unify_monomorphic_bounded_chirho(
+                    left_chirho,
+                    right_chirho,
+                    &|_| false,
+                    &mut |_, _| Some(()),
+                )
+                .unwrap()
+                .is_some()
+            });
+            assert_eq!(
+                consistent_chirho, expected_chirho,
+                "the hidden kind controls the visible argument; no producer-local variable becomes bindable"
+            );
+        }
     });
 }
