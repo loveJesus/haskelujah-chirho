@@ -31,6 +31,13 @@ flowchart TD
     scheme_chirho --> equation_chirho[Consume equation patterns and retain residual function type]
     equation_chirho --> expected_chirho[Check RHS against residual expected type]
     expected_chirho --> application_chirho[Constrain application result before checking argument]
+    expected_chirho --> sigma_chirho{Expected invisible forall}
+    sigma_chirho -->|ordinary expression| rigid_sigma_chirho[Open checked binders and retain every given]
+    sigma_chirho -->|explicit type abstraction| explicit_sigma_chirho[Consume one checked rigid binder and scope its written name]
+    explicit_sigma_chirho --> rigid_sigma_chirho
+    rigid_sigma_chirho --> opened_chirho[Check expression against the opened rho]
+    opened_chirho --> escape_sigma_chirho[Validate escape before restoring rigid signature scope]
+    escape_sigma_chirho --> public_sigma_chirho[Publish only the safe solution and original expected sigma]
     application_chirho --> family_chirho[Reduce family-dependent argument type]
     expected_chirho --> branch_chirho{Polymorphic expected result}
     branch_chirho -->|if| if_chirho[Check both branches against expected type]
@@ -86,11 +93,29 @@ flowchart TD
 - Polymorphic expected types flow through `if` branches and scoped `case` alternatives before
   branch lambdas are inferred; each use of a rank-N lambda parameter is freshly instantiated.
 - Monomorphic and GADT branch inference keeps its established lenient merge path.
+- An expected invisible forall uses the same checked prefix and rigid-signature operation
+  for lists, annotations, lambdas and branches as prepared variable/application spines.
+  Predicates and equality givens move into that scope; they are never discarded to force
+  an ordinary-meta equality. Skolemized branch results continue through bidirectional
+  checking, so an invisible type abstraction cannot bind inside an already opened branch.
+- Parentheses preserve the explicit type-abstraction route. Each written type binder consumes
+  one checked quantifier record, scopes its name over the body and checks escape before its
+  rigid image is restored. An abstraction with no expected forall is a structural refusal.
 - Existing top-level scheme-variable instantiation remains the first path.
 - Unsupported or excessive type arguments remain diagnostics/fallbacks rather than silently
   changing an unrelated monomorphic type.
 
 ## Current boundary
+
+- Unit736's shared sigma operation retains the caller's prefix-copy allowance. The existing
+  rigid-signature capture/skolemization operations still use independent bounded allowances,
+  not the elaboration owner's aggregate loan. Aggregate lending/settlement remains an explicit
+  resource residual; this change neither raises those bounds nor claims aggregate accounting.
+- A qualified constructor field's frontend acceptance does not prove its runtime dictionaries.
+  The new unchanged runtime companion is currently RED at the interpreter: missing STG binding
+  `<`. Expression-level givens need a scope identity distinct from an enclosing binding's
+  `$own[:i]`, dictionary abstraction at the producer and ordered evidence application at field
+  references. LLVM and Cranelift are not reached by that RED. The Core handoff remains open.
 
 - Type fixities come from current-module top-level declarations and the existing
   built-in/default table, not imported custom fixity metadata. Diagnostics for

@@ -17,6 +17,30 @@ use haskelujah_span_chirho::{FileIdChirho, SourceMapChirho};
 
 const RECORD_SOURCE_CHIRHO: &str = "module FieldsChirho where\ndata ChoiceChirho = FirstChirho { firstFieldChirho :: Bool, sharedFieldChirho :: Int } | SecondChirho { secondFieldChirho :: Int } | EmptyChirho\nnewtype WrapperChirho = WrapperChirho { wrappedFieldChirho :: Bool }\nordinaryChirho :: Bool\nordinaryChirho = True\n";
 
+#[test]
+fn qualified_constructor_arguments_keep_their_runtime_evidence_everywhere_chirho() {
+    super::assert_prints_everywhere_chirho(
+        "QualifiedConstructorArgumentChirho.hs",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/QualifiedConstructorArgumentChirho.hs"
+        )),
+        "True\nTrue\nTrue\nTrue\nFalse\n",
+    );
+}
+
+#[test]
+fn qualified_constructor_arguments_cannot_borrow_an_enclosing_dictionary_chirho() {
+    super::assert_prints_everywhere_chirho(
+        "AmbientSigmaDictionaryChirho.hs",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/AmbientSigmaDictionaryChirho.hs"
+        )),
+        "(True,True)\n",
+    );
+}
+
 fn source_iface_chirho(
     source_chirho: &str,
     imports_chirho: &[ModuleIfaceChirho],

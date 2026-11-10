@@ -5,8 +5,9 @@
 
 use super::InferCtxChirho;
 use super::build_infix_app_expr_chirho;
+use super::equality_normalization_chirho::EqualityBudgetChirho;
 use crate::subst_chirho::SubstChirho;
-use crate::ty_chirho::TyChirho;
+use crate::ty_chirho::{SchemeChirho, TyChirho};
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
@@ -104,6 +105,35 @@ impl InferCtxChirho {
         {
             return result_chirho;
         }
+        // A list, annotation, branch or lambda needs the same universal check
+        // as a prepared variable/application. Explicit type abstractions consume
+        // one written binder below, and parentheses preserve that route.
+        // workflow: language-features-chirho/rank-n-visible-type-application-chirho
+        if matches!(normalized_expected_chirho, TyChirho::ForallChirho { .. })
+            && !matches!(
+                expr_chirho,
+                ExprChirho::TypeLamChirho { .. } | ExprChirho::ParenChirho { .. }
+            )
+        {
+            let mut budget_chirho = EqualityBudgetChirho::new_chirho();
+            return self
+                .check_expected_sigma_chirho(
+                    &normalized_expected_chirho,
+                    span_chirho,
+                    &mut budget_chirho,
+                    |context_chirho, opened_chirho, _budget_chirho| {
+                        Some(context_chirho.infer_expr_against_expected_chirho(
+                            expr_chirho,
+                            opened_chirho,
+                            span_chirho,
+                        ))
+                    },
+                )
+                .unwrap_or_else(|| {
+                    self.type_normalization_exhausted_chirho.set(true);
+                    (SubstChirho::empty_chirho(), expected_ty_chirho.clone())
+                });
+        }
         match expr_chirho {
             ExprChirho::ParenChirho { inner_chirho, .. } => self
                 .infer_expr_against_expected_chirho(inner_chirho, expected_ty_chirho, span_chirho),
@@ -140,7 +170,16 @@ impl InferCtxChirho {
                     body_chirho: forall_body_chirho,
                 } = &normalized_expected_chirho
                 else {
-                    return self.infer_expr_chirho(expr_chirho);
+                    self.non_deferrable_diagnostics_chirho.push_chirho(
+                        haskelujah_diagnostics_chirho::DiagnosticChirho::error_with_code_chirho(
+                            haskelujah_diagnostics_chirho::ErrorCodeChirho::error_chirho(
+                                crate::infer_chirho::TYPE_MISMATCH_CODE_CHIRHO,
+                            ),
+                            "an invisible type abstraction requires an expected forall",
+                            span_chirho,
+                        ),
+                    );
+                    return (SubstChirho::empty_chirho(), expected_ty_chirho.clone());
                 };
                 let Some((first_var_chirho, remaining_vars_chirho)) = vars_chirho.split_first()
                 else {
@@ -155,28 +194,45 @@ impl InferCtxChirho {
                         body_chirho: forall_body_chirho.clone(),
                     }
                 };
-                let binder_text_chirho = binder_chirho.text_chirho().to_string();
-                let previous_chirho = self
-                    .scoped_tyvars_chirho
-                    .insert(binder_text_chirho.clone(), *first_var_chirho);
-                let (subst_chirho, _) = self.infer_expr_against_expected_chirho(
-                    body_chirho,
-                    &expected_body_chirho,
+                let ((subst_chirho, _), public_chirho) = self.with_rigid_signature_chirho(
+                    &SchemeChirho {
+                        vars_chirho: vars_chirho.slice_chirho(0..1),
+                        preds_chirho: Vec::new(),
+                        ty_chirho: expected_body_chirho,
+                    },
                     span_chirho,
+                    |context_chirho, opened_chirho| {
+                        let binder_text_chirho = binder_chirho.text_chirho().to_string();
+                        let previous_chirho = context_chirho
+                            .scoped_tyvars_chirho
+                            .insert(binder_text_chirho.clone(), *first_var_chirho);
+                        let checked_chirho = context_chirho.infer_expr_against_expected_chirho(
+                            body_chirho,
+                            opened_chirho,
+                            span_chirho,
+                        );
+                        if let Some(previous_chirho) = previous_chirho {
+                            context_chirho
+                                .scoped_tyvars_chirho
+                                .insert(binder_text_chirho, previous_chirho);
+                        } else {
+                            context_chirho
+                                .scoped_tyvars_chirho
+                                .remove(&binder_text_chirho);
+                        }
+                        checked_chirho
+                    },
                 );
-                if let Some(previous_chirho) = previous_chirho {
-                    self.scoped_tyvars_chirho
-                        .insert(binder_text_chirho, previous_chirho);
-                } else {
-                    self.scoped_tyvars_chirho.remove(&binder_text_chirho);
-                }
+                let subst_chirho =
+                    self.publish_signature_solution_chirho(subst_chirho, public_chirho);
                 let final_ty_chirho = subst_chirho.apply_ty_chirho(&normalized_expected_chirho);
                 (subst_chirho, final_ty_chirho)
             }
             // As for `if`: polymorphic arm results need bidirectional checking.
             // workflow: language-features-chirho/rank-n-visible-type-application-chirho
             ExprChirho::MultiWayIfChirho { arms_chirho, .. }
-                if Self::contains_polymorphic_component_chirho(expected_ty_chirho) =>
+                if Self::contains_polymorphic_component_chirho(expected_ty_chirho)
+                    || self.type_contains_skolem_chirho(expected_ty_chirho) =>
             {
                 self.infer_multiway_if_chirho(arms_chirho, Some(expected_ty_chirho))
             }
@@ -185,14 +241,17 @@ impl InferCtxChirho {
                 then_chirho,
                 else_chirho,
                 span_chirho: if_span_chirho,
-            } if Self::contains_polymorphic_component_chirho(expected_ty_chirho) => self
-                .check_if_against_expected_chirho(
+            } if Self::contains_polymorphic_component_chirho(expected_ty_chirho)
+                || self.type_contains_skolem_chirho(expected_ty_chirho) =>
+            {
+                self.check_if_against_expected_chirho(
                     cond_chirho,
                     then_chirho,
                     else_chirho,
                     *if_span_chirho,
                     expected_ty_chirho,
-                ),
+                )
+            }
             ExprChirho::CaseChirho {
                 scrutinee_chirho,
                 alts_chirho,

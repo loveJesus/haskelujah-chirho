@@ -5,6 +5,80 @@
 use super::ordinary_elaboration_chirho::frontend_chirho;
 
 #[test]
+fn qualified_constructor_arguments_accept_original_tc092_chirho() {
+    haskelujah_driver_original_tc092_chirho()
+        .unwrap_or_else(|error_chirho| panic!("GHC accepts original tc092: {error_chirho}"));
+}
+
+fn haskelujah_driver_original_tc092_chirho() -> Result<(), String> {
+    crate::typecheck_source_chirho(
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../ghc-tests-chirho/typecheck-chirho/should_compile/tc092.hs"
+        )),
+        &mut haskelujah_span_chirho::SourceMapChirho::new_chirho(),
+        "tc092.hs",
+    )
+    .map(|_| ())
+    .map_err(|error_chirho| error_chirho.to_string())
+}
+
+#[test]
+fn qualified_constructor_arguments_keep_literals_annotations_and_named_values_chirho() {
+    frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/QualifiedConstructorArgumentChirho.hs"
+    ))
+    .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn qualified_constructor_arguments_keep_explicit_type_abstractions_chirho() {
+    frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/ExplicitTypeSigmaArgumentChirho.hs"
+    ))
+    .unwrap_or_else(|error_chirho| panic!("{error_chirho}"));
+}
+
+#[test]
+fn qualified_constructor_arguments_reject_specialization_missing_evidence_and_escape_chirho() {
+    for source_chirho in [
+        include_str!(
+            "kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/SpecializedSigmaArgumentChirho.hs"
+        ),
+        include_str!(
+            "kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/MissingSigmaEvidenceChirho.hs"
+        ),
+        include_str!(
+            "kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/EscapingSigmaArgumentChirho.hs"
+        ),
+        include_str!(
+            "kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/ExplicitEscapeSigmaArgumentChirho.hs"
+        ),
+        include_str!(
+            "kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/ExplicitSpecializedSigmaArgumentChirho.hs"
+        ),
+    ] {
+        let error_chirho = frontend_chirho(source_chirho)
+            .err()
+            .expect("the argument must serve every rigid type with only its own givens");
+        assert!(error_chirho.contains("error[E020"), "{error_chirho}");
+    }
+}
+
+#[test]
+fn qualified_constructor_arguments_open_the_sigma_before_checking_branches_chirho() {
+    let error_chirho = frontend_chirho(include_str!(
+        "kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/BranchTypeSigmaArgumentChirho.hs"
+    ))
+    .err()
+    .expect("GHC rejects a type abstraction inside an already opened branch");
+    assert!(
+        error_chirho.contains("invisible type abstraction requires an expected forall"),
+        "{error_chirho}"
+    );
+}
+
+#[test]
 fn annotation_universal_annotation_positive_chirho() {
     let result_chirho = frontend_chirho(include_str!(
         "kind_repair_fixtures_chirho/impredicative-application-chirho/annotations-chirho/UniversalAnnotationPositiveChirho.hs"

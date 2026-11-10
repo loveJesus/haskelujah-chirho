@@ -8,9 +8,7 @@ use super::InferCtxChirho;
 use super::equality_normalization_chirho::{EqualityBudgetChirho, copy_term_with_budget_chirho};
 use crate::class_chirho::{PredChirho, PredPartsChirho};
 use crate::subst_chirho::SubstChirho;
-use crate::ty_chirho::{
-    SchemeChirho, SchemePredChirho, SchemePredPartsChirho, TyChirho, TyVarChirho,
-};
+use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
 use haskelujah_ast_chirho::name_chirho::{CompilerValueChirho, NameChirho};
 use haskelujah_span_chirho::SpanChirho;
@@ -710,31 +708,11 @@ impl InferCtxChirho {
                 TyChirho::ForallChirho { .. } | TyChirho::QualChirho { .. }
             )
         {
-            let mut predicates_chirho = Vec::new();
-            let mut equalities_chirho = Vec::new();
-            let (vars_chirho, body_chirho) = self.split_typed_scheme_prefix_chirho(
-                copy_term_with_budget_chirho(expected_chirho, budget_chirho)?,
-                &mut predicates_chirho,
-                &mut equalities_chirho,
-            );
-            predicates_chirho.extend(equalities_chirho.into_iter().map(
-                |(left_chirho, right_chirho)| {
-                    SchemePredChirho::legacy_chirho(SchemePredPartsChirho {
-                        kind_tys_chirho: Vec::new(),
-                        class_name_chirho: "~".to_owned(),
-                        ty_chirho: left_chirho,
-                        extra_tys_chirho: vec![right_chirho],
-                    })
-                },
-            ));
-            let (checked_chirho, public_chirho) = self.with_rigid_signature_chirho(
-                &SchemeChirho {
-                    vars_chirho,
-                    preds_chirho: predicates_chirho,
-                    ty_chirho: body_chirho,
-                },
+            return self.check_expected_sigma_chirho(
+                expected_chirho,
                 span_chirho,
-                |context_chirho, opened_chirho| {
+                budget_chirho,
+                |context_chirho, opened_chirho, budget_chirho| {
                     context_chirho.finish_application_chirho(
                         plan_chirho,
                         Some(opened_chirho),
@@ -745,13 +723,6 @@ impl InferCtxChirho {
                     )
                 },
             );
-            let (substitution_chirho, _) = checked_chirho?;
-            let substitution_chirho =
-                self.publish_signature_solution_chirho(substitution_chirho, public_chirho);
-            return Some((
-                substitution_chirho.clone(),
-                substitution_chirho.apply_ty_chirho(expected_chirho),
-            ));
         }
         let mut substitution_chirho = carried_chirho;
         let mut predicates_chirho = Vec::new();

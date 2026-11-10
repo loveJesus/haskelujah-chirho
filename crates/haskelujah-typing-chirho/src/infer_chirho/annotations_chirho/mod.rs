@@ -4,8 +4,9 @@
 //! scheme at ordinary uses. Nested quantifiers remain in the checked body.
 
 use super::InferCtxChirho;
+use super::equality_normalization_chirho::{EqualityBudgetChirho, copy_term_with_budget_chirho};
 use crate::subst_chirho::SubstChirho;
-use crate::ty_chirho::{SchemeChirho, TyChirho};
+use crate::ty_chirho::{SchemeChirho, SchemePredChirho, SchemePredPartsChirho, TyChirho};
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::SpanChirho;
@@ -18,6 +19,57 @@ mod escape_chirho;
 mod tests_chirho;
 
 impl InferCtxChirho {
+    /// Check a published expected sigma with its own rigid variables and all
+    /// written givens. Return the external sigma only after the escape check;
+    /// an ordinary unification variable never receives a polymorphic image.
+    /// The caller lends its existing allowance, including to its body check.
+    /// workflow: language-features-chirho/rank-n-visible-type-application-chirho
+    pub(super) fn check_expected_sigma_chirho(
+        &mut self,
+        expected_chirho: &TyChirho,
+        span_chirho: SpanChirho,
+        budget_chirho: &mut EqualityBudgetChirho,
+        check_chirho: impl FnOnce(
+            &mut Self,
+            &TyChirho,
+            &mut EqualityBudgetChirho,
+        ) -> Option<(SubstChirho, TyChirho)>,
+    ) -> Option<(SubstChirho, TyChirho)> {
+        let mut predicates_chirho = Vec::new();
+        let mut equalities_chirho = Vec::new();
+        let (vars_chirho, body_chirho) = self.split_typed_scheme_prefix_chirho(
+            copy_term_with_budget_chirho(expected_chirho, budget_chirho)?,
+            &mut predicates_chirho,
+            &mut equalities_chirho,
+        );
+        predicates_chirho.extend(equalities_chirho.into_iter().map(
+            |(left_chirho, right_chirho)| {
+                SchemePredChirho::legacy_chirho(SchemePredPartsChirho {
+                    kind_tys_chirho: Vec::new(),
+                    class_name_chirho: "~".to_owned(),
+                    ty_chirho: left_chirho,
+                    extra_tys_chirho: vec![right_chirho],
+                })
+            },
+        ));
+        let (checked_chirho, public_chirho) = self.with_rigid_signature_chirho(
+            &SchemeChirho {
+                vars_chirho,
+                preds_chirho: predicates_chirho,
+                ty_chirho: body_chirho,
+            },
+            span_chirho,
+            |context_chirho, opened_chirho| {
+                check_chirho(context_chirho, opened_chirho, budget_chirho)
+            },
+        );
+        let (substitution_chirho, _) = checked_chirho?;
+        let substitution_chirho =
+            self.publish_signature_solution_chirho(substitution_chirho, public_chirho);
+        let checked_chirho = substitution_chirho.apply_ty_chirho(expected_chirho);
+        Some((substitution_chirho, checked_chirho))
+    }
+
     /// The producer returns the checked sigma, so visible type application can
     /// consume its quantifiers before ordinary instantiation erases the prefix.
     pub(super) fn check_expression_annotation_chirho(
