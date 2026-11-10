@@ -87,7 +87,7 @@ Details and build order are in the companion design.
 - **A4. One narrow waist: Core plus primops.** The primop table is generated from GHC's `primops.txt.pp`. One Rust RTS implements it for the interpreter and for native code, on one heap layout.
 - **A6. No C toolchain.** The compiler, the runtime and the standard library need no C compiler and no C library of ours.
   - Today the native path calls `clang` and `cc` (`haskelujah-cli-chirho/src/main.rs`) and preprocessing calls the system `cpp` (`source_chirho/cpp_chirho.rs`). The interpreter and Cranelift are already pure Rust.
-  - `next` uses Cranelift or Wasm with a Rust link step, a preprocessor written in Rust, a Rust big-integer backend, and Rust versions of the few C helper files in base. LLVM stays an optional backend.
+  - `next` uses Cranelift or Wasm with a Rust link step, a preprocessor written in Rust, a Rust big-integer backend, and Rust versions of the 16 C helper files (3,389 lines) and 3 Cmm files in ghc-internal. LLVM stays an optional backend.
   - Limit: a Hackage package that ships its own C code needs a C compiler or a Rust substitute for that package.
 - **A7. Better than GHC where behaviour is unchanged.** Diagnostics, memory safety, build speed (parallel and incremental), portability and a single runtime are ours to improve. An accepted program never behaves differently from GHC.
 - **A5. GHC is the oracle at every phase.** Accept or reject with the error code, inferred types, and program output are compared against retained GHC receipts for the test suite, for each library module and for each package.
@@ -128,7 +128,7 @@ Answers (2026-11-10):
 - Decisions 1 and 2: taken as yes on "get it working". The standard library is GHC's Haskell `base` source; GHC's source is the reference, and we improve on it where behaviour is unchanged.
 - Decision 3: stay on 9.14.1. It is the newest stable release (9.14.2 is at release candidate 2 and 10.0.1 at alpha 1 on the official index). Move to 9.14.2 when it is final.
 - Decision 4: no new lane now. claude2_chirho has tokens again on 2026-11-12 and takes the first slice.
-- Decision 5: approved as a reference.
+- Decision 5: approved as a reference. Done on 2026-11-10: the source archive (32.4 MB) and the test-suite archive (8.2 MB) are hash-verified and unpacked under `tmp-chirho/pathway-chirho/references-chirho/ghc-9.14.1-chirho/` in the union worktree. The full test suite has 520 `all.T` files, 11,205 Haskell files and 2,457 expected-output files.
 
 1. **The pivot (A1 to A4).** Freeze legacy features after unit 737 and build `next`. Recommended.
 2. **Using GHC's source.** Port algorithms from GHC's compiler and compile GHC's libraries as our standard library. Both are BSD-3: allowed, with their notices kept in our tree and releases. Our own code stays MIT/Apache. Recommended.

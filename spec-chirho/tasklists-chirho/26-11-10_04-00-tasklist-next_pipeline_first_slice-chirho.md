@@ -13,16 +13,16 @@ The slice proves or drops the new checker on a bucket fixed before any code is w
 - **Pass:** all three hold.
   1. `next` agrees with GHC on more B-check rows than `legacy`, for expected-compile and for expected-reject separately.
   2. No B-check row that `legacy` gets right is wrong in `next`.
-  3. Every B-run program prints GHC's output on the interpreter, with Eq, Ord, Show and Num coming from real `GHC.Classes`, `GHC.Base`, `GHC.Show` and `GHC.Num` source.
+  3. Every B-run program prints GHC's output on the interpreter, with Eq, Ord, Show and Num coming from real `GHC.Internal.Classes`, `GHC.Internal.Base`, `GHC.Internal.Show` and `GHC.Internal.Num` source.
 - **Drop rule:** L.J. sets the token budget for the slice on 2026-11-12. If the bucket is not passed inside it, stop, report the measured state and keep `legacy` as it is.
 
 ## Steps
 
-- [ ] GHC 9.14.1 source archive retained and hash-verified (gpt_chirho, #33675)
+- [x] GHC 9.14.1 source and test-suite archives retained, hash-verified and unpacked (2026-11-10)
 - [ ] Bucket membership computed from the per-test table; list frozen with the legacy baseline for B-check and B-run
 - [ ] S0: crates `haskelujah-hir-chirho` and `haskelujah-tc-chirho`; `--pipeline next`; Core gets its own type carrier or an adapter
 - [ ] S0: interner, metas with levels, unifier, constraint types, solver for equalities, dictionaries and implications
 - [ ] S1: Haskell 2010 expressions, patterns, bindings, generalization, data, newtypes, synonyms, classes, instances, defaulting, literals; Core out with explicit dictionaries
 - [ ] W0: unboxed values, primop calls and MagicHash in the interpreter; primop table generated from `primops.txt.pp`
-- [ ] L0: real `GHC.Types`, `GHC.Classes`, `GHC.CString`, then as much of `GHC.Base`, `GHC.Show`, `GHC.Num` as B-run needs; every temporary patch recorded in the patch series
+- [ ] L0: real `GHC.Internal.Types`, `GHC.Internal.Classes`, `GHC.Internal.CString`, then as much of `GHC.Internal.Base`, `GHC.Internal.Show`, `GHC.Internal.Num` as B-run needs; every temporary patch recorded in the patch series
 - [ ] Bucket measured; result reported to L.J.; continue or drop

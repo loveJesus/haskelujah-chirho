@@ -4,7 +4,7 @@
 
 2026-11-10. Companion to `26-11-10-ghc-replacement-pathway-chirho.md`. Status: PROPOSED with the pathway. Written so that an implementer on a smaller model can build one slice from this page plus the named GHC modules.
 
-GHC references are to release 9.14.1 (tag object `961b2ffc`, commit `902339d3`). Module names follow that tree; confirm each path against the retained source before citing it in code.
+GHC references are to release 9.14.1 (tag object `961b2ffc`, commit `902339d3`). Module names were verified on 2026-11-10 against the retained tree (`tmp-chirho/pathway-chirho/references-chirho/ghc-9.14.1-chirho/ghc-9.14.1` in the union worktree; its `GIT_COMMIT_ID` is `902339d3`). Section 14 has the measured sizes.
 
 ## 1. Principles
 
@@ -105,7 +105,7 @@ The checker walks HIR once, emits constraints and returns elaborated HIR (the sa
 
 ## 7. Solver
 
-A port of `GHC.Tc.Solver` and its submodules (`Solve`, `Equality`, `Dict`, `Irred`, `Rewrite`, `InertSet`, `Monad`), without coercion construction.
+A port of `GHC.Tc.Solver` and its submodules (`Solve`, `Equality`, `Dict`, `Irred`, `Rewrite`, `InertSet`, `Monad`, `Default`, `Types`), without coercion construction.
 
 - Work list of simple constraints, then implications recursively, repeated while an outer meta was unified, up to the iteration fuel.
 - Canonical forms: dictionary; equality with a type variable or family application on the left; irreducible; quantified.
@@ -143,7 +143,7 @@ Wired-in and known-key names mirror `GHC.Builtin.Names`, `GHC.Builtin.Types` and
 - Every binder carries a representation (`PrimRepChirho`: lifted pointer, unlifted pointer, int, word, float, double, address, void, unboxed tuple shape). Backends read representations, never types.
 - No `$prim_`, `$own` or `$sigma` name exists in `next`.
 
-**Primops.** `haskelujah-prim-chirho` generates Rust tables at build time from a vendored copy of GHC's `primops.txt.pp`: primitive types with their representations, primops with types and attributes, pseudo-operations. The virtual module `GHC.Prim` is served from that table. Each primop has one Rust implementation in the RTS and one conformance test against a GHC-produced result.
+**Primops.** `haskelujah-prim-chirho` generates Rust tables at build time from a vendored copy of GHC's `compiler/GHC/Builtin/primops.txt.pp` (585 primops, 36 primitive types, 6 pseudo-operations): primitive types with their representations, primops with types and attributes, pseudo-operations. The virtual module `GHC.Prim` is served from that table. Each primop has one Rust implementation in the RTS and one conformance test against a GHC-produced result.
 
 **RTS.** One crate, two engines.
 
@@ -156,7 +156,8 @@ Wired-in and known-key names mirror `GHC.Builtin.Names`, `GHC.Builtin.Types` and
 
 ## 10. Libraries and interfaces
 
-- The ladder: `GHC.Types`, `GHC.Classes`, `GHC.CString`, `GHC.Magic`, `GHC.Tuple`; then `GHC.Base`, `GHC.Maybe`, `GHC.List`, `GHC.Char`, `GHC.Show`, `GHC.Num` with ghc-bignum's native backend, `GHC.Real`, `GHC.Enum`; then errors, call stacks, exceptions and Typeable; then ST, IORef, arrays, bits, words; then `GHC.Float`, Read, Generics, Foldable and Traversable; then the IO and Handle stack, concurrency and Foreign; then all of base.
+- In 9.14.1 the whole core library is one package, ghc-internal, with modules named `GHC.Internal.*`. ghc-prim and ghc-bignum are five-line shims, and base is 259 re-export modules.
+- The ladder, under `GHC.Internal`: `Types`, `Classes`, `CString`, `Magic`, `Tuple`; then `Base`, `Maybe`, `List`, `Char`, `Show`, `Num` with the `Bignum` modules, `Real`, `Enum`; then errors, call stacks, exceptions and Typeable; then ST, IORef, arrays, bits, words; then `GHC.Float`, Read, Generics, Foldable and Traversable; then the IO and Handle stack, concurrency and Foreign; then all of base.
 - A module counts when it compiles from unmodified source. A temporary patch is recorded in a patch series that must shrink to nothing by G3.
 - Until the real Handle stack compiles, test programs print through one small interim IO module. It is the only interim library code and is deleted at G3.
 - The preprocessor profile must present GHC 9.14.1 and its base version with real configuration headers. Today's advertises GHC 8.10 and base 4.14 with synthetic headers.
@@ -196,3 +197,31 @@ Crate layout for `haskelujah-tc-chirho/src`, files under 1,000 lines: `types_chi
 - GHC receipts are cached by source hash, flags and GHC version, and are never regenerated silently.
 - Corpora: the full GHC test suite from the 9.14.1 source tree, every module of the boot libraries, then Stackage packages.
 - Failure classes are generated from the scoreboard and choose the next unit of work.
+
+## 14. Reference sizes
+
+Measured on 2026-11-10 in the retained GHC 9.14.1 tree.
+
+| Part | Size |
+| --- | --- |
+| Type checker, `compiler/GHC/Tc` | 120,041 lines in 74 files |
+| of which `Gen` | 23,584 |
+| `Utils` | 16,442 |
+| `Errors` (types and printing; we need little of it) | 15,657 |
+| `Solver` | 14,899 |
+| `Deriv` | 8,097 |
+| `Types` | 6,964 |
+| `TyCl` | 6,174 |
+| `Instance` | 3,759 |
+| `Zonk` | 3,262 |
+| Renamer, `compiler/GHC/Rename` | 18,774 lines |
+| Desugarer, `compiler/GHC/HsToCore` | 23,969 lines |
+| Diagnostic codes, `GHC/Types/Error/Codes.hs` | 706 codes |
+| ghc-internal | 276 `.hs`, 27 `.hsc`, 24 `.hs-boot`; 102,782 lines |
+| ghc-internal's C helpers | 16 C files (3,389 lines) and 3 Cmm files |
+| base | 259 `.hs`, 7 `.hsc`; 24,528 lines; no C; 251 test programs |
+| Boot packages in the same tree | containers 109 files, no C; transformers 31; mtl 25; bytestring 55 plus 6 C files; text 105 plus 5 C files |
+| GHC's C runtime, `rts/` (what our Rust RTS replaces) | 177 C files and 17 Cmm files; 124,933 lines with headers |
+| Test suite (separate archive, hash verified) | 520 `all.T` files, 11,205 Haskell files, 2,457 expected-output files |
+| Test suite by area (Haskell files) | typecheck 1,883; th 568; rename 566; simplCore 525; indexed-types 487; parser 440; deriving 285; module 276; codeGen 263; polykinds 255; deSugar 175; patsyn 167; dependent 162; overloadedrecflds 161; ffi 121; concurrent 113; gadt 109; numeric 92; primops 66 |
+| nofib benchmark programs, in the source tree | 544 Haskell files |
