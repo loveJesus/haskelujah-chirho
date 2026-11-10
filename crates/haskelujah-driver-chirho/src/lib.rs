@@ -39,6 +39,8 @@ mod module_search_chirho;
 mod multi_module_chirho;
 #[path = "native_link_chirho/native_provenance_chirho.rs"]
 mod native_provenance_chirho;
+#[path = "frontend_chirho/next_chirho/mod.rs"]
+pub mod next_chirho;
 #[path = "project_chirho/package_install_chirho.rs"]
 mod package_install_chirho;
 #[path = "frontend_chirho/pipeline_chirho.rs"]

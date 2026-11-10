@@ -12,6 +12,8 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+haskelujah-hir-chirho = { package = "haskelujah-hir", path = "../haskelujah-hir-chirho", version = "0.1.2" }
+haskelujah-tc-chirho = { package = "haskelujah-tc", path = "../haskelujah-tc-chirho", version = "0.1.2" }
 haskelujah-ast-chirho = { package = "haskelujah-ast", path = "../haskelujah-ast-chirho", version = "0.1.2" }
 haskelujah-backend-llvm-chirho = { package = "haskelujah-backend-llvm", path = "../haskelujah-backend-llvm-chirho", version = "0.1.2" }
 haskelujah-core-chirho = { package = "haskelujah-core", path = "../haskelujah-core-chirho", version = "0.1.2" }

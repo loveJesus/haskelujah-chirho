@@ -1,6 +1,7 @@
 // For God so loved the world that he gave his only begotten Son, that whoever
 // believes in him should not perish but have eternal life. — John 3:16
 
+mod next_chirho;
 mod repl_chirho;
 
 use std::env;
@@ -58,6 +59,7 @@ fn main_chirho() -> ExitCode {
         emit_cranelift_chirho: false,
     };
     let mut positional_chirho: Vec<&str> = Vec::new();
+    let mut pipeline_chirho = next_chirho::PipelineChirho::LegacyChirho;
     let mut skip_next_chirho = false;
     for (idx_chirho, arg_chirho) in raw_args_chirho.iter().skip(1).enumerate() {
         if skip_next_chirho {
@@ -65,6 +67,19 @@ fn main_chirho() -> ExitCode {
             continue;
         }
         match arg_chirho.as_str() {
+            "--pipeline" => {
+                let Some(value_chirho) = raw_args_chirho.get(idx_chirho + 2) else {
+                    eprintln!("--pipeline requires legacy or next");
+                    return ExitCode::from(2);
+                };
+                let Some(selected_chirho) = next_chirho::PipelineChirho::parse_chirho(value_chirho)
+                else {
+                    eprintln!("unknown pipeline: {value_chirho}");
+                    return ExitCode::from(2);
+                };
+                pipeline_chirho = selected_chirho;
+                skip_next_chirho = true;
+            }
             "--dump-core" => flags_chirho.dump_core_chirho = true,
             "--dump-stg" => flags_chirho.dump_stg_chirho = true,
             "--dump-llvm" => flags_chirho.dump_llvm_chirho = true,
@@ -110,6 +125,9 @@ fn main_chirho() -> ExitCode {
         return ExitCode::from(2);
     }
 
+    if pipeline_chirho == next_chirho::PipelineChirho::NextChirho {
+        return next_chirho::command_chirho(&positional_chirho, &flags_chirho);
+    }
     match command_chirho {
         "check" | "plan" | "script" => {
             let Some(path_chirho) = path_chirho else {
@@ -1164,6 +1182,7 @@ fn print_usage_chirho(program_name_chirho: &str) {
     eprintln!("  lsp                             start the Language Server Protocol server");
     eprintln!();
     eprintln!("flags:");
+    eprintln!("  --pipeline <name>    legacy (default) or next (independent checker)");
     eprintln!("  -o, --output <path>  output native executable or .wasm file");
     eprintln!("  --wasm               emit WebAssembly instead of native");
     eprintln!("  --cranelift          emit native code via Cranelift for `compile`");

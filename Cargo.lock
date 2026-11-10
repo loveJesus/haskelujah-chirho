@@ -1802,6 +1802,7 @@ dependencies = [
  "haskelujah-backend-wasm",
  "haskelujah-core",
  "haskelujah-diagnostics",
+ "haskelujah-hir",
  "haskelujah-incremental",
  "haskelujah-naming",
  "haskelujah-package",
@@ -1809,6 +1810,7 @@ dependencies = [
  "haskelujah-runtime",
  "haskelujah-span",
  "haskelujah-syntax",
+ "haskelujah-tc",
  "haskelujah-test-harness",
  "haskelujah-th",
  "haskelujah-typing",
@@ -1834,6 +1836,15 @@ dependencies = [
  "eframe",
  "egui_extras",
  "haskelujah-driver",
+ "haskelujah-span",
+]
+
+[[package]]
+name = "haskelujah-hir"
+version = "0.1.35"
+dependencies = [
+ "haskelujah-ast",
+ "haskelujah-naming",
  "haskelujah-span",
 ]
 
@@ -1919,6 +1930,14 @@ version = "0.1.35"
 name = "haskelujah-syntax"
 version = "0.1.35"
 dependencies = [
+ "haskelujah-span",
+]
+
+[[package]]
+name = "haskelujah-tc"
+version = "0.1.35"
+dependencies = [
+ "haskelujah-hir",
  "haskelujah-span",
 ]
 

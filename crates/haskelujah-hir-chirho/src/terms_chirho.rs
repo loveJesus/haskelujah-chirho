@@ -1,0 +1,93 @@
+// For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+
+use std::fmt;
+
+use haskelujah_span_chirho::SpanChirho;
+
+use crate::{NameIdChirho, NameInfoChirho, UnitIdentityChirho};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ExprIdChirho(pub u32);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SurfaceTypeChirho {
+    BoolChirho,
+    CharChirho,
+    FunChirho(Box<Self>, Box<Self>),
+    ListChirho(Box<Self>),
+    TupleChirho(Vec<Self>),
+}
+
+#[derive(Debug, Clone)]
+pub struct ExprChirho {
+    pub id_chirho: ExprIdChirho,
+    pub kind_chirho: ExprKindChirho,
+    pub span_chirho: SpanChirho,
+}
+
+#[derive(Debug, Clone)]
+pub enum ExprKindChirho {
+    VarChirho(NameIdChirho),
+    CharChirho(char),
+    StringChirho(String),
+    AppChirho(Box<ExprChirho>, Box<ExprChirho>),
+    LamChirho(Vec<NameIdChirho>, Box<ExprChirho>),
+    LetChirho(Vec<BindingChirho>, Box<ExprChirho>),
+    IfChirho(Box<ExprChirho>, Box<ExprChirho>, Box<ExprChirho>),
+    AnnChirho(Box<ExprChirho>, SurfaceTypeChirho),
+    ListChirho(Vec<ExprChirho>),
+    TupleChirho(Vec<ExprChirho>),
+}
+
+#[derive(Debug, Clone)]
+pub struct BindingChirho {
+    pub name_chirho: NameIdChirho,
+    pub body_chirho: ExprChirho,
+    pub signature_chirho: Option<SurfaceTypeChirho>,
+    pub span_chirho: SpanChirho,
+}
+
+#[derive(Debug)]
+pub struct ModuleChirho {
+    pub unit_chirho: UnitIdentityChirho,
+    pub module_chirho: String,
+    pub names_chirho: Vec<NameInfoChirho>,
+    pub bindings_chirho: Vec<BindingChirho>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct LimitsChirho {
+    pub nodes_chirho: usize,
+    pub depth_chirho: usize,
+}
+
+impl Default for LimitsChirho {
+    fn default() -> Self {
+        Self {
+            nodes_chirho: 1 << 20,
+            depth_chirho: 256,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HirErrorKindChirho {
+    InvalidChirho,
+    UnsupportedChirho,
+    ResourceChirho,
+}
+
+#[derive(Debug, Clone)]
+pub struct HirErrorChirho {
+    pub kind_chirho: HirErrorKindChirho,
+    pub message_chirho: String,
+    pub span_chirho: SpanChirho,
+}
+
+impl fmt::Display for HirErrorChirho {
+    fn fmt(&self, formatter_chirho: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter_chirho, "{}", self.message_chirho)
+    }
+}
+
+impl std::error::Error for HirErrorChirho {}
