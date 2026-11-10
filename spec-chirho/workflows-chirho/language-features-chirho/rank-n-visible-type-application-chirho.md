@@ -47,6 +47,10 @@ flowchart TD
     scoped_methods_chirho --> superclass_sigma_chirho[Project proof-selected superclasses inside the value-parameter spine]
     application_chirho --> position_sigma_chirho[Capture dictionary positions on the checked value spine]
     position_sigma_chirho --> call_sigma_chirho[Apply agreed dictionaries to fields, selectors and higher-rank results]
+    application_chirho --> interleaved_sigma_chirho[Retain one checked plan across interleaved value and visible type arguments]
+    interleaved_sigma_chirho --> position_sigma_chirho
+    equation_chirho --> required_gap_chirho{Required clause opens runtime class givens}
+    required_gap_chirho -->|unsupported abstraction| required_refusal_chirho[Keep frontend judgment and refuse Core publication by name]
     superclass_sigma_chirho --> runtime_sigma_chirho[Compare unchanged outputs on interpreter, LLVM and Cranelift]
     call_sigma_chirho --> runtime_sigma_chirho
     escape_sigma_chirho --> public_sigma_chirho[Publish only the safe solution and original expected sigma]
@@ -140,6 +144,9 @@ flowchart TD
   checking evidence and occupy no runtime slot. Application captures carry the number of
   preceding value arguments, so a result context follows those arguments. Disagreement between
   captures is explicit unknown evidence and refuses application rather than selecting a position.
+- An interleaved call such as `f 0 @Int 3 3` retains one checked application plan. Each explicit type argument consumes the retained result prefix through the existing visible-type-argument judgment; newly exposed predicates keep the count of earlier value arguments. Evidence is captured once when the whole plan finishes. An unrelated non-application head still delegates to its old path. The retained parent fails the shadowed result-forall control with a missing method; the scoped candidate before this correction produced partial applications. The focused corrected control prints its four expected booleans on all three engines.
+- The ordered required-forall clause route has no checked runtime dictionary abstraction. Opening a non-equality given records one constant-size, owner-charged witness. Frontend checking keeps its judgment; Core refuses before desugaring with `required-type-argument clause dictionaries have no checked runtime abstraction`. Two GHC9.14.1-valid controls, including an enclosing same-class dictionary, measure that boundary without claiming runtime support. Existing required-argument runtime controls remain separate.
+- The older ordinary function-spine opener directly skolemizes its prefix; its lack of a dedicated rigid-signature restoration/escape frame remains an adjacent pre-existing obligation. The new clause dictionary transport does not establish that lifetime contract.
 - Positional fields, record construction and selectors, higher-rank results, repeated class
   scopes and staged explicit type lambdas have focused runtime controls. Their asserted output
   is compared on all three engines; broader compatibility follows the named final receipts.

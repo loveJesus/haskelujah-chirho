@@ -501,68 +501,151 @@ impl InferCtxChirho {
         arguments_chirho.reverse();
         let mut explicit_ast_chirho = Vec::new();
         let base_chirho = Self::peel_type_app_chain_chirho(head_chirho, &mut explicit_ast_chirho);
-        let (name_chirho, variable_head_chirho) = match base_chirho {
-            ExprChirho::VarChirho(name_chirho) => (name_chirho, true),
-            ExprChirho::ConChirho(name_chirho) => (name_chirho, false),
-            _ => return Ok(None),
+        let head_plan_chirho = if matches!(
+            base_chirho,
+            ExprChirho::VarChirho(_) | ExprChirho::ConChirho(_)
+        ) {
+            let (name_chirho, variable_head_chirho) = match base_chirho {
+                ExprChirho::VarChirho(name_chirho) => (name_chirho, true),
+                ExprChirho::ConChirho(name_chirho) => (name_chirho, false),
+                _ => return Ok(None),
+            };
+            if !variable_head_chirho && !explicit_ast_chirho.is_empty() {
+                return Ok(None);
+            }
+            let Some((_, scheme_chirho, compiler_value_chirho)) = self
+                .lookup_value_entry_keyed_chirho(
+                    &name_chirho.full_name_chirho(),
+                    name_chirho.text_chirho(),
+                )
+            else {
+                return Ok(None);
+            };
+            let quick_look_chirho = mode_chirho.global_quick_look_chirho
+                || compiler_value_chirho == Some(CompilerValueChirho::ApplyChirho);
+            let mut variables_chirho = self.scoped_tyvars_chirho.clone();
+            let explicit_kinds_chirho: Vec<_> = explicit_ast_chirho
+                .iter()
+                .map(|argument_chirho| self.checked_type_argument_kind_chirho(argument_chirho))
+                .collect();
+            let explicit_chirho: Vec<_> = explicit_ast_chirho
+                .iter()
+                .map(|argument_chirho| {
+                    self.ast_type_to_ty_chirho(argument_chirho, &mut variables_chirho)
+                })
+                .collect();
+            let start_chirho = self.elaboration_state_chirho.next_variable_chirho;
+            let instantiated_chirho = if explicit_chirho.is_empty() {
+                Some(self.instantiate_scheme_parts_chirho(&scheme_chirho))
+            } else {
+                self.instantiate_scheme_parts_with_visible_type_args_chirho(
+                    &scheme_chirho,
+                    &explicit_chirho,
+                    &explicit_kinds_chirho,
+                    name_chirho.span_chirho(),
+                )
+            };
+            let Some((current_chirho, initial_predicates_chirho)) = instantiated_chirho else {
+                return Ok(None);
+            };
+            budget_chirho
+                .work_chirho(
+                    (self.elaboration_state_chirho.next_variable_chirho - start_chirho) as usize,
+                )
+                .ok_or(())?;
+            // A parent's selected compiler head never licenses a child's fresh
+            // instantiation variables. Only this resolved head, or the actual
+            // global option, grants its own short-lived delta variables.
+            if quick_look_chirho {
+                look_chirho.variables_chirho.extend(
+                    (start_chirho..self.elaboration_state_chirho.next_variable_chirho)
+                        .map(TyVarChirho),
+                );
+            }
+            let predicates_chirho: Vec<_> = initial_predicates_chirho
+                .into_iter()
+                .map(|predicate_chirho| ApplicationPredicateChirho {
+                    position_chirho: 0,
+                    predicate_chirho,
+                })
+                .collect();
+            ApplicationPlanChirho {
+                expression_chirho: SigmaExpressionKeyChirho::from_expression_chirho(
+                    expression_chirho,
+                ),
+                name_chirho,
+                variable_head_chirho,
+                scheme_chirho,
+                compiler_value_chirho,
+                global_quick_look_chirho: mode_chirho.global_quick_look_chirho,
+                predicates_chirho,
+                arguments_chirho: Vec::new(),
+                result_chirho: current_chirho,
+            }
+        } else {
+            if explicit_ast_chirho.is_empty() {
+                return Ok(None);
+            }
+            // A visible argument after a value argument consumes the retained
+            // result prefix of the same checked plan. Keep its head identity,
+            // earlier predicates and argument count until the single finish.
+            let Some(mut prior_chirho) = self.prepare_application_chirho(
+                base_chirho,
+                ApplicationPreparationChirho {
+                    retain_result_chirho: true,
+                    ..mode_chirho
+                },
+                look_chirho,
+                budget_chirho,
+                depth_chirho + 1,
+            )?
+            else {
+                return Ok(None);
+            };
+            for argument_chirho in explicit_ast_chirho {
+                budget_chirho.work_chirho(1).ok_or(())?;
+                let current_chirho = look_chirho
+                    .apply_chirho(&prior_chirho.result_chirho, budget_chirho)
+                    .ok_or(())?;
+                let (target_chirho, kind_chirho) =
+                    self.check_body_type_argument_chirho(argument_chirho);
+                let Some(result_chirho) = self.apply_visible_type_arg_chirho(
+                    &current_chirho,
+                    target_chirho,
+                    kind_chirho.as_ref(),
+                    argument_chirho.span_chirho(),
+                ) else {
+                    return Ok(None);
+                };
+                let (result_chirho, additional_chirho) =
+                    self.expose_qualified_parts_chirho(result_chirho, Vec::new());
+                budget_chirho
+                    .node_chirho(additional_chirho.len())
+                    .ok_or(())?;
+                prior_chirho
+                    .predicates_chirho
+                    .extend(additional_chirho.into_iter().map(|predicate_chirho| {
+                        ApplicationPredicateChirho {
+                            position_chirho: prior_chirho.arguments_chirho.len(),
+                            predicate_chirho,
+                        }
+                    }));
+                prior_chirho.result_chirho = result_chirho;
+            }
+            prior_chirho
         };
-        if !variable_head_chirho && !explicit_ast_chirho.is_empty() {
-            return Ok(None);
-        }
-        let Some((_, scheme_chirho, compiler_value_chirho)) = self.lookup_value_entry_keyed_chirho(
-            &name_chirho.full_name_chirho(),
-            name_chirho.text_chirho(),
-        ) else {
-            return Ok(None);
-        };
+        let ApplicationPlanChirho {
+            name_chirho,
+            variable_head_chirho,
+            scheme_chirho,
+            compiler_value_chirho,
+            mut predicates_chirho,
+            arguments_chirho: mut prepared_arguments_chirho,
+            result_chirho: mut current_chirho,
+            ..
+        } = head_plan_chirho;
         let quick_look_chirho = mode_chirho.global_quick_look_chirho
             || compiler_value_chirho == Some(CompilerValueChirho::ApplyChirho);
-        let mut variables_chirho = self.scoped_tyvars_chirho.clone();
-        let explicit_kinds_chirho: Vec<_> = explicit_ast_chirho
-            .iter()
-            .map(|argument_chirho| self.checked_type_argument_kind_chirho(argument_chirho))
-            .collect();
-        let explicit_chirho: Vec<_> = explicit_ast_chirho
-            .iter()
-            .map(|argument_chirho| {
-                self.ast_type_to_ty_chirho(argument_chirho, &mut variables_chirho)
-            })
-            .collect();
-        let start_chirho = self.elaboration_state_chirho.next_variable_chirho;
-        let instantiated_chirho = if explicit_chirho.is_empty() {
-            Some(self.instantiate_scheme_parts_chirho(&scheme_chirho))
-        } else {
-            self.instantiate_scheme_parts_with_visible_type_args_chirho(
-                &scheme_chirho,
-                &explicit_chirho,
-                &explicit_kinds_chirho,
-                name_chirho.span_chirho(),
-            )
-        };
-        let Some((mut current_chirho, initial_predicates_chirho)) = instantiated_chirho else {
-            return Ok(None);
-        };
-        budget_chirho
-            .work_chirho(
-                (self.elaboration_state_chirho.next_variable_chirho - start_chirho) as usize,
-            )
-            .ok_or(())?;
-        // A parent's selected compiler head never licenses a child's fresh
-        // instantiation variables. Only this resolved head, or the actual
-        // global option, grants its own short-lived delta variables.
-        if quick_look_chirho {
-            look_chirho.variables_chirho.extend(
-                (start_chirho..self.elaboration_state_chirho.next_variable_chirho).map(TyVarChirho),
-            );
-        }
-        let mut predicates_chirho: Vec<_> = initial_predicates_chirho
-            .into_iter()
-            .map(|predicate_chirho| ApplicationPredicateChirho {
-                position_chirho: 0,
-                predicate_chirho,
-            })
-            .collect();
-        let mut prepared_arguments_chirho = Vec::new();
         for argument_chirho in arguments_chirho {
             let (opened_chirho, additional_chirho) = self.open_application_prefix_chirho(
                 current_chirho,

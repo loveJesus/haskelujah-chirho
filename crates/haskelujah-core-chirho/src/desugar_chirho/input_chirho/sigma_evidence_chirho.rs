@@ -31,7 +31,12 @@ impl DesugarCtxChirho {
     pub(in crate::desugar_chirho) fn install_sigma_evidence_chirho(
         &mut self,
         evidence_chirho: SigmaEvidenceChirho,
-    ) {
+    ) -> Result<(), DesugarInputErrorChirho> {
+        if let Some(span_chirho) = evidence_chirho.unsupported_required_spine_chirho() {
+            return Err(DesugarInputErrorChirho::required_sigma_spine_chirho(
+                span_chirho,
+            ));
+        }
         for binding_chirho in evidence_chirho.local_bindings_chirho().values().flatten() {
             self.constrained_names_chirho
                 .insert(binding_chirho.name_chirho.clone());
@@ -63,6 +68,7 @@ impl DesugarCtxChirho {
             }
         }
         self.sigma_evidence_chirho = evidence_chirho;
+        Ok(())
     }
 
     /// A span is only the transport join for this checked AST, never the scope

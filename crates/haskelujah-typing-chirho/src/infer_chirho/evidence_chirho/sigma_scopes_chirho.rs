@@ -92,11 +92,16 @@ pub struct SigmaLocalBindingChirho {
 
 #[derive(Debug, Clone, Default)]
 pub struct SigmaEvidenceChirho {
+    unsupported_required_spine_chirho: Option<SpanChirho>,
     scopes_chirho: Vec<Arc<SigmaScopeChirho>>,
     local_bindings_chirho: HashMap<SigmaBinderKeyChirho, Option<Arc<SigmaLocalBindingChirho>>>,
 }
 
 impl SigmaEvidenceChirho {
+    pub fn unsupported_required_spine_chirho(&self) -> Option<SpanChirho> {
+        self.unsupported_required_spine_chirho
+    }
+
     pub fn scopes_chirho(&self) -> &[Arc<SigmaScopeChirho>] {
         &self.scopes_chirho
     }
@@ -123,6 +128,41 @@ pub(in crate::infer_chirho) struct DictionaryContextChirho {
 }
 
 impl InferCtxChirho {
+    /// The required-argument matcher has no runtime dictionary producer yet.
+    /// Retain one bounded refusal witness; frontend validity is unchanged.
+    pub(in crate::infer_chirho) fn note_required_sigma_gap_chirho(
+        &mut self,
+        span_chirho: SpanChirho,
+    ) {
+        if self
+            .sigma_evidence_chirho
+            .unsupported_required_spine_chirho
+            .is_some()
+        {
+            return;
+        }
+        let Ok(mut budget_chirho) = self
+            .elaboration_state_chirho
+            .lend_equality_budget_chirho(span_chirho)
+        else {
+            self.type_normalization_exhausted_chirho.set(true);
+            return;
+        };
+        let initial_chirho = budget_chirho.remaining_chirho();
+        let exhausted_chirho = budget_chirho.node_chirho(1).is_none();
+        let settled_chirho = self.elaboration_state_chirho.settle_equality_budget_chirho(
+            initial_chirho,
+            &budget_chirho,
+            exhausted_chirho,
+            span_chirho,
+        );
+        if exhausted_chirho || settled_chirho.is_err() {
+            self.type_normalization_exhausted_chirho.set(true);
+            return;
+        }
+        self.sigma_evidence_chirho.unsupported_required_spine_chirho = Some(span_chirho);
+    }
+
     pub(in crate::infer_chirho) fn with_sigma_evidence_chirho<ResultChirho>(
         &mut self,
         expression_chirho: SigmaExpressionKeyChirho,

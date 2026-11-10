@@ -184,6 +184,7 @@ impl InferCtxChirho {
         site_chirho: OrderedPatternSiteChirho<'_>,
         check_chirho: impl FnOnce(&mut Self, &TyChirho, OrderedPatternSiteChirho<'_>) -> SubstChirho,
     ) -> (SubstChirho, SubstChirho) {
+        let given_start_chirho = self.given_preds_chirho.len();
         self.with_rigid_signature_at_parameter_entry_chirho(
             scheme_chirho,
             site_chirho.span_chirho,
@@ -195,6 +196,12 @@ impl InferCtxChirho {
                 if site_chirho.parameter_scope_chirho.is_some() && parameter_scope_chirho.is_none()
                 {
                     return SubstChirho::empty_chirho();
+                }
+                if context_chirho.given_preds_chirho[given_start_chirho..]
+                    .iter()
+                    .any(|predicate_chirho| predicate_chirho.class_name_chirho != "~")
+                {
+                    context_chirho.note_required_sigma_gap_chirho(site_chirho.span_chirho);
                 }
                 check_chirho(
                     context_chirho,
@@ -265,6 +272,12 @@ impl InferCtxChirho {
                 };
                 let (next_chirho, givens_chirho) =
                     self.expose_qualified_parts_chirho(qualified_chirho, Vec::new());
+                if givens_chirho
+                    .iter()
+                    .any(|predicate_chirho| predicate_chirho.class_name_chirho != "~")
+                {
+                    self.note_required_sigma_gap_chirho(span_chirho);
+                }
                 let parameter_scope_chirho = match site_chirho.parameter_scope_chirho {
                     Some(entry_chirho) => {
                         let Some(extended_chirho) = self.extend_value_parameter_scope_chirho(

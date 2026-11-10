@@ -757,7 +757,7 @@ pub fn desugar_module_with_inputs_chirho(
     ctx_chirho.extensions_chirho = module_chirho.extensions_chirho.clone();
     ctx_chirho.set_method_occurrence_names_chirho(inputs_chirho.method_names_chirho);
     ctx_chirho.set_constrained_names_chirho(inputs_chirho.constrained_names_chirho);
-    ctx_chirho.install_sigma_evidence_chirho(inputs_chirho.sigma_evidence_chirho);
+    ctx_chirho.install_sigma_evidence_chirho(inputs_chirho.sigma_evidence_chirho)?;
     ctx_chirho.set_constructor_arities_chirho(inputs_chirho.constructor_arities_chirho);
     ctx_chirho.con_field_names_chirho = inputs_chirho.constructor_field_scopes_chirho;
     ctx_chirho.import_suppliers_chirho = inputs_chirho.import_suppliers_chirho;

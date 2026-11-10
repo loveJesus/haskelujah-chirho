@@ -30,7 +30,12 @@ enum UnreadCauseChirho {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum AccountCauseChirho {
     FieldChirho,
-    SigmaChirho,
+    SigmaChirho(SigmaCauseChirho),
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SigmaCauseChirho {
+    TransportChirho,
+    RequiredArgumentsChirho,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SyntaxCauseChirho {
@@ -119,7 +124,15 @@ impl DesugarInputErrorChirho {
     pub(super) fn sigma_account_chirho(span_chirho: SpanChirho) -> Self {
         Self {
             cause_chirho: InputCauseChirho::UnreadChirho(UnreadCauseChirho::AccountChirho(
-                AccountCauseChirho::SigmaChirho,
+                AccountCauseChirho::SigmaChirho(SigmaCauseChirho::TransportChirho),
+                span_chirho,
+            )),
+        }
+    }
+    pub(super) fn required_sigma_spine_chirho(span_chirho: SpanChirho) -> Self {
+        Self {
+            cause_chirho: InputCauseChirho::UnreadChirho(UnreadCauseChirho::AccountChirho(
+                AccountCauseChirho::SigmaChirho(SigmaCauseChirho::RequiredArgumentsChirho),
                 span_chirho,
             )),
         }
@@ -169,7 +182,13 @@ impl std::fmt::Display for DesugarInputErrorChirho {
                 _,
             )) => formatter_chirho.write_str("unread comprehension transformer"),
             InputCauseChirho::UnreadChirho(UnreadCauseChirho::AccountChirho(
-                AccountCauseChirho::SigmaChirho,
+                AccountCauseChirho::SigmaChirho(SigmaCauseChirho::RequiredArgumentsChirho),
+                _,
+            )) => formatter_chirho.write_str(
+                "required-type-argument clause dictionaries have no checked runtime abstraction",
+            ),
+            InputCauseChirho::UnreadChirho(UnreadCauseChirho::AccountChirho(
+                AccountCauseChirho::SigmaChirho(SigmaCauseChirho::TransportChirho),
                 _,
             )) => formatter_chirho
                 .write_str("qualified expression requires an unambiguous checked evidence scope"),

@@ -728,3 +728,48 @@ fn qualified_constructor_arguments_share_the_clause_slot_and_keep_grouped_lambda
         "(True,True)\n(True,True)\n",
     );
 }
+
+fn assert_required_clause_dictionary_gap_chirho(name_chirho: &str, source_chirho: &str) {
+    haskelujah_driver::typecheck_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        name_chirho,
+    )
+    .expect("GHC-valid required clause remains frontend-valid Chirho");
+    let message_chirho = match haskelujah_driver::compile_source_chirho(
+        source_chirho,
+        &mut SourceMapChirho::new_chirho(),
+        name_chirho,
+    ) {
+        Ok(_) => panic!("required clause has no checked runtime dictionary producer Chirho"),
+        Err(error_chirho) => error_chirho.to_string(),
+    };
+    assert!(
+        message_chirho.contains(
+            "required-type-argument clause dictionaries have no checked runtime abstraction"
+        ),
+        "the unsupported runtime handoff must be refused by name Chirho: {message_chirho}"
+    );
+}
+
+#[test]
+fn required_clause_dictionary_is_refused_before_core_without_a_runtime_producer_chirho() {
+    assert_required_clause_dictionary_gap_chirho(
+        "RequiredClauseSigmaChirho.hs",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/impredicative-application-chirho/required-sigma-chirho/RequiredClauseSigmaChirho.hs"
+        )),
+    );
+}
+
+#[test]
+fn required_clause_dictionary_cannot_borrow_an_enclosing_class_dictionary_chirho() {
+    assert_required_clause_dictionary_gap_chirho(
+        "AmbientRequiredClauseSigmaChirho.hs",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/impredicative-application-chirho/required-sigma-chirho/AmbientRequiredClauseSigmaChirho.hs"
+        )),
+    );
+}
