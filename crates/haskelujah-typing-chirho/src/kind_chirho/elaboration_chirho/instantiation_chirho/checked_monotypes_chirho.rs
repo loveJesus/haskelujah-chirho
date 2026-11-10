@@ -18,10 +18,22 @@ use haskelujah_ast_chirho::name_chirho::{
 use haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ElaborationOwnerChirho;
 use std::collections::HashSet;
 
+#[cfg(test)]
+#[path = "rigid_kind_view_tests_chirho.rs"]
+mod rigid_kind_view_tests_chirho;
+
+/// A borrowed operation view. Only the caller's active rigid-image producer
+/// supplies lexical kinds; the ordinary FD entry point supplies no such view.
+pub(crate) struct CheckedKindEnvironmentChirho<'environment_chirho, LookupChirho> {
+    pub(crate) variables_chirho: &'environment_chirho LookupChirho,
+    pub(crate) lexical_images_chirho: Option<&'environment_chirho SubstChirho>,
+}
+
 struct KindCheckChirho<'metadata_chirho, 'operation_chirho, LookupChirho, ChargeChirho> {
     registry_chirho: &'metadata_chirho TypeFamilyEnvChirho,
     owner_chirho: ElaborationOwnerChirho,
     lookup_chirho: &'metadata_chirho LookupChirho,
+    lexical_images_chirho: Option<&'metadata_chirho SubstChirho>,
     substitution_chirho: &'metadata_chirho SubstChirho,
     equations_chirho: &'operation_chirho mut Vec<(TyChirho, TyChirho)>,
     charge_chirho: &'operation_chirho mut ChargeChirho,
@@ -40,10 +52,40 @@ pub(crate) fn check_monomorphic_kind_chirho<'kind_chirho>(
     equations_chirho: &mut Vec<(TyChirho, TyChirho)>,
     charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
 ) -> Result<Option<TyChirho>, ()> {
+    check_monomorphic_kind_in_environment_chirho(
+        registry_chirho,
+        owner_chirho,
+        term_chirho,
+        substitution_chirho,
+        CheckedKindEnvironmentChirho {
+            variables_chirho: lookup_chirho,
+            lexical_images_chirho: None,
+        },
+        equations_chirho,
+        charge_chirho,
+    )
+}
+
+/// Read kind evidence from the exact active rigid images as well as actual
+/// variable records. This neither changes the term relation nor grants Meta.
+/// workflow: type-identity-chirho/committed-meta-kinds-chirho
+pub(crate) fn check_monomorphic_kind_in_environment_chirho<'kind_chirho>(
+    registry_chirho: &TypeFamilyEnvChirho,
+    owner_chirho: ElaborationOwnerChirho,
+    term_chirho: &TyChirho,
+    substitution_chirho: &SubstChirho,
+    environment_chirho: CheckedKindEnvironmentChirho<
+        '_,
+        impl Fn(TyVarChirho) -> Option<&'kind_chirho TyChirho>,
+    >,
+    equations_chirho: &mut Vec<(TyChirho, TyChirho)>,
+    charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
+) -> Result<Option<TyChirho>, ()> {
     KindCheckChirho {
         registry_chirho,
         owner_chirho,
-        lookup_chirho,
+        lookup_chirho: environment_chirho.variables_chirho,
+        lexical_images_chirho: environment_chirho.lexical_images_chirho,
         substitution_chirho,
         equations_chirho,
         charge_chirho,
@@ -60,6 +102,57 @@ where
         self.substitution_chirho
             .resolve_owned_bounded_chirho(term_chirho, self.charge_chirho)
             .ok_or(())
+    }
+
+    fn rigid_kind_chirho(&mut self, name_chirho: &str) -> Result<Option<TyChirho>, ()> {
+        let Some(images_chirho) = self.lexical_images_chirho else {
+            return Ok(None);
+        };
+        (self.charge_chirho)(name_chirho.len(), 0).ok_or(())?;
+        if !crate::skolem_chirho::is_skolem_name_chirho(name_chirho) {
+            return Ok(None);
+        }
+        let mut selected_chirho = None;
+        for (variable_chirho, image_chirho) in images_chirho.iter_chirho() {
+            (self.charge_chirho)(1, 0).ok_or(())?;
+            let TyChirho::ForallVarChirho(candidate_chirho) = image_chirho else {
+                continue;
+            };
+            (self.charge_chirho)(
+                name_chirho
+                    .len()
+                    .checked_add(candidate_chirho.len())
+                    .ok_or(())?,
+                0,
+            )
+            .ok_or(())?;
+            if candidate_chirho != name_chirho {
+                continue;
+            }
+            let Some(kind_chirho) = images_chirho
+                .lookup_image_chirho(variable_chirho)
+                .and_then(|image_chirho| image_chirho.kind_chirho.as_deref())
+            else {
+                continue;
+            };
+            let kind_chirho = self.copy_chirho(kind_chirho)?;
+            if let Some(previous_chirho) = &selected_chirho {
+                let agreement_chirho = crate::unify_chirho::unify_monomorphic_bounded_chirho(
+                    previous_chirho,
+                    &kind_chirho,
+                    &|_| false,
+                    self.charge_chirho,
+                )?;
+                if !agreement_chirho
+                    .is_some_and(|agreement_chirho| agreement_chirho.is_empty_chirho())
+                {
+                    return Ok(None);
+                }
+            } else {
+                selected_chirho = Some(kind_chirho);
+            }
+        }
+        Ok(selected_chirho)
     }
 
     fn equation_chirho(
@@ -113,8 +206,8 @@ where
                 };
                 self.copy_chirho(kind_chirho).map(Some)
             }
-            TyChirho::ForallVarChirho(_)
-            | TyChirho::ForallChirho { .. }
+            TyChirho::ForallVarChirho(name_chirho) => self.rigid_kind_chirho(name_chirho),
+            TyChirho::ForallChirho { .. }
             | TyChirho::RequiredForallChirho { .. }
             | TyChirho::QualChirho { .. } => Ok(None),
             TyChirho::ConChirho(key_chirho) => {

@@ -59,3 +59,91 @@ fn an_existential_pattern_variable_still_cannot_escape_chirho() {
             })
     );
 }
+
+#[test]
+fn pattern_variables_can_name_concrete_repeated_and_shared_existential_types_chirho() {
+    for (name_chirho, source_chirho) in [
+        (
+            "ConcretePatternChirho.hs",
+            include_str!("pattern_signature_scope_chirho/concrete-pattern-chirho.hs"),
+        ),
+        (
+            "DistinctAliasesChirho.hs",
+            include_str!("pattern_signature_scope_chirho/distinct-aliases-chirho.hs"),
+        ),
+        (
+            "RepeatedVariableChirho.hs",
+            include_str!("pattern_signature_scope_chirho/repeated-variable-chirho.hs"),
+        ),
+    ] {
+        check_original_chirho(name_chirho, source_chirho)
+            .unwrap_or_else(|error_chirho| panic!("{name_chirho}: {error_chirho:?}"));
+    }
+}
+
+#[test]
+fn an_enclosing_forall_remains_rigid_at_a_pattern_signature_chirho() {
+    let error_chirho = check_original_chirho(
+        "EnclosingRigidChirho.hs",
+        include_str!("pattern_signature_scope_chirho/enclosing-rigid-chirho.hs"),
+    )
+    .err()
+    .expect("the pattern signature cannot rebind its enclosing rigid variable");
+    assert!(
+        error_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|diagnostic_chirho| diagnostic_chirho.message_chirho.contains("type mismatch")),
+        "{error_chirho:?}"
+    );
+}
+
+#[test]
+fn a_nested_forall_stays_inside_the_pattern_type_chirho() {
+    check_original_chirho(
+        "NestedForallChirho.hs",
+        include_str!("pattern_signature_scope_chirho/nested-forall-chirho.hs"),
+    )
+    .expect("a nested forall is checked locally without acquiring a body alias");
+}
+
+#[test]
+fn a_pattern_binding_cannot_introduce_a_scoped_type_variable_chirho() {
+    let error_chirho = check_original_chirho(
+        "PatternBindingChirho.hs",
+        include_str!("pattern_signature_scope_chirho/pattern-binding-chirho.hs"),
+    )
+    .err()
+    .expect("GHC rejects a new scoped variable in a pattern binding signature");
+    assert!(
+        error_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|diagnostic_chirho| {
+                diagnostic_chirho
+                    .message_chirho
+                    .contains("pattern binding signature")
+                    && diagnostic_chirho
+                        .message_chirho
+                        .contains("scoped type variable")
+            }),
+        "{error_chirho:?}"
+    );
+}
+
+#[test]
+fn an_instance_head_variable_is_not_rebound_by_a_method_pattern_chirho() {
+    let error_chirho = check_original_chirho(
+        "InstancePatternRigidChirho.hs",
+        include_str!("pattern_signature_scope_chirho/instance-pattern-rigid-chirho.hs"),
+    )
+    .err()
+    .expect("the method pattern cannot equate its existential with the instance's rigid variable");
+    assert!(
+        error_chirho
+            .diagnostics_chirho()
+            .iter()
+            .any(|diagnostic_chirho| diagnostic_chirho.message_chirho.contains("type mismatch")),
+        "{error_chirho:?}"
+    );
+}

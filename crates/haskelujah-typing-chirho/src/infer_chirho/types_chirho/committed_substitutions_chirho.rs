@@ -258,6 +258,7 @@ impl InferCtxChirho {
                 subst_chirho,
                 &self.type_families_chirho,
                 captured_chirho,
+                Some(&self.skolem_bindings_chirho),
                 span_chirho,
             ) {
             Ok(prepared_chirho) => prepared_chirho,

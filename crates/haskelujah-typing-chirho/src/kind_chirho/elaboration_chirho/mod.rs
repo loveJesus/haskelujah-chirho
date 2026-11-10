@@ -11,7 +11,10 @@ mod declarations_chirho;
 mod dependencies_chirho;
 mod instantiation_chirho;
 pub use dependencies_chirho::source_declaration_dependencies_chirho;
-pub(crate) use instantiation_chirho::check_monomorphic_kind_chirho;
+pub(crate) use instantiation_chirho::{
+    CheckedKindEnvironmentChirho, check_monomorphic_kind_chirho,
+    check_monomorphic_kind_in_environment_chirho,
+};
 mod module_chirho;
 mod publication_chirho;
 mod state_chirho;

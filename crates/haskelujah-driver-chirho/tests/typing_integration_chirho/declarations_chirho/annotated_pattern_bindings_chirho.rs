@@ -173,3 +173,25 @@ fn binding_annotations_reject_conflicting_rhs_types_chirho() {
         rejected_like_ghc_chirho(source_chirho, file_chirho, &[]);
     }
 }
+
+// workflow: type-identity-chirho/committed-meta-kinds-chirho
+const SCOPED_PATTERN_BODY_CHIRHO: &str = r#"-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+{-# LANGUAGE ScopedTypeVariables, RankNTypes #-}
+module Main where
+identityChirho (valueChirho :: aChirho) = valueChirho :: aChirho
+applyChirho (functionChirho :: forall bChirho. bChirho -> bChirho) = (functionChirho (42 :: Int), functionChirho True)
+main :: IO ()
+main = do
+  print (identityChirho (42 :: Int))
+  print (identityChirho True)
+  print (applyChirho identityChirho)
+"#;
+
+#[test]
+fn scoped_pattern_variables_keep_their_values_everywhere_chirho() {
+    assert_prints_everywhere_chirho(
+        "ScopedPatternBodyChirho.hs",
+        SCOPED_PATTERN_BODY_CHIRHO,
+        "42\nTrue\n(42,True)\n",
+    );
+}

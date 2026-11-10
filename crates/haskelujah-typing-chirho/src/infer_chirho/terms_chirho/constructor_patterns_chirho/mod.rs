@@ -5,6 +5,7 @@
 
 use super::*;
 mod instantiation_chirho;
+mod signatures_chirho;
 
 pub(super) struct TypePatternAliasUndoChirho {
     name_chirho: Option<String>,
@@ -348,15 +349,21 @@ impl InferCtxChirho {
         };
         let initial_chirho = budget_chirho.remaining_chirho();
         let mut seen_chirho = HashSet::new();
+        let mut unknown_origin_chirho = false;
         let mark_chirho = self.type_pattern_alias_undo_chirho.len();
         let prepared_chirho = self
             .prepare_type_pattern_variables_chirho(
                 pattern_chirho,
                 &mut seen_chirho,
+                true,
+                &mut unknown_origin_chirho,
                 &mut budget_chirho,
                 0,
             )
             .and_then(|()| {
+                if unknown_origin_chirho {
+                    return None;
+                }
                 self.complete_type_pattern_kinds_chirho(mark_chirho, &mut budget_chirho)
             });
         if let Err(error_chirho) = self.elaboration_state_chirho.settle_equality_budget_chirho(
@@ -495,6 +502,8 @@ impl InferCtxChirho {
         &mut self,
         pattern_chirho: &TypeChirho,
         seen_chirho: &mut HashSet<haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho>,
+        bind_variables_chirho: bool,
+        unknown_origin_chirho: &mut bool,
         budget_chirho: &mut super::equality_normalization_chirho::EqualityBudgetChirho,
         depth_chirho: usize,
     ) -> Option<()> {
@@ -504,9 +513,15 @@ impl InferCtxChirho {
         }
         match pattern_chirho {
             TypeChirho::VarChirho(name_chirho) => {
-                let source_chirho = name_chirho.type_variable_chirho()?;
+                let Some(source_chirho) = name_chirho.type_variable_chirho() else {
+                    *unknown_origin_chirho = true;
+                    return Some(());
+                };
                 if seen_chirho.insert(source_chirho.clone()) {
                     budget_chirho.node_chirho(name_chirho.text_chirho().len().saturating_add(1))?;
+                    if !bind_variables_chirho {
+                        return Some(());
+                    }
                     let mut variables_chirho = HashMap::new();
                     let variable_chirho =
                         self.surface_variable_chirho(name_chirho, &mut variables_chirho);
@@ -540,12 +555,16 @@ impl InferCtxChirho {
                 self.prepare_type_pattern_variables_chirho(
                     fun_chirho,
                     seen_chirho,
+                    bind_variables_chirho,
+                    unknown_origin_chirho,
                     budget_chirho,
                     depth_chirho + 1,
                 )?;
                 self.prepare_type_pattern_variables_chirho(
                     arg_chirho,
                     seen_chirho,
+                    bind_variables_chirho,
+                    unknown_origin_chirho,
                     budget_chirho,
                     depth_chirho + 1,
                 )?;
@@ -558,12 +577,16 @@ impl InferCtxChirho {
                 self.prepare_type_pattern_variables_chirho(
                     arg_chirho,
                     seen_chirho,
+                    bind_variables_chirho,
+                    unknown_origin_chirho,
                     budget_chirho,
                     depth_chirho + 1,
                 )?;
                 self.prepare_type_pattern_variables_chirho(
                     result_chirho,
                     seen_chirho,
+                    bind_variables_chirho,
+                    unknown_origin_chirho,
                     budget_chirho,
                     depth_chirho + 1,
                 )?;
@@ -578,6 +601,8 @@ impl InferCtxChirho {
                     self.prepare_type_pattern_variables_chirho(
                         element_chirho,
                         seen_chirho,
+                        bind_variables_chirho,
+                        unknown_origin_chirho,
                         budget_chirho,
                         depth_chirho + 1,
                     )?;
@@ -587,6 +612,8 @@ impl InferCtxChirho {
                 .prepare_type_pattern_variables_chirho(
                     element_chirho,
                     seen_chirho,
+                    bind_variables_chirho,
+                    unknown_origin_chirho,
                     budget_chirho,
                     depth_chirho + 1,
                 )?,
@@ -594,6 +621,8 @@ impl InferCtxChirho {
                 .prepare_type_pattern_variables_chirho(
                     inner_chirho,
                     seen_chirho,
+                    bind_variables_chirho,
+                    unknown_origin_chirho,
                     budget_chirho,
                     depth_chirho + 1,
                 )?,
@@ -605,12 +634,16 @@ impl InferCtxChirho {
                 self.prepare_type_pattern_variables_chirho(
                     ty_chirho,
                     seen_chirho,
+                    bind_variables_chirho,
+                    unknown_origin_chirho,
                     budget_chirho,
                     depth_chirho + 1,
                 )?;
                 self.prepare_type_pattern_variables_chirho(
                     kind_chirho,
                     seen_chirho,
+                    bind_variables_chirho,
+                    unknown_origin_chirho,
                     budget_chirho,
                     depth_chirho + 1,
                 )?;
@@ -631,12 +664,18 @@ impl InferCtxChirho {
                         self.prepare_type_pattern_variables_chirho(
                             kind_chirho,
                             seen_chirho,
+                            bind_variables_chirho,
+                            unknown_origin_chirho,
                             budget_chirho,
                             depth_chirho + 1,
                         )?;
                     }
                     budget_chirho.node_chirho(1)?;
-                    let source_chirho = binder_chirho.name_chirho.type_variable_chirho()?;
+                    let Some(source_chirho) = binder_chirho.name_chirho.type_variable_chirho()
+                    else {
+                        *unknown_origin_chirho = true;
+                        return Some(());
+                    };
                     if seen_chirho.insert(source_chirho.clone()) {
                         bound_chirho.push(source_chirho);
                     }
@@ -644,6 +683,8 @@ impl InferCtxChirho {
                 let result_chirho = self.prepare_type_pattern_variables_chirho(
                     body_chirho,
                     seen_chirho,
+                    bind_variables_chirho,
+                    unknown_origin_chirho,
                     budget_chirho,
                     depth_chirho + 1,
                 );
@@ -661,6 +702,8 @@ impl InferCtxChirho {
                     self.prepare_type_pattern_constraint_chirho(
                         constraint_chirho,
                         seen_chirho,
+                        bind_variables_chirho,
+                        unknown_origin_chirho,
                         budget_chirho,
                         depth_chirho + 1,
                     )?;
@@ -668,6 +711,8 @@ impl InferCtxChirho {
                 self.prepare_type_pattern_variables_chirho(
                     body_chirho,
                     seen_chirho,
+                    bind_variables_chirho,
+                    unknown_origin_chirho,
                     budget_chirho,
                     depth_chirho + 1,
                 )?;
@@ -681,6 +726,8 @@ impl InferCtxChirho {
         &mut self,
         constraint_chirho: &haskelujah_ast_chirho::ty_chirho::ConstraintChirho,
         seen_chirho: &mut HashSet<haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ScopedTypeVariableIdChirho>,
+        bind_variables_chirho: bool,
+        unknown_origin_chirho: &mut bool,
         budget_chirho: &mut super::equality_normalization_chirho::EqualityBudgetChirho,
         depth_chirho: usize,
     ) -> Option<()> {
@@ -698,12 +745,16 @@ impl InferCtxChirho {
                 self.prepare_type_pattern_constraint_chirho(
                     constraint_chirho,
                     seen_chirho,
+                    bind_variables_chirho,
+                    unknown_origin_chirho,
                     budget_chirho,
                     depth_chirho + 1,
                 )?;
                 self.prepare_type_pattern_variables_chirho(
                     kind_chirho,
                     seen_chirho,
+                    bind_variables_chirho,
+                    unknown_origin_chirho,
                     budget_chirho,
                     depth_chirho + 1,
                 )?;
@@ -717,6 +768,8 @@ impl InferCtxChirho {
                     self.prepare_type_pattern_variables_chirho(
                         term_chirho,
                         seen_chirho,
+                        bind_variables_chirho,
+                        unknown_origin_chirho,
                         budget_chirho,
                         depth_chirho + 1,
                     )?;
@@ -734,12 +787,18 @@ impl InferCtxChirho {
                         self.prepare_type_pattern_variables_chirho(
                             kind_chirho,
                             seen_chirho,
+                            bind_variables_chirho,
+                            unknown_origin_chirho,
                             budget_chirho,
                             depth_chirho + 1,
                         )?;
                     }
                     budget_chirho.node_chirho(1)?;
-                    let source_chirho = binder_chirho.name_chirho.type_variable_chirho()?;
+                    let Some(source_chirho) = binder_chirho.name_chirho.type_variable_chirho()
+                    else {
+                        *unknown_origin_chirho = true;
+                        return Some(());
+                    };
                     if seen_chirho.insert(source_chirho.clone()) {
                         bound_chirho.push(source_chirho);
                     }
@@ -748,6 +807,8 @@ impl InferCtxChirho {
                     self.prepare_type_pattern_constraint_chirho(
                         constraint_chirho,
                         seen_chirho,
+                        bind_variables_chirho,
+                        unknown_origin_chirho,
                         budget_chirho,
                         depth_chirho + 1,
                     )?;
@@ -755,6 +816,8 @@ impl InferCtxChirho {
                 let result_chirho = self.prepare_type_pattern_constraint_chirho(
                     body_chirho,
                     seen_chirho,
+                    bind_variables_chirho,
+                    unknown_origin_chirho,
                     budget_chirho,
                     depth_chirho + 1,
                 );

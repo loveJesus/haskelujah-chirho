@@ -6,7 +6,7 @@
 use super::*;
 
 /// A binding's pattern signature needs ScopedTypeVariables (GHC-74097).
-const PATTERN_SIGNATURE_CODE_CHIRHO: u16 = 208;
+pub(super) const PATTERN_SIGNATURE_CODE_CHIRHO: u16 = 208;
 
 impl InferCtxChirho {
     /// A declaration's pattern signature checks its right-hand side, including annotations
@@ -363,6 +363,9 @@ impl InferCtxChirho {
                 ty_chirho: annotation_chirho,
                 span_chirho,
             } => {
+                if !self.prepare_pattern_signature_chirho(annotation_chirho, *span_chirho) {
+                    return SubstChirho::empty_chirho();
+                }
                 let checked_annotation_chirho =
                     self.check_body_type_chirho(annotation_chirho, true);
                 let annotation_chirho = checked_annotation_chirho

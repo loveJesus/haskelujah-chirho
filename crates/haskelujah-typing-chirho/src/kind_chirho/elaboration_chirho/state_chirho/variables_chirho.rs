@@ -288,6 +288,7 @@ impl ElaborationStateChirho {
             committed_chirho,
             catalogue_chirho,
             None,
+            None,
             span_chirho,
         )?;
         self.publish_committed_variable_kinds_chirho(prepared_chirho, span_chirho)
@@ -300,6 +301,7 @@ impl ElaborationStateChirho {
         committed_chirho: &SubstChirho,
         catalogue_chirho: &TypeFamilyEnvChirho,
         captured_chirho: Option<CapturedVariableKindsChirho>,
+        lexical_images_chirho: Option<&SubstChirho>,
         span_chirho: SpanChirho,
     ) -> Result<CapturedVariableKindsChirho, ElaborationErrorChirho> {
         let mut captured_chirho = captured_chirho.unwrap_or_else(|| CapturedVariableKindsChirho {
@@ -344,9 +346,12 @@ impl ElaborationStateChirho {
             committed_chirho,
             catalogue_chirho,
             owner_chirho,
-            captured_chirho
-                .outer_capture_chirho
-                .then_some(&captured_chirho),
+            CommitKindScopeChirho {
+                captured_chirho: captured_chirho
+                    .outer_capture_chirho
+                    .then_some(&captured_chirho),
+                lexical_images_chirho,
+            },
             &mut |work_chirho, output_chirho| {
                 let next_chirho = remaining_chirho
                     .0
@@ -492,6 +497,11 @@ enum CommittedKindFailureChirho {
     ResourceChirho,
 }
 
+struct CommitKindScopeChirho<'scope_chirho> {
+    captured_chirho: Option<&'scope_chirho CapturedVariableKindsChirho>,
+    lexical_images_chirho: Option<&'scope_chirho SubstChirho>,
+}
+
 /// Scratch data for this one commit, not a second live catalogue. Source
 /// origins and written specificity remain attached to their original records.
 fn stage_committed_records_chirho(
@@ -500,7 +510,7 @@ fn stage_committed_records_chirho(
     committed_chirho: &SubstChirho,
     catalogue_chirho: &TypeFamilyEnvChirho,
     owner_chirho: haskelujah_ast_chirho::ty_chirho::inference_variables_chirho::ElaborationOwnerChirho,
-    captured_chirho: Option<&CapturedVariableKindsChirho>,
+    scope_chirho: CommitKindScopeChirho<'_>,
     charge_chirho: &mut impl FnMut(usize, usize) -> Option<()>,
 ) -> Result<
     (
@@ -511,6 +521,10 @@ fn stage_committed_records_chirho(
 > {
     use CommittedKindFailureChirho::ResourceChirho;
     use ElaborationVariableBindingChirho::{MetaChirho, UniversalChirho, UnknownChirho};
+    let CommitKindScopeChirho {
+        captured_chirho,
+        lexical_images_chirho,
+    } = scope_chirho;
 
     charge_chirho(original_chirho.len(), original_chirho.len()).ok_or(ResourceChirho)?;
     let mut records_chirho = original_chirho.clone();
@@ -620,15 +634,18 @@ fn stage_committed_records_chirho(
             .resolve_owned_bounded_chirho(&TyChirho::VarChirho(*variable_chirho), charge_chirho)
             .ok_or(ResourceChirho)?;
         let mut image_equations_chirho = Vec::new();
-        let actual_chirho = super::super::check_monomorphic_kind_chirho(
+        let actual_chirho = super::super::check_monomorphic_kind_in_environment_chirho(
             catalogue_chirho,
             owner_chirho,
             &image_chirho,
             committed_chirho,
-            &|variable_chirho| {
-                records_chirho
-                    .get(&variable_chirho)
-                    .and_then(|record_chirho| record_chirho.kind_chirho.as_deref())
+            super::super::CheckedKindEnvironmentChirho {
+                variables_chirho: &|variable_chirho| {
+                    records_chirho
+                        .get(&variable_chirho)
+                        .and_then(|record_chirho| record_chirho.kind_chirho.as_deref())
+                },
+                lexical_images_chirho,
             },
             &mut image_equations_chirho,
             charge_chirho,
