@@ -76,6 +76,12 @@ pub(super) fn agreeing_references_chirho<KeyChirho: Hash + Eq>(
             }
             let mut agreed_chirho = first_chirho.clone();
             for (index_chirho, record_chirho) in agreed_chirho.iter_mut().enumerate() {
+                if rest_chirho.iter().any(|other_chirho| {
+                    other_chirho[index_chirho].dictionary_position_chirho
+                        != record_chirho.dictionary_position_chirho
+                }) {
+                    record_chirho.dictionary_position_chirho = None;
+                }
                 // The position's class proof is what every capture of it proves: Unknown
                 // absorbs (row 692, gpt #32681).
                 for other_chirho in rest_chirho {

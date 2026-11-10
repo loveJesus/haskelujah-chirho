@@ -16,7 +16,7 @@ impl DesugarCtxChirho {
     pub(super) fn desugar_matches_chirho(
         &mut self,
         matches_chirho: &[MatchArmChirho],
-        _span_chirho: SpanChirho,
+        span_chirho: SpanChirho,
     ) -> CoreExprChirho {
         if matches_chirho.is_empty() {
             return CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(0));
@@ -27,7 +27,8 @@ impl DesugarCtxChirho {
 
         if arity_chirho == 0 {
             // Simple value binding: no patterns — still process where-binds
-            return self.desugar_arm_rhs_chirho(first_chirho);
+            let body_chirho = self.desugar_arm_rhs_chirho(first_chirho);
+            return self.abstract_sigma_function_chirho(span_chirho, body_chirho);
         }
 
         // One parameter per column, named after the first equation's variable
@@ -61,7 +62,7 @@ impl DesugarCtxChirho {
                 body_chirho: Box::new(result_chirho),
             };
         }
-        result_chirho
+        self.abstract_sigma_function_chirho(span_chirho, result_chirho)
     }
 
     /// Desugar the RHS of a match arm, wrapping it in a let if where-binds

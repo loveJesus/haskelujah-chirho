@@ -330,6 +330,7 @@ impl InferCtxChirho {
                                     body_chirho,
                                     &expected_arg_sub_chirho,
                                     *span_chirho,
+                                    crate::infer_chirho::SigmaExpressionKeyChirho::from_expression_chirho(arg_chirho),
                                 )
                                 .unwrap_or_else(|| self.infer_expr_chirho(arg_chirho));
                             let arg_ty_sub_chirho = s3_chirho.apply_ty_chirho(&arg_ty_chirho);

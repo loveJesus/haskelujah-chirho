@@ -18,7 +18,9 @@ use crate::expr_chirho::{
 
 mod call_keys_chirho;
 mod compare_route_chirho;
+#[path = "rewrite_chirho/dictionary_arguments_chirho/constrained_references_chirho.rs"]
 mod constrained_references_chirho;
+#[path = "rewrite_chirho/dictionary_arguments_chirho/dict_params_chirho.rs"]
 mod dict_params_chirho;
 pub(in crate::dict_chirho) mod double_primops_chirho;
 mod evidenced_aggregates_chirho;
@@ -28,6 +30,9 @@ mod method_refs_chirho;
 mod numeric_defaults_chirho;
 mod occurrence_rows_chirho;
 mod return_chirho;
+#[path = "rewrite_chirho/dictionary_arguments_chirho/scoped_evidence_chirho.rs"]
+mod scoped_evidence_chirho;
+pub(super) use scoped_evidence_chirho::ScopedDictionaryEnvironmentChirho;
 mod type_keys_chirho;
 
 impl DictPassCtxChirho {
@@ -465,6 +470,7 @@ impl DictPassCtxChirho {
         // Transform each binding, once its written infix and section Ord operators have
         // taken their answers (row 610).
         // workflow: language-features-chirho/dictionary-evidence-chirho
+        self.prepare_scoped_dictionaries_chirho();
         let resolved_bindings_chirho =
             self.written_orderings_resolved_chirho(&module_chirho.bindings_chirho);
         let mut bindings_chirho = Vec::new();

@@ -401,78 +401,12 @@ impl DictPassCtxChirho {
         // under a spelling; a request for it is refused by name where it is made. Each step
         // projects the parameter's own field, so no key is chosen here (row 692, C10, #33179).
         // workflow: language-features-chirho/dictionary-evidence-chirho
-        let mut super_let_binds_chirho: Vec<(BinderChirho, CoreExprChirho)> = Vec::new();
-        {
-            let mut available_dicts_chirho: HashMap<String, CoreIdChirho> = HashMap::new();
-            let mut pending_classes_chirho: Vec<(String, PredicateClassProofChirho)> = Vec::new();
-            for (namespace_chirho, proof_chirho, dict_id_chirho) in superclass_roots_chirho {
-                available_dicts_chirho.insert(namespace_chirho.clone(), dict_id_chirho);
-                pending_classes_chirho.push((namespace_chirho, proof_chirho));
-            }
-
-            while let Some((class_name_chirho, proof_chirho)) = pending_classes_chirho.pop() {
-                let Some(sub_dict_id_chirho) =
-                    available_dicts_chirho.get(&class_name_chirho).copied()
-                else {
-                    continue;
-                };
-                let super_slots_chirho = self
-                    .proof_layout_chirho(&class_name_chirho, &proof_chirho)
-                    .map(|layout_chirho| {
-                        layout_chirho
-                            .super_slots_chirho
-                            .iter()
-                            .map(|slot_chirho| {
-                                (
-                                    slot_chirho.namespace_chirho.clone(),
-                                    slot_chirho.class_proof_chirho.clone(),
-                                )
-                            })
-                            .collect::<Vec<_>>()
-                    })
-                    .unwrap_or_default();
-                for (super_name_chirho, super_proof_chirho) in super_slots_chirho {
-                    let unlaid_displaced_chirho = self
-                        .displaced_identity_chirho(&super_proof_chirho)
-                        .is_some()
-                        && self
-                            .proof_layout_chirho(&super_name_chirho, &super_proof_chirho)
-                            .is_none();
-                    if unlaid_displaced_chirho
-                        || available_dicts_chirho.contains_key(&super_name_chirho)
-                    {
-                        continue;
-                    }
-                    let Some(sel_id_chirho) = self
-                        .super_selectors_chirho
-                        .get(&(class_name_chirho.clone(), super_name_chirho.clone()))
-                        .copied()
-                    else {
-                        continue;
-                    };
-
-                    let super_dict_binder_chirho = self.fresh_binder_chirho(
-                        &format!("$d{}", super_name_chirho),
-                        TyChirho::ConChirho(format!("$Dict_{}", super_name_chirho)),
-                    );
-                    let extraction_chirho = CoreExprChirho::AppChirho {
-                        fun_chirho: Box::new(CoreExprChirho::VarChirho(sel_id_chirho)),
-                        arg_chirho: Box::new(CoreExprChirho::VarChirho(sub_dict_id_chirho)),
-                    };
-                    evidence_classes_chirho.insert(super_name_chirho.clone());
-                    dict_vars_chirho.insert(
-                        super_name_chirho.clone(),
-                        super_dict_binder_chirho.id_chirho,
-                    );
-                    available_dicts_chirho.insert(
-                        super_name_chirho.clone(),
-                        super_dict_binder_chirho.id_chirho,
-                    );
-                    pending_classes_chirho.push((super_name_chirho, super_proof_chirho));
-                    super_let_binds_chirho.push((super_dict_binder_chirho, extraction_chirho));
-                }
-            }
-        }
+        let super_let_binds_chirho = self.project_dictionary_superclasses_chirho(
+            superclass_roots_chirho,
+            None,
+            &mut dict_vars_chirho,
+            &mut evidence_classes_chirho,
+        );
 
         // Rewrite method references in the original body. For a binding whose
         // signature proves a concrete result monad, only push that context when
@@ -580,6 +514,7 @@ mod tests_chirho {
         key_chirho: &str,
     ) -> haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
         haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
+            dictionary_position_chirho: Some(0),
             ground_pred_chirho: None,
             applied_head_chirho: None,
             class_name_chirho: class_chirho.to_string(),

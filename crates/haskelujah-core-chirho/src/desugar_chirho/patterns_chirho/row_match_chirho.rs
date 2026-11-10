@@ -56,6 +56,7 @@ impl DesugarCtxChirho {
         match pat_chirho {
             PatChirho::VarChirho(name_chirho) => {
                 self.bind_in_scope_chirho(name_chirho.text_chirho(), scrutinee_chirho);
+                self.record_sigma_pattern_binder_chirho(name_chirho, scrutinee_chirho);
                 success_chirho(self)
             }
             PatChirho::WildcardChirho(_) => success_chirho(self),
@@ -78,6 +79,7 @@ impl DesugarCtxChirho {
                 ..
             } => {
                 self.bind_in_scope_chirho(name_chirho.text_chirho(), scrutinee_chirho);
+                self.record_sigma_pattern_binder_chirho(name_chirho, scrutinee_chirho);
                 self.match_row_chirho(
                     pattern_chirho,
                     scrutinee_chirho,

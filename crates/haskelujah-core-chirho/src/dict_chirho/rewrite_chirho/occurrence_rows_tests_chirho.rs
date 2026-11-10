@@ -26,6 +26,7 @@ fn keyed_proof_chirho(
     key_chirho: &str,
 ) -> haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
     haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho {
+        dictionary_position_chirho: Some(0),
         ground_pred_chirho: None,
         applied_head_chirho: None,
         class_name_chirho: class_chirho.to_string(),

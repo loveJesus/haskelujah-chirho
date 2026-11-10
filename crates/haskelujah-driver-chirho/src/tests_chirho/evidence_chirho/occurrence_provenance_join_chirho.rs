@@ -118,6 +118,7 @@ fn a_reference_join_preserves_the_complete_checked_record_chirho() {
         extra_tys_chirho: vec![TyChirho::bool_chirho()],
     });
     let record_chirho = ReferenceEvidenceChirho {
+        dictionary_position_chirho: Some(0),
         class_name_chirho: "PolyChirho".to_string(),
         class_identity_chirho:
             haskelujah_ast_chirho::name_chirho::PredicateClassProofChirho::UnknownChirho(
@@ -292,6 +293,7 @@ fn legacy_reference_join_chirho(
     use haskelujah_typing_chirho::infer_chirho::ReferenceEvidenceChirho;
     let evidence_chirho = |key_chirho: &str| {
         vec![ReferenceEvidenceChirho {
+            dictionary_position_chirho: Some(0),
             ground_pred_chirho: None,
             applied_head_chirho: None,
             class_name_chirho: "Show".to_string(),

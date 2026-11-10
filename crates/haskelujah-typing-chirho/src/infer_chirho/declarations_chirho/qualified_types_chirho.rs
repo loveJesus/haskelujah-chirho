@@ -11,6 +11,13 @@ use haskelujah_ast_chirho::ty_chirho::ConstraintChirho;
 use haskelujah_span_chirho::SpanChirho;
 use std::collections::HashMap;
 
+pub(in crate::infer_chirho) struct OpenedFunctionSpineChirho {
+    pub(in crate::infer_chirho) parameters_chirho: Vec<TyChirho>,
+    pub(in crate::infer_chirho) result_chirho: TyChirho,
+    pub(in crate::infer_chirho) givens_chirho: Vec<crate::class_chirho::PredChirho>,
+    pub(in crate::infer_chirho) positions_chirho: Vec<usize>,
+}
+
 impl InferCtxChirho {
     pub(super) fn qualified_type_failure_chirho(
         &mut self,
@@ -482,11 +489,7 @@ impl InferCtxChirho {
         &mut self,
         expected_chirho: &TyChirho,
         arity_chirho: usize,
-    ) -> Option<(
-        Vec<TyChirho>,
-        TyChirho,
-        Vec<crate::class_chirho::PredChirho>,
-    )> {
+    ) -> Option<OpenedFunctionSpineChirho> {
         let mut budget_chirho = EqualityBudgetChirho::new_chirho();
         let mut current_chirho =
             super::equality_normalization_chirho::copy_term_with_budget_chirho(
@@ -495,6 +498,7 @@ impl InferCtxChirho {
             )?;
         let mut parameters_chirho = Vec::new();
         let mut givens_chirho = Vec::new();
+        let mut positions_chirho = Vec::new();
         while parameters_chirho.len() < arity_chirho {
             budget_chirho.work_chirho(1)?;
             match current_chirho {
@@ -509,12 +513,22 @@ impl InferCtxChirho {
                             ty_chirho: *body_chirho,
                         });
                     current_chirho = opened_chirho;
+                    budget_chirho.node_chirho(predicates_chirho.len())?;
+                    positions_chirho.extend(std::iter::repeat_n(
+                        parameters_chirho.len(),
+                        predicates_chirho.len(),
+                    ));
                     givens_chirho.extend(predicates_chirho);
                 }
                 TyChirho::QualChirho { .. } => {
                     let (opened_chirho, predicates_chirho) =
                         self.expose_qualified_parts_chirho(current_chirho, Vec::new());
                     current_chirho = opened_chirho;
+                    budget_chirho.node_chirho(predicates_chirho.len())?;
+                    positions_chirho.extend(std::iter::repeat_n(
+                        parameters_chirho.len(),
+                        predicates_chirho.len(),
+                    ));
                     givens_chirho.extend(predicates_chirho);
                 }
                 TyChirho::FunChirho(parameter_chirho, result_chirho, _) => {
@@ -524,6 +538,11 @@ impl InferCtxChirho {
                 _ => return None,
             }
         }
-        Some((parameters_chirho, current_chirho, givens_chirho))
+        Some(OpenedFunctionSpineChirho {
+            parameters_chirho,
+            result_chirho: current_chirho,
+            givens_chirho,
+            positions_chirho,
+        })
     }
 }

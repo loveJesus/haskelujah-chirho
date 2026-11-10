@@ -78,11 +78,9 @@ impl InferCtxChirho {
             .iter()
             .map(|pred_chirho| predicate_chirho(self, pred_chirho, &SubstChirho::empty_chirho()))
             .collect();
-        let previous_chirho = self
-            .active_instance_context_chirho
-            .replace(normalized_chirho);
+        let previous_chirho = self.replace_instance_dictionary_context_chirho(normalized_chirho);
         let result_chirho = body_chirho(self);
-        self.active_instance_context_chirho = previous_chirho;
+        self.active_dictionary_context_chirho = previous_chirho;
         result_chirho
     }
 

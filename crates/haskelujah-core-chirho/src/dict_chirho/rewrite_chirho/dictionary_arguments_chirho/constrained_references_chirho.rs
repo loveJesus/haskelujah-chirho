@@ -34,6 +34,11 @@ const CONDITIONAL_DICTIONARY_DEPTH_CHIRHO: usize = 16;
 /// prints GHC's answer through it); every other class keeps its path, unmeasured.
 const PROVEN_LIST_CLASSES_CHIRHO: [&str; 2] = ["Eq", "Ord"];
 
+pub(super) struct ReferenceDictionarySlotChirho<'proof_chirho> {
+    pub(super) class_name_chirho: &'proof_chirho str,
+    pub(super) proof_chirho: Option<&'proof_chirho ReferenceEvidenceChirho>,
+}
+
 impl DictPassCtxChirho {
     /// The head of a call to a constrained binding, with one dictionary argument
     /// per predicate in scheme order: the checker's evidence for the reference
@@ -62,128 +67,168 @@ impl DictPassCtxChirho {
             .get(&written_id_chirho)
             .cloned()
             .unwrap_or_default();
+        if reference_evidence_chirho
+            .iter()
+            .any(|proof_chirho| proof_chirho.dictionary_position_chirho != Some(0))
+        {
+            return self.named_dictionary_refusal_chirho(
+                None,
+                "a leading dictionary call has no agreed argument positions".to_owned(),
+            );
+        }
         let mut result_chirho =
             CoreExprChirho::VarChirho(self.canonical_id_chirho(written_id_chirho));
         for class_name_chirho in classes_chirho {
             let proof_chirho = self
                 .take_reference_evidence_chirho(&mut reference_evidence_chirho, class_name_chirho);
-            let evidence_key_chirho = proof_chirho
-                .as_ref()
-                .and_then(|proof_chirho| proof_chirho.ty_key_chirho.clone());
-            // A displaced compiler class's ground proof takes its own namespace's dictionary, or
-            // its named refusal; never a spelled route, since that spelling is the source class's
-            // (row 692, C10, gpt #32666).
-            // workflow: language-features-chirho/dictionary-evidence-chirho
-            if let Some(identity_chirho) = proof_chirho.as_ref().and_then(|proof_chirho| {
-                self.displaced_identity_chirho(&proof_chirho.class_identity_chirho)
-            }) {
-                // Its own key, or, with none, the call's argument key, in its own namespace.
-                let key_chirho = evidence_key_chirho
-                    .as_deref()
-                    .or(syntactic_type_key_chirho)
-                    .unwrap_or_default();
-                let dict_arg_chirho = self
-                    .compiler_dictionary_chirho(
-                        identity_chirho,
-                        key_chirho,
-                        dict_vars_chirho,
-                        evidence_classes_chirho,
-                        local_instance_dicts_chirho,
-                    )
-                    .map(CoreExprChirho::VarChirho)
-                    .unwrap_or_else(|| {
-                        self.displaced_refusal_chirho(identity_chirho, "dictionary", key_chirho)
-                    });
-                result_chirho = CoreExprChirho::AppChirho {
-                    fun_chirho: Box::new(result_chirho),
-                    arg_chirho: Box::new(dict_arg_chirho),
-                };
-                continue;
-            }
-            let evidence_dict_chirho = self.evidence_dict_for_class_chirho(
-                class_name_chirho,
-                evidence_key_chirho.as_deref(),
+            let dict_arg_chirho = self.reference_dictionary_argument_chirho(
+                written_id_chirho,
+                ReferenceDictionarySlotChirho {
+                    class_name_chirho,
+                    proof_chirho: proof_chirho.as_ref(),
+                },
+                syntactic_type_key_chirho,
                 dict_vars_chirho,
                 evidence_classes_chirho,
                 local_instance_dicts_chirho,
             );
-            let proven_ground_chirho = evidence_key_chirho
-                .as_deref()
-                .is_some_and(Self::is_whole_list_key_chirho);
-            // A ground application the checker proved (`BoxChirho Int`) is served by its
-            // conditional instance's factory before any guess (row 694).
-            // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
-            let conditional_chirho = || {
-                proof_chirho
-                    .as_ref()
-                    .and_then(|proof_chirho| proof_chirho.applied_ty_chirho.as_ref())
-                    .and_then(|applied_chirho| {
-                        self.conditional_dictionary_chirho(
-                            class_name_chirho,
-                            applied_chirho,
-                            local_instance_dicts_chirho,
-                        )
-                    })
-            };
-            // A multi-parameter predicate the checker proved at a complete ground head takes the
-            // one registry entry whose instance matches that head, before any route keyed by its
-            // first argument (row 694, #31909).
-            let head_dictionary_chirho = proof_chirho
-                .as_ref()
-                .and_then(|proof_chirho| proof_chirho.applied_head_chirho.as_ref())
-                .and_then(|head_chirho| {
-                    self.head_dictionary_chirho(
-                        class_name_chirho,
-                        head_chirho,
-                        local_instance_dicts_chirho,
-                    )
-                });
-            let dict_arg_chirho = head_dictionary_chirho
-                .or_else(|| evidence_dict_chirho.map(CoreExprChirho::VarChirho))
-                .or_else(conditional_chirho)
-                .or_else(|| {
-                    syntactic_type_key_chirho
-                        .filter(|_| !proven_ground_chirho)
-                        .and_then(|type_key_chirho| {
-                            self.instance_dicts_chirho
-                                .get(&(class_name_chirho.clone(), type_key_chirho.to_string()))
-                                .copied()
-                        })
-                        .map(CoreExprChirho::VarChirho)
-                })
-                // A ground goal of a conditional instance (S1), after every keyed route and
-                // before the ambient one.
-                // workflow: language-features-chirho/dictionary-evidence-chirho
-                .or_else(|| {
-                    self.ground_goal_dict_chirho(written_id_chirho, class_name_chirho)
-                        .map(CoreExprChirho::VarChirho)
-                })
-                .or_else(|| {
-                    (!proven_ground_chirho)
-                        .then(|| {
-                            Self::fallback_dict_for_class_chirho(
-                                class_name_chirho,
-                                dict_vars_chirho,
-                                evidence_classes_chirho,
-                            )
-                        })
-                        .flatten()
-                        .map(CoreExprChirho::VarChirho)
-                })
-                .unwrap_or_else(|| {
-                    self.note_unserved_slot_chirho(written_id_chirho, class_name_chirho);
-                    self.missing_dictionary_chirho(
-                        class_name_chirho,
-                        evidence_key_chirho.as_deref(),
-                        written_id_chirho,
-                    )
-                });
             result_chirho = CoreExprChirho::AppChirho {
                 fun_chirho: Box::new(result_chirho),
                 arg_chirho: Box::new(dict_arg_chirho),
             };
         }
         result_chirho
+    }
+
+    pub(super) fn reference_dictionary_argument_chirho(
+        &self,
+        written_id_chirho: CoreIdChirho,
+        slot_chirho: ReferenceDictionarySlotChirho<'_>,
+        syntactic_type_key_chirho: Option<&str>,
+        dict_vars_chirho: &HashMap<String, CoreIdChirho>,
+        evidence_classes_chirho: &HashSet<String>,
+        local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
+    ) -> CoreExprChirho {
+        let ReferenceDictionarySlotChirho {
+            class_name_chirho,
+            proof_chirho,
+        } = slot_chirho;
+        let evidence_key_chirho = proof_chirho
+            .as_ref()
+            .and_then(|proof_chirho| proof_chirho.ty_key_chirho.clone());
+        if let Some(key_chirho) = evidence_key_chirho.as_deref()
+            && haskelujah_typing_chirho::infer_chirho::is_sigma_dictionary_key_chirho(key_chirho)
+        {
+            return Self::own_dict_chirho(class_name_chirho, key_chirho, dict_vars_chirho, evidence_classes_chirho)
+                .map(CoreExprChirho::VarChirho)
+                .unwrap_or_else(|| self.named_dictionary_refusal_chirho(None, format!(
+                    "checked sigma dictionary {key_chirho} for {class_name_chirho} is outside its lexical scope"
+                )));
+        }
+        // A displaced compiler class's ground proof takes its own namespace's dictionary, or
+        // its named refusal; never a spelled route, since that spelling is the source class's
+        // (row 692, C10, gpt #32666).
+        // workflow: language-features-chirho/dictionary-evidence-chirho
+        if let Some(identity_chirho) = proof_chirho.as_ref().and_then(|proof_chirho| {
+            self.displaced_identity_chirho(&proof_chirho.class_identity_chirho)
+        }) {
+            // Its own key, or, with none, the call's argument key, in its own namespace.
+            let key_chirho = evidence_key_chirho
+                .as_deref()
+                .or(syntactic_type_key_chirho)
+                .unwrap_or_default();
+            let dict_arg_chirho = self
+                .compiler_dictionary_chirho(
+                    identity_chirho,
+                    key_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_instance_dicts_chirho,
+                )
+                .map(CoreExprChirho::VarChirho)
+                .unwrap_or_else(|| {
+                    self.displaced_refusal_chirho(identity_chirho, "dictionary", key_chirho)
+                });
+            return dict_arg_chirho;
+        }
+        let evidence_dict_chirho = self.evidence_dict_for_class_chirho(
+            class_name_chirho,
+            evidence_key_chirho.as_deref(),
+            dict_vars_chirho,
+            evidence_classes_chirho,
+            local_instance_dicts_chirho,
+        );
+        let proven_ground_chirho = evidence_key_chirho
+            .as_deref()
+            .is_some_and(Self::is_whole_list_key_chirho);
+        // A ground application the checker proved (`BoxChirho Int`) is served by its
+        // conditional instance's factory before any guess (row 694).
+        // workflow: compiler-pipeline-chirho/deriving-strategies-chirho
+        let conditional_chirho = || {
+            proof_chirho
+                .as_ref()
+                .and_then(|proof_chirho| proof_chirho.applied_ty_chirho.as_ref())
+                .and_then(|applied_chirho| {
+                    self.conditional_dictionary_chirho(
+                        class_name_chirho,
+                        applied_chirho,
+                        local_instance_dicts_chirho,
+                    )
+                })
+        };
+        // A multi-parameter predicate the checker proved at a complete ground head takes the
+        // one registry entry whose instance matches that head, before any route keyed by its
+        // first argument (row 694, #31909).
+        let head_dictionary_chirho = proof_chirho
+            .as_ref()
+            .and_then(|proof_chirho| proof_chirho.applied_head_chirho.as_ref())
+            .and_then(|head_chirho| {
+                self.head_dictionary_chirho(
+                    class_name_chirho,
+                    head_chirho,
+                    local_instance_dicts_chirho,
+                )
+            });
+        head_dictionary_chirho
+            .or_else(|| evidence_dict_chirho.map(CoreExprChirho::VarChirho))
+            .or_else(conditional_chirho)
+            .or_else(|| {
+                syntactic_type_key_chirho
+                    .filter(|_| !proven_ground_chirho)
+                    .and_then(|type_key_chirho| {
+                        self.instance_dicts_chirho
+                            .get(&(class_name_chirho.to_string(), type_key_chirho.to_string()))
+                            .copied()
+                    })
+                    .map(CoreExprChirho::VarChirho)
+            })
+            // A ground goal of a conditional instance (S1), after every keyed route and
+            // before the ambient one.
+            // workflow: language-features-chirho/dictionary-evidence-chirho
+            .or_else(|| {
+                self.ground_goal_dict_chirho(written_id_chirho, class_name_chirho)
+                    .map(CoreExprChirho::VarChirho)
+            })
+            .or_else(|| {
+                (!proven_ground_chirho)
+                    .then(|| {
+                        Self::fallback_dict_for_class_chirho(
+                            class_name_chirho,
+                            dict_vars_chirho,
+                            evidence_classes_chirho,
+                        )
+                    })
+                    .flatten()
+                    .map(CoreExprChirho::VarChirho)
+            })
+            .unwrap_or_else(|| {
+                self.note_unserved_slot_chirho(written_id_chirho, class_name_chirho);
+                self.missing_dictionary_chirho(
+                    class_name_chirho,
+                    evidence_key_chirho.as_deref(),
+                    written_id_chirho,
+                )
+            })
     }
 
     /// A constrained call reached with no evidence for its reference, only the
@@ -409,6 +454,13 @@ impl DictPassCtxChirho {
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
         syntactic_key_chirho: &dyn Fn() -> Option<String>,
     ) -> Option<CoreExprChirho> {
+        if let Some(scoped_chirho) = self.scoped_method_head_chirho(
+            head_id_chirho,
+            dict_vars_chirho,
+            evidence_classes_chirho,
+        ) {
+            return Some(scoped_chirho);
+        }
         // `(^^)` is a constrained Prelude function, not a class method. Its occurrence still
         // shares this canonicalization path because desugaring gives every constrained reference
         // an occurrence id. Consume its full two-predicate proof before the single-method proof
@@ -694,6 +746,14 @@ impl DictPassCtxChirho {
         dict_vars_chirho: &HashMap<String, CoreIdChirho>,
         evidence_classes_chirho: &HashSet<String>,
     ) -> Option<CoreIdChirho> {
+        if haskelujah_typing_chirho::infer_chirho::is_sigma_dictionary_key_chirho(key_chirho) {
+            return dict_vars_chirho
+                .get(&Self::scoped_class_key_chirho(
+                    key_chirho,
+                    class_name_chirho,
+                ))
+                .copied();
+        }
         dict_vars_chirho.get(key_chirho).copied().or_else(|| {
             Self::fallback_dict_for_class_chirho(
                 class_name_chirho,

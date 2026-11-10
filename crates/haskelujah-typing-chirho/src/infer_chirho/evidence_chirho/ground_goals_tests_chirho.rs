@@ -375,6 +375,7 @@ fn ambiguous_ordinary_constructor_names_cannot_authorize_new_dispatch_chirho() {
 #[test]
 fn structural_disagreement_clears_only_the_new_goal_chirho() {
     let record_chirho = |ty_chirho| ReferenceEvidenceChirho {
+        dictionary_position_chirho: Some(0),
         applied_ty_chirho: None,
         applied_head_chirho: None,
         class_name_chirho: "Eq".to_owned(),

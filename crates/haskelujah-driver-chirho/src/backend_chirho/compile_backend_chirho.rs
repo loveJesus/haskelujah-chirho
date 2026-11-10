@@ -59,7 +59,8 @@ pub(crate) fn compile_backend_chirho(
         .all_bindings_chirho()
         .into_iter()
         .filter(|(name_chirho, scheme_chirho)| {
-            !scheme_chirho.preds_chirho.is_empty()
+            (!scheme_chirho.preds_chirho.is_empty()
+                || has_result_context_chirho(&scheme_chirho.ty_chirho))
                 && (!class_method_names_chirho.contains(name_chirho)
                     || source_value_names_chirho.contains(*name_chirho))
         })
@@ -85,6 +86,7 @@ pub(crate) fn compile_backend_chirho(
     let desugar_output_chirho = haskelujah_core_chirho::desugar_module_with_inputs_chirho(
         &module_chirho,
         haskelujah_core_chirho::DesugarInputsChirho {
+            sigma_evidence_chirho: infer_result_chirho.sigma_evidence_chirho.clone(),
             method_names_chirho: evidence_join_chirho::method_occurrence_names_chirho(
                 &module_chirho,
             ),
@@ -283,6 +285,9 @@ pub(crate) fn compile_backend_chirho(
             newtype_info_chirho,
             extra_dict_param_names_chirho,
             evidence_chirho: haskelujah_core_chirho::DictPassEvidenceChirho {
+                sigma_dictionary_binders_chirho: desugar_output_chirho
+                    .sigma_dictionary_binders_chirho,
+                sigma_local_schemes_chirho: desugar_output_chirho.sigma_local_schemes_chirho,
                 method_occurrence_canon_chirho: desugar_output_chirho.method_occurrences_chirho,
                 occurrence_evidence_chirho,
                 occurrence_applied_tys_chirho,
@@ -392,4 +397,23 @@ fn unsupported_gnd_diagnostics_chirho(reasons_chirho: &[String]) -> DiagnosticBu
         );
     }
     diagnostics_chirho
+}
+
+// This only opts a written reference into provenance/evidence capture. The
+// checker supplies each actual dictionary and its value-argument position.
+// workflow: language-features-chirho/rank-n-visible-type-application-chirho
+fn has_result_context_chirho(
+    mut ty_chirho: &haskelujah_typing_chirho::ty_chirho::TyChirho,
+) -> bool {
+    use haskelujah_typing_chirho::ty_chirho::TyChirho;
+    for _depth_chirho in 0..128 {
+        match ty_chirho {
+            TyChirho::QualChirho { .. } => return true,
+            TyChirho::ForallChirho { body_chirho, .. }
+            | TyChirho::RequiredForallChirho { body_chirho, .. } => ty_chirho = body_chirho,
+            TyChirho::FunChirho(_, result_chirho, _) => ty_chirho = result_chirho,
+            _ => return false,
+        }
+    }
+    false
 }

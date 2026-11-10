@@ -9,6 +9,11 @@ use super::*;
 impl DesugarCtxChirho {
     /// Desugar an AST expression into a Core expression.
     pub fn desugar_expr_chirho(&mut self, expr_chirho: &ExprChirho) -> CoreExprChirho {
+        let body_chirho = self.desugar_unwrapped_expr_chirho(expr_chirho);
+        self.abstract_sigma_expression_chirho(expr_chirho, body_chirho)
+    }
+
+    fn desugar_unwrapped_expr_chirho(&mut self, expr_chirho: &ExprChirho) -> CoreExprChirho {
         match expr_chirho {
             ExprChirho::VarChirho(name_chirho) => {
                 let (lookup_name_chirho, id_chirho) =

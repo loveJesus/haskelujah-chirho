@@ -161,6 +161,12 @@ impl std::fmt::Display for DictPassDiagnosticChirho {
 /// workflow: language-features-chirho/dictionary-evidence-chirho
 #[derive(Default)]
 pub struct DictPassEvidenceChirho {
+    pub sigma_dictionary_binders_chirho:
+        HashMap<CoreIdChirho, crate::desugar_chirho::SigmaDictionaryBinderChirho>,
+    pub sigma_local_schemes_chirho: HashMap<
+        CoreIdChirho,
+        std::sync::Arc<haskelujah_typing_chirho::infer_chirho::SigmaLocalBindingChirho>,
+    >,
     pub method_occurrence_canon_chirho: HashMap<CoreIdChirho, (String, CoreIdChirho)>,
     pub occurrence_evidence_chirho: HashMap<CoreIdChirho, OccurrenceEvidenceChirho>,
     pub occurrence_applied_tys_chirho: HashMap<CoreIdChirho, TyChirho>,
@@ -195,6 +201,14 @@ enum DerivedShowKnownChirho {
 
 /// The dictionary-passing transform context.
 pub struct DictPassCtxChirho {
+    scoped_dictionary_environments_chirho:
+        HashMap<CoreIdChirho, rewrite_chirho::ScopedDictionaryEnvironmentChirho>,
+    sigma_dictionary_binders_chirho:
+        HashMap<CoreIdChirho, crate::desugar_chirho::SigmaDictionaryBinderChirho>,
+    sigma_local_schemes_chirho: HashMap<
+        CoreIdChirho,
+        std::sync::Arc<haskelujah_typing_chirho::infer_chirho::SigmaLocalBindingChirho>,
+    >,
     next_id_chirho: u32,
     names_chirho: HashMap<CoreIdChirho, String>,
     /// Class name -> dictionary layout.
@@ -386,6 +400,9 @@ impl DictPassCtxChirho {
     ) -> Self {
         Self {
             next_id_chirho: start_id_chirho,
+            scoped_dictionary_environments_chirho: HashMap::new(),
+            sigma_dictionary_binders_chirho: HashMap::new(),
+            sigma_local_schemes_chirho: HashMap::new(),
             names_chirho,
             layouts_chirho: HashMap::new(),
             generated_bindings_chirho: Vec::new(),
@@ -894,6 +911,8 @@ pub fn dict_pass_module_with_inputs_chirho(
     ctx_chirho.occurrence_evidence_chirho = evidence_chirho.occurrence_evidence_chirho;
     ctx_chirho.occurrence_applied_tys_chirho = evidence_chirho.occurrence_applied_tys_chirho;
     ctx_chirho.reference_evidence_chirho = evidence_chirho.reference_evidence_chirho;
+    ctx_chirho.sigma_dictionary_binders_chirho = evidence_chirho.sigma_dictionary_binders_chirho;
+    ctx_chirho.sigma_local_schemes_chirho = evidence_chirho.sigma_local_schemes_chirho;
     ctx_chirho.derived_shows_chirho = evidence_chirho.derived_shows_chirho;
     ctx_chirho.derived_enums_chirho = evidence_chirho.derived_enums_chirho;
     ctx_chirho.operator_occurrences_chirho = evidence_chirho.operator_occurrences_chirho;

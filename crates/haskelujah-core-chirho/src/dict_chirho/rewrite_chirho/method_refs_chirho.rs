@@ -9,25 +9,28 @@ use crate::dict_chirho::prelude_chirho::PRINT_VIA_SHOW_CHIRHO;
 use crate::expr_chirho::{CoreAltChirho, CoreExprChirho, CoreIdChirho};
 
 impl DictPassCtxChirho {
-    fn collect_app_head_var_chirho<'a>(
-        expr_chirho: &'a CoreExprChirho,
-    ) -> Option<(CoreIdChirho, Vec<&'a CoreExprChirho>)> {
+    pub(super) fn collect_app_head_var_chirho(
+        expr_chirho: &CoreExprChirho,
+    ) -> Option<(CoreIdChirho, Vec<&CoreExprChirho>)> {
         let mut args_chirho = Vec::new();
         let mut current_chirho = expr_chirho;
-        while let CoreExprChirho::AppChirho {
-            fun_chirho,
-            arg_chirho,
-        } = current_chirho
-        {
-            args_chirho.push(arg_chirho.as_ref());
-            current_chirho = fun_chirho.as_ref();
-        }
-        while let CoreExprChirho::TyAppChirho {
-            expr_chirho: inner_chirho,
-            ..
-        } = current_chirho
-        {
-            current_chirho = inner_chirho.as_ref();
+        loop {
+            match current_chirho {
+                CoreExprChirho::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                } => {
+                    args_chirho.push(arg_chirho.as_ref());
+                    current_chirho = fun_chirho.as_ref();
+                }
+                CoreExprChirho::TyAppChirho {
+                    expr_chirho: inner_chirho,
+                    ..
+                } => {
+                    current_chirho = inner_chirho.as_ref();
+                }
+                _ => break,
+            }
         }
         let CoreExprChirho::VarChirho(head_id_chirho) = current_chirho else {
             return None;
@@ -236,6 +239,16 @@ impl DictPassCtxChirho {
                 fun_chirho,
                 arg_chirho,
             } => {
+                if let Some(positioned_chirho) = self.rewrite_positioned_reference_chirho(
+                    expr_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ) {
+                    return positioned_chirho;
+                }
+
                 // Evidence-threading P1: canonicalize/dispatch method-occurrence
                 // heads on PURE App spines before the specialized App handlers
                 // (which key on ids/names of the shared canonical form). TyApp-
@@ -808,6 +821,16 @@ impl DictPassCtxChirho {
                 binder_chirho,
                 body_chirho,
             } => {
+                if let Some(scoped_chirho) = self.rewrite_scoped_dictionary_lambda_chirho(
+                    binder_chirho,
+                    body_chirho,
+                    dict_vars_chirho,
+                    evidence_classes_chirho,
+                    local_type_keys_chirho,
+                    local_instance_dicts_chirho,
+                ) {
+                    return scoped_chirho;
+                }
                 let was_new_chirho = self
                     .local_shadow_ids_chirho
                     .borrow_mut()

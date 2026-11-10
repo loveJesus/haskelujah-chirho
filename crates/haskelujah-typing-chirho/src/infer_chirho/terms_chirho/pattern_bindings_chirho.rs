@@ -59,17 +59,31 @@ impl InferCtxChirho {
             PatChirho::VarChirho(name_chirho) => {
                 // For higher-rank types: if the type is ForallChirho, bind as a
                 // polymorphic scheme so each use gets a fresh instantiation.
-                let scheme_chirho = match ty_chirho {
-                    TyChirho::ForallChirho {
-                        vars_chirho,
-                        body_chirho,
-                    } => SchemeChirho {
-                        vars_chirho: vars_chirho.clone(),
-                        preds_chirho: vec![],
-                        ty_chirho: (**body_chirho).clone(),
+                let mut predicates_chirho = Vec::new();
+                let mut equalities_chirho = Vec::new();
+                let (vars_chirho, body_chirho) = self.split_typed_scheme_prefix_chirho(
+                    ty_chirho.clone(),
+                    &mut predicates_chirho,
+                    &mut equalities_chirho,
+                );
+                predicates_chirho.extend(equalities_chirho.into_iter().map(
+                    |(left_chirho, right_chirho)| {
+                        crate::ty_chirho::SchemePredChirho::legacy_chirho(
+                            crate::ty_chirho::SchemePredPartsChirho {
+                                class_name_chirho: "~".to_owned(),
+                                kind_tys_chirho: Vec::new(),
+                                ty_chirho: left_chirho,
+                                extra_tys_chirho: vec![right_chirho],
+                            },
+                        )
                     },
-                    _ => SchemeChirho::mono_chirho(ty_chirho.clone()),
+                ));
+                let scheme_chirho = SchemeChirho {
+                    vars_chirho,
+                    preds_chirho: predicates_chirho,
+                    ty_chirho: body_chirho,
                 };
+                self.record_sigma_local_binding_chirho(name_chirho, &scheme_chirho);
                 self.env_chirho
                     .bind_chirho(name_chirho.text_chirho().to_string(), scheme_chirho);
                 SubstChirho::empty_chirho()

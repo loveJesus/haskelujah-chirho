@@ -6,6 +6,7 @@
 use super::InferCtxChirho;
 use super::build_infix_app_expr_chirho;
 use super::equality_normalization_chirho::EqualityBudgetChirho;
+use crate::infer_chirho::SigmaExpressionKeyChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemeChirho, TyChirho};
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
@@ -86,13 +87,22 @@ impl InferCtxChirho {
         if matches!(normalized_expected_chirho, TyChirho::QualChirho { .. }) {
             let (body_chirho, givens_chirho) =
                 self.expose_qualified_parts_chirho(normalized_expected_chirho, Vec::new());
+            let given_start_chirho = self.given_preds_chirho.len();
             let (substitution_chirho, _) =
                 self.with_signature_givens_chirho(givens_chirho, &body_chirho, |context_chirho| {
-                    context_chirho.infer_expr_against_expected_chirho(
-                        expr_chirho,
-                        &body_chirho,
-                        span_chirho,
-                    )
+                    context_chirho
+                        .with_sigma_evidence_chirho(
+                            SigmaExpressionKeyChirho::from_expression_chirho(expr_chirho),
+                            given_start_chirho,
+                            |context_chirho| {
+                                context_chirho.infer_expr_against_expected_chirho(
+                                    expr_chirho,
+                                    &body_chirho,
+                                    span_chirho,
+                                )
+                            },
+                        )
+                        .unwrap_or_else(|| (SubstChirho::empty_chirho(), body_chirho.clone()))
                 });
             let checked_chirho = substitution_chirho.apply_ty_chirho(expected_ty_chirho);
             return (substitution_chirho, checked_chirho);
@@ -119,7 +129,7 @@ impl InferCtxChirho {
             return self
                 .check_expected_sigma_chirho(
                     &normalized_expected_chirho,
-                    span_chirho,
+                    SigmaExpressionKeyChirho::from_expression_chirho(expr_chirho),
                     &mut budget_chirho,
                     |context_chirho, opened_chirho, _budget_chirho| {
                         Some(context_chirho.infer_expr_against_expected_chirho(
@@ -194,6 +204,7 @@ impl InferCtxChirho {
                         body_chirho: forall_body_chirho.clone(),
                     }
                 };
+                let given_start_chirho = self.given_preds_chirho.len();
                 let ((subst_chirho, _), public_chirho) = self.with_rigid_signature_chirho(
                     &SchemeChirho {
                         vars_chirho: vars_chirho.slice_chirho(0..1),
@@ -206,11 +217,21 @@ impl InferCtxChirho {
                         let previous_chirho = context_chirho
                             .scoped_tyvars_chirho
                             .insert(binder_text_chirho.clone(), *first_var_chirho);
-                        let checked_chirho = context_chirho.infer_expr_against_expected_chirho(
-                            body_chirho,
-                            opened_chirho,
-                            span_chirho,
-                        );
+                        let checked_chirho = context_chirho
+                            .with_sigma_evidence_chirho(
+                                SigmaExpressionKeyChirho::from_expression_chirho(body_chirho),
+                                given_start_chirho,
+                                |context_chirho| {
+                                    context_chirho.infer_expr_against_expected_chirho(
+                                        body_chirho,
+                                        opened_chirho,
+                                        span_chirho,
+                                    )
+                                },
+                            )
+                            .unwrap_or_else(|| {
+                                (SubstChirho::empty_chirho(), opened_chirho.clone())
+                            });
                         if let Some(previous_chirho) = previous_chirho {
                             context_chirho
                                 .scoped_tyvars_chirho
@@ -351,6 +372,7 @@ impl InferCtxChirho {
                     body_chirho,
                     expected_ty_chirho,
                     span_chirho,
+                    SigmaExpressionKeyChirho::from_expression_chirho(expr_chirho),
                 )
                 .unwrap_or_else(|| self.infer_expr_chirho(expr_chirho)),
             ExprChirho::AppChirho {

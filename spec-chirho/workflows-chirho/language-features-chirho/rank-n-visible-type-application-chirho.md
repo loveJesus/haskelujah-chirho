@@ -30,6 +30,9 @@ flowchart TD
     substitution_chirho --> term_chirho[Infer following term arguments]
     scheme_chirho --> equation_chirho[Consume equation patterns and retain residual function type]
     equation_chirho --> expected_chirho[Check RHS against residual expected type]
+    equation_chirho --> clause_sigma_chirho[Retain each opened context position while consuming clause parameters]
+    clause_sigma_chirho --> function_sigma_chirho[Abstract one shared dictionary slot on the function parameter spine]
+    function_sigma_chirho --> runtime_sigma_chirho
     expected_chirho --> application_chirho[Constrain application result before checking argument]
     expected_chirho --> sigma_chirho{Expected invisible forall}
     sigma_chirho -->|ordinary expression| rigid_sigma_chirho[Open checked binders and retain every given]
@@ -37,6 +40,15 @@ flowchart TD
     explicit_sigma_chirho --> rigid_sigma_chirho
     rigid_sigma_chirho --> opened_chirho[Check expression against the opened rho]
     opened_chirho --> escape_sigma_chirho[Validate escape before restoring rigid signature scope]
+    rigid_sigma_chirho --> capture_sigma_chirho[Capture immutable lexical scope ID and ordered class givens]
+    capture_sigma_chirho --> join_sigma_chirho[Join actual expression and binder spans exactly once]
+    join_sigma_chirho --> abstract_sigma_chirho[Introduce dictionary lambdas and retain actual Core IDs]
+    abstract_sigma_chirho --> scoped_methods_chirho[Resolve exact scope and predicate keys without ambient fallback]
+    scoped_methods_chirho --> superclass_sigma_chirho[Project proof-selected superclasses inside the value-parameter spine]
+    application_chirho --> position_sigma_chirho[Capture dictionary positions on the checked value spine]
+    position_sigma_chirho --> call_sigma_chirho[Apply agreed dictionaries to fields, selectors and higher-rank results]
+    superclass_sigma_chirho --> runtime_sigma_chirho[Compare unchanged outputs on interpreter, LLVM and Cranelift]
+    call_sigma_chirho --> runtime_sigma_chirho
     escape_sigma_chirho --> public_sigma_chirho[Publish only the safe solution and original expected sigma]
     application_chirho --> family_chirho[Reduce family-dependent argument type]
     expected_chirho --> branch_chirho{Polymorphic expected result}
@@ -111,11 +123,30 @@ flowchart TD
   rigid-signature capture/skolemization operations still use independent bounded allowances,
   not the elaboration owner's aggregate loan. Aggregate lending/settlement remains an explicit
   resource residual; this change neither raises those bounds nor claims aggregate accounting.
-- A qualified constructor field's frontend acceptance does not prove its runtime dictionaries.
-  The new unchanged runtime companion is currently RED at the interpreter: missing STG binding
-  `<`. Expression-level givens need a scope identity distinct from an enclosing binding's
-  `$own[:i]`, dictionary abstraction at the producer and ordered evidence application at field
-  references. LLVM and Cranelift are not reached by that RED. The Core handoff remains open.
+- Expression givens carry producer-minted `$sigma:<scope>:<index>` identities distinct from
+  binding `$own[:i]` and instance contexts. Captures share one immutable lexical context;
+  finalization searches the innermost scope first using the existing proof-aware entailment.
+  Scoped keys never fall back to an enclosing class dictionary.
+- The checked expression's own span and, for mixed lambda layers, its first binder's span form
+  a transport key only. They mint no proof. Dummy, conflicting, repeated or unconsumed scope
+  joins refuse Core publication. Each wrapper reports its actual Core dictionary binder IDs.
+- The ordinary checked function-spine producer retains each context's value-argument position.
+  One clause-group scope surrounds all its equations. Desugaring inserts those dictionaries
+  between the corresponding function parameters; a grouped lambda uses its actual expression
+  key. Function and expression transport keys are distinct. Later positions are inserted first
+  so generated dictionaries never count as source arguments. Position traversal and temporary
+  transport output spend the existing projection allowance.
+- Runtime parameters contain class predicates in their checked order; equality givens remain
+  checking evidence and occupy no runtime slot. Application captures carry the number of
+  preceding value arguments, so a result context follows those arguments. Disagreement between
+  captures is explicit unknown evidence and refuses application rather than selecting a position.
+- Positional fields, record construction and selectors, higher-rank results, repeated class
+  scopes and staged explicit type lambdas have focused runtime controls. Their asserted output
+  is compared on all three engines; broader compatibility follows the named final receipts.
+- Scope payload copies use the elaboration owner loan and Core wrappers use the existing
+  projection budget. Final lexical-context normalization and superclass search are bounded per
+  capture but are not settled against the aggregate owner allowance; that remains a resource
+  residual alongside the rigid-signature operations named above.
 
 - Type fixities come from current-module top-level declarations and the existing
   built-in/default table, not imported custom fixity metadata. Diagnostics for
@@ -134,9 +165,9 @@ flowchart TD
 - The separate type-synonym RHS converter still uses its existing fixed-ID/name-substitution
   representation. General synonym alpha-renaming/capture avoidance is not claimed by the
   surface/signature scope repair.
-- The existing flat scheme-predicate representation still lifts result-spine contexts;
-  preserving their lexical IDs is not full support for contexts inside rank-N parameters
-  or a new representation of nested qualified types.
+- The existing scheme representation and checked application-prefix traversal remain in use.
+  Scoped runtime evidence and argument positions do not establish support for every nested
+  qualified type or every expression-level subsumption route.
 - Required declaration arguments are matched positionally; named required binders are not yet
   added to the scoped type-variable environment of the equation body.
 - Template Haskell reification currently maps required and invisible foralls to the existing

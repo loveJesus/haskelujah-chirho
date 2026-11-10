@@ -20,6 +20,7 @@ mod constructors_chirho;
 #[path = "desugar_chirho/input_chirho.rs"]
 mod input_chirho;
 pub use input_chirho::DesugarInputErrorChirho;
+pub use input_chirho::sigma_evidence_chirho::SigmaDictionaryBinderChirho;
 #[path = "desugar_chirho/sugar_chirho/do_notation_chirho.rs"]
 mod do_notation_chirho;
 #[path = "desugar_chirho/expressions_chirho.rs"]
@@ -91,6 +92,9 @@ use crate::simplify_chirho::free_vars_chirho;
 /// CoreIdChirho → source name for use by downstream passes.
 #[derive(Debug)]
 pub struct DesugarOutputChirho {
+    pub sigma_dictionary_binders_chirho: HashMap<CoreIdChirho, SigmaDictionaryBinderChirho>,
+    pub sigma_local_schemes_chirho:
+        HashMap<CoreIdChirho, Arc<haskelujah_typing_chirho::infer_chirho::SigmaLocalBindingChirho>>,
     pub module_chirho: CoreModuleChirho,
     /// Maps every CoreIdChirho to the source name it originated from.
     pub names_chirho: HashMap<CoreIdChirho, String>,
@@ -148,6 +152,19 @@ struct PatSynDefChirho {
 
 /// The desugaring context — generates fresh Core IDs.
 pub struct DesugarCtxChirho {
+    sigma_evidence_chirho: haskelujah_typing_chirho::infer_chirho::SigmaEvidenceChirho,
+    sigma_expression_scopes_chirho: HashMap<
+        haskelujah_typing_chirho::infer_chirho::SigmaExpressionKeyChirho,
+        std::collections::BTreeMap<
+            usize,
+            input_chirho::sigma_evidence_chirho::SigmaExpressionJoinChirho,
+        >,
+    >,
+    sigma_dictionary_binders_chirho: HashMap<CoreIdChirho, SigmaDictionaryBinderChirho>,
+    sigma_local_schemes_chirho:
+        HashMap<CoreIdChirho, Arc<haskelujah_typing_chirho::infer_chirho::SigmaLocalBindingChirho>>,
+    sigma_transport_failure_chirho: Option<DesugarInputErrorChirho>,
+    sigma_projection_budget_chirho: Option<GadtProjectionBudgetChirho>,
     next_id_chirho: u32,
     /// Tracks CoreId → source name associations.
     names_chirho: HashMap<CoreIdChirho, String>,
@@ -214,6 +231,12 @@ impl DesugarCtxChirho {
     pub fn new_chirho() -> Self {
         Self {
             next_id_chirho: 0,
+            sigma_evidence_chirho: Default::default(),
+            sigma_expression_scopes_chirho: HashMap::new(),
+            sigma_dictionary_binders_chirho: HashMap::new(),
+            sigma_local_schemes_chirho: HashMap::new(),
+            sigma_transport_failure_chirho: None,
+            sigma_projection_budget_chirho: None,
             names_chirho: HashMap::new(),
             scope_chirho: vec![HashMap::new()],
             free_var_cache_chirho: HashMap::new(),
@@ -699,6 +722,7 @@ pub fn desugar_module_with_method_occurrences_chirho(
 /// checker's environment that the AST alone does not carry.
 #[derive(Debug, Default)]
 pub struct DesugarInputsChirho {
+    pub sigma_evidence_chirho: haskelujah_typing_chirho::infer_chirho::SigmaEvidenceChirho,
     /// Class methods whose free references each get a fresh occurrence id
     /// (evidence-threading P1).
     pub method_names_chirho: HashSet<String>,
@@ -733,6 +757,7 @@ pub fn desugar_module_with_inputs_chirho(
     ctx_chirho.extensions_chirho = module_chirho.extensions_chirho.clone();
     ctx_chirho.set_method_occurrence_names_chirho(inputs_chirho.method_names_chirho);
     ctx_chirho.set_constrained_names_chirho(inputs_chirho.constrained_names_chirho);
+    ctx_chirho.install_sigma_evidence_chirho(inputs_chirho.sigma_evidence_chirho);
     ctx_chirho.set_constructor_arities_chirho(inputs_chirho.constructor_arities_chirho);
     ctx_chirho.con_field_names_chirho = inputs_chirho.constructor_field_scopes_chirho;
     ctx_chirho.import_suppliers_chirho = inputs_chirho.import_suppliers_chirho;

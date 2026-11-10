@@ -7,6 +7,7 @@
 use super::InferCtxChirho;
 use super::equality_normalization_chirho::{EqualityBudgetChirho, copy_term_with_budget_chirho};
 use crate::class_chirho::{PredChirho, PredPartsChirho};
+use crate::infer_chirho::SigmaExpressionKeyChirho;
 use crate::subst_chirho::SubstChirho;
 use crate::ty_chirho::{SchemeChirho, TyChirho, TyVarChirho};
 use haskelujah_ast_chirho::expr_chirho::ExprChirho;
@@ -19,13 +20,18 @@ struct ApplicationArgumentChirho<'source_chirho> {
     formal_chirho: TyChirho,
     prepared_chirho: Option<Box<ApplicationPlanChirho<'source_chirho>>>,
 }
+struct ApplicationPredicateChirho {
+    position_chirho: usize,
+    predicate_chirho: PredChirho,
+}
 struct ApplicationPlanChirho<'source_chirho> {
+    expression_chirho: SigmaExpressionKeyChirho,
     name_chirho: &'source_chirho NameChirho,
     variable_head_chirho: bool,
     scheme_chirho: SchemeChirho,
     compiler_value_chirho: Option<CompilerValueChirho>,
     global_quick_look_chirho: bool,
-    predicates_chirho: Vec<PredChirho>,
+    predicates_chirho: Vec<ApplicationPredicateChirho>,
     arguments_chirho: Vec<ApplicationArgumentChirho<'source_chirho>>,
     result_chirho: TyChirho,
 }
@@ -533,7 +539,7 @@ impl InferCtxChirho {
                 name_chirho.span_chirho(),
             )
         };
-        let Some((mut current_chirho, mut predicates_chirho)) = instantiated_chirho else {
+        let Some((mut current_chirho, initial_predicates_chirho)) = instantiated_chirho else {
             return Ok(None);
         };
         budget_chirho
@@ -549,6 +555,13 @@ impl InferCtxChirho {
                 (start_chirho..self.elaboration_state_chirho.next_variable_chirho).map(TyVarChirho),
             );
         }
+        let mut predicates_chirho: Vec<_> = initial_predicates_chirho
+            .into_iter()
+            .map(|predicate_chirho| ApplicationPredicateChirho {
+                position_chirho: 0,
+                predicate_chirho,
+            })
+            .collect();
         let mut prepared_arguments_chirho = Vec::new();
         for argument_chirho in arguments_chirho {
             let (opened_chirho, additional_chirho) = self.open_application_prefix_chirho(
@@ -557,7 +570,12 @@ impl InferCtxChirho {
                 budget_chirho,
                 quick_look_chirho,
             )?;
-            predicates_chirho.extend(additional_chirho);
+            predicates_chirho.extend(additional_chirho.into_iter().map(|predicate_chirho| {
+                ApplicationPredicateChirho {
+                    position_chirho: prepared_arguments_chirho.len(),
+                    predicate_chirho,
+                }
+            }));
             let TyChirho::FunChirho(formal_chirho, result_chirho, _) = opened_chirho else {
                 return Ok(None);
             };
@@ -615,10 +633,16 @@ impl InferCtxChirho {
                 budget_chirho,
                 quick_look_chirho,
             )?;
-            predicates_chirho.extend(additional_chirho);
+            predicates_chirho.extend(additional_chirho.into_iter().map(|predicate_chirho| {
+                ApplicationPredicateChirho {
+                    position_chirho: prepared_arguments_chirho.len(),
+                    predicate_chirho,
+                }
+            }));
             current_chirho = opened_chirho;
         }
         Ok(Some(ApplicationPlanChirho {
+            expression_chirho: SigmaExpressionKeyChirho::from_expression_chirho(expression_chirho),
             name_chirho,
             variable_head_chirho,
             scheme_chirho,
@@ -710,7 +734,7 @@ impl InferCtxChirho {
         {
             return self.check_expected_sigma_chirho(
                 expected_chirho,
-                span_chirho,
+                plan_chirho.expression_chirho,
                 budget_chirho,
                 |context_chirho, opened_chirho, budget_chirho| {
                     context_chirho.finish_application_chirho(
@@ -726,7 +750,10 @@ impl InferCtxChirho {
         }
         let mut substitution_chirho = carried_chirho;
         let mut predicates_chirho = Vec::new();
-        for predicate_chirho in plan_chirho.predicates_chirho {
+        let mut predicate_positions_chirho = Vec::new();
+        for positioned_chirho in plan_chirho.predicates_chirho {
+            predicate_positions_chirho.push(positioned_chirho.position_chirho);
+            let predicate_chirho = positioned_chirho.predicate_chirho;
             let mut map_chirho = |term_chirho: &TyChirho| {
                 look_chirho
                     .apply_chirho(term_chirho, budget_chirho)
@@ -758,7 +785,11 @@ impl InferCtxChirho {
                 &plan_chirho.scheme_chirho,
             );
         }
-        self.capture_occurrence_predicates_chirho(plan_chirho.name_chirho, &predicates_chirho);
+        self.capture_application_predicates_chirho(
+            plan_chirho.name_chirho,
+            &predicates_chirho,
+            &predicate_positions_chirho,
+        );
         for predicate_chirho in predicates_chirho {
             self.defer_pred_chirho(predicate_chirho, plan_chirho.name_chirho.span_chirho());
         }

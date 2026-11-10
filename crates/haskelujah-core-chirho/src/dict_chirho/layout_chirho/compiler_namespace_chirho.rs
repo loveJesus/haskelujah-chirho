@@ -560,7 +560,7 @@ impl DictPassCtxChirho {
         ty_key_chirho: &str,
         owner_chirho: Option<CoreIdChirho>,
     ) -> CoreExprChirho {
-        self.named_displaced_refusal_chirho(
+        self.named_dictionary_refusal_chirho(
             owner_chirho,
             format!(
                 "the compiler's `{}` {request_chirho} at `{ty_key_chirho}` has no dictionary this pass can build while the program's own class takes the spelling `{}`",
@@ -573,7 +573,7 @@ impl DictPassCtxChirho {
     /// One named refusal: recorded with its owner for the module's unsupported list, and the
     /// error the refused request becomes. An owned refusal counts only when its owner is
     /// demanded (`rewrite_chirho.rs`, `finish_chirho`); its error body stays either way.
-    fn named_displaced_refusal_chirho(
+    pub(in crate::dict_chirho) fn named_dictionary_refusal_chirho(
         &self,
         owner_chirho: Option<CoreIdChirho>,
         message_chirho: String,
@@ -642,7 +642,7 @@ impl DictPassCtxChirho {
             .names_chirho
             .get(&canonical_chirho)
             .map_or("a compiler helper", String::as_str);
-        Some(self.named_displaced_refusal_chirho(
+        Some(self.named_dictionary_refusal_chirho(
             None,
             format!(
                 "the compiler-owned helper `{helper_chirho}` reaches the compiler's `{}` selectors by spelling, which the program's own class takes here",
@@ -658,9 +658,20 @@ impl DictPassCtxChirho {
         &self,
         predicate_chirho: &SchemePredChirho,
     ) -> String {
-        match self.displaced_identity_chirho(predicate_chirho.class_identity_chirho()) {
+        self.proof_namespace_chirho(
+            &predicate_chirho.class_name_chirho,
+            predicate_chirho.class_identity_chirho(),
+        )
+    }
+
+    pub(in crate::dict_chirho) fn proof_namespace_chirho(
+        &self,
+        class_name_chirho: &str,
+        proof_chirho: &PredicateClassProofChirho,
+    ) -> String {
+        match self.displaced_identity_chirho(proof_chirho) {
             Some(identity_chirho) => compiler_namespace_name_chirho(identity_chirho),
-            None => predicate_chirho.class_name_chirho.clone(),
+            None => class_name_chirho.to_string(),
         }
     }
 

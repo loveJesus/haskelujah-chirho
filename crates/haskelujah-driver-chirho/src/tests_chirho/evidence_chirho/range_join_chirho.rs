@@ -34,6 +34,7 @@ fn only_the_marked_range_receives_its_enum_proof_chirho() {
     result_chirho.reference_evidence_chirho.insert(
         span_chirho,
         vec![ReferenceEvidenceChirho {
+            dictionary_position_chirho: Some(0),
             ground_pred_chirho: None,
             applied_head_chirho: None,
             class_name_chirho: "Enum".to_string(),
@@ -73,6 +74,7 @@ fn range_proofs_require_a_real_span_and_one_solved_enum_obligation_chirho() {
     for records_chirho in [
         Vec::new(),
         vec![ReferenceEvidenceChirho {
+            dictionary_position_chirho: Some(0),
             ground_pred_chirho: None,
             applied_head_chirho: None,
             class_name_chirho: "Enum".to_string(),
@@ -81,6 +83,7 @@ fn range_proofs_require_a_real_span_and_one_solved_enum_obligation_chirho() {
             applied_ty_chirho: None,
         }],
         vec![ReferenceEvidenceChirho {
+            dictionary_position_chirho: Some(0),
             ground_pred_chirho: None,
             applied_head_chirho: None,
             class_name_chirho: "Num".to_string(),
@@ -90,6 +93,7 @@ fn range_proofs_require_a_real_span_and_one_solved_enum_obligation_chirho() {
         }],
         vec![
             ReferenceEvidenceChirho {
+                dictionary_position_chirho: Some(0),
                 ground_pred_chirho: None,
                 applied_head_chirho: None,
                 class_name_chirho: "Enum".to_string(),
@@ -98,6 +102,7 @@ fn range_proofs_require_a_real_span_and_one_solved_enum_obligation_chirho() {
                 applied_ty_chirho: None,
             },
             ReferenceEvidenceChirho {
+                dictionary_position_chirho: Some(0),
                 ground_pred_chirho: None,
                 applied_head_chirho: None,
                 class_name_chirho: "Enum".to_string(),
@@ -120,6 +125,7 @@ fn range_proofs_require_a_real_span_and_one_solved_enum_obligation_chirho() {
     result_chirho.reference_evidence_chirho.insert(
         SpanChirho::DUMMY_CHIRHO,
         vec![ReferenceEvidenceChirho {
+            dictionary_position_chirho: Some(0),
             ground_pred_chirho: None,
             applied_head_chirho: None,
             class_name_chirho: "Enum".to_string(),

@@ -393,20 +393,38 @@ impl InferCtxChirho {
         if self.fun_arity_chirho(expected_ty_chirho) < arity_chirho {
             return self.infer_matches_chirho(matches_chirho, span_chirho);
         }
-        if let Some((param_tys_chirho, result_ty_chirho, givens_chirho)) =
+        if let Some(spine_chirho) =
             self.open_expected_function_spine_chirho(expected_ty_chirho, arity_chirho)
         {
+            let param_tys_chirho = spine_chirho.parameters_chirho;
+            let result_ty_chirho = spine_chirho.result_chirho;
+            let givens_chirho = spine_chirho.givens_chirho;
+            let positions_chirho = spine_chirho.positions_chirho;
+            let given_start_chirho = self.given_preds_chirho.len();
             let (substitution_chirho, _) = self.with_signature_givens_chirho(
                 givens_chirho,
                 expected_ty_chirho,
                 |context_chirho| {
-                    context_chirho.infer_matches_with_seed_chirho(
-                        matches_chirho,
-                        span_chirho,
-                        param_tys_chirho,
-                        result_ty_chirho,
-                        true,
-                    )
+                    context_chirho
+                        .with_sigma_spine_evidence_chirho(
+                            crate::infer_chirho::SigmaExpressionKeyChirho::from_function_chirho(
+                                span_chirho,
+                            ),
+                            given_start_chirho,
+                            &positions_chirho,
+                            |context_chirho| {
+                                context_chirho.infer_matches_with_seed_chirho(
+                                    matches_chirho,
+                                    span_chirho,
+                                    param_tys_chirho,
+                                    result_ty_chirho,
+                                    true,
+                                )
+                            },
+                        )
+                        .unwrap_or_else(|| {
+                            (SubstChirho::empty_chirho(), expected_ty_chirho.clone())
+                        })
                 },
             );
             let checked_chirho = substitution_chirho.apply_ty_chirho(expected_ty_chirho);
@@ -493,6 +511,7 @@ impl InferCtxChirho {
         body_chirho: &ExprChirho,
         expected_ty_chirho: &TyChirho,
         span_chirho: SpanChirho,
+        expression_chirho: crate::infer_chirho::SigmaExpressionKeyChirho,
     ) -> Option<(SubstChirho, TyChirho)> {
         if self.has_non_deferrable_failure_chirho() {
             return None;
@@ -530,19 +549,33 @@ impl InferCtxChirho {
             return Some((substitution_chirho, checked_chirho));
         }
         let arity_chirho = pats_chirho.len();
-        let (param_tys_chirho, result_ty_chirho, givens_chirho) =
+        let spine_chirho =
             self.open_expected_function_spine_chirho(expected_ty_chirho, arity_chirho)?;
+        let param_tys_chirho = spine_chirho.parameters_chirho;
+        let result_ty_chirho = spine_chirho.result_chirho;
+        let givens_chirho = spine_chirho.givens_chirho;
+        let positions_chirho = spine_chirho.positions_chirho;
+        let given_start_chirho = self.given_preds_chirho.len();
         let (substitution_chirho, _) = self.with_signature_givens_chirho(
             givens_chirho,
             expected_ty_chirho,
             |context_chirho| {
-                context_chirho.infer_lambda_with_seed_chirho(
-                    pats_chirho,
-                    body_chirho,
-                    param_tys_chirho,
-                    result_ty_chirho,
-                    span_chirho,
-                )
+                context_chirho
+                    .with_sigma_spine_evidence_chirho(
+                        expression_chirho,
+                        given_start_chirho,
+                        &positions_chirho,
+                        |context_chirho| {
+                            context_chirho.infer_lambda_with_seed_chirho(
+                                pats_chirho,
+                                body_chirho,
+                                param_tys_chirho,
+                                result_ty_chirho,
+                                span_chirho,
+                            )
+                        },
+                    )
+                    .unwrap_or_else(|| (SubstChirho::empty_chirho(), expected_ty_chirho.clone()))
             },
         );
         let checked_chirho = substitution_chirho.apply_ty_chirho(expected_ty_chirho);

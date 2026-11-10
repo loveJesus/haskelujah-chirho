@@ -5,6 +5,7 @@
 //! Moved from `infer_chirho.rs` in row 661.
 
 use super::InferCtxChirho;
+use super::SigmaEvidenceChirho;
 use super::applied_evidence_chirho::applied_evidence_ty_chirho;
 use super::{
     InferResultChirho, MethodOccurrenceRecordChirho, evidence_chirho, seed_builtins_chirho,
@@ -412,7 +413,8 @@ impl InferCtxChirho {
             skolem_bindings_chirho: SubstChirho::empty_chirho(),
             type_pattern_alias_undo_chirho: Vec::new(),
             instance_method_skolems_chirho: HashSet::new(),
-            active_instance_context_chirho: None,
+            active_dictionary_context_chirho: None,
+            sigma_evidence_chirho: SigmaEvidenceChirho::default(),
             scoped_type_variables_chirho: true,
             relaxed_poly_rec_chirho: true,
             do_last_expected_chirho: None,
@@ -514,16 +516,16 @@ impl InferCtxChirho {
                      pred_chirho,
                      span_chirho,
                      origin_chirho,
-                     instance_context_chirho,
+                     dictionary_context_chirho,
                      resolved_entry_chirho,
                  }| {
                     let resolved_predicate_chirho = pred_chirho
                         .mapped_chirho(|ty_chirho| final_subst_chirho.apply_ty_chirho(ty_chirho));
                     let class_chirho = &resolved_predicate_chirho.class_name_chirho;
                     let resolved_chirho = &resolved_predicate_chirho.ty_chirho;
-                    if let Some(key_chirho) = self.instance_context_key_chirho(
+                    if let Some(key_chirho) = self.dictionary_context_key_chirho(
                         &resolved_predicate_chirho,
-                        instance_context_chirho.as_deref(),
+                        dictionary_context_chirho.as_deref(),
                         final_subst_chirho,
                     ) {
                         return Some(MethodOccurrenceRecordChirho {
@@ -685,6 +687,7 @@ impl InferCtxChirho {
             self.note_registry_failure_chirho(error_chirho, None);
         }
         InferResultChirho {
+            sigma_evidence_chirho: self.sigma_evidence_chirho,
             non_deferrable_diagnostics_chirho: self.non_deferrable_diagnostics_chirho,
             subst_chirho: SubstChirho::empty_chirho(),
             env_chirho: self.env_chirho,

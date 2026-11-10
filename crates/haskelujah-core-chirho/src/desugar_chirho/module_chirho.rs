@@ -134,6 +134,8 @@ impl DesugarCtxChirho {
             )?;
         }
 
+        self.sigma_projection_budget_chirho = Some(projection_budget_chirho);
+
         // Pass -0.25: Seed aliases for built-in qualified imports whose Core
         // bodies use internal Prelude wrapper names.
         self.seed_builtin_import_aliases_chirho(module_chirho);
@@ -501,7 +503,10 @@ impl DesugarCtxChirho {
         // Generate record field accessor functions.
         self.generate_record_accessors_chirho(&record_selector_plans_chirho, &mut bindings_chirho);
 
+        self.finish_sigma_transport_chirho()?;
         Ok(DesugarOutputChirho {
+            sigma_dictionary_binders_chirho: self.sigma_dictionary_binders_chirho.clone(),
+            sigma_local_schemes_chirho: self.sigma_local_schemes_chirho.clone(),
             module_chirho: CoreModuleChirho {
                 name_chirho: module_chirho.name_chirho.text_chirho().to_string(),
                 bindings_chirho,

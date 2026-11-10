@@ -25,7 +25,12 @@ enum CheckedCauseChirho {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum UnreadCauseChirho {
     SyntaxChirho(SyntaxCauseChirho, SpanChirho),
-    FieldAccountChirho(SpanChirho),
+    AccountChirho(AccountCauseChirho, SpanChirho),
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AccountCauseChirho {
+    FieldChirho,
+    SigmaChirho,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SyntaxCauseChirho {
@@ -44,7 +49,7 @@ impl DesugarInputErrorChirho {
             }
             InputCauseChirho::UnreadChirho(
                 UnreadCauseChirho::SyntaxChirho(_, span_chirho)
-                | UnreadCauseChirho::FieldAccountChirho(span_chirho),
+                | UnreadCauseChirho::AccountChirho(_, span_chirho),
             ) => span_chirho,
         }
     }
@@ -89,7 +94,10 @@ impl DesugarInputErrorChirho {
     pub fn is_field_account_chirho(self) -> bool {
         matches!(
             self.cause_chirho,
-            InputCauseChirho::UnreadChirho(UnreadCauseChirho::FieldAccountChirho(_))
+            InputCauseChirho::UnreadChirho(UnreadCauseChirho::AccountChirho(
+                AccountCauseChirho::FieldChirho,
+                _
+            ))
         )
     }
     pub(super) fn unexpanded_pattern_chirho(span_chirho: SpanChirho) -> Self {
@@ -108,9 +116,18 @@ impl DesugarInputErrorChirho {
             )),
         }
     }
+    pub(super) fn sigma_account_chirho(span_chirho: SpanChirho) -> Self {
+        Self {
+            cause_chirho: InputCauseChirho::UnreadChirho(UnreadCauseChirho::AccountChirho(
+                AccountCauseChirho::SigmaChirho,
+                span_chirho,
+            )),
+        }
+    }
     pub(super) fn field_account_chirho(span_chirho: SpanChirho) -> Self {
         Self {
-            cause_chirho: InputCauseChirho::UnreadChirho(UnreadCauseChirho::FieldAccountChirho(
+            cause_chirho: InputCauseChirho::UnreadChirho(UnreadCauseChirho::AccountChirho(
+                AccountCauseChirho::FieldChirho,
                 span_chirho,
             )),
         }
@@ -151,11 +168,16 @@ impl std::fmt::Display for DesugarInputErrorChirho {
                 SyntaxCauseChirho::TransformChirho,
                 _,
             )) => formatter_chirho.write_str("unread comprehension transformer"),
-            InputCauseChirho::UnreadChirho(UnreadCauseChirho::FieldAccountChirho(_)) => {
-                formatter_chirho.write_str(
-                    "named record field requires an unambiguous constructor field account",
-                )
-            }
+            InputCauseChirho::UnreadChirho(UnreadCauseChirho::AccountChirho(
+                AccountCauseChirho::SigmaChirho,
+                _,
+            )) => formatter_chirho
+                .write_str("qualified expression requires an unambiguous checked evidence scope"),
+            InputCauseChirho::UnreadChirho(UnreadCauseChirho::AccountChirho(
+                AccountCauseChirho::FieldChirho,
+                _,
+            )) => formatter_chirho
+                .write_str("named record field requires an unambiguous constructor field account"),
         }
     }
 }

@@ -54,6 +54,7 @@ fn a_range_solves_enum_for_its_endpoints_past_a_lexical_shadow_chirho() {
     assert_eq!(
         by_span_chirho.get(&span_chirho),
         Some(&vec![ReferenceEvidenceChirho {
+            dictionary_position_chirho: Some(0),
             applied_head_chirho: None,
             class_name_chirho: "Enum".to_string(),
             class_identity_chirho: compiler_enum_chirho.clone(),

@@ -252,7 +252,7 @@ fn method_reference_and_literal_captures_retain_their_own_context_chirho() {
             &PredChirho::new_chirho("Num", skolem_chirho("a%1")),
         );
     });
-    assert!(ctx_chirho.active_instance_context_chirho.is_none());
+    assert!(ctx_chirho.active_dictionary_context_chirho.is_none());
     let subst_chirho = SubstChirho::empty_chirho();
     let records_chirho = ctx_chirho.finalize_occurrence_records_chirho(&subst_chirho);
     assert_eq!(records_chirho[0].ty_key_chirho, "$own:1");
@@ -288,16 +288,26 @@ fn captures_match_after_final_substitution_and_context_restores_on_nesting_chirh
     let a_chirho = skolem_chirho("a%1");
     let outer_chirho = vec![PredChirho::new_chirho("DescribeChirho", a_chirho.clone())];
     ctx_chirho.with_instance_context_evidence_chirho(&outer_chirho, |ctx_chirho| {
-        let previous_chirho = ctx_chirho.active_instance_context_chirho.clone();
+        let previous_chirho = ctx_chirho.active_dictionary_context_chirho.clone();
         ctx_chirho.with_instance_context_evidence_chirho(&[], |ctx_chirho| {
             assert!(
                 ctx_chirho
-                    .active_instance_context_chirho
+                    .active_dictionary_context_chirho
                     .as_deref()
+                    .and_then(|context_chirho| context_chirho.instance_chirho.as_deref())
                     .is_some_and(|context_chirho| context_chirho.is_empty())
             )
         });
-        assert_eq!(ctx_chirho.active_instance_context_chirho, previous_chirho);
+        assert!(
+            ctx_chirho
+                .active_dictionary_context_chirho
+                .as_ref()
+                .zip(previous_chirho.as_ref())
+                .is_some_and(|(current_chirho, previous_chirho)| std::sync::Arc::ptr_eq(
+                    current_chirho,
+                    previous_chirho
+                ))
+        );
     });
     let mut subst_chirho = SubstChirho::empty_chirho();
     subst_chirho.insert_chirho(TyVarChirho(4), a_chirho);

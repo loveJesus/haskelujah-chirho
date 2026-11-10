@@ -21,6 +21,7 @@ fn int_chirho() -> TyChirho {
 
 fn show_record_chirho(applied_chirho: Option<TyChirho>) -> ReferenceEvidenceChirho {
     ReferenceEvidenceChirho {
+        dictionary_position_chirho: Some(0),
         ground_pred_chirho: None,
         applied_head_chirho: None,
         class_name_chirho: "Show".to_string(),
@@ -113,6 +114,7 @@ fn only_a_complete_ground_head_is_carried_chirho() {
 #[test]
 fn only_a_head_every_capture_resolved_alike_survives_chirho() {
     let head_record_chirho = |second_chirho: TyChirho| ReferenceEvidenceChirho {
+        dictionary_position_chirho: Some(0),
         ground_pred_chirho: None,
         applied_head_chirho: Some(vec![int_chirho(), second_chirho]),
         class_name_chirho: "AskChirho".to_string(),
@@ -160,6 +162,7 @@ fn agreeing_predicate_shapes_meet_class_proof_in_both_orders_chirho() {
     let unknown_chirho = PredChirho::new_chirho("Eq", int_chirho());
     // The producer carries each predicate's own class proof beside its ground goal.
     let record_chirho = |predicate_chirho: PredChirho| ReferenceEvidenceChirho {
+        dictionary_position_chirho: Some(0),
         class_name_chirho: "Eq".to_string(),
         class_identity_chirho: predicate_chirho.class_identity_chirho().clone(),
         ty_key_chirho: Some("Int".to_string()),
@@ -213,4 +216,21 @@ fn agreeing_predicate_shapes_meet_class_proof_in_both_orders_chirho() {
         &agreed_chirho[&1][0].class_identity_chirho,
         proven_chirho.class_identity_chirho()
     );
+}
+
+#[test]
+fn disagreeing_dictionary_positions_never_become_a_calling_convention_chirho() {
+    let first_chirho = show_record_chirho(None);
+    let mut later_chirho = first_chirho.clone();
+    later_chirho.dictionary_position_chirho = Some(1);
+    let captures_chirho = HashMap::from([
+        (
+            1u32,
+            vec![vec![first_chirho.clone()], vec![first_chirho.clone()]],
+        ),
+        (2u32, vec![vec![first_chirho], vec![later_chirho]]),
+    ]);
+    let agreed_chirho = agreeing_references_chirho(captures_chirho);
+    assert_eq!(agreed_chirho[&1][0].dictionary_position_chirho, Some(0));
+    assert_eq!(agreed_chirho[&2][0].dictionary_position_chirho, None);
 }

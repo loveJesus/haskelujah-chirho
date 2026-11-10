@@ -77,6 +77,7 @@ pub(super) fn infer_result_chirho(
     let mut totals_chirho = HashMap::new();
     totals_chirho.insert("show".to_string(), records_chirho.len() as u32);
     InferResultChirho {
+        sigma_evidence_chirho: Default::default(),
         non_deferrable_diagnostics_chirho:
             haskelujah_diagnostics_chirho::DiagnosticBundleChirho::empty_chirho(),
         source_instances_chirho: Vec::new(),

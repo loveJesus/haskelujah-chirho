@@ -41,6 +41,30 @@ fn qualified_constructor_arguments_cannot_borrow_an_enclosing_dictionary_chirho(
     );
 }
 
+#[test]
+fn qualified_constructor_arguments_keep_record_and_result_dictionary_positions_chirho() {
+    super::assert_prints_everywhere_chirho(
+        "RecordResultSigmaChirho.hs",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/RecordResultSigmaChirho.hs"
+        )),
+        "True\nTrue\nTrue\nTrue\n",
+    );
+}
+
+#[test]
+fn qualified_constructor_arguments_keep_nested_and_same_class_scopes_chirho() {
+    super::assert_prints_everywhere_chirho(
+        "NestedSigmaScopesChirho.hs",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/NestedSigmaScopesChirho.hs"
+        )),
+        "(True,True)\n(True,True)\nTrue\n",
+    );
+}
+
 fn source_iface_chirho(
     source_chirho: &str,
     imports_chirho: &[ModuleIfaceChirho],
@@ -669,4 +693,38 @@ fn a_weakened_selected_label_cannot_regain_wildcard_binding_authority_chirho() {
             "physical constructor evidence must not restore a weakened label's Bool binder Chirho"
         );
     }
+}
+
+#[test]
+fn qualified_constructor_arguments_keep_mid_spine_clause_dictionaries_chirho() {
+    for (name_chirho, source_chirho) in [
+        (
+            "ClauseResultSigmaChirho.hs",
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/ClauseResultSigmaChirho.hs"
+            )),
+        ),
+        (
+            "AmbientClauseSigmaChirho.hs",
+            include_str!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/AmbientClauseSigmaChirho.hs"
+            )),
+        ),
+    ] {
+        super::assert_prints_everywhere_chirho(name_chirho, source_chirho, "(True,True)\n");
+    }
+}
+
+#[test]
+fn qualified_constructor_arguments_share_the_clause_slot_and_keep_grouped_lambdas_chirho() {
+    super::assert_prints_everywhere_chirho(
+        "ClauseRowsSigmaChirho.hs",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/tests_chirho/extensions_chirho/kind_repair_fixtures_chirho/impredicative-application-chirho/sigma-arguments-chirho/ClauseRowsSigmaChirho.hs"
+        )),
+        "(True,True)\n(True,True)\n",
+    );
 }

@@ -13,6 +13,8 @@ mod ground_goals_chirho;
 pub(crate) use ground_goals_chirho::ground_pred_chirho;
 #[path = "evidence_chirho/instance_context_chirho.rs"]
 mod instance_context_chirho;
+pub(super) mod sigma_scopes_chirho;
+pub(super) use sigma_scopes_chirho::DictionaryContextChirho;
 
 /// One constrained reference's predicate, captured during inference and
 /// finalized into a `MethodOccurrenceRecordChirho` once the module is solved.
@@ -28,18 +30,19 @@ pub(super) struct OccurrenceCaptureChirho {
     pub(super) pred_chirho: PredChirho,
     pub(super) span_chirho: SpanChirho,
     pub(super) origin_chirho: Option<OriginIdChirho>,
-    pub(super) instance_context_chirho: Option<Arc<[PredChirho]>>,
+    pub(super) dictionary_context_chirho: Option<Arc<DictionaryContextChirho>>,
     pub(super) resolved_entry_chirho: Option<String>,
 }
 
 /// One constrained reference's instantiated predicates, in scheme order.
 #[derive(Debug, Clone)]
 pub(super) struct ReferenceCaptureChirho {
+    pub(super) predicate_positions_chirho: Vec<usize>,
     pub(super) span_chirho: SpanChirho,
     pub(super) origin_chirho: Option<OriginIdChirho>,
     /// Complete checked predicates, including hidden kinds and proof state.
     pub(super) preds_chirho: Vec<PredChirho>,
-    pub(super) instance_context_chirho: Option<Arc<[PredChirho]>>,
+    pub(super) dictionary_context_chirho: Option<Arc<DictionaryContextChirho>>,
 }
 
 /// A recursive reference sees the group's monomorphic assumption before its
@@ -96,7 +99,8 @@ pub fn own_dictionary_key_chirho(index_chirho: Option<usize>) -> String {
 
 /// Whether an evidence key means "the enclosing binding's own parameter".
 pub fn is_own_dictionary_key_chirho(key_chirho: &str) -> bool {
-    key_chirho == OWN_DICTIONARY_KEY_CHIRHO
+    sigma_scopes_chirho::is_sigma_dictionary_key_chirho(key_chirho)
+        || key_chirho == OWN_DICTIONARY_KEY_CHIRHO
         || key_chirho
             .strip_prefix(OWN_DICTIONARY_KEY_CHIRHO)
             .is_some_and(|rest_chirho| rest_chirho.starts_with(':'))
@@ -109,6 +113,9 @@ pub fn is_own_dictionary_key_chirho(key_chirho: &str) -> bool {
 /// proved (the dictionary pass then keeps its own guess for that position).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReferenceEvidenceChirho {
+    /// Number of ordinary value arguments before this dictionary argument.
+    /// None means repeated captures disagree; Core must refuse that call.
+    pub dictionary_position_chirho: Option<usize>,
     pub class_name_chirho: String,
     /// The class proof of the predicate captured at this position, ground or not (row 692,
     /// gpt #32681). An own-dictionary or instance-context position keeps it as a ground one
@@ -161,9 +168,10 @@ impl InferCtxChirho {
             .unwrap_or_default()
         {
             self.reference_captures_chirho.push(ReferenceCaptureChirho {
+                predicate_positions_chirho: vec![0; scheme_chirho.preds_chirho.len()],
                 span_chirho,
                 origin_chirho,
-                instance_context_chirho: self.active_instance_context_chirho.clone(),
+                dictionary_context_chirho: self.active_dictionary_context_chirho.clone(),
                 preds_chirho: scheme_chirho
                     .preds_chirho
                     .iter()
@@ -191,7 +199,7 @@ impl InferCtxChirho {
             span_chirho,
             origin_chirho,
             wanted_chirho.clone(),
-            self.active_instance_context_chirho.clone(),
+            self.active_dictionary_context_chirho.clone(),
         ));
     }
 
@@ -210,12 +218,26 @@ impl InferCtxChirho {
         name_chirho: &NameChirho,
         preds_chirho: &[PredChirho],
     ) {
+        self.capture_application_predicates_chirho(name_chirho, preds_chirho, &[]);
+    }
+
+    pub(super) fn capture_application_predicates_chirho(
+        &mut self,
+        name_chirho: &NameChirho,
+        preds_chirho: &[PredChirho],
+        positions_chirho: &[usize],
+    ) {
         if preds_chirho.is_empty() {
             return;
         }
         let span_chirho = name_chirho.span_chirho();
         let origin_chirho = name_chirho.origin_chirho();
-        self.capture_reference_evidence_chirho(span_chirho, origin_chirho, preds_chirho);
+        self.capture_reference_evidence_at_positions_chirho(
+            span_chirho,
+            origin_chirho,
+            preds_chirho,
+            positions_chirho,
+        );
         let resolved_entry_chirho = name_chirho
             .qualifier_chirho()
             .and_then(|_qualifier_chirho| {
@@ -239,7 +261,7 @@ impl InferCtxChirho {
                     pred_chirho: pred_chirho.clone(),
                     span_chirho,
                     origin_chirho,
-                    instance_context_chirho: self.active_instance_context_chirho.clone(),
+                    dictionary_context_chirho: self.active_dictionary_context_chirho.clone(),
                     resolved_entry_chirho: resolved_entry_chirho.clone(),
                 });
         }
@@ -255,13 +277,33 @@ impl InferCtxChirho {
         origin_chirho: Option<OriginIdChirho>,
         preds_chirho: &[PredChirho],
     ) {
+        self.capture_reference_evidence_at_positions_chirho(
+            span_chirho,
+            origin_chirho,
+            preds_chirho,
+            &[],
+        );
+    }
+
+    fn capture_reference_evidence_at_positions_chirho(
+        &mut self,
+        span_chirho: SpanChirho,
+        origin_chirho: Option<OriginIdChirho>,
+        preds_chirho: &[PredChirho],
+        positions_chirho: &[usize],
+    ) {
         if span_chirho == SpanChirho::DUMMY_CHIRHO && origin_chirho.is_none() {
             return;
         }
         self.reference_captures_chirho.push(ReferenceCaptureChirho {
+            predicate_positions_chirho: if positions_chirho.is_empty() {
+                vec![0; preds_chirho.len()]
+            } else {
+                positions_chirho.to_vec()
+            },
             span_chirho,
             origin_chirho,
-            instance_context_chirho: self.active_instance_context_chirho.clone(),
+            dictionary_context_chirho: self.active_dictionary_context_chirho.clone(),
             preds_chirho: preds_chirho.to_vec(),
         });
     }
@@ -434,7 +476,8 @@ impl InferCtxChirho {
             let records_chirho: Vec<ReferenceEvidenceChirho> = capture_chirho
                 .preds_chirho
                 .iter()
-                .map(|predicate_chirho| {
+                .enumerate()
+                .map(|(index_chirho, predicate_chirho)| {
                     let predicate_chirho = predicate_chirho
                         .mapped_chirho(|ty_chirho| final_subst_chirho.apply_ty_chirho(ty_chirho));
                     let class_name_chirho = &predicate_chirho.class_name_chirho;
@@ -444,9 +487,9 @@ impl InferCtxChirho {
                         .chain(extras_chirho.iter().cloned())
                         .collect();
                     let ty_key_chirho = self
-                        .instance_context_key_chirho(
+                        .dictionary_context_key_chirho(
                             &predicate_chirho,
-                            capture_chirho.instance_context_chirho.as_deref(),
+                            capture_chirho.dictionary_context_chirho.as_deref(),
                             final_subst_chirho,
                         )
                         .or_else(|| {
@@ -460,6 +503,13 @@ impl InferCtxChirho {
                         .as_deref()
                         .is_some_and(is_own_dictionary_key_chirho);
                     ReferenceEvidenceChirho {
+                        dictionary_position_chirho: Some(
+                            capture_chirho
+                                .predicate_positions_chirho
+                                .get(index_chirho)
+                                .copied()
+                                .unwrap_or(0),
+                        ),
                         class_name_chirho: class_name_chirho.clone(),
                         class_identity_chirho: predicate_chirho.class_identity_chirho().clone(),
                         ty_key_chirho,
@@ -519,7 +569,7 @@ impl InferCtxChirho {
             HashMap::new();
         let mut keys_by_origin_chirho: HashMap<OriginIdChirho, Vec<LiteralEvidenceChirho>> =
             HashMap::new();
-        for (span_chirho, origin_chirho, wanted_chirho, instance_context_chirho) in
+        for (span_chirho, origin_chirho, wanted_chirho, dictionary_context_chirho) in
             &self.literal_captures_chirho
         {
             // The minted wanted itself, through the final substitution (row 692): its spelling
@@ -529,9 +579,9 @@ impl InferCtxChirho {
             let class_name_chirho = &wanted_chirho.class_name_chirho;
             let resolved_chirho = wanted_chirho.ty_chirho.clone();
             let key_chirho = self
-                .instance_context_key_chirho(
+                .dictionary_context_key_chirho(
                     &wanted_chirho,
-                    instance_context_chirho.as_deref(),
+                    dictionary_context_chirho.as_deref(),
                     final_subst_chirho,
                 )
                 .or_else(|| match &resolved_chirho {

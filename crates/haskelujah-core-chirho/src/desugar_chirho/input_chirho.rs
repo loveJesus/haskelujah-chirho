@@ -19,6 +19,8 @@ use haskelujah_span_chirho::SpanChirho;
 #[path = "input_chirho/errors_chirho.rs"]
 mod errors_chirho;
 pub use errors_chirho::DesugarInputErrorChirho;
+#[path = "input_chirho/sigma_evidence_chirho.rs"]
+pub(super) mod sigma_evidence_chirho;
 
 enum NodeChirho<'syntax_chirho> {
     DeclarationsChirho(&'syntax_chirho [DeclChirho]),

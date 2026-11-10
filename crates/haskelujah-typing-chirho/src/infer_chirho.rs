@@ -319,6 +319,10 @@ pub const DEFERRABLE_TYPE_ERROR_CODES_CHIRHO: [ErrorCodeChirho; 5] = [
     ErrorCodeChirho::error_chirho(SIGNATURE_MISMATCH_CODE_CHIRHO),
 ];
 
+pub use evidence_chirho::sigma_scopes_chirho::{
+    SigmaBinderKeyChirho, SigmaEvidenceChirho, SigmaExpressionKeyChirho, SigmaLocalBindingChirho,
+    SigmaScopeChirho, SigmaScopeIdChirho, is_sigma_dictionary_key_chirho, sigma_binder_key_chirho,
+};
 pub use family_definitions_chirho::{
     IntrinsicTypeFamilyChirho, TypeFamilyAliasResolutionChirho, TypeFamilyBranchChirho,
     TypeFamilyBranchIdChirho, TypeFamilyDefinitionChirho, TypeFamilyDefinitionErrorChirho,
@@ -391,6 +395,7 @@ fn record_field_key_chirho(name_chirho: &NameChirho) -> String {
 /// Result of type inference on a module.
 #[derive(Debug)]
 pub struct InferResultChirho {
+    pub sigma_evidence_chirho: SigmaEvidenceChirho,
     /// Resource failures cannot be accepted by -fdefer-type-errors. Consumers
     /// must reject this channel before publishing environments or evidence.
     pub non_deferrable_diagnostics_chirho: DiagnosticBundleChirho,
@@ -487,11 +492,12 @@ type LiteralCaptureChirho = (
     SpanChirho,
     Option<OriginIdChirho>,
     PredChirho,
-    Option<Arc<[PredChirho]>>,
+    Option<Arc<evidence_chirho::DictionaryContextChirho>>,
 );
 
 /// The inference context — carries mutable state during inference.
 pub struct InferCtxChirho {
+    sigma_evidence_chirho: SigmaEvidenceChirho,
     non_deferrable_diagnostics_chirho: DiagnosticBundleChirho,
     type_normalization_exhausted_chirho: std::cell::Cell<bool>,
     type_validity_license_chirho: Option<crate::validity_chirho::LicenseChirho>,
@@ -572,7 +578,7 @@ pub struct InferCtxChirho {
     instance_method_skolems_chirho: HashSet<String>,
     /// One rigid instance method's own context, shared by its evidence captures.
     /// Method-local predicates are not parameters of the instance row.
-    active_instance_context_chirho: Option<Arc<[PredChirho]>>,
+    active_dictionary_context_chirho: Option<Arc<evidence_chirho::DictionaryContextChirho>>,
     /// Whether ScopedTypeVariables is in effect for the module: an explicit
     /// `forall` (or an instance head) then scopes its binders over the body.
     scoped_type_variables_chirho: bool,

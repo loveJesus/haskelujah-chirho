@@ -27,7 +27,7 @@ impl InferCtxChirho {
     pub(super) fn check_expected_sigma_chirho(
         &mut self,
         expected_chirho: &TyChirho,
-        span_chirho: SpanChirho,
+        expression_chirho: super::SigmaExpressionKeyChirho,
         budget_chirho: &mut EqualityBudgetChirho,
         check_chirho: impl FnOnce(
             &mut Self,
@@ -35,6 +35,7 @@ impl InferCtxChirho {
             &mut EqualityBudgetChirho,
         ) -> Option<(SubstChirho, TyChirho)>,
     ) -> Option<(SubstChirho, TyChirho)> {
+        let span_chirho = expression_chirho.span_chirho;
         let mut predicates_chirho = Vec::new();
         let mut equalities_chirho = Vec::new();
         let (vars_chirho, body_chirho) = self.split_typed_scheme_prefix_chirho(
@@ -52,6 +53,7 @@ impl InferCtxChirho {
                 })
             },
         ));
+        let given_start_chirho = self.given_preds_chirho.len();
         let (checked_chirho, public_chirho) = self.with_rigid_signature_chirho(
             &SchemeChirho {
                 vars_chirho,
@@ -60,7 +62,11 @@ impl InferCtxChirho {
             },
             span_chirho,
             |context_chirho, opened_chirho| {
-                check_chirho(context_chirho, opened_chirho, budget_chirho)
+                context_chirho.with_sigma_evidence_chirho(
+                    expression_chirho,
+                    given_start_chirho,
+                    |context_chirho| check_chirho(context_chirho, opened_chirho, budget_chirho),
+                )?
             },
         );
         let (substitution_chirho, _) = checked_chirho?;

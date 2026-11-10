@@ -62,6 +62,11 @@ impl DictPassCtxChirho {
         {
             return CoreExprChirho::VarChirho(canonical_id_chirho);
         }
+        if let Some(scoped_chirho) =
+            self.scoped_method_head_chirho(id_chirho, dict_vars_chirho, evidence_classes_chirho)
+        {
+            return scoped_chirho;
+        }
         // Typed higher-order arguments and section bodies enter through this method-var path,
         // not the ordinary application-spine path. Consume `(^^)`'s two-predicate proof here
         // before the generic method logic can restore its missing canonical binding (row 577).
@@ -396,6 +401,30 @@ impl DictPassCtxChirho {
         local_instance_dicts_chirho: &HashMap<(String, String), CoreIdChirho>,
         type_key_chirho: &str,
     ) -> Option<CoreExprChirho> {
+        if let CoreExprChirho::LamChirho {
+            binder_chirho,
+            body_chirho,
+        } = expr_chirho
+            && let Some(scoped_chirho) = self.rewrite_scoped_dictionary_lambda_chirho(
+                binder_chirho,
+                body_chirho,
+                dict_vars_chirho,
+                evidence_classes_chirho,
+                local_type_keys_chirho,
+                local_instance_dicts_chirho,
+            )
+        {
+            return Some(scoped_chirho);
+        }
+        if let Some(positioned_chirho) = self.rewrite_positioned_reference_chirho(
+            expr_chirho,
+            dict_vars_chirho,
+            evidence_classes_chirho,
+            local_type_keys_chirho,
+            local_instance_dicts_chirho,
+        ) {
+            return Some(positioned_chirho);
+        }
         if let Some(rewritten_chirho) = self
             .try_rewrite_typed_dict_param_arg_chirho(
                 expr_chirho,
