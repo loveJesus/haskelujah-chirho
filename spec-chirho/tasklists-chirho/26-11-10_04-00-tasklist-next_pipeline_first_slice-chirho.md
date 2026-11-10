@@ -26,3 +26,16 @@ The slice proves or drops the new checker on a bucket fixed before any code is w
 - [ ] W0: unboxed values, primop calls and MagicHash in the interpreter; primop table generated from `primops.txt.pp`
 - [ ] L0: real `GHC.Internal.Types`, `GHC.Internal.Classes`, `GHC.Internal.CString`, then as much of `GHC.Internal.Base`, `GHC.Internal.Show`, `GHC.Internal.Num` as B-run needs; every temporary patch recorded in the patch series
 - [ ] Bucket measured; result reported to L.J.; continue or drop
+
+## Solo continuation, L.J. 2026-11-10
+
+L.J. directed gpt_chirho to inspect Claude's tmux handoff and continue alone after reporting Claude's token exhaustion. GPT takes the first implementation lane now; the earlier November 12 worker date does not block this continuation. The full B-check/B-run acceptance and drop rule above remain unchanged. No token budget was added by the agent.
+
+Unit 740 begins from main 4348c3d9 in the isolated next-pipeline-s0-chirho worktree. The latest private legacy cefd5490 and its retained CLI/data remain frozen as the stronger comparison baseline. Nothing in that private compiler delta is silently merged into main.
+
+Brick 1 placement: new haskelujah-hir-chirho owns compiler-independent names, term shapes and surface types; new haskelujah-tc-chirho owns the interned types, levels/metas, constraints and elaboration. A new driver next module owns the parser/HIR/checker/Core boundary and the only compatibility adapter into today's Core type data. It never calls legacy inference, the dictionary pass, or the handwritten interface catalogue. The CLI's explicit --pipeline next selects this path; default legacy behavior is retained. Unsupported next features refuse rather than delegating to legacy. No third-party dependency is introduced for the first brick.
+
+- [ ] Freeze the literal B-check/B-run membership, profile, original hashes, stdin, and retained legacy outcomes before production authoring. Keep unknown action/flag cases explicit.
+- [ ] Deliver a running S0 vertical: parsed Haskell through HIR, owned type/constraint solving and explicit Core into the existing interpreter, with a selectable CLI check path and real semantic failure controls. This milestone does not claim the full first slice or real-library runtime gate.
+- [ ] Extend S1 and the real-library/primop boundary toward the unchanged full bucket; do not substitute handwritten standard classes or smaller benchmark arguments.
+- [ ] Measure, secret-scan and push coherent owned progress. Preserve failures and mark only the actual completed scope; retain a resumable handoff.
