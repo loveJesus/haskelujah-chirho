@@ -49,6 +49,11 @@ pub fn binding_groups_chirho(bindings_chirho: &[BindingChirho]) -> Vec<Vec<usize
                 }
                 ExprKindChirho::ListChirho(items_chirho)
                 | ExprKindChirho::TupleChirho(items_chirho) => work_chirho.extend(items_chirho),
+                ExprKindChirho::MatchChirho(inputs_chirho, arms_chirho) => {
+                    work_chirho.extend(inputs_chirho);
+                    work_chirho
+                        .extend(arms_chirho.iter().map(|arm_chirho| &arm_chirho.body_chirho));
+                }
                 ExprKindChirho::CharChirho(_) | ExprKindChirho::StringChirho(_) => {}
             }
         }

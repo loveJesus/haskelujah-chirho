@@ -36,6 +36,7 @@ pub enum TyConChirho {
     ListChirho,
     /// Internal final-zonking image; source never resolves this constructor by spelling.
     AnyChirho,
+    DeclaredChirho(haskelujah_hir_chirho::NameIdChirho),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -75,6 +76,7 @@ pub struct TypeArenaChirho {
     index_chirho: HashMap<TyNodeChirho, TyChirho>,
     pub(crate) metas_chirho: Vec<MetaCellChirho>,
     pub(crate) rigids_chirho: Vec<RigidCellChirho>,
+    declared_kinds_chirho: HashMap<haskelujah_hir_chirho::NameIdChirho, TyChirho>,
 }
 
 impl TypeArenaChirho {
@@ -87,6 +89,7 @@ impl TypeArenaChirho {
             index_chirho: HashMap::new(),
             metas_chirho: Vec::new(),
             rigids_chirho: Vec::new(),
+            declared_kinds_chirho: HashMap::new(),
         }
     }
 
@@ -163,6 +166,24 @@ impl TypeArenaChirho {
 
     pub fn con_chirho(&mut self, con_chirho: TyConChirho) -> Result<TyChirho, TcErrorChirho> {
         self.intern_chirho(TyNodeChirho::ConChirho(con_chirho))
+    }
+
+    pub(crate) fn declare_chirho(
+        &mut self,
+        name_chirho: haskelujah_hir_chirho::NameIdChirho,
+        arity_chirho: usize,
+    ) -> Result<(), TcErrorChirho> {
+        if self.declared_kinds_chirho.contains_key(&name_chirho) {
+            return Err(Self::invalid_chirho());
+        }
+        let type_chirho = self.con_chirho(TyConChirho::TypeChirho)?;
+        let mut kind_chirho = type_chirho;
+        for _parameter_chirho in 0..arity_chirho {
+            kind_chirho = self.intern_chirho(TyNodeChirho::FunChirho(type_chirho, kind_chirho))?;
+        }
+        self.reserve_auxiliary_chirho()?;
+        self.declared_kinds_chirho.insert(name_chirho, kind_chirho);
+        Ok(())
     }
 
     pub fn fresh_meta_chirho(
@@ -250,6 +271,11 @@ impl TypeArenaChirho {
     pub fn kind_chirho(&mut self, ty_chirho: TyChirho) -> Result<TyChirho, TcErrorChirho> {
         let resolved_chirho = self.resolve_chirho(ty_chirho)?;
         match self.node_chirho(resolved_chirho)?.clone() {
+            TyNodeChirho::ConChirho(TyConChirho::DeclaredChirho(name_chirho)) => self
+                .declared_kinds_chirho
+                .get(&name_chirho)
+                .copied()
+                .ok_or_else(Self::invalid_chirho),
             TyNodeChirho::MetaChirho(meta_chirho) => {
                 Ok(self.meta_cell_chirho(meta_chirho)?.kind_chirho)
             }
@@ -260,24 +286,38 @@ impl TypeArenaChirho {
                 let type_chirho = self.con_chirho(TyConChirho::TypeChirho)?;
                 self.intern_chirho(TyNodeChirho::FunChirho(type_chirho, type_chirho))
             }
-            TyNodeChirho::AppChirho(fun_chirho, argument_chirho) => {
-                let kind_chirho = self.kind_chirho(fun_chirho)?;
-                let TyNodeChirho::FunChirho(expected_chirho, result_chirho) =
-                    self.node_chirho(self.resolve_chirho(kind_chirho)?)?.clone()
-                else {
-                    return Err(TcErrorChirho::new_chirho(
-                        TcErrorKindChirho::KindMismatchChirho,
-                        "type application head has no function kind",
-                    ));
-                };
-                let actual_chirho = self.kind_chirho(argument_chirho)?;
-                if self.resolve_chirho(expected_chirho)? != self.resolve_chirho(actual_chirho)? {
-                    return Err(TcErrorChirho::new_chirho(
-                        TcErrorKindChirho::KindMismatchChirho,
-                        "type argument has the wrong kind",
-                    ));
+            TyNodeChirho::AppChirho(_, _) => {
+                // Walk a wide constructor spine iteratively, instead of recursing per parameter.
+                let mut head_chirho = resolved_chirho;
+                let mut arguments_chirho = Vec::new();
+                while let TyNodeChirho::AppChirho(function_chirho, argument_chirho) =
+                    self.node_chirho(head_chirho)?
+                {
+                    arguments_chirho.push(*argument_chirho);
+                    head_chirho = self.resolve_chirho(*function_chirho)?;
                 }
-                Ok(result_chirho)
+                let mut kind_chirho = self.kind_chirho(head_chirho)?;
+                for argument_chirho in arguments_chirho.into_iter().rev() {
+                    let TyNodeChirho::FunChirho(expected_chirho, result_chirho) =
+                        self.node_chirho(self.resolve_chirho(kind_chirho)?)?.clone()
+                    else {
+                        return Err(TcErrorChirho::new_chirho(
+                            TcErrorKindChirho::KindMismatchChirho,
+                            "type application head has no function kind",
+                        ));
+                    };
+                    let actual_chirho = self.kind_chirho(argument_chirho)?;
+                    if self.resolve_chirho(expected_chirho)?
+                        != self.resolve_chirho(actual_chirho)?
+                    {
+                        return Err(TcErrorChirho::new_chirho(
+                            TcErrorKindChirho::KindMismatchChirho,
+                            "type argument has the wrong kind",
+                        ));
+                    }
+                    kind_chirho = result_chirho;
+                }
+                Ok(kind_chirho)
             }
             _ => self.con_chirho(TyConChirho::TypeChirho),
         }

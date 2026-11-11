@@ -15,9 +15,13 @@ use std::collections::HashMap;
 
 use super::{NextErrorChirho, NextErrorKindChirho, types_chirho::CoreTypesChirho};
 
+#[path = "patterns_chirho.rs"]
+mod patterns_chirho;
+
 struct ElaboratorChirho<'checked_chirho> {
     types_chirho: CoreTypesChirho<'checked_chirho>,
     next_id_chirho: u32,
+    depth_left_chirho: usize,
 }
 
 impl ElaboratorChirho<'_> {
@@ -59,22 +63,48 @@ impl ElaboratorChirho<'_> {
         &mut self,
         binding_chirho: &BindingChirho,
     ) -> Result<CoreExprChirho, NextErrorChirho> {
-        let mut body_chirho = self.expression_chirho(&binding_chirho.body_chirho)?;
-        for variable_chirho in self
+        let variables_chirho = self
             .types_chirho
-            .quantified_chirho(binding_chirho.name_chirho)?
-            .into_iter()
-            .rev()
-        {
-            body_chirho = CoreExprChirho::TyLamChirho {
-                ty_var_chirho: format!("next_type_{}_chirho", variable_chirho.0),
-                body_chirho: Box::new(body_chirho),
-            };
+            .quantified_chirho(binding_chirho.name_chirho)?;
+        if variables_chirho.len() > self.depth_left_chirho {
+            return Err(NextErrorChirho::new_chirho(
+                NextErrorKindChirho::ResourceChirho,
+                "next Core abstraction depth ceiling exhausted",
+            ));
         }
-        Ok(body_chirho)
+        self.depth_left_chirho -= variables_chirho.len();
+        let result_chirho = (|| {
+            let mut body_chirho = self.expression_chirho(&binding_chirho.body_chirho)?;
+            for variable_chirho in variables_chirho.iter().rev() {
+                body_chirho = CoreExprChirho::TyLamChirho {
+                    ty_var_chirho: format!("next_type_{}_chirho", variable_chirho.0),
+                    body_chirho: Box::new(body_chirho),
+                };
+            }
+            Ok(body_chirho)
+        })();
+        self.depth_left_chirho += variables_chirho.len();
+        result_chirho
     }
 
     fn expression_chirho(
+        &mut self,
+        expression_chirho: &ExprChirho,
+    ) -> Result<CoreExprChirho, NextErrorChirho> {
+        let cost_chirho = self.expansion_depth_chirho(expression_chirho)?;
+        if cost_chirho > self.depth_left_chirho {
+            return Err(NextErrorChirho::new_chirho(
+                NextErrorKindChirho::ResourceChirho,
+                "next Core expression depth ceiling exhausted",
+            ));
+        }
+        self.depth_left_chirho -= cost_chirho;
+        let result_chirho = self.expression_body_chirho(expression_chirho);
+        self.depth_left_chirho += cost_chirho;
+        result_chirho
+    }
+
+    fn expression_body_chirho(
         &mut self,
         expression_chirho: &ExprChirho,
     ) -> Result<CoreExprChirho, NextErrorChirho> {
@@ -177,6 +207,9 @@ impl ElaboratorChirho<'_> {
                 }
             }
             ExprKindChirho::AnnChirho(body_chirho, _) => self.expression_chirho(body_chirho)?,
+            ExprKindChirho::MatchChirho(inputs_chirho, arms_chirho) => {
+                self.match_chirho(expression_chirho, inputs_chirho, arms_chirho)?
+            }
             ExprKindChirho::ListChirho(items_chirho) => {
                 let mut tail_chirho = CoreExprChirho::ConAppChirho {
                     con_name_chirho: "[]".into(),
@@ -206,6 +239,7 @@ pub(super) fn elaborate_chirho(
 ) -> Result<CoreModuleChirho, NextErrorChirho> {
     let mut elaborator_chirho = ElaboratorChirho {
         types_chirho: CoreTypesChirho::new_chirho(checked_chirho),
+        depth_left_chirho: 256,
         next_id_chirho: u32::try_from(checked_chirho.module_chirho.names_chirho.len()).map_err(
             |_| {
                 NextErrorChirho::new_chirho(NextErrorKindChirho::ResourceChirho, "Core ID overflow")
@@ -213,6 +247,12 @@ pub(super) fn elaborate_chirho(
         )?,
     };
     let mut bindings_chirho = Vec::new();
+    for declaration_chirho in &checked_chirho.module_chirho.data_chirho {
+        for constructor_chirho in &declaration_chirho.constructors_chirho {
+            bindings_chirho
+                .push(elaborator_chirho.constructor_chirho(constructor_chirho.name_chirho)?);
+        }
+    }
     for binding_chirho in &checked_chirho.module_chirho.bindings_chirho {
         bindings_chirho.push(CoreBindingChirho {
             binder_chirho: elaborator_chirho.binder_chirho(binding_chirho.name_chirho)?,

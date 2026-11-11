@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 
 use haskelujah_ast_chirho::{
     decl_chirho::DeclChirho,
-    expr_chirho::{ExprChirho as AstExprChirho, LocalBindChirho, MatchArmChirho, RhsChirho},
+    expr_chirho::{ExprChirho as AstExprChirho, LocalBindChirho, RhsChirho},
     lit_chirho::LitChirho,
     module_chirho::ModuleChirho as AstModuleChirho,
     name_chirho::NameChirho,
@@ -18,6 +18,11 @@ use haskelujah_naming_chirho::env_chirho::{NameEnvChirho, NamespaceChirho};
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::*;
+
+#[path = "data_lower_chirho.rs"]
+mod data_lower_chirho;
+#[path = "patterns_lower_chirho.rs"]
+mod patterns_lower_chirho;
 
 type ResultChirho<TChirho> = Result<TChirho, HirErrorChirho>;
 
@@ -124,14 +129,20 @@ impl LowerChirho {
                 match self.names_chirho[id_chirho.0 as usize].wired_chirho {
                     Some(WiredNameChirho::BoolChirho) => SurfaceTypeChirho::BoolChirho,
                     Some(WiredNameChirho::CharChirho) => SurfaceTypeChirho::CharChirho,
-                    _ => {
-                        return Err(self.error_chirho(
-                            "next needs the declaration's checked type",
-                            name_chirho.span_chirho(),
-                        ));
-                    }
+                    _ => SurfaceTypeChirho::DeclaredChirho(id_chirho),
                 }
             }
+            TypeChirho::VarChirho(name_chirho) => SurfaceTypeChirho::VariableChirho(
+                self.lookup_chirho(name_chirho, NamespaceChirho::TypeChirho)?,
+            ),
+            TypeChirho::AppChirho {
+                fun_chirho,
+                arg_chirho,
+                ..
+            } => SurfaceTypeChirho::AppChirho(
+                Box::new(self.type_chirho(fun_chirho, depth_chirho + 1)?),
+                Box::new(self.type_chirho(arg_chirho, depth_chirho + 1)?),
+            ),
             TypeChirho::FunChirho {
                 arg_chirho,
                 result_chirho,
@@ -160,54 +171,6 @@ impl LowerChirho {
                 ty_chirho.span_chirho(),
             )),
         })
-    }
-
-    fn variable_pattern_chirho(&mut self, pat_chirho: &PatChirho) -> ResultChirho<NameIdChirho> {
-        match pat_chirho {
-            PatChirho::VarChirho(name_chirho) => self.bind_chirho(
-                name_chirho.text_chirho(),
-                NamespaceChirho::ValueChirho,
-                name_chirho.span_chirho(),
-                true,
-                None,
-            ),
-            PatChirho::WildcardChirho(span_chirho) => {
-                self.bind_chirho("_", NamespaceChirho::ValueChirho, *span_chirho, true, None)
-            }
-            PatChirho::ParenChirho { inner_chirho, .. } => {
-                self.variable_pattern_chirho(inner_chirho)
-            }
-            _ => Err(self.error_chirho(
-                "next S0 does not yet elaborate this pattern",
-                pat_chirho.span_chirho(),
-            )),
-        }
-    }
-
-    fn parameters_chirho(&mut self, pats_chirho: &[PatChirho]) -> ResultChirho<Vec<NameIdChirho>> {
-        let mut seen_chirho = HashSet::new();
-        let mut result_chirho = Vec::new();
-        for pat_chirho in pats_chirho {
-            let mut inner_chirho = pat_chirho;
-            while let PatChirho::ParenChirho {
-                inner_chirho: next_chirho,
-                ..
-            } = inner_chirho
-            {
-                inner_chirho = next_chirho;
-            }
-            if let PatChirho::VarChirho(name_chirho) = inner_chirho
-                && !seen_chirho.insert(name_chirho.full_name_chirho())
-            {
-                return Err(HirErrorChirho {
-                    kind_chirho: HirErrorKindChirho::InvalidChirho,
-                    message_chirho: "a parameter is bound twice in one pattern group".into(),
-                    span_chirho: name_chirho.span_chirho(),
-                });
-            }
-            result_chirho.push(self.variable_pattern_chirho(pat_chirho)?);
-        }
-        Ok(result_chirho)
     }
 
     fn node_chirho(
@@ -239,45 +202,6 @@ impl LowerChirho {
                 SpanChirho::DUMMY_CHIRHO,
             )),
         }
-    }
-
-    fn equation_chirho(
-        &mut self,
-        matches_chirho: &[MatchArmChirho],
-        span_chirho: SpanChirho,
-        depth_chirho: usize,
-    ) -> ResultChirho<ExprChirho> {
-        let [arm_chirho] = matches_chirho else {
-            return Err(self.error_chirho(
-                "next S0 does not yet compile a multi-equation match",
-                span_chirho,
-            ));
-        };
-        self.env_chirho.push_scope_chirho();
-        let result_chirho = (|| {
-            let parameters_chirho = self.parameters_chirho(&arm_chirho.pats_chirho)?;
-            let body_chirho = if arm_chirho.where_binds_chirho.is_empty() {
-                self.rhs_chirho(&arm_chirho.rhs_chirho, depth_chirho + 1)?
-            } else {
-                let bindings_chirho =
-                    self.local_bindings_chirho(&arm_chirho.where_binds_chirho, depth_chirho + 1)?;
-                let body_chirho = self.rhs_chirho(&arm_chirho.rhs_chirho, depth_chirho + 1)?;
-                self.node_chirho(
-                    ExprKindChirho::LetChirho(bindings_chirho, Box::new(body_chirho)),
-                    span_chirho,
-                )?
-            };
-            if parameters_chirho.is_empty() {
-                Ok(body_chirho)
-            } else {
-                self.node_chirho(
-                    ExprKindChirho::LamChirho(parameters_chirho, Box::new(body_chirho)),
-                    span_chirho,
-                )
-            }
-        })();
-        self.env_chirho.pop_scope_chirho();
-        result_chirho
     }
 
     fn local_bindings_chirho(
@@ -369,15 +293,10 @@ impl LowerChirho {
             AstExprChirho::LitChirho(LitChirho::CharChirho(value_chirho, ..)) => ExprKindChirho::CharChirho(*value_chirho),
             AstExprChirho::LitChirho(LitChirho::StringChirho(value_chirho, ..)) => ExprKindChirho::StringChirho(value_chirho.clone()),
             AstExprChirho::AppChirho { fun_chirho, arg_chirho, .. } => ExprKindChirho::AppChirho(Box::new(self.expr_chirho(fun_chirho, depth_chirho + 1)?), Box::new(self.expr_chirho(arg_chirho, depth_chirho + 1)?)),
-            AstExprChirho::LamChirho { pats_chirho, body_chirho, .. } => {
-                self.env_chirho.push_scope_chirho();
-                let result_chirho = (|| {
-                    let parameters_chirho = self.parameters_chirho(pats_chirho)?;
-                    Ok(ExprKindChirho::LamChirho(parameters_chirho, Box::new(self.expr_chirho(body_chirho, depth_chirho + 1)?)))
-                })();
-                self.env_chirho.pop_scope_chirho();
-                result_chirho?
-            }
+            AstExprChirho::LamChirho { pats_chirho, body_chirho, .. } => return self.equation_chirho(&[haskelujah_ast_chirho::expr_chirho::MatchArmChirho {
+                pats_chirho: pats_chirho.clone(), rhs_chirho: RhsChirho::UnguardedChirho((**body_chirho).clone()), where_binds_chirho: Vec::new(), span_chirho,
+            }], span_chirho, depth_chirho + 1),
+            AstExprChirho::CaseChirho { scrutinee_chirho, alts_chirho, .. } => self.case_chirho(scrutinee_chirho, alts_chirho, depth_chirho + 1)?,
             AstExprChirho::LetChirho { binds_chirho, body_chirho, .. } => {
                 self.env_chirho.push_scope_chirho();
                 let result_chirho = (|| {
@@ -481,8 +400,17 @@ pub fn lower_module_chirho(
             )?;
         }
     }
+    let data_chirho = lower_chirho.data_declarations_chirho(&module_chirho.decls_chirho)?;
     let mut signatures_chirho = HashMap::new();
-    let mut declared_chirho = HashSet::new();
+    let mut declared_chirho: HashSet<_> = data_chirho
+        .iter()
+        .flat_map(|data_chirho| data_chirho.constructors_chirho.iter())
+        .map(|constructor_chirho| {
+            lower_chirho.names_chirho[constructor_chirho.name_chirho.0 as usize]
+                .occurrence_chirho
+                .clone()
+        })
+        .collect();
     for declaration_chirho in &module_chirho.decls_chirho {
         match declaration_chirho {
             DeclChirho::FunBindChirho {
@@ -519,6 +447,7 @@ pub fn lower_module_chirho(
                         .error_chirho("duplicate type signature", name_chirho.span_chirho()));
                 }
             }
+            DeclChirho::DataDeclChirho { .. } => {}
             _ => {
                 return Err(lower_chirho.error_chirho(
                     "next S0 does not yet elaborate this declaration",
@@ -554,6 +483,7 @@ pub fn lower_module_chirho(
         unit_chirho: lower_chirho.unit_chirho,
         module_chirho: lower_chirho.module_chirho,
         names_chirho: lower_chirho.names_chirho,
+        data_chirho,
         bindings_chirho,
     })
 }

@@ -16,6 +16,9 @@ use crate::{
     TyChirho, TyConChirho, TyNodeChirho,
 };
 
+#[path = "data_chirho.rs"]
+mod data_chirho;
+
 #[derive(Debug)]
 pub struct CheckedModuleChirho {
     pub module_chirho: ModuleChirho,
@@ -24,6 +27,8 @@ pub struct CheckedModuleChirho {
     pub names_chirho: HashMap<NameIdChirho, TyChirho>,
     pub schemes_chirho: HashMap<NameIdChirho, SchemeChirho>,
     pub instantiations_chirho: HashMap<ExprIdChirho, Vec<TyChirho>>,
+    pub patterns_chirho: HashMap<ExprIdChirho, TyChirho>,
+    pub constructors_chirho: HashMap<NameIdChirho, Vec<TyChirho>>,
     references_chirho: HashMap<ExprIdChirho, NameIdChirho>,
     scope_chirho: ScopeIdChirho,
 }
@@ -58,36 +63,7 @@ impl CheckedModuleChirho {
         &mut self,
         surface_chirho: &SurfaceTypeChirho,
     ) -> Result<TyChirho, TcErrorChirho> {
-        match surface_chirho {
-            SurfaceTypeChirho::BoolChirho => self
-                .solver_chirho
-                .arena_chirho
-                .con_chirho(TyConChirho::BoolChirho),
-            SurfaceTypeChirho::CharChirho => self
-                .solver_chirho
-                .arena_chirho
-                .con_chirho(TyConChirho::CharChirho),
-            SurfaceTypeChirho::FunChirho(argument_chirho, result_chirho) => {
-                let argument_chirho = self.surface_chirho(argument_chirho)?;
-                let result_chirho = self.surface_chirho(result_chirho)?;
-                self.solver_chirho
-                    .arena_chirho
-                    .function_chirho(argument_chirho, result_chirho)
-            }
-            SurfaceTypeChirho::ListChirho(item_chirho) => {
-                let item_chirho = self.surface_chirho(item_chirho)?;
-                self.solver_chirho.arena_chirho.list_chirho(item_chirho)
-            }
-            SurfaceTypeChirho::TupleChirho(items_chirho) => {
-                let items_chirho = items_chirho
-                    .iter()
-                    .map(|item_chirho| self.surface_chirho(item_chirho))
-                    .collect::<Result<_, _>>()?;
-                self.solver_chirho
-                    .arena_chirho
-                    .intern_chirho(TyNodeChirho::TupleChirho(items_chirho))
-            }
-        }
+        self.surface_with_chirho(surface_chirho, &HashMap::new())
     }
 
     fn bindings_chirho(&mut self, bindings_chirho: &[BindingChirho]) -> Result<(), TcErrorChirho> {
@@ -241,6 +217,9 @@ impl CheckedModuleChirho {
                 self.bindings_chirho(bindings_chirho)?;
                 self.infer_chirho(body_chirho)?
             }
+            ExprKindChirho::MatchChirho(inputs_chirho, arms_chirho) => {
+                self.match_chirho(inputs_chirho, arms_chirho)?
+            }
             ExprKindChirho::IfChirho(condition_chirho, then_chirho, else_chirho) => {
                 let condition_chirho = self.infer_chirho(condition_chirho)?;
                 let bool_chirho = self
@@ -302,6 +281,8 @@ pub fn check_module_chirho(
         names_chirho: HashMap::new(),
         schemes_chirho: HashMap::new(),
         instantiations_chirho: HashMap::new(),
+        patterns_chirho: HashMap::new(),
+        constructors_chirho: HashMap::new(),
         references_chirho: HashMap::new(),
         scope_chirho,
     };
@@ -318,8 +299,22 @@ pub fn check_module_chirho(
             checked_chirho
                 .names_chirho
                 .insert(NameIdChirho(index_chirho as u32), bool_chirho);
+            let id_chirho = NameIdChirho(index_chirho as u32);
+            checked_chirho
+                .constructors_chirho
+                .insert(id_chirho, Vec::new());
+            checked_chirho.schemes_chirho.insert(
+                id_chirho,
+                SchemeChirho {
+                    body_chirho: bool_chirho,
+                    quantified_chirho: Vec::new(),
+                },
+            );
         }
     }
+    let data_chirho = std::mem::take(&mut checked_chirho.module_chirho.data_chirho);
+    checked_chirho.data_chirho(&data_chirho)?;
+    checked_chirho.module_chirho.data_chirho = data_chirho;
     let bindings_chirho = std::mem::take(&mut checked_chirho.module_chirho.bindings_chirho);
     checked_chirho.bindings_chirho(&bindings_chirho)?;
     checked_chirho.module_chirho.bindings_chirho = bindings_chirho;

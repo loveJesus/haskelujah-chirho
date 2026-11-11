@@ -13,6 +13,9 @@ pub struct ExprIdChirho(pub u32);
 pub enum SurfaceTypeChirho {
     BoolChirho,
     CharChirho,
+    DeclaredChirho(NameIdChirho),
+    VariableChirho(NameIdChirho),
+    AppChirho(Box<Self>, Box<Self>),
     FunChirho(Box<Self>, Box<Self>),
     ListChirho(Box<Self>),
     TupleChirho(Vec<Self>),
@@ -37,6 +40,46 @@ pub enum ExprKindChirho {
     AnnChirho(Box<ExprChirho>, SurfaceTypeChirho),
     ListChirho(Vec<ExprChirho>),
     TupleChirho(Vec<ExprChirho>),
+    MatchChirho(Vec<ExprChirho>, Vec<MatchArmChirho>),
+}
+
+#[derive(Debug, Clone)]
+pub struct PatternChirho {
+    pub id_chirho: ExprIdChirho,
+    pub kind_chirho: PatternKindChirho,
+    pub span_chirho: SpanChirho,
+}
+
+#[derive(Debug, Clone)]
+pub enum PatternKindChirho {
+    VariableChirho(NameIdChirho),
+    WildcardChirho,
+    ConstructorChirho(NameIdChirho, Vec<PatternChirho>),
+    TupleChirho(Vec<PatternChirho>),
+    ListChirho(Vec<PatternChirho>),
+    ConsChirho(Box<PatternChirho>, Box<PatternChirho>),
+    CharChirho(char),
+    AsChirho(NameIdChirho, Box<PatternChirho>),
+}
+
+#[derive(Debug, Clone)]
+pub struct MatchArmChirho {
+    pub patterns_chirho: Vec<PatternChirho>,
+    pub body_chirho: ExprChirho,
+}
+
+#[derive(Debug, Clone)]
+pub struct DataDeclChirho {
+    pub name_chirho: NameIdChirho,
+    pub parameters_chirho: Vec<NameIdChirho>,
+    pub constructors_chirho: Vec<ConstructorChirho>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstructorChirho {
+    pub name_chirho: NameIdChirho,
+    pub fields_chirho: Vec<SurfaceTypeChirho>,
+    pub span_chirho: SpanChirho,
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +95,7 @@ pub struct ModuleChirho {
     pub unit_chirho: UnitIdentityChirho,
     pub module_chirho: String,
     pub names_chirho: Vec<NameInfoChirho>,
+    pub data_chirho: Vec<DataDeclChirho>,
     pub bindings_chirho: Vec<BindingChirho>,
 }
 

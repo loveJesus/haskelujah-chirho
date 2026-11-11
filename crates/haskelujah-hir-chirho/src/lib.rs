@@ -11,6 +11,7 @@ pub use groups_chirho::binding_groups_chirho;
 pub use lower_chirho::lower_module_chirho;
 pub use names_chirho::{NameIdChirho, NameInfoChirho, UnitIdentityChirho, WiredNameChirho};
 pub use terms_chirho::{
-    BindingChirho, ExprChirho, ExprIdChirho, ExprKindChirho, HirErrorChirho, HirErrorKindChirho,
-    LimitsChirho, ModuleChirho, SurfaceTypeChirho,
+    BindingChirho, ConstructorChirho, DataDeclChirho, ExprChirho, ExprIdChirho, ExprKindChirho,
+    HirErrorChirho, HirErrorKindChirho, LimitsChirho, MatchArmChirho, ModuleChirho, PatternChirho,
+    PatternKindChirho, SurfaceTypeChirho,
 };

@@ -15,6 +15,63 @@ pub(super) struct CoreTypesChirho<'checked_chirho> {
 }
 
 impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
+    pub(super) fn reserve_term_chirho(&mut self) -> Result<(), NextErrorChirho> {
+        if self.remaining_chirho == 0 {
+            return Err(NextErrorChirho::new_chirho(
+                NextErrorKindChirho::ResourceChirho,
+                "next Core allocation ceiling exhausted",
+            ));
+        }
+        self.remaining_chirho -= 1;
+        Ok(())
+    }
+
+    pub(super) fn constructor_key_chirho(&self, name_chirho: NameIdChirho) -> String {
+        let info_chirho = &self.checked_chirho.module_chirho.names_chirho[name_chirho.0 as usize];
+        match info_chirho.wired_chirho {
+            Some(haskelujah_hir_chirho::WiredNameChirho::TrueChirho) => "True".into(),
+            Some(haskelujah_hir_chirho::WiredNameChirho::FalseChirho) => "False".into(),
+            _ => format!(
+                "%next:home:{}:constructor:{}:{}",
+                info_chirho.module_chirho, name_chirho.0, info_chirho.occurrence_chirho
+            ),
+        }
+    }
+
+    pub(super) fn copy_chirho(
+        &mut self,
+        ty_chirho: &CoreTypeChirho,
+    ) -> Result<CoreTypeChirho, NextErrorChirho> {
+        let mut work_chirho = vec![ty_chirho];
+        while let Some(ty_chirho) = work_chirho.pop() {
+            self.reserve_term_chirho()?;
+            match ty_chirho {
+                CoreTypeChirho::FunChirho(arg_chirho, result_chirho, _)
+                | CoreTypeChirho::AppChirho(arg_chirho, result_chirho) => {
+                    work_chirho.extend([arg_chirho.as_ref(), result_chirho.as_ref()])
+                }
+                CoreTypeChirho::TupleChirho(items_chirho) => work_chirho.extend(items_chirho),
+                CoreTypeChirho::ForallChirho {
+                    vars_chirho,
+                    body_chirho,
+                } => {
+                    for _variable_chirho in vars_chirho {
+                        self.reserve_term_chirho()?;
+                    }
+                    work_chirho.push(body_chirho);
+                }
+                CoreTypeChirho::ConChirho(_) | CoreTypeChirho::VarChirho(_) => {}
+                _ => {
+                    return Err(NextErrorChirho::new_chirho(
+                        NextErrorKindChirho::InvalidChirho,
+                        "unproduced type form at the next Core boundary",
+                    ));
+                }
+            }
+        }
+        Ok(ty_chirho.clone())
+    }
+
     pub(super) fn new_chirho(checked_chirho: &'checked_chirho CheckedModuleChirho) -> Self {
         Self {
             checked_chirho,
@@ -88,6 +145,14 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
                     TyConChirho::CharChirho => "Char",
                     TyConChirho::ListChirho => "[]",
                     TyConChirho::AnyChirho => "%next:zonked-any:TypeChirho",
+                    TyConChirho::DeclaredChirho(name_chirho) => {
+                        let info_chirho =
+                            &self.checked_chirho.module_chirho.names_chirho[name_chirho.0 as usize];
+                        return Ok(CoreTypeChirho::ConChirho(format!(
+                            "%next:home:{}:type:{}:{}",
+                            info_chirho.module_chirho, name_chirho.0, info_chirho.occurrence_chirho
+                        )));
+                    }
                     TyConChirho::TypeChirho => {
                         return Err(NextErrorChirho::new_chirho(
                             NextErrorKindChirho::InvalidChirho,

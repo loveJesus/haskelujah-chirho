@@ -5,6 +5,8 @@
 
 mod core_chirho;
 #[cfg(test)]
+mod data_patterns_tests_chirho;
+#[cfg(test)]
 mod generalization_tests_chirho;
 mod parse_chirho;
 #[cfg(test)]
