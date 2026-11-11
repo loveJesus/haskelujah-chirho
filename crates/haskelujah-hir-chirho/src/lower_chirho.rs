@@ -19,6 +19,8 @@ use haskelujah_span_chirho::SpanChirho;
 
 use crate::*;
 
+#[path = "classes_lower_chirho.rs"]
+mod classes_lower_chirho;
 #[path = "data_lower_chirho.rs"]
 mod data_lower_chirho;
 #[path = "patterns_lower_chirho.rs"]
@@ -268,6 +270,11 @@ impl LowerChirho {
                         *span_chirho,
                         depth_chirho + 1,
                     )?,
+                    restricted_chirho: !signatures_chirho
+                        .contains_key(&name_chirho.full_name_chirho())
+                        && matches_chirho
+                            .first()
+                            .is_some_and(|arm_chirho| arm_chirho.pats_chirho.is_empty()),
                     signature_chirho: signatures_chirho.remove(&name_chirho.full_name_chirho()),
                     span_chirho: *span_chirho,
                 });
@@ -400,7 +407,10 @@ pub fn lower_module_chirho(
             )?;
         }
     }
+    lower_chirho.predeclare_type_headers_chirho(&module_chirho.decls_chirho)?;
     let data_chirho = lower_chirho.data_declarations_chirho(&module_chirho.decls_chirho)?;
+    let classes_chirho =
+        lower_chirho.class_declarations_chirho(&module_chirho.decls_chirho, &data_chirho)?;
     let mut signatures_chirho = HashMap::new();
     let mut declared_chirho: HashSet<_> = data_chirho
         .iter()
@@ -411,6 +421,16 @@ pub fn lower_module_chirho(
                 .clone()
         })
         .collect();
+    declared_chirho.extend(
+        classes_chirho
+            .iter()
+            .flat_map(|class_chirho| &class_chirho.methods_chirho)
+            .map(|method_chirho| {
+                lower_chirho.names_chirho[method_chirho.name_chirho.0 as usize]
+                    .occurrence_chirho
+                    .clone()
+            }),
+    );
     for declaration_chirho in &module_chirho.decls_chirho {
         match declaration_chirho {
             DeclChirho::FunBindChirho {
@@ -419,9 +439,11 @@ pub fn lower_module_chirho(
                 ..
             } => {
                 if !declared_chirho.insert(name_chirho.full_name_chirho()) {
-                    return Err(
-                        lower_chirho.error_chirho("duplicate top-level binding", *span_chirho)
-                    );
+                    return Err(HirErrorChirho {
+                        kind_chirho: HirErrorKindChirho::InvalidChirho,
+                        message_chirho: "duplicate top-level value declaration".into(),
+                        span_chirho: *span_chirho,
+                    });
                 }
                 lower_chirho.bind_chirho(
                     name_chirho.text_chirho(),
@@ -447,7 +469,9 @@ pub fn lower_module_chirho(
                         .error_chirho("duplicate type signature", name_chirho.span_chirho()));
                 }
             }
-            DeclChirho::DataDeclChirho { .. } => {}
+            DeclChirho::DataDeclChirho { .. }
+            | DeclChirho::ClassDeclChirho { .. }
+            | DeclChirho::InstanceDeclChirho { .. } => {}
             _ => {
                 return Err(lower_chirho.error_chirho(
                     "next S0 does not yet elaborate this declaration",
@@ -468,6 +492,10 @@ pub fn lower_module_chirho(
                 name_chirho: lower_chirho
                     .lookup_chirho(name_chirho, NamespaceChirho::ValueChirho)?,
                 body_chirho: lower_chirho.equation_chirho(matches_chirho, *span_chirho, 0)?,
+                restricted_chirho: !signatures_chirho.contains_key(&name_chirho.full_name_chirho())
+                    && matches_chirho
+                        .first()
+                        .is_some_and(|arm_chirho| arm_chirho.pats_chirho.is_empty()),
                 signature_chirho: signatures_chirho.remove(&name_chirho.full_name_chirho()),
                 span_chirho: *span_chirho,
             });
@@ -479,11 +507,15 @@ pub fn lower_module_chirho(
             module_chirho.span_chirho,
         ));
     }
+    let instances_chirho =
+        lower_chirho.instance_declarations_chirho(&module_chirho.decls_chirho, &classes_chirho)?;
     Ok(ModuleChirho {
         unit_chirho: lower_chirho.unit_chirho,
         module_chirho: lower_chirho.module_chirho,
         names_chirho: lower_chirho.names_chirho,
         data_chirho,
+        classes_chirho,
+        instances_chirho,
         bindings_chirho,
     })
 }

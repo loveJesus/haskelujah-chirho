@@ -12,10 +12,16 @@ mod solver_chirho;
 mod tests_chirho;
 mod types_chirho;
 
-pub use check_chirho::{CheckedModuleChirho, check_module_chirho};
+pub use check_chirho::{
+    AbstractionChirho, CheckedModuleChirho, WrapStepChirho, check_module_chirho,
+};
 pub use error_chirho::{TcErrorChirho, TcErrorKindChirho};
 pub use schemes_chirho::SchemeChirho;
-pub use solver_chirho::{EqualityChirho, ScopeIdChirho, SolverChirho};
+pub use solver_chirho::{
+    ClassInfoChirho, EqualityChirho, EvTermChirho, EvVarChirho, GivenDictChirho,
+    InstanceInfoChirho, InstanceMethodInfoChirho, MethodInfoChirho, ScopeIdChirho, ScopeKindChirho,
+    SolverChirho, WantedDictChirho, WantedOriginChirho,
+};
 pub use types_chirho::{
     MetaIdChirho, RigidIdChirho, TyChirho, TyConChirho, TyNodeChirho, TypeArenaChirho,
 };

@@ -3,6 +3,8 @@
 //! The independent next pipeline. Legacy inference and dictionary rewriting are never called.
 //! workflow: next-pipeline-chirho/check-and-elaborate-chirho
 
+#[cfg(test)]
+mod class_evidence_tests_chirho;
 mod core_chirho;
 #[cfg(test)]
 mod data_patterns_tests_chirho;

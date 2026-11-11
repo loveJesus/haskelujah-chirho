@@ -94,14 +94,7 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
         if let Some(scheme_chirho) = self.checked_chirho.schemes_chirho.get(&name_chirho) {
             let arena_chirho = &self.checked_chirho.solver_chirho.arena_chirho;
             for ty_chirho in &scheme_chirho.quantified_chirho {
-                let TyNodeChirho::MetaChirho(meta_chirho) = arena_chirho.node_chirho(*ty_chirho)?
-                else {
-                    return Err(NextErrorChirho::new_chirho(
-                        NextErrorKindChirho::InvalidChirho,
-                        "scheme binder has no type-variable identity",
-                    ));
-                };
-                variables_chirho.push(TyVarChirho(arena_chirho.meta_index_chirho(*meta_chirho)?));
+                variables_chirho.push(TyVarChirho(arena_chirho.variable_id_chirho(*ty_chirho)?));
             }
         }
         Ok(variables_chirho)
@@ -112,7 +105,17 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
         name_chirho: NameIdChirho,
         body_chirho: TyChirho,
     ) -> Result<CoreTypeChirho, NextErrorChirho> {
-        let body_chirho = self.convert_chirho(body_chirho)?;
+        let mut body_chirho = self.convert_chirho(body_chirho)?;
+        let context_chirho = self
+            .checked_chirho
+            .schemes_chirho
+            .get(&name_chirho)
+            .map(|scheme_chirho| scheme_chirho.context_chirho.clone())
+            .unwrap_or_default();
+        for predicate_chirho in context_chirho.into_iter().rev() {
+            let dictionary_chirho = self.convert_chirho(predicate_chirho)?;
+            body_chirho = CoreTypeChirho::fun_chirho(dictionary_chirho, body_chirho);
+        }
         let variables_chirho = self.quantified_chirho(name_chirho)?;
         Ok(if variables_chirho.is_empty() {
             body_chirho
@@ -153,7 +156,15 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
                             info_chirho.module_chirho, name_chirho.0, info_chirho.occurrence_chirho
                         )));
                     }
-                    TyConChirho::TypeChirho => {
+                    TyConChirho::ClassChirho(name_chirho) => {
+                        let info_chirho =
+                            &self.checked_chirho.module_chirho.names_chirho[name_chirho.0 as usize];
+                        return Ok(CoreTypeChirho::ConChirho(format!(
+                            "%next:home:{}:dictionary-type:{}:{}",
+                            info_chirho.module_chirho, name_chirho.0, info_chirho.occurrence_chirho
+                        )));
+                    }
+                    TyConChirho::TypeChirho | TyConChirho::ConstraintChirho => {
                         return Err(NextErrorChirho::new_chirho(
                             NextErrorKindChirho::InvalidChirho,
                             "a kind was used as a runtime value type",
@@ -162,9 +173,9 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
                 }
                 .into(),
             ),
-            TyNodeChirho::MetaChirho(meta_chirho) => CoreTypeChirho::VarChirho(TyVarChirho(
-                arena_chirho.meta_index_chirho(*meta_chirho)?,
-            )),
+            TyNodeChirho::MetaChirho(_) | TyNodeChirho::RigidChirho(_) => {
+                CoreTypeChirho::VarChirho(TyVarChirho(arena_chirho.variable_id_chirho(ty_chirho)?))
+            }
             TyNodeChirho::FunChirho(argument_chirho, result_chirho) => CoreTypeChirho::fun_chirho(
                 self.walk_chirho(*argument_chirho, depth_chirho + 1)?,
                 self.walk_chirho(*result_chirho, depth_chirho + 1)?,
@@ -179,7 +190,7 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
                     .map(|item_chirho| self.walk_chirho(*item_chirho, depth_chirho + 1))
                     .collect::<Result<_, _>>()?,
             ),
-            TyNodeChirho::ForallChirho { .. } | TyNodeChirho::RigidChirho(_) => {
+            TyNodeChirho::ForallChirho { .. } => {
                 return Err(NextErrorChirho::new_chirho(
                     NextErrorKindChirho::UnsupportedChirho,
                     "next S0 Core adapter does not yet elaborate quantified evidence",

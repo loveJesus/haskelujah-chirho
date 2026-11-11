@@ -15,6 +15,14 @@ impl ElaboratorChirho<'_> {
     ) -> Result<usize, NextErrorChirho> {
         let mut cost_chirho = 1;
         match &expression_chirho.kind_chirho {
+            ExprKindChirho::VarChirho(_) => {
+                cost_chirho += self
+                    .types_chirho
+                    .checked_chirho
+                    .wrappers_chirho
+                    .get(&expression_chirho.id_chirho)
+                    .map_or(0, Vec::len)
+            }
             ExprKindChirho::LamChirho(parameters_chirho, _) => {
                 cost_chirho += parameters_chirho.len()
             }
@@ -53,7 +61,7 @@ impl ElaboratorChirho<'_> {
         Ok(cost_chirho)
     }
 
-    fn fresh_binder_chirho(
+    pub(super) fn fresh_binder_chirho(
         &mut self,
         ty_chirho: CoreTypeChirho,
         span_chirho: SpanChirho,

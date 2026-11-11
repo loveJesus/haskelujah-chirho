@@ -11,24 +11,6 @@ impl LowerChirho {
         &mut self,
         declarations_chirho: &[DeclChirho],
     ) -> ResultChirho<Vec<DataDeclChirho>> {
-        let mut declared_chirho = HashSet::new();
-        for declaration_chirho in declarations_chirho {
-            if let DeclChirho::DataDeclChirho { name_chirho, .. } = declaration_chirho {
-                if !declared_chirho.insert(name_chirho.full_name_chirho()) {
-                    return Err(self.error_chirho(
-                        "duplicate data type declaration",
-                        name_chirho.span_chirho(),
-                    ));
-                }
-                self.bind_chirho(
-                    name_chirho.text_chirho(),
-                    NamespaceChirho::TypeChirho,
-                    name_chirho.span_chirho(),
-                    false,
-                    None,
-                )?;
-            }
-        }
         let mut constructors_seen_chirho = HashSet::new();
         let mut result_chirho = Vec::new();
         for declaration_chirho in declarations_chirho {

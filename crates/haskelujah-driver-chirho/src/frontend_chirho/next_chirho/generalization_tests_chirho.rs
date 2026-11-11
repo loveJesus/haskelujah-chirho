@@ -51,9 +51,13 @@ fn unused_instantiation_variables_are_sealed_only_after_generalization_chirho() 
     let arena_chirho = &checked_chirho.solver_chirho.arena_chirho;
     assert!(
         checked_chirho
-            .instantiations_chirho
+            .wrappers_chirho
             .values()
             .flatten()
+            .filter_map(|step_chirho| match step_chirho {
+                haskelujah_tc_chirho::WrapStepChirho::TypeChirho(ty_chirho) => Some(ty_chirho),
+                haskelujah_tc_chirho::WrapStepChirho::EvidenceChirho(_) => None,
+            })
             .any(|ty_chirho| {
                 matches!(
                     arena_chirho

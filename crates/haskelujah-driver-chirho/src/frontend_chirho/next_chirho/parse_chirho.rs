@@ -105,9 +105,9 @@ pub(super) fn parse_chirho(
         ));
     }
     let green_chirho = ParserChirho::new_chirho(source_chirho, file_chirho).parse_chirho();
-    let mut work_chirho = vec![(green_chirho.as_ref(), 0_usize)];
+    let mut work_chirho = vec![(green_chirho.as_ref(), 0_usize, false)];
     let mut nodes_chirho = 0_usize;
-    while let Some((node_chirho, depth_chirho)) = work_chirho.pop() {
+    while let Some((node_chirho, depth_chirho, in_class_chirho)) = work_chirho.pop() {
         nodes_chirho += 1;
         if nodes_chirho > 1 << 20 || depth_chirho > 256 {
             return Err(NextErrorChirho::new_chirho(
@@ -121,6 +121,14 @@ pub(super) fn parse_chirho(
                 "parse error; recovered syntax is never accepted by next",
             ));
         }
+        // The shared AST lowerer pairs defaults with signatures and drops an unpaired
+        // body. Unit A supports no defaults, so decline their lossless source form.
+        if in_class_chirho && node_chirho.kind_chirho() == SyntaxKindChirho::FunBindChirho {
+            return Err(NextErrorChirho::new_chirho(
+                NextErrorKindChirho::UnsupportedChirho,
+                "next class default bodies require a retained, checked declaration account",
+            ));
+        }
         if node_chirho.kind_chirho() == SyntaxKindChirho::ImportDeclChirho
             && node_chirho.children_chirho().iter().any(|child_chirho| matches!(
                 child_chirho, GreenElementChirho::TokenChirho(token_chirho)
@@ -131,7 +139,12 @@ pub(super) fn parse_chirho(
         }
         for child_chirho in node_chirho.children_chirho() {
             if let GreenElementChirho::NodeChirho(child_chirho) = child_chirho {
-                work_chirho.push((child_chirho.as_ref(), depth_chirho + 1));
+                work_chirho.push((
+                    child_chirho.as_ref(),
+                    depth_chirho + 1,
+                    in_class_chirho
+                        || node_chirho.kind_chirho() == SyntaxKindChirho::ClassDeclChirho,
+                ));
             }
         }
     }

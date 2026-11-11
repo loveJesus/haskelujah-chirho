@@ -12,12 +12,29 @@ use haskelujah_hir_chirho::{
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::{
-    EqualityChirho, SchemeChirho, ScopeIdChirho, SolverChirho, TcErrorChirho, TcErrorKindChirho,
-    TyChirho, TyConChirho, TyNodeChirho,
+    EqualityChirho, EvVarChirho, SchemeChirho, ScopeIdChirho, SolverChirho, TcErrorChirho,
+    TcErrorKindChirho, TyChirho, TyConChirho, TyNodeChirho,
 };
 
+#[path = "classes_chirho.rs"]
+mod classes_chirho;
 #[path = "data_chirho.rs"]
 mod data_chirho;
+#[path = "generalization_chirho.rs"]
+mod generalization_chirho;
+
+#[derive(Debug, Clone, Copy)]
+pub enum WrapStepChirho {
+    TypeChirho(TyChirho),
+    EvidenceChirho(EvVarChirho),
+}
+
+#[derive(Debug, Clone)]
+pub struct AbstractionChirho {
+    pub type_binders_chirho: Vec<TyChirho>,
+    pub dictionary_binders_chirho: Vec<EvVarChirho>,
+    pub scope_chirho: ScopeIdChirho,
+}
 
 #[derive(Debug)]
 pub struct CheckedModuleChirho {
@@ -26,7 +43,8 @@ pub struct CheckedModuleChirho {
     pub expressions_chirho: HashMap<ExprIdChirho, TyChirho>,
     pub names_chirho: HashMap<NameIdChirho, TyChirho>,
     pub schemes_chirho: HashMap<NameIdChirho, SchemeChirho>,
-    pub instantiations_chirho: HashMap<ExprIdChirho, Vec<TyChirho>>,
+    pub wrappers_chirho: HashMap<ExprIdChirho, Vec<WrapStepChirho>>,
+    pub abstractions_chirho: HashMap<NameIdChirho, AbstractionChirho>,
     pub patterns_chirho: HashMap<ExprIdChirho, TyChirho>,
     pub constructors_chirho: HashMap<NameIdChirho, Vec<TyChirho>>,
     references_chirho: HashMap<ExprIdChirho, NameIdChirho>,
@@ -76,6 +94,7 @@ impl CheckedModuleChirho {
                 self.schemes_chirho.insert(
                     binding_chirho.name_chirho,
                     SchemeChirho {
+                        context_chirho: Vec::new(),
                         body_chirho: ty_chirho,
                         quantified_chirho: Vec::new(),
                     },
@@ -120,31 +139,7 @@ impl CheckedModuleChirho {
                 binding_chirho.span_chirho,
             );
         }
-        // GHC's simplifyInfer solves first; level promotion then identifies environment-fixed metas.
-        self.solver_chirho.solve_chirho()?;
-        let roots_chirho: Vec<_> = group_chirho
-            .iter()
-            .map(|index_chirho| self.names_chirho[&bindings_chirho[*index_chirho].name_chirho])
-            .collect();
-        let quantified_chirho = self
-            .solver_chirho
-            .arena_chirho
-            .quantify_group_chirho(&roots_chirho, outer_level_chirho)?;
-        for &index_chirho in group_chirho {
-            let binding_chirho = &bindings_chirho[index_chirho];
-            self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
-            for _binder_chirho in &quantified_chirho {
-                self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
-            }
-            self.schemes_chirho.insert(
-                binding_chirho.name_chirho,
-                SchemeChirho {
-                    body_chirho: self.names_chirho[&binding_chirho.name_chirho],
-                    quantified_chirho: quantified_chirho.clone(),
-                },
-            );
-        }
-        Ok(())
+        self.close_group_chirho(bindings_chirho, group_chirho, outer_level_chirho)
     }
 
     fn infer_chirho(&mut self, expression_chirho: &ExprChirho) -> Result<TyChirho, TcErrorChirho> {
@@ -155,12 +150,26 @@ impl CheckedModuleChirho {
                 if let Some(scheme_chirho) = self.schemes_chirho.get(name_chirho) {
                     let scheme_chirho = scheme_chirho.clone();
                     let level_chirho = self.solver_chirho.level_chirho(self.scope_chirho)?;
-                    let (ty_chirho, arguments_chirho) = self
+                    let (ty_chirho, arguments_chirho, context_chirho) = self
                         .solver_chirho
                         .arena_chirho
                         .instantiate_chirho(&scheme_chirho, level_chirho)?;
-                    self.instantiations_chirho
-                        .insert(expression_chirho.id_chirho, arguments_chirho);
+                    let mut steps_chirho = Vec::new();
+                    for argument_chirho in arguments_chirho {
+                        self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
+                        steps_chirho.push(WrapStepChirho::TypeChirho(argument_chirho));
+                    }
+                    for predicate_chirho in context_chirho {
+                        let evidence_chirho = self.solver_chirho.want_dictionary_chirho(
+                            self.scope_chirho,
+                            predicate_chirho,
+                            expression_chirho.span_chirho,
+                        )?;
+                        self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
+                        steps_chirho.push(WrapStepChirho::EvidenceChirho(evidence_chirho));
+                    }
+                    self.wrappers_chirho
+                        .insert(expression_chirho.id_chirho, steps_chirho);
                     ty_chirho
                 } else {
                     *self.names_chirho.get(name_chirho).ok_or_else(|| {
@@ -280,7 +289,8 @@ pub fn check_module_chirho(
         expressions_chirho: HashMap::new(),
         names_chirho: HashMap::new(),
         schemes_chirho: HashMap::new(),
-        instantiations_chirho: HashMap::new(),
+        wrappers_chirho: HashMap::new(),
+        abstractions_chirho: HashMap::new(),
         patterns_chirho: HashMap::new(),
         constructors_chirho: HashMap::new(),
         references_chirho: HashMap::new(),
@@ -306,6 +316,7 @@ pub fn check_module_chirho(
             checked_chirho.schemes_chirho.insert(
                 id_chirho,
                 SchemeChirho {
+                    context_chirho: Vec::new(),
                     body_chirho: bool_chirho,
                     quantified_chirho: Vec::new(),
                 },
@@ -313,28 +324,47 @@ pub fn check_module_chirho(
         }
     }
     let data_chirho = std::mem::take(&mut checked_chirho.module_chirho.data_chirho);
+    let classes_chirho = std::mem::take(&mut checked_chirho.module_chirho.classes_chirho);
+    // Class kinds must exist while checking data fields that mention those declarations.
+    checked_chirho.class_headers_chirho(&classes_chirho)?;
     checked_chirho.data_chirho(&data_chirho)?;
     checked_chirho.module_chirho.data_chirho = data_chirho;
+    checked_chirho.classes_chirho(&classes_chirho)?;
+    checked_chirho.module_chirho.classes_chirho = classes_chirho;
+    let instances_chirho = std::mem::take(&mut checked_chirho.module_chirho.instances_chirho);
+    checked_chirho.instances_chirho(&instances_chirho)?;
     let bindings_chirho = std::mem::take(&mut checked_chirho.module_chirho.bindings_chirho);
     checked_chirho.bindings_chirho(&bindings_chirho)?;
     checked_chirho.module_chirho.bindings_chirho = bindings_chirho;
+    checked_chirho.instance_methods_chirho(&instances_chirho)?;
+    checked_chirho.module_chirho.instances_chirho = instances_chirho;
     checked_chirho.solver_chirho.solve_chirho()?;
-    // Within one recursive SCC, monomorphic uses refer to the shared abstraction's variables.
+    checked_chirho.finish_dictionaries_chirho()?;
+    // Monomorphic recursive occurrences re-apply their group's own type and dictionary binders.
     for (expression_chirho, name_chirho) in &checked_chirho.references_chirho {
         if !checked_chirho
-            .instantiations_chirho
+            .wrappers_chirho
             .contains_key(expression_chirho)
-            && let Some(scheme_chirho) = checked_chirho.schemes_chirho.get(name_chirho)
+            && let Some(abstraction_chirho) = checked_chirho.abstractions_chirho.get(name_chirho)
         {
-            for _binder_chirho in &scheme_chirho.quantified_chirho {
+            let mut steps_chirho = Vec::new();
+            for variable_chirho in &abstraction_chirho.type_binders_chirho {
                 checked_chirho
                     .solver_chirho
                     .arena_chirho
                     .reserve_auxiliary_chirho()?;
+                steps_chirho.push(WrapStepChirho::TypeChirho(*variable_chirho));
+            }
+            for variable_chirho in &abstraction_chirho.dictionary_binders_chirho {
+                checked_chirho
+                    .solver_chirho
+                    .arena_chirho
+                    .reserve_auxiliary_chirho()?;
+                steps_chirho.push(WrapStepChirho::EvidenceChirho(*variable_chirho));
             }
             checked_chirho
-                .instantiations_chirho
-                .insert(*expression_chirho, scheme_chirho.quantified_chirho.clone());
+                .wrappers_chirho
+                .insert(*expression_chirho, steps_chirho);
         }
     }
     checked_chirho

@@ -10,11 +10,13 @@ use haskelujah_core_chirho::{
 use haskelujah_hir_chirho::{
     BindingChirho, ExprChirho, ExprKindChirho, NameIdChirho, WiredNameChirho,
 };
-use haskelujah_tc_chirho::CheckedModuleChirho;
+use haskelujah_tc_chirho::{CheckedModuleChirho, EvVarChirho, WrapStepChirho};
 use std::collections::HashMap;
 
 use super::{NextErrorChirho, NextErrorKindChirho, types_chirho::CoreTypesChirho};
 
+#[path = "classes_chirho.rs"]
+mod classes_chirho;
 #[path = "patterns_chirho.rs"]
 mod patterns_chirho;
 
@@ -22,6 +24,7 @@ struct ElaboratorChirho<'checked_chirho> {
     types_chirho: CoreTypesChirho<'checked_chirho>,
     next_id_chirho: u32,
     depth_left_chirho: usize,
+    evidence_scopes_chirho: Vec<HashMap<EvVarChirho, CoreIdChirho>>,
 }
 
 impl ElaboratorChirho<'_> {
@@ -63,28 +66,7 @@ impl ElaboratorChirho<'_> {
         &mut self,
         binding_chirho: &BindingChirho,
     ) -> Result<CoreExprChirho, NextErrorChirho> {
-        let variables_chirho = self
-            .types_chirho
-            .quantified_chirho(binding_chirho.name_chirho)?;
-        if variables_chirho.len() > self.depth_left_chirho {
-            return Err(NextErrorChirho::new_chirho(
-                NextErrorKindChirho::ResourceChirho,
-                "next Core abstraction depth ceiling exhausted",
-            ));
-        }
-        self.depth_left_chirho -= variables_chirho.len();
-        let result_chirho = (|| {
-            let mut body_chirho = self.expression_chirho(&binding_chirho.body_chirho)?;
-            for variable_chirho in variables_chirho.iter().rev() {
-                body_chirho = CoreExprChirho::TyLamChirho {
-                    ty_var_chirho: format!("next_type_{}_chirho", variable_chirho.0),
-                    body_chirho: Box::new(body_chirho),
-                };
-            }
-            Ok(body_chirho)
-        })();
-        self.depth_left_chirho += variables_chirho.len();
-        result_chirho
+        self.abstract_binding_chirho(binding_chirho)
     }
 
     fn expression_chirho(
@@ -122,14 +104,29 @@ impl ElaboratorChirho<'_> {
                     _ => CoreExprChirho::VarChirho(CoreIdChirho(name_chirho.0)),
                 };
                 let checked_chirho = self.types_chirho.checked_chirho;
-                if let Some(arguments_chirho) = checked_chirho
-                    .instantiations_chirho
+                if let Some(steps_chirho) = checked_chirho
+                    .wrappers_chirho
                     .get(&expression_chirho.id_chirho)
                 {
-                    for argument_chirho in arguments_chirho {
-                        reference_chirho = CoreExprChirho::TyAppChirho {
-                            expr_chirho: Box::new(reference_chirho),
-                            ty_chirho: self.types_chirho.convert_chirho(*argument_chirho)?,
+                    for step_chirho in steps_chirho {
+                        self.types_chirho.reserve_term_chirho()?;
+                        reference_chirho = match step_chirho {
+                            WrapStepChirho::TypeChirho(argument_chirho) => {
+                                CoreExprChirho::TyAppChirho {
+                                    expr_chirho: Box::new(reference_chirho),
+                                    ty_chirho: self
+                                        .types_chirho
+                                        .convert_chirho(*argument_chirho)?,
+                                }
+                            }
+                            WrapStepChirho::EvidenceChirho(evidence_chirho) => {
+                                CoreExprChirho::AppChirho {
+                                    fun_chirho: Box::new(reference_chirho),
+                                    arg_chirho: Box::new(
+                                        self.evidence_variable_chirho(*evidence_chirho)?,
+                                    ),
+                                }
+                            }
                         };
                     }
                 }
@@ -240,6 +237,7 @@ pub(super) fn elaborate_chirho(
     let mut elaborator_chirho = ElaboratorChirho {
         types_chirho: CoreTypesChirho::new_chirho(checked_chirho),
         depth_left_chirho: 256,
+        evidence_scopes_chirho: Vec::new(),
         next_id_chirho: u32::try_from(checked_chirho.module_chirho.names_chirho.len()).map_err(
             |_| {
                 NextErrorChirho::new_chirho(NextErrorKindChirho::ResourceChirho, "Core ID overflow")
@@ -252,6 +250,12 @@ pub(super) fn elaborate_chirho(
             bindings_chirho
                 .push(elaborator_chirho.constructor_chirho(constructor_chirho.name_chirho)?);
         }
+    }
+    for class_chirho in &checked_chirho.module_chirho.classes_chirho {
+        bindings_chirho.extend(elaborator_chirho.class_selectors_chirho(class_chirho.name_chirho)?);
+    }
+    for instance_chirho in &checked_chirho.module_chirho.instances_chirho {
+        bindings_chirho.push(elaborator_chirho.instance_dictionary_chirho(instance_chirho)?);
     }
     for binding_chirho in &checked_chirho.module_chirho.bindings_chirho {
         bindings_chirho.push(CoreBindingChirho {

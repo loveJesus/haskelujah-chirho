@@ -14,6 +14,7 @@ use crate::{
 pub struct SchemeChirho {
     pub body_chirho: TyChirho,
     pub quantified_chirho: Vec<TyChirho>,
+    pub context_chirho: Vec<TyChirho>,
 }
 
 impl TypeArenaChirho {
@@ -114,42 +115,67 @@ impl TypeArenaChirho {
         &mut self,
         scheme_chirho: &SchemeChirho,
         level_chirho: u32,
-    ) -> Result<(TyChirho, Vec<TyChirho>), TcErrorChirho> {
+    ) -> Result<(TyChirho, Vec<TyChirho>, Vec<TyChirho>), TcErrorChirho> {
         if scheme_chirho.quantified_chirho.is_empty() {
-            return Ok((self.resolve_chirho(scheme_chirho.body_chirho)?, Vec::new()));
+            for _predicate_chirho in &scheme_chirho.context_chirho {
+                self.reserve_auxiliary_chirho()?;
+            }
+            return Ok((
+                self.resolve_chirho(scheme_chirho.body_chirho)?,
+                Vec::new(),
+                scheme_chirho.context_chirho.clone(),
+            ));
         }
         let mut replacements_chirho = HashMap::new();
         let mut arguments_chirho = Vec::new();
         for quantified_chirho in &scheme_chirho.quantified_chirho {
-            let TyNodeChirho::MetaChirho(meta_chirho) = self.node_chirho(*quantified_chirho)?
-            else {
-                return Err(TcErrorChirho::new_chirho(
-                    TcErrorKindChirho::InvalidReferenceChirho,
-                    "scheme binder is not a quantified variable",
-                ));
+            let kind_chirho = match self.node_chirho(*quantified_chirho)? {
+                TyNodeChirho::MetaChirho(meta_chirho)
+                    if self.meta_cell_chirho(*meta_chirho)?.generalized_chirho =>
+                {
+                    self.meta_cell_chirho(*meta_chirho)?.kind_chirho
+                }
+                TyNodeChirho::RigidChirho(rigid_chirho) => {
+                    self.rigid_cell_chirho(*rigid_chirho)?.kind_chirho
+                }
+                _ => {
+                    return Err(TcErrorChirho::new_chirho(
+                        TcErrorKindChirho::InvalidReferenceChirho,
+                        "scheme binder was not generalized or rigid",
+                    ));
+                }
             };
-            let cell_chirho = self.meta_cell_chirho(*meta_chirho)?;
-            if !cell_chirho.generalized_chirho {
-                return Err(TcErrorChirho::new_chirho(
-                    TcErrorKindChirho::InvalidReferenceChirho,
-                    "scheme binder was not generalized",
-                ));
-            }
-            let argument_chirho = self.fresh_meta_chirho(level_chirho, cell_chirho.kind_chirho)?;
+            let argument_chirho = self.fresh_meta_chirho(level_chirho, kind_chirho)?;
             replacements_chirho.insert(*quantified_chirho, argument_chirho);
             arguments_chirho.push(argument_chirho);
         }
-        let body_chirho = self.replace_chirho(scheme_chirho.body_chirho, replacements_chirho)?;
-        Ok((body_chirho, arguments_chirho))
+        let mut roots_chirho = scheme_chirho.context_chirho.clone();
+        roots_chirho.push(scheme_chirho.body_chirho);
+        let mut roots_chirho = self.replace_roots_chirho(&roots_chirho, replacements_chirho)?;
+        let body_chirho = roots_chirho.pop().unwrap();
+        Ok((body_chirho, arguments_chirho, roots_chirho))
     }
 
-    fn replace_chirho(
+    pub(crate) fn replace_chirho(
         &mut self,
         root_chirho: TyChirho,
-        mut images_chirho: HashMap<TyChirho, TyChirho>,
+        images_chirho: HashMap<TyChirho, TyChirho>,
     ) -> Result<TyChirho, TcErrorChirho> {
-        let root_chirho = self.resolve_chirho(root_chirho)?;
-        let mut work_chirho = vec![(root_chirho, false)];
+        Ok(self
+            .replace_roots_chirho(&[root_chirho], images_chirho)?
+            .remove(0))
+    }
+
+    fn replace_roots_chirho(
+        &mut self,
+        roots_chirho: &[TyChirho],
+        mut images_chirho: HashMap<TyChirho, TyChirho>,
+    ) -> Result<Vec<TyChirho>, TcErrorChirho> {
+        let mut work_chirho = roots_chirho
+            .iter()
+            .rev()
+            .map(|ty_chirho| (*ty_chirho, false))
+            .collect::<Vec<_>>();
         while let Some((ty_chirho, ready_chirho)) = work_chirho.pop() {
             let ty_chirho = self.resolve_chirho(ty_chirho)?;
             if images_chirho.contains_key(&ty_chirho) {
@@ -212,11 +238,19 @@ impl TypeArenaChirho {
             let image_chirho = self.intern_chirho(replaced_chirho)?;
             images_chirho.insert(ty_chirho, image_chirho);
         }
-        images_chirho.get(&root_chirho).copied().ok_or_else(|| {
-            TcErrorChirho::new_chirho(
-                TcErrorKindChirho::InvalidReferenceChirho,
-                "scheme substitution produced no root",
-            )
-        })
+        roots_chirho
+            .iter()
+            .map(|root_chirho| {
+                images_chirho
+                    .get(&self.resolve_chirho(*root_chirho)?)
+                    .copied()
+                    .ok_or_else(|| {
+                        TcErrorChirho::new_chirho(
+                            TcErrorKindChirho::InvalidReferenceChirho,
+                            "scheme substitution produced no root",
+                        )
+                    })
+            })
+            .collect()
     }
 }

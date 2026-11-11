@@ -87,7 +87,37 @@ pub struct BindingChirho {
     pub name_chirho: NameIdChirho,
     pub body_chirho: ExprChirho,
     pub signature_chirho: Option<SurfaceTypeChirho>,
+    pub restricted_chirho: bool,
     pub span_chirho: SpanChirho,
+}
+
+#[derive(Debug, Clone)]
+pub struct ClassDeclChirho {
+    pub name_chirho: NameIdChirho,
+    pub parameter_chirho: NameIdChirho,
+    pub methods_chirho: Vec<ClassMethodChirho>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ClassMethodChirho {
+    pub name_chirho: NameIdChirho,
+    pub ty_chirho: SurfaceTypeChirho,
+    pub span_chirho: SpanChirho,
+}
+
+#[derive(Debug, Clone)]
+pub struct InstanceDeclChirho {
+    pub name_chirho: NameIdChirho,
+    pub class_chirho: NameIdChirho,
+    pub head_chirho: SurfaceTypeChirho,
+    pub methods_chirho: Vec<InstanceMethodChirho>,
+    pub span_chirho: SpanChirho,
+}
+
+#[derive(Debug, Clone)]
+pub struct InstanceMethodChirho {
+    pub method_chirho: NameIdChirho,
+    pub binding_chirho: BindingChirho,
 }
 
 #[derive(Debug)]
@@ -96,6 +126,8 @@ pub struct ModuleChirho {
     pub module_chirho: String,
     pub names_chirho: Vec<NameInfoChirho>,
     pub data_chirho: Vec<DataDeclChirho>,
+    pub classes_chirho: Vec<ClassDeclChirho>,
+    pub instances_chirho: Vec<InstanceDeclChirho>,
     pub bindings_chirho: Vec<BindingChirho>,
 }
 

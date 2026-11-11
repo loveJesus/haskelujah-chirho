@@ -46,7 +46,7 @@ impl CheckedModuleChirho {
                     self.solver_chirho
                         .arena_chirho
                         .node_chirho(function_chirho)?,
-                    TyNodeChirho::MetaChirho(_)
+                    TyNodeChirho::MetaChirho(_) | TyNodeChirho::RigidChirho(_)
                 ) {
                     return Err(TcErrorChirho::new_chirho(
                         TcErrorKindChirho::UnsupportedChirho,
@@ -167,6 +167,7 @@ impl CheckedModuleChirho {
                 self.schemes_chirho.insert(
                     constructor_chirho.name_chirho,
                     SchemeChirho {
+                        context_chirho: Vec::new(),
                         body_chirho: self.names_chirho[&constructor_chirho.name_chirho],
                         quantified_chirho: quantified_chirho.clone(),
                     },
@@ -247,7 +248,7 @@ impl CheckedModuleChirho {
                 }
                 let scheme_chirho = self.schemes_chirho[name_chirho].clone();
                 let level_chirho = self.solver_chirho.level_chirho(self.scope_chirho)?;
-                let (mut body_chirho, _) = self
+                let (mut body_chirho, _, _) = self
                     .solver_chirho
                     .arena_chirho
                     .instantiate_chirho(&scheme_chirho, level_chirho)?;

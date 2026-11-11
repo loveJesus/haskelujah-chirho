@@ -4,7 +4,16 @@
 //! Reference: GHC.Tc.Utils.Unify checkTyEqRhs/touchabilityTest. No legacy calls.
 //! workflow: next-pipeline-chirho/check-and-elaborate-chirho
 
-use std::collections::HashSet;
+use haskelujah_hir_chirho::NameIdChirho;
+use std::collections::{HashMap, HashSet};
+
+#[path = "evidence_chirho.rs"]
+mod evidence_chirho;
+pub use evidence_chirho::{
+    ClassInfoChirho, EvTermChirho, EvVarChirho, GivenDictChirho, InstanceInfoChirho,
+    InstanceMethodInfoChirho, MethodInfoChirho, ScopeKindChirho, WantedDictChirho,
+    WantedOriginChirho,
+};
 
 use haskelujah_span_chirho::SpanChirho;
 
@@ -13,17 +22,21 @@ use crate::{
     MetaIdChirho, TcErrorChirho, TcErrorKindChirho, TyChirho, TyNodeChirho, TypeArenaChirho,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ScopeIdChirho {
     owner_chirho: u64,
     index_chirho: usize,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct ScopeChirho {
     parent_chirho: Option<ScopeIdChirho>,
     level_chirho: u32,
     given_equalities_chirho: bool,
+    kind_chirho: ScopeKindChirho,
+    skolems_chirho: Vec<crate::RigidIdChirho>,
+    givens_chirho: Vec<GivenDictChirho>,
+    evidence_bindings_chirho: Vec<EvVarChirho>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -40,6 +53,11 @@ pub struct SolverChirho {
     scopes_chirho: Vec<ScopeChirho>,
     wanteds_chirho: Vec<EqualityChirho>,
     failure_chirho: Option<TcErrorChirho>,
+    evidence_chirho: Vec<evidence_chirho::EvidenceRecordChirho>,
+    dictionary_wanteds_chirho: Vec<WantedDictChirho>,
+    pub(crate) classes_chirho: HashMap<NameIdChirho, ClassInfoChirho>,
+    pub(crate) instances_chirho: HashMap<NameIdChirho, InstanceInfoChirho>,
+    pub(crate) ground_instances_chirho: HashMap<(NameIdChirho, TyChirho), NameIdChirho>,
 }
 
 impl SolverChirho {
@@ -52,9 +70,18 @@ impl SolverChirho {
                 parent_chirho: None,
                 level_chirho: 0,
                 given_equalities_chirho: false,
+                kind_chirho: ScopeKindChirho::RootChirho,
+                skolems_chirho: Vec::new(),
+                givens_chirho: Vec::new(),
+                evidence_bindings_chirho: Vec::new(),
             }],
             wanteds_chirho: Vec::new(),
             failure_chirho,
+            evidence_chirho: Vec::new(),
+            dictionary_wanteds_chirho: Vec::new(),
+            classes_chirho: HashMap::new(),
+            instances_chirho: HashMap::new(),
+            ground_instances_chirho: HashMap::new(),
         }
     }
 
@@ -69,6 +96,19 @@ impl SolverChirho {
         &mut self,
         parent_chirho: ScopeIdChirho,
         given_equalities_chirho: bool,
+    ) -> Result<ScopeIdChirho, TcErrorChirho> {
+        self.implication_kind_chirho(
+            parent_chirho,
+            given_equalities_chirho,
+            ScopeKindChirho::GroupChirho,
+        )
+    }
+
+    pub(crate) fn implication_kind_chirho(
+        &mut self,
+        parent_chirho: ScopeIdChirho,
+        given_equalities_chirho: bool,
+        kind_chirho: ScopeKindChirho,
     ) -> Result<ScopeIdChirho, TcErrorChirho> {
         if parent_chirho.owner_chirho != self.arena_chirho.identity_chirho() {
             return Err(TcErrorChirho::new_chirho(
@@ -102,6 +142,10 @@ impl SolverChirho {
             parent_chirho: Some(parent_chirho),
             level_chirho,
             given_equalities_chirho,
+            kind_chirho,
+            skolems_chirho: Vec::new(),
+            givens_chirho: Vec::new(),
+            evidence_bindings_chirho: Vec::new(),
         });
         Ok(scope_chirho)
     }
@@ -137,7 +181,7 @@ impl SolverChirho {
 
     fn touchable_chirho(&self, level_chirho: u32, mut scope_chirho: ScopeIdChirho) -> bool {
         loop {
-            let frame_chirho = self.scopes_chirho[scope_chirho.index_chirho];
+            let frame_chirho = &self.scopes_chirho[scope_chirho.index_chirho];
             if frame_chirho.level_chirho == level_chirho {
                 return true;
             }
@@ -159,7 +203,7 @@ impl SolverChirho {
         trail_chirho: &mut Vec<(MetaIdChirho, MetaCellChirho)>,
     ) -> Result<bool, TcErrorChirho> {
         let cell_chirho = self.arena_chirho.meta_cell_chirho(meta_chirho)?;
-        if cell_chirho.generalized_chirho {
+        if !self.arena_chirho.flexible_meta_chirho(meta_chirho)? {
             return Err(TcErrorChirho::new_chirho(
                 TcErrorKindChirho::TypeMismatchChirho,
                 "a quantified variable cannot be assigned; instantiate the scheme first",
@@ -178,11 +222,7 @@ impl SolverChirho {
             }
             match self.arena_chirho.node_chirho(ty_chirho)? {
                 TyNodeChirho::MetaChirho(other_chirho) => {
-                    if self
-                        .arena_chirho
-                        .meta_cell_chirho(*other_chirho)?
-                        .generalized_chirho
-                    {
+                    if !self.arena_chirho.flexible_meta_chirho(*other_chirho)? {
                         return Err(TcErrorChirho::new_chirho(
                             TcErrorKindChirho::TypeMismatchChirho,
                             "quantified variables must be instantiated before unification",

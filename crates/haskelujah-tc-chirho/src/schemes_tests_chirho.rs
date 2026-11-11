@@ -28,11 +28,12 @@ fn quantification_keeps_environment_variables_shared_and_opens_quantified_variab
         .unwrap();
     assert_eq!(quantified_chirho, vec![local_chirho]);
     let scheme_chirho = SchemeChirho {
+        context_chirho: Vec::new(),
         body_chirho,
         quantified_chirho,
     };
-    let (_, first_chirho) = arena_chirho.instantiate_chirho(&scheme_chirho, 0).unwrap();
-    let (_, second_chirho) = arena_chirho.instantiate_chirho(&scheme_chirho, 0).unwrap();
+    let (_, first_chirho, _) = arena_chirho.instantiate_chirho(&scheme_chirho, 0).unwrap();
+    let (_, second_chirho, _) = arena_chirho.instantiate_chirho(&scheme_chirho, 0).unwrap();
     assert_ne!(first_chirho, second_chirho);
     let bool_chirho = arena_chirho.con_chirho(TyConChirho::BoolChirho).unwrap();
     let char_chirho = arena_chirho.con_chirho(TyConChirho::CharChirho).unwrap();
