@@ -2,6 +2,8 @@
 
 # Next: checked source to the interpreter
 
+Implementation scope: isolated `next-pipeline-class-evidence-chirho`, source checkpoint `1e0b20f7` (crates `b491108f`). Main compiler crates remain `04116a69`; these workflows do not describe a main-source landing or a release.
+
 The explicit `--pipeline next` path is separate from legacy inference. The current vertical handles library modules with Bool/Char/list/tuple and ordinary algebraic types, monomorphic signatures, inferred qualified let-polymorphism, ordinary source classes and ground instances, application, patterned lambdas/function equations, recursive local bindings, annotations, conditionals and cases. Names come from the existing empty lexical name environment and become module-local IDs carrying their defining unit/module. Only wired Bool/Char constructors are introduced by the compiler; user constructors and classes come from their declarations, with no standard-class interface catalogue.
 
 ```mermaid

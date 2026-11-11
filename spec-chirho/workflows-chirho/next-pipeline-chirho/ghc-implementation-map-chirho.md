@@ -2,6 +2,8 @@
 
 # GHC to Haskelujah implementation map
 
+Implementation scope: isolated `next-pipeline-class-evidence-chirho`, source checkpoint `1e0b20f7` (crates `b491108f`). Main compiler crates remain `04116a69`; these workflows do not describe a main-source landing or a release.
+
 This is the written reading guide L.J. requested. It maps GHC's assumptions to our data as we implement locally. It introduces no runtime dependency on GHC. Reference: retained GHC 9.14.1, commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886.
 
 ## Ordinary let generalization, unit 742
