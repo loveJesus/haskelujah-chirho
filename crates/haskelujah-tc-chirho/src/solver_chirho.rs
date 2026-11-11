@@ -117,6 +117,24 @@ impl SolverChirho {
         self.wanteds_chirho.push(equality_chirho);
     }
 
+    pub(crate) fn level_chirho(&self, scope_chirho: ScopeIdChirho) -> Result<u32, TcErrorChirho> {
+        if scope_chirho.owner_chirho != self.arena_chirho.identity_chirho() {
+            return Err(TcErrorChirho::new_chirho(
+                TcErrorKindChirho::InvalidReferenceChirho,
+                "scope belongs to another solver",
+            ));
+        }
+        self.scopes_chirho
+            .get(scope_chirho.index_chirho)
+            .map(|scope_chirho| scope_chirho.level_chirho)
+            .ok_or_else(|| {
+                TcErrorChirho::new_chirho(
+                    TcErrorKindChirho::InvalidReferenceChirho,
+                    "invalid scope",
+                )
+            })
+    }
+
     fn touchable_chirho(&self, level_chirho: u32, mut scope_chirho: ScopeIdChirho) -> bool {
         loop {
             let frame_chirho = self.scopes_chirho[scope_chirho.index_chirho];
@@ -141,6 +159,12 @@ impl SolverChirho {
         trail_chirho: &mut Vec<(MetaIdChirho, MetaCellChirho)>,
     ) -> Result<bool, TcErrorChirho> {
         let cell_chirho = self.arena_chirho.meta_cell_chirho(meta_chirho)?;
+        if cell_chirho.generalized_chirho {
+            return Err(TcErrorChirho::new_chirho(
+                TcErrorKindChirho::TypeMismatchChirho,
+                "a quantified variable cannot be assigned; instantiate the scheme first",
+            ));
+        }
         if !self.touchable_chirho(cell_chirho.level_chirho, scope_chirho) {
             return Ok(false);
         }
@@ -154,6 +178,16 @@ impl SolverChirho {
             }
             match self.arena_chirho.node_chirho(ty_chirho)? {
                 TyNodeChirho::MetaChirho(other_chirho) => {
+                    if self
+                        .arena_chirho
+                        .meta_cell_chirho(*other_chirho)?
+                        .generalized_chirho
+                    {
+                        return Err(TcErrorChirho::new_chirho(
+                            TcErrorKindChirho::TypeMismatchChirho,
+                            "quantified variables must be instantiated before unification",
+                        ));
+                    }
                     if *other_chirho == meta_chirho {
                         return Err(TcErrorChirho::new_chirho(
                             TcErrorKindChirho::InfiniteTypeChirho,

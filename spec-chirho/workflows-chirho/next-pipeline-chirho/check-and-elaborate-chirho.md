@@ -2,7 +2,7 @@
 
 # Next: checked source to the interpreter
 
-The explicit `--pipeline next` path is separate from legacy inference. Its current S0 vertical handles library modules with monomorphic Bool/Char/list/tuple types, application, variable lambdas, recursive local bindings, annotations and conditionals. Names come from the existing empty lexical name environment and become module-local IDs carrying their defining unit/module. Only wired Bool/Char constructors are introduced by the compiler; there is no standard-class interface catalogue.
+The explicit `--pipeline next` path is separate from legacy inference. The current vertical handles library modules with Bool/Char/list/tuple types, monomorphic signatures, inferred let-polymorphism, application, variable lambdas, recursive local bindings, annotations and conditionals. Names come from the existing empty lexical name environment and become module-local IDs carrying their defining unit/module. Only wired Bool/Char constructors are introduced by the compiler; there is no standard-class interface catalogue.
 
 ```mermaid
 flowchart TD
@@ -28,7 +28,9 @@ The aggregate allocation ceiling covers type nodes, meta/rigid records, implicat
 
 Core still stores the legacy TyChirho data enum. The next adapter constructs that data without invoking legacy inference, unification, desugaring or dictionary rewriting. It counts expanded output nodes so a compact DAG cannot silently become an unbounded tree. The new checker itself has no dependency on legacy typing.
 
-S0 does not yet generalize lets, elaborate data/classes/instances or evidence, process source-library CPP, or validate Main.main's IO contract. Those paths return Unsupported. CLI run/compile on next refuse rather than delegating. The library eval_binding API names its entry explicitly and is not an IO-main or B-run claim. Solver implication primitives are tested, but full source implication production remains S1 work.
+The current path does not yet elaborate data/classes/instances or dictionary evidence, process source-library CPP, or validate Main.main's IO contract. Those paths return Unsupported. CLI run/compile on next refuse rather than delegating. The library eval_binding API names its entry explicitly and is not an IO-main or B-run claim. Solver implication primitives are tested, but full source implication production remains S1 work.
 
 The first-slice frozen bucket and unchanged workloads remain authoritative. Passing these S0 controls does not pass B-check/B-run or show that real GHC.Internal classes have compiled. Default CLI behavior remains legacy.
 
+
+Unit 742 adds identity-based dependency groups, deeper-level inference before generalization, fresh scheme instantiation, explicit Core TyLam/TyApp and final zonking of hidden unquantified metas. See ghc-implementation-map-chirho.md for the exact GHC correspondence and remaining representation differences. The current source subset has no class predicates; its generalization pass is not GHC's full simplifyInfer.

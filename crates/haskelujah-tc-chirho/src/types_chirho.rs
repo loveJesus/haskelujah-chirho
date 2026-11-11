@@ -34,6 +34,8 @@ pub enum TyConChirho {
     BoolChirho,
     CharChirho,
     ListChirho,
+    /// Internal final-zonking image; source never resolves this constructor by spelling.
+    AnyChirho,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -55,6 +57,7 @@ pub(crate) struct MetaCellChirho {
     pub(crate) level_chirho: u32,
     pub(crate) kind_chirho: TyChirho,
     pub(crate) fill_chirho: Option<TyChirho>,
+    pub(crate) generalized_chirho: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -178,6 +181,7 @@ impl TypeArenaChirho {
             level_chirho,
             kind_chirho,
             fill_chirho: None,
+            generalized_chirho: false,
         });
         self.intern_chirho(TyNodeChirho::MetaChirho(meta_chirho))
     }

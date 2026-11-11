@@ -5,6 +5,7 @@
 //! workflow: next-pipeline-chirho/check-and-elaborate-chirho
 
 use super::{NextErrorChirho, NextErrorKindChirho};
+use haskelujah_hir_chirho::NameIdChirho;
 use haskelujah_tc_chirho::{CheckedModuleChirho, TyChirho, TyConChirho, TyNodeChirho};
 use haskelujah_typing_chirho::ty_chirho::{TyChirho as CoreTypeChirho, TyVarChirho};
 
@@ -28,6 +29,44 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
         self.walk_chirho(ty_chirho, 0)
     }
 
+    pub(super) fn quantified_chirho(
+        &self,
+        name_chirho: NameIdChirho,
+    ) -> Result<Vec<TyVarChirho>, NextErrorChirho> {
+        let mut variables_chirho = Vec::new();
+        if let Some(scheme_chirho) = self.checked_chirho.schemes_chirho.get(&name_chirho) {
+            let arena_chirho = &self.checked_chirho.solver_chirho.arena_chirho;
+            for ty_chirho in &scheme_chirho.quantified_chirho {
+                let TyNodeChirho::MetaChirho(meta_chirho) = arena_chirho.node_chirho(*ty_chirho)?
+                else {
+                    return Err(NextErrorChirho::new_chirho(
+                        NextErrorKindChirho::InvalidChirho,
+                        "scheme binder has no type-variable identity",
+                    ));
+                };
+                variables_chirho.push(TyVarChirho(arena_chirho.meta_index_chirho(*meta_chirho)?));
+            }
+        }
+        Ok(variables_chirho)
+    }
+
+    pub(super) fn binding_type_chirho(
+        &mut self,
+        name_chirho: NameIdChirho,
+        body_chirho: TyChirho,
+    ) -> Result<CoreTypeChirho, NextErrorChirho> {
+        let body_chirho = self.convert_chirho(body_chirho)?;
+        let variables_chirho = self.quantified_chirho(name_chirho)?;
+        Ok(if variables_chirho.is_empty() {
+            body_chirho
+        } else {
+            CoreTypeChirho::ForallChirho {
+                vars_chirho: variables_chirho,
+                body_chirho: Box::new(body_chirho),
+            }
+        })
+    }
+
     fn walk_chirho(
         &mut self,
         ty_chirho: TyChirho,
@@ -48,6 +87,7 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
                     TyConChirho::BoolChirho => "Bool",
                     TyConChirho::CharChirho => "Char",
                     TyConChirho::ListChirho => "[]",
+                    TyConChirho::AnyChirho => "%next:zonked-any:TypeChirho",
                     TyConChirho::TypeChirho => {
                         return Err(NextErrorChirho::new_chirho(
                             NextErrorKindChirho::InvalidChirho,

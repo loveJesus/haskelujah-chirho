@@ -4,6 +4,9 @@
 
 mod check_chirho;
 mod error_chirho;
+mod schemes_chirho;
+#[cfg(test)]
+mod schemes_tests_chirho;
 mod solver_chirho;
 #[cfg(test)]
 mod tests_chirho;
@@ -11,6 +14,7 @@ mod types_chirho;
 
 pub use check_chirho::{CheckedModuleChirho, check_module_chirho};
 pub use error_chirho::{TcErrorChirho, TcErrorKindChirho};
+pub use schemes_chirho::SchemeChirho;
 pub use solver_chirho::{EqualityChirho, ScopeIdChirho, SolverChirho};
 pub use types_chirho::{
     MetaIdChirho, RigidIdChirho, TyChirho, TyConChirho, TyNodeChirho, TypeArenaChirho,

@@ -7,13 +7,13 @@ use std::collections::HashMap;
 
 use haskelujah_hir_chirho::{
     BindingChirho, ExprChirho, ExprIdChirho, ExprKindChirho, ModuleChirho, NameIdChirho,
-    SurfaceTypeChirho, WiredNameChirho,
+    SurfaceTypeChirho, WiredNameChirho, binding_groups_chirho,
 };
 use haskelujah_span_chirho::SpanChirho;
 
 use crate::{
-    EqualityChirho, SolverChirho, TcErrorChirho, TcErrorKindChirho, TyChirho, TyConChirho,
-    TyNodeChirho,
+    EqualityChirho, SchemeChirho, ScopeIdChirho, SolverChirho, TcErrorChirho, TcErrorKindChirho,
+    TyChirho, TyConChirho, TyNodeChirho,
 };
 
 #[derive(Debug)]
@@ -22,6 +22,10 @@ pub struct CheckedModuleChirho {
     pub solver_chirho: SolverChirho,
     pub expressions_chirho: HashMap<ExprIdChirho, TyChirho>,
     pub names_chirho: HashMap<NameIdChirho, TyChirho>,
+    pub schemes_chirho: HashMap<NameIdChirho, SchemeChirho>,
+    pub instantiations_chirho: HashMap<ExprIdChirho, Vec<TyChirho>>,
+    references_chirho: HashMap<ExprIdChirho, NameIdChirho>,
+    scope_chirho: ScopeIdChirho,
 }
 
 impl CheckedModuleChirho {
@@ -30,9 +34,10 @@ impl CheckedModuleChirho {
             .solver_chirho
             .arena_chirho
             .con_chirho(TyConChirho::TypeChirho)?;
+        let level_chirho = self.solver_chirho.level_chirho(self.scope_chirho)?;
         self.solver_chirho
             .arena_chirho
-            .fresh_meta_chirho(0, kind_chirho)
+            .fresh_meta_chirho(level_chirho, kind_chirho)
     }
 
     fn want_chirho(
@@ -44,7 +49,7 @@ impl CheckedModuleChirho {
         self.solver_chirho.want_chirho(EqualityChirho {
             left_chirho,
             right_chirho,
-            scope_chirho: self.solver_chirho.root_chirho(),
+            scope_chirho: self.scope_chirho,
             span_chirho,
         });
     }
@@ -85,29 +90,82 @@ impl CheckedModuleChirho {
         }
     }
 
-    fn prepare_bindings_chirho(
-        &mut self,
-        bindings_chirho: &[BindingChirho],
-    ) -> Result<(), TcErrorChirho> {
+    fn bindings_chirho(&mut self, bindings_chirho: &[BindingChirho]) -> Result<(), TcErrorChirho> {
+        // Complete signatures are available before dependency inference (Haskell 2010 4.5.1).
         for binding_chirho in bindings_chirho {
-            let ty_chirho = match &binding_chirho.signature_chirho {
-                Some(surface_chirho) => self.surface_chirho(surface_chirho)?,
-                None => self.fresh_chirho()?,
-            };
-            self.names_chirho
-                .insert(binding_chirho.name_chirho, ty_chirho);
+            if let Some(surface_chirho) = &binding_chirho.signature_chirho {
+                let ty_chirho = self.surface_chirho(surface_chirho)?;
+                self.names_chirho
+                    .insert(binding_chirho.name_chirho, ty_chirho);
+                self.schemes_chirho.insert(
+                    binding_chirho.name_chirho,
+                    SchemeChirho {
+                        body_chirho: ty_chirho,
+                        quantified_chirho: Vec::new(),
+                    },
+                );
+            }
+        }
+        for group_chirho in binding_groups_chirho(bindings_chirho) {
+            let parent_chirho = self.scope_chirho;
+            let outer_level_chirho = self.solver_chirho.level_chirho(parent_chirho)?;
+            self.scope_chirho = self
+                .solver_chirho
+                .implication_chirho(parent_chirho, false)?;
+            let result_chirho =
+                self.group_chirho(bindings_chirho, &group_chirho, outer_level_chirho);
+            self.scope_chirho = parent_chirho;
+            result_chirho?;
         }
         Ok(())
     }
 
-    fn bindings_chirho(&mut self, bindings_chirho: &[BindingChirho]) -> Result<(), TcErrorChirho> {
-        self.prepare_bindings_chirho(bindings_chirho)?;
-        for binding_chirho in bindings_chirho {
+    // workflow: next-pipeline-chirho/ghc-implementation-map-chirho
+    fn group_chirho(
+        &mut self,
+        bindings_chirho: &[BindingChirho],
+        group_chirho: &[usize],
+        outer_level_chirho: u32,
+    ) -> Result<(), TcErrorChirho> {
+        for &index_chirho in group_chirho {
+            let binding_chirho = &bindings_chirho[index_chirho];
+            if binding_chirho.signature_chirho.is_none() {
+                let ty_chirho = self.fresh_chirho()?;
+                self.names_chirho
+                    .insert(binding_chirho.name_chirho, ty_chirho);
+            }
+        }
+        for &index_chirho in group_chirho {
+            let binding_chirho = &bindings_chirho[index_chirho];
             let ty_chirho = self.infer_chirho(&binding_chirho.body_chirho)?;
             self.want_chirho(
                 ty_chirho,
                 self.names_chirho[&binding_chirho.name_chirho],
                 binding_chirho.span_chirho,
+            );
+        }
+        // GHC's simplifyInfer solves first; level promotion then identifies environment-fixed metas.
+        self.solver_chirho.solve_chirho()?;
+        let roots_chirho: Vec<_> = group_chirho
+            .iter()
+            .map(|index_chirho| self.names_chirho[&bindings_chirho[*index_chirho].name_chirho])
+            .collect();
+        let quantified_chirho = self
+            .solver_chirho
+            .arena_chirho
+            .quantify_group_chirho(&roots_chirho, outer_level_chirho)?;
+        for &index_chirho in group_chirho {
+            let binding_chirho = &bindings_chirho[index_chirho];
+            self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
+            for _binder_chirho in &quantified_chirho {
+                self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
+            }
+            self.schemes_chirho.insert(
+                binding_chirho.name_chirho,
+                SchemeChirho {
+                    body_chirho: self.names_chirho[&binding_chirho.name_chirho],
+                    quantified_chirho: quantified_chirho.clone(),
+                },
             );
         }
         Ok(())
@@ -116,12 +174,26 @@ impl CheckedModuleChirho {
     fn infer_chirho(&mut self, expression_chirho: &ExprChirho) -> Result<TyChirho, TcErrorChirho> {
         let ty_chirho = match &expression_chirho.kind_chirho {
             ExprKindChirho::VarChirho(name_chirho) => {
-                *self.names_chirho.get(name_chirho).ok_or_else(|| {
-                    TcErrorChirho::new_chirho(
-                        TcErrorKindChirho::InvalidReferenceChirho,
-                        "HIR reference has no checked binding",
-                    )
-                })?
+                self.references_chirho
+                    .insert(expression_chirho.id_chirho, *name_chirho);
+                if let Some(scheme_chirho) = self.schemes_chirho.get(name_chirho) {
+                    let scheme_chirho = scheme_chirho.clone();
+                    let level_chirho = self.solver_chirho.level_chirho(self.scope_chirho)?;
+                    let (ty_chirho, arguments_chirho) = self
+                        .solver_chirho
+                        .arena_chirho
+                        .instantiate_chirho(&scheme_chirho, level_chirho)?;
+                    self.instantiations_chirho
+                        .insert(expression_chirho.id_chirho, arguments_chirho);
+                    ty_chirho
+                } else {
+                    *self.names_chirho.get(name_chirho).ok_or_else(|| {
+                        TcErrorChirho::new_chirho(
+                            TcErrorKindChirho::InvalidReferenceChirho,
+                            "HIR reference has no checked binding",
+                        )
+                    })?
+                }
             }
             ExprKindChirho::CharChirho(_) => self
                 .solver_chirho
@@ -221,11 +293,17 @@ pub fn check_module_chirho(
     module_chirho: ModuleChirho,
     ceiling_chirho: usize,
 ) -> Result<CheckedModuleChirho, TcErrorChirho> {
+    let solver_chirho = SolverChirho::new_chirho(ceiling_chirho);
+    let scope_chirho = solver_chirho.root_chirho();
     let mut checked_chirho = CheckedModuleChirho {
         module_chirho,
-        solver_chirho: SolverChirho::new_chirho(ceiling_chirho),
+        solver_chirho,
         expressions_chirho: HashMap::new(),
         names_chirho: HashMap::new(),
+        schemes_chirho: HashMap::new(),
+        instantiations_chirho: HashMap::new(),
+        references_chirho: HashMap::new(),
+        scope_chirho,
     };
     for (index_chirho, name_chirho) in checked_chirho.module_chirho.names_chirho.iter().enumerate()
     {
@@ -246,5 +324,27 @@ pub fn check_module_chirho(
     checked_chirho.bindings_chirho(&bindings_chirho)?;
     checked_chirho.module_chirho.bindings_chirho = bindings_chirho;
     checked_chirho.solver_chirho.solve_chirho()?;
+    // Within one recursive SCC, monomorphic uses refer to the shared abstraction's variables.
+    for (expression_chirho, name_chirho) in &checked_chirho.references_chirho {
+        if !checked_chirho
+            .instantiations_chirho
+            .contains_key(expression_chirho)
+            && let Some(scheme_chirho) = checked_chirho.schemes_chirho.get(name_chirho)
+        {
+            for _binder_chirho in &scheme_chirho.quantified_chirho {
+                checked_chirho
+                    .solver_chirho
+                    .arena_chirho
+                    .reserve_auxiliary_chirho()?;
+            }
+            checked_chirho
+                .instantiations_chirho
+                .insert(*expression_chirho, scheme_chirho.quantified_chirho.clone());
+        }
+    }
+    checked_chirho
+        .solver_chirho
+        .arena_chirho
+        .finish_metas_chirho()?;
     Ok(checked_chirho)
 }

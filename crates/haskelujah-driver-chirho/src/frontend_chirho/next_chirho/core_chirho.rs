@@ -7,7 +7,9 @@ use haskelujah_core_chirho::{
     AltConChirho, BinderChirho, CoreAltChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho,
     CoreLitChirho, CoreModuleChirho, InlineAnnotationChirho,
 };
-use haskelujah_hir_chirho::{ExprChirho, ExprKindChirho, NameIdChirho, WiredNameChirho};
+use haskelujah_hir_chirho::{
+    BindingChirho, ExprChirho, ExprKindChirho, NameIdChirho, WiredNameChirho,
+};
 use haskelujah_tc_chirho::CheckedModuleChirho;
 use std::collections::HashMap;
 
@@ -46,9 +48,30 @@ impl ElaboratorChirho<'_> {
         Ok(BinderChirho {
             id_chirho: CoreIdChirho(name_chirho.0),
             name_chirho: info_chirho.occurrence_chirho.clone(),
-            ty_chirho: self.types_chirho.convert_chirho(ty_chirho)?,
+            ty_chirho: self
+                .types_chirho
+                .binding_type_chirho(name_chirho, ty_chirho)?,
             span_chirho: info_chirho.span_chirho,
         })
+    }
+
+    fn binding_body_chirho(
+        &mut self,
+        binding_chirho: &BindingChirho,
+    ) -> Result<CoreExprChirho, NextErrorChirho> {
+        let mut body_chirho = self.expression_chirho(&binding_chirho.body_chirho)?;
+        for variable_chirho in self
+            .types_chirho
+            .quantified_chirho(binding_chirho.name_chirho)?
+            .into_iter()
+            .rev()
+        {
+            body_chirho = CoreExprChirho::TyLamChirho {
+                ty_var_chirho: format!("next_type_{}_chirho", variable_chirho.0),
+                body_chirho: Box::new(body_chirho),
+            };
+        }
+        Ok(body_chirho)
     }
 
     fn expression_chirho(
@@ -59,7 +82,7 @@ impl ElaboratorChirho<'_> {
             ExprKindChirho::VarChirho(name_chirho) => {
                 let info_chirho = &self.types_chirho.checked_chirho.module_chirho.names_chirho
                     [name_chirho.0 as usize];
-                match info_chirho.wired_chirho {
+                let mut reference_chirho = match info_chirho.wired_chirho {
                     Some(WiredNameChirho::TrueChirho | WiredNameChirho::FalseChirho) => {
                         CoreExprChirho::ConAppChirho {
                             con_name_chirho: info_chirho.occurrence_chirho.clone(),
@@ -67,7 +90,20 @@ impl ElaboratorChirho<'_> {
                         }
                     }
                     _ => CoreExprChirho::VarChirho(CoreIdChirho(name_chirho.0)),
+                };
+                let checked_chirho = self.types_chirho.checked_chirho;
+                if let Some(arguments_chirho) = checked_chirho
+                    .instantiations_chirho
+                    .get(&expression_chirho.id_chirho)
+                {
+                    for argument_chirho in arguments_chirho {
+                        reference_chirho = CoreExprChirho::TyAppChirho {
+                            expr_chirho: Box::new(reference_chirho),
+                            ty_chirho: self.types_chirho.convert_chirho(*argument_chirho)?,
+                        };
+                    }
                 }
+                reference_chirho
             }
             ExprKindChirho::CharChirho(value_chirho) => {
                 CoreExprChirho::LitChirho(CoreLitChirho::CharChirho(*value_chirho))
@@ -98,7 +134,7 @@ impl ElaboratorChirho<'_> {
                     .map(|binding_chirho| {
                         Ok((
                             self.binder_chirho(binding_chirho.name_chirho)?,
-                            self.expression_chirho(&binding_chirho.body_chirho)?,
+                            self.binding_body_chirho(binding_chirho)?,
                         ))
                     })
                     .collect::<Result<_, NextErrorChirho>>()?,
@@ -180,7 +216,7 @@ pub(super) fn elaborate_chirho(
     for binding_chirho in &checked_chirho.module_chirho.bindings_chirho {
         bindings_chirho.push(CoreBindingChirho {
             binder_chirho: elaborator_chirho.binder_chirho(binding_chirho.name_chirho)?,
-            rhs_chirho: elaborator_chirho.expression_chirho(&binding_chirho.body_chirho)?,
+            rhs_chirho: elaborator_chirho.binding_body_chirho(binding_chirho)?,
             is_rec_chirho: true,
             inline_chirho: InlineAnnotationChirho::NoneChirho,
         });

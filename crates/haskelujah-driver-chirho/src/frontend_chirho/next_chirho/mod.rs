@@ -4,6 +4,8 @@
 //! workflow: next-pipeline-chirho/check-and-elaborate-chirho
 
 mod core_chirho;
+#[cfg(test)]
+mod generalization_tests_chirho;
 mod parse_chirho;
 #[cfg(test)]
 mod tests_chirho;
