@@ -10,7 +10,7 @@ Owner: HASKELUJAH/gpt_chirho, unit 741. L.J. requested unused-workspace cleanup 
 - [x] Check realpaths, open-file occupancy and retained metadata for candidate pins.
 - [x] Retire only the admitted incremental leaves and retain the guard result: Git state and outside-cache file counts hold; the aggregate stat digest differs and is not a preservation PASS.
 - [x] Measure actual free space and record the result; commit/push maintenance metadata.
-- [ ] Resume the new checker's dependency-group/generalization work with a GHC-to-Haskelujah implementation map.
+- [x] Resume the new checker's dependency-group/generalization work with a GHC-to-Haskelujah implementation map.
 
 Keep the canonical checkout, active next-pipeline worktree, selected-union reference worktree, unmerged source, ignored receipts, named binaries, RTS archives, deps and every branch in place. No whole-target or worktree deletion is admitted by this unit. All evidence lives under canonical tmp-chirho/workspace-maintenance-26-11-11-chirho/.
 
