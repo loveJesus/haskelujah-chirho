@@ -79,18 +79,57 @@ impl CheckedModuleChirho {
                     scheme_chirho,
                 });
             }
+            let mut superclasses_chirho = Vec::new();
+            if declaration_chirho.superclasses_chirho.len()
+                != declaration_chirho.superclass_selectors_chirho.len()
+            {
+                return Err(TcErrorChirho::new_chirho(
+                    TcErrorKindChirho::InvalidReferenceChirho,
+                    "superclass selector has no declaration",
+                ));
+            }
+            for (superclass_chirho, selector_chirho) in declaration_chirho
+                .superclasses_chirho
+                .iter()
+                .zip(&declaration_chirho.superclass_selectors_chirho)
+            {
+                if superclass_chirho.argument_chirho != declaration_chirho.parameter_chirho {
+                    return Err(TcErrorChirho::new_chirho(
+                        TcErrorKindChirho::UnsupportedChirho,
+                        "next superclass must mention the class parameter",
+                    ));
+                }
+                let superclass_chirho = self
+                    .solver_chirho
+                    .predicate_chirho(superclass_chirho.class_chirho, parameter_chirho)?;
+                self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
+                self.names_chirho
+                    .insert(*selector_chirho, superclass_chirho);
+                self.schemes_chirho.insert(
+                    *selector_chirho,
+                    SchemeChirho {
+                        body_chirho: superclass_chirho,
+                        quantified_chirho: vec![parameter_chirho],
+                        context_chirho: vec![predicate_chirho],
+                    },
+                );
+                superclasses_chirho.push(superclass_chirho);
+            }
             self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
             self.solver_chirho.classes_chirho.insert(
                 declaration_chirho.name_chirho,
                 ClassInfoChirho {
                     name_chirho: declaration_chirho.name_chirho,
                     parameter_chirho,
-                    superclasses_chirho: Vec::new(),
+                    superclasses_chirho,
+                    superclass_selectors_chirho: declaration_chirho
+                        .superclass_selectors_chirho
+                        .clone(),
                     methods_chirho,
                 },
             );
         }
-        Ok(())
+        self.solver_chirho.check_superclass_cycles_chirho()
     }
 
     pub(super) fn instances_chirho(
@@ -212,6 +251,7 @@ impl CheckedModuleChirho {
                     context_chirho,
                     head_chirho,
                     scope_chirho,
+                    superclasses_chirho: Vec::new(),
                     methods_chirho,
                 },
             );
@@ -228,6 +268,33 @@ impl CheckedModuleChirho {
                 .solver_chirho
                 .instance_info_chirho(declaration_chirho.name_chirho)?
                 .clone();
+            let class_chirho = self
+                .solver_chirho
+                .class_info_chirho(info_chirho.class_chirho)?
+                .clone();
+            let mut superclasses_chirho = Vec::new();
+            for predicate_chirho in class_chirho.superclasses_chirho {
+                let predicate_chirho = self.solver_chirho.arena_chirho.replace_chirho(
+                    predicate_chirho,
+                    HashMap::from([(class_chirho.parameter_chirho, info_chirho.head_chirho)]),
+                )?;
+                superclasses_chirho.push(self.solver_chirho.want_dictionary_origin_chirho(
+                    info_chirho.scope_chirho,
+                    predicate_chirho,
+                    declaration_chirho.span_chirho,
+                    crate::WantedOriginChirho::SuperclassChirho { naked_chirho: true },
+                )?);
+            }
+            self.solver_chirho
+                .instances_chirho
+                .get_mut(&declaration_chirho.name_chirho)
+                .ok_or_else(|| {
+                    TcErrorChirho::new_chirho(
+                        TcErrorKindChirho::InvalidReferenceChirho,
+                        "instance lost its declaration",
+                    )
+                })?
+                .superclasses_chirho = superclasses_chirho;
             for method_chirho in &info_chirho.methods_chirho {
                 let implementation_chirho = declaration_chirho
                     .methods_chirho

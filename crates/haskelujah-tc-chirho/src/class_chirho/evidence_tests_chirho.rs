@@ -25,6 +25,7 @@ fn solver_with_class_chirho(ceiling_chirho: usize) -> (SolverChirho, TyChirho) {
             name_chirho: class_chirho,
             parameter_chirho,
             superclasses_chirho: Vec::new(),
+            superclass_selectors_chirho: Vec::new(),
             methods_chirho: Vec::new(),
         },
     );
@@ -260,6 +261,7 @@ fn register_list_instance_chirho(solver_chirho: &mut SolverChirho) -> NameIdChir
             context_chirho: vec![predicate_chirho],
             head_chirho,
             scope_chirho,
+            superclasses_chirho: Vec::new(),
             methods_chirho: Vec::new(),
         },
     );
@@ -414,5 +416,361 @@ fn instance_subgoals_share_the_module_ceiling_and_never_specialize_a_flexible_he
             .unwrap_err()
             .kind_chirho,
         TcErrorKindChirho::ResourceChirho
+    );
+}
+
+fn solver_with_superclass_chirho(
+    ceiling_chirho: usize,
+) -> (SolverChirho, TyChirho, TyChirho, TyChirho) {
+    let (mut solver_chirho, superclass_predicate_chirho) = solver_with_class_chirho(ceiling_chirho);
+    let class_chirho = NameIdChirho(2);
+    solver_chirho
+        .arena_chirho
+        .declare_class_chirho(class_chirho)
+        .unwrap();
+    let type_chirho = solver_chirho
+        .arena_chirho
+        .con_chirho(crate::TyConChirho::TypeChirho)
+        .unwrap();
+    let (_, parameter_chirho) = solver_chirho
+        .arena_chirho
+        .fresh_rigid_chirho(0, type_chirho)
+        .unwrap();
+    let superclass_chirho = solver_chirho
+        .predicate_chirho(NameIdChirho(1), parameter_chirho)
+        .unwrap();
+    solver_chirho.classes_chirho.insert(
+        class_chirho,
+        ClassInfoChirho {
+            name_chirho: class_chirho,
+            parameter_chirho,
+            superclasses_chirho: vec![superclass_chirho],
+            superclass_selectors_chirho: vec![NameIdChirho(20)],
+            methods_chirho: Vec::new(),
+        },
+    );
+    solver_chirho.check_superclass_cycles_chirho().unwrap();
+    let argument_chirho = solver_chirho
+        .arena_chirho
+        .con_chirho(crate::TyConChirho::BoolChirho)
+        .unwrap();
+    let predicate_chirho = solver_chirho
+        .predicate_chirho(class_chirho, argument_chirho)
+        .unwrap();
+    (
+        solver_chirho,
+        predicate_chirho,
+        superclass_predicate_chirho,
+        argument_chirho,
+    )
+}
+
+#[test]
+fn derived_givens_are_reused_in_the_parameter_owner_and_do_not_add_parameters_chirho() {
+    let (mut solver_chirho, predicate_chirho, superclass_chirho, _) =
+        solver_with_superclass_chirho(2000);
+    let root_chirho = solver_chirho.root_chirho();
+    solver_chirho
+        .given_dictionary_chirho(root_chirho, predicate_chirho)
+        .unwrap();
+    let child_chirho = solver_chirho
+        .implication_chirho(root_chirho, false)
+        .unwrap();
+    let first_chirho = solver_chirho
+        .want_dictionary_chirho(child_chirho, superclass_chirho, SpanChirho::DUMMY_CHIRHO)
+        .unwrap();
+    solver_chirho.solve_dictionaries_chirho().unwrap();
+    let Some(EvTermChirho::VariableChirho(derived_chirho)) = solver_chirho
+        .evidence_term_chirho(first_chirho)
+        .unwrap()
+        .cloned()
+    else {
+        panic!("no superclass Given");
+    };
+    assert_eq!(
+        solver_chirho
+            .evidence_record_chirho(derived_chirho)
+            .unwrap()
+            .scope_chirho,
+        root_chirho
+    );
+    assert_eq!(
+        solver_chirho
+            .scope_givens_chirho(root_chirho)
+            .unwrap()
+            .len(),
+        1
+    );
+    assert!(
+        solver_chirho
+            .scope_givens_chirho(child_chirho)
+            .unwrap()
+            .is_empty()
+    );
+    let second_chirho = solver_chirho
+        .want_dictionary_chirho(child_chirho, superclass_chirho, SpanChirho::DUMMY_CHIRHO)
+        .unwrap();
+    solver_chirho.solve_dictionaries_chirho().unwrap();
+    assert_eq!(
+        solver_chirho.evidence_term_chirho(second_chirho).unwrap(),
+        Some(&EvTermChirho::VariableChirho(derived_chirho))
+    );
+    assert_eq!(
+        solver_chirho.scope_bindings_chirho(root_chirho).unwrap(),
+        &[derived_chirho]
+    );
+    assert_eq!(
+        solver_chirho.scope_bindings_chirho(child_chirho).unwrap(),
+        &[first_chirho, second_chirho]
+    );
+}
+
+#[test]
+fn solved_wanted_evidence_cannot_be_relabelled_as_a_superclass_given_chirho() {
+    let (mut solver_chirho, predicate_chirho, superclass_chirho, argument_chirho) =
+        solver_with_superclass_chirho(2000);
+    let root_chirho = solver_chirho.root_chirho();
+    let given_chirho = solver_chirho
+        .given_dictionary_chirho(root_chirho, predicate_chirho)
+        .unwrap();
+    let wanted_chirho = solver_chirho
+        .want_dictionary_chirho(root_chirho, predicate_chirho, SpanChirho::DUMMY_CHIRHO)
+        .unwrap();
+    solver_chirho.solve_dictionaries_chirho().unwrap();
+    assert!(
+        solver_chirho
+            .evidence_term_chirho(wanted_chirho)
+            .unwrap()
+            .is_some()
+    );
+    let derived_chirho = solver_chirho
+        .allocate_evidence_chirho(
+            root_chirho,
+            superclass_chirho,
+            EvidenceKindChirho::BindingChirho(BindingKindChirho::SuperclassChirho),
+        )
+        .unwrap();
+    let error_chirho = solver_chirho
+        .bind_evidence_chirho(
+            derived_chirho,
+            EvTermChirho::SuperclassChirho {
+                class_chirho: NameIdChirho(2),
+                index_chirho: 0,
+                argument_chirho,
+                dictionary_chirho: wanted_chirho,
+            },
+        )
+        .unwrap_err();
+    assert_eq!(
+        error_chirho.kind_chirho,
+        TcErrorKindChirho::InvalidReferenceChirho
+    );
+    assert!(
+        solver_chirho
+            .evidence_term_chirho(derived_chirho)
+            .unwrap()
+            .is_none()
+    );
+    let error_chirho = solver_chirho
+        .bind_evidence_chirho(derived_chirho, EvTermChirho::VariableChirho(wanted_chirho))
+        .unwrap_err();
+    assert_eq!(
+        error_chirho.kind_chirho,
+        TcErrorKindChirho::InvalidReferenceChirho
+    );
+    solver_chirho
+        .bind_evidence_chirho(
+            derived_chirho,
+            EvTermChirho::SuperclassChirho {
+                class_chirho: NameIdChirho(2),
+                index_chirho: 0,
+                argument_chirho,
+                dictionary_chirho: given_chirho,
+            },
+        )
+        .unwrap();
+}
+
+#[test]
+fn superclass_search_charges_ancestor_scope_work_and_keeps_exhaustion_sticky_chirho() {
+    let (mut solver_chirho, predicate_chirho, superclass_chirho, _) =
+        solver_with_superclass_chirho(150);
+    let root_chirho = solver_chirho.root_chirho();
+    solver_chirho
+        .given_dictionary_chirho(root_chirho, predicate_chirho)
+        .unwrap();
+    let mut child_chirho = root_chirho;
+    for _depth_chirho in 0..100 {
+        child_chirho = solver_chirho
+            .implication_chirho(child_chirho, false)
+            .unwrap();
+    }
+    solver_chirho
+        .want_dictionary_chirho(child_chirho, superclass_chirho, SpanChirho::DUMMY_CHIRHO)
+        .unwrap();
+    assert_eq!(
+        solver_chirho
+            .solve_dictionaries_chirho()
+            .unwrap_err()
+            .kind_chirho,
+        TcErrorKindChirho::ResourceChirho
+    );
+    assert_eq!(
+        solver_chirho
+            .solve_dictionaries_chirho()
+            .unwrap_err()
+            .kind_chirho,
+        TcErrorKindChirho::ResourceChirho
+    );
+}
+
+#[test]
+fn the_given_argument_filter_preserves_later_unification_of_an_unstable_given_chirho() {
+    let (mut solver_chirho, bool_predicate_chirho) = solver_with_class_chirho(2000);
+    let root_chirho = solver_chirho.root_chirho();
+    let type_chirho = solver_chirho
+        .arena_chirho
+        .con_chirho(crate::TyConChirho::TypeChirho)
+        .unwrap();
+    let flexible_chirho = solver_chirho
+        .arena_chirho
+        .fresh_meta_chirho(0, type_chirho)
+        .unwrap();
+    let predicate_chirho = solver_chirho
+        .predicate_chirho(NameIdChirho(1), flexible_chirho)
+        .unwrap();
+    let given_chirho = solver_chirho
+        .given_dictionary_chirho(root_chirho, predicate_chirho)
+        .unwrap();
+    let bool_chirho = solver_chirho
+        .arena_chirho
+        .con_chirho(crate::TyConChirho::BoolChirho)
+        .unwrap();
+    solver_chirho.want_chirho(EqualityChirho {
+        left_chirho: flexible_chirho,
+        right_chirho: bool_chirho,
+        scope_chirho: root_chirho,
+        span_chirho: SpanChirho::DUMMY_CHIRHO,
+    });
+    solver_chirho.solve_chirho().unwrap();
+    let wanted_chirho = solver_chirho
+        .want_dictionary_chirho(root_chirho, bool_predicate_chirho, SpanChirho::DUMMY_CHIRHO)
+        .unwrap();
+    solver_chirho.solve_dictionaries_chirho().unwrap();
+    assert_eq!(
+        solver_chirho.evidence_term_chirho(wanted_chirho).unwrap(),
+        Some(&EvTermChirho::VariableChirho(given_chirho))
+    );
+}
+
+#[test]
+fn invalid_superclass_indices_arguments_scopes_and_pending_sources_are_refused_chirho() {
+    let (mut solver_chirho, predicate_chirho, superclass_chirho, argument_chirho) =
+        solver_with_superclass_chirho(3000);
+    let root_chirho = solver_chirho.root_chirho();
+    let given_chirho = solver_chirho
+        .given_dictionary_chirho(root_chirho, predicate_chirho)
+        .unwrap();
+    let child_chirho = solver_chirho
+        .implication_chirho(root_chirho, false)
+        .unwrap();
+    let escaping_chirho = solver_chirho
+        .given_dictionary_chirho(child_chirho, predicate_chirho)
+        .unwrap();
+    let pending_chirho = solver_chirho
+        .allocate_evidence_chirho(
+            root_chirho,
+            predicate_chirho,
+            EvidenceKindChirho::BindingChirho(BindingKindChirho::SuperclassChirho),
+        )
+        .unwrap();
+    let char_chirho = solver_chirho
+        .arena_chirho
+        .con_chirho(crate::TyConChirho::CharChirho)
+        .unwrap();
+    let derived_chirho = solver_chirho
+        .allocate_evidence_chirho(
+            root_chirho,
+            superclass_chirho,
+            EvidenceKindChirho::BindingChirho(BindingKindChirho::SuperclassChirho),
+        )
+        .unwrap();
+    for term_chirho in [
+        EvTermChirho::SuperclassChirho {
+            class_chirho: NameIdChirho(2),
+            index_chirho: 1,
+            argument_chirho,
+            dictionary_chirho: given_chirho,
+        },
+        EvTermChirho::SuperclassChirho {
+            class_chirho: NameIdChirho(2),
+            index_chirho: 0,
+            argument_chirho: char_chirho,
+            dictionary_chirho: given_chirho,
+        },
+        EvTermChirho::SuperclassChirho {
+            class_chirho: NameIdChirho(2),
+            index_chirho: 0,
+            argument_chirho,
+            dictionary_chirho: escaping_chirho,
+        },
+        EvTermChirho::SuperclassChirho {
+            class_chirho: NameIdChirho(2),
+            index_chirho: 0,
+            argument_chirho,
+            dictionary_chirho: pending_chirho,
+        },
+    ] {
+        assert_eq!(
+            solver_chirho
+                .bind_evidence_chirho(derived_chirho, term_chirho)
+                .unwrap_err()
+                .kind_chirho,
+            TcErrorKindChirho::InvalidReferenceChirho
+        );
+        assert!(
+            solver_chirho
+                .evidence_term_chirho(derived_chirho)
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            solver_chirho
+                .scope_bindings_chirho(root_chirho)
+                .unwrap()
+                .is_empty()
+        );
+    }
+}
+
+#[test]
+fn an_absent_given_argument_skips_both_deep_scope_searches_chirho() {
+    let (mut solver_chirho, predicate_chirho, _, _) = solver_with_superclass_chirho(150);
+    let root_chirho = solver_chirho.root_chirho();
+    solver_chirho
+        .given_dictionary_chirho(root_chirho, predicate_chirho)
+        .unwrap();
+    let mut child_chirho = root_chirho;
+    for _depth_chirho in 0..100 {
+        child_chirho = solver_chirho
+            .implication_chirho(child_chirho, false)
+            .unwrap();
+    }
+    let char_chirho = solver_chirho
+        .arena_chirho
+        .con_chirho(crate::TyConChirho::CharChirho)
+        .unwrap();
+    let missing_chirho = solver_chirho
+        .predicate_chirho(NameIdChirho(1), char_chirho)
+        .unwrap();
+    let wanted_chirho = solver_chirho
+        .want_dictionary_chirho(child_chirho, missing_chirho, SpanChirho::DUMMY_CHIRHO)
+        .unwrap();
+    solver_chirho.solve_dictionaries_chirho().unwrap();
+    assert!(
+        solver_chirho
+            .evidence_term_chirho(wanted_chirho)
+            .unwrap()
+            .is_none()
     );
 }

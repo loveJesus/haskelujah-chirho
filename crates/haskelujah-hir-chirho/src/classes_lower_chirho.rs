@@ -4,6 +4,7 @@
 //! workflow: next-pipeline-chirho/ghc-implementation-map-chirho
 
 use super::*;
+use haskelujah_ast_chirho::ty_chirho::ConstraintChirho;
 
 impl LowerChirho {
     pub(super) fn invalid_class_chirho(
@@ -80,14 +81,16 @@ impl LowerChirho {
                     *span_chirho,
                 ));
             };
-            if !context_chirho.is_empty()
-                || !associated_tfs_chirho.is_empty()
+            if !associated_tfs_chirho.is_empty()
                 || !fundeps_chirho.is_empty()
                 || methods_chirho.is_empty()
                 || parameter_chirho.kind_annotation_chirho.is_some()
                 || !parameter_chirho.is_visible_chirho()
             {
-                return Err(self.error_chirho("next does not yet check superclasses, associated types, fundeps or kinded class parameters", *span_chirho));
+                return Err(self.error_chirho(
+                    "next does not yet check associated types, fundeps or kinded class parameters",
+                    *span_chirho,
+                ));
             }
             let class_chirho = self.lookup_chirho(name_chirho, NamespaceChirho::TypeChirho)?;
             let mut method_names_chirho = Vec::new();
@@ -123,6 +126,61 @@ impl LowerChirho {
                     true,
                     None,
                 )?;
+                let mut superclasses_chirho = Vec::new();
+                let mut superclass_selectors_chirho = Vec::new();
+                for constraint_chirho in context_chirho {
+                    let ConstraintChirho::ClassChirho {
+                        class_chirho: superclass_chirho,
+                        args_chirho,
+                        span_chirho,
+                    } = constraint_chirho
+                    else {
+                        return Err(self.error_chirho(
+                            "next does not yet check quantified superclasses",
+                            *span_chirho,
+                        ));
+                    };
+                    let [argument_chirho] = args_chirho.as_slice() else {
+                        return Err(self.error_chirho(
+                            "next superclasses require one class argument",
+                            *span_chirho,
+                        ));
+                    };
+                    let mut argument_chirho = argument_chirho;
+                    while let TypeChirho::ParenChirho { inner_chirho, .. } = argument_chirho {
+                        argument_chirho = inner_chirho;
+                    }
+                    let TypeChirho::VarChirho(variable_chirho) = argument_chirho else {
+                        return Err(self.error_chirho(
+                            "next superclasses require the class's bare parameter",
+                            *span_chirho,
+                        ));
+                    };
+                    let argument_chirho =
+                        self.lookup_chirho(variable_chirho, NamespaceChirho::TypeChirho)?;
+                    if argument_chirho != parameter_chirho {
+                        return Err(self.error_chirho(
+                            "next superclasses require the class's own parameter",
+                            *span_chirho,
+                        ));
+                    }
+                    superclasses_chirho.push(SurfacePredicateChirho {
+                        class_chirho: self
+                            .lookup_chirho(superclass_chirho, NamespaceChirho::TypeChirho)?,
+                        argument_chirho,
+                    });
+                    superclass_selectors_chirho.push(self.bind_chirho(
+                        &format!(
+                            "%next:superclass:{}:{}Chirho",
+                            class_chirho.0,
+                            superclass_selectors_chirho.len()
+                        ),
+                        NamespaceChirho::ValueChirho,
+                        *span_chirho,
+                        true,
+                        None,
+                    )?);
+                }
                 let mut lowered_methods_chirho = Vec::new();
                 for (method_chirho, name_chirho) in methods_chirho.iter().zip(method_names_chirho) {
                     lowered_methods_chirho.push(ClassMethodChirho {
@@ -134,6 +192,8 @@ impl LowerChirho {
                 Ok(ClassDeclChirho {
                     name_chirho: class_chirho,
                     parameter_chirho,
+                    superclasses_chirho,
+                    superclass_selectors_chirho,
                     methods_chirho: lowered_methods_chirho,
                 })
             })();

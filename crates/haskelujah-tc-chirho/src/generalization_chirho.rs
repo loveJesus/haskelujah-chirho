@@ -26,6 +26,9 @@ impl CheckedModuleChirho {
         let candidates_chirho = self
             .solver_chirho
             .dictionary_candidates_chirho(self.scope_chirho)?;
+        let candidates_chirho = self
+            .solver_chirho
+            .minimal_superclass_context_chirho(candidates_chirho)?;
         let restricted_chirho = group_chirho
             .iter()
             .any(|index_chirho| bindings_chirho[*index_chirho].restricted_chirho);

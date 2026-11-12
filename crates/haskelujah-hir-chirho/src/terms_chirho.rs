@@ -108,6 +108,8 @@ pub struct BindingChirho {
 pub struct ClassDeclChirho {
     pub name_chirho: NameIdChirho,
     pub parameter_chirho: NameIdChirho,
+    pub superclasses_chirho: Vec<SurfacePredicateChirho>,
+    pub superclass_selectors_chirho: Vec<NameIdChirho>,
     pub methods_chirho: Vec<ClassMethodChirho>,
 }
 

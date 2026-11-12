@@ -11,6 +11,8 @@ use std::collections::{HashMap, HashSet};
 mod evidence_chirho;
 #[path = "class_chirho/instance_matching_chirho.rs"]
 mod instance_matching_chirho;
+#[path = "class_chirho/superclasses_chirho.rs"]
+mod superclasses_chirho;
 pub use evidence_chirho::{
     ClassInfoChirho, EvTermChirho, EvVarChirho, GivenDictChirho, InstanceInfoChirho,
     InstanceMethodInfoChirho, MethodInfoChirho, ScopeKindChirho, WantedDictChirho,
@@ -40,6 +42,7 @@ struct ScopeChirho {
     skolems_chirho: Vec<crate::RigidIdChirho>,
     signature_variables_chirho: HashMap<NameIdChirho, TyChirho>,
     givens_chirho: Vec<GivenDictChirho>,
+    derived_givens_chirho: HashMap<TyChirho, EvVarChirho>,
     evidence_bindings_chirho: Vec<EvVarChirho>,
 }
 
@@ -59,6 +62,9 @@ pub struct SolverChirho {
     failure_chirho: Option<TcErrorChirho>,
     evidence_chirho: Vec<evidence_chirho::EvidenceRecordChirho>,
     dictionary_wanteds_chirho: Vec<WantedDictChirho>,
+    given_arguments_chirho: HashSet<TyChirho>,
+    has_unstable_givens_chirho: bool,
+    has_superclasses_chirho: bool,
     pub(crate) classes_chirho: HashMap<NameIdChirho, ClassInfoChirho>,
     pub(crate) instances_chirho: HashMap<NameIdChirho, InstanceInfoChirho>,
     pub(crate) constructor_instances_chirho:
@@ -79,12 +85,16 @@ impl SolverChirho {
                 skolems_chirho: Vec::new(),
                 signature_variables_chirho: HashMap::new(),
                 givens_chirho: Vec::new(),
+                derived_givens_chirho: HashMap::new(),
                 evidence_bindings_chirho: Vec::new(),
             }],
             wanteds_chirho: Vec::new(),
             failure_chirho,
             evidence_chirho: Vec::new(),
             dictionary_wanteds_chirho: Vec::new(),
+            given_arguments_chirho: HashSet::new(),
+            has_unstable_givens_chirho: false,
+            has_superclasses_chirho: false,
             classes_chirho: HashMap::new(),
             instances_chirho: HashMap::new(),
             constructor_instances_chirho: HashMap::new(),
@@ -203,6 +213,7 @@ impl SolverChirho {
             skolems_chirho: Vec::new(),
             signature_variables_chirho: HashMap::new(),
             givens_chirho: Vec::new(),
+            derived_givens_chirho: HashMap::new(),
             evidence_bindings_chirho: Vec::new(),
         });
         Ok(scope_chirho)

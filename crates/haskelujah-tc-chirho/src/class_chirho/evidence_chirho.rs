@@ -14,7 +14,7 @@ mod evidence_tests_chirho;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EvVarChirho {
     owner_chirho: u64,
-    index_chirho: usize,
+    pub(super) index_chirho: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,11 +68,29 @@ pub struct WantedDictChirho {
     pub origin_chirho: WantedOriginChirho,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum EvidenceKindChirho {
+    ParameterChirho,
+    BindingChirho(BindingKindChirho),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum BindingKindChirho {
+    WantedChirho,
+    SuperclassChirho,
+}
+
+impl EvidenceKindChirho {
+    pub(super) fn is_given_chirho(self) -> bool {
+        self != Self::BindingChirho(BindingKindChirho::WantedChirho)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(super) struct EvidenceRecordChirho {
-    predicate_chirho: TyChirho,
-    scope_chirho: ScopeIdChirho,
-    given_chirho: bool,
+    pub(super) predicate_chirho: TyChirho,
+    pub(super) scope_chirho: ScopeIdChirho,
+    pub(super) kind_chirho: EvidenceKindChirho,
     term_chirho: Option<EvTermChirho>,
 }
 
@@ -87,6 +105,7 @@ pub struct ClassInfoChirho {
     pub name_chirho: NameIdChirho,
     pub parameter_chirho: TyChirho,
     pub superclasses_chirho: Vec<TyChirho>,
+    pub superclass_selectors_chirho: Vec<NameIdChirho>,
     pub methods_chirho: Vec<MethodInfoChirho>,
 }
 
@@ -105,6 +124,7 @@ pub struct InstanceInfoChirho {
     pub context_chirho: Vec<TyChirho>,
     pub head_chirho: TyChirho,
     pub scope_chirho: ScopeIdChirho,
+    pub superclasses_chirho: Vec<EvVarChirho>,
     pub methods_chirho: Vec<InstanceMethodInfoChirho>,
 }
 
@@ -183,7 +203,7 @@ impl SolverChirho {
         }
     }
 
-    fn evidence_record_chirho(
+    pub(super) fn evidence_record_chirho(
         &self,
         variable_chirho: EvVarChirho,
     ) -> Result<&EvidenceRecordChirho, TcErrorChirho> {
@@ -275,11 +295,11 @@ impl SolverChirho {
         Ok((*class_chirho, *argument_chirho))
     }
 
-    fn allocate_evidence_chirho(
+    pub(super) fn allocate_evidence_chirho(
         &mut self,
         scope_chirho: ScopeIdChirho,
         predicate_chirho: TyChirho,
-        given_chirho: bool,
+        kind_chirho: EvidenceKindChirho,
     ) -> Result<EvVarChirho, TcErrorChirho> {
         self.level_chirho(scope_chirho)?;
         self.predicate_view_chirho(predicate_chirho)?;
@@ -291,7 +311,7 @@ impl SolverChirho {
         self.evidence_chirho.push(EvidenceRecordChirho {
             predicate_chirho,
             scope_chirho,
-            given_chirho,
+            kind_chirho,
             term_chirho: None,
         });
         Ok(variable_chirho)
@@ -311,15 +331,18 @@ impl SolverChirho {
         )
     }
 
-    fn want_dictionary_origin_chirho(
+    pub(crate) fn want_dictionary_origin_chirho(
         &mut self,
         scope_chirho: ScopeIdChirho,
         predicate_chirho: TyChirho,
         span_chirho: SpanChirho,
         origin_chirho: WantedOriginChirho,
     ) -> Result<EvVarChirho, TcErrorChirho> {
-        let evidence_chirho =
-            self.allocate_evidence_chirho(scope_chirho, predicate_chirho, false)?;
+        let evidence_chirho = self.allocate_evidence_chirho(
+            scope_chirho,
+            predicate_chirho,
+            EvidenceKindChirho::BindingChirho(BindingKindChirho::WantedChirho),
+        )?;
         self.arena_chirho.reserve_auxiliary_chirho()?;
         self.dictionary_wanteds_chirho.push(WantedDictChirho {
             predicate_chirho,
@@ -336,8 +359,26 @@ impl SolverChirho {
         scope_chirho: ScopeIdChirho,
         predicate_chirho: TyChirho,
     ) -> Result<EvVarChirho, TcErrorChirho> {
-        let evidence_chirho =
-            self.allocate_evidence_chirho(scope_chirho, predicate_chirho, true)?;
+        let evidence_chirho = self.allocate_evidence_chirho(
+            scope_chirho,
+            predicate_chirho,
+            EvidenceKindChirho::ParameterChirho,
+        )?;
+        let normalized_chirho = self
+            .arena_chirho
+            .replace_chirho(predicate_chirho, HashMap::new())?;
+        let (_, argument_chirho) = self.predicate_view_chirho(normalized_chirho)?;
+        for variable_chirho in self
+            .arena_chirho
+            .free_variables_chirho(&[argument_chirho])?
+        {
+            self.has_unstable_givens_chirho |=
+                self.arena_chirho.is_flexible_chirho(variable_chirho)?;
+        }
+        if !self.given_arguments_chirho.contains(&argument_chirho) {
+            self.arena_chirho.reserve_auxiliary_chirho()?;
+            self.given_arguments_chirho.insert(argument_chirho);
+        }
         self.arena_chirho.reserve_auxiliary_chirho()?;
         self.scopes_chirho[scope_chirho.index_chirho]
             .givens_chirho
@@ -350,16 +391,25 @@ impl SolverChirho {
         Ok(evidence_chirho)
     }
 
-    fn bind_evidence_chirho(
+    pub(super) fn bind_evidence_chirho(
         &mut self,
         variable_chirho: EvVarChirho,
         term_chirho: EvTermChirho,
     ) -> Result<(), TcErrorChirho> {
         let record_chirho = self.evidence_record_chirho(variable_chirho)?;
-        if record_chirho.given_chirho {
+        if record_chirho.kind_chirho == EvidenceKindChirho::ParameterChirho {
             return Err(TcErrorChirho::new_chirho(
                 TcErrorKindChirho::InvalidReferenceChirho,
                 "a dictionary parameter cannot be assigned",
+            ));
+        }
+        if record_chirho.kind_chirho
+            == EvidenceKindChirho::BindingChirho(BindingKindChirho::SuperclassChirho)
+            && !matches!(term_chirho, EvTermChirho::SuperclassChirho { .. })
+        {
+            return Err(TcErrorChirho::new_chirho(
+                TcErrorKindChirho::InvalidReferenceChirho,
+                "derived Given evidence must be a superclass projection",
             ));
         }
         if let Some(previous_chirho) = &record_chirho.term_chirho {
@@ -378,7 +428,7 @@ impl SolverChirho {
             EvTermChirho::VariableChirho(other_chirho) => {
                 let other_record_chirho = self.evidence_record_chirho(*other_chirho)?;
                 if !self.within_chirho(scope_chirho, other_record_chirho.scope_chirho)?
-                    || (!other_record_chirho.given_chirho
+                    || (!other_record_chirho.kind_chirho.is_given_chirho()
                         && other_chirho.index_chirho >= variable_chirho.index_chirho)
                 {
                     return Err(TcErrorChirho::new_chirho(
@@ -429,12 +479,18 @@ impl SolverChirho {
                 }
                 predicate_chirho
             }
-            EvTermChirho::SuperclassChirho { .. } => {
-                return Err(TcErrorChirho::new_chirho(
-                    TcErrorKindChirho::InvalidReferenceChirho,
-                    "superclass evidence has no producer in this source subset",
-                ));
-            }
+            EvTermChirho::SuperclassChirho {
+                class_chirho,
+                index_chirho,
+                argument_chirho,
+                dictionary_chirho,
+            } => self.validate_superclass_evidence_chirho(
+                variable_chirho,
+                *class_chirho,
+                *index_chirho,
+                *argument_chirho,
+                *dictionary_chirho,
+            )?,
         };
         let expected_chirho = self
             .arena_chirho
@@ -536,9 +592,14 @@ impl SolverChirho {
                 .arena_chirho
                 .replace_chirho(wanted_chirho.predicate_chirho, HashMap::new())?;
             let (class_chirho, argument_chirho) = self.predicate_view_chirho(predicate_chirho)?;
-            let mut scope_chirho = Some(wanted_chirho.scope_chirho);
+            // Stable Given arguments cannot become a constructor or a different variable.
+            // An unstable low-level Given disables this optimization, preserving later unification.
+            let may_match_given_chirho = self.has_unstable_givens_chirho
+                || self.given_arguments_chirho.contains(&argument_chirho);
+            let mut scope_chirho = may_match_given_chirho.then_some(wanted_chirho.scope_chirho);
             let mut found_chirho = None;
             while let Some(current_chirho) = scope_chirho {
+                self.arena_chirho.reserve_auxiliary_chirho()?;
                 if let std::collections::hash_map::Entry::Vacant(entry_chirho) =
                     given_cache_chirho.entry(current_chirho)
                 {
@@ -565,6 +626,24 @@ impl SolverChirho {
                     break;
                 }
                 scope_chirho = self.scope_parent_chirho(current_chirho)?;
+            }
+            if found_chirho.is_none() && may_match_given_chirho && self.has_superclasses_chirho {
+                found_chirho =
+                    self.superclass_given_chirho(wanted_chirho.scope_chirho, predicate_chirho)?;
+            }
+            // Current instance contexts are bare head variables, so naked constructor
+            // obligations cannot meet a parameter Given. Unit F must replace this tripwire
+            // with GHC's sc1/sc2 rules before admitting constructor-headed contexts.
+            if found_chirho.is_some()
+                && matches!(
+                    wanted_chirho.origin_chirho,
+                    WantedOriginChirho::SuperclassChirho { naked_chirho: true }
+                )
+            {
+                return Err(TcErrorChirho::new_chirho(
+                    TcErrorKindChirho::InvalidReferenceChirho,
+                    "a naked superclass obligation cannot be discharged by a Given",
+                ));
             }
             if let Some(evidence_chirho) = found_chirho {
                 self.bind_evidence_chirho(

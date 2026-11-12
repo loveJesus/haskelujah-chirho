@@ -112,9 +112,36 @@ impl ElaboratorChirho<'_> {
                 }
                 Ok(result_chirho)
             }
-            EvTermChirho::SuperclassChirho { .. } => Err(invalid_evidence_chirho(
-                "superclass evidence has no producer in the current next slice",
-            )),
+            EvTermChirho::SuperclassChirho {
+                class_chirho,
+                index_chirho,
+                argument_chirho,
+                dictionary_chirho,
+            } => {
+                let info_chirho = self
+                    .types_chirho
+                    .checked_chirho
+                    .solver_chirho
+                    .class_info_chirho(*class_chirho)?;
+                let selector_chirho = *info_chirho
+                    .superclass_selectors_chirho
+                    .get(*index_chirho)
+                    .ok_or_else(|| {
+                    invalid_evidence_chirho("checked superclass has no selector")
+                })?;
+                self.types_chirho.reserve_term_chirho()?;
+                let function_chirho = CoreExprChirho::TyAppChirho {
+                    expr_chirho: Box::new(CoreExprChirho::VarChirho(CoreIdChirho(
+                        selector_chirho.0,
+                    ))),
+                    ty_chirho: self.types_chirho.convert_chirho(*argument_chirho)?,
+                };
+                self.types_chirho.reserve_term_chirho()?;
+                Ok(CoreExprChirho::AppChirho {
+                    fun_chirho: Box::new(function_chirho),
+                    arg_chirho: Box::new(self.evidence_variable_chirho(*dictionary_chirho)?),
+                })
+            }
         }
     }
 
@@ -210,24 +237,29 @@ impl ElaboratorChirho<'_> {
         class_chirho: NameIdChirho,
     ) -> Result<Vec<CoreBindingChirho>, NextErrorChirho> {
         let checked_chirho = self.types_chirho.checked_chirho;
-        let class_info_chirho = checked_chirho
+        let layout_chirho = checked_chirho
             .solver_chirho
-            .class_info_chirho(class_chirho)?;
+            .dictionary_fields_chirho(class_chirho)?;
         let mut bindings_chirho = Vec::new();
-        for (index_chirho, method_chirho) in class_info_chirho.methods_chirho.iter().enumerate() {
+        for (index_chirho, (selector_chirho, field_type_chirho)) in layout_chirho.iter().enumerate()
+        {
+            let scheme_chirho = checked_chirho
+                .schemes_chirho
+                .get(selector_chirho)
+                .ok_or_else(|| {
+                    invalid_evidence_chirho("checked dictionary selector has no scheme")
+                })?;
             let dictionary_type_chirho = self
                 .types_chirho
-                .convert_chirho(method_chirho.scheme_chirho.context_chirho[0])?;
+                .convert_chirho(scheme_chirho.context_chirho[0])?;
             let case_type_chirho = self.types_chirho.copy_chirho(&dictionary_type_chirho)?;
             let dictionary_chirho =
                 self.fresh_binder_chirho(dictionary_type_chirho, SpanChirho::DUMMY_CHIRHO)?;
             let case_binder_chirho =
                 self.fresh_binder_chirho(case_type_chirho, SpanChirho::DUMMY_CHIRHO)?;
             let mut fields_chirho = Vec::new();
-            for field_chirho in &class_info_chirho.methods_chirho {
-                let field_type_chirho = self
-                    .types_chirho
-                    .convert_chirho(field_chirho.scheme_chirho.body_chirho)?;
+            for (_, field_chirho) in &layout_chirho {
+                let field_type_chirho = self.types_chirho.convert_chirho(*field_chirho)?;
                 fields_chirho
                     .push(self.fresh_binder_chirho(field_type_chirho, SpanChirho::DUMMY_CHIRHO)?);
             }
@@ -235,9 +267,7 @@ impl ElaboratorChirho<'_> {
             let mut body_chirho = CoreExprChirho::CaseChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(dictionary_chirho.id_chirho)),
                 bind_chirho: case_binder_chirho,
-                result_ty_chirho: self
-                    .types_chirho
-                    .convert_chirho(method_chirho.scheme_chirho.body_chirho)?,
+                result_ty_chirho: self.types_chirho.convert_chirho(*field_type_chirho)?,
                 alts_chirho: vec![CoreAltChirho {
                     con_chirho: AltConChirho::DataConChirho(
                         self.dictionary_key_chirho(class_chirho),
@@ -253,7 +283,7 @@ impl ElaboratorChirho<'_> {
             };
             for variable_chirho in self
                 .types_chirho
-                .quantified_chirho(method_chirho.name_chirho)?
+                .quantified_chirho(*selector_chirho)?
                 .into_iter()
                 .rev()
             {
@@ -264,7 +294,7 @@ impl ElaboratorChirho<'_> {
                 };
             }
             bindings_chirho.push(CoreBindingChirho {
-                binder_chirho: self.binder_chirho(method_chirho.name_chirho)?,
+                binder_chirho: self.binder_chirho(*selector_chirho)?,
                 rhs_chirho: body_chirho,
                 is_rec_chirho: false,
                 inline_chirho: InlineAnnotationChirho::NoneChirho,
@@ -288,7 +318,13 @@ impl ElaboratorChirho<'_> {
                     "instance context and dictionary parameters disagree",
                 ));
             }
+            let layout_chirho = checked_chirho
+                .solver_chirho
+                .dictionary_fields_chirho(info_chirho.class_chirho)?;
             let mut methods_chirho = Vec::new();
+            for evidence_chirho in &info_chirho.superclasses_chirho {
+                methods_chirho.push(self.evidence_variable_chirho(*evidence_chirho)?);
+            }
             for method_chirho in &info_chirho.methods_chirho {
                 let source_chirho = instance_chirho
                     .methods_chirho
@@ -302,6 +338,11 @@ impl ElaboratorChirho<'_> {
                 methods_chirho.push(self.binding_body_chirho(&source_chirho.binding_chirho)?);
             }
             self.types_chirho.reserve_term_chirho()?;
+            if methods_chirho.len() != layout_chirho.len() {
+                return Err(invalid_evidence_chirho(
+                    "instance dictionary fields disagree with the shared class layout",
+                ));
+            }
             let body_chirho = CoreExprChirho::ConAppChirho {
                 con_name_chirho: self.dictionary_key_chirho(info_chirho.class_chirho),
                 args_chirho: methods_chirho,

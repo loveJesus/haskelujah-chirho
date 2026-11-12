@@ -16,6 +16,8 @@ mod parse_chirho;
 #[cfg(test)]
 mod signature_tests_chirho;
 #[cfg(test)]
+mod superclass_tests_chirho;
+#[cfg(test)]
 mod tests_chirho;
 mod types_chirho;
 
