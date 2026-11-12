@@ -7,13 +7,16 @@
 use haskelujah_hir_chirho::NameIdChirho;
 use std::collections::{HashMap, HashSet};
 
-#[path = "evidence_chirho.rs"]
+#[path = "class_chirho/evidence_chirho.rs"]
 mod evidence_chirho;
+#[path = "class_chirho/instance_matching_chirho.rs"]
+mod instance_matching_chirho;
 pub use evidence_chirho::{
     ClassInfoChirho, EvTermChirho, EvVarChirho, GivenDictChirho, InstanceInfoChirho,
     InstanceMethodInfoChirho, MethodInfoChirho, ScopeKindChirho, WantedDictChirho,
     WantedOriginChirho,
 };
+use instance_matching_chirho::InstanceHeadChirho;
 
 use haskelujah_span_chirho::SpanChirho;
 
@@ -58,7 +61,8 @@ pub struct SolverChirho {
     dictionary_wanteds_chirho: Vec<WantedDictChirho>,
     pub(crate) classes_chirho: HashMap<NameIdChirho, ClassInfoChirho>,
     pub(crate) instances_chirho: HashMap<NameIdChirho, InstanceInfoChirho>,
-    pub(crate) ground_instances_chirho: HashMap<(NameIdChirho, TyChirho), NameIdChirho>,
+    pub(crate) constructor_instances_chirho:
+        HashMap<(NameIdChirho, InstanceHeadChirho), NameIdChirho>,
 }
 
 impl SolverChirho {
@@ -83,7 +87,7 @@ impl SolverChirho {
             dictionary_wanteds_chirho: Vec::new(),
             classes_chirho: HashMap::new(),
             instances_chirho: HashMap::new(),
-            ground_instances_chirho: HashMap::new(),
+            constructor_instances_chirho: HashMap::new(),
         }
     }
 
@@ -100,14 +104,16 @@ impl SolverChirho {
         name_chirho: NameIdChirho,
         kind_chirho: TyChirho,
     ) -> Result<TyChirho, TcErrorChirho> {
-        if self.scope_kind_chirho(scope_chirho)? != ScopeKindChirho::SignatureChirho
-            || self.scopes_chirho[scope_chirho.index_chirho]
-                .signature_variables_chirho
-                .contains_key(&name_chirho)
+        if !matches!(
+            self.scope_kind_chirho(scope_chirho)?,
+            ScopeKindChirho::SignatureChirho | ScopeKindChirho::InstanceChirho
+        ) || self.scopes_chirho[scope_chirho.index_chirho]
+            .signature_variables_chirho
+            .contains_key(&name_chirho)
         {
             return Err(TcErrorChirho::new_chirho(
                 TcErrorKindChirho::InvalidReferenceChirho,
-                "a signature skolem needs a unique binder in its owning signature scope",
+                "a declaration skolem needs a unique binder in its owning signature or instance scope",
             ));
         }
         let level_chirho = self.level_chirho(scope_chirho)?;

@@ -98,54 +98,54 @@ impl CheckedModuleChirho {
         declarations_chirho: &[InstanceDeclChirho],
     ) -> Result<(), TcErrorChirho> {
         for declaration_chirho in declarations_chirho {
-            let head_chirho = self.surface_chirho(&declaration_chirho.head_chirho)?;
-            let head_chirho = self
-                .solver_chirho
-                .arena_chirho
-                .replace_chirho(head_chirho, HashMap::new())?;
-            if !self
-                .solver_chirho
-                .arena_chirho
-                .free_variables_chirho(&[head_chirho])?
-                .is_empty()
-            {
-                return Err(TcErrorChirho::new_chirho(
-                    TcErrorKindChirho::UnsupportedChirho,
-                    "next source instances currently require ground heads",
-                ));
-            }
-            if !matches!(
-                self.solver_chirho.arena_chirho.node_chirho(head_chirho)?,
-                TyNodeChirho::ConChirho(
-                    TyConChirho::BoolChirho
-                        | TyConChirho::CharChirho
-                        | TyConChirho::DeclaredChirho(_)
-                )
-            ) {
-                return Err(TcErrorChirho::new_chirho(
-                    TcErrorKindChirho::UnsupportedChirho,
-                    "next does not yet admit flexible or applied source instance heads",
-                ));
-            }
-            let predicate_chirho = self
-                .solver_chirho
-                .predicate_chirho(declaration_chirho.class_chirho, head_chirho)?;
-            let key_chirho = (declaration_chirho.class_chirho, head_chirho);
-            if self
-                .solver_chirho
-                .ground_instances_chirho
-                .contains_key(&key_chirho)
-            {
-                return Err(TcErrorChirho::new_chirho(
-                    TcErrorKindChirho::TypeMismatchChirho,
-                    "duplicate source class instance",
-                ));
-            }
             let scope_chirho = self.solver_chirho.implication_kind_chirho(
                 self.solver_chirho.root_chirho(),
                 false,
                 ScopeKindChirho::InstanceChirho,
             )?;
+            let type_chirho = self
+                .solver_chirho
+                .arena_chirho
+                .con_chirho(TyConChirho::TypeChirho)?;
+            let mut parameters_chirho = HashMap::new();
+            let mut binders_chirho = Vec::new();
+            for name_chirho in &declaration_chirho.binders_chirho {
+                let binder_chirho = self.solver_chirho.signature_variable_chirho(
+                    scope_chirho,
+                    *name_chirho,
+                    type_chirho,
+                )?;
+                parameters_chirho.insert(*name_chirho, binder_chirho);
+                binders_chirho.push(binder_chirho);
+            }
+            let head_chirho =
+                self.surface_with_chirho(&declaration_chirho.head_chirho, &parameters_chirho)?;
+            let predicate_chirho = self
+                .solver_chirho
+                .predicate_chirho(declaration_chirho.class_chirho, head_chirho)?;
+            self.solver_chirho.register_instance_head_chirho(
+                declaration_chirho.class_chirho,
+                head_chirho,
+                &binders_chirho,
+                declaration_chirho.name_chirho,
+            )?;
+            let mut context_chirho = Vec::new();
+            for predicate_chirho in &declaration_chirho.context_chirho {
+                let argument_chirho = *parameters_chirho
+                    .get(&predicate_chirho.argument_chirho)
+                    .ok_or_else(|| {
+                        TcErrorChirho::new_chirho(
+                            TcErrorKindChirho::InvalidReferenceChirho,
+                            "instance context has no head binder",
+                        )
+                    })?;
+                let predicate_chirho = self
+                    .solver_chirho
+                    .predicate_chirho(predicate_chirho.class_chirho, argument_chirho)?;
+                self.solver_chirho
+                    .given_dictionary_chirho(scope_chirho, predicate_chirho)?;
+                context_chirho.push(predicate_chirho);
+            }
             let class_chirho = self
                 .solver_chirho
                 .class_info_chirho(declaration_chirho.class_chirho)?
@@ -195,16 +195,21 @@ impl CheckedModuleChirho {
             self.names_chirho
                 .insert(declaration_chirho.name_chirho, predicate_chirho);
             self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
-            self.solver_chirho
-                .ground_instances_chirho
-                .insert(key_chirho, declaration_chirho.name_chirho);
+            self.schemes_chirho.insert(
+                declaration_chirho.name_chirho,
+                SchemeChirho {
+                    quantified_chirho: binders_chirho.clone(),
+                    context_chirho: context_chirho.clone(),
+                    body_chirho: predicate_chirho,
+                },
+            );
             self.solver_chirho.instances_chirho.insert(
                 declaration_chirho.name_chirho,
                 InstanceInfoChirho {
                     name_chirho: declaration_chirho.name_chirho,
                     class_chirho: declaration_chirho.class_chirho,
-                    binders_chirho: Vec::new(),
-                    context_chirho: Vec::new(),
+                    binders_chirho,
+                    context_chirho,
                     head_chirho,
                     scope_chirho,
                     methods_chirho,

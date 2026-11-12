@@ -5,6 +5,8 @@
 
 #[cfg(test)]
 mod class_evidence_tests_chirho;
+#[cfg(test)]
+mod context_instances_tests_chirho;
 mod core_chirho;
 #[cfg(test)]
 mod data_patterns_tests_chirho;

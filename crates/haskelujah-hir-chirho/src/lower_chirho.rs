@@ -23,6 +23,8 @@ use crate::*;
 mod classes_lower_chirho;
 #[path = "data_lower_chirho.rs"]
 mod data_lower_chirho;
+#[path = "instances_lower_chirho.rs"]
+mod instances_lower_chirho;
 #[path = "patterns_lower_chirho.rs"]
 mod patterns_lower_chirho;
 #[path = "signatures_chirho.rs"]

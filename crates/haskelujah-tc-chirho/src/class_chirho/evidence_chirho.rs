@@ -303,6 +303,21 @@ impl SolverChirho {
         predicate_chirho: TyChirho,
         span_chirho: SpanChirho,
     ) -> Result<EvVarChirho, TcErrorChirho> {
+        self.want_dictionary_origin_chirho(
+            scope_chirho,
+            predicate_chirho,
+            span_chirho,
+            WantedOriginChirho::OccurrenceChirho,
+        )
+    }
+
+    fn want_dictionary_origin_chirho(
+        &mut self,
+        scope_chirho: ScopeIdChirho,
+        predicate_chirho: TyChirho,
+        span_chirho: SpanChirho,
+        origin_chirho: WantedOriginChirho,
+    ) -> Result<EvVarChirho, TcErrorChirho> {
         let evidence_chirho =
             self.allocate_evidence_chirho(scope_chirho, predicate_chirho, false)?;
         self.arena_chirho.reserve_auxiliary_chirho()?;
@@ -311,7 +326,7 @@ impl SolverChirho {
             evidence_chirho,
             scope_chirho,
             span_chirho,
-            origin_chirho: WantedOriginChirho::OccurrenceChirho,
+            origin_chirho,
         });
         Ok(evidence_chirho)
     }
@@ -378,14 +393,41 @@ impl SolverChirho {
                 type_arguments_chirho,
                 dictionary_arguments_chirho,
             } => {
-                if !type_arguments_chirho.is_empty() || !dictionary_arguments_chirho.is_empty() {
+                let (predicate_chirho, context_chirho) =
+                    self.instance_application_chirho(*instance_chirho, type_arguments_chirho)?;
+                if context_chirho.len() != dictionary_arguments_chirho.len() {
                     return Err(TcErrorChirho::new_chirho(
-                        TcErrorKindChirho::UnsupportedChirho,
-                        "next evidence does not yet instantiate context instances",
+                        TcErrorKindChirho::InvalidReferenceChirho,
+                        "instance evidence dictionary arity disagrees with its declaration",
                     ));
                 }
-                let instance_chirho = self.instance_info_chirho(*instance_chirho)?;
-                self.predicate_chirho(instance_chirho.class_chirho, instance_chirho.head_chirho)?
+                for (expected_chirho, argument_chirho) in
+                    context_chirho.into_iter().zip(dictionary_arguments_chirho)
+                {
+                    let argument_record_chirho = self.evidence_record_chirho(*argument_chirho)?;
+                    if *argument_chirho == variable_chirho
+                        || !self.within_chirho(scope_chirho, argument_record_chirho.scope_chirho)?
+                    {
+                        return Err(TcErrorChirho::new_chirho(
+                            TcErrorKindChirho::InvalidReferenceChirho,
+                            "instance dictionary argument escapes its lexical owner or cycles",
+                        ));
+                    }
+                    let actual_chirho = argument_record_chirho.predicate_chirho;
+                    let expected_chirho = self
+                        .arena_chirho
+                        .replace_chirho(expected_chirho, HashMap::new())?;
+                    let actual_chirho = self
+                        .arena_chirho
+                        .replace_chirho(actual_chirho, HashMap::new())?;
+                    if expected_chirho != actual_chirho {
+                        return Err(TcErrorChirho::new_chirho(
+                            TcErrorKindChirho::InvalidReferenceChirho,
+                            "instance dictionary arguments prove different predicates or are out of order",
+                        ));
+                    }
+                }
+                predicate_chirho
             }
             EvTermChirho::SuperclassChirho { .. } => {
                 return Err(TcErrorChirho::new_chirho(
@@ -479,7 +521,10 @@ impl SolverChirho {
         let mut earlier_chirho = HashMap::new();
         let mut given_cache_chirho: HashMap<ScopeIdChirho, HashMap<TyChirho, EvVarChirho>> =
             HashMap::new();
-        for index_chirho in 0..self.dictionary_wanteds_chirho.len() {
+        let mut next_chirho = 0;
+        while next_chirho < self.dictionary_wanteds_chirho.len() {
+            let index_chirho = next_chirho;
+            next_chirho += 1;
             let wanted_chirho = self.dictionary_wanteds_chirho[index_chirho].clone();
             if self
                 .evidence_term_chirho(wanted_chirho.evidence_chirho)?
@@ -533,32 +578,30 @@ impl SolverChirho {
                     wanted_chirho.evidence_chirho,
                     EvTermChirho::VariableChirho(*evidence_chirho),
                 )?;
-            } else {
-                let mut head_chirho = self.arena_chirho.resolve_chirho(argument_chirho)?;
-                while let TyNodeChirho::AppChirho(function_chirho, _) =
-                    self.arena_chirho.node_chirho(head_chirho)?
-                {
-                    head_chirho = self.arena_chirho.resolve_chirho(*function_chirho)?;
+            } else if let Some((instance_chirho, type_arguments_chirho)) =
+                self.match_instance_chirho(class_chirho, argument_chirho)?
+            {
+                let (_, context_chirho) =
+                    self.instance_application_chirho(instance_chirho, &type_arguments_chirho)?;
+                let mut dictionary_arguments_chirho = Vec::new();
+                // Admitted contexts mention only bare, distinct head variables: each child
+                // is a strict subterm of the selected head, so expansion cannot cycle.
+                for predicate_chirho in context_chirho {
+                    dictionary_arguments_chirho.push(self.want_dictionary_origin_chirho(
+                        wanted_chirho.scope_chirho,
+                        predicate_chirho,
+                        wanted_chirho.span_chirho,
+                        WantedOriginChirho::InstanceContextChirho,
+                    )?);
                 }
-                if !self.arena_chirho.is_flexible_chirho(head_chirho)?
-                    && !matches!(
-                        self.arena_chirho.node_chirho(head_chirho)?,
-                        TyNodeChirho::MetaChirho(_) | TyNodeChirho::RigidChirho(_)
-                    )
-                    && let Some(instance_chirho) = self
-                        .ground_instances_chirho
-                        .get(&(class_chirho, argument_chirho))
-                        .copied()
-                {
-                    self.bind_evidence_chirho(
-                        wanted_chirho.evidence_chirho,
-                        EvTermChirho::InstanceChirho {
-                            instance_chirho,
-                            type_arguments_chirho: Vec::new(),
-                            dictionary_arguments_chirho: Vec::new(),
-                        },
-                    )?;
-                }
+                self.bind_evidence_chirho(
+                    wanted_chirho.evidence_chirho,
+                    EvTermChirho::InstanceChirho {
+                        instance_chirho,
+                        type_arguments_chirho,
+                        dictionary_arguments_chirho,
+                    },
+                )?;
             }
             earlier_chirho
                 .entry((wanted_chirho.scope_chirho, predicate_chirho))

@@ -192,7 +192,7 @@ impl LowerChirho {
         ))
     }
 
-    fn signature_variables_chirho(
+    pub(super) fn signature_variables_chirho(
         &mut self,
         ty_chirho: &TypeChirho,
         variables_chirho: &mut Vec<NameChirho>,

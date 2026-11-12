@@ -16,7 +16,7 @@ use crate::{
     TcErrorKindChirho, TyChirho, TyConChirho, TyNodeChirho,
 };
 
-#[path = "classes_chirho.rs"]
+#[path = "class_chirho/classes_chirho.rs"]
 mod classes_chirho;
 #[path = "data_chirho.rs"]
 mod data_chirho;

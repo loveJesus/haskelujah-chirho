@@ -283,9 +283,9 @@ impl ElaboratorChirho<'_> {
             .instance_info_chirho(instance_chirho.name_chirho)?;
         let frame_chirho = self.enter_evidence_scope_chirho(info_chirho.scope_chirho)?;
         let result_chirho = (|| {
-            if !frame_chirho.parameters_chirho.is_empty() {
+            if frame_chirho.parameters_chirho.len() != info_chirho.context_chirho.len() {
                 return Err(invalid_evidence_chirho(
-                    "context-free instance has dictionary parameters",
+                    "instance context and dictionary parameters disagree",
                 ));
             }
             let mut methods_chirho = Vec::new();
@@ -306,8 +306,26 @@ impl ElaboratorChirho<'_> {
                 con_name_chirho: self.dictionary_key_chirho(info_chirho.class_chirho),
                 args_chirho: methods_chirho,
             };
-            let body_chirho =
+            let mut body_chirho =
                 self.evidence_let_chirho(frame_chirho.definitions_chirho, body_chirho)?;
+            for parameter_chirho in frame_chirho.parameters_chirho.into_iter().rev() {
+                self.types_chirho.reserve_term_chirho()?;
+                body_chirho = CoreExprChirho::LamChirho {
+                    binder_chirho: parameter_chirho,
+                    body_chirho: Box::new(body_chirho),
+                };
+            }
+            for variable_chirho in info_chirho.binders_chirho.iter().rev() {
+                self.types_chirho.reserve_term_chirho()?;
+                let id_chirho = checked_chirho
+                    .solver_chirho
+                    .arena_chirho
+                    .variable_id_chirho(*variable_chirho)?;
+                body_chirho = CoreExprChirho::TyLamChirho {
+                    ty_var_chirho: format!("next_type_{}_chirho", id_chirho),
+                    body_chirho: Box::new(body_chirho),
+                };
+            }
             Ok(CoreBindingChirho {
                 binder_chirho: self.binder_chirho(instance_chirho.name_chirho)?,
                 rhs_chirho: body_chirho,

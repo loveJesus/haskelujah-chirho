@@ -123,6 +123,8 @@ pub struct InstanceDeclChirho {
     pub name_chirho: NameIdChirho,
     pub class_chirho: NameIdChirho,
     pub head_chirho: SurfaceTypeChirho,
+    pub binders_chirho: Vec<NameIdChirho>,
+    pub context_chirho: Vec<SurfacePredicateChirho>,
     pub methods_chirho: Vec<InstanceMethodChirho>,
     pub span_chirho: SpanChirho,
 }
