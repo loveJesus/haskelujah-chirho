@@ -12,6 +12,8 @@ mod data_patterns_tests_chirho;
 mod generalization_tests_chirho;
 mod parse_chirho;
 #[cfg(test)]
+mod signature_tests_chirho;
+#[cfg(test)]
 mod tests_chirho;
 mod types_chirho;
 
@@ -21,6 +23,15 @@ use haskelujah_core_chirho::CoreModuleChirho;
 use haskelujah_hir_chirho::{HirErrorKindChirho, LimitsChirho, UnitIdentityChirho};
 use haskelujah_span_chirho::FileIdChirho;
 use haskelujah_tc_chirho::{CheckedModuleChirho, TcErrorChirho, TcErrorKindChirho};
+
+#[cfg(test)]
+fn assert_character_chirho(source_chirho: &str, expected_chirho: char) {
+    let (value_chirho, _) = eval_binding_chirho(source_chirho, "resultChirho", 50_000).unwrap();
+    assert_eq!(
+        value_chirho,
+        haskelujah_runtime_chirho::ValueChirho::CharChirho(expected_chirho)
+    );
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NextErrorKindChirho {

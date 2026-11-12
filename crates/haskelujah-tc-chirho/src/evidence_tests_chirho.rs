@@ -170,3 +170,52 @@ fn dictionary_wanteds_and_solutions_share_the_module_allocation_ceiling_chirho()
     );
     assert!(solver_chirho.solve_dictionaries_chirho().is_err());
 }
+
+#[test]
+fn a_signature_owned_skolem_blocks_floating_but_an_outer_capture_still_floats_chirho() {
+    let (mut solver_chirho, _) = solver_with_class_chirho(300);
+    let outer_chirho = solver_chirho
+        .implication_chirho(solver_chirho.root_chirho(), false)
+        .unwrap();
+    let signature_chirho = solver_chirho
+        .implication_kind_chirho(outer_chirho, false, ScopeKindChirho::SignatureChirho)
+        .unwrap();
+    let type_chirho = solver_chirho
+        .arena_chirho
+        .con_chirho(crate::TyConChirho::TypeChirho)
+        .unwrap();
+    let skolem_chirho = solver_chirho
+        .signature_variable_chirho(signature_chirho, NameIdChirho(2), type_chirho)
+        .unwrap();
+    let predicate_chirho = solver_chirho
+        .predicate_chirho(NameIdChirho(1), skolem_chirho)
+        .unwrap();
+    solver_chirho
+        .want_dictionary_chirho(signature_chirho, predicate_chirho, SpanChirho::DUMMY_CHIRHO)
+        .unwrap();
+    assert!(
+        solver_chirho
+            .dictionary_candidates_chirho(outer_chirho)
+            .unwrap()
+            .is_empty()
+    );
+    let variable_chirho = solver_chirho
+        .arena_chirho
+        .fresh_meta_chirho(
+            solver_chirho.level_chirho(outer_chirho).unwrap(),
+            type_chirho,
+        )
+        .unwrap();
+    let captured_chirho = solver_chirho
+        .predicate_chirho(NameIdChirho(1), variable_chirho)
+        .unwrap();
+    solver_chirho
+        .want_dictionary_chirho(signature_chirho, captured_chirho, SpanChirho::DUMMY_CHIRHO)
+        .unwrap();
+    assert_eq!(
+        solver_chirho
+            .dictionary_candidates_chirho(outer_chirho)
+            .unwrap(),
+        vec![captured_chirho]
+    );
+}

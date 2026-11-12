@@ -22,6 +22,8 @@ mod classes_chirho;
 mod data_chirho;
 #[path = "generalization_chirho.rs"]
 mod generalization_chirho;
+#[path = "signatures_chirho.rs"]
+mod signatures_chirho;
 
 #[derive(Debug, Clone, Copy)]
 pub enum WrapStepChirho {
@@ -88,17 +90,7 @@ impl CheckedModuleChirho {
         // Complete signatures are available before dependency inference (Haskell 2010 4.5.1).
         for binding_chirho in bindings_chirho {
             if let Some(surface_chirho) = &binding_chirho.signature_chirho {
-                let ty_chirho = self.surface_chirho(surface_chirho)?;
-                self.names_chirho
-                    .insert(binding_chirho.name_chirho, ty_chirho);
-                self.schemes_chirho.insert(
-                    binding_chirho.name_chirho,
-                    SchemeChirho {
-                        context_chirho: Vec::new(),
-                        body_chirho: ty_chirho,
-                        quantified_chirho: Vec::new(),
-                    },
-                );
+                self.signature_chirho(binding_chirho.name_chirho, surface_chirho)?;
             }
         }
         for group_chirho in binding_groups_chirho(bindings_chirho) {
@@ -132,12 +124,16 @@ impl CheckedModuleChirho {
         }
         for &index_chirho in group_chirho {
             let binding_chirho = &bindings_chirho[index_chirho];
-            let ty_chirho = self.infer_chirho(&binding_chirho.body_chirho)?;
-            self.want_chirho(
-                ty_chirho,
-                self.names_chirho[&binding_chirho.name_chirho],
-                binding_chirho.span_chirho,
-            );
+            if binding_chirho.signature_chirho.is_some() {
+                self.check_signature_chirho(binding_chirho)?;
+            } else {
+                let ty_chirho = self.infer_chirho(&binding_chirho.body_chirho)?;
+                self.want_chirho(
+                    ty_chirho,
+                    self.names_chirho[&binding_chirho.name_chirho],
+                    binding_chirho.span_chirho,
+                );
+            }
         }
         self.close_group_chirho(bindings_chirho, group_chirho, outer_level_chirho)
     }

@@ -2,13 +2,11 @@
 
 //! Source-class dictionary behavior against exact-source GHC references.
 
-use super::{NextErrorKindChirho, check_source_chirho, compile_source_chirho, eval_binding_chirho};
+use super::{
+    NextErrorKindChirho, assert_character_chirho, check_source_chirho, compile_source_chirho,
+    eval_binding_chirho,
+};
 use haskelujah_runtime_chirho::ValueChirho;
-
-fn assert_character_chirho(source_chirho: &str, expected_chirho: char) {
-    let (value_chirho, _) = eval_binding_chirho(source_chirho, "resultChirho", 50_000).unwrap();
-    assert_eq!(value_chirho, ValueChirho::CharChirho(expected_chirho));
-}
 
 #[test]
 fn inferred_functions_abstract_and_apply_different_instance_dictionaries_chirho() {

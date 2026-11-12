@@ -22,6 +22,19 @@ pub enum SurfaceTypeChirho {
 }
 
 #[derive(Debug, Clone)]
+pub struct SurfacePredicateChirho {
+    pub class_chirho: NameIdChirho,
+    pub argument_chirho: NameIdChirho,
+}
+
+#[derive(Debug, Clone)]
+pub struct SurfaceSignatureChirho {
+    pub binders_chirho: Vec<NameIdChirho>,
+    pub context_chirho: Vec<SurfacePredicateChirho>,
+    pub body_chirho: SurfaceTypeChirho,
+}
+
+#[derive(Debug, Clone)]
 pub struct ExprChirho {
     pub id_chirho: ExprIdChirho,
     pub kind_chirho: ExprKindChirho,
@@ -86,7 +99,7 @@ pub struct ConstructorChirho {
 pub struct BindingChirho {
     pub name_chirho: NameIdChirho,
     pub body_chirho: ExprChirho,
-    pub signature_chirho: Option<SurfaceTypeChirho>,
+    pub signature_chirho: Option<SurfaceSignatureChirho>,
     pub restricted_chirho: bool,
     pub span_chirho: SpanChirho,
 }

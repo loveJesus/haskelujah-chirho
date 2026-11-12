@@ -35,6 +35,7 @@ struct ScopeChirho {
     given_equalities_chirho: bool,
     kind_chirho: ScopeKindChirho,
     skolems_chirho: Vec<crate::RigidIdChirho>,
+    signature_variables_chirho: HashMap<NameIdChirho, TyChirho>,
     givens_chirho: Vec<GivenDictChirho>,
     evidence_bindings_chirho: Vec<EvVarChirho>,
 }
@@ -72,6 +73,7 @@ impl SolverChirho {
                 given_equalities_chirho: false,
                 kind_chirho: ScopeKindChirho::RootChirho,
                 skolems_chirho: Vec::new(),
+                signature_variables_chirho: HashMap::new(),
                 givens_chirho: Vec::new(),
                 evidence_bindings_chirho: Vec::new(),
             }],
@@ -89,6 +91,55 @@ impl SolverChirho {
         ScopeIdChirho {
             owner_chirho: self.arena_chirho.identity_chirho(),
             index_chirho: 0,
+        }
+    }
+
+    pub(crate) fn signature_variable_chirho(
+        &mut self,
+        scope_chirho: ScopeIdChirho,
+        name_chirho: NameIdChirho,
+        kind_chirho: TyChirho,
+    ) -> Result<TyChirho, TcErrorChirho> {
+        if self.scope_kind_chirho(scope_chirho)? != ScopeKindChirho::SignatureChirho
+            || self.scopes_chirho[scope_chirho.index_chirho]
+                .signature_variables_chirho
+                .contains_key(&name_chirho)
+        {
+            return Err(TcErrorChirho::new_chirho(
+                TcErrorKindChirho::InvalidReferenceChirho,
+                "a signature skolem needs a unique binder in its owning signature scope",
+            ));
+        }
+        let level_chirho = self.level_chirho(scope_chirho)?;
+        let (rigid_chirho, ty_chirho) = self
+            .arena_chirho
+            .fresh_rigid_chirho(level_chirho, kind_chirho)?;
+        self.arena_chirho.reserve_auxiliary_chirho()?;
+        self.scopes_chirho[scope_chirho.index_chirho]
+            .skolems_chirho
+            .push(rigid_chirho);
+        self.arena_chirho.reserve_auxiliary_chirho()?;
+        self.scopes_chirho[scope_chirho.index_chirho]
+            .signature_variables_chirho
+            .insert(name_chirho, ty_chirho);
+        Ok(ty_chirho)
+    }
+
+    pub(crate) fn scoped_type_variable_chirho(
+        &self,
+        mut scope_chirho: ScopeIdChirho,
+        name_chirho: NameIdChirho,
+    ) -> Result<Option<TyChirho>, TcErrorChirho> {
+        loop {
+            self.level_chirho(scope_chirho)?;
+            let frame_chirho = &self.scopes_chirho[scope_chirho.index_chirho];
+            if let Some(ty_chirho) = frame_chirho.signature_variables_chirho.get(&name_chirho) {
+                return Ok(Some(*ty_chirho));
+            }
+            let Some(parent_chirho) = frame_chirho.parent_chirho else {
+                return Ok(None);
+            };
+            scope_chirho = parent_chirho;
         }
     }
 
@@ -144,6 +195,7 @@ impl SolverChirho {
             given_equalities_chirho,
             kind_chirho,
             skolems_chirho: Vec::new(),
+            signature_variables_chirho: HashMap::new(),
             givens_chirho: Vec::new(),
             evidence_bindings_chirho: Vec::new(),
         });

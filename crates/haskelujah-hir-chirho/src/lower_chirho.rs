@@ -25,6 +25,8 @@ mod classes_lower_chirho;
 mod data_lower_chirho;
 #[path = "patterns_lower_chirho.rs"]
 mod patterns_lower_chirho;
+#[path = "signatures_chirho.rs"]
+mod signatures_chirho;
 
 type ResultChirho<TChirho> = Result<TChirho, HirErrorChirho>;
 
@@ -35,6 +37,7 @@ struct LowerChirho {
     unit_chirho: UnitIdentityChirho,
     next_expr_chirho: u32,
     limits_chirho: LimitsChirho,
+    explicit_forall_chirho: bool,
 }
 
 impl LowerChirho {
@@ -237,10 +240,7 @@ impl LowerChirho {
                     ..
                 } => {
                     if signatures_chirho
-                        .insert(
-                            name_chirho.full_name_chirho(),
-                            self.type_chirho(ty_chirho, depth_chirho + 1)?,
-                        )
+                        .insert(name_chirho.full_name_chirho(), ty_chirho)
                         .is_some()
                     {
                         return Err(self
@@ -263,19 +263,20 @@ impl LowerChirho {
                 span_chirho,
             } = binding_chirho
             {
+                let (signature_chirho, body_chirho) = self.binding_parts_chirho(
+                    signatures_chirho.remove(&name_chirho.full_name_chirho()),
+                    matches_chirho,
+                    *span_chirho,
+                    depth_chirho + 1,
+                )?;
                 result_chirho.push(BindingChirho {
                     name_chirho: self.lookup_chirho(name_chirho, NamespaceChirho::ValueChirho)?,
-                    body_chirho: self.equation_chirho(
-                        matches_chirho,
-                        *span_chirho,
-                        depth_chirho + 1,
-                    )?,
-                    restricted_chirho: !signatures_chirho
-                        .contains_key(&name_chirho.full_name_chirho())
+                    restricted_chirho: signature_chirho.is_none()
                         && matches_chirho
                             .first()
                             .is_some_and(|arm_chirho| arm_chirho.pats_chirho.is_empty()),
-                    signature_chirho: signatures_chirho.remove(&name_chirho.full_name_chirho()),
+                    body_chirho,
+                    signature_chirho,
                     span_chirho: *span_chirho,
                 });
             }
@@ -336,6 +337,12 @@ pub fn lower_module_chirho(
         unit_chirho,
         next_expr_chirho: 0,
         limits_chirho,
+        explicit_forall_chirho: module_chirho
+            .extensions_chirho
+            .iter()
+            .rev()
+            .find(|extension_chirho| matches!(extension_chirho.as_str(), "GHC2021" | "Haskell2010"))
+            .is_none_or(|edition_chirho| edition_chirho == "GHC2021"),
     };
     if module_chirho
         .exports_chirho
@@ -459,10 +466,7 @@ pub fn lower_module_chirho(
                 ..
             } => {
                 if signatures_chirho
-                    .insert(
-                        name_chirho.full_name_chirho(),
-                        lower_chirho.type_chirho(ty_chirho, 0)?,
-                    )
+                    .insert(name_chirho.full_name_chirho(), ty_chirho)
                     .is_some()
                 {
                     return Err(lower_chirho
@@ -488,15 +492,21 @@ pub fn lower_module_chirho(
             span_chirho,
         } = declaration_chirho
         {
+            let (signature_chirho, body_chirho) = lower_chirho.binding_parts_chirho(
+                signatures_chirho.remove(&name_chirho.full_name_chirho()),
+                matches_chirho,
+                *span_chirho,
+                0,
+            )?;
             bindings_chirho.push(BindingChirho {
                 name_chirho: lower_chirho
                     .lookup_chirho(name_chirho, NamespaceChirho::ValueChirho)?,
-                body_chirho: lower_chirho.equation_chirho(matches_chirho, *span_chirho, 0)?,
-                restricted_chirho: !signatures_chirho.contains_key(&name_chirho.full_name_chirho())
+                restricted_chirho: signature_chirho.is_none()
                     && matches_chirho
                         .first()
                         .is_some_and(|arm_chirho| arm_chirho.pats_chirho.is_empty()),
-                signature_chirho: signatures_chirho.remove(&name_chirho.full_name_chirho()),
+                body_chirho,
+                signature_chirho,
                 span_chirho: *span_chirho,
             });
         }

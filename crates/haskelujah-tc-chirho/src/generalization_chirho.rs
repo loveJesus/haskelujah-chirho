@@ -14,6 +14,15 @@ impl CheckedModuleChirho {
     ) -> Result<(), TcErrorChirho> {
         self.solver_chirho.solve_chirho()?;
         self.solver_chirho.solve_dictionaries_chirho()?;
+        let inferred_chirho: Vec<_> = group_chirho
+            .iter()
+            .copied()
+            .filter(|index_chirho| bindings_chirho[*index_chirho].signature_chirho.is_none())
+            .collect();
+        if inferred_chirho.is_empty() {
+            return Ok(());
+        }
+        let group_chirho = inferred_chirho.as_slice();
         let candidates_chirho = self
             .solver_chirho
             .dictionary_candidates_chirho(self.scope_chirho)?;

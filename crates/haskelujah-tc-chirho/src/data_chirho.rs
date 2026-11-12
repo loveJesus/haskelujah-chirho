@@ -7,6 +7,18 @@ use super::*;
 use haskelujah_hir_chirho::{DataDeclChirho, MatchArmChirho, PatternChirho, PatternKindChirho};
 
 impl CheckedModuleChirho {
+    pub(super) fn surface_variable_chirho(
+        &self,
+        name_chirho: NameIdChirho,
+        parameters_chirho: &HashMap<NameIdChirho, TyChirho>,
+    ) -> Result<Option<TyChirho>, TcErrorChirho> {
+        if let Some(variable_chirho) = parameters_chirho.get(&name_chirho) {
+            return Ok(Some(*variable_chirho));
+        }
+        self.solver_chirho
+            .scoped_type_variable_chirho(self.scope_chirho, name_chirho)
+    }
+
     pub(super) fn surface_with_chirho(
         &mut self,
         surface_chirho: &SurfaceTypeChirho,
@@ -29,14 +41,14 @@ impl CheckedModuleChirho {
                 self.solver_chirho.arena_chirho.kind_chirho(ty_chirho)?;
                 ty_chirho
             }
-            SurfaceTypeChirho::VariableChirho(name_chirho) => {
-                *parameters_chirho.get(name_chirho).ok_or_else(|| {
+            SurfaceTypeChirho::VariableChirho(name_chirho) => self
+                .surface_variable_chirho(*name_chirho, parameters_chirho)?
+                .ok_or_else(|| {
                     TcErrorChirho::new_chirho(
                         TcErrorKindChirho::UnsupportedChirho,
-                        "next does not yet check explicit polymorphic signatures",
+                        "next has no checked type-variable binding in this lexical scope",
                     )
-                })?
-            }
+                })?,
             SurfaceTypeChirho::AppChirho(function_chirho, argument_chirho) => {
                 let function_chirho =
                     self.surface_with_chirho(function_chirho, parameters_chirho)?;
