@@ -32,31 +32,96 @@ struct ObjectChirho {
     imports_chirho: BTreeMap<CoreIdChirho, OriginalNameChirho>,
 }
 
+struct ProgramChirho {
+    entry_chirho: haskelujah_tc_chirho::CheckedModuleChirho,
+    core_chirho: Option<CoreModuleChirho>,
+}
+
 fn program_chirho(
     mut sources_chirho: graph_chirho::SourcesChirho,
     entry_chirho: &str,
     emit_chirho: bool,
-) -> Result<Option<CoreModuleChirho>, NextErrorChirho> {
-    let order_chirho = graph_chirho::order_chirho(&sources_chirho, entry_chirho)?;
+) -> Result<ProgramChirho, NextErrorChirho> {
+    let order_chirho = graph_chirho::order_chirho(&mut sources_chirho, entry_chirho)?;
+    let home_keys_chirho: BTreeSet<_> = sources_chirho.keys().cloned().collect();
     let mut interfaces_chirho = BTreeMap::new();
     let mut objects_chirho = Vec::new();
     let mut output_left_chirho = 1 << 20;
-    for name_chirho in order_chirho {
-        let parsed_chirho = sources_chirho
-            .remove(&name_chirho)
+    let mut entry_checked_chirho = None;
+    for key_chirho in order_chirho {
+        if key_chirho.unit_chirho == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho
+            && key_chirho.module_chirho == super::library_chirho::INTEGER_MODULE_CHIRHO
+        {
+            interfaces_chirho.insert(
+                key_chirho,
+                Arc::new(super::library_chirho::integer_interface_chirho()),
+            );
+            continue;
+        }
+        let mut selected_chirho = BTreeMap::new();
+        let input_chirho = sources_chirho
+            .get(&key_chirho)
             .ok_or_else(|| invalid_chirho("source graph lost a producer"))?;
-        let checked_chirho = super::check_parsed_chirho(parsed_chirho, &interfaces_chirho)
-            .map_err(|error_chirho| {
-                if name_chirho == entry_chirho
-                    || error_chirho.kind_chirho == NextErrorKindChirho::ResourceChirho
-                {
-                    error_chirho
-                } else {
-                    unsupported_chirho(&format!(
-                        "producer {name_chirho} publishes no checked interface: {error_chirho}"
-                    ))
-                }
-            })?;
+        for import_chirho in &input_chirho.parsed_chirho.module_chirho.imports_chirho {
+            let name_chirho = import_chirho.module_chirho.full_name_chirho();
+            let home_key_chirho = graph_chirho::ModuleKeyChirho::home_chirho(&name_chirho);
+            let dependency_chirho = if key_chirho.unit_chirho
+                == haskelujah_hir_chirho::UnitIdentityChirho::StandaloneHomeChirho
+                && home_keys_chirho.contains(&home_key_chirho)
+            {
+                Some(home_key_chirho)
+            } else {
+                graph_chirho::dependency_chirho(&sources_chirho, &key_chirho, &name_chirho)
+            };
+            if let Some(dependency_chirho) = dependency_chirho {
+                let interface_chirho =
+                    interfaces_chirho.get(&dependency_chirho).ok_or_else(|| {
+                        invalid_chirho("source dependency was not checked before its consumer")
+                    })?;
+                selected_chirho.insert(name_chirho, Arc::clone(interface_chirho));
+            }
+        }
+        let mut policy_chirho = haskelujah_hir_chirho::LoweringPolicyChirho {
+            completeness_chirho: input_chirho.completeness_chirho,
+            prelude_exports_chirho: Some(super::library_chirho::prelude_exports_chirho()?),
+            ..Default::default()
+        };
+        if input_chirho.numeric_chirho
+            && !(key_chirho.unit_chirho
+                == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho
+                && key_chirho.module_chirho == super::library_chirho::NUM_MODULE_CHIRHO)
+        {
+            let numeric_key_chirho = graph_chirho::ModuleKeyChirho {
+                unit_chirho: haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho,
+                module_chirho: super::library_chirho::NUM_MODULE_CHIRHO.into(),
+            };
+            policy_chirho.implicit_interfaces_chirho.push(Arc::clone(
+                interfaces_chirho
+                    .get(&numeric_key_chirho)
+                    .ok_or_else(|| invalid_chirho("known Num dependency was not checked"))?,
+            ));
+        }
+        let input_chirho = sources_chirho
+            .remove(&key_chirho)
+            .ok_or_else(|| invalid_chirho("source graph lost a producer"))?;
+        let checked_chirho = super::check_parsed_with_policy_chirho(
+            input_chirho.parsed_chirho,
+            key_chirho.unit_chirho.clone(),
+            &selected_chirho,
+            &policy_chirho,
+        )
+        .map_err(|error_chirho| {
+            if key_chirho == graph_chirho::ModuleKeyChirho::home_chirho(entry_chirho)
+                || error_chirho.kind_chirho == NextErrorKindChirho::ResourceChirho
+            {
+                error_chirho
+            } else {
+                unsupported_chirho(&format!(
+                    "producer {:?} publishes no checked interface: {error_chirho}",
+                    key_chirho
+                ))
+            }
+        })?;
         let interface_chirho = haskelujah_tc_chirho::project_interface_chirho(
             &checked_chirho,
             &mut output_left_chirho,
@@ -88,16 +153,20 @@ fn program_chirho(
             });
         }
         // The producer's arena and solver drop here. Only original names and closed data remain.
-        interfaces_chirho.insert(name_chirho, Arc::new(interface_chirho));
+        interfaces_chirho.insert(key_chirho.clone(), Arc::new(interface_chirho));
+        if key_chirho == graph_chirho::ModuleKeyChirho::home_chirho(entry_chirho) {
+            entry_checked_chirho = Some(checked_chirho);
+        }
     }
-    if emit_chirho {
-        Ok(Some(link_chirho::link_chirho(
-            objects_chirho,
-            entry_chirho,
-        )?))
-    } else {
-        Ok(None)
-    }
+    Ok(ProgramChirho {
+        entry_chirho: entry_checked_chirho
+            .ok_or_else(|| invalid_chirho("checked graph has no entry"))?,
+        core_chirho: if emit_chirho {
+            Some(link_chirho::link_chirho(objects_chirho, entry_chirho)?)
+        } else {
+            None
+        },
+    })
 }
 
 pub fn check_sources_chirho(
@@ -120,6 +189,7 @@ pub fn compile_sources_chirho(
         entry_module_chirho,
         true,
     )?
+    .core_chirho
     .ok_or_else(|| invalid_chirho("source compilation produced no Core"))
 }
 pub fn eval_sources_binding_chirho(
@@ -147,5 +217,27 @@ pub fn check_source_file_chirho(path_chirho: &Path) -> Result<(), NextErrorChirh
 pub fn compile_source_file_chirho(path_chirho: &Path) -> Result<CoreModuleChirho, NextErrorChirho> {
     let (sources_chirho, entry_chirho) = graph_chirho::load_chirho(path_chirho)?;
     program_chirho(sources_chirho, &entry_chirho, true)?
+        .core_chirho
         .ok_or_else(|| invalid_chirho("source compilation produced no Core"))
+}
+
+pub(super) fn single_chirho(
+    source_chirho: &str,
+    emit_chirho: bool,
+) -> Result<
+    (
+        haskelujah_tc_chirho::CheckedModuleChirho,
+        Option<CoreModuleChirho>,
+    ),
+    NextErrorChirho,
+> {
+    let sources_chirho = graph_chirho::parse_sources_chirho(&[source_chirho])?;
+    let entry_chirho = sources_chirho
+        .keys()
+        .next()
+        .ok_or_else(|| invalid_chirho("missing source"))?
+        .module_chirho
+        .clone();
+    let result_chirho = program_chirho(sources_chirho, &entry_chirho, emit_chirho)?;
+    Ok((result_chirho.entry_chirho, result_chirho.core_chirho))
 }

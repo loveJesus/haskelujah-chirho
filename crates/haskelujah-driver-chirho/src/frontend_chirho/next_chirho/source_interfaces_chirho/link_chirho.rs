@@ -134,7 +134,10 @@ pub(super) fn link_chirho(
                 &object_chirho.definitions_chirho[&binding_chirho.binder_chirho.id_chirho];
             renamer_chirho.binder_chirho(&mut binding_chirho.binder_chirho)?;
             renamer_chirho.expression_chirho(&mut binding_chirho.rhs_chirho, 0)?;
-            if object_chirho.core_chirho.name_chirho != entry_chirho {
+            if original_chirho.unit_chirho
+                != haskelujah_hir_chirho::UnitIdentityChirho::StandaloneHomeChirho
+                || original_chirho.module_chirho != entry_chirho
+            {
                 binding_chirho.binder_chirho.name_chirho = original_chirho.link_key_chirho("value");
             }
             names_chirho.insert(

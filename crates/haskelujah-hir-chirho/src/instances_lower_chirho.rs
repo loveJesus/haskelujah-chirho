@@ -160,6 +160,19 @@ impl LowerChirho<'_> {
                                 *span_chirho,
                             )
                         })?;
+                    let info_chirho = &self.names_chirho[method_id_chirho.0 as usize];
+                    let visible_chirho = (info_chirho.unit_chirho == self.unit_chirho
+                        && info_chirho.module_chirho == self.module_chirho)
+                        || self
+                            .import_scope_chirho
+                            .get(&(name_chirho.full_name_chirho(), NamespaceChirho::ValueChirho))
+                            .is_some_and(|ids_chirho| ids_chirho.contains(&method_id_chirho));
+                    if !visible_chirho {
+                        return Err(self.invalid_class_chirho(
+                            "implementation is not a visible method of this class",
+                            *span_chirho,
+                        ));
+                    }
                     if !seen_chirho.insert(method_id_chirho) {
                         return Err(self.invalid_class_chirho(
                             "duplicate instance method implementation",

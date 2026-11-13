@@ -1,0 +1,122 @@
+[
+  {
+    "path_chirho": "positive-chirho/TupleUseChirho.hs",
+    "compile_accept_chirho": true,
+    "run_output_chirho": "'t'\n",
+    "next_outcome_chirho": "AcceptChirho"
+  },
+  {
+    "path_chirho": "positive-chirho/TupleSndChirho.hs",
+    "compile_accept_chirho": true,
+    "run_output_chirho": "'f'\n",
+    "next_outcome_chirho": "AcceptChirho"
+  },
+  {
+    "path_chirho": "positive-chirho/OperatorFixityChirho.hs",
+    "compile_accept_chirho": true,
+    "run_output_chirho": "'t'\n",
+    "next_outcome_chirho": "AcceptChirho"
+  },
+  {
+    "path_chirho": "positive-chirho/OperatorSignatureChirho.hs",
+    "compile_accept_chirho": true,
+    "run_output_chirho": "'s'\n",
+    "next_outcome_chirho": "AcceptChirho"
+  },
+  {
+    "path_chirho": "positive-chirho/ClassPragmasChirho.hs",
+    "compile_accept_chirho": true,
+    "run_output_chirho": "'p'\n",
+    "next_outcome_chirho": "AcceptChirho"
+  },
+  {
+    "path_chirho": "declined-chirho/DefaultingChirho.hs",
+    "compile_accept_chirho": true,
+    "run_output_chirho": "5\n",
+    "next_outcome_chirho": "UnsupportedChirho"
+  },
+  {
+    "path_chirho": "negative-chirho/LibraryInstanceChirho.hs",
+    "compile_accept_chirho": false,
+    "run_output_chirho": null,
+    "next_outcome_chirho": "UnsupportedChirho"
+  },
+  {
+    "path_chirho": "negative-chirho/PresentMismatchChirho.hs",
+    "compile_accept_chirho": false,
+    "run_output_chirho": null,
+    "next_outcome_chirho": "TypeChirho"
+  },
+  {
+    "path_chirho": "declined-chirho/NestedPragmaChirho.hs",
+    "compile_accept_chirho": true,
+    "run_output_chirho": null,
+    "next_outcome_chirho": "UnsupportedChirho"
+  },
+  {
+    "path_chirho": "declined-chirho/MidTypePragmaChirho.hs",
+    "compile_accept_chirho": false,
+    "run_output_chirho": null,
+    "next_outcome_chirho": "UnsupportedChirho"
+  },
+  {
+    "path_chirho": "declined-chirho/AbsentSwapChirho.hs",
+    "compile_accept_chirho": true,
+    "run_output_chirho": "'t'\n",
+    "next_outcome_chirho": "UnsupportedChirho"
+  },
+  {
+    "path_chirho": "positive-chirho/NumShadowOpsChirho.hs",
+    "compile_accept_chirho": true,
+    "run_output_chirho": "'a'\n",
+    "next_outcome_chirho": "AcceptChirho"
+  },
+  {
+    "path_chirho": "positive-chirho/NumNegateDefaultChirho.hs",
+    "compile_accept_chirho": true,
+    "run_output_chirho": "'a'\n",
+    "next_outcome_chirho": "AcceptChirho"
+  },
+  {
+    "path_chirho": "declined-chirho/PartialBoolInstanceChirho.hs",
+    "compile_accept_chirho": true,
+    "run_output_chirho": "'b'\n",
+    "next_outcome_chirho": "UnsupportedChirho"
+  },
+  {
+    "path_chirho": "negative-chirho/UnknownMinimalChirho.hs",
+    "compile_accept_chirho": false,
+    "run_output_chirho": null,
+    "next_outcome_chirho": "InvalidChirho"
+  },
+  {
+    "path_chirho": "negative-chirho/UnknownInlineChirho.hs",
+    "compile_accept_chirho": false,
+    "run_output_chirho": null,
+    "next_outcome_chirho": "InvalidChirho"
+  },
+  {
+    "path_chirho": "negative-chirho/InlineMissingDefaultChirho.hs",
+    "compile_accept_chirho": false,
+    "run_output_chirho": null,
+    "next_outcome_chirho": "InvalidChirho"
+  },
+  {
+    "path_chirho": "NumDefaultChirho.hs",
+    "compile_accept_chirho": true,
+    "run_output_chirho": "'b'\n",
+    "next_outcome_chirho": "AcceptChirho"
+  },
+  {
+    "path_chirho": "FixityChainChirho.hs",
+    "compile_accept_chirho": true,
+    "run_output_chirho": "'c'\n",
+    "next_outcome_chirho": "UnsupportedChirho"
+  },
+  {
+    "path_chirho": "LexicalNumericChirho.hs",
+    "compile_accept_chirho": false,
+    "run_output_chirho": null,
+    "next_outcome_chirho": "UnsupportedChirho"
+  }
+]

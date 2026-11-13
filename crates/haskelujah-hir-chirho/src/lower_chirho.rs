@@ -33,6 +33,8 @@ mod literals_lower_chirho;
 mod patterns_lower_chirho;
 #[path = "signatures_chirho.rs"]
 mod signatures_chirho;
+#[path = "syntax_chirho/mod.rs"]
+mod syntax_chirho;
 
 #[path = "interface_chirho/lower_chirho.rs"]
 mod imports_lower_chirho;
@@ -48,9 +50,12 @@ struct LowerChirho<'literals_chirho> {
     limits_chirho: LimitsChirho,
     explicit_forall_chirho: bool,
     rebindable_chirho: bool,
+    implicit_prelude_chirho: bool,
+    prelude_exports_chirho: Option<std::sync::Arc<PreludeExportsChirho>>,
     imported_names_chirho: std::collections::BTreeMap<OriginalNameChirho, NameIdChirho>,
     import_scope_chirho: HashMap<(String, NamespaceChirho), Vec<NameIdChirho>>,
     imported_classes_chirho: Vec<ClassDeclChirho>,
+    sliced_units_chirho: std::collections::BTreeSet<UnitIdentityChirho>,
     integer_literals_chirho:
         &'literals_chirho HashMap<haskelujah_ast_chirho::provenance_chirho::OriginIdChirho, String>,
 }
@@ -127,11 +132,48 @@ impl LowerChirho<'_> {
         Ok(NameIdChirho(id_chirho.0))
     }
 
+    fn bound_name_chirho(
+        &self,
+        name_chirho: &NameChirho,
+        namespace_chirho: NamespaceChirho,
+    ) -> ResultChirho<NameIdChirho> {
+        self.env_chirho
+            .lookup_chirho(name_chirho.text_chirho(), namespace_chirho)
+            .map(|info_chirho| NameIdChirho(info_chirho.def_id_chirho.0))
+            .ok_or_else(|| {
+                self.invalid_class_chirho(
+                    "binding has no declaration-owned name",
+                    name_chirho.span_chirho(),
+                )
+            })
+    }
+
     fn lookup_chirho(
         &self,
         name_chirho: &NameChirho,
         namespace_chirho: NamespaceChirho,
     ) -> ResultChirho<NameIdChirho> {
+        let text_chirho = name_chirho.text_chirho();
+        let tuple_chirho = text_chirho.starts_with('(')
+            && text_chirho.ends_with(')')
+            && text_chirho[1..text_chirho.len() - 1]
+                .chars()
+                .all(|character_chirho| character_chirho == ',');
+        if matches!(text_chirho, ":" | "[]") || tuple_chirho {
+            return Err(self.error_chirho(
+                "wired syntax constructor expression is not yet modeled",
+                name_chirho.span_chirho(),
+            ));
+        }
+        if name_chirho
+            .full_name_chirho()
+            .starts_with(&format!("{}.", self.module_chirho))
+        {
+            return Err(self.error_chirho(
+                "self-qualified home references need a top-level-only scope lookup",
+                name_chirho.span_chirho(),
+            ));
+        }
         self.lookup_text_chirho(
             &name_chirho.full_name_chirho(),
             namespace_chirho,
@@ -152,6 +194,7 @@ impl LowerChirho<'_> {
                 match self.names_chirho[id_chirho.0 as usize].wired_chirho {
                     Some(WiredNameChirho::BoolChirho) => SurfaceTypeChirho::BoolChirho,
                     Some(WiredNameChirho::CharChirho) => SurfaceTypeChirho::CharChirho,
+                    Some(WiredNameChirho::IntegerChirho) => SurfaceTypeChirho::IntegerChirho,
                     _ => SurfaceTypeChirho::DeclaredChirho(id_chirho),
                 }
             }
@@ -288,7 +331,8 @@ impl LowerChirho<'_> {
                     depth_chirho + 1,
                 )?;
                 result_chirho.push(BindingChirho {
-                    name_chirho: self.lookup_chirho(name_chirho, NamespaceChirho::ValueChirho)?,
+                    name_chirho: self
+                        .bound_name_chirho(name_chirho, NamespaceChirho::ValueChirho)?,
                     restricted_chirho: signature_chirho.is_none()
                         && matches_chirho
                             .first()
@@ -316,13 +360,17 @@ impl LowerChirho<'_> {
         self.room_chirho(depth_chirho, span_chirho)?;
         let kind_chirho = match expression_chirho {
             AstExprChirho::VarChirho(name_chirho) | AstExprChirho::ConChirho(name_chirho) => ExprKindChirho::VarChirho(self.lookup_chirho(name_chirho, NamespaceChirho::ValueChirho)?),
-            AstExprChirho::LitChirho(literal_chirho @ LitChirho::IntChirho(..)) if self.rebindable_chirho => return self.rebindable_integer_chirho(literal_chirho),
-            AstExprChirho::NegChirho { expr_chirho, .. } if self.rebindable_chirho => {
+            AstExprChirho::LitChirho(literal_chirho @ LitChirho::IntChirho(..)) => return self.integer_expression_chirho(literal_chirho),
+            AstExprChirho::NegChirho { expr_chirho, .. } => {
+                if matches!(expr_chirho.as_ref(), AstExprChirho::InfixChirho {..}) {
+                    return Err(self.error_chirho("prefix negation needs resolved-name fixity regrouping", span_chirho));
+                }
                 let argument_chirho = self.expr_chirho(expr_chirho, depth_chirho + 1)?;
                 return self.syntax_application_chirho("negate", vec![argument_chirho], span_chirho);
             }
             AstExprChirho::LitChirho(LitChirho::CharChirho(value_chirho, ..)) => ExprKindChirho::CharChirho(*value_chirho),
             AstExprChirho::LitChirho(LitChirho::StringChirho(value_chirho, ..)) => ExprKindChirho::StringChirho(value_chirho.clone()),
+            AstExprChirho::InfixChirho {left_chirho, op_chirho, right_chirho, ..} => return self.infix_chirho(left_chirho, op_chirho, right_chirho, span_chirho, depth_chirho),
             AstExprChirho::AppChirho { fun_chirho, arg_chirho, .. } => ExprKindChirho::AppChirho(Box::new(self.expr_chirho(fun_chirho, depth_chirho + 1)?), Box::new(self.expr_chirho(arg_chirho, depth_chirho + 1)?)),
             AstExprChirho::LamChirho { pats_chirho, body_chirho, .. } => return self.equation_chirho(&[haskelujah_ast_chirho::expr_chirho::MatchArmChirho {
                 pats_chirho: pats_chirho.clone(), rhs_chirho: RhsChirho::UnguardedChirho((**body_chirho).clone()), where_binds_chirho: Vec::new(), span_chirho,
@@ -395,15 +443,53 @@ pub fn lower_module_with_interfaces_chirho(
     >,
     interfaces_chirho: &std::collections::BTreeMap<String, std::sync::Arc<InterfaceChirho>>,
 ) -> ResultChirho<ModuleChirho> {
+    lower_module_with_policy_chirho(
+        module_chirho,
+        unit_chirho,
+        limits_chirho,
+        integer_literals_chirho,
+        interfaces_chirho,
+        &LoweringPolicyChirho::default(),
+    )
+}
+
+pub fn lower_module_with_policy_chirho(
+    module_chirho: &AstModuleChirho,
+    unit_chirho: UnitIdentityChirho,
+    limits_chirho: LimitsChirho,
+    integer_literals_chirho: &HashMap<
+        haskelujah_ast_chirho::provenance_chirho::OriginIdChirho,
+        String,
+    >,
+    interfaces_chirho: &std::collections::BTreeMap<String, std::sync::Arc<InterfaceChirho>>,
+    policy_chirho: &LoweringPolicyChirho,
+) -> ResultChirho<ModuleChirho> {
     let rebindable_chirho = module_chirho
         .extensions_chirho
         .iter()
         .any(|extension_chirho| extension_chirho == "RebindableSyntax");
     let mut lower_chirho = LowerChirho {
         rebindable_chirho,
+        implicit_prelude_chirho: !rebindable_chirho
+            && !module_chirho
+                .extensions_chirho
+                .iter()
+                .any(|flag_chirho| flag_chirho == "NoImplicitPrelude")
+            && !module_chirho
+                .imports_chirho
+                .iter()
+                .any(|import_chirho| import_chirho.module_chirho.full_name_chirho() == "Prelude")
+            && module_chirho.name_chirho.full_name_chirho() != "Prelude",
+        prelude_exports_chirho: policy_chirho.prelude_exports_chirho.clone(),
         imported_names_chirho: Default::default(),
         import_scope_chirho: Default::default(),
         imported_classes_chirho: Vec::new(),
+        sliced_units_chirho: if policy_chirho.completeness_chirho == CompletenessChirho::SliceChirho
+        {
+            std::collections::BTreeSet::from([unit_chirho.clone()])
+        } else {
+            Default::default()
+        },
         integer_literals_chirho,
         env_chirho: NameEnvChirho::new_chirho(),
         names_chirho: Vec::new(),
@@ -444,13 +530,12 @@ pub fn lower_module_with_interfaces_chirho(
             module_chirho.span_chirho,
         ));
     }
-    let imports_chirho = lower_chirho.import_interfaces_chirho(module_chirho, interfaces_chirho)?;
-    if !rebindable_chirho
-        && !module_chirho
-            .extensions_chirho
-            .iter()
-            .any(|extension_chirho| extension_chirho == "NoImplicitPrelude")
-    {
+    let imports_chirho = lower_chirho.import_interfaces_chirho(
+        module_chirho,
+        interfaces_chirho,
+        &policy_chirho.implicit_interfaces_chirho,
+    )?;
+    if lower_chirho.implicit_prelude_chirho {
         for (text_chirho, namespace_chirho, wired_chirho) in [
             (
                 "Bool",
@@ -473,13 +558,18 @@ pub fn lower_module_with_interfaces_chirho(
                 WiredNameChirho::FalseChirho,
             ),
         ] {
-            lower_chirho.bind_chirho(
+            let id_chirho = lower_chirho.bind_chirho(
                 text_chirho,
                 namespace_chirho,
                 SpanChirho::DUMMY_CHIRHO,
                 false,
                 Some(wired_chirho),
             )?;
+            lower_chirho
+                .import_scope_chirho
+                .entry((text_chirho.into(), namespace_chirho))
+                .or_default()
+                .push(id_chirho);
         }
     }
     lower_chirho.predeclare_type_headers_chirho(&module_chirho.decls_chirho)?;
@@ -543,7 +633,8 @@ pub fn lower_module_with_interfaces_chirho(
             }
             DeclChirho::DataDeclChirho { .. }
             | DeclChirho::ClassDeclChirho { .. }
-            | DeclChirho::InstanceDeclChirho { .. } => {}
+            | DeclChirho::InstanceDeclChirho { .. }
+            | DeclChirho::FixityDeclChirho { .. } => {}
             _ => {
                 return Err(lower_chirho.error_chirho(
                     "next S0 does not yet elaborate this declaration",
@@ -568,7 +659,7 @@ pub fn lower_module_with_interfaces_chirho(
             )?;
             bindings_chirho.push(BindingChirho {
                 name_chirho: lower_chirho
-                    .lookup_chirho(name_chirho, NamespaceChirho::ValueChirho)?,
+                    .bound_name_chirho(name_chirho, NamespaceChirho::ValueChirho)?,
                 restricted_chirho: signature_chirho.is_none()
                     && matches_chirho
                         .first()
@@ -595,12 +686,16 @@ pub fn lower_module_with_interfaces_chirho(
     let instances_chirho = lower_chirho
         .instance_declarations_chirho(&module_chirho.decls_chirho, &available_classes_chirho)?;
     let exports_chirho = lower_chirho.exports_chirho(module_chirho)?;
+    let fixities_chirho = lower_chirho.fixities_chirho(&module_chirho.decls_chirho)?;
     Ok(ModuleChirho {
         unit_chirho: lower_chirho.unit_chirho,
         module_chirho: lower_chirho.module_chirho,
         names_chirho: lower_chirho.names_chirho,
         imports_chirho,
         exports_chirho,
+        fixities_chirho,
+        completeness_chirho: policy_chirho.completeness_chirho,
+        sliced_units_chirho: lower_chirho.sliced_units_chirho,
         data_chirho,
         classes_chirho,
         instances_chirho,

@@ -21,6 +21,7 @@ pub enum UnitIdentityChirho {
 pub enum WiredNameChirho {
     BoolChirho,
     CharChirho,
+    IntegerChirho,
     TrueChirho,
     FalseChirho,
 }

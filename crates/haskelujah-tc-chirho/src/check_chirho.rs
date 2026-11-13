@@ -22,6 +22,8 @@ mod classes_chirho;
 mod data_chirho;
 #[path = "generalization_chirho.rs"]
 mod generalization_chirho;
+#[path = "class_chirho/partiality_chirho.rs"]
+mod partiality_chirho;
 #[path = "signatures_chirho.rs"]
 mod signatures_chirho;
 

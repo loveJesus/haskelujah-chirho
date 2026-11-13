@@ -159,6 +159,7 @@ impl CheckedModuleChirho {
             }
             let head_chirho =
                 self.surface_with_chirho(&declaration_chirho.head_chirho, &parameters_chirho)?;
+            self.check_partial_instance_chirho(declaration_chirho.class_chirho, head_chirho)?;
             let predicate_chirho = self
                 .solver_chirho
                 .predicate_chirho(declaration_chirho.class_chirho, head_chirho)?;
@@ -355,6 +356,12 @@ impl CheckedModuleChirho {
                 .solver_chirho
                 .arena_chirho
                 .is_flexible_chirho(variable_chirho)?;
+        }
+        if self.instance_absence_is_partial_chirho(class_chirho, argument_chirho)? {
+            return Err(TcErrorChirho::new_chirho(
+                TcErrorKindChirho::UnsupportedChirho,
+                "instance absence or defaulting depends on an incomplete source unit",
+            ));
         }
         let name_chirho =
             &self.module_chirho.names_chirho[class_chirho.0 as usize].occurrence_chirho;

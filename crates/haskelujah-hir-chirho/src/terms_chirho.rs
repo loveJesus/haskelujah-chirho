@@ -13,6 +13,7 @@ pub struct ExprIdChirho(pub u32);
 pub enum SurfaceTypeChirho {
     BoolChirho,
     CharChirho,
+    IntegerChirho,
     DeclaredChirho(NameIdChirho),
     VariableChirho(NameIdChirho),
     AppChirho(Box<Self>, Box<Self>),
@@ -148,6 +149,10 @@ pub struct ModuleChirho {
     pub names_chirho: Vec<NameInfoChirho>,
     pub imports_chirho: Vec<crate::ImportedInterfaceChirho>,
     pub exports_chirho: Vec<NameIdChirho>,
+    pub fixities_chirho:
+        std::collections::BTreeMap<crate::OriginalNameChirho, crate::InterfaceFixityChirho>,
+    pub completeness_chirho: crate::CompletenessChirho,
+    pub sliced_units_chirho: std::collections::BTreeSet<UnitIdentityChirho>,
     pub data_chirho: Vec<DataDeclChirho>,
     pub classes_chirho: Vec<ClassDeclChirho>,
     pub instances_chirho: Vec<InstanceDeclChirho>,

@@ -21,6 +21,9 @@ use super::bindings_chirho::merge_fun_binds_chirho;
 use super::{LowerCtxChirho, contexts_chirho};
 use crate::type_member_lowering_chirho::partition_class_members_chirho;
 
+#[path = "member_pragmas_chirho.rs"]
+mod member_pragmas_chirho;
+
 impl LowerCtxChirho {
     pub(super) fn lower_class_decl_chirho(
         &self,
@@ -706,6 +709,12 @@ impl LowerCtxChirho {
         out_chirho: &mut Vec<DeclChirho>,
         unattached_members_chirho: &mut Vec<UnattachedMemberChirho>,
     ) {
+        self.collect_member_pragmas_chirho(
+            node_chirho,
+            base_chirho,
+            class_names_chirho.is_some(),
+            unattached_members_chirho,
+        );
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let mut saw_method_like_decl_chirho = false;
         let mut stopped_chirho = false;
@@ -738,6 +747,11 @@ impl LowerCtxChirho {
                 self.lower_decl_chirho(n_chirho, child_chirho.start_chirho)
             {
                 if declares_class_fixity_chirho(&decl_chirho, class_names_chirho) {
+                    // Legacy keeps its existing fixity path; next must not lose this member.
+                    unattached_members_chirho.push(UnattachedMemberChirho::syntax_chirho(
+                        UnattachedMemberKindChirho::UnsupportedChirho,
+                        span_chirho,
+                    ));
                     continue;
                 }
                 let is_method_like_decl_chirho = matches!(

@@ -4,6 +4,7 @@
 use super::*;
 use std::collections::BTreeMap;
 use std::sync::Arc;
+mod scope_chirho;
 
 impl LowerChirho<'_> {
     pub(super) fn charge_names_chirho(
@@ -27,7 +28,7 @@ impl LowerChirho<'_> {
         self.room_chirho(0, span_chirho)
     }
 
-    fn imported_name_chirho(
+    pub(super) fn imported_name_chirho(
         &mut self,
         original_chirho: &OriginalNameChirho,
     ) -> ResultChirho<NameIdChirho> {
@@ -74,29 +75,81 @@ impl LowerChirho<'_> {
         let imported_chirho = self
             .import_scope_chirho
             .get(&(text_chirho.to_string(), namespace_chirho));
+        let prelude_text_chirho = text_chirho.strip_prefix("Prelude.").unwrap_or(text_chirho);
+        let prelude_claim_chirho = if self.implicit_prelude_chirho {
+            self.prelude_exports_chirho.as_ref().map(|exports_chirho| {
+                exports_chirho.contains(&(prelude_text_chirho.to_string(), namespace_chirho))
+            })
+        } else {
+            Some(false)
+        };
         if let Some(own_chirho) = own_chirho {
-            // Local declarations shadow imports; wired Prelude names act as imported names.
-            if self.names_chirho[own_chirho.0 as usize]
-                .wired_chirho
-                .is_none()
-                || imported_chirho.is_none()
+            if !self.names_chirho[own_chirho.0 as usize].local_chirho
+                && self.names_chirho[own_chirho.0 as usize]
+                    .wired_chirho
+                    .is_none()
+            {
+                if prelude_claim_chirho == Some(true) {
+                    return Err(self.invalid_class_chirho(
+                        "ambiguous top-level and implicit Prelude name",
+                        span_chirho,
+                    ));
+                }
+                if prelude_claim_chirho.is_none() {
+                    return Err(self.error_chirho(
+                        "implicit Prelude has no complete export name account",
+                        span_chirho,
+                    ));
+                }
+            }
+            // Nested binders shadow imports. Top-level declarations clash only at uses.
+            if self.names_chirho[own_chirho.0 as usize].local_chirho
+                || imported_chirho.is_none_or(|ids_chirho| {
+                    ids_chirho.iter().all(|id_chirho| *id_chirho == own_chirho)
+                })
             {
                 return Ok(own_chirho);
             }
-            return Err(self.invalid_class_chirho(
-                "ambiguous implicit Prelude and source import name",
-                span_chirho,
-            ));
+            return Err(
+                self.invalid_class_chirho("ambiguous top-level and imported name", span_chirho)
+            );
         }
         match imported_chirho.map(Vec::as_slice) {
-            Some([id_chirho]) => Ok(*id_chirho),
+            Some([id_chirho]) => {
+                if prelude_claim_chirho.is_none() {
+                    return Err(self.error_chirho(
+                        "implicit Prelude has no complete export name account",
+                        span_chirho,
+                    ));
+                }
+                if prelude_claim_chirho == Some(true) {
+                    if self.names_chirho[id_chirho.0 as usize].unit_chirho
+                        == UnitIdentityChirho::StandaloneHomeChirho
+                    {
+                        return Err(self.invalid_class_chirho(
+                            "ambiguous source import and implicit Prelude name",
+                            span_chirho,
+                        ));
+                    }
+                    return Err(self.error_chirho("Prelude export identity needs its checked defining interface; names alone supply no type", span_chirho));
+                }
+                Ok(*id_chirho)
+            }
             Some(_) => Err(self.invalid_class_chirho("ambiguous imported name", span_chirho)),
             None => {
+                if prelude_claim_chirho != Some(false) {
+                    return Err(self.error_chirho(
+                        "Prelude exports this name without a checked type or instance interface",
+                        span_chirho,
+                    ));
+                }
                 let message_chirho = format!(
                     "next has no checked declaration for `{text_chirho}`; no placeholder type is supplied"
                 );
                 Err(
-                    if self.rebindable_chirho || !self.imported_names_chirho.is_empty() {
+                    if self.sliced_units_chirho.is_empty()
+                        && (self.rebindable_chirho || !self.imported_names_chirho.is_empty())
+                    {
                         self.invalid_class_chirho(&message_chirho, span_chirho)
                     } else {
                         self.error_chirho(message_chirho, span_chirho)
@@ -120,6 +173,9 @@ impl LowerChirho<'_> {
             }
             InterfaceTypeChirho::BuiltinChirho(InterfaceBuiltinChirho::CharChirho) => {
                 SurfaceTypeChirho::CharChirho
+            }
+            InterfaceTypeChirho::BuiltinChirho(InterfaceBuiltinChirho::IntegerChirho) => {
+                SurfaceTypeChirho::IntegerChirho
             }
             InterfaceTypeChirho::DeclaredChirho(name_chirho) => {
                 SurfaceTypeChirho::DeclaredChirho(self.imported_name_chirho(name_chirho)?)
@@ -185,28 +241,26 @@ impl LowerChirho<'_> {
         &mut self,
         module_chirho: &AstModuleChirho,
         interfaces_chirho: &BTreeMap<String, Arc<InterfaceChirho>>,
+        implicit_chirho: &[Arc<InterfaceChirho>],
     ) -> ResultChirho<Vec<ImportedInterfaceChirho>> {
         let mut result_chirho = Vec::new();
         let mut classes_seen_chirho = HashSet::new();
         let mut selected_seen_chirho = HashSet::new();
+        let mut selected_chirho = Vec::new();
         for import_chirho in &module_chirho.imports_chirho {
-            if import_chirho.qualified_chirho
-                || import_chirho.alias_chirho.is_some()
-                || import_chirho.spec_chirho.is_some()
-            {
+            if import_chirho.qualified_chirho || import_chirho.alias_chirho.is_some() {
                 return Err(self.error_chirho(
                     "next source interfaces currently require a plain import",
                     import_chirho.span_chirho,
                 ));
             }
             let module_name_chirho = import_chirho.module_chirho.full_name_chirho();
-            if !selected_seen_chirho.insert(module_name_chirho.clone()) {
+            if import_chirho.spec_chirho.is_none()
+                && !selected_seen_chirho.insert(module_name_chirho.clone())
+            {
                 continue;
             }
             let Some(interface_chirho) = interfaces_chirho.get(&module_name_chirho) else {
-                if module_name_chirho == "Prelude" && !self.rebindable_chirho {
-                    continue;
-                }
                 return Err(self.error_chirho(
                     "imported module has no independently checked source interface",
                     import_chirho.span_chirho,
@@ -218,34 +272,65 @@ impl LowerChirho<'_> {
                     import_chirho.span_chirho,
                 ));
             }
+            let exports_chirho = self.selected_exports_chirho(interface_chirho, import_chirho)?;
+            selected_chirho.push((
+                Arc::clone(interface_chirho),
+                exports_chirho,
+                import_chirho.span_chirho,
+            ));
+        }
+        for interface_chirho in implicit_chirho {
+            selected_chirho.push((
+                Arc::clone(interface_chirho),
+                Vec::new(),
+                SpanChirho::DUMMY_CHIRHO,
+            ));
+        }
+        let mut originals_seen_chirho = HashSet::new();
+        for (interface_chirho, exports_chirho, span_chirho) in selected_chirho {
+            // Hidden and explicit imports may share a producer; scope is still handled below.
+            self.sliced_units_chirho
+                .extend(interface_chirho.sliced_units_chirho.iter().cloned());
+            let module_name_chirho = &interface_chirho.module_chirho;
             let mut names_chirho = BTreeMap::new();
             for original_chirho in interface_chirho
                 .data_chirho
                 .keys()
                 .chain(interface_chirho.values_chirho.keys())
                 .chain(interface_chirho.classes_chirho.keys())
+                .chain(interface_chirho.wired_types_chirho.keys())
             {
                 let id_chirho = self.imported_name_chirho(original_chirho)?;
                 self.charge_names_chirho(
                     original_chirho.module_chirho.len()
                         + original_chirho.occurrence_chirho.len()
                         + 1,
-                    import_chirho.span_chirho,
+                    span_chirho,
                 )?;
                 names_chirho.insert(original_chirho.clone(), id_chirho);
             }
-            for original_chirho in &interface_chirho.exports_chirho {
+            for (original_chirho, wired_chirho) in &interface_chirho.wired_types_chirho {
+                if *wired_chirho != WiredNameChirho::IntegerChirho
+                    || original_chirho.unit_chirho != UnitIdentityChirho::CompilerChirho
+                    || original_chirho.module_chirho != "GHC.Internal.Bignum.Integer"
+                    || original_chirho.namespace_chirho != NamespaceChirho::TypeChirho
+                    || original_chirho.occurrence_chirho != "Integer"
+                {
+                    return Err(self
+                        .invalid_class_chirho("invalid wired declaration identity", span_chirho));
+                }
+                let id_chirho = names_chirho[original_chirho];
+                self.names_chirho[id_chirho.0 as usize].wired_chirho = Some(*wired_chirho);
+            }
+            for original_chirho in &exports_chirho {
                 let id_chirho = *names_chirho.get(original_chirho).ok_or_else(|| {
-                    self.invalid_class_chirho(
-                        "interface export has no declaration",
-                        import_chirho.span_chirho,
-                    )
+                    self.invalid_class_chirho("interface export has no declaration", span_chirho)
                 })?;
                 for text_chirho in [
                     original_chirho.occurrence_chirho.clone(),
                     format!("{module_name_chirho}.{}", original_chirho.occurrence_chirho),
                 ] {
-                    self.charge_names_chirho(text_chirho.len() + 1, import_chirho.span_chirho)?;
+                    self.charge_names_chirho(text_chirho.len() + 1, span_chirho)?;
                     let ids_chirho = self
                         .import_scope_chirho
                         .entry((text_chirho, original_chirho.namespace_chirho))
@@ -300,8 +385,14 @@ impl LowerChirho<'_> {
                     methods_chirho,
                 });
             }
+            if !originals_seen_chirho.insert((
+                interface_chirho.unit_chirho.clone(),
+                interface_chirho.module_chirho.clone(),
+            )) {
+                continue;
+            }
             result_chirho.push(ImportedInterfaceChirho {
-                interface_chirho: Arc::clone(interface_chirho),
+                interface_chirho: Arc::clone(&interface_chirho),
                 names_chirho,
             });
         }

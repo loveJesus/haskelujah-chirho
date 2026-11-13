@@ -33,6 +33,10 @@ impl CheckedModuleChirho {
                 .solver_chirho
                 .arena_chirho
                 .con_chirho(TyConChirho::CharChirho)?,
+            SurfaceTypeChirho::IntegerChirho => self
+                .solver_chirho
+                .arena_chirho
+                .con_chirho(TyConChirho::IntegerChirho)?,
             SurfaceTypeChirho::DeclaredChirho(name_chirho) => {
                 let ty_chirho = self
                     .solver_chirho

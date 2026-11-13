@@ -120,6 +120,14 @@ fn main_chirho() -> ExitCode {
         return ExitCode::SUCCESS;
     }
 
+    if command_chirho == "bundled-source-licenses-chirho" {
+        print!(
+            "{}",
+            haskelujah_driver_chirho::next_chirho::bundled_source_license_chirho()
+        );
+        return ExitCode::SUCCESS;
+    }
+
     if flags_chirho.emit_llvm_chirho && flags_chirho.emit_cranelift_chirho {
         eprintln!("cannot combine --llvm and --cranelift");
         return ExitCode::from(2);
@@ -1180,6 +1188,7 @@ fn print_usage_chirho(program_name_chirho: &str) {
     eprintln!("  install   <package> <version>   fetch from Hackage and register");
     eprintln!("  repl                            interactive REPL");
     eprintln!("  lsp                             start the Language Server Protocol server");
+    eprintln!("  bundled-source-licenses-chirho  print embedded GHC source licence notices");
     eprintln!();
     eprintln!("flags:");
     eprintln!("  --pipeline <name>    legacy (default) or next (independent checker)");

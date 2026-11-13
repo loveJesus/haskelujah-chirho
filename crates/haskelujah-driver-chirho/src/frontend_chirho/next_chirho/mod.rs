@@ -14,6 +14,7 @@ mod core_chirho;
 mod data_patterns_tests_chirho;
 #[cfg(test)]
 mod generalization_tests_chirho;
+mod library_chirho;
 mod parse_chirho;
 mod source_interfaces_chirho;
 pub use source_interfaces_chirho::{
@@ -34,7 +35,6 @@ use std::fmt;
 
 use haskelujah_core_chirho::CoreModuleChirho;
 use haskelujah_hir_chirho::{HirErrorKindChirho, LimitsChirho, UnitIdentityChirho};
-use haskelujah_span_chirho::FileIdChirho;
 use haskelujah_tc_chirho::{CheckedModuleChirho, TcErrorChirho, TcErrorKindChirho};
 
 #[cfg(test)]
@@ -100,16 +100,18 @@ impl From<TcErrorChirho> for NextErrorChirho {
 /// Parse, resolve identity-bearing HIR, generate constraints, and solve before publication.
 /// S0 checks library modules; Main's IO contract requires the source-library slice.
 pub fn check_source_chirho(source_chirho: &str) -> Result<CheckedModuleChirho, NextErrorChirho> {
-    let parsed_chirho = parse_chirho::parse_chirho(source_chirho, FileIdChirho::SYNTHETIC_CHIRHO)?;
-    check_parsed_chirho(parsed_chirho, &std::collections::BTreeMap::new())
+    source_interfaces_chirho::single_chirho(source_chirho, false)
+        .map(|(checked_chirho, _)| checked_chirho)
 }
 
-fn check_parsed_chirho(
+fn check_parsed_with_policy_chirho(
     parsed_chirho: haskelujah_parser_chirho::lower_chirho::LoweredModuleChirho,
+    unit_chirho: UnitIdentityChirho,
     interfaces_chirho: &std::collections::BTreeMap<
         String,
         std::sync::Arc<haskelujah_hir_chirho::InterfaceChirho>,
     >,
+    policy_chirho: &haskelujah_hir_chirho::LoweringPolicyChirho,
 ) -> Result<CheckedModuleChirho, NextErrorChirho> {
     let module_chirho = parsed_chirho.module_chirho;
     if module_chirho.name_chirho.full_name_chirho() == "Main" {
@@ -118,12 +120,13 @@ fn check_parsed_chirho(
             "next needs the checked IO source declaration to validate Main.main; S0 accepts library modules only",
         ));
     }
-    let hir_chirho = haskelujah_hir_chirho::lower_module_with_interfaces_chirho(
+    let hir_chirho = haskelujah_hir_chirho::lower_module_with_policy_chirho(
         &module_chirho,
-        UnitIdentityChirho::StandaloneHomeChirho,
+        unit_chirho,
         LimitsChirho::default(),
         &parsed_chirho.integer_literals_chirho,
         interfaces_chirho,
+        policy_chirho,
     )
     .map_err(|error_chirho| {
         let kind_chirho = match error_chirho.kind_chirho {
@@ -134,10 +137,6 @@ fn check_parsed_chirho(
         NextErrorChirho::new_chirho(kind_chirho, error_chirho.message_chirho)
     })?;
     // Profile/import declines precede validation; no unsupported syntax gains an invalid verdict.
-    if module_chirho
-        .extensions_chirho
-        .iter()
-        .any(|extension_chirho| extension_chirho == "RebindableSyntax")
     {
         for token_chirho in parsed_chirho.integer_literals_chirho.values() {
             haskelujah_runtime_chirho::integer_literal_chirho::IntegerValueChirho::validate_literal_chirho(token_chirho).map_err(|error_chirho| {
@@ -157,8 +156,14 @@ fn check_parsed_chirho(
 
 /// Elaborate checked HIR directly; the Core type compatibility adapter is data conversion only.
 pub fn compile_source_chirho(source_chirho: &str) -> Result<CoreModuleChirho, NextErrorChirho> {
-    let checked_chirho = check_source_chirho(source_chirho)?;
-    core_chirho::elaborate_chirho(&checked_chirho)
+    source_interfaces_chirho::single_chirho(source_chirho, true)?
+        .1
+        .ok_or_else(|| {
+            NextErrorChirho::new_chirho(
+                NextErrorKindChirho::InvalidChirho,
+                "source compilation produced no Core",
+            )
+        })
 }
 
 /// Evaluate an explicitly selected library binding, like GHC's -e, not an IO-main claim.
@@ -216,3 +221,8 @@ mod default_methods_tests_chirho;
 #[cfg(test)]
 #[path = "tests_chirho/integer_literals_tests_chirho.rs"]
 mod integer_literals_tests_chirho;
+
+/// Upstream notices for the embedded GHC 9.14.1 source files.
+pub fn bundled_source_license_chirho() -> &'static str {
+    library_chirho::LICENSE_CHIRHO
+}

@@ -117,7 +117,8 @@ impl LowerChirho<'_> {
                     });
                 }
                 Ok(DataDeclChirho {
-                    name_chirho: self.lookup_chirho(name_chirho, NamespaceChirho::TypeChirho)?,
+                    name_chirho: self
+                        .bound_name_chirho(name_chirho, NamespaceChirho::TypeChirho)?,
                     parameters_chirho,
                     constructors_chirho: lowered_constructors_chirho,
                 })

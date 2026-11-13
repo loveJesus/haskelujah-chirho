@@ -321,12 +321,18 @@ fn imported_hir_chirho(
         haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
     )
     .unwrap();
-    haskelujah_hir_chirho::lower_module_with_interfaces_chirho(
+    haskelujah_hir_chirho::lower_module_with_policy_chirho(
         &parsed_chirho.module_chirho,
         haskelujah_hir_chirho::UnitIdentityChirho::StandaloneHomeChirho,
         haskelujah_hir_chirho::LimitsChirho::default(),
         &parsed_chirho.integer_literals_chirho,
         &BTreeMap::from([("ALibChirho".into(), interface_chirho)]),
+        &haskelujah_hir_chirho::LoweringPolicyChirho {
+            prelude_exports_chirho: Some(
+                super::super::library_chirho::prelude_exports_chirho().unwrap(),
+            ),
+            ..Default::default()
+        },
     )
     .unwrap()
 }
@@ -439,7 +445,7 @@ fn repeated_plain_imports_do_not_duplicate_interface_storage_chirho() {
         haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
     )
     .unwrap();
-    let hir_chirho = haskelujah_hir_chirho::lower_module_with_interfaces_chirho(
+    let hir_chirho = haskelujah_hir_chirho::lower_module_with_policy_chirho(
         &parsed_chirho.module_chirho,
         haskelujah_hir_chirho::UnitIdentityChirho::StandaloneHomeChirho,
         haskelujah_hir_chirho::LimitsChirho {
@@ -448,6 +454,12 @@ fn repeated_plain_imports_do_not_duplicate_interface_storage_chirho() {
         },
         &parsed_chirho.integer_literals_chirho,
         &BTreeMap::from([("ALibChirho".into(), interface_chirho)]),
+        &haskelujah_hir_chirho::LoweringPolicyChirho {
+            prelude_exports_chirho: Some(
+                super::super::library_chirho::prelude_exports_chirho().unwrap(),
+            ),
+            ..Default::default()
+        },
     )
     .unwrap();
     haskelujah_tc_chirho::check_module_chirho(hir_chirho, 100_000).unwrap();

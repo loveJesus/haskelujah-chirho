@@ -1,12 +1,37 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
 use super::*;
+use haskelujah_hir_chirho::{CompletenessChirho, UnitIdentityChirho};
 use haskelujah_parser_chirho::lower_chirho::LoweredModuleChirho;
 use std::path::{Path, PathBuf};
 
 pub(super) const MAX_MODULES_CHIRHO: usize = 64;
 const MAX_SOURCE_BYTES_CHIRHO: usize = 16 << 20;
-pub(super) type SourcesChirho = BTreeMap<String, LoweredModuleChirho>;
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(super) struct ModuleKeyChirho {
+    pub unit_chirho: UnitIdentityChirho,
+    pub module_chirho: String,
+}
+impl ModuleKeyChirho {
+    pub(super) fn home_chirho(module_chirho: &str) -> Self {
+        Self {
+            unit_chirho: UnitIdentityChirho::StandaloneHomeChirho,
+            module_chirho: module_chirho.into(),
+        }
+    }
+    fn library_chirho(module_chirho: &str) -> Self {
+        Self {
+            unit_chirho: UnitIdentityChirho::CompilerChirho,
+            module_chirho: module_chirho.into(),
+        }
+    }
+}
+pub(super) struct SourceInputChirho {
+    pub parsed_chirho: LoweredModuleChirho,
+    pub numeric_chirho: bool,
+    pub completeness_chirho: CompletenessChirho,
+}
+pub(super) type SourcesChirho = BTreeMap<ModuleKeyChirho, SourceInputChirho>;
 
 pub(super) fn parse_sources_chirho(
     sources_chirho: &[&str],
@@ -20,67 +45,165 @@ pub(super) fn parse_sources_chirho(
         left_chirho = left_chirho
             .checked_sub(source_chirho.len())
             .ok_or_else(|| resource_chirho("source graph byte ceiling exhausted"))?;
-        let parsed_chirho = super::super::parse_chirho::parse_chirho(
-            source_chirho,
-            haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
-        )?;
-        let name_chirho = parsed_chirho.module_chirho.name_chirho.full_name_chirho();
-        if result_chirho.insert(name_chirho, parsed_chirho).is_some() {
+        let (parsed_chirho, numeric_chirho) =
+            super::super::parse_chirho::parse_with_dependencies_chirho(
+                source_chirho,
+                haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
+            )?;
+        let key_chirho = ModuleKeyChirho::home_chirho(
+            &parsed_chirho.module_chirho.name_chirho.full_name_chirho(),
+        );
+        if result_chirho
+            .insert(
+                key_chirho,
+                SourceInputChirho {
+                    parsed_chirho,
+                    numeric_chirho,
+                    completeness_chirho: CompletenessChirho::CompleteChirho,
+                },
+            )
+            .is_some()
+        {
             return Err(invalid_chirho("duplicate defining source module"));
         }
     }
     Ok(result_chirho)
 }
 
-pub(super) fn order_chirho(
+/// Explicit imports select supplied home source first; known syntax always selects its defining unit.
+pub(super) fn dependency_chirho(
     sources_chirho: &SourcesChirho,
+    owner_chirho: &ModuleKeyChirho,
+    module_chirho: &str,
+) -> Option<ModuleKeyChirho> {
+    if owner_chirho.unit_chirho == UnitIdentityChirho::StandaloneHomeChirho {
+        let home_chirho = ModuleKeyChirho::home_chirho(module_chirho);
+        if sources_chirho.contains_key(&home_chirho) {
+            return Some(home_chirho);
+        }
+    }
+    if super::super::library_chirho::manifest_chirho(module_chirho).is_some()
+        || module_chirho == super::super::library_chirho::INTEGER_MODULE_CHIRHO
+    {
+        Some(ModuleKeyChirho::library_chirho(module_chirho))
+    } else if module_chirho == "Prelude"
+        && owner_chirho.unit_chirho == UnitIdentityChirho::StandaloneHomeChirho
+    {
+        None
+    } else if owner_chirho.unit_chirho == UnitIdentityChirho::CompilerChirho {
+        Some(ModuleKeyChirho::library_chirho(module_chirho))
+    } else {
+        Some(ModuleKeyChirho::home_chirho(module_chirho))
+    }
+}
+
+pub(super) fn order_chirho(
+    sources_chirho: &mut SourcesChirho,
     entry_chirho: &str,
-) -> Result<Vec<String>, NextErrorChirho> {
+) -> Result<Vec<ModuleKeyChirho>, NextErrorChirho> {
     fn visit_chirho(
-        name_chirho: &str,
-        sources_chirho: &SourcesChirho,
-        visiting_chirho: &mut std::collections::BTreeSet<String>,
-        done_chirho: &mut std::collections::BTreeSet<String>,
-        order_chirho: &mut Vec<String>,
+        key_chirho: ModuleKeyChirho,
+        sources_chirho: &mut SourcesChirho,
+        visiting_chirho: &mut BTreeSet<ModuleKeyChirho>,
+        done_chirho: &mut BTreeSet<ModuleKeyChirho>,
+        order_chirho: &mut Vec<ModuleKeyChirho>,
     ) -> Result<(), NextErrorChirho> {
-        if done_chirho.contains(name_chirho) {
+        if done_chirho.contains(&key_chirho) {
             return Ok(());
         }
-        if !visiting_chirho.insert(name_chirho.into()) {
+        if !visiting_chirho.insert(key_chirho.clone()) {
             return Err(unsupported_chirho(
                 "cyclic source interfaces require boot/recursive-module staging",
             ));
         }
-        let source_chirho = sources_chirho
-            .get(name_chirho)
-            .ok_or_else(|| unsupported_chirho("source import has no supplied checked producer"))?;
-        for import_chirho in &source_chirho.module_chirho.imports_chirho {
-            let dependency_chirho = import_chirho.module_chirho.full_name_chirho();
-            if dependency_chirho == "Prelude" && !sources_chirho.contains_key(&dependency_chirho) {
-                continue;
+        if !sources_chirho.contains_key(&key_chirho) {
+            if key_chirho.unit_chirho != UnitIdentityChirho::CompilerChirho {
+                return Err(unsupported_chirho(
+                    "source import has no supplied checked producer",
+                ));
             }
+            if sources_chirho.len() >= MAX_MODULES_CHIRHO {
+                return Err(resource_chirho("source graph module ceiling exhausted"));
+            }
+            if key_chirho.module_chirho == super::super::library_chirho::INTEGER_MODULE_CHIRHO {
+                visiting_chirho.remove(&key_chirho);
+                done_chirho.insert(key_chirho.clone());
+                order_chirho.push(key_chirho);
+                return Ok(());
+            }
+            let manifest_chirho =
+                super::super::library_chirho::manifest_chirho(&key_chirho.module_chirho)
+                    .ok_or_else(|| unsupported_chirho("installed unit has no source manifest"))?;
+            let source_chirho = manifest_chirho.source_chirho()?;
+            let (parsed_chirho, numeric_chirho) =
+                super::super::parse_chirho::parse_with_dependencies_chirho(
+                    &source_chirho,
+                    haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
+                )?;
+            sources_chirho.insert(
+                key_chirho.clone(),
+                SourceInputChirho {
+                    parsed_chirho,
+                    numeric_chirho,
+                    completeness_chirho: CompletenessChirho::SliceChirho,
+                },
+            );
+        }
+        let source_chirho = &sources_chirho[&key_chirho];
+        if key_chirho.unit_chirho == UnitIdentityChirho::StandaloneHomeChirho
+            && key_chirho.module_chirho != "Prelude"
+            && implicit_prelude_chirho(&source_chirho.parsed_chirho)
+            && sources_chirho.contains_key(&ModuleKeyChirho::home_chirho("Prelude"))
+        {
+            return Err(unsupported_chirho(
+                "a home Prelude needs checked implicit-import selection; wired names cannot replace it",
+            ));
+        }
+        let mut dependencies_chirho = source_chirho
+            .parsed_chirho
+            .module_chirho
+            .imports_chirho
+            .iter()
+            .filter_map(|import_chirho| {
+                dependency_chirho(
+                    sources_chirho,
+                    &key_chirho,
+                    &import_chirho.module_chirho.full_name_chirho(),
+                )
+            })
+            .collect::<BTreeSet<_>>();
+        if source_chirho.numeric_chirho
+            && !(key_chirho.unit_chirho == UnitIdentityChirho::CompilerChirho
+                && key_chirho.module_chirho == super::super::library_chirho::NUM_MODULE_CHIRHO)
+        {
+            dependencies_chirho.insert(ModuleKeyChirho::library_chirho(
+                super::super::library_chirho::NUM_MODULE_CHIRHO,
+            ));
+        }
+        for dependency_chirho in dependencies_chirho {
             visit_chirho(
-                &dependency_chirho,
+                dependency_chirho,
                 sources_chirho,
                 visiting_chirho,
                 done_chirho,
                 order_chirho,
             )?;
         }
-        visiting_chirho.remove(name_chirho);
-        done_chirho.insert(name_chirho.into());
-        order_chirho.push(name_chirho.into());
+        visiting_chirho.remove(&key_chirho);
+        done_chirho.insert(key_chirho.clone());
+        order_chirho.push(key_chirho);
         Ok(())
     }
-    if !sources_chirho.contains_key(entry_chirho) {
+    let entry_chirho = ModuleKeyChirho::home_chirho(entry_chirho);
+    if !sources_chirho.contains_key(&entry_chirho) {
         return Err(unsupported_chirho("entry source module is not supplied"));
     }
     let mut result_chirho = Vec::new();
     visit_chirho(
         entry_chirho,
         sources_chirho,
-        &mut Default::default(),
-        &mut Default::default(),
+        &mut BTreeSet::new(),
+        &mut BTreeSet::new(),
         &mut result_chirho,
     )?;
     Ok(result_chirho)
@@ -95,10 +218,9 @@ pub(super) fn load_chirho(path_chirho: &Path) -> Result<(SourcesChirho, String),
     let mut entry_chirho = None;
     let mut queued_chirho = std::collections::BTreeSet::new();
     while let Some((path_chirho, expected_chirho)) = pending_chirho.pop() {
-        if expected_chirho
-            .as_ref()
-            .is_some_and(|name_chirho| result_chirho.contains_key(name_chirho))
-        {
+        if expected_chirho.as_ref().is_some_and(|name_chirho| {
+            result_chirho.contains_key(&ModuleKeyChirho::home_chirho(name_chirho))
+        }) {
             continue;
         }
         if result_chirho.len() >= MAX_MODULES_CHIRHO {
@@ -121,11 +243,20 @@ pub(super) fn load_chirho(path_chirho: &Path) -> Result<(SourcesChirho, String),
             .ok_or_else(|| resource_chirho("source graph byte ceiling exhausted"))?;
         let source_chirho = String::from_utf8(bytes_chirho)
             .map_err(|_| invalid_chirho("source module is not UTF-8"))?;
-        let parsed_chirho = super::super::parse_chirho::parse_chirho(
-            &source_chirho,
-            haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
-        )?;
+        let (parsed_chirho, numeric_chirho) =
+            super::super::parse_chirho::parse_with_dependencies_chirho(
+                &source_chirho,
+                haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
+            )?;
         let name_chirho = parsed_chirho.module_chirho.name_chirho.full_name_chirho();
+        if name_chirho != "Prelude"
+            && implicit_prelude_chirho(&parsed_chirho)
+            && root_chirho.join("Prelude.hs").exists()
+        {
+            return Err(unsupported_chirho(
+                "a home Prelude needs checked implicit-import selection; wired names cannot replace it",
+            ));
+        }
         if expected_chirho
             .as_ref()
             .is_some_and(|expected_chirho| *expected_chirho != name_chirho)
@@ -154,10 +285,13 @@ pub(super) fn load_chirho(path_chirho: &Path) -> Result<(SourcesChirho, String),
             }
             relative_chirho.set_extension("hs");
             let candidate_chirho = root_chirho.join(relative_chirho);
-            if module_chirho == "Prelude" && !candidate_chirho.exists() {
+            if !candidate_chirho.exists()
+                && (module_chirho == "Prelude"
+                    || super::super::library_chirho::manifest_chirho(&module_chirho).is_some())
+            {
                 continue;
             }
-            if !result_chirho.contains_key(&module_chirho)
+            if !result_chirho.contains_key(&ModuleKeyChirho::home_chirho(&module_chirho))
                 && queued_chirho.insert(module_chirho.clone())
             {
                 if queued_chirho.len() > MAX_MODULES_CHIRHO {
@@ -166,7 +300,17 @@ pub(super) fn load_chirho(path_chirho: &Path) -> Result<(SourcesChirho, String),
                 pending_chirho.push((candidate_chirho, Some(module_chirho)));
             }
         }
-        if result_chirho.insert(name_chirho, parsed_chirho).is_some() {
+        if result_chirho
+            .insert(
+                ModuleKeyChirho::home_chirho(&name_chirho),
+                SourceInputChirho {
+                    parsed_chirho,
+                    numeric_chirho,
+                    completeness_chirho: CompletenessChirho::CompleteChirho,
+                },
+            )
+            .is_some()
+        {
             return Err(invalid_chirho("duplicate source module"));
         }
     }
@@ -174,4 +318,17 @@ pub(super) fn load_chirho(path_chirho: &Path) -> Result<(SourcesChirho, String),
         result_chirho,
         entry_chirho.ok_or_else(|| invalid_chirho("source graph has no entry"))?,
     ))
+}
+
+fn implicit_prelude_chirho(parsed_chirho: &LoweredModuleChirho) -> bool {
+    !parsed_chirho
+        .module_chirho
+        .extensions_chirho
+        .iter()
+        .any(|flag_chirho| {
+            matches!(
+                flag_chirho.as_str(),
+                "NoImplicitPrelude" | "RebindableSyntax"
+            )
+        })
 }

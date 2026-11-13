@@ -12,7 +12,7 @@ pub use groups_chirho::binding_groups_chirho;
 pub use interface_chirho::*;
 pub use lower_chirho::{
     lower_module_chirho, lower_module_with_integer_literals_chirho,
-    lower_module_with_interfaces_chirho,
+    lower_module_with_interfaces_chirho, lower_module_with_policy_chirho,
 };
 pub use names_chirho::{
     NameIdChirho, NameInfoChirho, NamespaceChirho, OriginalNameChirho, UnitIdentityChirho,

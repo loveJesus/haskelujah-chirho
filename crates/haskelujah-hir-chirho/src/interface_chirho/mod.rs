@@ -4,7 +4,26 @@
 //! workflow: next-pipeline-chirho/ghc-implementation-map-chirho
 
 use crate::{NameIdChirho, OriginalNameChirho, UnitIdentityChirho};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
+
+/// A checked fragment carries presence facts only; it never certifies module absence.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum CompletenessChirho {
+    #[default]
+    CompleteChirho,
+    SliceChirho,
+}
+
+pub type PreludeExportsChirho = BTreeSet<(String, crate::NamespaceChirho)>;
+
+#[derive(Debug, Default)]
+pub struct LoweringPolicyChirho {
+    /// Checked export names only; no Prelude scheme or instance authority.
+    pub prelude_exports_chirho: Option<std::sync::Arc<PreludeExportsChirho>>,
+    pub completeness_chirho: CompletenessChirho,
+    /// Identity dependencies without lexical import scope (known syntax operations).
+    pub implicit_interfaces_chirho: Vec<std::sync::Arc<InterfaceChirho>>,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InterfaceBuiltinChirho {
@@ -65,6 +84,18 @@ pub struct InterfaceInstanceChirho {
     pub scheme_chirho: InterfaceSchemeChirho,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AssociativityChirho {
+    NoneChirho,
+    LeftChirho,
+    RightChirho,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct InterfaceFixityChirho {
+    pub associativity_chirho: AssociativityChirho,
+    pub precedence_chirho: u8,
+}
+
 /// Only the independent checker projects this in the production source driver.
 /// No disk loader or trust in a caller-supplied/legacy interface is implied.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,6 +103,11 @@ pub struct InterfaceChirho {
     pub unit_chirho: UnitIdentityChirho,
     pub module_chirho: String,
     pub exports_chirho: Vec<OriginalNameChirho>,
+    pub fixities_chirho: BTreeMap<OriginalNameChirho, InterfaceFixityChirho>,
+    pub completeness_chirho: CompletenessChirho,
+    pub sliced_units_chirho: BTreeSet<UnitIdentityChirho>,
+    /// Driver-provided wired declarations, never inferred from an exported spelling.
+    pub wired_types_chirho: BTreeMap<OriginalNameChirho, crate::WiredNameChirho>,
     pub data_chirho: BTreeMap<OriginalNameChirho, usize>,
     pub values_chirho: BTreeMap<OriginalNameChirho, InterfaceValueChirho>,
     pub classes_chirho: BTreeMap<OriginalNameChirho, InterfaceClassChirho>,

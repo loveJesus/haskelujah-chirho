@@ -3,6 +3,7 @@
 [package]
 name = "haskelujah-driver"
 description = "Compilation driver and project orchestration for the Haskelujah compiler"
+repository = "https://github.com/loveJesus/haskelujah-chirho"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
@@ -30,6 +31,7 @@ haskelujah-th-chirho = { package = "haskelujah-th", path = "../haskelujah-th-chi
 haskelujah-incremental-chirho = { package = "haskelujah-incremental", path = "../haskelujah-incremental-chirho", version = "0.1.2" }
 haskelujah-package-chirho = { package = "haskelujah-package", path = "../haskelujah-package-chirho", version = "0.1.2" }
 tempfile = "=3.27.0"
+sha2 = "=0.11.1"
 
 [dev-dependencies]
 proptest = "1"

@@ -158,10 +158,24 @@ pub fn project_interface_chirho(
         left_chirho,
     };
     let module_chirho = &checked_chirho.module_chirho;
+    projection_chirho.charge_chirho(
+        module_chirho
+            .fixities_chirho
+            .keys()
+            .map(|name_chirho| {
+                name_chirho.module_chirho.len() + name_chirho.occurrence_chirho.len() + 2
+            })
+            .sum::<usize>()
+            + module_chirho.sliced_units_chirho.len(),
+    )?;
     let mut result_chirho = InterfaceChirho {
         unit_chirho: module_chirho.unit_chirho.clone(),
         module_chirho: module_chirho.module_chirho.clone(),
         exports_chirho: Vec::new(),
+        fixities_chirho: module_chirho.fixities_chirho.clone(),
+        completeness_chirho: module_chirho.completeness_chirho,
+        sliced_units_chirho: module_chirho.sliced_units_chirho.clone(),
+        wired_types_chirho: BTreeMap::new(),
         data_chirho: BTreeMap::new(),
         values_chirho: BTreeMap::new(),
         classes_chirho: BTreeMap::new(),
@@ -171,6 +185,14 @@ pub fn project_interface_chirho(
         let iface_chirho = &import_chirho.interface_chirho;
         // Inherited records were already closed by their producer. Count every retained copy.
         projection_chirho.charge_chirho(interface_weight_chirho(iface_chirho)?)?;
+        merge_chirho(
+            &mut result_chirho.fixities_chirho,
+            &iface_chirho.fixities_chirho,
+        )?;
+        merge_chirho(
+            &mut result_chirho.wired_types_chirho,
+            &iface_chirho.wired_types_chirho,
+        )?;
         merge_chirho(&mut result_chirho.data_chirho, &iface_chirho.data_chirho)?;
         merge_chirho(
             &mut result_chirho.values_chirho,
@@ -291,7 +313,22 @@ pub fn project_interface_chirho(
 
 /// Size accounting is iterative so a pre-existing tree cannot bypass the graph allowance.
 fn interface_weight_chirho(interface_chirho: &InterfaceChirho) -> Result<usize, TcErrorChirho> {
-    let mut count_chirho = interface_chirho.data_chirho.len()
+    let mut count_chirho = interface_chirho
+        .fixities_chirho
+        .keys()
+        .map(|name_chirho| {
+            name_chirho.module_chirho.len() + name_chirho.occurrence_chirho.len() + 2
+        })
+        .sum::<usize>()
+        + interface_chirho
+            .wired_types_chirho
+            .keys()
+            .map(|name_chirho| {
+                name_chirho.module_chirho.len() + name_chirho.occurrence_chirho.len() + 1
+            })
+            .sum::<usize>()
+        + interface_chirho.sliced_units_chirho.len()
+        + interface_chirho.data_chirho.len()
         + interface_chirho.values_chirho.len()
         + interface_chirho.classes_chirho.len()
         + interface_chirho.instances_chirho.len();

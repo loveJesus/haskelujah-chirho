@@ -33,7 +33,9 @@ impl LowerChirho<'_> {
                 UnattachedMemberKindChirho::PatternBindingChirho => {
                     "pattern binding is not allowed in a class or instance body"
                 }
-                UnattachedMemberKindChirho::UnsupportedChirho => continue,
+                UnattachedMemberKindChirho::UnsupportedChirho
+                | UnattachedMemberKindChirho::MinimalPragmaChirho
+                | UnattachedMemberKindChirho::InlinePragmaChirho => continue,
             };
             return Err(self.invalid_class_chirho(message_chirho, account_chirho.span_chirho));
         }
@@ -103,7 +105,7 @@ impl LowerChirho<'_> {
             else {
                 continue;
             };
-            self.check_member_accounts_chirho(unattached_members_chirho)?;
+            self.class_pragma_accounts_chirho(unattached_members_chirho, methods_chirho)?;
             let [parameter_chirho] = type_vars_chirho.as_slice() else {
                 return Err(self.error_chirho(
                     "next source classes currently require one parameter",
@@ -121,7 +123,7 @@ impl LowerChirho<'_> {
                     *span_chirho,
                 ));
             }
-            let class_chirho = self.lookup_chirho(name_chirho, NamespaceChirho::TypeChirho)?;
+            let class_chirho = self.bound_name_chirho(name_chirho, NamespaceChirho::TypeChirho)?;
             let mut method_names_chirho = Vec::new();
             for method_chirho in methods_chirho {
                 if method_chirho.default_sig_chirho.is_some() {

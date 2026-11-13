@@ -10,6 +10,8 @@ pub enum UnattachedMemberKindChirho {
     UnmatchedDefaultChirho,
     RepeatedDefaultChirho,
     PatternBindingChirho,
+    MinimalPragmaChirho,
+    InlinePragmaChirho,
     UnsupportedChirho,
 }
 

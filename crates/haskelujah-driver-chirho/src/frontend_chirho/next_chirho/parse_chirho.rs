@@ -11,10 +11,25 @@ use haskelujah_parser_chirho::{
 use haskelujah_span_chirho::FileIdChirho;
 use haskelujah_syntax_chirho::{cst_chirho::SyntaxKindChirho, green_chirho::GreenElementChirho};
 
+#[cfg(test)]
 pub(super) fn parse_chirho(
     source_chirho: &str,
     file_chirho: FileIdChirho,
 ) -> Result<haskelujah_parser_chirho::lower_chirho::LoweredModuleChirho, NextErrorChirho> {
+    parse_with_dependencies_chirho(source_chirho, file_chirho)
+        .map(|(parsed_chirho, _)| parsed_chirho)
+}
+
+pub(super) fn parse_with_dependencies_chirho(
+    source_chirho: &str,
+    file_chirho: FileIdChirho,
+) -> Result<
+    (
+        haskelujah_parser_chirho::lower_chirho::LoweredModuleChirho,
+        bool,
+    ),
+    NextErrorChirho,
+> {
     if source_chirho.len() > 1 << 20 {
         return Err(NextErrorChirho::new_chirho(
             NextErrorKindChirho::ResourceChirho,
@@ -36,6 +51,7 @@ pub(super) fn parse_chirho(
     // The reused parser can retain a missing closing delimiter without an ErrorNode.
     // Balance actual lexer tokens, so comments and literal contents do not affect it.
     let mut delimiters_chirho = Vec::new();
+    let mut owned_pragmas_chirho = Vec::new();
     for token_chirho in &tokens_chirho {
         if token_chirho.kind_chirho == RawTokenKindChirho::PragmaChirho {
             let inner_chirho = token_chirho
@@ -57,6 +73,10 @@ pub(super) fn parse_chirho(
                     "next does not implement this pragma",
                 ));
             };
+            if matches!(keyword_chirho, "MINIMAL" | "INLINE") {
+                owned_pragmas_chirho.push(token_chirho.span_chirho);
+                continue;
+            }
             if keyword_chirho != "LANGUAGE" {
                 return Err(NextErrorChirho::new_chirho(
                     NextErrorKindChirho::UnsupportedChirho,
@@ -107,8 +127,10 @@ pub(super) fn parse_chirho(
     let green_chirho = ParserChirho::new_chirho(source_chirho, file_chirho).parse_chirho();
     let mut work_chirho = vec![(green_chirho.as_ref(), 0_usize)];
     let mut nodes_chirho = 0_usize;
+    let mut negation_chirho = false;
     while let Some((node_chirho, depth_chirho)) = work_chirho.pop() {
         nodes_chirho += 1;
+        negation_chirho |= node_chirho.kind_chirho() == SyntaxKindChirho::NegateExprChirho;
         if nodes_chirho > 1 << 20 || depth_chirho > 256 {
             return Err(NextErrorChirho::new_chirho(
                 NextErrorKindChirho::ResourceChirho,
@@ -117,8 +139,12 @@ pub(super) fn parse_chirho(
         }
         if node_chirho.kind_chirho() == SyntaxKindChirho::ErrorNodeChirho {
             return Err(NextErrorChirho::new_chirho(
-                NextErrorKindChirho::InvalidChirho,
-                "parse error; recovered syntax is never accepted by next",
+                if owned_pragmas_chirho.is_empty() {
+                    NextErrorKindChirho::InvalidChirho
+                } else {
+                    NextErrorKindChirho::UnsupportedChirho
+                },
+                "parse error or unsupported pragma position; recovered syntax is never accepted by next",
             ));
         }
         if node_chirho.kind_chirho() == SyntaxKindChirho::ImportDeclChirho
@@ -141,10 +167,42 @@ pub(super) fn parse_chirho(
             "parser did not retain the complete source",
         ));
     }
-    Ok(
+    let parsed_chirho =
         haskelujah_parser_chirho::lower_chirho::lower_module_with_integer_literals_chirho(
             &green_chirho,
             file_chirho,
-        ),
-    )
+        );
+    for span_chirho in owned_pragmas_chirho {
+        let owned_chirho =
+            parsed_chirho
+                .module_chirho
+                .decls_chirho
+                .iter()
+                .any(|declaration_chirho| {
+                    if let haskelujah_ast_chirho::decl_chirho::DeclChirho::ClassDeclChirho {
+                        unattached_members_chirho,
+                        ..
+                    } = declaration_chirho
+                    {
+                        unattached_members_chirho
+                            .iter()
+                            .any(|account_chirho| account_chirho.span_chirho == span_chirho)
+                    } else {
+                        false
+                    }
+                });
+        if !owned_chirho {
+            return Err(NextErrorChirho::new_chirho(
+                NextErrorKindChirho::UnsupportedChirho,
+                "MINIMAL/INLINE pragma has no supported class owner",
+            ));
+        }
+    }
+    let numeric_chirho = (negation_chirho || !parsed_chirho.integer_literals_chirho.is_empty())
+        && !parsed_chirho
+            .module_chirho
+            .extensions_chirho
+            .iter()
+            .any(|flag_chirho| flag_chirho == "RebindableSyntax");
+    Ok((parsed_chirho, numeric_chirho))
 }

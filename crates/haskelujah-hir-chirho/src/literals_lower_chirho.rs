@@ -12,20 +12,47 @@ impl LowerChirho<'_> {
         arguments_chirho: Vec<ExprChirho>,
         span_chirho: SpanChirho,
     ) -> ResultChirho<ExprChirho> {
-        let name_chirho =
-            self.lookup_text_chirho(operation_chirho, NamespaceChirho::ValueChirho, span_chirho)?;
-        let mut expression_chirho =
-            self.node_chirho(ExprKindChirho::VarChirho(name_chirho), span_chirho)?;
-        for argument_chirho in arguments_chirho {
-            expression_chirho = self.node_chirho(
-                ExprKindChirho::AppChirho(Box::new(expression_chirho), Box::new(argument_chirho)),
-                span_chirho,
-            )?;
-        }
-        Ok(expression_chirho)
+        let name_chirho = if self.rebindable_chirho {
+            self.lookup_text_chirho(operation_chirho, NamespaceChirho::ValueChirho, span_chirho)?
+        } else {
+            let original_chirho = OriginalNameChirho {
+                unit_chirho: UnitIdentityChirho::CompilerChirho,
+                module_chirho: "GHC.Internal.Num".into(),
+                namespace_chirho: NamespaceChirho::ValueChirho,
+                occurrence_chirho: operation_chirho.into(),
+            };
+            if self.unit_chirho == original_chirho.unit_chirho
+                && self.module_chirho == original_chirho.module_chirho
+            {
+                let own_chirho = self
+                    .env_chirho
+                    .lookup_chirho(operation_chirho, NamespaceChirho::ValueChirho)
+                    .map(|info_chirho| NameIdChirho(info_chirho.def_id_chirho.0))
+                    .filter(|id_chirho| {
+                        self.names_chirho[id_chirho.0 as usize].original_chirho() == original_chirho
+                    });
+                own_chirho.ok_or_else(|| {
+                    self.invalid_class_chirho(
+                        "defining numeric source lacks its known selector",
+                        span_chirho,
+                    )
+                })?
+            } else {
+                self.imported_names_chirho
+                    .get(&original_chirho)
+                    .copied()
+                    .ok_or_else(|| {
+                        self.error_chirho(
+                            "known numeric selector has no checked defining-unit interface",
+                            span_chirho,
+                        )
+                    })?
+            }
+        };
+        self.apply_name_chirho(name_chirho, arguments_chirho, span_chirho)
     }
 
-    pub(super) fn rebindable_integer_chirho(
+    pub(super) fn integer_expression_chirho(
         &mut self,
         literal_chirho: &LitChirho,
     ) -> ResultChirho<ExprChirho> {
