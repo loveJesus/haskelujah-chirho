@@ -13,9 +13,15 @@ Architecture decision at brick 1: ask Claude2 about one retained class-body decl
 - [x] Resolve the declaration-retention architecture; retain unknown/default member accounts and reject unknown members without silent drops.
 - [x] Lower generic signed hidden defaults after all names are available; decide instance override/default precedence by method identity.
 - [x] Execute default dispatch, recursive/superclass/context use, later values, scoped variables, laziness and invalid-default controls through Core/STG.
-- [ ] Run focused/package gates, workspace, scoped lint and unchanged fixed-bucket comparison; retain Unsupported/resources and bound claims.
-- [ ] Update GHC correspondence/workflows, scan/push coherent progress and close the canonical row.
+- [x] Run focused/package gates, workspace, scoped lint and unchanged fixed-bucket comparison; retain Unsupported/resources and bound claims.
+- [x] Update GHC correspondence/workflows, scan/push coherent progress and close the canonical row.
 
 Standing limits: source interfaces/library loading, numeric defaulting, higher-kinded classes, method-owned polymorphism, overlap/richer contexts and native/B-run gates remain open. Module-wide Wanted rescans/re-zonks remain a resource limitation. GHC stays a developer reference; the product target is Rust/Cargo installation.
 
 Architecture decision: #33906 adopted. One body owner plus source accounts written at the shared where-walk; parser drop predictions measured on the frozen 748 CLI and exact GHC. Existing module bindings/signature checking/Core are reused; the instance method record is the only default link. No self Given.
+
+Checkpoint: source 45f1c1148f5a60f0be765c30c499b7eef097ba6c, crates 8c1963e54f0386444748d783cadf45ad47b0a067, pushed/read back on next-pipeline-default-methods-chirho. GHC 9.14.1: 11 exact runtime positives, 10 invalids, 2 accepted-but-Unsupported controls. Local gates: AST 25, naming 171, parser 435, TC 21, legacy typing 480, next driver 79; zero failed/ignored. Workspace and own CLI build have zero compiler messages. Literal c4a30 vs a4bb7c71: zero hits; 259 OUTSIDE, unattributed. Not a warning-free-tree claim.
+
+Fixed 353-file profile (unchanged original paths, all.T flags/ways omitted): 19 ACCEPT / 15 REFUSAL / 319 UNSUPPORTED. Sole mover tcfail077 Unsupported -> GHC-54721-matching Invalid refusal. No previously supported change and no regression. Not full B-check, B-run or compatibility acceptance. Frozen CLI 56eff39c..., 57,549,864 bytes, 0555, single link; parent c7a39b4b unchanged.
+
+Architecture #33906 is source reading only; GPT performed implementation and execution. Shared AST constructor adapters elsewhere carry empty unattached-member lists; no legacy solver feature is added. Two existing oversized legacy modules receive only these literal adapters and remain structural debt. Main compiler crates stay 04116a69. Evidence: tmp-chirho/next-default-methods-749-chirho/checkpoint-chirho/acceptance-chirho.json.
