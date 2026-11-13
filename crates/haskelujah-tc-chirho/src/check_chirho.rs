@@ -176,6 +176,10 @@ impl CheckedModuleChirho {
                     })?
                 }
             }
+            ExprKindChirho::IntegerChirho(_) => self
+                .solver_chirho
+                .arena_chirho
+                .con_chirho(TyConChirho::IntegerChirho)?,
             ExprKindChirho::CharChirho(_) => self
                 .solver_chirho
                 .arena_chirho

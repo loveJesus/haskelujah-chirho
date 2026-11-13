@@ -27,6 +27,8 @@ mod data_lower_chirho;
 mod defaults_lower_chirho;
 #[path = "instances_lower_chirho.rs"]
 mod instances_lower_chirho;
+#[path = "literals_lower_chirho.rs"]
+mod literals_lower_chirho;
 #[path = "patterns_lower_chirho.rs"]
 mod patterns_lower_chirho;
 #[path = "signatures_chirho.rs"]
@@ -34,7 +36,7 @@ mod signatures_chirho;
 
 type ResultChirho<TChirho> = Result<TChirho, HirErrorChirho>;
 
-struct LowerChirho {
+struct LowerChirho<'literals_chirho> {
     env_chirho: NameEnvChirho,
     names_chirho: Vec<NameInfoChirho>,
     module_chirho: String,
@@ -42,9 +44,12 @@ struct LowerChirho {
     next_expr_chirho: u32,
     limits_chirho: LimitsChirho,
     explicit_forall_chirho: bool,
+    rebindable_chirho: bool,
+    integer_literals_chirho:
+        &'literals_chirho HashMap<haskelujah_ast_chirho::provenance_chirho::OriginIdChirho, String>,
 }
 
-impl LowerChirho {
+impl LowerChirho<'_> {
     fn error_chirho(
         &self,
         message_chirho: impl Into<String>,
@@ -115,13 +120,15 @@ impl LowerChirho {
             .lookup_chirho(&name_chirho.full_name_chirho(), namespace_chirho)
             .map(|info_chirho| NameIdChirho(info_chirho.def_id_chirho.0))
             .ok_or_else(|| {
-                self.error_chirho(
-                    format!(
-                        "next has no checked declaration for `{}`; no placeholder type is supplied",
-                        name_chirho.full_name_chirho()
-                    ),
-                    name_chirho.span_chirho(),
-                )
+                let message_chirho = format!(
+                    "next has no checked declaration for `{}`; no placeholder type is supplied",
+                    name_chirho.full_name_chirho()
+                );
+                if self.rebindable_chirho {
+                    self.invalid_class_chirho(&message_chirho, name_chirho.span_chirho())
+                } else {
+                    self.error_chirho(message_chirho, name_chirho.span_chirho())
+                }
             })
     }
 
@@ -302,6 +309,11 @@ impl LowerChirho {
         self.room_chirho(depth_chirho, span_chirho)?;
         let kind_chirho = match expression_chirho {
             AstExprChirho::VarChirho(name_chirho) | AstExprChirho::ConChirho(name_chirho) => ExprKindChirho::VarChirho(self.lookup_chirho(name_chirho, NamespaceChirho::ValueChirho)?),
+            AstExprChirho::LitChirho(literal_chirho @ LitChirho::IntChirho(..)) if self.rebindable_chirho => return self.rebindable_integer_chirho(literal_chirho),
+            AstExprChirho::NegChirho { expr_chirho, .. } if self.rebindable_chirho => {
+                let argument_chirho = self.expr_chirho(expr_chirho, depth_chirho + 1)?;
+                return self.syntax_application_chirho("negate", vec![argument_chirho], span_chirho);
+            }
             AstExprChirho::LitChirho(LitChirho::CharChirho(value_chirho, ..)) => ExprKindChirho::CharChirho(*value_chirho),
             AstExprChirho::LitChirho(LitChirho::StringChirho(value_chirho, ..)) => ExprKindChirho::StringChirho(value_chirho.clone()),
             AstExprChirho::AppChirho { fun_chirho, arg_chirho, .. } => ExprKindChirho::AppChirho(Box::new(self.expr_chirho(fun_chirho, depth_chirho + 1)?), Box::new(self.expr_chirho(arg_chirho, depth_chirho + 1)?)),
@@ -317,6 +329,12 @@ impl LowerChirho {
                 })();
                 self.env_chirho.pop_scope_chirho();
                 result_chirho?
+            }
+            AstExprChirho::IfChirho { cond_chirho, then_chirho, else_chirho, .. } if self.rebindable_chirho => {
+                let condition_chirho = self.expr_chirho(cond_chirho, depth_chirho + 1)?;
+                let yes_chirho = self.expr_chirho(then_chirho, depth_chirho + 1)?;
+                let no_chirho = self.expr_chirho(else_chirho, depth_chirho + 1)?;
+                return self.syntax_application_chirho("ifThenElse", vec![condition_chirho, yes_chirho, no_chirho], span_chirho);
             }
             AstExprChirho::IfChirho { cond_chirho, then_chirho, else_chirho, .. } => ExprKindChirho::IfChirho(Box::new(self.expr_chirho(cond_chirho, depth_chirho + 1)?), Box::new(self.expr_chirho(then_chirho, depth_chirho + 1)?), Box::new(self.expr_chirho(else_chirho, depth_chirho + 1)?)),
             AstExprChirho::AnnChirho { expr_chirho, ty_chirho, .. } => ExprKindChirho::AnnChirho(Box::new(self.expr_chirho(expr_chirho, depth_chirho + 1)?), self.type_chirho(ty_chirho, depth_chirho + 1)?),
@@ -334,7 +352,30 @@ pub fn lower_module_chirho(
     unit_chirho: UnitIdentityChirho,
     limits_chirho: LimitsChirho,
 ) -> ResultChirho<ModuleChirho> {
+    lower_module_with_integer_literals_chirho(
+        module_chirho,
+        unit_chirho,
+        limits_chirho,
+        &HashMap::new(),
+    )
+}
+
+pub fn lower_module_with_integer_literals_chirho(
+    module_chirho: &AstModuleChirho,
+    unit_chirho: UnitIdentityChirho,
+    limits_chirho: LimitsChirho,
+    integer_literals_chirho: &HashMap<
+        haskelujah_ast_chirho::provenance_chirho::OriginIdChirho,
+        String,
+    >,
+) -> ResultChirho<ModuleChirho> {
+    let rebindable_chirho = module_chirho
+        .extensions_chirho
+        .iter()
+        .any(|extension_chirho| extension_chirho == "RebindableSyntax");
     let mut lower_chirho = LowerChirho {
+        rebindable_chirho,
+        integer_literals_chirho,
         env_chirho: NameEnvChirho::new_chirho(),
         names_chirho: Vec::new(),
         module_chirho: module_chirho.name_chirho.full_name_chirho(),
@@ -366,12 +407,22 @@ pub fn lower_module_chirho(
             !matches!(
                 extension_chirho.as_str(),
                 // Retain/validate the declaration; an actual default signature still declines.
-                "Haskell2010" | "GHC2021" | "NoImplicitPrelude" | "DefaultSignatures"
+                "Haskell2010"
+                    | "GHC2021"
+                    | "NoImplicitPrelude"
+                    | "DefaultSignatures"
+                    | "RebindableSyntax"
             )
         })
     {
         return Err(lower_chirho.error_chirho(
             "next S0 does not yet implement this extension profile",
+            module_chirho.span_chirho,
+        ));
+    }
+    if rebindable_chirho && !module_chirho.imports_chirho.is_empty() {
+        return Err(lower_chirho.error_chirho(
+            "next rebindable syntax needs checked source interfaces for imports",
             module_chirho.span_chirho,
         ));
     }
@@ -383,10 +434,11 @@ pub fn lower_module_chirho(
     }) {
         return Err(lower_chirho.error_chirho("next needs checked source interfaces for this import; no handwritten interface is used", module_chirho.span_chirho));
     }
-    if !module_chirho
-        .extensions_chirho
-        .iter()
-        .any(|extension_chirho| extension_chirho == "NoImplicitPrelude")
+    if !rebindable_chirho
+        && !module_chirho
+            .extensions_chirho
+            .iter()
+            .any(|extension_chirho| extension_chirho == "NoImplicitPrelude")
     {
         for (text_chirho, namespace_chirho, wired_chirho) in [
             (

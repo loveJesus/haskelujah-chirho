@@ -12,4 +12,5 @@ rust-version.workspace = true
 crate-type = ["lib", "staticlib"]
 
 [dependencies]
+num-bigint = "=0.5.1"
 target-lexicon = "=0.13.5"

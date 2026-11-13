@@ -433,6 +433,7 @@ fn has_toplevel_equals_chirho(input_chirho: &str) -> bool {
 fn display_value_chirho(val_chirho: &ValueChirho) -> String {
     match val_chirho {
         ValueChirho::IntChirho(n_chirho) => n_chirho.to_string(),
+        ValueChirho::IntegerChirho(value_chirho) => value_chirho.to_string(),
         ValueChirho::FloatChirho(f_chirho) => {
             let s_chirho = f_chirho.to_string();
             if s_chirho.contains('.') {

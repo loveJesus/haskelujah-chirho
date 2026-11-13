@@ -156,7 +156,7 @@ use haskelujah_ast_chirho::expr_chirho::ExprChirho;
 use haskelujah_ast_chirho::module_chirho::ModuleChirho;
 use haskelujah_ast_chirho::name_chirho::{NameChirho, RawNameChirho};
 use haskelujah_ast_chirho::pat_chirho::PatChirho;
-use haskelujah_ast_chirho::provenance_chirho::OriginSupplyChirho;
+use haskelujah_ast_chirho::provenance_chirho::{OriginIdChirho, OriginSupplyChirho};
 use haskelujah_ast_chirho::ty_chirho::TypeChirho;
 use haskelujah_span_chirho::{FileIdChirho, SpanChirho};
 use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
@@ -180,6 +180,29 @@ pub fn lower_module_chirho(
     ctx_chirho.lower_source_file_chirho(root_chirho)
 }
 
+/// The exact literal token is captured by the same AST literal producer, before
+/// its legacy machine-word compatibility field can truncate the magnitude.
+pub struct LoweredModuleChirho {
+    pub module_chirho: ModuleChirho,
+    pub integer_literals_chirho: HashMap<OriginIdChirho, String>,
+}
+
+pub fn lower_module_with_integer_literals_chirho(
+    root_chirho: &Arc<GreenNodeChirho>,
+    file_id_chirho: FileIdChirho,
+) -> LoweredModuleChirho {
+    let mut ctx_chirho = LowerCtxChirho::new_chirho(file_id_chirho);
+    ctx_chirho.integer_literals_chirho = RefCell::new(Some(HashMap::new()));
+    let module_chirho = ctx_chirho.lower_source_file_chirho(root_chirho);
+    LoweredModuleChirho {
+        module_chirho,
+        integer_literals_chirho: ctx_chirho
+            .integer_literals_chirho
+            .into_inner()
+            .unwrap_or_default(),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // LowerCtxChirho — lowering context that tracks byte offset
 // ---------------------------------------------------------------------------
@@ -191,6 +214,7 @@ struct LowerCtxChirho {
     /// The module's origin supply while lowering builds it. Expression lowering
     /// borrows the context immutably, so the supply sits in a cell.
     origin_supply_chirho: RefCell<OriginSupplyChirho>,
+    integer_literals_chirho: RefCell<Option<HashMap<OriginIdChirho, String>>>,
 }
 
 /// Parse an unsigned integer-literal magnitude that may have a hex (0x/0X),

@@ -16,6 +16,11 @@ use haskelujah_core_chirho::expr_chirho::CoreModuleChirho;
 /// Returns the i64 result of main (0 for IO programs).
 /// No linker or object file needed — runs entirely in-memory.
 pub fn jit_execute_chirho(module_chirho: &CoreModuleChirho) -> Result<i64, String> {
+    if module_chirho
+        .uses_primitive_chirho(haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO)
+    {
+        return Err("opaque Integer literal requires a Cranelift runtime bridge".into());
+    }
     let _filtered_chirho = haskelujah_core_chirho::elide_dicts_and_filter_chirho(module_chirho);
 
     // Build JIT module

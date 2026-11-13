@@ -33,17 +33,40 @@ const SECTION_CODE_CHIRHO: u8 = 10;
 
 /// Compile a Core module to a valid WebAssembly binary.
 pub fn compile_core_to_wasm_chirho(module_chirho: &CoreModuleChirho) -> Vec<u8> {
-    let mut emitter_chirho = WasmEmitterChirho::new_chirho();
-    emitter_chirho.emit_module_chirho(module_chirho);
-    emitter_chirho.finish_chirho()
+    try_compile_core_to_wasm_chirho(module_chirho)
+        .expect("Wasm module requires an unsupported Integer runtime")
 }
 
-/// Compile a Core module to a runnable WebAssembly binary with dictionary
-/// elision and reachability filtering (only bindings reachable from `main`).
+/// Refuse an opaque Integer before the legacy emitter can invent a machine word.
+pub fn try_compile_core_to_wasm_chirho(
+    module_chirho: &CoreModuleChirho,
+) -> Result<Vec<u8>, String> {
+    if module_chirho
+        .uses_primitive_chirho(haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO)
+    {
+        return Err("opaque Integer literal requires a Wasm runtime bridge".into());
+    }
+    let mut emitter_chirho = WasmEmitterChirho::new_chirho();
+    emitter_chirho.emit_module_chirho(module_chirho);
+    Ok(emitter_chirho.finish_chirho())
+}
+
 pub fn compile_core_to_wasm_executable_chirho(module_chirho: &CoreModuleChirho) -> Vec<u8> {
+    try_compile_core_to_wasm_executable_chirho(module_chirho)
+        .expect("Wasm executable requires an unsupported Integer runtime")
+}
+
+pub fn try_compile_core_to_wasm_executable_chirho(
+    module_chirho: &CoreModuleChirho,
+) -> Result<Vec<u8>, String> {
+    if module_chirho
+        .uses_primitive_chirho(haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO)
+    {
+        return Err("opaque Integer literal requires a Wasm runtime bridge".into());
+    }
     let filtered_module_chirho =
         haskelujah_core_chirho::elide_dicts_and_filter_chirho(module_chirho);
-    compile_core_to_wasm_chirho(&filtered_module_chirho)
+    try_compile_core_to_wasm_chirho(&filtered_module_chirho)
 }
 
 struct WasmEmitterChirho {

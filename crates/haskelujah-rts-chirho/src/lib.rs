@@ -17,11 +17,15 @@
 //! without pulling in interpreter-specific machinery.
 
 pub mod ffi_chirho;
+#[path = "numeric_chirho/float_math_chirho.rs"]
 pub mod float_math_chirho;
+#[path = "numeric_chirho/float_power_chirho.rs"]
 pub mod float_power_chirho;
+#[path = "numeric_chirho/float_to_int_chirho.rs"]
 mod float_to_int_chirho;
 pub mod gc_chirho;
 pub mod heap_chirho;
+#[path = "numeric_chirho/integer_power_chirho.rs"]
 pub mod integer_power_chirho;
 pub mod native_layout_chirho;
 mod show_double_chirho;
@@ -51,3 +55,6 @@ pub use value_chirho::{
     ClosureChirho, CodePtrChirho, DataConTagChirho, HeapAddrChirho, InfoTableChirho, InfoTagChirho,
     ValueChirho,
 };
+
+#[path = "numeric_chirho/integer_literal_chirho.rs"]
+pub mod integer_literal_chirho;

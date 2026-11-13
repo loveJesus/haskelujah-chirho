@@ -5,7 +5,7 @@
 
 use super::*;
 
-impl LowerChirho {
+impl LowerChirho<'_> {
     pub(super) fn default_bindings_chirho(
         &mut self,
         declarations_chirho: &[DeclChirho],

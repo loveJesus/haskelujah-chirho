@@ -6,7 +6,7 @@
 use super::*;
 use haskelujah_ast_chirho::decl_chirho::{ConDeclChirho, StrictnessChirho};
 
-impl LowerChirho {
+impl LowerChirho<'_> {
     pub(super) fn data_declarations_chirho(
         &mut self,
         declarations_chirho: &[DeclChirho],

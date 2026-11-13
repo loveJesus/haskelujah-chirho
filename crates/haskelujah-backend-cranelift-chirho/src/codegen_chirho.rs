@@ -57,6 +57,11 @@ pub fn compile_core_to_object_executable_chirho(
     module_chirho: &CoreModuleChirho,
     config_chirho: &TargetConfigChirho,
 ) -> Result<NativeObjectChirho, String> {
+    if module_chirho
+        .uses_primitive_chirho(haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO)
+    {
+        return Err("opaque Integer literal requires a Cranelift runtime bridge".into());
+    }
     let mut filtered_module_chirho =
         haskelujah_core_chirho::elide_dicts_and_filter_chirho(module_chirho);
     restore_selector_bindings_chirho(module_chirho, &mut filtered_module_chirho);
@@ -76,6 +81,11 @@ fn compile_core_to_object_inner_chirho(
     config_chirho: &TargetConfigChirho,
     executable_mode_chirho: bool,
 ) -> Result<NativeObjectChirho, String> {
+    if module_chirho
+        .uses_primitive_chirho(haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO)
+    {
+        return Err("opaque Integer literal requires a Cranelift runtime bridge".into());
+    }
     let actions_chirho =
         haskelujah_core_chirho::io_actions_chirho::prepare_native_io_actions_chirho(module_chirho);
     let prepared_chirho =

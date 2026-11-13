@@ -4057,7 +4057,9 @@ impl MachineChirho {
                 let closure_chirho = self.heap_chirho.read_chirho(resolved_chirho);
                 let name_chirho = &closure_chirho.info_chirho.name_chirho;
                 match name_chirho.as_str() {
-                    "I#" | "Box" => {
+                    "I#"
+                    | "Box"
+                    | haskelujah_rts_chirho::integer_literal_chirho::INTEGER_BOX_NAME_CHIRHO => {
                         if let Some(inner_chirho) = closure_chirho.payload_chirho.first() {
                             self.resolve_heap_value_chirho(inner_chirho)
                         } else {
@@ -4114,6 +4116,7 @@ impl MachineChirho {
     ) -> Result<String, EvalErrorChirho> {
         Ok(match val_chirho {
             ValueChirho::IntChirho(n_chirho) => n_chirho.to_string(),
+            ValueChirho::IntegerChirho(value_chirho) => value_chirho.to_string(),
             ValueChirho::FloatChirho(f_chirho) => format!("{}", f_chirho),
             ValueChirho::CharChirho(c_chirho) => show_char_chirho(u32::from(*c_chirho)),
             ValueChirho::StringChirho(s_chirho) => {
@@ -4161,7 +4164,12 @@ impl MachineChirho {
                 let name_chirho = &closure_chirho.info_chirho.name_chirho;
                 match name_chirho.as_str() {
                     // Unboxing wrappers
-                    "I#" | "Box" | "D#" | "C#" | "Addr#" => {
+                    "I#"
+                    | "Box"
+                    | "D#"
+                    | "C#"
+                    | "Addr#"
+                    | haskelujah_rts_chirho::integer_literal_chirho::INTEGER_BOX_NAME_CHIRHO => {
                         if let Some(inner_chirho) = closure_chirho.payload_chirho.first() {
                             return self.show_value_as_string_chirho(inner_chirho);
                         }
@@ -4486,6 +4494,14 @@ impl MachineChirho {
 
     fn box_literal_chirho(&mut self, val_chirho: &ValueChirho) -> ClosureChirho {
         match val_chirho {
+            ValueChirho::IntegerChirho(value_chirho) => ClosureChirho::con_chirho(
+                self.lookup_con_tag_chirho(
+                    haskelujah_rts_chirho::integer_literal_chirho::INTEGER_BOX_NAME_CHIRHO,
+                    0,
+                ),
+                haskelujah_rts_chirho::integer_literal_chirho::INTEGER_BOX_NAME_CHIRHO,
+                vec![ValueChirho::IntegerChirho(value_chirho.clone())],
+            ),
             ValueChirho::IntChirho(n_chirho) => ClosureChirho::con_chirho(
                 self.lookup_con_tag_chirho("I#", 0),
                 "I#",

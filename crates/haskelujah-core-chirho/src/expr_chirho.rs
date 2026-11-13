@@ -14,6 +14,9 @@ use std::fmt;
 use haskelujah_span_chirho::SpanChirho;
 use haskelujah_typing_chirho::ty_chirho::TyChirho;
 
+/// Compiler-internal construction, never a source function or class spelling.
+pub const INTEGER_LITERAL_PRIMOP_CHIRHO: &str = "%next:integer-literal-chirho";
+
 /// A unique identifier for a Core variable (distinct from AST names).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CoreIdChirho(pub u32);
@@ -207,6 +210,64 @@ pub struct CoreModuleChirho {
     /// Where the top-level identities come from: the entry, the compiler's own bindings, and
     /// builtin references (row 628).
     pub provenance_chirho: CoreProvenanceChirho,
+}
+
+impl CoreModuleChirho {
+    /// Capability checks inspect all definitions before reachability rewrites.
+    /// workflow: next-pipeline-chirho/ghc-implementation-map-chirho
+    pub fn uses_primitive_chirho(&self, primitive_chirho: &str) -> bool {
+        let mut work_chirho: Vec<_> = self
+            .bindings_chirho
+            .iter()
+            .map(|binding_chirho| &binding_chirho.rhs_chirho)
+            .collect();
+        while let Some(expression_chirho) = work_chirho.pop() {
+            match expression_chirho {
+                CoreExprChirho::PrimOpChirho {
+                    name_chirho,
+                    args_chirho,
+                } => {
+                    if name_chirho == primitive_chirho {
+                        return true;
+                    }
+                    work_chirho.extend(args_chirho);
+                }
+                CoreExprChirho::ConAppChirho { args_chirho, .. } => work_chirho.extend(args_chirho),
+                CoreExprChirho::AppChirho {
+                    fun_chirho,
+                    arg_chirho,
+                } => {
+                    work_chirho.push(fun_chirho);
+                    work_chirho.push(arg_chirho);
+                }
+                CoreExprChirho::LamChirho { body_chirho, .. }
+                | CoreExprChirho::TyLamChirho { body_chirho, .. } => work_chirho.push(body_chirho),
+                CoreExprChirho::TyAppChirho { expr_chirho, .. } => work_chirho.push(expr_chirho),
+                CoreExprChirho::LetChirho {
+                    binds_chirho,
+                    body_chirho,
+                    ..
+                } => {
+                    work_chirho.push(body_chirho);
+                    work_chirho.extend(binds_chirho.iter().map(|(_, rhs_chirho)| rhs_chirho));
+                }
+                CoreExprChirho::CaseChirho {
+                    scrutinee_chirho,
+                    alts_chirho,
+                    ..
+                } => {
+                    work_chirho.push(scrutinee_chirho);
+                    work_chirho.extend(
+                        alts_chirho
+                            .iter()
+                            .map(|alternative_chirho| &alternative_chirho.rhs_chirho),
+                    );
+                }
+                CoreExprChirho::VarChirho(_) | CoreExprChirho::LitChirho(_) => {}
+            }
+        }
+        false
+    }
 }
 
 // ---------------------------------------------------------------------------

@@ -6,7 +6,7 @@
 use super::*;
 use haskelujah_ast_chirho::expr_chirho::AltChirho;
 
-impl LowerChirho {
+impl LowerChirho<'_> {
     fn pattern_binder_chirho(
         &mut self,
         name_chirho: &NameChirho,

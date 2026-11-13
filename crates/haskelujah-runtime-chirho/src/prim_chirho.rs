@@ -14,6 +14,7 @@ use haskelujah_rts_chirho::{show_char_chirho, show_double_chirho, show_string_ch
 /// Error type for primitive operation failures.
 #[derive(Debug, Clone, PartialEq)]
 pub enum PrimErrorChirho {
+    IntegerLiteralChirho(haskelujah_rts_chirho::integer_literal_chirho::IntegerLiteralErrorChirho),
     /// Type mismatch: expected a different value kind.
     TypeMismatchChirho {
         op_chirho: PrimOpKindChirho,
@@ -29,6 +30,7 @@ pub enum PrimErrorChirho {
 impl std::fmt::Display for PrimErrorChirho {
     fn fmt(&self, f_chirho: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::IntegerLiteralChirho(error_chirho) => error_chirho.fmt(f_chirho),
             Self::TypeMismatchChirho {
                 op_chirho,
                 expected_chirho,
@@ -54,6 +56,14 @@ pub fn apply_prim_binop_chirho(
         PrimOpKindChirho::IsHeapObjectChirho => Ok(ValueChirho::IntChirho(i64::from(matches!(
             left_chirho, ValueChirho::HeapPtrChirho(_)
         )))),
+        PrimOpKindChirho::IntegerLiteralChirho => match left_chirho {
+            ValueChirho::StringChirho(source_chirho) => haskelujah_rts_chirho::integer_literal_chirho::IntegerValueChirho::from_literal_chirho(source_chirho)
+                .map(ValueChirho::IntegerChirho)
+                .map_err(|error_chirho| PrimErrorChirho::IntegerLiteralChirho(error_chirho)),
+            value_chirho => Err(PrimErrorChirho::TypeMismatchChirho {
+                op_chirho, expected_chirho: "an exact Integer literal token", got_chirho: value_chirho.to_string(),
+            }),
+        },
         // Integer arithmetic
         PrimOpKindChirho::AddIntChirho => int_binop_chirho(op_chirho, left_chirho, right_chirho, |a_chirho, b_chirho| {
             Ok(ValueChirho::IntChirho(a_chirho.wrapping_add(b_chirho)))

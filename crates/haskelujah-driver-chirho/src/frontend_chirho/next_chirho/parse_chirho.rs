@@ -14,7 +14,7 @@ use haskelujah_syntax_chirho::{cst_chirho::SyntaxKindChirho, green_chirho::Green
 pub(super) fn parse_chirho(
     source_chirho: &str,
     file_chirho: FileIdChirho,
-) -> Result<haskelujah_ast_chirho::ModuleChirho, NextErrorChirho> {
+) -> Result<haskelujah_parser_chirho::lower_chirho::LoweredModuleChirho, NextErrorChirho> {
     if source_chirho.len() > 1 << 20 {
         return Err(NextErrorChirho::new_chirho(
             NextErrorKindChirho::ResourceChirho,
@@ -141,8 +141,10 @@ pub(super) fn parse_chirho(
             "parser did not retain the complete source",
         ));
     }
-    Ok(haskelujah_parser_chirho::lower_chirho::lower_module_chirho(
-        &green_chirho,
-        file_chirho,
-    ))
+    Ok(
+        haskelujah_parser_chirho::lower_chirho::lower_module_with_integer_literals_chirho(
+            &green_chirho,
+            file_chirho,
+        ),
+    )
 }

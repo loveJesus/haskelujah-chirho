@@ -132,6 +132,18 @@ impl ElaboratorChirho<'_> {
                 }
                 reference_chirho
             }
+            ExprKindChirho::IntegerChirho(source_chirho) => {
+                for _byte_chirho in source_chirho.bytes() {
+                    self.types_chirho.reserve_term_chirho()?;
+                }
+                CoreExprChirho::PrimOpChirho {
+                    name_chirho: haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO
+                        .into(),
+                    args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
+                        source_chirho.clone(),
+                    ))],
+                }
+            }
             ExprKindChirho::CharChirho(value_chirho) => {
                 CoreExprChirho::LitChirho(CoreLitChirho::CharChirho(*value_chirho))
             }

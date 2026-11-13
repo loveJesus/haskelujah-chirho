@@ -15,6 +15,14 @@ impl LowerCtxChirho {
         name_chirho: &str,
         arguments_chirho: Vec<ArgSourceChirho>,
     ) -> u32 {
+        // A source literal is materialized once into the code table. Function
+        // invocations clone its opaque Arc value instead of reparsing its digits.
+        if name_chirho == haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO
+            && let [ArgSourceChirho::StaticChirho(ValueChirho::StringChirho(source_chirho))] = arguments_chirho.as_slice()
+            && let Ok(value_chirho) = haskelujah_runtime_chirho::integer_literal_chirho::IntegerValueChirho::from_literal_chirho(source_chirho)
+        {
+            return self.emit_chirho(CodeChirho::LitChirho(ValueChirho::IntegerChirho(value_chirho)));
+        }
         let instruction_chirho = match primop_name_to_kind_chirho(name_chirho) {
             Some(operation_chirho) => CodeChirho::PrimChirho {
                 op_chirho: operation_chirho,
@@ -34,6 +42,9 @@ impl LowerCtxChirho {
 /// Map a primop name from Core to a `PrimOpKindChirho`.
 fn primop_name_to_kind_chirho(name_chirho: &str) -> Option<PrimOpKindChirho> {
     Some(match name_chirho {
+        haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO => {
+            PrimOpKindChirho::IntegerLiteralChirho
+        }
         "isHeapObjectChirho#" => PrimOpKindChirho::IsHeapObjectChirho,
         "+#" => PrimOpKindChirho::AddIntChirho,
         "enumStepChirho#" => PrimOpKindChirho::EnumStepChirho,

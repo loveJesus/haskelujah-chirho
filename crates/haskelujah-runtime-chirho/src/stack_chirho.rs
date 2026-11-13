@@ -87,6 +87,8 @@ pub enum FrameChirho {
 /// Kinds of primitive operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PrimOpKindChirho {
+    /// Construct an opaque Integer from its exact retained source token.
+    IntegerLiteralChirho,
     /// Classify a demanded runtime value without treating immediate bits as addresses.
     IsHeapObjectChirho,
     AddIntChirho,

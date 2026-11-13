@@ -154,6 +154,8 @@ pub enum ValueChirho {
     HeapPtrChirho(HeapAddrChirho),
     /// An unboxed integer (Int#).
     IntChirho(i64),
+    /// An opaque arbitrary-precision Integer; distinct from Int# and String.
+    IntegerChirho(crate::integer_literal_chirho::IntegerValueChirho),
     /// An unboxed float (Double#).
     FloatChirho(f64),
     /// An unboxed character (Char#).
@@ -177,6 +179,7 @@ impl fmt::Display for ValueChirho {
         match self {
             Self::HeapPtrChirho(addr_chirho) => write!(f_chirho, "@{}", addr_chirho.0),
             Self::IntChirho(v_chirho) => write!(f_chirho, "{}#", v_chirho),
+            Self::IntegerChirho(value_chirho) => write!(f_chirho, "{value_chirho}"),
             Self::FloatChirho(v_chirho) => write!(f_chirho, "{}##", v_chirho),
             Self::CharChirho(v_chirho) => write!(f_chirho, "'{}#'", v_chirho),
             Self::BoolChirho(v_chirho) => write!(f_chirho, "{}#", v_chirho),

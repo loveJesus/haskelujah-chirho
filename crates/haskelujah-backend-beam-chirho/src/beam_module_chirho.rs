@@ -26,6 +26,12 @@ pub fn compile_core_to_beam_chirho(
     module_chirho: &CoreModuleChirho,
     config_chirho: &BeamConfigChirho,
 ) -> Result<BeamOutputChirho, String> {
+    if module_chirho
+        .uses_primitive_chirho(haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO)
+    {
+        return Err("opaque Integer literal requires a BEAM runtime bridge".into());
+    }
+
     let mut chunks_chirho: Vec<Vec<u8>> = Vec::new();
 
     // AtU8 chunk: atom table
@@ -147,6 +153,44 @@ mod tests_chirho {
     };
     use haskelujah_span_chirho::SpanChirho;
     use haskelujah_typing_chirho::ty_chirho::TyChirho;
+
+    #[test]
+    fn opaque_integer_refuses_before_backend_artifact_emission_chirho() {
+        use haskelujah_core_chirho::expr_chirho::{
+            BinderChirho, CoreBindingChirho, CoreExprChirho, CoreIdChirho, CoreLitChirho,
+        };
+        let module_chirho = CoreModuleChirho {
+            name_chirho: "IntegerBoundaryChirho".into(),
+            bindings_chirho: vec![CoreBindingChirho {
+                binder_chirho: BinderChirho {
+                    id_chirho: CoreIdChirho(0),
+                    name_chirho: "resultChirho".into(),
+                    ty_chirho: haskelujah_typing_chirho::ty_chirho::TyChirho::ConChirho(
+                        "Integer".into(),
+                    ),
+                    span_chirho: haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+                },
+                rhs_chirho: CoreExprChirho::PrimOpChirho {
+                    name_chirho: haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO
+                        .into(),
+                    args_chirho: vec![CoreExprChirho::LitChirho(CoreLitChirho::StringChirho(
+                        "340282366920938463463374607431768211457".into(),
+                    ))],
+                },
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            }],
+            names_chirho: Default::default(),
+            specialize_pragmas_chirho: Default::default(),
+            foreign_exports_chirho: vec![],
+            provenance_chirho: Default::default(),
+        };
+        assert!(
+            compile_core_to_beam_chirho(&module_chirho, &BeamConfigChirho::default())
+                .unwrap_err()
+                .contains("Integer")
+        );
+    }
 
     #[test]
     fn compile_empty_beam_module_chirho() {

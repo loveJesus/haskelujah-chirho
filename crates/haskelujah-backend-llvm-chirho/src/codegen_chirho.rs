@@ -4508,8 +4508,18 @@ fn mangle_name_chirho(name_chirho: &str) -> String {
 
 /// Compile a Core module to LLVM IR text.
 pub fn compile_core_to_llvm_chirho(module_chirho: &CoreModuleChirho) -> String {
+    try_compile_core_to_llvm_chirho(module_chirho)
+        .expect("LLVM module requires an unsupported Integer runtime")
+}
+
+pub fn try_compile_core_to_llvm_chirho(module_chirho: &CoreModuleChirho) -> Result<String, String> {
+    if module_chirho
+        .uses_primitive_chirho(haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO)
+    {
+        return Err("opaque Integer literal requires an LLVM runtime bridge".into());
+    }
     let mut codegen_chirho = LlvmCodegenChirho::new_chirho();
-    codegen_chirho.compile_module_chirho(module_chirho)
+    Ok(codegen_chirho.compile_module_chirho(module_chirho))
 }
 
 /// Compile a Core module to LLVM IR text with a C-compatible `main()` entry
@@ -4531,6 +4541,11 @@ pub fn compile_core_to_llvm_executable_chirho(module_chirho: &CoreModuleChirho) 
 pub fn try_compile_core_to_llvm_executable_chirho(
     module_chirho: &CoreModuleChirho,
 ) -> Result<String, String> {
+    if module_chirho
+        .uses_primitive_chirho(haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO)
+    {
+        return Err("opaque Integer literal requires an LLVM runtime bridge".into());
+    }
     // Dictionary elision + reachability filtering via shared Core utility
     let mut filtered_module_chirho =
         haskelujah_core_chirho::elide_dicts_and_filter_chirho(module_chirho);

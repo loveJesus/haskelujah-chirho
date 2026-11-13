@@ -95,17 +95,19 @@ impl From<TcErrorChirho> for NextErrorChirho {
 /// Parse, resolve identity-bearing HIR, generate constraints, and solve before publication.
 /// S0 checks library modules; Main's IO contract requires the source-library slice.
 pub fn check_source_chirho(source_chirho: &str) -> Result<CheckedModuleChirho, NextErrorChirho> {
-    let module_chirho = parse_chirho::parse_chirho(source_chirho, FileIdChirho::SYNTHETIC_CHIRHO)?;
+    let parsed_chirho = parse_chirho::parse_chirho(source_chirho, FileIdChirho::SYNTHETIC_CHIRHO)?;
+    let module_chirho = parsed_chirho.module_chirho;
     if module_chirho.name_chirho.full_name_chirho() == "Main" {
         return Err(NextErrorChirho::new_chirho(
             NextErrorKindChirho::UnsupportedChirho,
             "next needs the checked IO source declaration to validate Main.main; S0 accepts library modules only",
         ));
     }
-    let hir_chirho = haskelujah_hir_chirho::lower_module_chirho(
+    let hir_chirho = haskelujah_hir_chirho::lower_module_with_integer_literals_chirho(
         &module_chirho,
         UnitIdentityChirho::StandaloneHomeChirho,
         LimitsChirho::default(),
+        &parsed_chirho.integer_literals_chirho,
     )
     .map_err(|error_chirho| {
         let kind_chirho = match error_chirho.kind_chirho {
@@ -115,6 +117,22 @@ pub fn check_source_chirho(source_chirho: &str) -> Result<CheckedModuleChirho, N
         };
         NextErrorChirho::new_chirho(kind_chirho, error_chirho.message_chirho)
     })?;
+    // Profile/import declines precede validation; no unsupported syntax gains an invalid verdict.
+    if module_chirho
+        .extensions_chirho
+        .iter()
+        .any(|extension_chirho| extension_chirho == "RebindableSyntax")
+    {
+        for token_chirho in parsed_chirho.integer_literals_chirho.values() {
+            haskelujah_runtime_chirho::integer_literal_chirho::IntegerValueChirho::validate_literal_chirho(token_chirho).map_err(|error_chirho| {
+                let kind_chirho = match error_chirho {
+                    haskelujah_runtime_chirho::integer_literal_chirho::IntegerLiteralErrorChirho::ResourceChirho => NextErrorKindChirho::ResourceChirho,
+                    haskelujah_runtime_chirho::integer_literal_chirho::IntegerLiteralErrorChirho::MalformedChirho => NextErrorKindChirho::InvalidChirho,
+                };
+                NextErrorChirho::new_chirho(kind_chirho, error_chirho.to_string())
+            })?;
+        }
+    }
     Ok(haskelujah_tc_chirho::check_module_chirho(
         hir_chirho,
         1 << 20,
@@ -164,3 +182,7 @@ pub fn eval_binding_chirho(
 #[cfg(test)]
 #[path = "tests_chirho/default_methods_tests_chirho.rs"]
 mod default_methods_tests_chirho;
+
+#[cfg(test)]
+#[path = "tests_chirho/integer_literals_tests_chirho.rs"]
+mod integer_literals_tests_chirho;

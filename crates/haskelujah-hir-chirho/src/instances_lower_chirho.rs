@@ -6,7 +6,7 @@
 use super::*;
 use haskelujah_ast_chirho::ty_chirho::ConstraintChirho;
 
-impl LowerChirho {
+impl LowerChirho<'_> {
     pub(super) fn instance_declarations_chirho(
         &mut self,
         declarations_chirho: &[DeclChirho],

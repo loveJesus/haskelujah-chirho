@@ -29,7 +29,24 @@ impl LowerCtxChirho {
             offset_chirho: 0,
             fixity_overrides_chirho: HashMap::new(),
             origin_supply_chirho: RefCell::new(OriginSupplyChirho::new_chirho()),
+            integer_literals_chirho: RefCell::new(None),
         }
+    }
+
+    pub(super) fn integer_literal_chirho(
+        &self,
+        text_chirho: &str,
+        span_chirho: SpanChirho,
+    ) -> haskelujah_ast_chirho::lit_chirho::LitChirho {
+        let origin_chirho = self.fresh_origin_chirho();
+        if let Some(literals_chirho) = self.integer_literals_chirho.borrow_mut().as_mut() {
+            literals_chirho.insert(origin_chirho, text_chirho.into());
+        }
+        haskelujah_ast_chirho::lit_chirho::LitChirho::IntChirho(
+            super::parse_integer_literal_chirho(text_chirho),
+            span_chirho,
+            Some(origin_chirho),
+        )
     }
 
     pub(super) fn span_chirho(&self, start_chirho: usize, end_chirho: usize) -> SpanChirho {

@@ -6,7 +6,7 @@
 use super::*;
 use haskelujah_ast_chirho::ty_chirho::ConstraintChirho;
 
-impl LowerChirho {
+impl LowerChirho<'_> {
     pub(super) fn invalid_class_chirho(
         &self,
         message_chirho: &str,

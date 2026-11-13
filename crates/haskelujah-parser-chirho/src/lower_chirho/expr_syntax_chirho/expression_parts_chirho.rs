@@ -18,9 +18,9 @@ use haskelujah_syntax_chirho::cst_chirho::SyntaxKindChirho;
 use haskelujah_syntax_chirho::green_chirho::{GreenElementChirho, GreenNodeChirho};
 use haskelujah_syntax_chirho::token_chirho::TokenKindChirho;
 
+use super::LowerCtxChirho;
 use super::bracketed_exprs_chirho::QualPartChirho;
 use super::context_chirho::is_pat_kind_chirho;
-use super::{LowerCtxChirho, parse_integer_literal_chirho};
 
 impl LowerCtxChirho {
     pub(super) fn lower_quoted_name_expr_chirho(
@@ -163,13 +163,11 @@ impl LowerCtxChirho {
                     if saw_equals_chirho && value_chirho.is_none() {
                         match tok_chirho.kind_chirho() {
                             TokenKindChirho::IntegerLiteralChirho => {
-                                let n_chirho =
-                                    parse_integer_literal_chirho(tok_chirho.text_chirho());
-                                value_chirho = Some(ExprChirho::LitChirho(LitChirho::IntChirho(
-                                    n_chirho,
-                                    span_chirho,
-                                    Some(self.fresh_origin_chirho()),
-                                )));
+                                value_chirho =
+                                    Some(ExprChirho::LitChirho(self.integer_literal_chirho(
+                                        tok_chirho.text_chirho(),
+                                        span_chirho,
+                                    )));
                             }
                             TokenKindChirho::StringLiteralChirho => {
                                 // MagicHash: strip trailing # (e.g. "hello"#)
@@ -438,12 +436,7 @@ impl LowerCtxChirho {
                     self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
                 match tok_chirho.kind_chirho() {
                     TokenKindChirho::IntegerLiteralChirho => {
-                        let val_chirho = parse_integer_literal_chirho(tok_chirho.text_chirho());
-                        return LitChirho::IntChirho(
-                            val_chirho,
-                            span_chirho,
-                            Some(self.fresh_origin_chirho()),
-                        );
+                        return self.integer_literal_chirho(tok_chirho.text_chirho(), span_chirho);
                     }
                     TokenKindChirho::FloatLiteralChirho => {
                         let clean_chirho: String = tok_chirho

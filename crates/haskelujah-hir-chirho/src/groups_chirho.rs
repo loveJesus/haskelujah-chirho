@@ -54,7 +54,9 @@ pub fn binding_groups_chirho(bindings_chirho: &[BindingChirho]) -> Vec<Vec<usize
                     work_chirho
                         .extend(arms_chirho.iter().map(|arm_chirho| &arm_chirho.body_chirho));
                 }
-                ExprKindChirho::CharChirho(_) | ExprKindChirho::StringChirho(_) => {}
+                ExprKindChirho::CharChirho(_)
+                | ExprKindChirho::IntegerChirho(_)
+                | ExprKindChirho::StringChirho(_) => {}
             }
         }
         edges_chirho[index_chirho].extend(references_chirho);

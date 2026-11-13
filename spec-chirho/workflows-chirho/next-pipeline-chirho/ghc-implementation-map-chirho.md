@@ -2,7 +2,7 @@
 
 # GHC to Haskelujah implementation map
 
-Implementation scope: isolated `next-pipeline-superclasses-chirho` (unit 748), based on `795477ab`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release.
+Implementation scope: isolated `next-pipeline-integer-literals-chirho` (unit 750), based on `b6af431f`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release.
 
 This is the written reading guide L.J. requested. It maps GHC's assumptions to our data as we implement locally. It introduces no runtime dependency on GHC. Reference: retained GHC 9.14.1, commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886.
 
@@ -192,3 +192,38 @@ flowchart TD
 Controls cover distinct Bool/Char dictionaries, explicit override precedence, mutual defaults, unused bottom defaults, superclass selection, nested constructor contexts, a default selecting another instance type, later class/value names, adjacent equations, scoped local signatures and a non-function default. Invalid generic defaults are checked even when all instances override them; missing unrelated Givens and a missing superclass never borrow self evidence. Class/instance tuple-pattern controls were ACCEPTed by the frozen unit-748 CLI; GHC 9.14.1 rejects both with GHC-69248. The producer-account repair refuses both.
 
 The DefaultSignatures pragma can reach declaration validation, but an actual default signature remains Unsupported. Missing methods without defaults also stay Unsupported, matching GHC's valid-but-warning case rather than inventing a type refusal. MINIMAL and unclassified members, method-owned polymorphism, numeric defaulting, source interfaces/libraries and native/B-run gates remain outside this unit. Contextual defaults may rebuild a dictionary per recursive call; sharing and the existing quadratic Wanted rescans/zonks remain resource work.
+
+
+## Rebindable exact integral literals, unit 750
+
+Architecture decision: Claude2 #33924, source reading only. Implement rebindable integral expressions before source interfaces; ordinary literals and defaulting follow the real Num declaration. No source review or execution by Claude2 is implied. The reference is GHC 9.14.1 commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886.
+
+| GHC source and rule | Local representation and boundary |
+| --- | --- |
+| Builtin/Types.hs wires Integer to GHC.Internal.Bignum.Integer | One sealed TC Integer constructor, converted to a compiler-only nominal Core key. A source declaration spelled Integer remains a different type. No bignum constructors are exported. |
+| Rename/Pat.hs and Rename/Env.hs resolve fromInteger lexically under RebindableSyntax | The actual AST literal producer records raw token spelling under its fresh OriginId. HIR resolves the conversion at each occurrence and emits an ordinary application to an exact Integer expression. The legacy i64 payload is not read for meaning. |
+| Tc/Utils/Instantiate.hs types an overloaded literal as conversion applied to Integer; Tc/Utils/TcMType.hs disables the ordinary shortcut under RS | The existing application checker generates all equalities and user predicates. There is no numeric solver rule or compiler Num scheme. Missing conversion names are Invalid; absent producer payload declines. |
+| Driver/Flags.hs disables implicit Prelude under RS; Rename/Env.hs rebinds negate and ifThenElse | No implicit Bool/Char value/type names are seeded on that route. Prefix minus and conditionals use lexical names as ordinary applications. Literal patterns and imported syntax remain Unsupported. |
+| Tc/Solver/Default.hs uses trusted standard-class keys | Ordinary literals and defaulting remain Unsupported until source interfaces carry the real class/unit identity. A user class with the same spelling gains no privilege. |
+
+The exact payload is validated after supported-profile/import checks and before TC publication. This order leaves valid MagicHash and Haskell2010 separator/application forms Unsupported. Within the supported profile malformed spelling refuses even when conversion ignores its argument. Prefixes are recognized before separators are removed, and a trailing underscore is invalid. Decimal, binary, octal and hexadecimal payloads share the same bounded conversion. A raw token is limited to 16,384 bytes; retained bytes also consume HIR/Core aggregate allowances. This is a Resource refusal, never narrowing or replacement by zero.
+
+Core emits one internal literal primitive. STG materializes its immutable Arc-backed pure Rust Integer once in the code table; runtime demand shares that value and uses a private opaque box on thunk update. No IS/IP/IN layout, GMP, GHC process or GHC library installation is required by this value representation. The runtime fallback validates and bounds the same payload. The pinned num-bigint 0.5.1 dependency and its num-integer dependency are recorded in the lockfile.
+
+```mermaid
+flowchart TD
+  TokenChirho["Exact token at AST producer"] --> OriginChirho["OriginId plus retained source spelling"]
+  OriginChirho --> ProfileChirho{"Supported RS source profile?"}
+  ProfileChirho -->|No| DeclineChirho["Unsupported without numeric authority"]
+  ProfileChirho -->|Yes| LexicalChirho["Lexical fromInteger / negate / ifThenElse"]
+  LexicalChirho --> PayloadChirho["Validate exact bounded payload before TC"]
+  PayloadChirho --> CheckChirho["Existing application, kind and dictionary checks"]
+  CheckChirho --> CoreChirho["Internal Core literal primitive"]
+  CoreChirho --> MaterializeChirho["STG code-table opaque Integer"]
+  MaterializeChirho --> ShareChirho["Rust interpreter: shared demand"]
+  CoreChirho --> BackendChirho["Other backends refuse before emission"]
+```
+
+Controls execute values above 128 bits, lexical shadowing/parameters, user negate/ifThenElse, the minimum-word negation edge and repeated demand of a shared tuple field. Wrong input types and a namesake source Integer never publish Core. Measured GHC lexer boundaries include malformed 1_/0_x1, valid repeated/prefix separators and leading zero; two valid unsupported profiles guard verdict classification. Fallible LLVM/Wasm/Cranelift object/JIT APIs and JVM/BEAM prototypes reject the primitive before emission. Legacy nonfallible LLVM/Wasm adapters fail explicitly through their fallible API; they do not emit a word-sized substitute.
+
+This checkpoint does not provide arithmetic, ordinary Num conversion, defaulting, source interfaces, native Integer, IO-main or B-run. The next architectural prerequisite is source interfaces and unit provenance. Existing quadratic Wanted scans/re-zonks remain an open resource cost. The 353-file profile is retained separately and is not a full GHC compatibility ratio.

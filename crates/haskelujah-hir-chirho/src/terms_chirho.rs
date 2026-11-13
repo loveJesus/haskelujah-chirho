@@ -45,6 +45,8 @@ pub struct ExprChirho {
 pub enum ExprKindChirho {
     VarChirho(NameIdChirho),
     CharChirho(char),
+    /// Producer-retained, exact Integer token; never the legacy i64 compatibility value.
+    IntegerChirho(String),
     StringChirho(String),
     AppChirho(Box<ExprChirho>, Box<ExprChirho>),
     LamChirho(Vec<NameIdChirho>, Box<ExprChirho>),
