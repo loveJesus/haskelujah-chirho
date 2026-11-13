@@ -12,7 +12,7 @@ use haskelujah_runtime_chirho::ValueChirho;
 fn inferred_functions_abstract_and_apply_different_instance_dictionaries_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/class_evidence_chirho/positive-chirho/PolymorphicDispatchChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/positive-chirho/PolymorphicDispatchChirho.hs"
         ),
         'q',
     );
@@ -22,7 +22,7 @@ fn inferred_functions_abstract_and_apply_different_instance_dictionaries_chirho(
 fn captured_wanteds_stay_in_the_emitting_scope_and_receive_outer_evidence_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/class_evidence_chirho/positive-chirho/CapturedConstraintChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/positive-chirho/CapturedConstraintChirho.hs"
         ),
         'c',
     );
@@ -32,7 +32,7 @@ fn captured_wanteds_stay_in_the_emitting_scope_and_receive_outer_evidence_chirho
 fn recursive_references_reapply_the_groups_type_and_dictionary_parameters_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/class_evidence_chirho/positive-chirho/RecursiveEvidenceChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/positive-chirho/RecursiveEvidenceChirho.hs"
         ),
         'q',
     );
@@ -42,7 +42,7 @@ fn recursive_references_reapply_the_groups_type_and_dictionary_parameters_chirho
 fn monomorphism_restriction_waits_for_later_uses_to_fix_a_shared_alias_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/class_evidence_chirho/positive-chirho/MonomorphicUseChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/positive-chirho/MonomorphicUseChirho.hs"
         ),
         'b',
     );
@@ -51,7 +51,7 @@ fn monomorphism_restriction_waits_for_later_uses_to_fix_a_shared_alias_chirho() 
 #[test]
 fn a_single_instance_never_specializes_a_flexible_inferred_argument_chirho() {
     let source_chirho = include_str!(
-        "fixtures_chirho/class_evidence_chirho/positive-chirho/UniqueInstanceGeneralizationChirho.hs"
+        "../fixtures_chirho/class_evidence_chirho/positive-chirho/UniqueInstanceGeneralizationChirho.hs"
     );
     let checked_chirho = check_source_chirho(source_chirho).unwrap();
     let name_chirho = checked_chirho
@@ -83,7 +83,7 @@ fn a_single_instance_never_specializes_a_flexible_inferred_argument_chirho() {
 fn instance_method_references_keep_using_the_generic_class_selector_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/class_evidence_chirho/positive-chirho/InstanceMethodScopeChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/positive-chirho/InstanceMethodScopeChirho.hs"
         ),
         'i',
     );
@@ -93,7 +93,7 @@ fn instance_method_references_keep_using_the_generic_class_selector_chirho() {
 fn two_variables_under_one_class_receive_distinct_evidence_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/class_evidence_chirho/positive-chirho/sharp-chirho/TwoVariablesChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/positive-chirho/sharp-chirho/TwoVariablesChirho.hs"
         ),
         'q',
     );
@@ -103,7 +103,7 @@ fn two_variables_under_one_class_receive_distinct_evidence_chirho() {
 fn lexical_method_shadowing_does_not_generate_a_class_wanted_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/class_evidence_chirho/positive-chirho/sharp-chirho/ShadowedMethodChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/positive-chirho/sharp-chirho/ShadowedMethodChirho.hs"
         ),
         'z',
     );
@@ -113,7 +113,7 @@ fn lexical_method_shadowing_does_not_generate_a_class_wanted_chirho() {
 fn expected_result_types_choose_evidence_without_solver_meta_binding_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/class_evidence_chirho/positive-chirho/sharp-chirho/ResultDirectedChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/positive-chirho/sharp-chirho/ResultDirectedChirho.hs"
         ),
         'd',
     );
@@ -124,37 +124,37 @@ fn invalid_missing_ambiguous_or_wrong_class_evidence_never_reaches_core_chirho()
     for (source_chirho, expected_chirho) in [
         (
             include_str!(
-                "fixtures_chirho/class_evidence_chirho/negative-chirho/AmbiguousEvidenceChirho.hs"
+                "../fixtures_chirho/class_evidence_chirho/negative-chirho/AmbiguousEvidenceChirho.hs"
             ),
             "ambiguous",
         ),
         (
             include_str!(
-                "fixtures_chirho/class_evidence_chirho/negative-chirho/DuplicateInstanceChirho.hs"
+                "../fixtures_chirho/class_evidence_chirho/negative-chirho/DuplicateInstanceChirho.hs"
             ),
             "duplicate",
         ),
         (
             include_str!(
-                "fixtures_chirho/class_evidence_chirho/negative-chirho/MethodMismatchChirho.hs"
+                "../fixtures_chirho/class_evidence_chirho/negative-chirho/MethodMismatchChirho.hs"
             ),
             "",
         ),
         (
             include_str!(
-                "fixtures_chirho/class_evidence_chirho/negative-chirho/MissingInstanceChirho.hs"
+                "../fixtures_chirho/class_evidence_chirho/negative-chirho/MissingInstanceChirho.hs"
             ),
             "no instance",
         ),
         (
             include_str!(
-                "fixtures_chirho/class_evidence_chirho/negative-chirho/RestrictedAliasChirho.hs"
+                "../fixtures_chirho/class_evidence_chirho/negative-chirho/RestrictedAliasChirho.hs"
             ),
             "",
         ),
         (
             include_str!(
-                "fixtures_chirho/class_evidence_chirho/negative-chirho/WrongClassChirho.hs"
+                "../fixtures_chirho/class_evidence_chirho/negative-chirho/WrongClassChirho.hs"
             ),
             "no instance",
         ),
@@ -176,7 +176,7 @@ fn invalid_missing_ambiguous_or_wrong_class_evidence_never_reaches_core_chirho()
 fn dictionary_fields_follow_class_order_and_methods_can_use_later_top_values_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/class_evidence_chirho/positive-chirho/sharp-chirho/MethodOrderChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/positive-chirho/sharp-chirho/MethodOrderChirho.hs"
         ),
         'o',
     );
@@ -186,7 +186,7 @@ fn dictionary_fields_follow_class_order_and_methods_can_use_later_top_values_chi
 fn a_lambda_rhs_does_not_turn_a_restricted_binding_into_a_function_binding_chirho() {
     assert_eq!(
         compile_source_chirho(include_str!(
-            "fixtures_chirho/class_evidence_chirho/negative-chirho/RestrictedLambdaChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/negative-chirho/RestrictedLambdaChirho.hs"
         ))
         .unwrap_err()
         .kind_chirho,
@@ -198,13 +198,13 @@ fn a_lambda_rhs_does_not_turn_a_restricted_binding_into_a_function_binding_chirh
 fn valid_flexible_and_applied_forms_stay_unsupported_until_their_solver_exists_chirho() {
     for source_chirho in [
         include_str!(
-            "fixtures_chirho/class_evidence_chirho/unsupported-chirho/AppliedInstanceChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/unsupported-chirho/AppliedInstanceChirho.hs"
         ),
         include_str!(
-            "fixtures_chirho/class_evidence_chirho/unsupported-chirho/FlexibleInstanceChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/unsupported-chirho/FlexibleInstanceChirho.hs"
         ),
         include_str!(
-            "fixtures_chirho/class_evidence_chirho/unsupported-chirho/HigherClassChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/unsupported-chirho/HigherClassChirho.hs"
         ),
     ] {
         assert_eq!(
@@ -220,7 +220,7 @@ fn valid_flexible_and_applied_forms_stay_unsupported_until_their_solver_exists_c
 #[test]
 fn complex_application_heads_keep_each_invocations_environment_chirho() {
     let source_chirho = include_str!(
-        "fixtures_chirho/class_evidence_chirho/positive-chirho/sharp-chirho/ComplexHeadChirho.hs"
+        "../fixtures_chirho/class_evidence_chirho/positive-chirho/sharp-chirho/ComplexHeadChirho.hs"
     );
     let original_chirho = "(if flagChirho then firstChirho else secondChirho)";
     let mut outcomes_chirho = Vec::new();
@@ -241,8 +241,12 @@ fn complex_application_heads_keep_each_invocations_environment_chirho() {
 #[test]
 fn class_producers_retain_kind_and_value_namespace_errors_chirho() {
     for source_chirho in [
-        include_str!("../../../../../ghc-tests-chirho/typecheck-chirho/should_fail/tcfail146.hs"),
-        include_str!("../../../../../ghc-tests-chirho/typecheck-chirho/should_fail/tcfail147.hs"),
+        include_str!(
+            "../../../../../../ghc-tests-chirho/typecheck-chirho/should_fail/tcfail146.hs"
+        ),
+        include_str!(
+            "../../../../../../ghc-tests-chirho/typecheck-chirho/should_fail/tcfail147.hs"
+        ),
     ] {
         let error_chirho = compile_source_chirho(source_chirho).unwrap_err();
         assert_eq!(error_chirho.kind_chirho, NextErrorKindChirho::TypeChirho);
@@ -250,7 +254,7 @@ fn class_producers_retain_kind_and_value_namespace_errors_chirho() {
     }
     assert_eq!(
         compile_source_chirho(include_str!(
-            "fixtures_chirho/class_evidence_chirho/negative-chirho/KindedInstanceChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/negative-chirho/KindedInstanceChirho.hs"
         ))
         .unwrap_err()
         .kind_chirho,
@@ -258,19 +262,19 @@ fn class_producers_retain_kind_and_value_namespace_errors_chirho() {
     );
     assert_eq!(
         compile_source_chirho(include_str!(
-            "fixtures_chirho/class_evidence_chirho/negative-chirho/DuplicateMethodChirho.hs"
+            "../fixtures_chirho/class_evidence_chirho/negative-chirho/DuplicateMethodChirho.hs"
         ))
         .unwrap_err()
         .kind_chirho,
         NextErrorKindChirho::InvalidChirho
     );
-    // The lossless body must decline before the old AST producer drops an undeclared default.
+    // The shared producer now retains the undeclared body account for a semantic refusal.
     assert_eq!(
         compile_source_chirho(include_str!(
-            "../../../../../ghc-tests-chirho/typecheck-chirho/should_fail/tcfail077.hs"
+            "../../../../../../ghc-tests-chirho/typecheck-chirho/should_fail/tcfail077.hs"
         ))
         .unwrap_err()
         .kind_chirho,
-        NextErrorKindChirho::UnsupportedChirho
+        NextErrorKindChirho::InvalidChirho
     );
 }

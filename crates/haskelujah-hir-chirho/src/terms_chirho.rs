@@ -116,6 +116,8 @@ pub struct ClassDeclChirho {
 #[derive(Debug, Clone)]
 pub struct ClassMethodChirho {
     pub name_chirho: NameIdChirho,
+    /// Ordinary signed binding, selected only when the instance omits this method.
+    pub default_chirho: Option<NameIdChirho>,
     pub ty_chirho: SurfaceTypeChirho,
     pub span_chirho: SpanChirho,
 }

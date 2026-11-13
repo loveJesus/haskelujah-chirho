@@ -149,6 +149,7 @@ fn type_family_instance_registration_chirho() {
 #[test]
 fn class_assoc_type_family_default_applies_per_instance_chirho() {
     let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         name_chirho: dummy_name_chirho("Representable"),
         type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -171,6 +172,7 @@ fn class_assoc_type_family_default_applies_per_instance_chirho() {
     // `instance Representable Proxy` leaves `Rep` undefined, so the
     // class default applies to it — and only to it.
     let instance_decl_ast_chirho = DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: dummy_name_chirho("Representable"),
         types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Proxy"))],
@@ -207,6 +209,7 @@ fn class_assoc_type_family_default_applies_per_instance_chirho() {
 #[test]
 fn instance_assoc_type_family_override_beats_class_default_chirho() {
     let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         name_chirho: dummy_name_chirho("Representable"),
         type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -226,6 +229,7 @@ fn instance_assoc_type_family_override_beats_class_default_chirho() {
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
     let instance_decl_ast_chirho = DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: dummy_name_chirho("Representable"),
         types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Proxy"))],

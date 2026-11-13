@@ -211,6 +211,7 @@ fn derive_anyclass_chirho(
     let mut types_chirho = class_arguments_chirho.to_vec();
     types_chirho.push(instance_type_chirho(type_name_chirho, type_vars_chirho));
     DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: class_name_chirho.clone(),
         types_chirho,
@@ -248,6 +249,7 @@ fn derive_via_chirho(
     // type's methods by unwrapping the newtype. The via type's class instance
     // is already available in the environment, so no context constraint needed.
     DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: class_name_chirho.clone(),
         types_chirho: vec![TypeChirho::ConChirho(type_name_chirho.clone())],
@@ -698,6 +700,7 @@ fn derive_eq_chirho(
         .collect();
 
     DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho,
         class_chirho: var_name_chirho("Eq"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
@@ -847,6 +850,7 @@ fn derive_ord_chirho(
         .collect();
 
     DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho,
         class_chirho: var_name_chirho("Ord"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
@@ -1027,6 +1031,7 @@ fn derive_enum_chirho(
     };
 
     Ok(DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: var_name_chirho("Enum"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
@@ -1105,6 +1110,7 @@ fn derive_bounded_chirho(
     };
 
     Ok(DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: var_name_chirho("Bounded"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
@@ -1243,6 +1249,7 @@ fn derive_read_chirho(
         .collect();
 
     DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho,
         class_chirho: var_name_chirho("Read"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],
@@ -1407,6 +1414,7 @@ fn derive_functor_chirho(
     };
 
     Ok(DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho,
         class_chirho: var_name_chirho("Functor"),
         types_chirho: vec![instance_ty_chirho],
@@ -1498,6 +1506,7 @@ fn derive_foldable_chirho(
     };
 
     Ok(DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: var_name_chirho("Foldable"),
         types_chirho: vec![instance_ty_chirho],
@@ -1605,6 +1614,7 @@ fn derive_traversable_chirho(
     };
 
     Ok(DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: var_name_chirho("Traversable"),
         types_chirho: vec![instance_ty_chirho],
@@ -1707,6 +1717,7 @@ fn derive_generic_chirho(
     };
 
     Ok(DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: var_name_chirho("Generic"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],

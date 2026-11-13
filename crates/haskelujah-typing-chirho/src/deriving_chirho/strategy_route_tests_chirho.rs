@@ -630,6 +630,7 @@ fn only_the_proven_builtin_typeable_is_ignored_chirho() {
     // GHC 9.14.1 does (it prints `int`, typeable-route r2). K01 never proves a local class,
     // so the scope is empty, and a spelling K01 cannot judge keeps its route too.
     let local_class_chirho = DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         name_chirho: var_name_chirho("Typeable"),
         type_vars_chirho: vec![var_name_chirho("a").into()],
@@ -699,6 +700,7 @@ fn a_stock_instance_names_its_class_as_written_chirho() {
         },
     )]));
     let local_eq_chirho = DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         name_chirho: var_name_chirho("Eq"),
         type_vars_chirho: vec![TyVarChirho::plain_chirho(var_name_chirho("valueChirho"))],

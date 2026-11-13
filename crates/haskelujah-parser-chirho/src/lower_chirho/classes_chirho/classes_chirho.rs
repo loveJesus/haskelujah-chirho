@@ -5,7 +5,9 @@
 
 use std::collections::{HashMap, HashSet};
 
-use haskelujah_ast_chirho::decl_chirho::DeclChirho;
+use haskelujah_ast_chirho::decl_chirho::{
+    DeclChirho, UnattachedMemberChirho, UnattachedMemberKindChirho,
+};
 use haskelujah_ast_chirho::expr_chirho::{LocalBindChirho, MatchArmChirho};
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
 use haskelujah_span_chirho::SpanChirho;
@@ -204,6 +206,7 @@ impl LowerCtxChirho {
         // where block.  The CST where-clause contains TypeSig and FunBind
         // children — we reuse `collect_instance_methods_chirho` to gather them.
         let mut where_decls_chirho: Vec<DeclChirho> = Vec::new();
+        let mut unattached_members_chirho = Vec::new();
         for child_chirho in &children_chirho {
             if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho
                 && n_chirho.kind_chirho() == SyntaxKindChirho::WhereClauseChirho
@@ -215,6 +218,7 @@ impl LowerCtxChirho {
                     child_chirho.start_chirho,
                     Some(&class_names_chirho),
                     &mut where_decls_chirho,
+                    &mut unattached_members_chirho,
                 );
             }
         }
@@ -222,19 +226,36 @@ impl LowerCtxChirho {
         // Merge multi-equation default method implementations.
         let where_decls_chirho = merge_fun_binds_chirho(where_decls_chirho);
 
-        // Pair type signatures with optional default implementations.
-        let mut default_impls_chirho: HashMap<String, Vec<MatchArmChirho>> = HashMap::new();
-        for d_chirho in &where_decls_chirho {
+        // Each valid body is moved once into its signature. Invalid declaration
+        // accounts retain names/spans instead of silently disappearing or overwriting.
+        let mut default_impls_chirho: HashMap<
+            String,
+            (
+                haskelujah_ast_chirho::name_chirho::NameChirho,
+                Vec<MatchArmChirho>,
+            ),
+        > = HashMap::new();
+        let mut type_members_chirho = Vec::new();
+        for declaration_chirho in where_decls_chirho {
             if let DeclChirho::FunBindChirho {
-                name_chirho: m_name_chirho,
+                name_chirho,
                 matches_chirho,
                 ..
-            } = d_chirho
+            } = declaration_chirho
             {
-                default_impls_chirho.insert(
-                    m_name_chirho.text_chirho().to_string(),
-                    matches_chirho.clone(),
-                );
+                match default_impls_chirho.entry(name_chirho.text_chirho().to_string()) {
+                    std::collections::hash_map::Entry::Vacant(entry_chirho) => {
+                        entry_chirho.insert((name_chirho, matches_chirho));
+                    }
+                    std::collections::hash_map::Entry::Occupied(_) => {
+                        unattached_members_chirho.push(UnattachedMemberChirho::named_chirho(
+                            UnattachedMemberKindChirho::RepeatedDefaultChirho,
+                            &name_chirho,
+                        ));
+                    }
+                }
+            } else {
+                type_members_chirho.push(declaration_chirho);
             }
         }
 
@@ -242,12 +263,16 @@ impl LowerCtxChirho {
         // from DefaultDeclChirho nodes in the where clause. These have a VarId
         // followed by `::` after the `default` keyword.
         let mut default_sigs_chirho: HashMap<String, String> = HashMap::new();
+        let mut default_sig_spans_chirho = HashSet::new();
         for child_chirho in &children_chirho {
             if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho {
                 if n_chirho.kind_chirho() == SyntaxKindChirho::DefaultDeclChirho
                     && let Some((name_text_chirho, sig_ty_chirho)) =
                         self.try_extract_default_sig_chirho(n_chirho, child_chirho.start_chirho)
                 {
+                    default_sig_spans_chirho.insert(
+                        self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
+                    );
                     default_sigs_chirho.insert(name_text_chirho, sig_ty_chirho);
                 }
                 // Also check inside WhereClauseChirho children
@@ -261,6 +286,9 @@ impl LowerCtxChirho {
                             && let Some((name_text_chirho, sig_ty_chirho)) = self
                                 .try_extract_default_sig_chirho(wn_chirho, wc_chirho.start_chirho)
                         {
+                            default_sig_spans_chirho.insert(
+                                self.span_chirho(wc_chirho.start_chirho, wc_chirho.end_chirho),
+                            );
                             default_sigs_chirho.insert(name_text_chirho, sig_ty_chirho);
                         }
                     }
@@ -269,12 +297,37 @@ impl LowerCtxChirho {
         }
 
         let (methods_chirho, assoc_tfs_chirho) = partition_class_members_chirho(
-            where_decls_chirho,
-            &default_impls_chirho,
+            type_members_chirho,
+            &mut default_impls_chirho,
             &default_sigs_chirho,
+            &default_sig_spans_chirho,
             &visible_kind_binder_names_chirho,
+            &mut unattached_members_chirho,
         );
+        unattached_members_chirho.extend(default_impls_chirho.into_values().map(
+            |(name_chirho, _)| {
+                UnattachedMemberChirho::named_chirho(
+                    UnattachedMemberKindChirho::UnmatchedDefaultChirho,
+                    &name_chirho,
+                )
+            },
+        ));
+        for name_chirho in default_sigs_chirho.keys() {
+            if !methods_chirho
+                .iter()
+                .any(|method_chirho| method_chirho.name_chirho.text_chirho() == name_chirho)
+            {
+                unattached_members_chirho.push(UnattachedMemberChirho {
+                    kind_chirho: UnattachedMemberKindChirho::UnmatchedDefaultChirho,
+                    name_chirho: Some(name_chirho.clone()),
+                    span_chirho,
+                });
+            }
+        }
+        unattached_members_chirho
+            .sort_by_key(|account_chirho| account_chirho.span_chirho.start_chirho());
         DeclChirho::ClassDeclChirho {
+            unattached_members_chirho,
             context_chirho,
             name_chirho: name_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
             type_vars_chirho,
@@ -322,6 +375,7 @@ impl LowerCtxChirho {
 
         // Where-block sub-nodes (FunBind children inside WhereClause).
         let mut method_decls_chirho: Vec<DeclChirho> = Vec::new();
+        let mut unattached_members_chirho = Vec::new();
 
         for child_chirho in &children_chirho {
             match child_chirho.element_chirho {
@@ -365,6 +419,7 @@ impl LowerCtxChirho {
                             child_chirho.start_chirho,
                             None,
                             &mut method_decls_chirho,
+                            &mut unattached_members_chirho,
                         );
                     } else if saw_instance_chirho && !saw_where_chirho {
                         // Type application node (e.g., parenthesized type).
@@ -619,11 +674,18 @@ impl LowerCtxChirho {
                     );
                     None
                 }
-                _ => None,
+                declaration_chirho => {
+                    unattached_members_chirho.push(UnattachedMemberChirho::syntax_chirho(
+                        UnattachedMemberKindChirho::UnsupportedChirho,
+                        declaration_chirho.span_chirho(),
+                    ));
+                    None
+                }
             })
             .collect();
 
         DeclChirho::InstanceDeclChirho {
+            unattached_members_chirho,
             context_chirho,
             class_chirho: class_chirho.unwrap_or_else(|| self.dummy_name_chirho()),
             types_chirho: instance_type_chirho,
@@ -633,16 +695,8 @@ impl LowerCtxChirho {
         }
     }
 
-    /// Collect FunBind (and other decl) children from a WhereClause or similar
-    /// node, lowering each into a DeclChirho and appending to `out_chirho`.
-    ///
-    /// The walk ends at the first non-method member once a method has been seen.
-    /// That is the retained layout-leak stop: a sibling declaration leaked into the
-    /// block is cut there, although method-like members before it are already taken.
-    /// A class passes the names its body declares (`class_declared_names_chirho`):
-    /// a fixity declaration for those names only is a legal class member and does
-    /// not end the walk. An instance passes `None`, since GHC rejects a fixity
-    /// declaration in an instance body.
+    /// Retain the legacy layout-leak stop while accounting for every skipped member.
+    /// Legal class fixities are processed by their declaration-owned fixity path.
     /// workflow: compiler-pipeline-chirho/declaration-validity-chirho
     fn collect_instance_methods_chirho(
         &self,
@@ -650,49 +704,71 @@ impl LowerCtxChirho {
         base_chirho: usize,
         class_names_chirho: Option<&HashSet<String>>,
         out_chirho: &mut Vec<DeclChirho>,
+        unattached_members_chirho: &mut Vec<UnattachedMemberChirho>,
     ) {
         let children_chirho = self.semantic_children_chirho(node_chirho, base_chirho);
         let mut saw_method_like_decl_chirho = false;
+        let mut stopped_chirho = false;
         for child_chirho in &children_chirho {
-            if let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho {
-                if n_chirho.kind_chirho() == SyntaxKindChirho::TypeSigDeclChirho {
-                    let type_sigs_chirho = self.lower_type_sigs_chirho(
-                        n_chirho,
-                        child_chirho.start_chirho,
-                        self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho),
-                    );
-                    if type_sigs_chirho.is_empty() {
-                        if saw_method_like_decl_chirho {
-                            break;
-                        }
-                        continue;
-                    }
+            let GreenElementChirho::NodeChirho(n_chirho) = child_chirho.element_chirho else {
+                continue;
+            };
+            let span_chirho = self.span_chirho(child_chirho.start_chirho, child_chirho.end_chirho);
+            if stopped_chirho {
+                unattached_members_chirho.push(UnattachedMemberChirho::syntax_chirho(
+                    UnattachedMemberKindChirho::UnsupportedChirho,
+                    span_chirho,
+                ));
+                continue;
+            }
+            if n_chirho.kind_chirho() == SyntaxKindChirho::TypeSigDeclChirho {
+                let type_sigs_chirho =
+                    self.lower_type_sigs_chirho(n_chirho, child_chirho.start_chirho, span_chirho);
+                if type_sigs_chirho.is_empty() {
+                    unattached_members_chirho.push(UnattachedMemberChirho::syntax_chirho(
+                        UnattachedMemberKindChirho::UnsupportedChirho,
+                        span_chirho,
+                    ));
+                    stopped_chirho = saw_method_like_decl_chirho;
+                } else {
                     saw_method_like_decl_chirho = true;
                     out_chirho.extend(type_sigs_chirho);
-                } else if let Some(decl_chirho) =
-                    self.lower_decl_chirho(n_chirho, child_chirho.start_chirho)
-                {
-                    if declares_class_fixity_chirho(&decl_chirho, class_names_chirho) {
-                        continue;
-                    }
-                    let is_method_like_decl_chirho = matches!(
-                        decl_chirho,
-                        DeclChirho::FunBindChirho { .. }
-                            | DeclChirho::DefaultDeclChirho { .. }
-                            | DeclChirho::TypeAliasDeclChirho { .. }
-                            | DeclChirho::TypeFamilyDeclChirho { .. }
-                            | DeclChirho::TypeFamilyInstanceDeclChirho { .. }
-                            | DeclChirho::DataDeclChirho { .. }
-                    );
-                    if !is_method_like_decl_chirho {
-                        if saw_method_like_decl_chirho {
-                            break;
-                        }
-                        continue;
-                    }
+                }
+            } else if let Some(decl_chirho) =
+                self.lower_decl_chirho(n_chirho, child_chirho.start_chirho)
+            {
+                if declares_class_fixity_chirho(&decl_chirho, class_names_chirho) {
+                    continue;
+                }
+                let is_method_like_decl_chirho = matches!(
+                    decl_chirho,
+                    DeclChirho::FunBindChirho { .. }
+                        | DeclChirho::DefaultDeclChirho { .. }
+                        | DeclChirho::TypeAliasDeclChirho { .. }
+                        | DeclChirho::TypeFamilyDeclChirho { .. }
+                        | DeclChirho::TypeFamilyInstanceDeclChirho { .. }
+                        | DeclChirho::DataDeclChirho { .. }
+                );
+                if is_method_like_decl_chirho {
                     saw_method_like_decl_chirho = true;
                     out_chirho.push(decl_chirho);
+                } else {
+                    let kind_chirho = if matches!(decl_chirho, DeclChirho::PatBindChirho { .. }) {
+                        UnattachedMemberKindChirho::PatternBindingChirho
+                    } else {
+                        UnattachedMemberKindChirho::UnsupportedChirho
+                    };
+                    unattached_members_chirho.push(UnattachedMemberChirho::syntax_chirho(
+                        kind_chirho,
+                        span_chirho,
+                    ));
+                    stopped_chirho = saw_method_like_decl_chirho;
                 }
+            } else {
+                unattached_members_chirho.push(UnattachedMemberChirho::syntax_chirho(
+                    UnattachedMemberKindChirho::UnsupportedChirho,
+                    span_chirho,
+                ));
             }
         }
     }

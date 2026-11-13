@@ -9,12 +9,12 @@ use super::{
 #[test]
 fn superclass_and_method_fields_follow_each_class_declaration_order_chirho() {
     assert_character_chirho(
-        include_str!("fixtures_chirho/superclasses_chirho/positive-chirho/FieldOrderChirho.hs"),
+        include_str!("../fixtures_chirho/superclasses_chirho/positive-chirho/FieldOrderChirho.hs"),
         'o',
     );
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/superclasses_chirho/positive-chirho/ReversedFieldOrderChirho.hs"
+            "../fixtures_chirho/superclasses_chirho/positive-chirho/ReversedFieldOrderChirho.hs"
         ),
         'o',
     );
@@ -23,11 +23,11 @@ fn superclass_and_method_fields_follow_each_class_declaration_order_chirho() {
 #[test]
 fn transitive_and_diamond_superclass_paths_select_the_right_dictionaries_chirho() {
     assert_character_chirho(
-        include_str!("fixtures_chirho/superclasses_chirho/positive-chirho/TransitiveChirho.hs"),
+        include_str!("../fixtures_chirho/superclasses_chirho/positive-chirho/TransitiveChirho.hs"),
         't',
     );
     assert_character_chirho(
-        include_str!("fixtures_chirho/superclasses_chirho/positive-chirho/DiamondChirho.hs"),
+        include_str!("../fixtures_chirho/superclasses_chirho/positive-chirho/DiamondChirho.hs"),
         'd',
     );
 }
@@ -35,7 +35,7 @@ fn transitive_and_diamond_superclass_paths_select_the_right_dictionaries_chirho(
 #[test]
 fn a_nested_use_gets_a_derived_dictionary_from_its_ancestor_owner_chirho() {
     assert_character_chirho(
-        include_str!("fixtures_chirho/superclasses_chirho/positive-chirho/OuterGivenChirho.hs"),
+        include_str!("../fixtures_chirho/superclasses_chirho/positive-chirho/OuterGivenChirho.hs"),
         'g',
     );
 }
@@ -44,7 +44,7 @@ fn a_nested_use_gets_a_derived_dictionary_from_its_ancestor_owner_chirho() {
 fn an_instance_superclass_closes_from_its_contexts_derived_given_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/superclasses_chirho/positive-chirho/ContextSuperclassChirho.hs"
+            "../fixtures_chirho/superclasses_chirho/positive-chirho/ContextSuperclassChirho.hs"
         ),
         's',
     );
@@ -52,8 +52,9 @@ fn an_instance_superclass_closes_from_its_contexts_derived_given_chirho() {
 
 #[test]
 fn inferred_contexts_drop_transitive_superclasses_but_written_parameters_stay_exact_chirho() {
-    let source_chirho =
-        include_str!("fixtures_chirho/superclasses_chirho/positive-chirho/MinimalContextChirho.hs");
+    let source_chirho = include_str!(
+        "../fixtures_chirho/superclasses_chirho/positive-chirho/MinimalContextChirho.hs"
+    );
     let checked_chirho = check_source_chirho(source_chirho).unwrap();
     let name_chirho = checked_chirho
         .module_chirho
@@ -75,7 +76,7 @@ fn inferred_contexts_drop_transitive_superclasses_but_written_parameters_stay_ex
     assert_character_chirho(source_chirho, 'm');
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/superclasses_chirho/positive-chirho/ExplicitContextsChirho.hs"
+            "../fixtures_chirho/superclasses_chirho/positive-chirho/ExplicitContextsChirho.hs"
         ),
         'e',
     );
@@ -85,27 +86,31 @@ fn inferred_contexts_drop_transitive_superclasses_but_written_parameters_stay_ex
 fn missing_superclasses_wrong_direction_and_class_cycles_never_reach_core_chirho() {
     for (source_chirho, expected_chirho) in [
         (
-            include_str!("fixtures_chirho/superclasses_chirho/negative-chirho/DirectionChirho.hs"),
-            "no instance",
-        ),
-        (
             include_str!(
-                "fixtures_chirho/superclasses_chirho/negative-chirho/AbsentSuperclassChirho.hs"
+                "../fixtures_chirho/superclasses_chirho/negative-chirho/DirectionChirho.hs"
             ),
             "no instance",
         ),
         (
             include_str!(
-                "fixtures_chirho/superclasses_chirho/negative-chirho/MissingContextChirho.hs"
+                "../fixtures_chirho/superclasses_chirho/negative-chirho/AbsentSuperclassChirho.hs"
             ),
             "no instance",
         ),
         (
-            include_str!("fixtures_chirho/superclasses_chirho/negative-chirho/CycleChirho.hs"),
+            include_str!(
+                "../fixtures_chirho/superclasses_chirho/negative-chirho/MissingContextChirho.hs"
+            ),
+            "no instance",
+        ),
+        (
+            include_str!("../fixtures_chirho/superclasses_chirho/negative-chirho/CycleChirho.hs"),
             "cycle",
         ),
         (
-            include_str!("fixtures_chirho/superclasses_chirho/negative-chirho/SelfCycleChirho.hs"),
+            include_str!(
+                "../fixtures_chirho/superclasses_chirho/negative-chirho/SelfCycleChirho.hs"
+            ),
             "cycle",
         ),
     ] {
@@ -126,7 +131,7 @@ fn missing_superclasses_wrong_direction_and_class_cycles_never_reach_core_chirho
 fn valid_compound_superclasses_stay_unsupported_chirho() {
     assert_eq!(
         compile_source_chirho(include_str!(
-            "fixtures_chirho/superclasses_chirho/unsupported-chirho/CompoundSuperclassChirho.hs"
+            "../fixtures_chirho/superclasses_chirho/unsupported-chirho/CompoundSuperclassChirho.hs"
         ))
         .unwrap_err()
         .kind_chirho,
@@ -137,17 +142,19 @@ fn valid_compound_superclasses_stay_unsupported_chirho() {
 #[test]
 fn superclass_dictionaries_follow_each_type_argument_and_each_method_scope_chirho() {
     assert_character_chirho(
-        include_str!("fixtures_chirho/superclasses_chirho/positive-chirho/TwoArgumentsChirho.hs"),
+        include_str!(
+            "../fixtures_chirho/superclasses_chirho/positive-chirho/TwoArgumentsChirho.hs"
+        ),
         'p',
     );
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/superclasses_chirho/positive-chirho/MethodSuperclassChirho.hs"
+            "../fixtures_chirho/superclasses_chirho/positive-chirho/MethodSuperclassChirho.hs"
         ),
         'h',
     );
     let checked_chirho = check_source_chirho(include_str!(
-        "fixtures_chirho/superclasses_chirho/positive-chirho/TwoArgumentsChirho.hs"
+        "../fixtures_chirho/superclasses_chirho/positive-chirho/TwoArgumentsChirho.hs"
     ))
     .unwrap();
     let name_chirho = checked_chirho

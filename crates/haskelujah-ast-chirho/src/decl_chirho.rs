@@ -17,8 +17,11 @@ use crate::ty_chirho::{ConstraintChirho, TypeChirho};
 mod con_prefix_chirho;
 #[path = "decl_chirho/derived_class_chirho.rs"]
 mod derived_class_chirho;
+#[path = "decl_chirho/member_account_chirho.rs"]
+mod member_account_chirho;
 pub use con_prefix_chirho::ConPrefixChirho;
 pub use derived_class_chirho::{DerivedClassChirho, DerivingStrategyChirho};
+pub use member_account_chirho::{UnattachedMemberChirho, UnattachedMemberKindChirho};
 
 /// AST-level kind annotation (written in source code with KindSignatures).
 ///
@@ -264,6 +267,8 @@ pub enum DeclChirho {
         type_vars_chirho: Vec<TyVarChirho>,
         /// Method signatures and optional defaults declared in the class body.
         methods_chirho: Vec<ClassMethodChirho>,
+        /// Members the where-walk or signature pairing did not attach to an owner.
+        unattached_members_chirho: Vec<UnattachedMemberChirho>,
         /// Associated type families declared inside the class.
         associated_tfs_chirho: Vec<AssocTypeFamilyChirho>,
         /// Functional dependencies: `| a -> b, c -> d`.
@@ -274,6 +279,8 @@ pub enum DeclChirho {
     },
     /// Instance declaration.
     InstanceDeclChirho {
+        /// Members the where-walk could not attach; never silently accepted by next.
+        unattached_members_chirho: Vec<UnattachedMemberChirho>,
         /// Constraints required by the instance head.
         context_chirho: Vec<ConstraintChirho>,
         /// Class implemented by the instance.

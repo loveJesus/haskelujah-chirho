@@ -636,6 +636,7 @@ pub fn th_dec_to_ast_chirho(dec_chirho: &ThDecChirho) -> Option<DeclChirho> {
                 .filter_map(|d_chirho| th_dec_to_local_bind_chirho(d_chirho))
                 .collect();
             Some(DeclChirho::InstanceDeclChirho {
+                unattached_members_chirho: Vec::new(),
                 context_chirho: constraints_chirho,
                 class_chirho: class_name_chirho,
                 types_chirho: type_args_chirho,

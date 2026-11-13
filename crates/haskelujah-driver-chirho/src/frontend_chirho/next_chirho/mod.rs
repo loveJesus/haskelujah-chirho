@@ -4,8 +4,10 @@
 //! workflow: next-pipeline-chirho/check-and-elaborate-chirho
 
 #[cfg(test)]
+#[path = "tests_chirho/class_evidence_tests_chirho.rs"]
 mod class_evidence_tests_chirho;
 #[cfg(test)]
+#[path = "tests_chirho/context_instances_tests_chirho.rs"]
 mod context_instances_tests_chirho;
 mod core_chirho;
 #[cfg(test)]
@@ -14,8 +16,10 @@ mod data_patterns_tests_chirho;
 mod generalization_tests_chirho;
 mod parse_chirho;
 #[cfg(test)]
+#[path = "tests_chirho/signature_tests_chirho.rs"]
 mod signature_tests_chirho;
 #[cfg(test)]
+#[path = "tests_chirho/superclass_tests_chirho.rs"]
 mod superclass_tests_chirho;
 #[cfg(test)]
 mod tests_chirho;
@@ -156,3 +160,7 @@ pub fn eval_binding_chirho(
         NextErrorChirho::new_chirho(NextErrorKindChirho::ExecutionChirho, error_chirho)
     })
 }
+
+#[cfg(test)]
+#[path = "tests_chirho/default_methods_tests_chirho.rs"]
+mod default_methods_tests_chirho;

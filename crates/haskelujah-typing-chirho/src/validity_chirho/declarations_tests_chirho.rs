@@ -137,6 +137,7 @@ fn fun_bind_chirho(name_text_chirho: &str, start_chirho: u32) -> LocalBindChirho
 
 fn instance_chirho(methods_chirho: Vec<LocalBindChirho>) -> DeclChirho {
     DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: name_chirho("Eq"),
         types_chirho: vec![con_ty_chirho("T")],
@@ -148,6 +149,7 @@ fn instance_chirho(methods_chirho: Vec<LocalBindChirho>) -> DeclChirho {
 
 fn class_chirho(default_sig_chirho: Option<&str>, has_default_chirho: bool) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         name_chirho: name_chirho("C"),
         type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("a"))],

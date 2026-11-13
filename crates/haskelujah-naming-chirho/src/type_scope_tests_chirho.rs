@@ -126,6 +126,7 @@ fn resolver_binds_local_associated_family_in_type_namespace_chirho() {
     };
     let module_chirho = module_chirho(vec![
         DeclChirho::ClassDeclChirho {
+            unattached_members_chirho: Vec::new(),
             context_chirho: vec![],
             name_chirho: name_chirho("ClassChirho"),
             type_vars_chirho: vec![tyvar_chirho("aChirho")],
@@ -163,6 +164,7 @@ fn qualified_is_list_instance_chirho(import_spec_chirho: Option<ImportSpecChirho
             span_chirho: SpanChirho::DUMMY_CHIRHO,
         },
         DeclChirho::InstanceDeclChirho {
+            unattached_members_chirho: Vec::new(),
             context_chirho: vec![],
             class_chirho: qualified_name_chirho("GHC.Exts", "IsList"),
             types_chirho: vec![TypeChirho::ConChirho(name_chirho("LocalListChirho"))],
@@ -224,6 +226,7 @@ fn qualified_class_import_without_members_does_not_scope_associated_type_chirho(
 #[test]
 fn associated_family_default_requires_a_declared_variable_chirho() {
     let module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         name_chirho: name_chirho("ClassChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
@@ -246,6 +249,7 @@ fn associated_family_default_requires_a_declared_variable_chirho() {
 #[test]
 fn associated_family_default_uses_its_equation_binders_chirho() {
     let module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         name_chirho: name_chirho("ClassChirho"),
         type_vars_chirho: vec![tyvar_chirho("aChirho")],
@@ -322,6 +326,7 @@ fn datakinds_does_not_treat_a_constructor_as_a_class_chirho() {
         SpanChirho::DUMMY_CHIRHO,
     );
     let mut module_chirho = module_chirho(vec![DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![ConstraintChirho::ClassChirho {
             class_chirho: name_chirho("True"),
             args_chirho: vec![TypeChirho::VarChirho(name_chirho("aChirho"))],
@@ -1127,6 +1132,7 @@ fn gadt_without_outer_forall_quantifies_independently_chirho() {
 #[test]
 fn unknown_superclass_is_resolved_in_the_type_namespace_chirho() {
     let decl_chirho = DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![ConstraintChirho::ClassChirho {
             class_chirho: name_chirho("MissingClassChirho"),
             args_chirho: vec![TypeChirho::VarChirho(name_chirho("aChirho"))],

@@ -9,7 +9,10 @@
 
 use std::collections::{HashMap, HashSet};
 
-use haskelujah_ast_chirho::decl_chirho::{AssocTypeFamilyChirho, ClassMethodChirho, DeclChirho};
+use haskelujah_ast_chirho::decl_chirho::{
+    AssocTypeFamilyChirho, ClassMethodChirho, DeclChirho, UnattachedMemberChirho,
+    UnattachedMemberKindChirho,
+};
 use haskelujah_ast_chirho::expr_chirho::MatchArmChirho;
 use haskelujah_ast_chirho::name_chirho::NameChirho;
 use haskelujah_ast_chirho::ty_chirho::{ConstraintChirho, TypeChirho};
@@ -21,9 +24,11 @@ use haskelujah_span_chirho::SpanChirho;
 /// type-scope-resolution-chirho.md`.
 pub(crate) fn partition_class_members_chirho(
     where_decls_chirho: Vec<DeclChirho>,
-    default_impls_chirho: &HashMap<String, Vec<MatchArmChirho>>,
+    default_impls_chirho: &mut HashMap<String, (NameChirho, Vec<MatchArmChirho>)>,
     default_sigs_chirho: &HashMap<String, String>,
+    default_sig_spans_chirho: &HashSet<SpanChirho>,
     visible_kind_binder_names_chirho: &HashSet<String>,
+    unattached_members_chirho: &mut Vec<UnattachedMemberChirho>,
 ) -> (Vec<ClassMethodChirho>, Vec<AssocTypeFamilyChirho>) {
     // `type Member :: Kind` currently reaches AST lowering as two type
     // signatures with the same span: the recovery name `type` and the real
@@ -64,7 +69,9 @@ pub(crate) fn partition_class_members_chirho(
                     });
                     continue;
                 }
-                let default_chirho = default_impls_chirho.get(name_chirho.text_chirho()).cloned();
+                let default_chirho = default_impls_chirho
+                    .remove(name_chirho.text_chirho())
+                    .map(|(_, matches_chirho)| matches_chirho);
                 let default_sig_chirho =
                     default_sigs_chirho.get(name_chirho.text_chirho()).cloned();
                 methods_chirho.push(ClassMethodChirho {
@@ -163,7 +170,15 @@ pub(crate) fn partition_class_members_chirho(
                     span_chirho,
                 });
             }
-            _ => {}
+            // A decoded default signature is attached by the same name map above.
+            DeclChirho::DefaultDeclChirho { span_chirho, .. }
+                if default_sig_spans_chirho.contains(&span_chirho) => {}
+            declaration_chirho => {
+                unattached_members_chirho.push(UnattachedMemberChirho::syntax_chirho(
+                    UnattachedMemberKindChirho::UnsupportedChirho,
+                    declaration_chirho.span_chirho(),
+                ))
+            }
         }
     }
 

@@ -968,6 +968,7 @@ mod tests_chirho {
     fn resolve_class_methods_chirho() {
         let module_chirho = mk_module_chirho(
             vec![DeclChirho::ClassDeclChirho {
+                unattached_members_chirho: Vec::new(),
                 context_chirho: vec![],
                 name_chirho: dummy_name_chirho("Describable"),
                 type_vars_chirho: vec![dummy_name_chirho("a").into()],
@@ -1677,6 +1678,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(
             vec![
                 DeclChirho::ClassDeclChirho {
+                    unattached_members_chirho: Vec::new(),
                     context_chirho: vec![],
                     name_chirho: dummy_name_chirho("MyClass"),
                     type_vars_chirho: vec![dummy_name_chirho("a").into()],
@@ -1686,6 +1688,7 @@ mod tests_chirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 DeclChirho::InstanceDeclChirho {
+                    unattached_members_chirho: Vec::new(),
                     context_chirho: vec![],
                     class_chirho: dummy_name_chirho("MyClass"),
                     types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Int"))],
@@ -1720,6 +1723,7 @@ mod tests_chirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 DeclChirho::InstanceDeclChirho {
+                    unattached_members_chirho: Vec::new(),
                     context_chirho: vec![],
                     class_chirho: dummy_name_chirho("Show"),
                     types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Color"))],
@@ -1745,6 +1749,7 @@ mod tests_chirho {
 
         let module_chirho = mk_module_chirho(
             vec![DeclChirho::InstanceDeclChirho {
+                unattached_members_chirho: Vec::new(),
                 context_chirho: vec![],
                 class_chirho: dummy_name_chirho("Show"),
                 types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Int"))],
@@ -1796,6 +1801,7 @@ mod tests_chirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 DeclChirho::InstanceDeclChirho {
+                    unattached_members_chirho: Vec::new(),
                     context_chirho: vec![],
                     class_chirho: dummy_name_chirho("Show"),
                     types_chirho: vec![TypeChirho::AppChirho {
@@ -1826,6 +1832,7 @@ mod tests_chirho {
         let module_chirho = mk_module_chirho(
             vec![
                 DeclChirho::InstanceDeclChirho {
+                    unattached_members_chirho: Vec::new(),
                     context_chirho: vec![],
                     class_chirho: dummy_name_chirho("Show"),
                     types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Int"))],
@@ -1834,6 +1841,7 @@ mod tests_chirho {
                     span_chirho: SpanChirho::DUMMY_CHIRHO,
                 },
                 DeclChirho::InstanceDeclChirho {
+                    unattached_members_chirho: Vec::new(),
                     context_chirho: vec![],
                     class_chirho: dummy_name_chirho("Eq"),
                     types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Bool"))],

@@ -33,6 +33,7 @@ fn class_chirho(
     methods_chirho: &[&str],
 ) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho,
         name_chirho: name_chirho(class_name_chirho),
         type_vars_chirho: vec![

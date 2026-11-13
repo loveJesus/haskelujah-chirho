@@ -776,6 +776,7 @@ fn assoc_type_family_instance_uses_lhs_free_vars_as_pattern_vars_chirho() {
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
     let assoc_inst_decl_chirho = DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: dummy_name_chirho("Representable"),
         types_chirho: vec![product_lhs_chirho.clone()],

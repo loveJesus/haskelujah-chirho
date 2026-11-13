@@ -390,6 +390,7 @@ pub(super) fn derive_show_chirho(
         .collect();
 
     DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho,
         class_chirho: var_name_chirho("Show"),
         types_chirho: vec![instance_type_chirho(type_name_chirho, type_vars_chirho)],

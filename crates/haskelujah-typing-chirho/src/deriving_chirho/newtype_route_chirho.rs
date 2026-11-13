@@ -46,6 +46,7 @@ pub(super) fn derive_newtype_instance_chirho(
         return None;
     }
     Some(DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![ConstraintChirho::ClassChirho {
             class_chirho: class_name_chirho.clone(),
             args_chirho: class_arguments_chirho

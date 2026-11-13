@@ -96,6 +96,7 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
     };
 
     let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         name_chirho: dummy_name_chirho("Representable"),
         type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -136,6 +137,7 @@ fn instance_method_expected_ty_reduces_associated_family_rhs_chirho() {
     };
 
     let instance_decl_ast_chirho = DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         class_chirho: dummy_name_chirho("Representable"),
         types_chirho: vec![product_head_ast_chirho.clone()],
@@ -220,6 +222,7 @@ fn infer_proxy_index_instance_method_reduces_rep_to_unit_chirho() {
         imports_chirho: vec![],
         decls_chirho: vec![
             DeclChirho::ClassDeclChirho {
+                unattached_members_chirho: Vec::new(),
                 context_chirho: vec![],
                 name_chirho: dummy_name_chirho("Representable"),
                 type_vars_chirho: vec![dummy_name_chirho("f").into()],
@@ -263,6 +266,7 @@ fn infer_proxy_index_instance_method_reduces_rep_to_unit_chirho() {
                 span_chirho: SpanChirho::DUMMY_CHIRHO,
             },
             DeclChirho::InstanceDeclChirho {
+                unattached_members_chirho: Vec::new(),
                 context_chirho: vec![],
                 class_chirho: dummy_name_chirho("Representable"),
                 types_chirho: vec![TypeChirho::ConChirho(dummy_name_chirho("Proxy"))],
@@ -376,6 +380,7 @@ fn infer_composition_with_tuple_family_projection_preserves_applied_rep_chirho()
 fn infer_tabulate_application_after_tuple_projection_keeps_component_functor_chirho() {
     let mut ctx_chirho = InferCtxChirho::new_chirho();
     let class_decl_ast_chirho = DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         name_chirho: dummy_name_chirho("Representable"),
         type_vars_chirho: vec![dummy_name_chirho("f").into()],

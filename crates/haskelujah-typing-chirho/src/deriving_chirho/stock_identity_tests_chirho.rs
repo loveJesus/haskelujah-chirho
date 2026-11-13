@@ -31,6 +31,7 @@ fn qualified_chirho(qualifier_chirho: &str, text_chirho: &str) -> NameChirho {
 /// `class <name> <parameters>` with no methods.
 fn class_decl_chirho(class_chirho: &str, parameters_chirho: &[&str]) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         name_chirho: name_chirho(class_chirho),
         type_vars_chirho: parameters_chirho
@@ -227,6 +228,7 @@ fn a_generated_instance_takes_the_written_class_spelling_chirho() {
         span_chirho: SpanChirho::DUMMY_CHIRHO,
     };
     let mut generated_chirho = vec![DeclChirho::InstanceDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![
             constraint_chirho(name_chirho("Eq")),
             constraint_chirho(name_chirho("Show")),

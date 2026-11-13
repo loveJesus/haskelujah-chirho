@@ -100,6 +100,7 @@ fn class_chirho(
     method_ty_chirho: TypeChirho,
 ) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         name_chirho: name_chirho(class_text_chirho),
         type_vars_chirho: vec![name_chirho("a").into()],

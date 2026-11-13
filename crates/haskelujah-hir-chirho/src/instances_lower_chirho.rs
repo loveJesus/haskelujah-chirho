@@ -15,6 +15,7 @@ impl LowerChirho {
         let mut result_chirho = Vec::new();
         for declaration_chirho in declarations_chirho {
             let DeclChirho::InstanceDeclChirho {
+                unattached_members_chirho,
                 context_chirho,
                 class_chirho,
                 types_chirho,
@@ -25,6 +26,7 @@ impl LowerChirho {
             else {
                 continue;
             };
+            self.check_member_accounts_chirho(unattached_members_chirho)?;
             let [head_chirho] = types_chirho.as_slice() else {
                 return Err(self.error_chirho(
                     "next instances currently require one class argument",
@@ -189,11 +191,42 @@ impl LowerChirho {
                         binding_chirho,
                     });
                 }
-                if seen_chirho.len() != class_chirho.methods_chirho.len() {
-                    return Err(self.error_chirho(
-                        "next does not yet supply missing-method runtime failures",
+                for method_chirho in &class_chirho.methods_chirho {
+                    if seen_chirho.contains(&method_chirho.name_chirho) {
+                        continue;
+                    }
+                    let Some(default_chirho) = method_chirho.default_chirho else {
+                        return Err(self.error_chirho(
+                            "next does not yet supply missing-method runtime failures",
+                            *span_chirho,
+                        ));
+                    };
+                    let binding_id_chirho = self.bind_chirho(
+                        &format!(
+                            "%next:instance-method:{}:{}Chirho",
+                            method_chirho.name_chirho.0,
+                            self.names_chirho.len()
+                        ),
+                        NamespaceChirho::ValueChirho,
                         *span_chirho,
-                    ));
+                        true,
+                        None,
+                    )?;
+                    // Ordinary instantiation supplies the actual dfun and its context;
+                    // there is no synthetic self Given or method-name rebinding.
+                    implementations_chirho.push(InstanceMethodChirho {
+                        method_chirho: method_chirho.name_chirho,
+                        binding_chirho: BindingChirho {
+                            name_chirho: binding_id_chirho,
+                            body_chirho: self.node_chirho(
+                                ExprKindChirho::VarChirho(default_chirho),
+                                *span_chirho,
+                            )?,
+                            signature_chirho: None,
+                            restricted_chirho: false,
+                            span_chirho: *span_chirho,
+                        },
+                    });
                 }
                 Ok(InstanceDeclChirho {
                     name_chirho,

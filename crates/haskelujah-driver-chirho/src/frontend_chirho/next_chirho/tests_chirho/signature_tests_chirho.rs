@@ -8,7 +8,7 @@ use super::{NextErrorKindChirho, assert_character_chirho, compile_source_chirho}
 fn a_declared_qualified_function_dispatches_at_each_use_type_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/positive-chirho/SignedDispatchChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/positive-chirho/SignedDispatchChirho.hs"
         ),
         'q',
     );
@@ -18,7 +18,7 @@ fn a_declared_qualified_function_dispatches_at_each_use_type_chirho() {
 fn explicit_forall_binders_remain_rigid_in_the_body_and_fresh_at_uses_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/positive-chirho/ExplicitForallChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/positive-chirho/ExplicitForallChirho.hs"
         ),
         'e',
     );
@@ -28,7 +28,7 @@ fn explicit_forall_binders_remain_rigid_in_the_body_and_fresh_at_uses_chirho() {
 fn declared_dictionary_order_distinguishes_classes_and_variables_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/positive-chirho/TwoClassesChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/positive-chirho/TwoClassesChirho.hs"
         ),
         'o',
     );
@@ -38,7 +38,7 @@ fn declared_dictionary_order_distinguishes_classes_and_variables_chirho() {
 fn a_nested_signature_reusing_a_variable_name_has_its_own_given_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/positive-chirho/NestedSignatureChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/positive-chirho/NestedSignatureChirho.hs"
         ),
         'q',
     );
@@ -48,7 +48,7 @@ fn a_nested_signature_reusing_a_variable_name_has_its_own_given_chirho() {
 fn class_givens_leave_capture_type_unification_touchable_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/positive-chirho/OuterUnificationChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/positive-chirho/OuterUnificationChirho.hs"
         ),
         'u',
     );
@@ -58,7 +58,7 @@ fn class_givens_leave_capture_type_unification_touchable_chirho() {
 fn signed_recursive_occurrences_apply_their_declared_evidence_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/positive-chirho/SignedRecursionChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/positive-chirho/SignedRecursionChirho.hs"
         ),
         'r',
     );
@@ -68,7 +68,7 @@ fn signed_recursive_occurrences_apply_their_declared_evidence_chirho() {
 fn an_inferred_outer_constraint_solves_a_wanted_inside_a_written_local_signature_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/positive-chirho/CapturedSignatureChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/positive-chirho/CapturedSignatureChirho.hs"
         ),
         'c',
     );
@@ -78,7 +78,7 @@ fn an_inferred_outer_constraint_solves_a_wanted_inside_a_written_local_signature
 fn an_unqualified_polymorphic_signature_is_checked_and_instantiated_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/positive-chirho/DeclaredIdentityChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/positive-chirho/DeclaredIdentityChirho.hs"
         ),
         'i',
     );
@@ -88,19 +88,19 @@ fn an_unqualified_polymorphic_signature_is_checked_and_instantiated_chirho() {
 fn missing_givens_rigid_specialization_ambiguity_and_escape_refuse_before_core_chirho() {
     for source_chirho in [
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/negative-chirho/TooGeneralChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/negative-chirho/TooGeneralChirho.hs"
         ),
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/negative-chirho/RigidSpecializationChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/negative-chirho/RigidSpecializationChirho.hs"
         ),
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/negative-chirho/AmbiguousSignatureChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/negative-chirho/AmbiguousSignatureChirho.hs"
         ),
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/negative-chirho/EscapingSignatureChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/negative-chirho/EscapingSignatureChirho.hs"
         ),
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/negative-chirho/WrongGivenChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/negative-chirho/WrongGivenChirho.hs"
         ),
     ] {
         let error_chirho = compile_source_chirho(source_chirho).unwrap_err();
@@ -116,7 +116,7 @@ fn missing_givens_rigid_specialization_ambiguity_and_escape_refuse_before_core_c
 fn a_class_given_with_one_available_instance_cannot_specialize_a_signature_skolem_chirho() {
     assert_eq!(
         compile_source_chirho(include_str!(
-            "fixtures_chirho/signature_evidence_chirho/negative-chirho/GivenSpecializationChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/negative-chirho/GivenSpecializationChirho.hs"
         ))
         .unwrap_err()
         .kind_chirho,
@@ -128,13 +128,13 @@ fn a_class_given_with_one_available_instance_cannot_specialize_a_signature_skole
 fn richer_valid_signature_forms_remain_explicitly_unsupported_chirho() {
     for source_chirho in [
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/unsupported-chirho/RankArgumentChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/unsupported-chirho/RankArgumentChirho.hs"
         ),
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/unsupported-chirho/CompoundContextChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/unsupported-chirho/CompoundContextChirho.hs"
         ),
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/unsupported-chirho/ScopedSignatureChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/unsupported-chirho/ScopedSignatureChirho.hs"
         ),
     ] {
         assert_eq!(
@@ -151,13 +151,13 @@ fn richer_valid_signature_forms_remain_explicitly_unsupported_chirho() {
 fn an_implicit_inner_signature_captures_the_enclosing_explicit_forall_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/positive-chirho/ScopedReuseGoodChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/positive-chirho/ScopedReuseGoodChirho.hs"
         ),
         's',
     );
     assert_eq!(
         compile_source_chirho(include_str!(
-            "fixtures_chirho/signature_evidence_chirho/negative-chirho/ScopedReuseBadChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/negative-chirho/ScopedReuseBadChirho.hs"
         ))
         .unwrap_err()
         .kind_chirho,
@@ -169,7 +169,7 @@ fn an_implicit_inner_signature_captures_the_enclosing_explicit_forall_chirho() {
 fn an_rhs_annotation_uses_the_signature_declarations_scoped_variable_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/positive-chirho/ScopedAnnotationChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/positive-chirho/ScopedAnnotationChirho.hs"
         ),
         'a',
     );
@@ -179,7 +179,7 @@ fn an_rhs_annotation_uses_the_signature_declarations_scoped_variable_chirho() {
 fn a_nested_explicit_forall_shadows_the_outer_variable_with_a_fresh_identity_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/positive-chirho/ExplicitShadowChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/positive-chirho/ExplicitShadowChirho.hs"
         ),
         'q',
     );
@@ -189,7 +189,7 @@ fn a_nested_explicit_forall_shadows_the_outer_variable_with_a_fresh_identity_chi
 fn a_fixed_outer_variable_in_a_written_local_context_is_not_ambiguous_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/signature_evidence_chirho/positive-chirho/CapturedContextChirho.hs"
+            "../fixtures_chirho/signature_evidence_chirho/positive-chirho/CapturedContextChirho.hs"
         ),
         't',
     );

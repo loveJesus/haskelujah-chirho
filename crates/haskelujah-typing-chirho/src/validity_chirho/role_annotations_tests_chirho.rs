@@ -125,6 +125,7 @@ fn class_chirho(
     families_chirho: &[&str],
 ) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         name_chirho: name_chirho(class_name_chirho),
         type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("aChirho"))],

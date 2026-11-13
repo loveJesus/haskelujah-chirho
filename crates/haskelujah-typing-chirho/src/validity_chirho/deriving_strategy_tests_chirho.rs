@@ -326,6 +326,7 @@ fn standalone_newtype_deriving_is_judged_against_its_local_target_chirho() {
 /// `class <name> <parameters>` with no methods.
 fn class_decl_chirho(class_chirho: &str, parameters_chirho: &[&str]) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         name_chirho: name_chirho(class_chirho),
         type_vars_chirho: parameters_chirho

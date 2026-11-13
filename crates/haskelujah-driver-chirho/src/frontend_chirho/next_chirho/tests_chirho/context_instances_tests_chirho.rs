@@ -7,7 +7,9 @@ use super::{NextErrorKindChirho, assert_character_chirho, compile_source_chirho}
 #[test]
 fn nested_constructor_instances_build_the_matching_dictionary_at_each_type_chirho() {
     assert_character_chirho(
-        include_str!("fixtures_chirho/context_instances_chirho/positive-chirho/NestedBoxChirho.hs"),
+        include_str!(
+            "../fixtures_chirho/context_instances_chirho/positive-chirho/NestedBoxChirho.hs"
+        ),
         'q',
     );
 }
@@ -16,7 +18,7 @@ fn nested_constructor_instances_build_the_matching_dictionary_at_each_type_chirh
 fn a_recursive_instance_method_uses_its_context_without_a_self_given_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/context_instances_chirho/positive-chirho/RecursiveListChirho.hs"
+            "../fixtures_chirho/context_instances_chirho/positive-chirho/RecursiveListChirho.hs"
         ),
         'b',
     );
@@ -26,13 +28,13 @@ fn a_recursive_instance_method_uses_its_context_without_a_self_given_chirho() {
 fn instance_binder_order_and_dictionary_context_order_are_independent_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/context_instances_chirho/positive-chirho/ReversedContextChirho.hs"
+            "../fixtures_chirho/context_instances_chirho/positive-chirho/ReversedContextChirho.hs"
         ),
         'o',
     );
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/context_instances_chirho/positive-chirho/DistinctClassesChirho.hs"
+            "../fixtures_chirho/context_instances_chirho/positive-chirho/DistinctClassesChirho.hs"
         ),
         'd',
     );
@@ -42,19 +44,19 @@ fn instance_binder_order_and_dictionary_context_order_are_independent_chirho() {
 fn instance_contexts_remain_lexical_through_local_generalization_and_signatures_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/context_instances_chirho/positive-chirho/CapturedMethodChirho.hs"
+            "../fixtures_chirho/context_instances_chirho/positive-chirho/CapturedMethodChirho.hs"
         ),
         'c',
     );
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/context_instances_chirho/positive-chirho/ScopedInstanceChirho.hs"
+            "../fixtures_chirho/context_instances_chirho/positive-chirho/ScopedInstanceChirho.hs"
         ),
         's',
     );
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/context_instances_chirho/positive-chirho/SignedCompoundUseChirho.hs"
+            "../fixtures_chirho/context_instances_chirho/positive-chirho/SignedCompoundUseChirho.hs"
         ),
         'g',
     );
@@ -64,13 +66,13 @@ fn instance_contexts_remain_lexical_through_local_generalization_and_signatures_
 fn context_free_instances_do_not_demand_dictionaries_for_unused_parameters_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/context_instances_chirho/positive-chirho/UnconstrainedParameterChirho.hs"
+            "../fixtures_chirho/context_instances_chirho/positive-chirho/UnconstrainedParameterChirho.hs"
         ),
         'u',
     );
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/context_instances_chirho/positive-chirho/PhantomFunctionChirho.hs"
+            "../fixtures_chirho/context_instances_chirho/positive-chirho/PhantomFunctionChirho.hs"
         ),
         'f',
     );
@@ -80,7 +82,7 @@ fn context_free_instances_do_not_demand_dictionaries_for_unused_parameters_chirh
 fn tuple_head_instances_preserve_both_argument_dictionaries_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/context_instances_chirho/positive-chirho/TupleDictionaryChirho.hs"
+            "../fixtures_chirho/context_instances_chirho/positive-chirho/TupleDictionaryChirho.hs"
         ),
         't',
     );
@@ -91,37 +93,37 @@ fn missing_contexts_leaf_instances_and_wrong_class_givens_never_reach_core_chirh
     for (source_chirho, message_chirho) in [
         (
             include_str!(
-                "fixtures_chirho/context_instances_chirho/negative-chirho/MissingContextChirho.hs"
+                "../fixtures_chirho/context_instances_chirho/negative-chirho/MissingContextChirho.hs"
             ),
             "no instance",
         ),
         (
             include_str!(
-                "fixtures_chirho/context_instances_chirho/negative-chirho/MissingLeafChirho.hs"
+                "../fixtures_chirho/context_instances_chirho/negative-chirho/MissingLeafChirho.hs"
             ),
             "no instance",
         ),
         (
             include_str!(
-                "fixtures_chirho/context_instances_chirho/negative-chirho/WrongContextChirho.hs"
+                "../fixtures_chirho/context_instances_chirho/negative-chirho/WrongContextChirho.hs"
             ),
             "no instance",
         ),
         (
             include_str!(
-                "fixtures_chirho/context_instances_chirho/negative-chirho/UnusedMissingContextChirho.hs"
+                "../fixtures_chirho/context_instances_chirho/negative-chirho/UnusedMissingContextChirho.hs"
             ),
             "no instance",
         ),
         (
             include_str!(
-                "fixtures_chirho/context_instances_chirho/negative-chirho/DuplicateHeadChirho.hs"
+                "../fixtures_chirho/context_instances_chirho/negative-chirho/DuplicateHeadChirho.hs"
             ),
             "duplicate",
         ),
         (
             include_str!(
-                "fixtures_chirho/context_instances_chirho/negative-chirho/RigidMethodChirho.hs"
+                "../fixtures_chirho/context_instances_chirho/negative-chirho/RigidMethodChirho.hs"
             ),
             "",
         ),
@@ -143,13 +145,13 @@ fn missing_contexts_leaf_instances_and_wrong_class_givens_never_reach_core_chirh
 fn repeated_fixed_or_compound_instance_patterns_remain_unsupported_chirho() {
     for source_chirho in [
         include_str!(
-            "fixtures_chirho/context_instances_chirho/unsupported-chirho/RepeatedVariableChirho.hs"
+            "../fixtures_chirho/context_instances_chirho/unsupported-chirho/RepeatedVariableChirho.hs"
         ),
         include_str!(
-            "fixtures_chirho/context_instances_chirho/unsupported-chirho/FixedArgumentChirho.hs"
+            "../fixtures_chirho/context_instances_chirho/unsupported-chirho/FixedArgumentChirho.hs"
         ),
         include_str!(
-            "fixtures_chirho/context_instances_chirho/unsupported-chirho/CompoundInstanceContextChirho.hs"
+            "../fixtures_chirho/context_instances_chirho/unsupported-chirho/CompoundInstanceContextChirho.hs"
         ),
     ] {
         let error_chirho = compile_source_chirho(source_chirho).unwrap_err();
@@ -164,7 +166,7 @@ fn repeated_fixed_or_compound_instance_patterns_remain_unsupported_chirho() {
 #[test]
 fn haskell2010_does_not_gain_scoped_instance_type_variables_chirho() {
     let source_chirho = include_str!(
-        "fixtures_chirho/context_instances_chirho/positive-chirho/ScopedInstanceChirho.hs"
+        "../fixtures_chirho/context_instances_chirho/positive-chirho/ScopedInstanceChirho.hs"
     )
     .replace(
         "module ScopedInstanceChirho",
@@ -181,7 +183,7 @@ fn haskell2010_does_not_gain_scoped_instance_type_variables_chirho() {
 fn inferred_compound_constraints_generalize_the_strict_subgoal_chirho() {
     assert_character_chirho(
         include_str!(
-            "fixtures_chirho/context_instances_chirho/positive-chirho/InferredCompoundChirho.hs"
+            "../fixtures_chirho/context_instances_chirho/positive-chirho/InferredCompoundChirho.hs"
         ),
         'i',
     );

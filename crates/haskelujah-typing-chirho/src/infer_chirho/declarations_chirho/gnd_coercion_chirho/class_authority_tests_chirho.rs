@@ -33,6 +33,7 @@ fn qualified_chirho(qualifier_chirho: &str, text_chirho: &str) -> NameChirho {
 /// `class <class> aChirho`.
 fn class_decl_chirho(class_name_chirho: &str) -> DeclChirho {
     DeclChirho::ClassDeclChirho {
+        unattached_members_chirho: Vec::new(),
         context_chirho: vec![],
         name_chirho: name_chirho(class_name_chirho),
         type_vars_chirho: vec![TyVarChirho::plain_chirho(name_chirho("aChirho"))],

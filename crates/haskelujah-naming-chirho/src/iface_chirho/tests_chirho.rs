@@ -304,6 +304,7 @@ fn class_methods_exported_chirho() {
         "Lib",
         None,
         vec![DeclChirho::ClassDeclChirho {
+            unattached_members_chirho: Vec::new(),
             context_chirho: vec![],
             name_chirho: mk_name_chirho("Show"),
             type_vars_chirho: vec![],

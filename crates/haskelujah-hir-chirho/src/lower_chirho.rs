@@ -23,6 +23,8 @@ use crate::*;
 mod classes_lower_chirho;
 #[path = "data_lower_chirho.rs"]
 mod data_lower_chirho;
+#[path = "defaults_lower_chirho.rs"]
+mod defaults_lower_chirho;
 #[path = "instances_lower_chirho.rs"]
 mod instances_lower_chirho;
 #[path = "patterns_lower_chirho.rs"]
@@ -363,7 +365,8 @@ pub fn lower_module_chirho(
         .any(|extension_chirho| {
             !matches!(
                 extension_chirho.as_str(),
-                "Haskell2010" | "GHC2021" | "NoImplicitPrelude"
+                // Retain/validate the declaration; an actual default signature still declines.
+                "Haskell2010" | "GHC2021" | "NoImplicitPrelude" | "DefaultSignatures"
             )
         })
     {
@@ -519,6 +522,11 @@ pub fn lower_module_chirho(
             module_chirho.span_chirho,
         ));
     }
+    // All selectors and top-level names exist before any default RHS is lowered.
+    // Signed hidden defaults use the ordinary dependency planner/checker/Core path.
+    bindings_chirho.extend(
+        lower_chirho.default_bindings_chirho(&module_chirho.decls_chirho, &classes_chirho)?,
+    );
     let instances_chirho =
         lower_chirho.instance_declarations_chirho(&module_chirho.decls_chirho, &classes_chirho)?;
     Ok(ModuleChirho {
