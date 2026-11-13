@@ -59,7 +59,7 @@ pub fn apply_prim_binop_chirho(
         PrimOpKindChirho::IntegerLiteralChirho => match left_chirho {
             ValueChirho::StringChirho(source_chirho) => haskelujah_rts_chirho::integer_literal_chirho::IntegerValueChirho::from_literal_chirho(source_chirho)
                 .map(ValueChirho::IntegerChirho)
-                .map_err(|error_chirho| PrimErrorChirho::IntegerLiteralChirho(error_chirho)),
+                .map_err(PrimErrorChirho::IntegerLiteralChirho),
             value_chirho => Err(PrimErrorChirho::TypeMismatchChirho {
                 op_chirho, expected_chirho: "an exact Integer literal token", got_chirho: value_chirho.to_string(),
             }),
