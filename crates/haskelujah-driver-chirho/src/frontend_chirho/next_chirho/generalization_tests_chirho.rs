@@ -8,17 +8,19 @@ use haskelujah_tc_chirho::{TyConChirho, TyNodeChirho};
 
 #[test]
 fn dependency_groups_generalize_top_level_uses_independently_chirho() {
-    let source_chirho = include_str!("fixtures_chirho/TopPolymorphismChirho.hs");
+    let source_chirho =
+        include_str!("fixtures_chirho/generalization_chirho/TopPolymorphismChirho.hs");
     let (value_chirho, _) = eval_binding_chirho(source_chirho, "resultChirho", 10_000).unwrap();
     assert_eq!(value_chirho, ValueChirho::CharChirho('q'));
 }
 
 #[test]
 fn local_let_bindings_are_polymorphic_without_generalizing_the_environment_chirho() {
-    let source_chirho = include_str!("fixtures_chirho/LocalPolymorphismChirho.hs");
+    let source_chirho =
+        include_str!("fixtures_chirho/generalization_chirho/LocalPolymorphismChirho.hs");
     let (value_chirho, _) = eval_binding_chirho(source_chirho, "resultChirho", 10_000).unwrap();
     assert_eq!(value_chirho, ValueChirho::CharChirho('l'));
-    let bad_chirho = include_str!("fixtures_chirho/OuterCaptureChirho.hs");
+    let bad_chirho = include_str!("fixtures_chirho/generalization_chirho/OuterCaptureChirho.hs");
     assert_eq!(
         check_source_chirho(bad_chirho).unwrap_err().kind_chirho,
         NextErrorKindChirho::TypeChirho
@@ -27,10 +29,12 @@ fn local_let_bindings_are_polymorphic_without_generalizing_the_environment_chirh
 
 #[test]
 fn a_recursive_scc_is_monomorphic_inside_and_polymorphic_at_its_uses_chirho() {
-    let source_chirho = include_str!("fixtures_chirho/MutualPolymorphismChirho.hs");
+    let source_chirho =
+        include_str!("fixtures_chirho/generalization_chirho/MutualPolymorphismChirho.hs");
     let (value_chirho, _) = eval_binding_chirho(source_chirho, "resultChirho", 10_000).unwrap();
     assert_eq!(value_chirho, ValueChirho::CharChirho('m'));
-    let bad_chirho = include_str!("fixtures_chirho/PolymorphicRecursionChirho.hs");
+    let bad_chirho =
+        include_str!("fixtures_chirho/generalization_chirho/PolymorphicRecursionChirho.hs");
     assert_eq!(
         check_source_chirho(bad_chirho).unwrap_err().kind_chirho,
         NextErrorKindChirho::TypeChirho
@@ -39,14 +43,15 @@ fn a_recursive_scc_is_monomorphic_inside_and_polymorphic_at_its_uses_chirho() {
 
 #[test]
 fn complete_signatures_break_the_inference_dependency_cycle_chirho() {
-    let source_chirho = include_str!("fixtures_chirho/SignedCycleChirho.hs");
+    let source_chirho = include_str!("fixtures_chirho/generalization_chirho/SignedCycleChirho.hs");
     let (value_chirho, _) = eval_binding_chirho(source_chirho, "resultChirho", 10_000).unwrap();
     assert_eq!(value_chirho, ValueChirho::CharChirho('s'));
 }
 
 #[test]
 fn unused_instantiation_variables_are_sealed_only_after_generalization_chirho() {
-    let source_chirho = include_str!("fixtures_chirho/UnusedInstantiationChirho.hs");
+    let source_chirho =
+        include_str!("fixtures_chirho/generalization_chirho/UnusedInstantiationChirho.hs");
     let checked_chirho = check_source_chirho(source_chirho).unwrap();
     let arena_chirho = &checked_chirho.solver_chirho.arena_chirho;
     assert!(

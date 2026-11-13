@@ -34,6 +34,9 @@ mod patterns_lower_chirho;
 #[path = "signatures_chirho.rs"]
 mod signatures_chirho;
 
+#[path = "interface_chirho/lower_chirho.rs"]
+mod imports_lower_chirho;
+
 type ResultChirho<TChirho> = Result<TChirho, HirErrorChirho>;
 
 struct LowerChirho<'literals_chirho> {
@@ -45,6 +48,9 @@ struct LowerChirho<'literals_chirho> {
     limits_chirho: LimitsChirho,
     explicit_forall_chirho: bool,
     rebindable_chirho: bool,
+    imported_names_chirho: std::collections::BTreeMap<OriginalNameChirho, NameIdChirho>,
+    import_scope_chirho: HashMap<(String, NamespaceChirho), Vec<NameIdChirho>>,
+    imported_classes_chirho: Vec<ClassDeclChirho>,
     integer_literals_chirho:
         &'literals_chirho HashMap<haskelujah_ast_chirho::provenance_chirho::OriginIdChirho, String>,
 }
@@ -85,6 +91,15 @@ impl LowerChirho<'_> {
         wired_chirho: Option<WiredNameChirho>,
     ) -> ResultChirho<NameIdChirho> {
         self.room_chirho(0, span_chirho)?;
+        // Bound the actual name strings before the environment/catalogue copies them.
+        self.charge_names_chirho(
+            if wired_chirho.is_some() {
+                "GHC.Internal.Types".len()
+            } else {
+                self.module_chirho.len()
+            } + text_chirho.len().saturating_mul(2),
+            span_chirho,
+        )?;
         let id_chirho =
             self.env_chirho
                 .bind_chirho(text_chirho.into(), namespace_chirho, span_chirho);
@@ -93,6 +108,7 @@ impl LowerChirho<'_> {
             return Err(self.error_chirho("name producer and HIR catalogue disagree", span_chirho));
         }
         self.names_chirho.push(NameInfoChirho {
+            namespace_chirho,
             unit_chirho: if wired_chirho.is_some() {
                 UnitIdentityChirho::CompilerChirho
             } else {
@@ -116,20 +132,11 @@ impl LowerChirho<'_> {
         name_chirho: &NameChirho,
         namespace_chirho: NamespaceChirho,
     ) -> ResultChirho<NameIdChirho> {
-        self.env_chirho
-            .lookup_chirho(&name_chirho.full_name_chirho(), namespace_chirho)
-            .map(|info_chirho| NameIdChirho(info_chirho.def_id_chirho.0))
-            .ok_or_else(|| {
-                let message_chirho = format!(
-                    "next has no checked declaration for `{}`; no placeholder type is supplied",
-                    name_chirho.full_name_chirho()
-                );
-                if self.rebindable_chirho {
-                    self.invalid_class_chirho(&message_chirho, name_chirho.span_chirho())
-                } else {
-                    self.error_chirho(message_chirho, name_chirho.span_chirho())
-                }
-            })
+        self.lookup_text_chirho(
+            &name_chirho.full_name_chirho(),
+            namespace_chirho,
+            name_chirho.span_chirho(),
+        )
     }
 
     fn type_chirho(
@@ -369,12 +376,34 @@ pub fn lower_module_with_integer_literals_chirho(
         String,
     >,
 ) -> ResultChirho<ModuleChirho> {
+    lower_module_with_interfaces_chirho(
+        module_chirho,
+        unit_chirho,
+        limits_chirho,
+        integer_literals_chirho,
+        &std::collections::BTreeMap::new(),
+    )
+}
+
+pub fn lower_module_with_interfaces_chirho(
+    module_chirho: &AstModuleChirho,
+    unit_chirho: UnitIdentityChirho,
+    limits_chirho: LimitsChirho,
+    integer_literals_chirho: &HashMap<
+        haskelujah_ast_chirho::provenance_chirho::OriginIdChirho,
+        String,
+    >,
+    interfaces_chirho: &std::collections::BTreeMap<String, std::sync::Arc<InterfaceChirho>>,
+) -> ResultChirho<ModuleChirho> {
     let rebindable_chirho = module_chirho
         .extensions_chirho
         .iter()
         .any(|extension_chirho| extension_chirho == "RebindableSyntax");
     let mut lower_chirho = LowerChirho {
         rebindable_chirho,
+        imported_names_chirho: Default::default(),
+        import_scope_chirho: Default::default(),
+        imported_classes_chirho: Vec::new(),
         integer_literals_chirho,
         env_chirho: NameEnvChirho::new_chirho(),
         names_chirho: Vec::new(),
@@ -389,14 +418,9 @@ pub fn lower_module_with_integer_literals_chirho(
             .find(|extension_chirho| matches!(extension_chirho.as_str(), "GHC2021" | "Haskell2010"))
             .is_none_or(|edition_chirho| edition_chirho == "GHC2021"),
     };
-    if module_chirho
-        .exports_chirho
-        .as_ref()
-        .is_some_and(|exports_chirho| !exports_chirho.is_empty())
-        || !module_chirho.foreign_exports_chirho.is_empty()
-    {
+    if !module_chirho.foreign_exports_chirho.is_empty() {
         return Err(lower_chirho.error_chirho(
-            "next does not yet validate explicit exports",
+            "next does not yet validate foreign exports",
             module_chirho.span_chirho,
         ));
     }
@@ -420,20 +444,7 @@ pub fn lower_module_with_integer_literals_chirho(
             module_chirho.span_chirho,
         ));
     }
-    if rebindable_chirho && !module_chirho.imports_chirho.is_empty() {
-        return Err(lower_chirho.error_chirho(
-            "next rebindable syntax needs checked source interfaces for imports",
-            module_chirho.span_chirho,
-        ));
-    }
-    if module_chirho.imports_chirho.iter().any(|import_chirho| {
-        import_chirho.module_chirho.full_name_chirho() != "Prelude"
-            || import_chirho.qualified_chirho
-            || import_chirho.alias_chirho.is_some()
-            || import_chirho.spec_chirho.is_some()
-    }) {
-        return Err(lower_chirho.error_chirho("next needs checked source interfaces for this import; no handwritten interface is used", module_chirho.span_chirho));
-    }
+    let imports_chirho = lower_chirho.import_interfaces_chirho(module_chirho, interfaces_chirho)?;
     if !rebindable_chirho
         && !module_chirho
             .extensions_chirho
@@ -579,12 +590,17 @@ pub fn lower_module_with_integer_literals_chirho(
     bindings_chirho.extend(
         lower_chirho.default_bindings_chirho(&module_chirho.decls_chirho, &classes_chirho)?,
     );
-    let instances_chirho =
-        lower_chirho.instance_declarations_chirho(&module_chirho.decls_chirho, &classes_chirho)?;
+    let mut available_classes_chirho = lower_chirho.imported_classes_chirho.clone();
+    available_classes_chirho.extend(classes_chirho.iter().cloned());
+    let instances_chirho = lower_chirho
+        .instance_declarations_chirho(&module_chirho.decls_chirho, &available_classes_chirho)?;
+    let exports_chirho = lower_chirho.exports_chirho(module_chirho)?;
     Ok(ModuleChirho {
         unit_chirho: lower_chirho.unit_chirho,
         module_chirho: lower_chirho.module_chirho,
         names_chirho: lower_chirho.names_chirho,
+        imports_chirho,
+        exports_chirho,
         data_chirho,
         classes_chirho,
         instances_chirho,

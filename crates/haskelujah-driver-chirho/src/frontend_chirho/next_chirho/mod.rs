@@ -15,6 +15,11 @@ mod data_patterns_tests_chirho;
 #[cfg(test)]
 mod generalization_tests_chirho;
 mod parse_chirho;
+mod source_interfaces_chirho;
+pub use source_interfaces_chirho::{
+    check_source_file_chirho, check_sources_chirho, compile_source_file_chirho,
+    compile_sources_chirho, eval_sources_binding_chirho,
+};
 #[cfg(test)]
 #[path = "tests_chirho/signature_tests_chirho.rs"]
 mod signature_tests_chirho;
@@ -96,6 +101,16 @@ impl From<TcErrorChirho> for NextErrorChirho {
 /// S0 checks library modules; Main's IO contract requires the source-library slice.
 pub fn check_source_chirho(source_chirho: &str) -> Result<CheckedModuleChirho, NextErrorChirho> {
     let parsed_chirho = parse_chirho::parse_chirho(source_chirho, FileIdChirho::SYNTHETIC_CHIRHO)?;
+    check_parsed_chirho(parsed_chirho, &std::collections::BTreeMap::new())
+}
+
+fn check_parsed_chirho(
+    parsed_chirho: haskelujah_parser_chirho::lower_chirho::LoweredModuleChirho,
+    interfaces_chirho: &std::collections::BTreeMap<
+        String,
+        std::sync::Arc<haskelujah_hir_chirho::InterfaceChirho>,
+    >,
+) -> Result<CheckedModuleChirho, NextErrorChirho> {
     let module_chirho = parsed_chirho.module_chirho;
     if module_chirho.name_chirho.full_name_chirho() == "Main" {
         return Err(NextErrorChirho::new_chirho(
@@ -103,11 +118,12 @@ pub fn check_source_chirho(source_chirho: &str) -> Result<CheckedModuleChirho, N
             "next needs the checked IO source declaration to validate Main.main; S0 accepts library modules only",
         ));
     }
-    let hir_chirho = haskelujah_hir_chirho::lower_module_with_integer_literals_chirho(
+    let hir_chirho = haskelujah_hir_chirho::lower_module_with_interfaces_chirho(
         &module_chirho,
         UnitIdentityChirho::StandaloneHomeChirho,
         LimitsChirho::default(),
         &parsed_chirho.integer_literals_chirho,
+        interfaces_chirho,
     )
     .map_err(|error_chirho| {
         let kind_chirho = match error_chirho.kind_chirho {
@@ -158,6 +174,20 @@ pub fn eval_binding_chirho(
     NextErrorChirho,
 > {
     let core_chirho = compile_source_chirho(source_chirho)?;
+    eval_core_binding_chirho(core_chirho, entry_chirho, step_limit_chirho)
+}
+
+fn eval_core_binding_chirho(
+    core_chirho: CoreModuleChirho,
+    entry_chirho: &str,
+    step_limit_chirho: u64,
+) -> Result<
+    (
+        haskelujah_runtime_chirho::ValueChirho,
+        haskelujah_runtime_chirho::MachineChirho,
+    ),
+    NextErrorChirho,
+> {
     if !core_chirho
         .bindings_chirho
         .iter()

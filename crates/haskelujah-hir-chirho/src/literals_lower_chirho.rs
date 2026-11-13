@@ -12,16 +12,8 @@ impl LowerChirho<'_> {
         arguments_chirho: Vec<ExprChirho>,
         span_chirho: SpanChirho,
     ) -> ResultChirho<ExprChirho> {
-        let name_chirho = self
-            .env_chirho
-            .lookup_chirho(operation_chirho, NamespaceChirho::ValueChirho)
-            .map(|info_chirho| NameIdChirho(info_chirho.def_id_chirho.0))
-            .ok_or_else(|| {
-                self.invalid_class_chirho(
-                    &format!("rebindable `{operation_chirho}` is not in scope"),
-                    span_chirho,
-                )
-            })?;
+        let name_chirho =
+            self.lookup_text_chirho(operation_chirho, NamespaceChirho::ValueChirho, span_chirho)?;
         let mut expression_chirho =
             self.node_chirho(ExprKindChirho::VarChirho(name_chirho), span_chirho)?;
         for argument_chirho in arguments_chirho {

@@ -3,13 +3,21 @@
 //! Compiler-independent identities and terms. No legacy type or evidence lookup.
 
 mod groups_chirho;
+mod interface_chirho;
 mod lower_chirho;
 mod names_chirho;
 mod terms_chirho;
 
 pub use groups_chirho::binding_groups_chirho;
-pub use lower_chirho::{lower_module_chirho, lower_module_with_integer_literals_chirho};
-pub use names_chirho::{NameIdChirho, NameInfoChirho, UnitIdentityChirho, WiredNameChirho};
+pub use interface_chirho::*;
+pub use lower_chirho::{
+    lower_module_chirho, lower_module_with_integer_literals_chirho,
+    lower_module_with_interfaces_chirho,
+};
+pub use names_chirho::{
+    NameIdChirho, NameInfoChirho, NamespaceChirho, OriginalNameChirho, UnitIdentityChirho,
+    WiredNameChirho,
+};
 pub use terms_chirho::{
     BindingChirho, ClassDeclChirho, ClassMethodChirho, ConstructorChirho, DataDeclChirho,
     ExprChirho, ExprIdChirho, ExprKindChirho, HirErrorChirho, HirErrorKindChirho,

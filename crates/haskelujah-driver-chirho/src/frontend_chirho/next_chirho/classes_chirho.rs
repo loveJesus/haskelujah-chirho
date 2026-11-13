@@ -21,10 +21,9 @@ impl ElaboratorChirho<'_> {
     fn dictionary_key_chirho(&self, class_chirho: NameIdChirho) -> String {
         let info_chirho =
             &self.types_chirho.checked_chirho.module_chirho.names_chirho[class_chirho.0 as usize];
-        format!(
-            "%next:home:{}:dictionary-constructor:{}:{}",
-            info_chirho.module_chirho, class_chirho.0, info_chirho.occurrence_chirho
-        )
+        info_chirho
+            .original_chirho()
+            .link_key_chirho("dictionary-constructor")
     }
 
     pub(super) fn evidence_variable_chirho(

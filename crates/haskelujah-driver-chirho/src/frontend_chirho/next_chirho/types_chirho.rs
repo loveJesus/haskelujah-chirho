@@ -31,10 +31,7 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
         match info_chirho.wired_chirho {
             Some(haskelujah_hir_chirho::WiredNameChirho::TrueChirho) => "True".into(),
             Some(haskelujah_hir_chirho::WiredNameChirho::FalseChirho) => "False".into(),
-            _ => format!(
-                "%next:home:{}:constructor:{}:{}",
-                info_chirho.module_chirho, name_chirho.0, info_chirho.occurrence_chirho
-            ),
+            _ => info_chirho.original_chirho().link_key_chirho("constructor"),
         }
     }
 
@@ -154,18 +151,18 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
                     TyConChirho::DeclaredChirho(name_chirho) => {
                         let info_chirho =
                             &self.checked_chirho.module_chirho.names_chirho[name_chirho.0 as usize];
-                        return Ok(CoreTypeChirho::ConChirho(format!(
-                            "%next:home:{}:type:{}:{}",
-                            info_chirho.module_chirho, name_chirho.0, info_chirho.occurrence_chirho
-                        )));
+                        return Ok(CoreTypeChirho::ConChirho(
+                            info_chirho.original_chirho().link_key_chirho("type"),
+                        ));
                     }
                     TyConChirho::ClassChirho(name_chirho) => {
                         let info_chirho =
                             &self.checked_chirho.module_chirho.names_chirho[name_chirho.0 as usize];
-                        return Ok(CoreTypeChirho::ConChirho(format!(
-                            "%next:home:{}:dictionary-type:{}:{}",
-                            info_chirho.module_chirho, name_chirho.0, info_chirho.occurrence_chirho
-                        )));
+                        return Ok(CoreTypeChirho::ConChirho(
+                            info_chirho
+                                .original_chirho()
+                                .link_key_chirho("dictionary-type"),
+                        ));
                     }
                     TyConChirho::TypeChirho | TyConChirho::ConstraintChirho => {
                         return Err(NextErrorChirho::new_chirho(

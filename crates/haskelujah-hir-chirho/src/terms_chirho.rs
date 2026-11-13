@@ -146,6 +146,8 @@ pub struct ModuleChirho {
     pub unit_chirho: UnitIdentityChirho,
     pub module_chirho: String,
     pub names_chirho: Vec<NameInfoChirho>,
+    pub imports_chirho: Vec<crate::ImportedInterfaceChirho>,
+    pub exports_chirho: Vec<NameIdChirho>,
     pub data_chirho: Vec<DataDeclChirho>,
     pub classes_chirho: Vec<ClassDeclChirho>,
     pub instances_chirho: Vec<InstanceDeclChirho>,

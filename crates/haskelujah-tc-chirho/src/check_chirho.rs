@@ -323,6 +323,7 @@ pub fn check_module_chirho(
             );
         }
     }
+    checked_chirho.import_interfaces_chirho()?;
     let data_chirho = std::mem::take(&mut checked_chirho.module_chirho.data_chirho);
     let classes_chirho = std::mem::take(&mut checked_chirho.module_chirho.classes_chirho);
     // Class kinds must exist while checking data fields that mention those declarations.

@@ -12,7 +12,7 @@ use haskelujah_ast_chirho::name_chirho::DefIdChirho;
 use haskelujah_span_chirho::SpanChirho;
 
 /// What kind of thing a name refers to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum NamespaceChirho {
     /// A value-level name (variable, function, data constructor).
     ValueChirho,

@@ -4,7 +4,7 @@
 //! workflow: next-pipeline-chirho/check-and-elaborate-chirho
 
 use super::FlagsChirho;
-use std::{fs, process::ExitCode};
+use std::{path::Path, process::ExitCode};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum PipelineChirho {
@@ -39,21 +39,18 @@ pub(super) fn command_chirho(positional_chirho: &[&str], flags_chirho: &FlagsChi
         eprintln!("these backend flags are not supported by next check");
         return ExitCode::from(2);
     }
-    let source_chirho = match fs::read_to_string(positional_chirho[1]) {
-        Ok(source_chirho) => source_chirho,
-        Err(error_chirho) => {
-            eprintln!("{}: {error_chirho}", positional_chirho[1]);
-            return ExitCode::from(1);
-        }
-    };
     let result_chirho = if flags_chirho.dump_core_chirho {
-        haskelujah_driver_chirho::next_chirho::compile_source_chirho(&source_chirho).map(
-            |module_chirho| {
-                eprintln!("{module_chirho:#?}");
-            },
-        )
+        haskelujah_driver_chirho::next_chirho::compile_source_file_chirho(Path::new(
+            positional_chirho[1],
+        ))
+        .map(|module_chirho| {
+            eprintln!("{module_chirho:#?}");
+        })
     } else {
-        haskelujah_driver_chirho::next_chirho::check_source_chirho(&source_chirho).map(|_| ())
+        haskelujah_driver_chirho::next_chirho::check_source_file_chirho(Path::new(
+            positional_chirho[1],
+        ))
+        .map(|_| ())
     };
     match result_chirho {
         Ok(()) => {

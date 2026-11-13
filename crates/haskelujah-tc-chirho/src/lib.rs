@@ -3,6 +3,8 @@
 //! An independent, elaborating checker. It never calls legacy typing.
 
 mod check_chirho;
+mod interface_chirho;
+pub use interface_chirho::project_interface_chirho;
 mod error_chirho;
 mod schemes_chirho;
 #[cfg(test)]
