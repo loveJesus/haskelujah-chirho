@@ -2,7 +2,7 @@
 
 # GHC to Haskelujah implementation map
 
-Implementation scope: isolated `next-pipeline-source-interfaces-chirho` (unit 751), based on `b2a48cba`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release.
+Implementation scope: isolated `next-pipeline-real-num-chirho` (unit 752), based on `da79fd1d`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release.
 
 This is the written reading guide L.J. requested. It maps GHC's assumptions to our data as we implement locally. It introduces no runtime dependency on GHC. Reference: retained GHC 9.14.1, commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886.
 
@@ -263,3 +263,43 @@ Measured controls cover the hidden ALib Bool mismatch (GHC-83865), abstract/priv
 Scope: plain home-source imports and default or value-only explicit exports, including a value re-export. Module re-exports, import/hiding lists, package units, boot cycles and stored artifact loading/trust remain separate work. Every accepted producer here is a complete supported source module. No source slice or partial unit is admitted. Main/IO and B-run/native gates remain open; default CLI remains legacy. The existing module-wide Wanted rescans and flat transitive interface-copy costs remain bounded by ceilings but are not optimized. Fixtures are grouped to keep source directories below 15 entries.
 
 Claude2 #34005 identifies the next architectural prerequisites: a driver unit manifest with explicit completeness, absence-aware behavior for source slices, source operators/fixities/pragmas, then the actual Num class slice and known-identity ordinary literals. This is planning context; none of those partial-unit or numeric-defaulting privileges is introduced by unit 751.
+
+
+## Embedded source units and the actual Num class, unit 752
+
+Architecture inputs: Claude2 #34005/#34030/#34031 and the bounded authority review #34053, all source reading only. This is the four-stage real-Num route, not a replacement standard-library catalogue. The following supersedes earlier unit-specific numeric/library exclusions only at this scope.
+
+| GHC concept | Local implementation and boundary |
+| --- | --- |
+| Defining unit and interface reconstruction | Driver source manifests alone admit embedded GHC 9.14.1 files as ghc-internal. Graph keys are (unit,module); an identically named home module remains home. Installed source never resolves an unknown dependency to a home key. Every checked module still has a fresh arena. |
+| Actual source selection | The driver embeds whole unmodified Tuple.hs and Num.hs and the complete ghc-internal LICENSE. The manifest pins version, upstream path, whole-file SHA256 and ordered UTF-8 byte spans. Selections start/end at line boundaries, cannot end before an indented declaration tail, and cannot split the selected function from its following equation group. The synthetic header/profile and sole wired Integer dependency are manifest-owned. No developer checkout or GHC process is read by the product. |
+| Source slices and absence | Interfaces retain their own completeness and the inherited set of sliced units. Missing names from incomplete scope, absent instances at sliced class/head owners, standard Num defaulting, and local instances whose class and head are both partial decline. A mismatch against present checked types remains a refusal. A slice supplies presence, never complete-library absence authority. |
+| Import scope and child ownership | Open imports of slices decline: unseen exports could clash. Explicit lists select checked values, types, or a class's declared methods by original name. Num(..) obtains its methods through the class record; hidden defaults never enter scope. Explicit method implementations must name visible methods of the owning class. Hiding, qualified aliases and data-constructor member lists still decline. Top-level declaration/import clashes refuse at uses; nested binders shadow. A supplied/discovered home Prelude declines until checked implicit import selection exists. |
+| Rename/Pat and Rename/Env known syntax | Ordinary integral expressions and prefix negation use the original ghc-internal/GHC.Internal.Num/fromInteger or negate. Inside that defining source module they resolve to its own declaration. Else they use its checked interface through a scope-hidden dependency. RebindableSyntax remains lexical. The exact bounded Integer payload and application/evidence machinery from unit 750 are reused. |
+| Operators and fixities | Prefix operator names, operator signatures/equations, and one unambiguous infix application use resolved value IDs. Declared fixities travel under original names in interfaces. Chains with an unparenthesized infix/negation operand decline, because the reused parser groups by spelling before name resolution. Parenthesized grouping is explicit. Full fixity regrouping and class/local fixity declarations are separate work. |
+| Class pragma ownership | The shared where producer retains MINIMAL/INLINE accounts. Only supported class-layout positions validate against that class's method/default records; explicit braces require a direct where child bracketed by real item delimiters. Nested body positions, misplaced/trailing pragmas and unrepresented positions decline. INLINE requires a default, and MINIMAL validates the method names/formula. Every enclosing member tail is checked, including pragmas following a default binding. No optimization or missing-method warning semantics are claimed. |
+
+```mermaid
+flowchart TD
+  EmbeddedChirho["Whole upstream source files and license in Rust package"] --> ManifestChirho["Version, whole SHA256, declaration byte spans"]
+  ManifestChirho --> UnitChirho["Driver admits ghc-internal slice"]
+  HomeChirho["Home source and separately resolved spelling"] --> GraphChirho["Unit-qualified dependency graph"]
+  UnitChirho --> GraphChirho
+  GraphChirho --> ScopeChirho["Explicit slice imports or hidden known-name dependency"]
+  ScopeChirho --> CheckChirho["Fresh arena, ordinary classes/defaults/applications"]
+  CheckChirho --> PresenceChirho{"Present checked evidence closes?"}
+  PresenceChirho -->|Yes| LinkChirho["Original-name Core links and Rust interpreter"]
+  PresenceChirho -->|Absence in partial unit| DeclineChirho["Unsupported; no fake no-instance verdict"]
+  LinkChirho --> ResultChirho["Actual Num defaults at a home type"]
+```
+
+The tuple slice checks upstream fst/snd; absent swap remains Unsupported. The Num slice is exactly upstream fixities (lines 41-42) and class/default declarations (67-92), with no instance or subtract. The class's mutual defaults use their own Given and the actual instance dictionary. Controls execute default subtraction and default negation at a home type, ignore home fromInteger/negate for ordinary syntax, preserve RS, reject present type mismatches and refuse partial-unit absence. Exact receipts and final counts belong to the unit tasklist/checkpoint, not this design guide.
+
+Cargo packages include the whole source and license; the binary exposes `bundled-source-licenses-chirho`. The payload remains pure Rust with no GMP/GHC runtime requirement. This is interpreter library-binding evaluation; Num Int, Num Integer, Integer arithmetic, defaulting, full ghc-internal, source CPP, native Integer/IO-main and B-run remain open. Source discovery is still limited to the entry's home dependency closure. Growing work retains module/output ceilings; module-wide Wanted scans and flat transitive interface copies are still unoptimized.
+
+
+Review correction #34065: the implicit Prelude also needs an honest scope account. The complete explicit export names are read from the whole, hash-pinned upstream libraries/base/src/Prelude.hs (6040 bytes); wildcards/module re-exports or unaccounted export grammar refuse. This immutable cached name set supplies no type, class, value implementation or instance. A home declaration/import colliding with a known Prelude export refuses at its unqualified use; a present unimplemented Prelude name is Unsupported, even beside a checked home import. Nested binders still shadow. When an imported compiler declaration might be the same Prelude export, identity is withheld until its checked defining interface joins that exposure: this case is Unsupported, never a fabricated clash. Explicit Prelude imports without a checked interface also decline. The four existing wired language entities remain the implemented subset of Prelude exposure. A raw HIR call without a Prelude export account cannot certify an unqualified global name's absence from Prelude.
+
+The same base LICENSE is vendored beside Prelude.hs and is byte-identical to the ghc-internal notice exposed by the binary. No Prelude body is checked by the name-account reader. The unit's initial corpus comparison exposed the implicit-(+) clash in tcfail037; that candidate is retained as intermediate evidence and is not the acceptance candidate.
+
+Review correction #34082: scope absence is withheld for currently unmodeled self-qualified home references and wired constructor expression forms such as `:`; these are Unsupported, never an invented not-in-scope verdict. Fresh GHC controls accept both forms. Embedded asset/manifest failures are also Unsupported rather than a verdict against the user's source. Qualified export parsing removes module components without consuming an operator's own dots. Manifest equation-group edges compare supported binder sets at both ends, include multi-name signatures and conservatively decline infix-head boundary shapes. Today's four actual-source spans are unchanged.
