@@ -2,7 +2,7 @@
 
 # GHC to Haskelujah implementation map
 
-Implementation scope: isolated `next-pipeline-integer-literals-chirho` (unit 750), based on `b6af431f`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release.
+Implementation scope: isolated `next-pipeline-source-interfaces-chirho` (unit 751), based on `b2a48cba`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release.
 
 This is the written reading guide L.J. requested. It maps GHC's assumptions to our data as we implement locally. It introduces no runtime dependency on GHC. Reference: retained GHC 9.14.1, commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886.
 
@@ -227,3 +227,39 @@ flowchart TD
 Controls execute values above 128 bits, lexical shadowing/parameters, user negate/ifThenElse, the minimum-word negation edge and repeated demand of a shared tuple field. Wrong input types and a namesake source Integer never publish Core. Measured GHC lexer boundaries include malformed 1_/0_x1, valid repeated/prefix separators and leading zero; two valid unsupported profiles guard verdict classification. Fallible LLVM/Wasm/Cranelift object/JIT APIs and JVM/BEAM prototypes reject the primitive before emission. Legacy nonfallible LLVM/Wasm adapters fail explicitly through their fallible API; they do not emit a word-sized substitute.
 
 This checkpoint does not provide arithmetic, ordinary Num conversion, defaulting, source interfaces, native Integer, IO-main or B-run. The next architectural prerequisite is source interfaces and unit provenance. Existing quadratic Wanted scans/re-zonks remain an open resource cost. The 353-file profile is retained separately and is not a full GHC compatibility ratio.
+
+
+## Checked source interfaces and original-name linking, unit 751
+
+Architecture: Claude2 #33975, source reasoning only. GHC 9.14.1 at 902339d3 is the reference. Source reading of IfaceToCore.hs:1497 onward confirms that interface types are rebuilt, and free interface variables are not accepted as ordinary closed types. Unit/Types.hs:600 supplies the fixed ghc-internal unit; Builtin/Names.hs:591 places Num there. No GHC process or library installation is part of the product path.
+
+| GHC concept | Local carrier and invariant |
+| --- | --- |
+| Original Name and external lookup | OriginalNameChirho is (unit, defining module, namespace, occurrence). HIR retains namespace at creation. A consumer interns one NameId per original name, injectively in both directions. An import/re-export path changes visibility, never defining identity. |
+| IfaceType / tcIfaceType | HIR interface data uses closed type trees over original names and binder positions, with binder kinds, contexts and body. Only a successful finally-zonked next module is projected. No arena type, solver scope, evidence handle or legacy TyChirho crosses. Every consumer reconstructs fresh rigid scheme binders and types in its own arena. |
+| Exports, hidden dependencies and TyThing children | Export scope is separate from the flat declaration catalogue. Private types required by an exported scheme still travel. Classes own ordered methods, superclass selectors and default links. Instances own their class/head scheme and dfun. Hidden occurrences are copied verbatim from their producer. The dictionary constructor is a fixed role of its owning class original name. |
+| Global instance environment | Import closure records merge by original name and agree exactly. Head registration uses the union. Distinct overlapping imported heads decline until demand-aware selection exists: GHC can accept an unused overlap. A local duplicate declaration retains its existing validation. No instance is selected by import order. |
+| External Core names and linking | Each object supplies its actual top-level definitions and imported ids by original name. The linker resolves those names, renumbers term/type ids, and refuses an unresolved reference. Constructor, type and dictionary keys depend on the original name plus role, with length-prefixed components; module-local indexes are absent. |
+
+```mermaid
+flowchart TD
+  SourceChirho["Source dependency closure"] --> OrderChirho["Bounded dependency order; cycles decline"]
+  OrderChirho --> CheckChirho["Fresh checker/arena for each module"]
+  CheckChirho --> ClosedChirho["Project only complete solved schemes"]
+  ClosedChirho --> NamesChirho["Original-name declarations and owned children"]
+  NamesChirho --> ScopeChirho["Separate selected export spelling table"]
+  NamesChirho --> ReinternChirho["Re-intern in the next consumer arena"]
+  ScopeChirho --> ReinternChirho
+  ReinternChirho --> CheckChirho
+  CheckChirho --> CoreChirho["Object Core with definition/import name maps"]
+  CoreChirho --> LinkChirho["Resolve globals; rename bound term/type ids"]
+  LinkChirho --> RuntimeChirho["Existing STG and Rust interpreter"]
+```
+
+The producer arena drops after projection/elaboration. A shared source-graph output allowance bounds retained interface copies; existing per-module HIR/TC allowances cover imported names/types. The graph admits at most 64 modules and 16 MiB of source, and linking has allocation/depth bounds. A failed or unsupported dependency supplies no interface and makes its importer Unsupported; resource failures retain their class. A failed consumer cannot mutate the immutable interface. Source-file checking reads only the actual dependency closure beside the entry, and runs no program. The same checker/importer path serves supplied in-memory sources and file-based CLI check; dump-core additionally links the objects.
+
+Measured controls cover the hidden ALib Bool mismatch (GHC-83865), abstract/private constructor visibility (GHC-88464), contextual dictionaries and a hidden default crossing both modules, distinct dictionary arguments, superclass selection, diamond metadata and direct/relayed names, and imported exact Integer conversion. GHC reports GHC-43085 when an imported overlap is demanded; the unused twin compiles and prints v, so both overlap forms stay Unsupported locally. Malformed identity maps/unbound binder positions, open export schemes, missing Core links, resource exhaustion and failure reuse refuse without publishing a stub.
+
+Scope: plain home-source imports and default or value-only explicit exports, including a value re-export. Module re-exports, import/hiding lists, package units, boot cycles and stored artifact loading/trust remain separate work. Every accepted producer here is a complete supported source module. No source slice or partial unit is admitted. Main/IO and B-run/native gates remain open; default CLI remains legacy. The existing module-wide Wanted rescans and flat transitive interface-copy costs remain bounded by ceilings but are not optimized. Fixtures are grouped to keep source directories below 15 entries.
+
+Claude2 #34005 identifies the next architectural prerequisites: a driver unit manifest with explicit completeness, absence-aware behavior for source slices, source operators/fixities/pragmas, then the actual Num class slice and known-identity ordinary literals. This is planning context; none of those partial-unit or numeric-defaulting privileges is introduced by unit 751.
