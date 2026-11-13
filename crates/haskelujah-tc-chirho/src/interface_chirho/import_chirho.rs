@@ -136,21 +136,19 @@ impl CheckedModuleChirho {
                     ));
                 }
                 if let Some(prior_chirho) = names_chirho.insert(original_chirho.clone(), *id_chirho)
+                    && prior_chirho != *id_chirho
                 {
-                    if prior_chirho != *id_chirho {
-                        return Err(invalid_interface_chirho(
-                            "one original name acquired two consumer ids",
-                        ));
-                    }
+                    return Err(invalid_interface_chirho(
+                        "one original name acquired two consumer ids",
+                    ));
                 }
                 if let Some(prior_chirho) =
                     reverse_chirho.insert(*id_chirho, original_chirho.clone())
+                    && prior_chirho != *original_chirho
                 {
-                    if prior_chirho != *original_chirho {
-                        return Err(invalid_interface_chirho(
-                            "two original names acquired one consumer id",
-                        ));
-                    }
+                    return Err(invalid_interface_chirho(
+                        "two original names acquired one consumer id",
+                    ));
                 }
             }
         }
@@ -333,18 +331,16 @@ impl CheckedModuleChirho {
                 .checked_chirho
                 .solver_chirho
                 .instance_shape_chirho(head_chirho)?
-            {
-                if importer_chirho
+                && importer_chirho
                     .checked_chirho
                     .solver_chirho
                     .constructor_instances_chirho
                     .contains_key(&(class_chirho, shape_chirho))
-                {
-                    return Err(TcErrorChirho::new_chirho(
-                        TcErrorKindChirho::UnsupportedChirho,
-                        "overlapping imported instances need demand-aware selection; no instance is chosen",
-                    ));
-                }
+            {
+                return Err(TcErrorChirho::new_chirho(
+                    TcErrorKindChirho::UnsupportedChirho,
+                    "overlapping imported instances need demand-aware selection; no instance is chosen",
+                ));
             }
             importer_chirho
                 .checked_chirho
