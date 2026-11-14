@@ -125,12 +125,6 @@ pub(super) fn order_chirho(
             if sources_chirho.len() >= MAX_MODULES_CHIRHO {
                 return Err(resource_chirho("source graph module ceiling exhausted"));
             }
-            if key_chirho.module_chirho == super::super::library_chirho::INTEGER_MODULE_CHIRHO {
-                visiting_chirho.remove(&key_chirho);
-                done_chirho.insert(key_chirho.clone());
-                order_chirho.push(key_chirho);
-                return Ok(());
-            }
             let manifest_chirho =
                 super::super::library_chirho::manifest_chirho(&key_chirho.module_chirho)
                     .ok_or_else(|| unsupported_chirho("installed unit has no source manifest"))?;

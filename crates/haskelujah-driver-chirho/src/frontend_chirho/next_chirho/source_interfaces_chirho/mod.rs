@@ -49,15 +49,6 @@ fn program_chirho(
     let mut output_left_chirho = 1 << 20;
     let mut entry_checked_chirho = None;
     for key_chirho in order_chirho {
-        if key_chirho.unit_chirho == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho
-            && key_chirho.module_chirho == super::library_chirho::INTEGER_MODULE_CHIRHO
-        {
-            interfaces_chirho.insert(
-                key_chirho,
-                Arc::new(super::library_chirho::integer_interface_chirho()),
-            );
-            continue;
-        }
         let mut selected_chirho = BTreeMap::new();
         let input_chirho = sources_chirho
             .get(&key_chirho)
@@ -86,6 +77,11 @@ fn program_chirho(
             prelude_exports_chirho: Some(super::library_chirho::prelude_exports_chirho()?),
             ..Default::default()
         };
+        if key_chirho.unit_chirho == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho
+            && key_chirho.module_chirho == super::library_chirho::INTEGER_MODULE_CHIRHO
+        {
+            super::library_chirho::install_integer_policy_chirho(&mut policy_chirho);
+        }
         if input_chirho.numeric_chirho
             && !(key_chirho.unit_chirho
                 == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho

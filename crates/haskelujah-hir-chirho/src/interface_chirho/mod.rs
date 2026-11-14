@@ -23,6 +23,10 @@ pub struct LoweringPolicyChirho {
     pub completeness_chirho: CompletenessChirho,
     /// Identity dependencies without lexical import scope (known syntax operations).
     pub implicit_interfaces_chirho: Vec<std::sync::Arc<InterfaceChirho>>,
+    /// Driver manifests may admit checked signatures with explicitly supplied backend bodies.
+    pub primitive_bindings_chirho: BTreeMap<OriginalNameChirho, usize>,
+    /// Own wired type declarations, distinct from ordinary backend-implemented value names.
+    pub wired_declarations_chirho: BTreeMap<OriginalNameChirho, crate::WiredNameChirho>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

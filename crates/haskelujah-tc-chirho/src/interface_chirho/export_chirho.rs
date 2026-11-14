@@ -286,6 +286,12 @@ pub fn project_interface_chirho(
             .iter()
             .map(|binding_chirho| binding_chirho.name_chirho),
     );
+    values_chirho.extend(
+        module_chirho
+            .primitive_bindings_chirho
+            .iter()
+            .map(|binding_chirho| binding_chirho.name_chirho),
+    );
     for id_chirho in values_chirho {
         let name_chirho = projection_chirho.original_chirho(id_chirho)?;
         let scheme_chirho = checked_chirho
@@ -304,6 +310,13 @@ pub fn project_interface_chirho(
         );
     }
     for id_chirho in &module_chirho.exports_chirho {
+        let info_chirho = &module_chirho.names_chirho[id_chirho.0 as usize];
+        if info_chirho.wired_chirho == Some(haskelujah_hir_chirho::WiredNameChirho::IntegerChirho) {
+            result_chirho.wired_types_chirho.insert(
+                info_chirho.original_chirho(),
+                haskelujah_hir_chirho::WiredNameChirho::IntegerChirho,
+            );
+        }
         result_chirho
             .exports_chirho
             .push(projection_chirho.original_chirho(*id_chirho)?);

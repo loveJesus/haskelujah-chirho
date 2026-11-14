@@ -19,6 +19,8 @@ use super::{NextErrorChirho, NextErrorKindChirho, types_chirho::CoreTypesChirho}
 mod classes_chirho;
 #[path = "patterns_chirho.rs"]
 mod patterns_chirho;
+#[path = "library_chirho/core_integer_chirho.rs"]
+mod primitive_bodies_chirho;
 
 struct ElaboratorChirho<'checked_chirho> {
     types_chirho: CoreTypesChirho<'checked_chirho>,
@@ -257,6 +259,9 @@ pub(super) fn elaborate_chirho(
         )?,
     };
     let mut bindings_chirho = Vec::new();
+    for declaration_chirho in &checked_chirho.module_chirho.primitive_bindings_chirho {
+        bindings_chirho.push(elaborator_chirho.primitive_binding_chirho(declaration_chirho)?);
+    }
     for declaration_chirho in &checked_chirho.module_chirho.data_chirho {
         for constructor_chirho in &declaration_chirho.constructors_chirho {
             bindings_chirho

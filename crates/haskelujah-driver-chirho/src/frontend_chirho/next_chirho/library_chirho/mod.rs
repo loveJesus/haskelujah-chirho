@@ -5,8 +5,12 @@
 use super::{NextErrorChirho, NextErrorKindChirho};
 use haskelujah_hir_chirho::*;
 use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, BTreeSet};
 mod boundaries_chirho;
+mod integer_backend_chirho;
+pub(super) use integer_backend_chirho::{
+    install_policy_chirho as install_integer_policy_chirho,
+    operation_chirho as integer_operation_chirho,
+};
 mod prelude_scope_chirho;
 pub(super) use prelude_scope_chirho::exports_chirho as prelude_exports_chirho;
 
@@ -22,6 +26,7 @@ pub(super) struct SourceManifestChirho {
     pub bytes_chirho: &'static str,
     pub spans_chirho: &'static [(usize, usize)],
     pub imports_chirho: &'static str,
+    pub primitive_signatures_chirho: bool,
 }
 const TUPLE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ghc_version_chirho: "9.14.1",
@@ -31,6 +36,7 @@ const TUPLE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     bytes_chirho: include_str!("vendor-chirho/ghc-internal-chirho/data-chirho/Tuple.hs"),
     spans_chirho: &[(926, 993), (1039, 1106)],
     imports_chirho: "",
+    primitive_signatures_chirho: false,
 };
 const NUM_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ghc_version_chirho: "9.14.1",
@@ -38,14 +44,33 @@ const NUM_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Num.hs",
     sha256_chirho: "a35a0fac5e44dde385bc98024d85a82924dac33c59de0996c9978e4295e4077a",
     bytes_chirho: include_str!("vendor-chirho/ghc-internal-chirho/Num.hs"),
-    spans_chirho: &[(1066, 1093), (2395, 3302)],
-    imports_chirho: "import GHC.Internal.Bignum.Integer (Integer)\n",
+    spans_chirho: &[(1066, 1093), (2395, 3302), (4437, 4637)],
+    imports_chirho: "import GHC.Internal.Bignum.Integer (Integer, integerAdd, integerSub, integerMul, integerNegate, integerAbs, integerSignum)\n",
+    primitive_signatures_chirho: false,
+};
+const INTEGER_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    ghc_version_chirho: "9.14.1",
+    module_chirho: INTEGER_MODULE_CHIRHO,
+    upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Bignum/Integer.hs",
+    sha256_chirho: "1f8ec2a8e12ecbab7eb0b59f249fae663d8066f2fb14224177a4538653bb17f4",
+    bytes_chirho: include_str!("vendor-chirho/ghc-internal-chirho/bignum-chirho/Integer.hs"),
+    spans_chirho: &[
+        (14257, 14301),
+        (15876, 15920),
+        (17248, 17292),
+        (18887, 18923),
+        (19403, 19436),
+        (19792, 19828),
+    ],
+    imports_chirho: "",
+    primitive_signatures_chirho: true,
 };
 
 pub(super) fn manifest_chirho(module_chirho: &str) -> Option<&'static SourceManifestChirho> {
     match module_chirho {
         "GHC.Internal.Data.Tuple" => Some(&TUPLE_CHIRHO),
         NUM_MODULE_CHIRHO => Some(&NUM_CHIRHO),
+        INTEGER_MODULE_CHIRHO => Some(&INTEGER_CHIRHO),
         _ => None,
     }
 }
@@ -98,7 +123,21 @@ impl SourceManifestChirho {
                             "invalid source manifest byte span",
                         )
                     })?;
-            boundaries_chirho::validate_chirho(self.bytes_chirho, start_chirho, end_chirho)?;
+            if self.primitive_signatures_chirho {
+                if self.module_chirho != INTEGER_MODULE_CHIRHO {
+                    return Err(NextErrorChirho::new_chirho(
+                        NextErrorKindChirho::UnsupportedChirho,
+                        "source manifest has no primitive-body provider",
+                    ));
+                }
+                integer_backend_chirho::validate_signature_span_chirho(
+                    self.bytes_chirho,
+                    start_chirho,
+                    end_chirho,
+                )?;
+            } else {
+                boundaries_chirho::validate_chirho(self.bytes_chirho, start_chirho, end_chirho)?;
+            }
             source_chirho.push_str(selection_chirho);
             source_chirho.push('\n');
             previous_chirho = end_chirho;
@@ -107,28 +146,7 @@ impl SourceManifestChirho {
     }
 }
 
-/// Integer is wired in GHC; Num is checked source, never a wired class catalogue.
-pub(super) fn integer_interface_chirho() -> InterfaceChirho {
-    let original_chirho = OriginalNameChirho {
-        unit_chirho: UnitIdentityChirho::CompilerChirho,
-        module_chirho: INTEGER_MODULE_CHIRHO.into(),
-        namespace_chirho: NamespaceChirho::TypeChirho,
-        occurrence_chirho: "Integer".into(),
-    };
-    InterfaceChirho {
-        unit_chirho: UnitIdentityChirho::CompilerChirho,
-        module_chirho: INTEGER_MODULE_CHIRHO.into(),
-        completeness_chirho: CompletenessChirho::SliceChirho,
-        sliced_units_chirho: BTreeSet::from([UnitIdentityChirho::CompilerChirho]),
-        exports_chirho: vec![original_chirho.clone()],
-        wired_types_chirho: BTreeMap::from([(original_chirho, WiredNameChirho::IntegerChirho)]),
-        fixities_chirho: BTreeMap::new(),
-        data_chirho: BTreeMap::new(),
-        values_chirho: BTreeMap::new(),
-        classes_chirho: BTreeMap::new(),
-        instances_chirho: BTreeMap::new(),
-    }
-}
-
+#[cfg(test)]
+mod integer_tests_chirho;
 #[cfg(test)]
 mod tests_chirho;

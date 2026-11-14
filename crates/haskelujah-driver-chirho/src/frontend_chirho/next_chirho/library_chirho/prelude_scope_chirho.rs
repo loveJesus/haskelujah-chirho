@@ -4,6 +4,7 @@
 //! workflow: next-pipeline-chirho/ghc-implementation-map-chirho
 use super::*;
 use haskelujah_parser_chirho::lexer_chirho::{LexerChirho, RawTokenKindChirho};
+use std::collections::BTreeSet;
 use std::sync::{Arc, OnceLock};
 const SOURCE_CHIRHO: &str = include_str!("vendor-chirho/base-chirho/Prelude.hs");
 static EXPORTS_CHIRHO: OnceLock<Result<Arc<PreludeExportsChirho>, String>> = OnceLock::new();

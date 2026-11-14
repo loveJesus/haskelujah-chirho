@@ -1375,18 +1375,33 @@ pub fn lower_and_run_with_input_chirho(
 
 /// Lower a Core module and run with a custom step limit.
 /// Used for algorithmic tests that require more than the default 100,000 steps.
-pub fn lower_and_run_with_step_limit_chirho(
+pub fn lower_and_run_outcome_with_step_limit_chirho(
     module_chirho: &CoreModuleChirho,
     entry_name_chirho: Option<&str>,
     newtype_cons_chirho: HashSet<String>,
     step_limit_chirho: u64,
-) -> Result<(ValueChirho, MachineChirho), String> {
+) -> Result<RunOutcomeChirho, String> {
     run_lowered_chirho(
         module_chirho,
         entry_name_chirho,
         newtype_cons_chirho,
         step_limit_chirho,
         &[],
+    )
+}
+
+/// Run with a custom step limit, returning only a successful value and machine.
+pub fn lower_and_run_with_step_limit_chirho(
+    module_chirho: &CoreModuleChirho,
+    entry_name_chirho: Option<&str>,
+    newtype_cons_chirho: HashSet<String>,
+    step_limit_chirho: u64,
+) -> Result<(ValueChirho, MachineChirho), String> {
+    lower_and_run_outcome_with_step_limit_chirho(
+        module_chirho,
+        entry_name_chirho,
+        newtype_cons_chirho,
+        step_limit_chirho,
     )?
     .into_result_chirho()
 }

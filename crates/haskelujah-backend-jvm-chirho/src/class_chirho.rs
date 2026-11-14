@@ -26,10 +26,8 @@ pub fn compile_core_to_class_chirho(
     module_chirho: &CoreModuleChirho,
     config_chirho: &JvmConfigChirho,
 ) -> Result<JvmOutputChirho, String> {
-    if module_chirho
-        .uses_primitive_chirho(haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO)
-    {
-        return Err("opaque Integer literal requires a JVM runtime bridge".into());
+    if module_chirho.requires_opaque_integer_runtime_chirho() {
+        return Err("opaque Integer operations require a JVM runtime bridge".into());
     }
 
     let class_name_chirho = format!("{}/Main", config_chirho.package_chirho);
@@ -131,6 +129,19 @@ mod tests_chirho {
         };
         assert!(
             compile_core_to_class_chirho(&module_chirho, &JvmConfigChirho::default())
+                .unwrap_err()
+                .contains("Integer")
+        );
+        let mut arithmetic_chirho = module_chirho;
+        arithmetic_chirho.bindings_chirho[0].rhs_chirho = CoreExprChirho::PrimOpChirho {
+            name_chirho: "%next:integer-add-chirho".into(),
+            args_chirho: vec![],
+        };
+        assert!(!arithmetic_chirho.uses_primitive_chirho(
+            haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO
+        ));
+        assert!(
+            compile_core_to_class_chirho(&arithmetic_chirho, &JvmConfigChirho::default())
                 .unwrap_err()
                 .contains("Integer")
         );

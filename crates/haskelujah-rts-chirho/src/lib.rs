@@ -56,5 +56,7 @@ pub use value_chirho::{
     ValueChirho,
 };
 
+#[path = "numeric_chirho/integer_arithmetic_chirho.rs"]
+pub mod integer_arithmetic_chirho;
 #[path = "numeric_chirho/integer_literal_chirho.rs"]
 pub mod integer_literal_chirho;

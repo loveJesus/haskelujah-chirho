@@ -41,6 +41,11 @@ impl LowerCtxChirho {
 
 /// Map a primop name from Core to a `PrimOpKindChirho`.
 fn primop_name_to_kind_chirho(name_chirho: &str) -> Option<PrimOpKindChirho> {
+    if let Some(operation_chirho) =
+        haskelujah_runtime_chirho::integer_arithmetic_chirho::IntegerOperationChirho::from_primitive_chirho(name_chirho)
+    {
+        return Some(PrimOpKindChirho::IntegerArithmeticChirho(operation_chirho));
+    }
     Some(match name_chirho {
         haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO => {
             PrimOpKindChirho::IntegerLiteralChirho

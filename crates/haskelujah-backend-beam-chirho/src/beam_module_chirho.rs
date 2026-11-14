@@ -26,10 +26,8 @@ pub fn compile_core_to_beam_chirho(
     module_chirho: &CoreModuleChirho,
     config_chirho: &BeamConfigChirho,
 ) -> Result<BeamOutputChirho, String> {
-    if module_chirho
-        .uses_primitive_chirho(haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO)
-    {
-        return Err("opaque Integer literal requires a BEAM runtime bridge".into());
+    if module_chirho.requires_opaque_integer_runtime_chirho() {
+        return Err("opaque Integer operations require a BEAM runtime bridge".into());
     }
 
     let mut chunks_chirho: Vec<Vec<u8>> = Vec::new();
@@ -187,6 +185,19 @@ mod tests_chirho {
         };
         assert!(
             compile_core_to_beam_chirho(&module_chirho, &BeamConfigChirho::default())
+                .unwrap_err()
+                .contains("Integer")
+        );
+        let mut arithmetic_chirho = module_chirho;
+        arithmetic_chirho.bindings_chirho[0].rhs_chirho = CoreExprChirho::PrimOpChirho {
+            name_chirho: "%next:integer-add-chirho".into(),
+            args_chirho: vec![],
+        };
+        assert!(!arithmetic_chirho.uses_primitive_chirho(
+            haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO
+        ));
+        assert!(
+            compile_core_to_beam_chirho(&arithmetic_chirho, &BeamConfigChirho::default())
                 .unwrap_err()
                 .contains("Integer")
         );

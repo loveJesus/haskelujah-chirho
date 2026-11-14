@@ -26,6 +26,15 @@ pub enum WiredNameChirho {
     FalseChirho,
 }
 
+impl WiredNameChirho {
+    pub fn defining_module_chirho(self) -> &'static str {
+        match self {
+            Self::IntegerChirho => "GHC.Internal.Bignum.Integer",
+            _ => "GHC.Internal.Types",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct NameInfoChirho {
     pub unit_chirho: UnitIdentityChirho,

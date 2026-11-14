@@ -50,7 +50,7 @@ impl LowerChirho<'_> {
         Ok((Some(signature_chirho), body_chirho?))
     }
 
-    fn signature_body_chirho(
+    pub(super) fn signature_body_chirho(
         &mut self,
         signature_chirho: &TypeChirho,
     ) -> ResultChirho<(SurfaceSignatureChirho, bool)> {

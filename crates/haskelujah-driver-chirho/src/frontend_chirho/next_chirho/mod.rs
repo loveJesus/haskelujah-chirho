@@ -203,13 +203,26 @@ fn eval_core_binding_chirho(
             "the requested entry has no top-level binding",
         ));
     }
-    crate::stg_lower_chirho::lower_and_run_with_step_limit_chirho(
+    let outcome_chirho = crate::stg_lower_chirho::lower_and_run_outcome_with_step_limit_chirho(
         &core_chirho,
         Some(entry_chirho),
         Default::default(),
         step_limit_chirho,
     )
     .map_err(|error_chirho| {
+        NextErrorChirho::new_chirho(NextErrorKindChirho::ExecutionChirho, error_chirho)
+    })?;
+    if outcome_chirho
+        .machine_chirho
+        .integer_budget_chirho
+        .exhausted_chirho()
+    {
+        return Err(NextErrorChirho::new_chirho(
+            NextErrorKindChirho::ResourceChirho,
+            "opaque Integer arithmetic allowance exhausted",
+        ));
+    }
+    outcome_chirho.into_result_chirho().map_err(|error_chirho| {
         NextErrorChirho::new_chirho(NextErrorKindChirho::ExecutionChirho, error_chirho)
     })
 }

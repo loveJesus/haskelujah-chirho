@@ -159,7 +159,6 @@ impl CheckedModuleChirho {
             }
             let head_chirho =
                 self.surface_with_chirho(&declaration_chirho.head_chirho, &parameters_chirho)?;
-            self.check_partial_instance_chirho(declaration_chirho.class_chirho, head_chirho)?;
             let predicate_chirho = self
                 .solver_chirho
                 .predicate_chirho(declaration_chirho.class_chirho, head_chirho)?;
@@ -169,6 +168,9 @@ impl CheckedModuleChirho {
                 &binders_chirho,
                 declaration_chirho.name_chirho,
             )?;
+            // A visible duplicate is a presence fact, even when unseen instances remain possible.
+            // A later partiality refusal is terminal: this module publishes no interface.
+            self.check_partial_instance_chirho(declaration_chirho.class_chirho, head_chirho)?;
             let mut context_chirho = Vec::new();
             for predicate_chirho in &declaration_chirho.context_chirho {
                 let argument_chirho = *parameters_chirho

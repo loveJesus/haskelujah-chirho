@@ -60,4 +60,5 @@ impl RuntimePlanChirho {
     }
 }
 
+pub use haskelujah_rts_chirho::integer_arithmetic_chirho;
 pub use haskelujah_rts_chirho::integer_literal_chirho;

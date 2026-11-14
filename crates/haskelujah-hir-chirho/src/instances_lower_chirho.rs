@@ -209,10 +209,10 @@ impl LowerChirho<'_> {
                         continue;
                     }
                     let Some(default_chirho) = method_chirho.default_chirho else {
-                        return Err(self.error_chirho(
-                            "next does not yet supply missing-method runtime failures",
-                            *span_chirho,
-                        ));
+                        // Keep the absence explicit. TC validates the instance head before
+                        // declining its missing-method runtime producer, so a visible duplicate
+                        // remains a presence refusal even when its method list is incomplete.
+                        continue;
                     };
                     let binding_id_chirho = self.bind_chirho(
                         &format!(

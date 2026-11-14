@@ -24,6 +24,8 @@ mod data_chirho;
 mod generalization_chirho;
 #[path = "class_chirho/partiality_chirho.rs"]
 mod partiality_chirho;
+#[path = "interface_chirho/primitive_signatures_chirho.rs"]
+mod primitive_signatures_chirho;
 #[path = "signatures_chirho.rs"]
 mod signatures_chirho;
 
@@ -326,6 +328,10 @@ pub fn check_module_chirho(
         }
     }
     checked_chirho.import_interfaces_chirho()?;
+    let primitive_bindings_chirho =
+        std::mem::take(&mut checked_chirho.module_chirho.primitive_bindings_chirho);
+    checked_chirho.primitive_signatures_chirho(&primitive_bindings_chirho)?;
+    checked_chirho.module_chirho.primitive_bindings_chirho = primitive_bindings_chirho;
     let data_chirho = std::mem::take(&mut checked_chirho.module_chirho.data_chirho);
     let classes_chirho = std::mem::take(&mut checked_chirho.module_chirho.classes_chirho);
     // Class kinds must exist while checking data fields that mention those declarations.

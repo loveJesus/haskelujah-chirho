@@ -22,6 +22,6 @@ pub use terms_chirho::{
     BindingChirho, ClassDeclChirho, ClassMethodChirho, ConstructorChirho, DataDeclChirho,
     ExprChirho, ExprIdChirho, ExprKindChirho, HirErrorChirho, HirErrorKindChirho,
     InstanceDeclChirho, InstanceMethodChirho, LimitsChirho, MatchArmChirho, ModuleChirho,
-    PatternChirho, PatternKindChirho, SurfacePredicateChirho, SurfaceSignatureChirho,
-    SurfaceTypeChirho,
+    PatternChirho, PatternKindChirho, PrimitiveBindingChirho, SurfacePredicateChirho,
+    SurfaceSignatureChirho, SurfaceTypeChirho,
 };

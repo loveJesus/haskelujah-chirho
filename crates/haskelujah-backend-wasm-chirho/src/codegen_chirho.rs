@@ -41,10 +41,8 @@ pub fn compile_core_to_wasm_chirho(module_chirho: &CoreModuleChirho) -> Vec<u8> 
 pub fn try_compile_core_to_wasm_chirho(
     module_chirho: &CoreModuleChirho,
 ) -> Result<Vec<u8>, String> {
-    if module_chirho
-        .uses_primitive_chirho(haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO)
-    {
-        return Err("opaque Integer literal requires a Wasm runtime bridge".into());
+    if module_chirho.requires_opaque_integer_runtime_chirho() {
+        return Err("opaque Integer operations require a Wasm runtime bridge".into());
     }
     let mut emitter_chirho = WasmEmitterChirho::new_chirho();
     emitter_chirho.emit_module_chirho(module_chirho);
@@ -59,10 +57,8 @@ pub fn compile_core_to_wasm_executable_chirho(module_chirho: &CoreModuleChirho) 
 pub fn try_compile_core_to_wasm_executable_chirho(
     module_chirho: &CoreModuleChirho,
 ) -> Result<Vec<u8>, String> {
-    if module_chirho
-        .uses_primitive_chirho(haskelujah_core_chirho::expr_chirho::INTEGER_LITERAL_PRIMOP_CHIRHO)
-    {
-        return Err("opaque Integer literal requires a Wasm runtime bridge".into());
+    if module_chirho.requires_opaque_integer_runtime_chirho() {
+        return Err("opaque Integer operations require a Wasm runtime bridge".into());
     }
     let filtered_module_chirho =
         haskelujah_core_chirho::elide_dicts_and_filter_chirho(module_chirho);

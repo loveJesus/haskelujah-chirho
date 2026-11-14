@@ -10,7 +10,7 @@ pub const INTEGER_BOX_NAME_CHIRHO: &str = "%runtime:opaque:IntegerChirho";
 pub const MAX_INTEGER_LITERAL_BYTES_CHIRHO: usize = 16_384;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct IntegerValueChirho(Arc<BigIntChirho>);
+pub struct IntegerValueChirho(pub(crate) Arc<BigIntChirho>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntegerLiteralErrorChirho {

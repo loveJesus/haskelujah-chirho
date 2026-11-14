@@ -153,16 +153,16 @@ fn defaulting_and_unseen_library_instances_decline_chirho() {
     }
 }
 #[test]
-fn local_instance_at_two_partial_owners_declines_chirho() {
+fn a_visible_duplicate_at_partial_owners_is_a_presence_refusal_chirho() {
     let source_chirho = "{-# LANGUAGE NoImplicitPrelude #-}\nmodule PartialIntegerChirho where\nimport GHC.Internal.Num (Num(..))\nimport GHC.Internal.Bignum.Integer (Integer)\ninstance Num Integer where\n fromInteger xChirho = xChirho\n xChirho + _ = xChirho\n _ * yChirho = yChirho\n abs xChirho = xChirho\n signum xChirho = xChirho\n negate xChirho = xChirho\nresultChirho = 'i'\n";
     let error_chirho = check_source_chirho(source_chirho).unwrap_err();
     assert_eq!(
         error_chirho.kind_chirho,
-        NextErrorKindChirho::UnsupportedChirho,
+        NextErrorKindChirho::TypeChirho,
         "{error_chirho}"
     );
     assert!(
-        error_chirho.message_chirho.contains("could collide"),
+        error_chirho.message_chirho.contains("duplicate"),
         "{error_chirho}"
     );
 }

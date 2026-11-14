@@ -20,6 +20,9 @@
 
 mod code_roots_chirho;
 mod float_ordering_chirho;
+mod integer_chirho;
+#[cfg(test)]
+mod integer_tests_chirho;
 mod primitive_operands_chirho;
 mod returns_chirho;
 mod show_text_chirho;
@@ -284,6 +287,8 @@ pub struct MachineChirho {
     pub steps_chirho: u64,
     /// Maximum steps before aborting (0 = unlimited).
     pub step_limit_chirho: u64,
+    /// Shared by all arithmetic demands, nested forcing and repeated entries on this machine.
+    pub integer_budget_chirho: crate::integer_arithmetic_chirho::IntegerBudgetChirho,
     /// Garbage collector state.
     pub gc_state_chirho: GcStateChirho,
     /// Last GC statistics (None if GC hasn't run yet).
@@ -315,6 +320,7 @@ impl MachineChirho {
             arg_regs_chirho: Vec::new(),
             steps_chirho: 0,
             step_limit_chirho: 0,
+            integer_budget_chirho: Default::default(),
             gc_state_chirho: GcStateChirho::new_chirho(GcConfigChirho::default()),
             last_gc_stats_chirho: None,
             con_tags_chirho: HashMap::new(),
@@ -1594,6 +1600,9 @@ impl MachineChirho {
         op_chirho: PrimOpKindChirho,
         args_chirho: &[ValueChirho],
     ) -> Result<ValueChirho, EvalErrorChirho> {
+        if let PrimOpKindChirho::IntegerArithmeticChirho(operation_chirho) = op_chirho {
+            return self.eval_integer_chirho(operation_chirho, args_chirho);
+        }
         // Handle I/O and special primops first
         match op_chirho {
             PrimOpKindChirho::IsHeapObjectChirho => {

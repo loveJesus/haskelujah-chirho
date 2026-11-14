@@ -89,6 +89,8 @@ pub enum FrameChirho {
 pub enum PrimOpKindChirho {
     /// Construct an opaque Integer from its exact retained source token.
     IntegerLiteralChirho,
+    /// Opaque Integer arithmetic consumes the machine's cumulative allowance.
+    IntegerArithmeticChirho(crate::integer_arithmetic_chirho::IntegerOperationChirho),
     /// Classify a demanded runtime value without treating immediate bits as addresses.
     IsHeapObjectChirho,
     AddIntChirho,

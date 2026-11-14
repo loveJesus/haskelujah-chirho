@@ -31,6 +31,8 @@ mod instances_lower_chirho;
 mod literals_lower_chirho;
 #[path = "patterns_lower_chirho.rs"]
 mod patterns_lower_chirho;
+#[path = "syntax_chirho/primitive_declarations_chirho.rs"]
+mod primitive_declarations_chirho;
 #[path = "signatures_chirho.rs"]
 mod signatures_chirho;
 #[path = "syntax_chirho/mod.rs"]
@@ -97,12 +99,11 @@ impl LowerChirho<'_> {
     ) -> ResultChirho<NameIdChirho> {
         self.room_chirho(0, span_chirho)?;
         // Bound the actual name strings before the environment/catalogue copies them.
+        let defining_module_chirho = wired_chirho
+            .map(WiredNameChirho::defining_module_chirho)
+            .unwrap_or(&self.module_chirho);
         self.charge_names_chirho(
-            if wired_chirho.is_some() {
-                "GHC.Internal.Types".len()
-            } else {
-                self.module_chirho.len()
-            } + text_chirho.len().saturating_mul(2),
+            defining_module_chirho.len() + text_chirho.len().saturating_mul(2),
             span_chirho,
         )?;
         let id_chirho =
@@ -120,7 +121,10 @@ impl LowerChirho<'_> {
                 self.unit_chirho.clone()
             },
             module_chirho: if wired_chirho.is_some() {
-                "GHC.Internal.Types".into()
+                wired_chirho
+                    .map(WiredNameChirho::defining_module_chirho)
+                    .unwrap_or(&self.module_chirho)
+                    .into()
             } else {
                 self.module_chirho.clone()
             },
@@ -572,6 +576,7 @@ pub fn lower_module_with_policy_chirho(
                 .push(id_chirho);
         }
     }
+    let wired_exports_chirho = lower_chirho.install_primitive_declarations_chirho(policy_chirho)?;
     lower_chirho.predeclare_type_headers_chirho(&module_chirho.decls_chirho)?;
     let data_chirho = lower_chirho.data_declarations_chirho(&module_chirho.decls_chirho)?;
     let classes_chirho =
@@ -595,6 +600,12 @@ pub fn lower_module_with_policy_chirho(
                     .occurrence_chirho
                     .clone()
             }),
+    );
+    declared_chirho.extend(
+        policy_chirho
+            .primitive_bindings_chirho
+            .keys()
+            .map(|original_chirho| original_chirho.occurrence_chirho.clone()),
     );
     for declaration_chirho in &module_chirho.decls_chirho {
         match declaration_chirho {
@@ -670,6 +681,8 @@ pub fn lower_module_with_policy_chirho(
             });
         }
     }
+    let primitive_bindings_chirho =
+        lower_chirho.primitive_bindings_chirho(policy_chirho, &mut signatures_chirho)?;
     if !signatures_chirho.is_empty() {
         return Err(lower_chirho.error_chirho(
             "type signature has no value binding",
@@ -685,7 +698,8 @@ pub fn lower_module_with_policy_chirho(
     available_classes_chirho.extend(classes_chirho.iter().cloned());
     let instances_chirho = lower_chirho
         .instance_declarations_chirho(&module_chirho.decls_chirho, &available_classes_chirho)?;
-    let exports_chirho = lower_chirho.exports_chirho(module_chirho)?;
+    let mut exports_chirho = lower_chirho.exports_chirho(module_chirho)?;
+    exports_chirho.extend(wired_exports_chirho);
     let fixities_chirho = lower_chirho.fixities_chirho(&module_chirho.decls_chirho)?;
     Ok(ModuleChirho {
         unit_chirho: lower_chirho.unit_chirho,
@@ -700,5 +714,6 @@ pub fn lower_module_with_policy_chirho(
         classes_chirho,
         instances_chirho,
         bindings_chirho,
+        primitive_bindings_chirho,
     })
 }

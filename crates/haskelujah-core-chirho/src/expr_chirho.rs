@@ -216,6 +216,15 @@ impl CoreModuleChirho {
     /// Capability checks inspect all definitions before reachability rewrites.
     /// workflow: next-pipeline-chirho/ghc-implementation-map-chirho
     pub fn uses_primitive_chirho(&self, primitive_chirho: &str) -> bool {
+        self.any_primitive_chirho(|name_chirho| name_chirho == primitive_chirho)
+    }
+
+    /// Every opaque Integer operation needs the same runtime representation capability.
+    pub fn requires_opaque_integer_runtime_chirho(&self) -> bool {
+        self.any_primitive_chirho(|name_chirho| name_chirho.starts_with("%next:integer-"))
+    }
+
+    fn any_primitive_chirho(&self, predicate_chirho: impl Fn(&str) -> bool) -> bool {
         let mut work_chirho: Vec<_> = self
             .bindings_chirho
             .iter()
@@ -227,7 +236,7 @@ impl CoreModuleChirho {
                     name_chirho,
                     args_chirho,
                 } => {
-                    if name_chirho == primitive_chirho {
+                    if predicate_chirho(name_chirho) {
                         return true;
                     }
                     work_chirho.extend(args_chirho);

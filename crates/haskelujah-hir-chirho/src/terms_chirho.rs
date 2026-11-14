@@ -143,6 +143,13 @@ pub struct InstanceMethodChirho {
 }
 
 #[derive(Debug)]
+pub struct PrimitiveBindingChirho {
+    pub name_chirho: NameIdChirho,
+    pub signature_chirho: SurfaceSignatureChirho,
+    pub arity_chirho: usize,
+}
+
+#[derive(Debug)]
 pub struct ModuleChirho {
     pub unit_chirho: UnitIdentityChirho,
     pub module_chirho: String,
@@ -157,6 +164,7 @@ pub struct ModuleChirho {
     pub classes_chirho: Vec<ClassDeclChirho>,
     pub instances_chirho: Vec<InstanceDeclChirho>,
     pub bindings_chirho: Vec<BindingChirho>,
+    pub primitive_bindings_chirho: Vec<PrimitiveBindingChirho>,
 }
 
 #[derive(Debug, Clone, Copy)]

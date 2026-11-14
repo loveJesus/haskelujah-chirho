@@ -15,6 +15,8 @@ use haskelujah_rts_chirho::{show_char_chirho, show_double_chirho, show_string_ch
 #[derive(Debug, Clone, PartialEq)]
 pub enum PrimErrorChirho {
     IntegerLiteralChirho(haskelujah_rts_chirho::integer_literal_chirho::IntegerLiteralErrorChirho),
+    IntegerArithmeticChirho(crate::integer_arithmetic_chirho::IntegerArithmeticErrorChirho),
+    MissingIntegerBudgetChirho,
     /// Type mismatch: expected a different value kind.
     TypeMismatchChirho {
         op_chirho: PrimOpKindChirho,
@@ -31,6 +33,9 @@ impl std::fmt::Display for PrimErrorChirho {
     fn fmt(&self, f_chirho: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::IntegerLiteralChirho(error_chirho) => error_chirho.fmt(f_chirho),
+            Self::IntegerArithmeticChirho(error_chirho) => error_chirho.fmt(f_chirho),
+            Self::MissingIntegerBudgetChirho => f_chirho
+                .write_str("opaque Integer arithmetic requires an evaluation-owned allowance"),
             Self::TypeMismatchChirho {
                 op_chirho,
                 expected_chirho,
@@ -53,6 +58,7 @@ pub fn apply_prim_binop_chirho(
     right_chirho: &ValueChirho,
 ) -> Result<ValueChirho, PrimErrorChirho> {
     match op_chirho {
+        PrimOpKindChirho::IntegerArithmeticChirho(_) => Err(PrimErrorChirho::MissingIntegerBudgetChirho),
         PrimOpKindChirho::IsHeapObjectChirho => Ok(ValueChirho::IntChirho(i64::from(matches!(
             left_chirho, ValueChirho::HeapPtrChirho(_)
         )))),

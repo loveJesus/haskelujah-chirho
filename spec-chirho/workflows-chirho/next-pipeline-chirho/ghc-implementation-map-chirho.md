@@ -2,7 +2,7 @@
 
 # GHC to Haskelujah implementation map
 
-Implementation scope: isolated `next-pipeline-real-num-chirho` (unit 752), based on `da79fd1d`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release.
+Implementation scope: isolated `next-pipeline-integer-num-chirho` (unit 753), based on `452a1c3a`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release.
 
 This is the written reading guide L.J. requested. It maps GHC's assumptions to our data as we implement locally. It introduces no runtime dependency on GHC. Reference: retained GHC 9.14.1, commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886.
 
@@ -303,3 +303,43 @@ Review correction #34065: the implicit Prelude also needs an honest scope accoun
 The same base LICENSE is vendored beside Prelude.hs and is byte-identical to the ghc-internal notice exposed by the binary. No Prelude body is checked by the name-account reader. The unit's initial corpus comparison exposed the implicit-(+) clash in tcfail037; that candidate is retained as intermediate evidence and is not the acceptance candidate.
 
 Review correction #34082: scope absence is withheld for currently unmodeled self-qualified home references and wired constructor expression forms such as `:`; these are Unsupported, never an invented not-in-scope verdict. Fresh GHC controls accept both forms. Embedded asset/manifest failures are also Unsupported rather than a verdict against the user's source. Qualified export parsing removes module components without consuming an operator's own dots. Manifest equation-group edges compare supported binder sets at both ends, include multi-name signatures and conservatively decline infix-head boundary shapes. Today's four actual-source spans are unchanged.
+
+
+## Source-typed Integer arithmetic and Num Integer, unit 753
+
+Architecture inputs: Claude2 #34139 and the bounded handoff reviews #34152/#34155, all source reading only. GPT writes and executes. The GHC reference is still 9.14.1 commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886. This unit extends the isolated next branch; it is not a main compiler or public release claim.
+
+| GHC design and source | Local implementation and boundary |
+| --- | --- |
+| Builtin/Types.hs:2841 wires Integer, while Builtin/Names.hs:1236-1240 gives five operations known keys | Integer alone remains a wired type. The six ordinary Bignum.Integer value names retain their defining original names and receive explicit manifest-declared backend bodies. No source spelling or new wired value grants primitive authority. |
+| Bignum/Integer.hs:499/545/574/614/628/640 supplies the six signatures | The whole unmodified 60,857-byte file is vendored under the ghc-internal licence, SHA256 1f8ec2a8e12ecbab7eb0b59f249fae663d8066f2fb14224177a4538653bb17f4. Only those complete signature lines may omit source equations. HIR retains each signature and declared body arity; TC checks closed, context-free Integer arrows and the exact arity. An unlisted lone signature still declines. |
+| Num.hs:129-137 defines the real instance | That byte-identical instance joins the existing class/default slice. Its explicit imports name Integer and all six checked operations. fromInteger remains the source identity function; ordinary application and dictionary evidence select the actual instance. |
+| ConstantFold.hs:2205-2207 and 2238-2239 uses mathematical integer operations | Our bodies call bounded, pure-Rust BigInt operations through compiler-internal keys. Bignum's Haskell representation-specific IS/IP/IN bodies are not compiled or exposed. This is an explicit Integer-level backend boundary, not a claim to have ported the BigNat/Int# layer. |
+| Note [Bangs in Integer functions], Integer.hs:365-375 | Core emits cases that demand every parameter left-to-right, inside all lambdas. The primitive consumes the case binders as WHNF values and cannot re-enter the host evaluator. A partial application stays lazy. This also avoids consecutive arithmetic PrimOp returns recursively consuming the host stack. |
+| Interfaces reconstruct names and types in the consumer | The Integer module now goes through the same source/check/interface/Core/link path as other modules. Its original names resolve through ordinary linking; the earlier hand-built type-only Integer interface is gone. |
+| A known duplicate is a presence error | A home Num Integer duplicate is checked before the partial-unit decline, including incomplete method lists. HIR keeps absent methods explicit; the existing TC missing-method decline follows head registration. Only the manifest-admitted module defining its own class may supply that class's library instances. |
+
+```mermaid
+flowchart TD
+  ManifestChirho["Driver manifest: whole file hash and six signature spans"] --> SourceChirho["Actual Integer signatures + wired Integer type"]
+  SourceChirho --> TypecheckChirho["Closed Integer arrows / declared arity"]
+  TypecheckChirho --> InterfaceChirho["Arena-free original-name interface"]
+  TypecheckChirho --> BodyChirho["Ordinary Core definitions: lambdas, strict cases, primitive"]
+  NumSourceChirho["Actual Num Integer instance"] --> EvidenceChirho["Checked class/instance evidence"]
+  InterfaceChirho --> EvidenceChirho
+  BodyChirho --> LinkChirho["Link by defining original name"]
+  EvidenceChirho --> LinkChirho
+  LinkChirho --> StackChirho["Operand demand on the STG continuation stack"]
+  StackChirho --> BudgetChirho["One machine-owned work/output allowance"]
+  BudgetChirho -->|Reserved| ValueChirho["Opaque exact Integer result"]
+  BudgetChirho -->|Exhausted| ResourceChirho["Latched Resource; no result publication"]
+  LinkChirho --> NativeChirho["Unimplemented native bridges decline the whole opaque primitive family"]
+```
+
+The default arithmetic allowance is 2^24 estimated 64-bit limb operations and 2^20 cumulatively charged output limbs (8 MiB); a single value is capped at 2^20 bits. Bounds are reserved before materialization, input Arcs are immutable, and an exhausted owner cannot be replenished by the next operation. Multiplication is charged by a conservative limb-product model. These are deterministic accounting limits, not measured CPU time. The stateless binary primitive adapter refuses arithmetic without an owner. The next execution boundary reads the owner's exhaustion latch, so a resource stop is never presented as a semantic type refusal or successful value.
+
+Runtime controls cover 64-bit edges, 2^128-scale products, signs/zero, home-name discrimination (11 versus the incorrect 13 or 1), unsaturated functions, shared thunk updates, finite failure on both sides of multiplication by zero, and a lazy unused partial application. GHC and next return 12 for a demand crossing 89 GC cycles and 10000 for a 10,000-deep non-tail sum crossing 108 cycles. Exact receipts and final source identities belong to the tasklist/checkpoint. The first two recursive-loop GHC probes timed out; they remain timeout data, not a semantic failure reference.
+
+A measured shared-runtime cost remains: the latter run takes 676,557 reduction steps, allocates 231,876 closures and ends with 282,655 code entries (about 190,000 last-live heap objects). Dynamic enter instructions and roots are retained during a run. The tested run has an explicit step allowance, and dropping its machine retires that state; scalable instruction/root retirement is not implemented by this unit. The existing module-wide Wanted rescans, flat inherited interface copies and general runtime retention remain separate growth work.
+
+Both library modules remain slices. Open imports, hidden Integer constructors, unimplemented operations/classes/instances, numeric literal patterns and ordinary standard-class defaulting still decline. A home-class ambiguity that blocks defaulting can be a semantic refusal, as measured against GHC. Num Int/Word/Natural, Eq/Ord/Show Integer, general defaulting, full ghc-internal, native Integer/IO-main and B-run remain open. Integer rendering in the binding-evaluation harness is not a Show instance.

@@ -1,0 +1,29 @@
+<!-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV) -->
+
+# Actual Num Integer and the opaque arithmetic boundary
+
+Owner HASKELUJAH/gpt_chirho, unit 753, base 452a1c3a (unit 752). L.J. directed continued development. Claude2 is asked for architectural assistance only (#34135); GPT owns implementation, validation and the canonical ledger. Main compiler crates stay frozen. Checkpoint tag: unit-753-integer-num-before-chirho.
+
+- [x] Recover authoritative source, ownership, ledger and capacity; reuse the existing feature worktree and warm target.
+- [x] Decide and document the smallest honest library-to-runtime boundary, including strictness, identity, failure and growth. Do not label ordinary bignum library functions GHC-wired.
+- [x] Implement the vertical: the actual Num Integer declaration from the whole pinned Num source, checked schemes for the supported operations, and bounded pure-Rust opaque arithmetic.
+- [x] Execute byte-identical GHC arithmetic references and next runtime results, including values beyond fixed widths, signs/zero, sharing, strictness and nominal/home-name controls. Refuse unsupported native emission and unimplemented/defaulting cases honestly.
+- [ ] Run focused then meaningful scoped gates and the unchanged 353-original comparison. Record regressions, resource refusals and remaining partiality without converting them to semantic verdicts.
+- [ ] Update the GHC implementation map/workflow, scan outgoing secrets, commit and push the coherent source checkpoint, and close/sync the canonical ledger.
+
+Placement at brick 1: numeric representation and checked arithmetic belong in the existing RTS numeric modules; explicit operation dispatch belongs in the shared runtime and STG primitive bridge. Checked library identity, source selection and any admitted backend replacement are owned by next/library_chirho and linked by original name. No second type arena or spelling-based primitive lookup is introduced. The exact declaration-admission contract is awaiting the bounded architecture read before source edits.
+
+Resource posture: 61.6 GiB free at start; reuse one warm target. Opaque arithmetic must bound operands/output/work before allocating a result and fail without narrowing or mutating inputs. No extra source/reference/archive copies are planned.
+
+Num Int, general numeric defaulting, full ghc-internal, arbitrary source CPP, native Integer/IO-main and B-run are not assumed by this checkpoint. If the source-to-runtime contract needs a different bounded first vertical, record the decision before implementation.
+
+Architecture decision #34139 (Claude2, source reading only): the six signatures come from whole pinned Bignum/Integer.hs; their ordinary original names receive explicit Integer-level backend bodies. No value becomes wired. The actual Num Integer instance is selected from Num.hs, with explicit imports. HIR carries source signatures plus manifest-declared body arities; TC checks every argument/result against the wired Integer and exact arrow count; Core binds the ordinary names to sealed primitives before normal original-name linking. An unlisted lone signature still declines. The defining manifest may supply its own class instances; home duplicates are checked as presence before partiality. All other slice absence/defaulting gates remain.
+
+One machine owns the cumulative arithmetic allowance: default 2^24 estimated limb operations, 2^20 charged output limbs (8 MiB), maximum single value 2^20 bits. Every operation reserves before materializing, retains immutable input Arcs on failure, and exhaustion is sticky. This is an explicit cost model, not measured CPU time. Native bridges reject the whole opaque primitive family even without any literal.
+
+Iteration evidence: four initial RTS tests pass after correcting a handwritten expected decimal square against independent Python arithmetic. Workspace checks exposed an omitted exhaustive dispatch arm, module visibility/import errors, and two tests placed across absent JVM/BEAM dependencies; these are fixed without adding dependencies. Final gates remain pending. GHC references accept the numeric programs, reject the duplicate/defaulting/mismatch cases, and match all finite numeric outputs. The two recursive-loop evaluations hit the 8-second cap and remain timeout data; finite non-exhaustive-case strictness twins return the expected GHC failure on both operand positions.
+
+
+Forcing correction #34152/#34155: Core now demands parameters with left-to-right DEFAULT cases inside every lambda. The primitive accepts WHNF only and never nests the evaluator. GC-demand returns 12 after 89 collections; the 10,000-deep non-tail sum returns 10000 after 108; an unused partial application containing a failing operand returns 7. GHC executes the same three files with those values. Both finite zero-multiplication failure twins also agree. The measured shared dynamic-code/root retention cost is documented in the implementation map rather than claimed cured. Claude2 cleared the new boundary by source reading only (60 source hashes); the writer executed the controls.
+
+The fresh-budget-per-operation mutant was killed by the repeated-entry allowance test with no compiler messages, then the source was restored byte-exact (712c35f7). Healthy restored gates pass: 142 next-driver tests and 398 library/runtime/prototype tests, none failed or ignored. All-target workspace check has zero compiler-message records. One early test filter selected zero cases and is kept as an invalid test-scope attempt; it is not counted. The preliminary CLI profile has no movers versus unit 752 (22 ACCEPT /20 REFUSAL /311 Unsupported), and final source-matched build/profile/lint/package closure follows.
