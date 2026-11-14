@@ -17,7 +17,8 @@ flowchart TD
   G --> H["Occurs, monotype, touchability, kind and escape checks"]
   H --> P["Solve dictionary Wanteds without choosing instances for flexible heads"]
   P --> Q["Generalize groups; promote MR candidates; retain captured constraints"]
-  Q --> I{"All module equality and dictionary Wanteds solved?"}
+  Q --> DF["Home-only standard Integer defaulting after all groups"]
+  DF --> I{"All module equality and dictionary Wanteds solved?"}
   I -->|No| R["Structured type / unsupported / resource refusal"]
   I -->|Yes| Z["Finish hidden metas only after evidence is complete"]
   Z --> J["Publish checked HIR"]
@@ -33,7 +34,7 @@ The aggregate allocation ceiling covers type nodes, meta/rigid records, implicat
 
 Core still stores the legacy TyChirho data enum. The next adapter constructs that data without invoking legacy inference, unification, desugaring or dictionary rewriting. It counts expanded output nodes so a compact DAG cannot silently become an unbounded tree. The new checker itself has no dependency on legacy typing.
 
-The current path does not yet process source-library CPP or validate Main.main's IO contract. Those paths return Unsupported. Source classes currently have one Type-kinded parameter, ordinary methods and constructor heads applied to distinct Type-kinded variables. Compound/equality superclasses, fixed/repeated/flexible instance heads, compound instance contexts, default signatures/numeric defaulting and SCC exports needing impedance matching remain Unsupported. Ordinary data currently has Type-kinded parameters and lazy positional fields. Records, GADTs, constructor contexts, deriving, strict fields and higher-kinded data parameters remain Unsupported. Guards, overloaded patterns, explicit lazy/bang patterns and local pattern bindings also remain Unsupported. CLI run/compile on next refuse rather than delegating. The library eval_binding API names its entry explicitly and is not an IO-main or B-run claim. Full source implication production remains S1 work.
+The current path does not yet process source-library CPP or validate Main.main's IO contract. Those paths return Unsupported. Source classes currently have one Type-kinded parameter, ordinary methods and constructor heads applied to distinct Type-kinded variables. Compound/equality superclasses, fixed/repeated/flexible instance heads, compound instance contexts, default signatures, general numeric defaulting and SCC exports needing impedance matching remain Unsupported. Ordinary data currently has Type-kinded parameters and lazy positional fields. Records, GADTs, constructor contexts, deriving, strict fields and higher-kinded data parameters remain Unsupported. Guards, overloaded patterns, explicit lazy/bang patterns and local pattern bindings also remain Unsupported. CLI run/compile on next refuse rather than delegating. The library eval_binding API names its entry explicitly and is not an IO-main or B-run claim. Full source implication production remains S1 work.
 
 The first-slice frozen bucket and unchanged workloads remain authoritative. Passing these S0 controls does not pass B-check/B-run or show that real GHC.Internal classes have compiled. Default CLI behavior remains legacy.
 
@@ -97,3 +98,8 @@ The actual upstream Prelude export list now supplies a separate name-only scope 
 Unit 753 checks the six actual Integer signatures in their defining ghc-internal module, with a manifest-declared body arity rather than fabricated schemes or wired value names. TC admits only closed Integer arrows and the exact primitive arity. Core emits normal original-name definitions whose operands are forced by left-to-right cases inside every lambda, then normal linking connects the actual Num Integer source instance. The primitive sees WHNF only and consumes one machine-owned cumulative arithmetic allowance. Missing or malformed provider facts never create stubs. All unsupported native bridges reject opaque arithmetic even in a program with no literal.
 
 A known duplicate instance is checked before partial-unit absence, and HIR no longer hides that presence behind an early missing-method decline. Remaining slice/defaulting boundaries stay explicit. GC-heavy demand, a 10,000-deep non-tail sum and a lazy partial application run against GHC; dynamic instruction/root retention during the shared runtime's bounded run remains a named cost. The complete boundary and DAG are in ghc-implementation-map-chirho.md.
+
+
+Unit 754 adds home-module defaulting after all group generalization and instance-method checks, before unresolved dictionaries and final meta zonking. Only compiler-unit GHC.Internal.Num.Num groups on flexible bare metas are eligible. Another class or non-unary occurrence blocks the variable. A checked context-free Num Integer instance proves the first candidate before any equality is published. Ordinary equality/dictionary solving then provides existing scope-owned evidence; generalized variables and signature skolems remain unchanged. A nonstandard home class blocks defaulting as a whole-group fact even when Num is the first reported constraint.
+
+Compiler-unit modules have no built-in default environment, as in GHC. Explicit local defaults and additional extension profiles still decline in HIR; missing later candidates/instances remain Unsupported. The full correspondence, limitations and resource posture are in ghc-implementation-map-chirho.md. This does not add a Prelude interface, numeric display classes, native arithmetic or IO-main/B-run support.
