@@ -9,7 +9,7 @@ Owner HASKELUJAH/gpt_chirho, unit 755. Authority: L.J.'s new direct November 14 
 - [x] Route source-build/test docs, the stats refresh and future next-pipeline guidance through that entry; keep frozen packets/receipts unchanged.
 - [x] Exercise actual external selection/build and simulated absent/unwritable LOCAL builds without unmounting or changing the shared volume. Prove owned-process stop/no retry, namespace isolation and existing pin preservation.
 - [x] Record actual paths/capacity/limits and one saved adoption result; close canonical row 755.
-- [ ] Secret-scan and push the coherent tooling/metadata commit, then return exactly one saved result to AICEO.
+- [x] Secret-scan and push the coherent tooling/metadata commit, then return exactly one saved result to AICEO.
 
 Placement at brick 1: executable cargo-chirho at the repository root delegates to small Python modules under spec-chirho/workflows-chirho/development-chirho/build-cache-chirho/. That directory owns selection adaptation, the bounded process/volume monitor and tests. Existing stats-chirho.sh calls the same entry. A canonical absolute launcher can target the existing feature worktree without altering its frozen checkout. Shared selector remains the preferred mount/UUID/path authority; a missing selector on another machine safely uses an isolated local cache. No global CARGO_TARGET_DIR, mountpoint creation, shared-drive unmount, secret storage, pinned binary movement, database migration or cache deletion.
 
@@ -23,3 +23,5 @@ Internal disk pressure briefly reached about 574 MB free; no Cargo ran while bel
 Saved result: spec-chirho/ai-ceo-reports-chirho/26-11-14-chirho/26-11-14_11-00-adoption-build_cache-chirho.md. Durable grouped evidence: tmp-chirho/build-cache-adoption-755-chirho/. A separate Python linter is not installed; no lint dependency was downloaded under disk pressure. Runtime/private tests keep internal TMP by policy, and only compiler outputs/probes enter the unencrypted cache. No frozen runner, corpus method, feature source or release input changed. Final ledger/commit/secret scan/push and the single coordinator result follow.
 
 Canonical row 755 is closed. The outgoing delivery binds the final commit and report SHA. All compiler-source holds remain; only the developer entry/tooling and ledger/report metadata land on main.
+
+Source/tooling commit 4791b552ad40a5ae625934f63dcead0f583e9d58 was secret-scanned, pushed and remotely read back. Saved report SHA256 2423f2a9a16b08ce6728e36cd90f6c97b44f0b05e03a76faec10031ee655d3e8 (5084 bytes) returned once as DM4485 at 2026-11-14 11:03:05 EST, delivered=true. Delivery is not portfolio intake or broader acceptance. This final metadata-only checklist closure changes no adapter code or compiler inputs.
