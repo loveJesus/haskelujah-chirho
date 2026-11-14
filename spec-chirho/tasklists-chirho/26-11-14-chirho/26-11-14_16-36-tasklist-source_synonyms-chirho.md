@@ -13,7 +13,7 @@ Brick 1 placement: HIR retains a synonym head and every supplied type argument. 
 - [x] Implement checked local aliases with saturation, cycle, argument-kind and scope checks; transport closed alias schemes by original name.
 - [x] Add actual-source Base.String and Show.ShowS manifests and the checked Prelude String route; execute the string-valued vertical.
 - [x] Measure GHC controls for erased bad arguments, capture/shadowing, imported/hidden nominal types, alias cycles, forward dependencies and bounded growth; run affected gates and unchanged fixed profile.
-- [ ] Document the implementation map, scan outgoing commits, push owned paths, close canonical bookkeeping and retain exact limits.
+- [x] Document the implementation map, scan outgoing commits, push owned paths, close canonical bookkeeping and retain exact limits.
 
 No new dependency, worktree, cache copy/deletion, native/device/provider/public/release action. New Cargo uses the canonical external-first adapter, --locked --offline -j2, one pass at a time with fresh resource checks and 1200-second capture bounds. Private runtime TMP and durable receipts stay on their existing protected devices. Reuse the 758 target; estimate at most 8 GiB additional regenerable output with the existing internal reserve. No automatic retry or backend switch.
 
@@ -22,3 +22,13 @@ Measured at source-review basis r4 (43 files, 3cd7b7a9): next driver 173/0, TC 2
 The 23 CLI/Core controls produce 9 ACCEPT, 9 REFUSAL and 5 Unsupported, with 3 additional PATH-limited checked-source controls. Seven actual values (3 strings and 4 characters) match the corresponding GHC 9.14.1 queries. Current references retain 45 commands across the control, mover and late-kind receipts (versions included); preliminary attempts are separate. The fixed 353-original profile is 40 ACCEPT / 38 REFUSAL / 275 Unsupported (parent 33 / 35 / 285). Ten new handled rows all match fresh byte-equal GHC references; no previously handled movement. The initial tc238 premature refusal is retained in the r1 profile and corrected back to Unsupported. This is an unconfigured profile, with all.T flags/ways omitted, not a configured GHC compatibility ratio or B-run acceptance.
 
 Claude2 DM4700 reviewed r2, DM4702 located the additional Haskell2010 producer-order gap, and DM4711 cleared the r4 pre-pass delta. All are source reading only with no independent execution. Explicit general PolyKinds/NoPolyKinds remain outside the profile, and pre-existing direct GHC2021 phantom-data kind inference is not repaired here. RHS/result kind errors conservatively decline. Default-Prelude ShowS still needs its facade prologue; explicit NoImplicitPrelude imports execute now. Source-shaped Int, Show/printing, IO-main and native work follow separately. Seven prior pins hold; canonical main compiler crates remain 04116a69.
+
+Checkpoint source: 41d59fd749c2eecbbaac96723c6192e5e2ea3615; crates c68d021659316c6478f30dceab6644777e0614c0. Source push and exact remote read-back passed on next-pipeline-source-synonyms-chirho. Canonical unit 759 closed at 2026-11-14T22:20:02.246Z; the feature DB is unchanged. This document's final closure is a separate metadata commit, with no compiler delta. No main compiler merge, registry publish or release.
+
+Acceptance (SHA256 0d10e28be70d5bb161941ea519bc84e552ab12e225a02af3db0be0fe57fb790c):
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-synonyms-759-chirho/analysis-chirho/acceptance-chirho.json
+
+Frozen CLI (SHA256 0445ebe8bf0447b45b1b43899e2c75bc5ff681de89c73d14ccab96ea21ff0779; 61,704,600 bytes; 0555; nlink 1; fresh=false):
+/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-synonyms-759-chirho/checkpoint-chirho/build-checked-chirho/haskelujah-next-synonyms-chirho
+
+The next consolidated fleet report will fold this prerequisite with subsequent Show-route progress; unit 758 was just reported and no duplicate AICEO receipt is requested.
