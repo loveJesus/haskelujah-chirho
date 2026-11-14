@@ -337,6 +337,7 @@ impl CheckedModuleChirho {
         // GHC class defaulting runs after generalization, never in instance lookup.
         // Only the defining unit/module/namespace can identify the standard Num.
         let mut num_chirho = None;
+        let mut standard_chirho = std::collections::HashSet::new();
         for &name_chirho in self.solver_chirho.classes_chirho.keys() {
             self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
             let info_chirho = self
@@ -356,6 +357,15 @@ impl CheckedModuleChirho {
                 && info_chirho.occurrence_chirho == "Num"
             {
                 num_chirho = Some(name_chirho);
+                standard_chirho.insert(name_chirho);
+            }
+            if info_chirho.unit_chirho == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho
+                && info_chirho.module_chirho == "GHC.Internal.Classes"
+                && info_chirho.namespace_chirho
+                    == haskelujah_hir_chirho::NamespaceChirho::TypeChirho
+                && matches!(info_chirho.occurrence_chirho.as_str(), "Eq" | "Ord")
+            {
+                standard_chirho.insert(name_chirho);
             }
         }
         // GHC's ghc-internal unit has no built-in default environment.
@@ -363,7 +373,8 @@ impl CheckedModuleChirho {
             == haskelujah_hir_chirho::UnitIdentityChirho::StandaloneHomeChirho
             && let Some(num_chirho) = num_chirho
         {
-            self.solver_chirho.default_integer_chirho(num_chirho)?;
+            self.solver_chirho
+                .default_integer_chirho(num_chirho, &standard_chirho)?;
         }
         let unresolved_chirho = self.solver_chirho.unresolved_dictionaries_chirho()?;
         let Some(wanted_chirho) = unresolved_chirho.first() else {

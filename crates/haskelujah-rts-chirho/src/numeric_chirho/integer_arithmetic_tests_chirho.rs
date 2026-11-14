@@ -2,6 +2,48 @@
 
 use super::*;
 
+#[test]
+fn comparison_work_is_bounded_cumulative_and_failure_preserves_inputs_chirho() {
+    let left_chirho = integer_chirho("340282366920938463463374607431768211457");
+    let right_chirho = left_chirho
+        .apply_chirho(
+            IntegerOperationChirho::NegateChirho,
+            None,
+            &mut IntegerBudgetChirho::default(),
+        )
+        .unwrap();
+    let mut budget_chirho = IntegerBudgetChirho::limited_chirho(14, 2);
+    assert_eq!(
+        left_chirho
+            .compare_bounded_chirho(&right_chirho, &mut budget_chirho)
+            .unwrap(),
+        std::cmp::Ordering::Greater
+    );
+    assert_eq!(
+        right_chirho
+            .compare_bounded_chirho(&left_chirho, &mut budget_chirho)
+            .unwrap(),
+        std::cmp::Ordering::Less
+    );
+    assert_eq!(
+        left_chirho.compare_bounded_chirho(&left_chirho, &mut budget_chirho),
+        Err(IntegerArithmeticErrorChirho::ResourceChirho)
+    );
+    assert!(budget_chirho.exhausted_chirho());
+    assert_eq!(
+        left_chirho.to_string(),
+        "340282366920938463463374607431768211457"
+    );
+    assert_eq!(
+        right_chirho.to_string(),
+        "-340282366920938463463374607431768211457"
+    );
+    assert_eq!(
+        integer_chirho("0").compare_bounded_chirho(&integer_chirho("0"), &mut budget_chirho),
+        Err(IntegerArithmeticErrorChirho::ResourceChirho)
+    );
+}
+
 fn integer_chirho(text_chirho: &str) -> IntegerValueChirho {
     IntegerValueChirho::from_literal_chirho(text_chirho).unwrap()
 }

@@ -8,13 +8,20 @@ use haskelujah_parser_chirho::lexer_chirho::{LexerChirho, RawTokenKindChirho};
 use haskelujah_runtime_chirho::integer_arithmetic_chirho::IntegerOperationChirho;
 use haskelujah_span_chirho::FileIdChirho;
 
-const OPERATIONS_CHIRHO: [(&str, IntegerOperationChirho); 6] = [
+const OPERATIONS_CHIRHO: [(&str, IntegerOperationChirho); 13] = [
     ("integerSub", IntegerOperationChirho::SubtractChirho),
     ("integerAdd", IntegerOperationChirho::AddChirho),
     ("integerMul", IntegerOperationChirho::MultiplyChirho),
     ("integerNegate", IntegerOperationChirho::NegateChirho),
     ("integerAbs", IntegerOperationChirho::AbsoluteChirho),
     ("integerSignum", IntegerOperationChirho::SignumChirho),
+    ("integerEq", IntegerOperationChirho::EqualChirho),
+    ("integerNe", IntegerOperationChirho::NotEqualChirho),
+    ("integerLe", IntegerOperationChirho::LessEqualChirho),
+    ("integerLt", IntegerOperationChirho::LessChirho),
+    ("integerGt", IntegerOperationChirho::GreaterChirho),
+    ("integerGe", IntegerOperationChirho::GreaterEqualChirho),
+    ("integerCompare", IntegerOperationChirho::CompareChirho),
 ];
 
 pub(crate) fn operation_chirho(
@@ -42,7 +49,11 @@ pub(crate) fn install_policy_chirho(policy_chirho: &mut LoweringPolicyChirho) {
                 namespace_chirho: NamespaceChirho::ValueChirho,
                 occurrence_chirho: name_chirho.into(),
             },
-            operation_chirho.arity_chirho(),
+            (operation_chirho.arity_chirho(), match operation_chirho.result_chirho() {
+                haskelujah_runtime_chirho::integer_arithmetic_chirho::IntegerResultChirho::IntegerChirho => WiredNameChirho::IntegerChirho,
+                haskelujah_runtime_chirho::integer_arithmetic_chirho::IntegerResultChirho::BoolChirho => WiredNameChirho::BoolChirho,
+                haskelujah_runtime_chirho::integer_arithmetic_chirho::IntegerResultChirho::OrderingChirho => WiredNameChirho::OrderingChirho,
+            }),
         );
     }
     policy_chirho.wired_declarations_chirho.insert(

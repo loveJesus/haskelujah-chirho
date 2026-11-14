@@ -97,12 +97,16 @@ impl ElaboratorChirho<'_> {
                 let info_chirho = &self.types_chirho.checked_chirho.module_chirho.names_chirho
                     [name_chirho.0 as usize];
                 let mut reference_chirho = match info_chirho.wired_chirho {
-                    Some(WiredNameChirho::TrueChirho | WiredNameChirho::FalseChirho) => {
-                        CoreExprChirho::ConAppChirho {
-                            con_name_chirho: info_chirho.occurrence_chirho.clone(),
-                            args_chirho: vec![],
-                        }
-                    }
+                    Some(
+                        WiredNameChirho::TrueChirho
+                        | WiredNameChirho::FalseChirho
+                        | WiredNameChirho::LessChirho
+                        | WiredNameChirho::EqualChirho
+                        | WiredNameChirho::GreaterChirho,
+                    ) => CoreExprChirho::ConAppChirho {
+                        con_name_chirho: info_chirho.occurrence_chirho.clone(),
+                        args_chirho: vec![],
+                    },
                     _ => CoreExprChirho::VarChirho(CoreIdChirho(name_chirho.0)),
                 };
                 let checked_chirho = self.types_chirho.checked_chirho;

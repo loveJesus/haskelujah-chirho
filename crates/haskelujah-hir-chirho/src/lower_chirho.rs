@@ -198,6 +198,7 @@ impl LowerChirho<'_> {
                 let id_chirho = self.lookup_chirho(name_chirho, NamespaceChirho::TypeChirho)?;
                 match self.names_chirho[id_chirho.0 as usize].wired_chirho {
                     Some(WiredNameChirho::BoolChirho) => SurfaceTypeChirho::BoolChirho,
+                    Some(WiredNameChirho::OrderingChirho) => SurfaceTypeChirho::OrderingChirho,
                     Some(WiredNameChirho::CharChirho) => SurfaceTypeChirho::CharChirho,
                     Some(WiredNameChirho::IntegerChirho) => SurfaceTypeChirho::IntegerChirho,
                     _ => SurfaceTypeChirho::DeclaredChirho(id_chirho),
@@ -560,42 +561,42 @@ pub fn lower_module_with_policy_chirho(
         &policy_chirho.implicit_interfaces_chirho,
     )?;
     lower_chirho.install_prelude_chirho(module_chirho, policy_chirho, &imports_chirho)?;
+    if !policy_chirho.wired_imports_chirho.is_empty()
+        && lower_chirho.unit_chirho != UnitIdentityChirho::CompilerChirho
+    {
+        return Err(lower_chirho.error_chirho(
+            "wired library imports require a compiler-unit manifest",
+            module_chirho.span_chirho,
+        ));
+    }
+    let mut wired_scope_chirho = policy_chirho.wired_imports_chirho.clone();
     if lower_chirho.implicit_prelude_chirho {
-        for (text_chirho, namespace_chirho, wired_chirho) in [
-            (
-                "Bool",
-                NamespaceChirho::TypeChirho,
-                WiredNameChirho::BoolChirho,
-            ),
-            (
-                "Char",
-                NamespaceChirho::TypeChirho,
-                WiredNameChirho::CharChirho,
-            ),
-            (
-                "True",
-                NamespaceChirho::ValueChirho,
-                WiredNameChirho::TrueChirho,
-            ),
-            (
-                "False",
-                NamespaceChirho::ValueChirho,
-                WiredNameChirho::FalseChirho,
-            ),
-        ] {
-            let id_chirho = lower_chirho.bind_chirho(
-                text_chirho,
-                namespace_chirho,
-                SpanChirho::DUMMY_CHIRHO,
-                false,
-                Some(wired_chirho),
-            )?;
-            lower_chirho
-                .import_scope_chirho
-                .entry((text_chirho.into(), namespace_chirho))
-                .or_default()
-                .push(id_chirho);
-        }
+        wired_scope_chirho.extend([
+            WiredNameChirho::BoolChirho,
+            WiredNameChirho::CharChirho,
+            WiredNameChirho::TrueChirho,
+            WiredNameChirho::FalseChirho,
+            WiredNameChirho::OrderingChirho,
+            WiredNameChirho::LessChirho,
+            WiredNameChirho::EqualChirho,
+            WiredNameChirho::GreaterChirho,
+        ]);
+    }
+    for wired_chirho in wired_scope_chirho {
+        let text_chirho = wired_chirho.occurrence_chirho();
+        let namespace_chirho = wired_chirho.namespace_chirho();
+        let id_chirho = lower_chirho.bind_chirho(
+            text_chirho,
+            namespace_chirho,
+            SpanChirho::DUMMY_CHIRHO,
+            false,
+            Some(wired_chirho),
+        )?;
+        lower_chirho
+            .import_scope_chirho
+            .entry((text_chirho.into(), namespace_chirho))
+            .or_default()
+            .push(id_chirho);
     }
     let wired_exports_chirho = lower_chirho.install_primitive_declarations_chirho(policy_chirho)?;
     lower_chirho.predeclare_type_headers_chirho(&module_chirho.decls_chirho)?;

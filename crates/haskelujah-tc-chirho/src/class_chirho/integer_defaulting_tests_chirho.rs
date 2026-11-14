@@ -86,7 +86,10 @@ fn integer_defaulting_preserves_the_wanted_scope_and_uses_checked_instance_evide
         child_chirho,
     );
     solver_chirho
-        .default_integer_chirho(NameIdChirho(1))
+        .default_integer_chirho(
+            NameIdChirho(1),
+            &std::collections::HashSet::from([NameIdChirho(1)]),
+        )
         .unwrap();
     assert_eq!(
         solver_chirho
@@ -143,7 +146,10 @@ fn another_class_or_a_non_unary_occurrence_blocks_the_same_default_variable_chir
             scope_chirho,
         );
         solver_chirho
-            .default_integer_chirho(NameIdChirho(1))
+            .default_integer_chirho(
+                NameIdChirho(1),
+                &std::collections::HashSet::from([NameIdChirho(1)]),
+            )
             .unwrap();
         assert_eq!(
             solver_chirho
@@ -187,7 +193,10 @@ fn generalized_variables_and_signature_skolems_cannot_be_defaulted_chirho() {
         );
     }
     solver_chirho
-        .default_integer_chirho(NameIdChirho(1))
+        .default_integer_chirho(
+            NameIdChirho(1),
+            &std::collections::HashSet::from([NameIdChirho(1)]),
+        )
         .unwrap();
     assert_eq!(
         solver_chirho
@@ -233,7 +242,10 @@ fn a_missing_candidate_or_unproved_instance_context_never_fills_a_meta_chirho() 
                 .push(context_chirho);
         }
         solver_chirho
-            .default_integer_chirho(NameIdChirho(1))
+            .default_integer_chirho(
+                NameIdChirho(1),
+                &std::collections::HashSet::from([NameIdChirho(1)]),
+            )
             .unwrap();
         assert_eq!(
             solver_chirho
@@ -269,7 +281,10 @@ fn exhausted_defaulting_is_a_resource_error_before_any_assignment_chirho() {
     {}
     assert_eq!(
         solver_chirho
-            .default_integer_chirho(NameIdChirho(1))
+            .default_integer_chirho(
+                NameIdChirho(1),
+                &std::collections::HashSet::from([NameIdChirho(1)])
+            )
             .unwrap_err()
             .kind_chirho,
         TcErrorKindChirho::ResourceChirho

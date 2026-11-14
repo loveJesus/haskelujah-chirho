@@ -29,6 +29,10 @@ impl CheckedModuleChirho {
                 .solver_chirho
                 .arena_chirho
                 .con_chirho(TyConChirho::BoolChirho)?,
+            SurfaceTypeChirho::OrderingChirho => self
+                .solver_chirho
+                .arena_chirho
+                .con_chirho(TyConChirho::OrderingChirho)?,
             SurfaceTypeChirho::CharChirho => self
                 .solver_chirho
                 .arena_chirho

@@ -33,6 +33,7 @@ pub enum TyConChirho {
     TypeChirho,
     ConstraintChirho,
     BoolChirho,
+    OrderingChirho,
     CharChirho,
     /// GHC's wired Integer, distinct from any same-spelled source declaration.
     IntegerChirho,

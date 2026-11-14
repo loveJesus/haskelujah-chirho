@@ -380,7 +380,7 @@ fn prelude_names_certify_clashes_but_never_supply_a_type_chirho() {
     let error_chirho = check_source_chirho(source_chirho).unwrap_err();
     assert_eq!(error_chirho.kind_chirho, NextErrorKindChirho::InvalidChirho);
     let library_chirho = "module AChirho where\nfChirho _ = 'a'\n";
-    let user_chirho = "module BChirho where\nimport AChirho\nresultChirho = not True\n";
+    let user_chirho = "module BChirho where\nimport AChirho\nresultChirho = id True\n";
     assert_eq!(
         super::super::check_sources_chirho(&[library_chirho, user_chirho], "BChirho")
             .unwrap_err()

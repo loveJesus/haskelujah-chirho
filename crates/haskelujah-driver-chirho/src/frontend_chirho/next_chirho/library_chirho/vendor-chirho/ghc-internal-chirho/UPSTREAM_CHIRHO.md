@@ -10,3 +10,6 @@ Whole, unmodified files from GHC commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886
 - libraries/ghc-internal/LICENSE | 3881 bytes | SHA256 768c070bd0b7d820d169ee8153d5487acfc262cbbc10dfce18d05c0bb2d2800d
 
 The sibling base-chirho/Prelude.hs is vendored whole (6040 bytes, SHA256 02f4309be195717f29c307f5041784c62a08297a68169bf4760cfe95abd1fa3c) from libraries/base/src/Prelude.hs at the same commit. Only its explicit complete export name set is read, to detect scope clashes and distinguish unsupported present names from absence. Its body, types and instances are not claimed checked. The base LICENSE is byte-identical to this ghc-internal LICENSE, and both are retained. The binary notice covers both source origins.
+
+- libraries/ghc-internal/src/GHC/Internal/Classes.hs | 78107 bytes | SHA256 9f07eab1df0c2c9892ba5b8e35236e45868f738cb6a755234a7c49e70fb150cd | actual Eq/Ord/not and shared fixity spans checked
+- libraries/ghc-internal/src/GHC/Internal/Base.hs | 79928 bytes | SHA256 bc38ea9356f90aeb38298ef1269fbdc2dee433528374948375da112b273a89e2 | facade header only, no body/type checking claim

@@ -17,10 +17,12 @@ impl SolverChirho {
     pub(crate) fn default_integer_chirho(
         &mut self,
         num_chirho: NameIdChirho,
+        standard_chirho: &HashSet<NameIdChirho>,
     ) -> Result<(), TcErrorChirho> {
         let mut candidates_chirho = Vec::new();
         let mut seen_chirho = HashSet::new();
         let mut blocked_chirho = HashSet::new();
+        let mut classes_chirho: HashMap<TyChirho, HashSet<NameIdChirho>> = HashMap::new();
         // One zonked view of all remaining constraints: a non-unary occurrence or
         // another class blocks its variable, even if Num Integer exists.
         for index_chirho in 0..self.dictionary_wanteds_chirho.len() {
@@ -36,10 +38,15 @@ impl SolverChirho {
                 .arena_chirho
                 .replace_chirho(wanted_chirho.predicate_chirho, HashMap::new())?;
             let (class_chirho, argument_chirho) = self.predicate_view_chirho(predicate_chirho)?;
-            if class_chirho == num_chirho
+            if standard_chirho.contains(&class_chirho)
                 && self.arena_chirho.is_flexible_chirho(argument_chirho)?
             {
-                if seen_chirho.insert(argument_chirho) {
+                self.arena_chirho.reserve_auxiliary_chirho()?;
+                classes_chirho
+                    .entry(argument_chirho)
+                    .or_default()
+                    .insert(class_chirho);
+                if class_chirho == num_chirho && seen_chirho.insert(argument_chirho) {
                     self.arena_chirho.reserve_auxiliary_chirho()?;
                     candidates_chirho.push((
                         argument_chirho,
@@ -61,27 +68,35 @@ impl SolverChirho {
             return Ok(());
         }
         let integer_chirho = self.arena_chirho.con_chirho(TyConChirho::IntegerChirho)?;
-        // Prove this candidate without filling a meta or manufacturing evidence.
-        // A slice cannot prove failure; leave an unavailable candidate to the existing
-        // partiality gate. Future default types require isolated solver trials.
-        let Some((instance_chirho, arguments_chirho)) =
-            self.match_instance_chirho(num_chirho, integer_chirho)?
-        else {
-            return Ok(());
-        };
-        let instance_chirho = self.instance_info_chirho(instance_chirho)?;
-        if !arguments_chirho.is_empty()
-            || !instance_chirho.binders_chirho.is_empty()
-            || !instance_chirho.context_chirho.is_empty()
-        {
-            return Ok(());
-        }
+        // Prove every class in a group at the first standard candidate before filling
+        // its meta. Missing library instances cannot disprove later GHC candidates.
         let type_chirho = self.arena_chirho.con_chirho(TyConChirho::TypeChirho)?;
         for (variable_chirho, scope_chirho, span_chirho) in candidates_chirho {
             self.arena_chirho.reserve_auxiliary_chirho()?;
             if blocked_chirho.contains(&variable_chirho)
                 || self.arena_chirho.kind_chirho(variable_chirho)? != type_chirho
             {
+                continue;
+            }
+            let mut available_chirho = true;
+            for &class_chirho in &classes_chirho[&variable_chirho] {
+                self.arena_chirho.reserve_auxiliary_chirho()?;
+                let Some((instance_chirho, arguments_chirho)) =
+                    self.match_instance_chirho(class_chirho, integer_chirho)?
+                else {
+                    available_chirho = false;
+                    break;
+                };
+                let instance_chirho = self.instance_info_chirho(instance_chirho)?;
+                if !arguments_chirho.is_empty()
+                    || !instance_chirho.binders_chirho.is_empty()
+                    || !instance_chirho.context_chirho.is_empty()
+                {
+                    available_chirho = false;
+                    break;
+                }
+            }
+            if !available_chirho {
                 continue;
             }
             self.want_chirho(EqualityChirho {

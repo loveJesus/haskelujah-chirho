@@ -198,6 +198,9 @@ impl LowerChirho<'_> {
             InterfaceTypeChirho::BuiltinChirho(InterfaceBuiltinChirho::BoolChirho) => {
                 SurfaceTypeChirho::BoolChirho
             }
+            InterfaceTypeChirho::BuiltinChirho(InterfaceBuiltinChirho::OrderingChirho) => {
+                SurfaceTypeChirho::OrderingChirho
+            }
             InterfaceTypeChirho::BuiltinChirho(InterfaceBuiltinChirho::CharChirho) => {
                 SurfaceTypeChirho::CharChirho
             }

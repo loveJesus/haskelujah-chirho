@@ -167,6 +167,11 @@ impl LowerChirho<'_> {
                             .import_scope_chirho
                             .get(&(name_chirho.full_name_chirho(), NamespaceChirho::ValueChirho))
                             .is_some_and(|ids_chirho| ids_chirho.contains(&method_id_chirho));
+                    let visible_chirho = visible_chirho
+                        || self
+                            .prelude_scope_chirho
+                            .get(&(name_chirho.full_name_chirho(), NamespaceChirho::ValueChirho))
+                            == Some(&method_id_chirho);
                     if !visible_chirho {
                         return Err(self.invalid_class_chirho(
                             "implementation is not a visible method of this class",

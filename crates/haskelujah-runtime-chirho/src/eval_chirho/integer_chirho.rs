@@ -4,7 +4,9 @@
 //! Workflow: next-pipeline-chirho/ghc-implementation-map-chirho.
 
 use super::{EvalErrorChirho, MachineChirho, PrimErrorChirho, PrimOpKindChirho, ValueChirho};
-use crate::integer_arithmetic_chirho::{IntegerArithmeticErrorChirho, IntegerOperationChirho};
+use crate::integer_arithmetic_chirho::{
+    IntegerArithmeticErrorChirho, IntegerOperationChirho, IntegerResultChirho,
+};
 use crate::integer_literal_chirho::IntegerValueChirho;
 use crate::value_chirho::InfoTagChirho;
 
@@ -24,6 +26,39 @@ impl MachineChirho {
             .get(1)
             .map(|argument_chirho| self.integer_operand_chirho(operation_chirho, argument_chirho))
             .transpose()?;
+        if operation_chirho.result_chirho() != IntegerResultChirho::IntegerChirho {
+            let right_chirho = right_chirho
+                .as_ref()
+                .ok_or(EvalErrorChirho::PrimFailChirho(
+                    PrimErrorChirho::IntegerArithmeticChirho(
+                        IntegerArithmeticErrorChirho::ArityChirho,
+                    ),
+                ))?;
+            let ordering_chirho = left_chirho
+                .compare_bounded_chirho(right_chirho, &mut self.integer_budget_chirho)
+                .map_err(|error_chirho| {
+                    EvalErrorChirho::PrimFailChirho(PrimErrorChirho::IntegerArithmeticChirho(
+                        error_chirho,
+                    ))
+                })?;
+            if operation_chirho == IntegerOperationChirho::CompareChirho {
+                return Ok(self.make_ordering_chirho(ordering_chirho));
+            }
+            let boolean_chirho = match operation_chirho {
+                IntegerOperationChirho::EqualChirho => ordering_chirho.is_eq(),
+                IntegerOperationChirho::NotEqualChirho => !ordering_chirho.is_eq(),
+                IntegerOperationChirho::LessChirho => ordering_chirho.is_lt(),
+                IntegerOperationChirho::LessEqualChirho => !ordering_chirho.is_gt(),
+                IntegerOperationChirho::GreaterChirho => ordering_chirho.is_gt(),
+                IntegerOperationChirho::GreaterEqualChirho => !ordering_chirho.is_lt(),
+                _ => {
+                    return Err(EvalErrorChirho::TypeErrorChirho {
+                        message_chirho: "Integer comparison result contract mismatch".into(),
+                    });
+                }
+            };
+            return Ok(ValueChirho::BoolChirho(boolean_chirho));
+        }
         left_chirho
             .apply_chirho(
                 operation_chirho,

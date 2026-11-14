@@ -44,10 +44,18 @@ impl LowerChirho<'_> {
                 Some(*wired_chirho),
             )?);
         }
-        for (original_chirho, arity_chirho) in &policy_chirho.primitive_bindings_chirho {
+        for (original_chirho, (arity_chirho, expected_result_chirho)) in
+            &policy_chirho.primitive_bindings_chirho
+        {
             self.own_manifest_name_chirho(original_chirho)?;
             if original_chirho.namespace_chirho != NamespaceChirho::ValueChirho
                 || !(1..=2).contains(arity_chirho)
+                || !matches!(
+                    expected_result_chirho,
+                    WiredNameChirho::IntegerChirho
+                        | WiredNameChirho::BoolChirho
+                        | WiredNameChirho::OrderingChirho
+                )
             {
                 return Err(self.error_chirho(
                     "unsupported backend primitive declaration",
@@ -71,7 +79,9 @@ impl LowerChirho<'_> {
         signatures_chirho: &mut HashMap<String, &TypeChirho>,
     ) -> ResultChirho<Vec<PrimitiveBindingChirho>> {
         let mut result_chirho = Vec::new();
-        for (original_chirho, arity_chirho) in &policy_chirho.primitive_bindings_chirho {
+        for (original_chirho, (arity_chirho, expected_result_chirho)) in
+            &policy_chirho.primitive_bindings_chirho
+        {
             let signature_chirho = signatures_chirho
                 .remove(&original_chirho.occurrence_chirho)
                 .ok_or_else(|| {
@@ -101,6 +111,7 @@ impl LowerChirho<'_> {
                 name_chirho,
                 signature_chirho,
                 arity_chirho: *arity_chirho,
+                result_chirho: *expected_result_chirho,
             });
         }
         Ok(result_chirho)

@@ -402,3 +402,31 @@ A direct import and Prelude exposure of the same original name are one entity. A
 Two absence boundaries are separate from loading hints. A complete home-unit class cannot acquire unseen instances in a library that cannot name it, even when its head is a compiler type. A deliberately sliced home unit remains conservative. Ordinary unqualified-name absence uses the selected lexical scope and complete Prelude name account, not hidden type/instance interfaces or unit incompleteness. Other qualified/builtin occurrence forms, typed holes and implicitly quantified lowercase annotation variables retain their conservative declines. Unmodeled top-level declarations decline before ordinary data fields or class bodies are read, so a declared alias/newtype cannot be mistaken for an absent name. Internal source-route inconsistencies are Unsupported rather than semantic judgments on the user's source.
 
 The carrier, parent/member checks and scope/partiality corrections were reviewed by Claude2 through source reading only (#34365, DM4570, DM4575); no independent execution is implied. Execution counts, fixed-profile movements, source identity and residuals belong to the unit 757 tasklist and acceptance receipt. Full source libraries, ordinary numeric classes beyond Num, native Integer, IO-main/B-run and default-pipeline integration remain open.
+
+
+## Checked Integer comparison boundary (unit 758)
+
+Architecture: Claude2 DM4655, source reading only; GPT implements and executes. Reference is GHC 9.14.1 at 902339d3. The new gate results belong to the unit 758 tasklist and receipts; this implementation account does not itself certify their execution.
+
+| GHC representation | Local representation | Required invariant |
+| --- | --- | --- |
+| Classes.hs shared fixity, Eq/Ord declarations and defaults, and not | Whole hash-pinned source file; declared complete groups checked through the existing HIR and TC | Neither a replacement class scheme nor a spelling-based instance table |
+| Builtin/Types.hs wired Ordering and Bool | Wired original identities, closed arena constructors, matching Core constructor keys | Local same-spelled data types stay nominally distinct; runtime produces the constructor values source patterns inspect |
+| Integer.hs comparison signatures and actual Eq/Ord instances | Closed checked Integer argument arrows and a manifest-declared wired result contract | Both TC and elaborator cross-check arity/result before emitting an opaque body |
+| Bangs and equations of Integer comparisons | Existing nested Core cases, left operand then right, underneath every lambda | Saturated demand uses the STG continuation stack; partial application stays lazy, and the primitive never re-enters the evaluator |
+| Primitive mathematical comparison | Immutable Rust BigInt comparison and evaluation-owner allowance | Reserve input-limb work and one constructor result before comparison; exhaustion remains latched and cannot become a successful value |
+| Prelude -> Base -> Classes | Whole pinned Base facade header plus loaded checked Classes exports | The facade supplies candidates and no types; per-name checked export ownership proves the terminal identity |
+| Standard Num/Eq/Ord default group | Exact defining names and a context-free present Integer instance for every member | Num must be present; other classes or non-unary occurrences block the group; compiler-unit modules never default |
+
+```mermaid
+flowchart TD
+  FacadeChirho["Pinned Prelude / Base name route"] --> CheckedChirho["Checked Classes defining exports"]
+  CheckedChirho --> IntegerChirho["Checked Integer source signatures and Eq/Ord instances"]
+  IntegerChirho --> NumChirho["Checked Num Integer"]
+  NumChirho --> HomeChirho["Home inference, ordinary evidence and standard-group defaulting"]
+  IntegerChirho --> DemandChirho["Core lambdas with left/right forcing cases"]
+  DemandChirho --> RuntimeChirho["Bounded opaque comparison, Bool or Ordering constructor"]
+  RuntimeChirho --> PatternChirho["Source pattern or default-method consumer"]
+```
+
+The driver admits wired Types imports only for its compiler-unit manifest modules; it does not claim to check Types.hs. Manifest source instances may belong to another library module's class, while local visible duplicate checking still precedes the partiality exemption. Classes and Integer remain slices: absent Eq Bool, other instances, Show and unmodeled library exports remain Unsupported. Operator chains, full Base bodies, IO-main, native Integer and shared runtime code/root retention are separate boundaries.

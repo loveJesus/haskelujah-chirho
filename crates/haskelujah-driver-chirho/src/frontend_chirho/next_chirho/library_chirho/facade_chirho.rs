@@ -162,6 +162,9 @@ impl ReaderChirho<'_> {
             if !self.take_chirho(CommaChirho) {
                 return Err(unsupported_chirho());
             }
+            if self.take_chirho(RightParenChirho) {
+                break;
+            }
         }
         Ok(result_chirho)
     }
@@ -188,6 +191,11 @@ fn read_chirho(source_chirho: &str, module_chirho: &str) -> Result<FacadeChirho,
         .collect::<Result<_, NextErrorChirho>>()?,
         cursor_chirho: 0,
     };
+    while reader_chirho.word_chirho("#") {
+        if !reader_chirho.word_chirho("include") || !reader_chirho.take_chirho(StringLitChirho) {
+            return Err(unsupported_chirho());
+        }
+    }
     if !reader_chirho.take_chirho(ModuleChirho)
         || reader_chirho.name_chirho()? != module_chirho
         || !reader_chirho.take_chirho(LeftParenChirho)
@@ -305,7 +313,9 @@ pub(in crate::next_chirho) fn routes_chirho() -> Result<Arc<RoutesChirho>, NextE
                     "Prelude".into(),
                     read_chirho(prelude_scope_chirho::SOURCE_CHIRHO, "Prelude")?,
                 )]);
-                for manifest_chirho in [&NUM_CHIRHO, &INTEGER_CHIRHO, &TUPLE_CHIRHO] {
+                for manifest_chirho in
+                    [&NUM_CHIRHO, &INTEGER_CHIRHO, &TUPLE_CHIRHO, &CLASSES_CHIRHO]
+                {
                     verify_source_chirho(
                         manifest_chirho.bytes_chirho,
                         manifest_chirho.sha256_chirho,
@@ -318,6 +328,17 @@ pub(in crate::next_chirho) fn routes_chirho() -> Result<Arc<RoutesChirho>, NextE
                         facades_chirho.insert(manifest_chirho.module_chirho.into(), facade_chirho);
                     }
                 }
+                let base_chirho = include_str!("vendor-chirho/ghc-internal-chirho/Base.hs");
+                verify_source_chirho(
+                    base_chirho,
+                    "bc38ea9356f90aeb38298ef1269fbdc2dee433528374948375da112b273a89e2",
+                    "libraries/ghc-internal/src/GHC/Internal/Base.hs",
+                    "9.14.1",
+                )?;
+                facades_chirho.insert(
+                    "GHC.Internal.Base".into(),
+                    read_chirho(base_chirho, "GHC.Internal.Base")?,
+                );
                 let mut result_chirho = BTreeMap::new();
                 for item_chirho in &facades_chirho["Prelude"].exports_chirho {
                     let key_chirho = (

@@ -304,12 +304,24 @@ pub fn check_module_chirho(
     {
         if matches!(
             name_chirho.wired_chirho,
-            Some(WiredNameChirho::TrueChirho | WiredNameChirho::FalseChirho)
+            Some(
+                WiredNameChirho::TrueChirho
+                    | WiredNameChirho::FalseChirho
+                    | WiredNameChirho::LessChirho
+                    | WiredNameChirho::EqualChirho
+                    | WiredNameChirho::GreaterChirho
+            )
         ) {
-            let bool_chirho = checked_chirho
-                .solver_chirho
-                .arena_chirho
-                .con_chirho(TyConChirho::BoolChirho)?;
+            let bool_chirho = checked_chirho.solver_chirho.arena_chirho.con_chirho(
+                if matches!(
+                    name_chirho.wired_chirho,
+                    Some(WiredNameChirho::TrueChirho | WiredNameChirho::FalseChirho)
+                ) {
+                    TyConChirho::BoolChirho
+                } else {
+                    TyConChirho::OrderingChirho
+                },
+            )?;
             checked_chirho
                 .names_chirho
                 .insert(NameIdChirho(index_chirho as u32), bool_chirho);

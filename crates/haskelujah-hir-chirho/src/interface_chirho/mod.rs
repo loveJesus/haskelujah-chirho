@@ -33,7 +33,9 @@ pub struct LoweringPolicyChirho {
     /// Identity dependencies without lexical import scope (known syntax operations).
     pub implicit_interfaces_chirho: Vec<std::sync::Arc<InterfaceChirho>>,
     /// Driver manifests may admit checked signatures with explicitly supplied backend bodies.
-    pub primitive_bindings_chirho: BTreeMap<OriginalNameChirho, usize>,
+    pub primitive_bindings_chirho: BTreeMap<OriginalNameChirho, (usize, crate::WiredNameChirho)>,
+    /// Wired language names imported by a driver-admitted compiler module.
+    pub wired_imports_chirho: Vec<crate::WiredNameChirho>,
     /// Own wired type declarations, distinct from ordinary backend-implemented value names.
     pub wired_declarations_chirho: BTreeMap<OriginalNameChirho, crate::WiredNameChirho>,
 }
@@ -43,6 +45,7 @@ pub enum InterfaceBuiltinChirho {
     TypeChirho,
     ConstraintChirho,
     BoolChirho,
+    OrderingChirho,
     CharChirho,
     IntegerChirho,
     ListChirho,

@@ -13,6 +13,47 @@ fn integer_chirho(source_chirho: &str) -> ValueChirho {
 }
 
 #[test]
+fn comparison_results_are_bool_or_real_ordering_and_share_the_owner_budget_chirho() {
+    let mut machine_chirho = MachineChirho::new_chirho(vec![]);
+    machine_chirho.integer_budget_chirho = IntegerBudgetChirho::limited_chirho(6, 2);
+    assert_eq!(
+        machine_chirho
+            .eval_integer_chirho(
+                IntegerOperationChirho::EqualChirho,
+                &[integer_chirho("1"), integer_chirho("1")]
+            )
+            .unwrap(),
+        ValueChirho::BoolChirho(true)
+    );
+    let value_chirho = machine_chirho
+        .eval_integer_chirho(
+            IntegerOperationChirho::CompareChirho,
+            &[integer_chirho("1"), integer_chirho("2")],
+        )
+        .unwrap();
+    let ValueChirho::HeapPtrChirho(address_chirho) = value_chirho else {
+        panic!("Ordering must be a constructor")
+    };
+    let closure_chirho = machine_chirho.heap_chirho.read_chirho(address_chirho);
+    assert_eq!(closure_chirho.info_chirho.name_chirho, "LT");
+    assert_eq!(
+        closure_chirho.info_chirho.tag_chirho,
+        InfoTagChirho::ConChirho
+    );
+    assert!(closure_chirho.payload_chirho.is_empty());
+    assert!(matches!(
+        machine_chirho.eval_integer_chirho(
+            IntegerOperationChirho::LessChirho,
+            &[integer_chirho("1"), integer_chirho("2")]
+        ),
+        Err(EvalErrorChirho::PrimFailChirho(
+            PrimErrorChirho::IntegerArithmeticChirho(IntegerArithmeticErrorChirho::ResourceChirho)
+        ))
+    ));
+    assert!(machine_chirho.integer_budget_chirho.exhausted_chirho());
+}
+
+#[test]
 fn arithmetic_allowance_survives_repeated_machine_entries_chirho() {
     let mut machine_chirho = MachineChirho::new_chirho(vec![CodeChirho::PrimChirho {
         op_chirho: PrimOpKindChirho::IntegerArithmeticChirho(IntegerOperationChirho::AddChirho),

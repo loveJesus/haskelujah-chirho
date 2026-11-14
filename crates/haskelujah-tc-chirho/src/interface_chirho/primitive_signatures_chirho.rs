@@ -44,7 +44,19 @@ impl CheckedModuleChirho {
                     _ => return Err(primitive_error_chirho()),
                 }
             }
-            if body_chirho != integer_chirho {
+            let expected_chirho = self.solver_chirho.arena_chirho.con_chirho(
+                match declaration_chirho.result_chirho {
+                    haskelujah_hir_chirho::WiredNameChirho::IntegerChirho => {
+                        TyConChirho::IntegerChirho
+                    }
+                    haskelujah_hir_chirho::WiredNameChirho::BoolChirho => TyConChirho::BoolChirho,
+                    haskelujah_hir_chirho::WiredNameChirho::OrderingChirho => {
+                        TyConChirho::OrderingChirho
+                    }
+                    _ => return Err(primitive_error_chirho()),
+                },
+            )?;
+            if body_chirho != expected_chirho {
                 return Err(primitive_error_chirho());
             }
         }

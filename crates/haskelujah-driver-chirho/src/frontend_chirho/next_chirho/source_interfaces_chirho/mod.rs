@@ -86,6 +86,25 @@ fn program_chirho(
             ));
         }
         if key_chirho.unit_chirho == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho
+            && matches!(
+                key_chirho.module_chirho.as_str(),
+                super::library_chirho::INTEGER_MODULE_CHIRHO
+                    | super::library_chirho::CLASSES_MODULE_CHIRHO
+            )
+        {
+            use haskelujah_hir_chirho::WiredNameChirho;
+            // The manifest header supplies only the GHC-wired Types imports used by this slice.
+            policy_chirho.wired_imports_chirho.extend([
+                WiredNameChirho::BoolChirho,
+                WiredNameChirho::TrueChirho,
+                WiredNameChirho::FalseChirho,
+                WiredNameChirho::OrderingChirho,
+                WiredNameChirho::LessChirho,
+                WiredNameChirho::EqualChirho,
+                WiredNameChirho::GreaterChirho,
+            ]);
+        }
+        if key_chirho.unit_chirho == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho
             && key_chirho.module_chirho == super::library_chirho::INTEGER_MODULE_CHIRHO
         {
             super::library_chirho::install_integer_policy_chirho(&mut policy_chirho);

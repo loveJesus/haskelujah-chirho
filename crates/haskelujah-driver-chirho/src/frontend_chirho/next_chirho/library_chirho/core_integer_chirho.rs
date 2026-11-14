@@ -22,7 +22,14 @@ impl ElaboratorChirho<'_> {
         let operation_chirho =
             super::super::library_chirho::integer_operation_chirho(&info_chirho.original_chirho())
                 .ok_or_else(|| error_chirho("no declared primitive body for this original name"))?;
-        if operation_chirho.arity_chirho() != declaration_chirho.arity_chirho {
+        let expected_result_chirho = match operation_chirho.result_chirho() {
+            haskelujah_runtime_chirho::integer_arithmetic_chirho::IntegerResultChirho::IntegerChirho => haskelujah_hir_chirho::WiredNameChirho::IntegerChirho,
+            haskelujah_runtime_chirho::integer_arithmetic_chirho::IntegerResultChirho::BoolChirho => haskelujah_hir_chirho::WiredNameChirho::BoolChirho,
+            haskelujah_runtime_chirho::integer_arithmetic_chirho::IntegerResultChirho::OrderingChirho => haskelujah_hir_chirho::WiredNameChirho::OrderingChirho,
+        };
+        if operation_chirho.arity_chirho() != declaration_chirho.arity_chirho
+            || expected_result_chirho != declaration_chirho.result_chirho
+        {
             return Err(error_chirho(
                 "primitive arity differs from its checked source signature",
             ));

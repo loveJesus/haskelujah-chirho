@@ -18,12 +18,48 @@ pub enum IntegerOperationChirho {
     NegateChirho,
     AbsoluteChirho,
     SignumChirho,
+    EqualChirho,
+    NotEqualChirho,
+    LessChirho,
+    LessEqualChirho,
+    GreaterChirho,
+    GreaterEqualChirho,
+    CompareChirho,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IntegerResultChirho {
+    IntegerChirho,
+    BoolChirho,
+    OrderingChirho,
 }
 
 impl IntegerOperationChirho {
+    pub fn result_chirho(self) -> IntegerResultChirho {
+        match self {
+            Self::AddChirho
+            | Self::SubtractChirho
+            | Self::MultiplyChirho
+            | Self::NegateChirho
+            | Self::AbsoluteChirho
+            | Self::SignumChirho => IntegerResultChirho::IntegerChirho,
+            Self::CompareChirho => IntegerResultChirho::OrderingChirho,
+            _ => IntegerResultChirho::BoolChirho,
+        }
+    }
+
     pub fn arity_chirho(self) -> usize {
         match self {
-            Self::AddChirho | Self::SubtractChirho | Self::MultiplyChirho => 2,
+            Self::AddChirho
+            | Self::SubtractChirho
+            | Self::MultiplyChirho
+            | Self::EqualChirho
+            | Self::NotEqualChirho
+            | Self::LessChirho
+            | Self::LessEqualChirho
+            | Self::GreaterChirho
+            | Self::GreaterEqualChirho
+            | Self::CompareChirho => 2,
             Self::NegateChirho | Self::AbsoluteChirho | Self::SignumChirho => 1,
         }
     }
@@ -37,6 +73,13 @@ impl IntegerOperationChirho {
             Self::NegateChirho => "%next:integer-negate-chirho",
             Self::AbsoluteChirho => "%next:integer-absolute-chirho",
             Self::SignumChirho => "%next:integer-signum-chirho",
+            Self::EqualChirho => "%next:integer-equal-chirho",
+            Self::NotEqualChirho => "%next:integer-not-equal-chirho",
+            Self::LessChirho => "%next:integer-less-chirho",
+            Self::LessEqualChirho => "%next:integer-less-equal-chirho",
+            Self::GreaterChirho => "%next:integer-greater-chirho",
+            Self::GreaterEqualChirho => "%next:integer-greater-equal-chirho",
+            Self::CompareChirho => "%next:integer-compare-chirho",
         }
     }
 
@@ -48,6 +91,13 @@ impl IntegerOperationChirho {
             "%next:integer-negate-chirho" => Self::NegateChirho,
             "%next:integer-absolute-chirho" => Self::AbsoluteChirho,
             "%next:integer-signum-chirho" => Self::SignumChirho,
+            "%next:integer-equal-chirho" => Self::EqualChirho,
+            "%next:integer-not-equal-chirho" => Self::NotEqualChirho,
+            "%next:integer-less-chirho" => Self::LessChirho,
+            "%next:integer-less-equal-chirho" => Self::LessEqualChirho,
+            "%next:integer-greater-chirho" => Self::GreaterChirho,
+            "%next:integer-greater-equal-chirho" => Self::GreaterEqualChirho,
+            "%next:integer-compare-chirho" => Self::CompareChirho,
             _ => return None,
         })
     }
@@ -118,6 +168,27 @@ impl IntegerBudgetChirho {
 }
 
 impl IntegerValueChirho {
+    /// Reserve worst-case input-limb work and one bounded constructor result before comparing.
+    /// No operand is cloned or normalized; failure latches the same evaluation-owner budget.
+    pub fn compare_bounded_chirho(
+        &self,
+        right_chirho: &Self,
+        budget_chirho: &mut IntegerBudgetChirho,
+    ) -> Result<std::cmp::Ordering, IntegerArithmeticErrorChirho> {
+        let left_bits_chirho = self.0.bits();
+        let right_bits_chirho = right_chirho.0.bits();
+        if left_bits_chirho > MAX_INTEGER_BITS_CHIRHO || right_bits_chirho > MAX_INTEGER_BITS_CHIRHO
+        {
+            budget_chirho.exhausted_chirho = true;
+            return Err(IntegerArithmeticErrorChirho::ResourceChirho);
+        }
+        budget_chirho.reserve_chirho(
+            left_bits_chirho.div_ceil(64).max(1) + right_bits_chirho.div_ceil(64).max(1) + 1,
+            1,
+        )?;
+        Ok(self.0.cmp(&right_chirho.0))
+    }
+
     /// Reserve the whole operation before materializing a result. Inputs remain immutable on failure.
     pub fn apply_chirho(
         &self,
@@ -125,7 +196,9 @@ impl IntegerValueChirho {
         right_chirho: Option<&Self>,
         budget_chirho: &mut IntegerBudgetChirho,
     ) -> Result<Self, IntegerArithmeticErrorChirho> {
-        if (operation_chirho.arity_chirho() == 2) != right_chirho.is_some() {
+        if operation_chirho.result_chirho() != IntegerResultChirho::IntegerChirho
+            || (operation_chirho.arity_chirho() == 2) != right_chirho.is_some()
+        {
             return Err(IntegerArithmeticErrorChirho::ArityChirho);
         }
         let left_bits_chirho = self.0.bits();
@@ -154,6 +227,7 @@ impl IntegerValueChirho {
                 (left_limbs_chirho + 1, left_bits_chirho)
             }
             IntegerOperationChirho::SignumChirho => (1, 1),
+            _ => return Err(IntegerArithmeticErrorChirho::ArityChirho),
         };
         budget_chirho.reserve_chirho(work_chirho, output_bits_chirho)?;
         let result_chirho = match operation_chirho {
@@ -190,6 +264,7 @@ impl IntegerValueChirho {
                 SignChirho::NoSign => 0,
                 SignChirho::Plus => 1,
             }),
+            _ => return Err(IntegerArithmeticErrorChirho::ArityChirho),
         };
         Ok(Self(Arc::new(result_chirho)))
     }

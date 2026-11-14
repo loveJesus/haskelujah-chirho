@@ -12,6 +12,7 @@ pub struct ExprIdChirho(pub u32);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SurfaceTypeChirho {
     BoolChirho,
+    OrderingChirho,
     CharChirho,
     IntegerChirho,
     DeclaredChirho(NameIdChirho),
@@ -147,6 +148,7 @@ pub struct PrimitiveBindingChirho {
     pub name_chirho: NameIdChirho,
     pub signature_chirho: SurfaceSignatureChirho,
     pub arity_chirho: usize,
+    pub result_chirho: crate::WiredNameChirho,
 }
 
 #[derive(Debug)]

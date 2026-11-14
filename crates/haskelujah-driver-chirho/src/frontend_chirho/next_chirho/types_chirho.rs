@@ -31,6 +31,9 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
         match info_chirho.wired_chirho {
             Some(haskelujah_hir_chirho::WiredNameChirho::TrueChirho) => "True".into(),
             Some(haskelujah_hir_chirho::WiredNameChirho::FalseChirho) => "False".into(),
+            Some(haskelujah_hir_chirho::WiredNameChirho::LessChirho) => "LT".into(),
+            Some(haskelujah_hir_chirho::WiredNameChirho::EqualChirho) => "EQ".into(),
+            Some(haskelujah_hir_chirho::WiredNameChirho::GreaterChirho) => "GT".into(),
             _ => info_chirho.original_chirho().link_key_chirho("constructor"),
         }
     }
@@ -142,6 +145,7 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
             TyNodeChirho::ConChirho(con_chirho) => CoreTypeChirho::ConChirho(
                 match con_chirho {
                     TyConChirho::BoolChirho => "Bool",
+                    TyConChirho::OrderingChirho => "Ordering",
                     TyConChirho::CharChirho => "Char",
                     TyConChirho::IntegerChirho => {
                         "%next:compiler:GHC.Internal.Bignum.Integer:Integer"

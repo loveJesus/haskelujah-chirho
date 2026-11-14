@@ -112,20 +112,107 @@ fn declarations_chirho(
                 let next_kind_chirho = tokens_chirho
                     .get(cursor_chirho)
                     .map(|token_chirho| token_chirho.kind_chirho);
-                if (binders_chirho.len() > 1 && next_kind_chirho != Some(ColonColonChirho))
-                    || matches!(
-                        next_kind_chirho,
-                        Some(VarSymChirho | ConSymChirho | BacktickChirho)
-                    )
-                {
+                if binders_chirho.len() > 1 && next_kind_chirho != Some(ColonColonChirho) {
                     return Err(invalid_chirho(
-                        "source manifest needs a supported non-infix binder set",
+                        "source manifest needs a supported binder set",
                     ));
+                }
+                if matches!(
+                    next_kind_chirho,
+                    Some(VarSymChirho | ConSymChirho | BacktickChirho)
+                ) {
+                    // In an infix definition the first variable is an argument, not its binder.
+                    let operator_chirho = if next_kind_chirho == Some(BacktickChirho) {
+                        tokens_chirho
+                            .get(cursor_chirho + 1)
+                            .filter(|token_chirho| token_chirho.kind_chirho == VarIdChirho)
+                    } else {
+                        tokens_chirho.get(cursor_chirho)
+                    }
+                    .ok_or_else(|| invalid_chirho("source manifest has no infix binder"))?;
+                    binders_chirho.clear();
+                    binders_chirho.insert(
+                        operator_chirho
+                            .span_chirho
+                            .text_chirho(source_chirho)
+                            .unwrap_or("")
+                            .into(),
+                    );
+                }
+            }
+            LeftParenChirho
+                if tokens_chirho
+                    .get(index_chirho + 1)
+                    .is_some_and(|token_chirho| {
+                        matches!(token_chirho.kind_chirho, VarSymChirho | ConSymChirho)
+                    }) =>
+            {
+                let mut cursor_chirho = index_chirho;
+                loop {
+                    let operator_chirho = tokens_chirho
+                        .get(cursor_chirho + 1)
+                        .filter(|token_chirho| {
+                            matches!(token_chirho.kind_chirho, VarSymChirho | ConSymChirho)
+                        })
+                        .ok_or_else(|| {
+                            invalid_chirho("source manifest has no parenthesized operator binder")
+                        })?;
+                    if tokens_chirho
+                        .get(cursor_chirho + 2)
+                        .is_none_or(|token_chirho| token_chirho.kind_chirho != RightParenChirho)
+                    {
+                        return Err(invalid_chirho(
+                            "source manifest has an incomplete operator binder",
+                        ));
+                    }
+                    binders_chirho.insert(
+                        operator_chirho
+                            .span_chirho
+                            .text_chirho(source_chirho)
+                            .unwrap_or("")
+                            .into(),
+                    );
+                    cursor_chirho += 3;
+                    if tokens_chirho
+                        .get(cursor_chirho)
+                        .is_some_and(|token_chirho| token_chirho.kind_chirho == CommaChirho)
+                    {
+                        cursor_chirho += 1;
+                        if tokens_chirho
+                            .get(cursor_chirho)
+                            .is_none_or(|token_chirho| token_chirho.kind_chirho != LeftParenChirho)
+                        {
+                            return Err(invalid_chirho(
+                                "source manifest has a mixed unsupported signature binder set",
+                            ));
+                        }
+                    } else {
+                        break;
+                    }
                 }
             }
             ClassChirho => {
-                let name_chirho = tokens_chirho
-                    .get(index_chirho + 1)
+                let head_chirho = &tokens_chirho[index_chirho + 1..];
+                let end_chirho = head_chirho
+                    .iter()
+                    .position(|token_chirho| {
+                        let offset_chirho =
+                            token_chirho.span_chirho.start_chirho().as_usize_chirho();
+                        token_chirho.kind_chirho == WhereChirho
+                            || token_chirho.kind_chirho == EofChirho
+                            || (offset_chirho > 0
+                                && source_chirho.as_bytes().get(offset_chirho - 1) == Some(&b'\n'))
+                    })
+                    .unwrap_or(head_chirho.len());
+                let header_chirho = &head_chirho[..end_chirho];
+                let name_index_chirho = header_chirho
+                    .iter()
+                    .rposition(|token_chirho| {
+                        token_chirho.span_chirho.text_chirho(source_chirho) == Some("=>")
+                    })
+                    .map_or(0, |position_chirho| position_chirho + 1);
+                let name_chirho = header_chirho
+                    .get(name_index_chirho)
                     .filter(|token_chirho| token_chirho.kind_chirho == ConIdChirho)
                     .ok_or_else(|| {
                         invalid_chirho("source manifest class has no declaration name")

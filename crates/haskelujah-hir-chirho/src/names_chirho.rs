@@ -20,6 +20,10 @@ pub enum UnitIdentityChirho {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WiredNameChirho {
     BoolChirho,
+    OrderingChirho,
+    LessChirho,
+    EqualChirho,
+    GreaterChirho,
     CharChirho,
     IntegerChirho,
     TrueChirho,
@@ -27,6 +31,31 @@ pub enum WiredNameChirho {
 }
 
 impl WiredNameChirho {
+    pub fn occurrence_chirho(self) -> &'static str {
+        match self {
+            Self::BoolChirho => "Bool",
+            Self::OrderingChirho => "Ordering",
+            Self::LessChirho => "LT",
+            Self::EqualChirho => "EQ",
+            Self::GreaterChirho => "GT",
+            Self::CharChirho => "Char",
+            Self::IntegerChirho => "Integer",
+            Self::TrueChirho => "True",
+            Self::FalseChirho => "False",
+        }
+    }
+
+    pub fn namespace_chirho(self) -> NamespaceChirho {
+        match self {
+            Self::TrueChirho
+            | Self::FalseChirho
+            | Self::LessChirho
+            | Self::EqualChirho
+            | Self::GreaterChirho => NamespaceChirho::ValueChirho,
+            _ => NamespaceChirho::TypeChirho,
+        }
+    }
+
     pub fn defining_module_chirho(self) -> &'static str {
         match self {
             Self::IntegerChirho => "GHC.Internal.Bignum.Integer",

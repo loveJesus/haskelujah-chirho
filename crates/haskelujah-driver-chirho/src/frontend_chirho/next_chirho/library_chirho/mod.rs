@@ -18,6 +18,7 @@ pub(super) use prelude_scope_chirho::exports_chirho as prelude_exports_chirho;
 
 pub(super) const NUM_MODULE_CHIRHO: &str = "GHC.Internal.Num";
 pub(super) const INTEGER_MODULE_CHIRHO: &str = "GHC.Internal.Bignum.Integer";
+pub(super) const CLASSES_MODULE_CHIRHO: &str = "GHC.Internal.Classes";
 pub(super) const LICENSE_CHIRHO: &str = include_str!("vendor-chirho/ghc-internal-chirho/LICENSE");
 
 pub(super) struct SourceManifestChirho {
@@ -57,6 +58,15 @@ const INTEGER_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     sha256_chirho: "1f8ec2a8e12ecbab7eb0b59f249fae663d8066f2fb14224177a4538653bb17f4",
     bytes_chirho: include_str!("vendor-chirho/ghc-internal-chirho/bignum-chirho/Integer.hs"),
     spans_chirho: &[
+        (11199, 11239),
+        (11345, 11385),
+        (11504, 11544),
+        (11654, 11694),
+        (11806, 11846),
+        (11967, 12007),
+        (13387, 13454),
+        (13479, 13528),
+        (13912, 14060),
         (14257, 14301),
         (15876, 15920),
         (17248, 17292),
@@ -64,8 +74,19 @@ const INTEGER_CHIRHO: SourceManifestChirho = SourceManifestChirho {
         (19403, 19436),
         (19792, 19828),
     ],
-    imports_chirho: "",
+    imports_chirho: "import GHC.Internal.Classes (Eq(..), Ord(..))\n",
     primitive_signatures_chirho: true,
+};
+
+const CLASSES_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    ghc_version_chirho: "9.14.1",
+    module_chirho: CLASSES_MODULE_CHIRHO,
+    upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Classes.hs",
+    sha256_chirho: "9f07eab1df0c2c9892ba5b8e35236e45868f738cb6a755234a7c49e70fb150cd",
+    bytes_chirho: include_str!("vendor-chirho/ghc-internal-chirho/Classes.hs"),
+    spans_chirho: &[(3542, 3573), (6083, 6307), (14188, 15004), (22777, 22882)],
+    imports_chirho: "",
+    primitive_signatures_chirho: false,
 };
 
 pub(super) fn manifest_chirho(module_chirho: &str) -> Option<&'static SourceManifestChirho> {
@@ -73,6 +94,7 @@ pub(super) fn manifest_chirho(module_chirho: &str) -> Option<&'static SourceMani
         "GHC.Internal.Data.Tuple" => Some(&TUPLE_CHIRHO),
         NUM_MODULE_CHIRHO => Some(&NUM_CHIRHO),
         INTEGER_MODULE_CHIRHO => Some(&INTEGER_CHIRHO),
+        CLASSES_MODULE_CHIRHO => Some(&CLASSES_CHIRHO),
         _ => None,
     }
 }
@@ -132,11 +154,19 @@ impl SourceManifestChirho {
                         "source manifest has no primitive-body provider",
                     ));
                 }
-                integer_backend_chirho::validate_signature_span_chirho(
-                    self.bytes_chirho,
-                    start_chirho,
-                    end_chirho,
-                )?;
+                if selection_chirho.starts_with("instance ") {
+                    boundaries_chirho::validate_chirho(
+                        self.bytes_chirho,
+                        start_chirho,
+                        end_chirho,
+                    )?;
+                } else {
+                    integer_backend_chirho::validate_signature_span_chirho(
+                        self.bytes_chirho,
+                        start_chirho,
+                        end_chirho,
+                    )?;
+                }
             } else {
                 boundaries_chirho::validate_chirho(self.bytes_chirho, start_chirho, end_chirho)?;
             }
@@ -157,3 +187,6 @@ mod tests_chirho;
 
 #[cfg(test)]
 mod prelude_tests_chirho;
+
+#[cfg(test)]
+mod comparison_tests_chirho;
