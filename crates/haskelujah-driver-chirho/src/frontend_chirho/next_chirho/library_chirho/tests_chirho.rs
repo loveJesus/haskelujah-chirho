@@ -130,27 +130,23 @@ fn same_spelled_home_module_does_not_own_known_num_chirho() {
     );
 }
 #[test]
-fn defaulting_and_unseen_library_instances_decline_chirho() {
-    for source_chirho in [
-        "module DefaultingChirho where\nresultChirho = 5\n",
-        "module LibraryInstanceChirho where\nimport GHC.Internal.Num (Num(..))\nresultChirho :: Char\nresultChirho = fromInteger 5\n",
-    ] {
-        let error_chirho = check_source_chirho(source_chirho).unwrap_err();
-        assert_eq!(
-            error_chirho.kind_chirho,
-            NextErrorKindChirho::UnsupportedChirho,
-            "{error_chirho}"
-        );
-        assert!(
-            error_chirho
+fn unseen_library_instances_decline_chirho() {
+    let source_chirho = "module LibraryInstanceChirho where\nimport GHC.Internal.Num (Num(..))\nresultChirho :: Char\nresultChirho = fromInteger 5\n";
+    let error_chirho = check_source_chirho(source_chirho).unwrap_err();
+    assert_eq!(
+        error_chirho.kind_chirho,
+        NextErrorKindChirho::UnsupportedChirho,
+        "{error_chirho}"
+    );
+    assert!(
+        error_chirho
+            .message_chirho
+            .contains("incomplete source unit")
+            || error_chirho
                 .message_chirho
-                .contains("incomplete source unit")
-                || error_chirho
-                    .message_chirho
-                    .contains("checked defining interface"),
-            "{error_chirho}"
-        );
-    }
+                .contains("checked defining interface"),
+        "{error_chirho}"
+    );
 }
 #[test]
 fn a_visible_duplicate_at_partial_owners_is_a_presence_refusal_chirho() {

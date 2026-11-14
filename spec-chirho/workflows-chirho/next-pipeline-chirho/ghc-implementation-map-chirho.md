@@ -2,7 +2,7 @@
 
 # GHC to Haskelujah implementation map
 
-Implementation scope: isolated `next-pipeline-integer-num-chirho` (unit 753), based on `452a1c3a`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release.
+Implementation scope: isolated `next-pipeline-numeric-defaulting-chirho` (unit 754), based on unit 753 checkpoint `92430836`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release.
 
 This is the written reading guide L.J. requested. It maps GHC's assumptions to our data as we implement locally. It introduces no runtime dependency on GHC. Reference: retained GHC 9.14.1, commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886.
 
@@ -343,3 +343,37 @@ Runtime controls cover 64-bit edges, 2^128-scale products, signs/zero, home-name
 A measured shared-runtime cost remains: the latter run takes 676,557 reduction steps, allocates 231,876 closures and ends with 282,655 code entries (about 190,000 last-live heap objects). Dynamic enter instructions and roots are retained during a run. The tested run has an explicit step allowance, and dropping its machine retires that state; scalable instruction/root retirement is not implemented by this unit. The existing module-wide Wanted rescans, flat inherited interface copies and general runtime retention remain separate growth work.
 
 Both library modules remain slices. Open imports, hidden Integer constructors, unimplemented operations/classes/instances, numeric literal patterns and ordinary standard-class defaulting still decline. A home-class ambiguity that blocks defaulting can be a semantic refusal, as measured against GHC. Num Int/Word/Natural, Eq/Ord/Show Integer, general defaulting, full ghc-internal, native Integer/IO-main and B-run remain open. Integer rendering in the binding-evaluation harness is not a Show instance.
+
+
+## Standard Integer defaulting, unit 754
+
+Architecture input: Claude2 #34227 (GHC/source reading only). Reference remains GHC 9.14.1 at 902339d3. This unit supports the first candidate in the ordinary home-module default environment, not general default declarations or additional numeric classes.
+
+| GHC operation and source | Local carrier and retained rule |
+| --- | --- |
+| Tc/Utils/Env.hs:944-950, 1011-1016 supplies Num defaults Integer then Double outside ghc-internal | HIR already declines local default declarations and unimplemented extension profiles. TC applies built-in defaulting only to StandaloneHome modules. Compiler-unit modules never inherit it. No import or path can mint Num's identity. |
+| Tc/Solver/Default.hs:1012-1071 groups unary constraints on one assignable meta | integer_defaulting_chirho performs a single normalized pass over unsolved dictionaries. Only exact compiler-unit GHC.Internal.Num.Num is standard in the current source subset. Another class or a non-unary occurrence blocks that meta. Quantified metas and skolems are never candidates. |
+| disambigGroup, Default.hs:1103-1110 tries default candidates in order and solves the whole group | Only Integer is implemented. A context-free, binder-free checked Num Integer instance must already match before any ordinary equality is emitted. Its missing presence remains for the existing Unsupported partiality gate; no Double/instance absence is inferred. Extending candidates or contexts requires isolated solver trials before publication. |
+| Top-level defaulting follows generalization; tryDefaultingForAmbiguityCheck omits class defaulting | finish_dictionaries_chirho runs after every group and instance method. The existing MR promotion allows later groups to determine earlier restricted metas first. Written-signature ambiguity remains an earlier refusal. |
+| Evidence solving after a successful assignment | Existing equality solving checks kinds/touchability and existing dictionary solving writes each use's evidence at its original owner. No dictionary parameter, second type arena or defaulting-specific Core evidence is added. |
+
+A home class in an unresolved unary group proves that the ordinary default rule cannot apply, even when the first remaining Wanted is the sliced Num. Reporting uses the whole group for that proof and returns a typed ambiguity. This proof relies on the current constructor-headed instance restriction and must be re-derived before variable-headed instances or named defaults are admitted. Other partial/library/non-unary cases retain their earlier Unsupported boundary. Standardness is a declaration identity fact, never an occurrence-name or visible-instance-count test.
+
+```mermaid
+flowchart TD
+  A["Infer dependency groups and instance methods"] --> B["Solve equalities and available dictionaries"]
+  B --> C["Finish generalization and MR promotion"]
+  C --> D{"Home module with built-in default environment?"}
+  D -->|No| H["Existing unresolved-dictionary report"]
+  D -->|Yes| E["Group remaining unary Num meta constraints"]
+  E --> F["Exclude nonstandard classes and non-unary occurrences"]
+  F --> G{"Checked context-free Num Integer present?"}
+  G -->|No| H
+  G -->|Yes| I["Emit normal Integer equalities, then solve owner-local evidence"]
+  I --> H
+  H --> J{"All dictionaries solved?"}
+  J -->|Yes| K["Final hidden-meta zonking and ordinary Core elaboration"]
+  J -->|No| L["Typed ambiguity or explicit Unsupported boundary"]
+```
+
+The added pass is linear in the retained Wanted records plus their charged normalization/free-variable walks, using a module-local set of blocked variables and first-occurrence candidate order. It shares the existing module allocation ceiling. It does not repair the older repeated whole-module scans during group closure, or the shared runtime's dynamic instruction/root retention cost. Explicit default/default (), named defaults, ExtendedDefaultRules, OverloadedStrings, other standard classes and later default types remain Unsupported. Ordinary Prelude operator identity still needs a checked defining-interface join, so operator controls use explicit checked imports under NoImplicitPrelude. Actual runtime and fixed-profile results are recorded in the unit tasklist and acceptance evidence, not inferred from this diagram.

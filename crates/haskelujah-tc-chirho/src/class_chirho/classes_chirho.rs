@@ -334,12 +334,39 @@ impl CheckedModuleChirho {
 
     pub(super) fn finish_dictionaries_chirho(&mut self) -> Result<(), TcErrorChirho> {
         self.solver_chirho.solve_dictionaries_chirho()?;
-        let Some(wanted_chirho) = self
-            .solver_chirho
-            .unresolved_dictionaries_chirho()?
-            .into_iter()
-            .next()
-        else {
+        // GHC class defaulting runs after generalization, never in instance lookup.
+        // Only the defining unit/module/namespace can identify the standard Num.
+        let mut num_chirho = None;
+        for &name_chirho in self.solver_chirho.classes_chirho.keys() {
+            self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
+            let info_chirho = self
+                .module_chirho
+                .names_chirho
+                .get(name_chirho.0 as usize)
+                .ok_or_else(|| {
+                    TcErrorChirho::new_chirho(
+                        TcErrorKindChirho::InvalidReferenceChirho,
+                        "checked class has no original name",
+                    )
+                })?;
+            if info_chirho.unit_chirho == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho
+                && info_chirho.module_chirho == "GHC.Internal.Num"
+                && info_chirho.namespace_chirho
+                    == haskelujah_hir_chirho::NamespaceChirho::TypeChirho
+                && info_chirho.occurrence_chirho == "Num"
+            {
+                num_chirho = Some(name_chirho);
+            }
+        }
+        // GHC's ghc-internal unit has no built-in default environment.
+        if self.module_chirho.unit_chirho
+            == haskelujah_hir_chirho::UnitIdentityChirho::StandaloneHomeChirho
+            && let Some(num_chirho) = num_chirho
+        {
+            self.solver_chirho.default_integer_chirho(num_chirho)?;
+        }
+        let unresolved_chirho = self.solver_chirho.unresolved_dictionaries_chirho()?;
+        let Some(wanted_chirho) = unresolved_chirho.first() else {
             return Ok(());
         };
         let predicate_chirho = self
@@ -359,7 +386,35 @@ impl CheckedModuleChirho {
                 .arena_chirho
                 .is_flexible_chirho(variable_chirho)?;
         }
-        if self.instance_absence_is_partial_chirho(class_chirho, argument_chirho)? {
+        let mut nonstandard_group_chirho = false;
+        if self
+            .solver_chirho
+            .arena_chirho
+            .is_flexible_chirho(argument_chirho)?
+        {
+            for other_chirho in &unresolved_chirho {
+                self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
+                let predicate_chirho = self
+                    .solver_chirho
+                    .arena_chirho
+                    .replace_chirho(other_chirho.predicate_chirho, HashMap::new())?;
+                let (other_class_chirho, other_argument_chirho) =
+                    self.solver_chirho.predicate_view_chirho(predicate_chirho)?;
+                // Named defaults and ExtendedDefaultRules decline in HIR. A home
+                // class in C a therefore proves that this group cannot default,
+                // even when its first Wanted is the sliced standard Num.
+                if other_argument_chirho == argument_chirho
+                    && self.module_chirho.names_chirho[other_class_chirho.0 as usize].unit_chirho
+                        == haskelujah_hir_chirho::UnitIdentityChirho::StandaloneHomeChirho
+                {
+                    nonstandard_group_chirho = true;
+                    break;
+                }
+            }
+        }
+        if !nonstandard_group_chirho
+            && self.instance_absence_is_partial_chirho(class_chirho, argument_chirho)?
+        {
             return Err(TcErrorChirho::new_chirho(
                 TcErrorKindChirho::UnsupportedChirho,
                 "instance absence or defaulting depends on an incomplete source unit",

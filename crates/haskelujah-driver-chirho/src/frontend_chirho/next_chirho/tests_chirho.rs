@@ -81,10 +81,9 @@ fn parser_recovery_is_never_an_acceptance_chirho() {
 }
 
 #[test]
-fn missing_interfaces_and_numeric_classes_do_not_get_placeholder_types_chirho() {
+fn missing_interfaces_and_io_names_do_not_get_placeholder_types_chirho() {
     for source_chirho in [
         "module NextUnknownChirho where\nimport MissingChirho\nresultChirho = unknownChirho\n",
-        "module NextUnknownChirho where\nresultChirho = 42\n",
         "module NextUnknownChirho where\nresultChirho = print True\n",
     ] {
         assert_eq!(

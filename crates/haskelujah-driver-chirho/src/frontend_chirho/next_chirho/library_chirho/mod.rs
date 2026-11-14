@@ -147,6 +147,8 @@ impl SourceManifestChirho {
 }
 
 #[cfg(test)]
+mod defaulting_tests_chirho;
+#[cfg(test)]
 mod integer_tests_chirho;
 #[cfg(test)]
 mod tests_chirho;

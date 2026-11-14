@@ -1,0 +1,3 @@
+-- For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+module LiteralDefaultChirho where
+resultChirho = 340282366920938463463374607431768211457

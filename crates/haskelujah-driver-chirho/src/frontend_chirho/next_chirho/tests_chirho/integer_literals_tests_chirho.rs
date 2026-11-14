@@ -119,11 +119,8 @@ fn missing_syntax_names_and_wrong_or_namesake_input_types_never_publish_core_chi
 }
 
 #[test]
-fn ordinary_numeric_defaults_imported_syntax_fractionals_and_patterns_stay_unsupported_chirho() {
+fn imported_syntax_fractionals_and_patterns_stay_unsupported_chirho() {
     for source_chirho in [
-        include_str!(
-            "../fixtures_chirho/integer_literals_chirho/unsupported-chirho/OrdinaryChirho.hs"
-        ),
         include_str!(
             "../fixtures_chirho/integer_literals_chirho/unsupported-chirho/MagicHashChirho.hs"
         ),

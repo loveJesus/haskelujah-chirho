@@ -11,6 +11,8 @@ use std::collections::{HashMap, HashSet};
 mod evidence_chirho;
 #[path = "class_chirho/instance_matching_chirho.rs"]
 mod instance_matching_chirho;
+#[path = "class_chirho/integer_defaulting_chirho.rs"]
+mod integer_defaulting_chirho;
 #[path = "class_chirho/superclasses_chirho.rs"]
 mod superclasses_chirho;
 pub use evidence_chirho::{
