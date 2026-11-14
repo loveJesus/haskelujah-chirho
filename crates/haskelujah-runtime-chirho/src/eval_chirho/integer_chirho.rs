@@ -78,25 +78,7 @@ impl MachineChirho {
         operation_chirho: IntegerOperationChirho,
         argument_chirho: &ValueChirho,
     ) -> Result<IntegerValueChirho, EvalErrorChirho> {
-        let value_chirho = match argument_chirho {
-            ValueChirho::HeapPtrChirho(address_chirho) => {
-                let address_chirho = self.heap_chirho.follow_ind_chirho(*address_chirho);
-                if self
-                    .heap_chirho
-                    .read_chirho(address_chirho)
-                    .info_chirho
-                    .tag_chirho
-                    != InfoTagChirho::ConChirho
-                {
-                    return Err(EvalErrorChirho::TypeErrorChirho {
-                        message_chirho: "opaque Integer primitive received an unevaluated operand"
-                            .into(),
-                    });
-                }
-                self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(address_chirho))
-            }
-            value_chirho => value_chirho.clone(),
-        };
+        let value_chirho = self.evaluated_primitive_operand_chirho(argument_chirho)?;
         match value_chirho {
             ValueChirho::IntegerChirho(value_chirho) => Ok(value_chirho),
             _ => Err(EvalErrorChirho::PrimFailChirho(
@@ -107,5 +89,29 @@ impl MachineChirho {
                 },
             )),
         }
+    }
+
+    pub(super) fn evaluated_primitive_operand_chirho(
+        &self,
+        argument_chirho: &ValueChirho,
+    ) -> Result<ValueChirho, EvalErrorChirho> {
+        Ok(match argument_chirho {
+            ValueChirho::HeapPtrChirho(address_chirho) => {
+                let address_chirho = self.heap_chirho.follow_ind_chirho(*address_chirho);
+                if self
+                    .heap_chirho
+                    .read_chirho(address_chirho)
+                    .info_chirho
+                    .tag_chirho
+                    != InfoTagChirho::ConChirho
+                {
+                    return Err(EvalErrorChirho::TypeErrorChirho {
+                        message_chirho: "opaque primitive received an unevaluated operand".into(),
+                    });
+                }
+                self.resolve_heap_value_chirho(&ValueChirho::HeapPtrChirho(address_chirho))
+            }
+            value_chirho => value_chirho.clone(),
+        })
     }
 }

@@ -147,7 +147,7 @@ impl IntegerBudgetChirho {
         self.exhausted_chirho
     }
 
-    fn reserve_chirho(
+    pub(crate) fn reserve_chirho(
         &mut self,
         work_chirho: u64,
         output_bits_chirho: u64,

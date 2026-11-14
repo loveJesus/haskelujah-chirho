@@ -147,6 +147,7 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
                     TyConChirho::BoolChirho => "Bool",
                     TyConChirho::OrderingChirho => "Ordering",
                     TyConChirho::CharChirho => "Char",
+                    TyConChirho::IntChirho => "Int",
                     TyConChirho::IntegerChirho => {
                         "%next:compiler:GHC.Internal.Bignum.Integer:Integer"
                     }

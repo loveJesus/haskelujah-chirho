@@ -37,6 +37,7 @@ pub enum TyConChirho {
     CharChirho,
     /// GHC's wired Integer, distinct from any same-spelled source declaration.
     IntegerChirho,
+    IntChirho,
     ListChirho,
     /// Internal final-zonking image; source never resolves this constructor by spelling.
     AnyChirho,

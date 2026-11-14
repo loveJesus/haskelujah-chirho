@@ -17,7 +17,7 @@ pub enum UnitIdentityChirho {
 
 /// Only wired-in language entities, not a replacement Prelude catalogue.
 /// Reference: GHC.Builtin.Types, boolTyCon/trueDataCon/falseDataCon/charTyCon.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum WiredNameChirho {
     BoolChirho,
     OrderingChirho,
@@ -26,6 +26,7 @@ pub enum WiredNameChirho {
     GreaterChirho,
     CharChirho,
     IntegerChirho,
+    IntChirho,
     TrueChirho,
     FalseChirho,
 }
@@ -40,6 +41,7 @@ impl WiredNameChirho {
             Self::GreaterChirho => "GT",
             Self::CharChirho => "Char",
             Self::IntegerChirho => "Integer",
+            Self::IntChirho => "Int",
             Self::TrueChirho => "True",
             Self::FalseChirho => "False",
         }

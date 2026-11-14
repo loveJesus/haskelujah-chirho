@@ -15,6 +15,7 @@ pub enum SurfaceTypeChirho {
     OrderingChirho,
     CharChirho,
     IntegerChirho,
+    IntChirho,
     DeclaredChirho(NameIdChirho),
     /// Retain every supplied argument until the checker validates kinds and saturation.
     SynonymChirho(NameIdChirho),
@@ -47,6 +48,8 @@ pub struct ExprChirho {
 
 #[derive(Debug, Clone)]
 pub enum ExprKindChirho {
+    /// Only a manifest-selected instance-method root may consume this body owner.
+    DeclaredBodyChirho(NameIdChirho),
     VarChirho(NameIdChirho),
     CharChirho(char),
     /// Producer-retained, exact Integer token; never the legacy i64 compatibility value.
@@ -158,8 +161,28 @@ pub struct InstanceMethodChirho {
 pub struct PrimitiveBindingChirho {
     pub name_chirho: NameIdChirho,
     pub signature_chirho: SurfaceSignatureChirho,
+    pub contract_chirho: PrimitiveContractChirho,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrimitiveContractChirho {
+    pub ty_chirho: crate::InterfaceTypeChirho,
     pub arity_chirho: usize,
-    pub result_chirho: crate::WiredNameChirho,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct DeclaredBodyKeyChirho {
+    pub unit_chirho: UnitIdentityChirho,
+    pub module_chirho: String,
+    pub class_chirho: crate::OriginalNameChirho,
+    pub head_chirho: crate::WiredNameChirho,
+    pub method_chirho: crate::OriginalNameChirho,
+}
+
+#[derive(Debug, Clone)]
+pub struct DeclaredBodyChirho {
+    pub key_chirho: DeclaredBodyKeyChirho,
+    pub contract_chirho: PrimitiveContractChirho,
 }
 
 #[derive(Debug)]
@@ -179,6 +202,7 @@ pub struct ModuleChirho {
     pub instances_chirho: Vec<InstanceDeclChirho>,
     pub bindings_chirho: Vec<BindingChirho>,
     pub primitive_bindings_chirho: Vec<PrimitiveBindingChirho>,
+    pub declared_bodies_chirho: std::collections::BTreeMap<NameIdChirho, DeclaredBodyChirho>,
 }
 
 #[derive(Debug, Clone, Copy)]

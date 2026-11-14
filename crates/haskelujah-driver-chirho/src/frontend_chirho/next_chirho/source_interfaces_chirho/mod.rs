@@ -96,10 +96,11 @@ fn program_chirho(
                 .wired_imports_chirho
                 .extend_from_slice(manifest_chirho.wired_imports_chirho);
         }
-        if key_chirho.unit_chirho == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho
-            && key_chirho.module_chirho == super::library_chirho::INTEGER_MODULE_CHIRHO
-        {
-            super::library_chirho::install_integer_policy_chirho(&mut policy_chirho);
+        if key_chirho.unit_chirho == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho {
+            super::library_chirho::backend_chirho::install_policy_chirho(
+                &key_chirho.module_chirho,
+                &mut policy_chirho,
+            );
         }
         if input_chirho.numeric_chirho
             && !(key_chirho.unit_chirho

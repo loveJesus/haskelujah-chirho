@@ -334,7 +334,16 @@ impl ElaboratorChirho<'_> {
                     .ok_or_else(|| {
                         invalid_evidence_chirho("instance method lost its producer identity")
                     })?;
-                methods_chirho.push(self.binding_body_chirho(&source_chirho.binding_chirho)?);
+                methods_chirho.push(
+                    if matches!(
+                        source_chirho.binding_chirho.body_chirho.kind_chirho,
+                        ExprKindChirho::DeclaredBodyChirho(_)
+                    ) {
+                        self.declared_method_binding_chirho(instance_chirho, source_chirho)?
+                    } else {
+                        self.binding_body_chirho(&source_chirho.binding_chirho)?
+                    },
+                );
             }
             self.types_chirho.reserve_term_chirho()?;
             if methods_chirho.len() != layout_chirho.len() {

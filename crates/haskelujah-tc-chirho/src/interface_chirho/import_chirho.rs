@@ -400,3 +400,73 @@ impl CheckedModuleChirho {
         Ok(())
     }
 }
+
+/// Reuse the checked-interface importer for a closed backend contract, without names or binders.
+pub(crate) fn closed_contract_chirho(
+    checked_chirho: &mut CheckedModuleChirho,
+    contract_chirho: &PrimitiveContractChirho,
+) -> Result<TyChirho, TcErrorChirho> {
+    if !(1..=3).contains(&contract_chirho.arity_chirho) {
+        return Err(invalid_interface_chirho(
+            "unsupported primitive contract arity",
+        ));
+    }
+    let mut work_chirho = vec![&contract_chirho.ty_chirho];
+    while let Some(ty_chirho) = work_chirho.pop() {
+        checked_chirho
+            .solver_chirho
+            .arena_chirho
+            .reserve_auxiliary_chirho()?;
+        match ty_chirho {
+            InterfaceTypeChirho::BuiltinChirho(
+                InterfaceBuiltinChirho::BoolChirho
+                | InterfaceBuiltinChirho::OrderingChirho
+                | InterfaceBuiltinChirho::CharChirho
+                | InterfaceBuiltinChirho::IntegerChirho
+                | InterfaceBuiltinChirho::IntChirho
+                | InterfaceBuiltinChirho::ListChirho,
+            ) => {}
+            InterfaceTypeChirho::FunChirho(left_chirho, right_chirho)
+            | InterfaceTypeChirho::AppChirho(left_chirho, right_chirho) => {
+                work_chirho.extend([left_chirho.as_ref(), right_chirho.as_ref()])
+            }
+            _ => {
+                return Err(invalid_interface_chirho(
+                    "backend contract must be a closed wired value type",
+                ));
+            }
+        }
+    }
+    let mut importer_chirho = ReinternChirho {
+        checked_chirho,
+        names_chirho: BTreeMap::new(),
+    };
+    let ty_chirho = importer_chirho.ty_chirho(&contract_chirho.ty_chirho, &[], 0)?;
+    let mut result_chirho = ty_chirho;
+    for _argument_chirho in 0..contract_chirho.arity_chirho {
+        let TyNodeChirho::FunChirho(_, next_chirho) = importer_chirho
+            .checked_chirho
+            .solver_chirho
+            .arena_chirho
+            .node_chirho(result_chirho)?
+        else {
+            return Err(invalid_interface_chirho(
+                "backend contract lacks an argument arrow",
+            ));
+        };
+        result_chirho = *next_chirho;
+    }
+    if matches!(
+        importer_chirho
+            .checked_chirho
+            .solver_chirho
+            .arena_chirho
+            .node_chirho(result_chirho)?,
+        TyNodeChirho::FunChirho(_, _)
+    ) {
+        return Err(invalid_interface_chirho(
+            "backend contract has an unexpected extra arrow",
+        ));
+    }
+    Ok(ty_chirho)
+}

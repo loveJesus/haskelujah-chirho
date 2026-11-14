@@ -201,6 +201,18 @@ mod tests_chirho {
                 .unwrap_err()
                 .contains("Integer")
         );
+        arithmetic_chirho.bindings_chirho[0].rhs_chirho = CoreExprChirho::PrimOpChirho {
+            name_chirho: "%next:int-add-chirho".into(),
+            args_chirho: vec![
+                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
+                CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(2)),
+            ],
+        };
+        assert!(
+            compile_core_to_beam_chirho(&arithmetic_chirho, &BeamConfigChirho::default())
+                .unwrap_err()
+                .contains("Integer")
+        );
     }
 
     #[test]

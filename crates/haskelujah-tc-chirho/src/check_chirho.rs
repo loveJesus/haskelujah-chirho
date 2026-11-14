@@ -63,6 +63,7 @@ pub struct CheckedModuleChirho {
     pub patterns_chirho: HashMap<ExprIdChirho, TyChirho>,
     pub constructors_chirho: HashMap<NameIdChirho, Vec<TyChirho>>,
     references_chirho: HashMap<ExprIdChirho, NameIdChirho>,
+    declared_body_uses_chirho: std::collections::HashSet<NameIdChirho>,
     scope_chirho: ScopeIdChirho,
 }
 
@@ -153,6 +154,12 @@ impl CheckedModuleChirho {
 
     fn infer_chirho(&mut self, expression_chirho: &ExprChirho) -> Result<TyChirho, TcErrorChirho> {
         let ty_chirho = match &expression_chirho.kind_chirho {
+            ExprKindChirho::DeclaredBodyChirho(_) => {
+                return Err(TcErrorChirho::new_chirho(
+                    TcErrorKindChirho::UnsupportedChirho,
+                    "declared body is only legal at its manifest instance-method root",
+                ));
+            }
             ExprKindChirho::VarChirho(name_chirho) => {
                 self.references_chirho
                     .insert(expression_chirho.id_chirho, *name_chirho);
@@ -308,6 +315,7 @@ pub fn check_module_chirho(
         patterns_chirho: HashMap::new(),
         constructors_chirho: HashMap::new(),
         references_chirho: HashMap::new(),
+        declared_body_uses_chirho: Default::default(),
         scope_chirho,
     };
     for (index_chirho, name_chirho) in checked_chirho.module_chirho.names_chirho.iter().enumerate()
@@ -372,6 +380,14 @@ pub fn check_module_chirho(
     checked_chirho.bindings_chirho(&bindings_chirho)?;
     checked_chirho.module_chirho.bindings_chirho = bindings_chirho;
     checked_chirho.instance_methods_chirho(&instances_chirho)?;
+    if checked_chirho.declared_body_uses_chirho.len()
+        != checked_chirho.module_chirho.declared_bodies_chirho.len()
+    {
+        return Err(TcErrorChirho::new_chirho(
+            TcErrorKindChirho::UnsupportedChirho,
+            "unconsumed declared instance body",
+        ));
+    }
     checked_chirho.module_chirho.instances_chirho = instances_chirho;
     checked_chirho.solver_chirho.solve_chirho()?;
     checked_chirho.finish_dictionaries_chirho()?;

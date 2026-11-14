@@ -315,8 +315,18 @@ impl CheckedModuleChirho {
                 let previous_chirho = self.scope_chirho;
                 self.scope_chirho = method_chirho.scope_chirho;
                 let result_chirho = (|| {
-                    let actual_chirho =
-                        self.infer_chirho(&implementation_chirho.binding_chirho.body_chirho)?;
+                    let actual_chirho = if matches!(
+                        implementation_chirho.binding_chirho.body_chirho.kind_chirho,
+                        ExprKindChirho::DeclaredBodyChirho(_)
+                    ) {
+                        self.declared_method_type_chirho(
+                            declaration_chirho,
+                            implementation_chirho,
+                            info_chirho.head_chirho,
+                        )?
+                    } else {
+                        self.infer_chirho(&implementation_chirho.binding_chirho.body_chirho)?
+                    };
                     self.want_chirho(
                         actual_chirho,
                         self.names_chirho[&method_chirho.binding_chirho],

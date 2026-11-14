@@ -197,9 +197,20 @@ impl LowerChirho<'_> {
                         true,
                         None,
                     )?;
+                    let body_chirho = if let Some(body_chirho) = self.declared_method_body_chirho(
+                        class_id_chirho,
+                        &head_chirho,
+                        method_id_chirho,
+                        binding_id_chirho,
+                        *span_chirho,
+                    )? {
+                        body_chirho
+                    } else {
+                        self.equation_chirho(matches_chirho, *span_chirho, 0)?
+                    };
                     let binding_chirho = BindingChirho {
                         name_chirho: binding_id_chirho,
-                        body_chirho: self.equation_chirho(matches_chirho, *span_chirho, 0)?,
+                        body_chirho,
                         signature_chirho: None,
                         restricted_chirho: false,
                         span_chirho: *span_chirho,

@@ -19,7 +19,7 @@ use super::{NextErrorChirho, NextErrorKindChirho, types_chirho::CoreTypesChirho}
 mod classes_chirho;
 #[path = "patterns_chirho.rs"]
 mod patterns_chirho;
-#[path = "library_chirho/core_integer_chirho.rs"]
+#[path = "library_chirho/backend_chirho/core_chirho.rs"]
 mod primitive_bodies_chirho;
 
 struct ElaboratorChirho<'checked_chirho> {
@@ -93,6 +93,12 @@ impl ElaboratorChirho<'_> {
         expression_chirho: &ExprChirho,
     ) -> Result<CoreExprChirho, NextErrorChirho> {
         Ok(match &expression_chirho.kind_chirho {
+            ExprKindChirho::DeclaredBodyChirho(_) => {
+                return Err(NextErrorChirho::new_chirho(
+                    NextErrorKindChirho::UnsupportedChirho,
+                    "declared body is outside a manifest instance-method root",
+                ));
+            }
             ExprKindChirho::VarChirho(name_chirho) => {
                 let info_chirho = &self.types_chirho.checked_chirho.module_chirho.names_chirho
                     [name_chirho.0 as usize];

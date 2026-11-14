@@ -167,7 +167,7 @@ fn primitive_bodies_require_a_defining_manifest_and_the_exact_checked_signature_
         )
         .unwrap();
         let mut policy_chirho = LoweringPolicyChirho::default();
-        install_integer_policy_chirho(&mut policy_chirho);
+        backend_chirho::install_policy_chirho(INTEGER_MODULE_CHIRHO, &mut policy_chirho);
         let error_chirho = super::super::check_parsed_with_policy_chirho(
             parsed_chirho,
             UnitIdentityChirho::CompilerChirho,

@@ -91,6 +91,7 @@ pub enum PrimOpKindChirho {
     IntegerLiteralChirho,
     /// Opaque Integer arithmetic consumes the machine's cumulative allowance.
     IntegerArithmeticChirho(crate::integer_arithmetic_chirho::IntegerOperationChirho),
+    IntArithmeticChirho(crate::int_arithmetic_chirho::IntOperationChirho),
     /// Classify a demanded runtime value without treating immediate bits as addresses.
     IsHeapObjectChirho,
     AddIntChirho,

@@ -207,6 +207,9 @@ impl LowerChirho<'_> {
             InterfaceTypeChirho::BuiltinChirho(InterfaceBuiltinChirho::IntegerChirho) => {
                 SurfaceTypeChirho::IntegerChirho
             }
+            InterfaceTypeChirho::BuiltinChirho(InterfaceBuiltinChirho::IntChirho) => {
+                SurfaceTypeChirho::IntChirho
+            }
             InterfaceTypeChirho::DeclaredChirho(name_chirho) => {
                 SurfaceTypeChirho::DeclaredChirho(self.imported_name_chirho(name_chirho)?)
             }

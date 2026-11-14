@@ -20,8 +20,9 @@ pub use names_chirho::{
 };
 pub use terms_chirho::{
     BindingChirho, ClassDeclChirho, ClassMethodChirho, ConstructorChirho, DataDeclChirho,
-    ExprChirho, ExprIdChirho, ExprKindChirho, HirErrorChirho, HirErrorKindChirho,
-    InstanceDeclChirho, InstanceMethodChirho, LimitsChirho, MatchArmChirho, ModuleChirho,
-    PatternChirho, PatternKindChirho, PrimitiveBindingChirho, SurfacePredicateChirho,
-    SurfaceSignatureChirho, SurfaceTypeChirho, SynonymDeclChirho,
+    DeclaredBodyChirho, DeclaredBodyKeyChirho, ExprChirho, ExprIdChirho, ExprKindChirho,
+    HirErrorChirho, HirErrorKindChirho, InstanceDeclChirho, InstanceMethodChirho, LimitsChirho,
+    MatchArmChirho, ModuleChirho, PatternChirho, PatternKindChirho, PrimitiveBindingChirho,
+    PrimitiveContractChirho, SurfacePredicateChirho, SurfaceSignatureChirho, SurfaceTypeChirho,
+    SynonymDeclChirho,
 };

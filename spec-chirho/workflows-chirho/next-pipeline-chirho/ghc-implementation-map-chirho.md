@@ -2,7 +2,7 @@
 
 # GHC to Haskelujah implementation map
 
-Implementation scope: isolated `next-pipeline-source-synonyms-chirho` (unit 759), extending the unit 758 checkpoint `e5c34c1d`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release. Earlier sections describe their named increments; later sections supersede earlier Unsupported boundaries.
+Implementation scope: isolated `next-pipeline-source-int-chirho` (unit 760), extending the unit 759 checkpoint `5bd57c59`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release. Earlier sections describe their named increments; later sections supersede earlier Unsupported boundaries.
 
 This is the written reading guide L.J. requested. It maps GHC's assumptions to our data as we implement locally. It introduces no runtime dependency on GHC. Reference: retained GHC 9.14.1, commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886.
 
@@ -462,3 +462,36 @@ flowchart TD
 This increment admits inferred first-order parameter kinds. GHC2021 higher-kinded uses that require PolyKinds generalization decline as Unsupported; defaulting those uses to Type and refuting them would be wrong. Haskell2010 does require the admitted Type parameter kinds, and a synonym in an instance head is refused without TypeSynonymInstances (included in GHC2021). Constraint-kinded aliases and alias contexts decline; no class-name error is inferred from an unexpanded synonym. Before publishing headers, an owner-charged pre-pass over every local data field, class method type and synonym RHS declines applied type variables. This prevents declaration-order-dependent Haskell2010 refusals. Alias-RHS and extra-result kind failures also conservatively decline until joint declaration-kind inference can certify the provisional nominal headers: tc238 exposed a valid higher-kinded data declaration whose aliases were checked before its fields. The final candidate keeps that case Unsupported; use-site checks after data checking retain their ordinary classification. Advanced extension overrides and partially applied synonyms remain outside the subset.
 
 ShowS works through an explicit GHC.Internal.Show (ShowS) import with NoImplicitPrelude. Its default-Prelude exposure remains Unsupported until the Show facade's directive prologue is modeled; String is supported through implicit and selected Prelude imports. A checked alias does not add a representation, runtime primitive or library class. Expansion uses the existing arena DAG, while materializing an interface tree consumes the shared output ceiling; the duplicate-tree control must stop with Resource rather than unbounded allocation.
+
+## Source-shaped 64-bit Int (unit 760)
+
+Architecture: Claude2 DM4689 and DM4724, source reading only; GPT implements and executes. GHC reference remains 9.14.1 at 902339d3. Whole vendored Num, Classes and Base files stay unchanged and hash-pinned. The selected Num Int instance is retained whole. Only its five I#/primop methods receive declared backend bodies; abs and signum are checked from their actual source. Eq/Ord Int are the actual point-free instances over source-typed helpers. Base.otherwise is a checked source binding, including its normal Prelude identity.
+
+| GHC representation | Local carrier | Required invariant |
+| --- | --- | --- |
+| Wired Int and I# layout, Builtin/Types.hs and GHC.Internal.Types | Wired Int original name and opaque wrapping i64; private runtime I# boxing | This checkpoint implements the 64-bit Int contract. A home declaration named Int is distinct; no source-visible I# or machine-width inference grants authority. |
+| Ordinary literals in Num Int and user expressions | Existing exact Integer payload and known fromInteger occurrence, then normal dictionary selection | Int literals always pass through the actual Num Int dictionary. No direct typed-literal shortcut or unique-instance choice. Defaulting continues to choose Integer. |
+| Num Int's five layout-sensitive methods | Driver-only policy keyed by exact defining unit/module, class, wired head and method; one actual binding owner | HIR consumes each policy entry once. Generic TC/Core expression paths reject DeclaredBody. TC checks a closed arena-free contract against the class-instantiated method type; Core repeats the exact provider check. No self Given. |
+| Classes.hs shared helper signature lines | One source signature for every named helper, plus a checked closed type contract | Every name on a selected multi-name signature must have a declared provider. No signature-only group is admitted because of its spelling alone. |
+| Num Int source abs/signum and single-equation Boolean guards | Ordinary source expressions and ordered nested If nodes, ending in an empty match | First True stops evaluation; no True produces an execution failure. Multiple guarded equations and compound/pattern/let guards stay Unsupported rather than losing fallthrough semantics. |
+| Strict I# argument patterns | Core cases underneath every lambda, left operand before right | Saturation precedes demand; partial applications remain lazy. Primitive operands must already be WHNF and may be immediate or boxed Int values; handlers never nest the evaluator. |
+| Wrapping Int arithmetic and integerToInt# | Rust wrapping operations and the low magnitude word modulo 2^64 | Conversion never saturates or reports overflow. MIN negation and abs retain MIN, matching GHC on the measured 64-bit platform. |
+| Primitive work ownership | Existing latched IntegerBudget on the evaluation machine, also spent by Int | Work and cumulative outputs remain bounded across Int/Integer operations and repeated machine entries. Stateless operations refuse without an owner. |
+
+```mermaid
+flowchart TD
+  SourceChirho["Pinned Num Int / Eq Int / Ord Int / otherwise"] --> HIRChirho["Exact manifest owner and one method binding"]
+  HIRChirho --> TCChirho["Source/class type equals closed contract"]
+  LiteralChirho["Exact Integer literal"] --> DictionaryChirho["Actual Num Int fromInteger dictionary"]
+  TCChirho --> DictionaryChirho
+  DictionaryChirho --> CoreChirho["Ordinary source bodies or strict declared Core lambdas"]
+  CoreChirho --> StackChirho["Left-to-right WHNF on the continuation stack"]
+  StackChirho --> RuntimeChirho["Bounded wrapping Int and shared owner allowance"]
+  CoreChirho --> NativeChirho["All next primops refused by unimplemented native/JIT backends"]
+```
+
+The declared-body mechanism substitutes the smallest source method that touches a closed layout. It does not grant bodies by source text, export spelling, or a developer reference path. Contracts reuse existing interface type trees, so no new substitution path or cross-arena handle is introduced. Exact policy entries missing their actual source method refuse, as do repeated consumption and contract disagreement. Installed inputs remain embedded upstream bytes plus the ghc-internal licence; no GHC installation or external bignum library is required.
+
+The first expanded profile exposed an older missing boxed-tuple limit once Int fields became available: T18723a has 65 fields. One producer check now applies GHC 9.14.1's 64-field maximum to tuple types, expressions and patterns. This is an arity rule rather than a test-name exception. Compiler-only declared-body invariant failures report Unsupported, rather than accusing the source program of an invalid reference. A separate reviewer prediction was measured as pre-existing: a Haskell2010 tuple section is accepted by both the frozen 759 parent and 760 even though GHC rejects it without TupleSections. That extension-validity gap remains open; explicit GHC2021 pragmas themselves are outside this admission profile.
+
+Show, Show Int/Integer formatting, IO-main/B-run, full source libraries, 32-bit Int targeting, native next primitives and shared runtime code/root retirement remain open. The earlier quadratic Wanted rescans are unchanged. Execution scope, GHC controls, reviewer limits and the unconfigured 353-file profile belong to this unit's receipts; none establishes a whole-library or compatibility ratio.

@@ -55,6 +55,7 @@ pub fn binding_groups_chirho(bindings_chirho: &[BindingChirho]) -> Vec<Vec<usize
                         .extend(arms_chirho.iter().map(|arm_chirho| &arm_chirho.body_chirho));
                 }
                 ExprKindChirho::CharChirho(_)
+                | ExprKindChirho::DeclaredBodyChirho(_)
                 | ExprKindChirho::IntegerChirho(_)
                 | ExprKindChirho::StringChirho(_) => {}
             }

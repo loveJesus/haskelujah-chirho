@@ -20,6 +20,10 @@
 
 mod code_roots_chirho;
 mod float_ordering_chirho;
+#[path = "eval_chirho/int_chirho.rs"]
+mod int_chirho;
+#[cfg(test)]
+mod int_tests_chirho;
 mod integer_chirho;
 #[cfg(test)]
 mod integer_tests_chirho;
@@ -1602,6 +1606,9 @@ impl MachineChirho {
     ) -> Result<ValueChirho, EvalErrorChirho> {
         if let PrimOpKindChirho::IntegerArithmeticChirho(operation_chirho) = op_chirho {
             return self.eval_integer_chirho(operation_chirho, args_chirho);
+        }
+        if let PrimOpKindChirho::IntArithmeticChirho(operation_chirho) = op_chirho {
+            return self.eval_int_chirho(operation_chirho, args_chirho);
         }
         // Handle I/O and special primops first
         match op_chirho {

@@ -75,14 +75,17 @@ impl LowerChirho<'_> {
             }
             PatChirho::TupleChirho {
                 elements_chirho, ..
-            } if elements_chirho.len() != 1 => PatternKindChirho::TupleChirho(
-                elements_chirho
-                    .iter()
-                    .map(|item_chirho| {
-                        self.pattern_chirho(item_chirho, seen_chirho, depth_chirho + 1)
-                    })
-                    .collect::<ResultChirho<_>>()?,
-            ),
+            } if elements_chirho.len() != 1 => {
+                self.tuple_arity_chirho(elements_chirho.len(), pattern_chirho.span_chirho())?;
+                PatternKindChirho::TupleChirho(
+                    elements_chirho
+                        .iter()
+                        .map(|item_chirho| {
+                            self.pattern_chirho(item_chirho, seen_chirho, depth_chirho + 1)
+                        })
+                        .collect::<ResultChirho<_>>()?,
+                )
+            }
             PatChirho::ListChirho {
                 elements_chirho, ..
             } => PatternKindChirho::ListChirho(
@@ -130,11 +133,16 @@ impl LowerChirho<'_> {
         &mut self,
         rhs_chirho: &RhsChirho,
         locals_chirho: &[LocalBindChirho],
+        single_equation_chirho: bool,
         span_chirho: SpanChirho,
         depth_chirho: usize,
     ) -> ResultChirho<ExprChirho> {
         let bindings_chirho = self.local_bindings_chirho(locals_chirho, depth_chirho + 1)?;
-        let body_chirho = self.rhs_chirho(rhs_chirho, depth_chirho + 1)?;
+        let body_chirho = if single_equation_chirho {
+            self.single_equation_rhs_chirho(rhs_chirho, depth_chirho + 1)?
+        } else {
+            self.rhs_chirho(rhs_chirho, depth_chirho + 1)?
+        };
         if bindings_chirho.is_empty() {
             Ok(body_chirho)
         } else {
@@ -195,6 +203,7 @@ impl LowerChirho<'_> {
                 let body_chirho = self.row_body_chirho(
                     &arm_chirho.rhs_chirho,
                     &arm_chirho.where_binds_chirho,
+                    matches_chirho.len() == 1,
                     span_chirho,
                     depth_chirho + 1,
                 )?;
@@ -253,6 +262,7 @@ impl LowerChirho<'_> {
                 let body_chirho = self.row_body_chirho(
                     &alternative_chirho.rhs_chirho,
                     &alternative_chirho.where_binds_chirho,
+                    false,
                     alternative_chirho.span_chirho,
                     depth_chirho + 1,
                 )?;

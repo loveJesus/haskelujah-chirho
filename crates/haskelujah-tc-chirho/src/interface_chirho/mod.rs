@@ -8,6 +8,7 @@ use std::collections::{BTreeMap, HashMap};
 mod export_chirho;
 mod import_chirho;
 pub use export_chirho::project_interface_chirho;
+pub(crate) use import_chirho::closed_contract_chirho;
 
 fn invalid_interface_chirho(message_chirho: &str) -> TcErrorChirho {
     TcErrorChirho::new_chirho(TcErrorKindChirho::InvalidReferenceChirho, message_chirho)
@@ -21,6 +22,7 @@ fn builtin_out_chirho(con_chirho: TyConChirho) -> Option<InterfaceBuiltinChirho>
         TyConChirho::OrderingChirho => InterfaceBuiltinChirho::OrderingChirho,
         TyConChirho::CharChirho => InterfaceBuiltinChirho::CharChirho,
         TyConChirho::IntegerChirho => InterfaceBuiltinChirho::IntegerChirho,
+        TyConChirho::IntChirho => InterfaceBuiltinChirho::IntChirho,
         TyConChirho::ListChirho => InterfaceBuiltinChirho::ListChirho,
         TyConChirho::AnyChirho => InterfaceBuiltinChirho::AnyChirho,
         _ => return None,
@@ -34,6 +36,7 @@ fn builtin_in_chirho(con_chirho: InterfaceBuiltinChirho) -> TyConChirho {
         InterfaceBuiltinChirho::OrderingChirho => TyConChirho::OrderingChirho,
         InterfaceBuiltinChirho::CharChirho => TyConChirho::CharChirho,
         InterfaceBuiltinChirho::IntegerChirho => TyConChirho::IntegerChirho,
+        InterfaceBuiltinChirho::IntChirho => TyConChirho::IntChirho,
         InterfaceBuiltinChirho::ListChirho => TyConChirho::ListChirho,
         InterfaceBuiltinChirho::AnyChirho => TyConChirho::AnyChirho,
     }

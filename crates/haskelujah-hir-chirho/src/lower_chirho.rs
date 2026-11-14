@@ -23,8 +23,12 @@ use crate::*;
 mod classes_lower_chirho;
 #[path = "data_lower_chirho.rs"]
 mod data_lower_chirho;
+#[path = "syntax_chirho/declared_bodies_chirho.rs"]
+mod declared_bodies_chirho;
 #[path = "defaults_lower_chirho.rs"]
 mod defaults_lower_chirho;
+#[path = "syntax_chirho/guards_chirho.rs"]
+mod guards_chirho;
 #[path = "instances_lower_chirho.rs"]
 mod instances_lower_chirho;
 #[path = "literals_lower_chirho.rs"]
@@ -61,12 +65,28 @@ struct LowerChirho<'literals_chirho> {
     import_scope_chirho: HashMap<(String, NamespaceChirho), Vec<NameIdChirho>>,
     imported_classes_chirho: Vec<ClassDeclChirho>,
     synonym_names_chirho: HashSet<NameIdChirho>,
+    instance_body_policy_chirho:
+        std::collections::BTreeMap<DeclaredBodyKeyChirho, PrimitiveContractChirho>,
+    declared_bodies_chirho: std::collections::BTreeMap<NameIdChirho, DeclaredBodyChirho>,
+    consumed_bodies_chirho: std::collections::BTreeSet<DeclaredBodyKeyChirho>,
     sliced_units_chirho: std::collections::BTreeSet<UnitIdentityChirho>,
     integer_literals_chirho:
         &'literals_chirho HashMap<haskelujah_ast_chirho::provenance_chirho::OriginIdChirho, String>,
 }
 
 impl LowerChirho<'_> {
+    // GHC.Settings.Constants.mAX_TUPLE_SIZE (9.14.1) applies to every boxed tuple form.
+    fn tuple_arity_chirho(&self, arity_chirho: usize, span_chirho: SpanChirho) -> ResultChirho<()> {
+        if arity_chirho > 64 {
+            return Err(HirErrorChirho {
+                kind_chirho: HirErrorKindChirho::InvalidChirho,
+                message_chirho: "boxed tuples support at most 64 fields".into(),
+                span_chirho,
+            });
+        }
+        Ok(())
+    }
+
     fn error_chirho(
         &self,
         message_chirho: impl Into<String>,
@@ -204,6 +224,7 @@ impl LowerChirho<'_> {
                     Some(WiredNameChirho::OrderingChirho) => SurfaceTypeChirho::OrderingChirho,
                     Some(WiredNameChirho::CharChirho) => SurfaceTypeChirho::CharChirho,
                     Some(WiredNameChirho::IntegerChirho) => SurfaceTypeChirho::IntegerChirho,
+                    Some(WiredNameChirho::IntChirho) => SurfaceTypeChirho::IntChirho,
                     _ if self.synonym_names_chirho.contains(&id_chirho) => {
                         SurfaceTypeChirho::SynonymChirho(id_chirho)
                     }
@@ -235,12 +256,15 @@ impl LowerChirho<'_> {
             ),
             TypeChirho::TupleChirho {
                 elements_chirho, ..
-            } if elements_chirho.len() != 1 => SurfaceTypeChirho::TupleChirho(
-                elements_chirho
-                    .iter()
-                    .map(|item_chirho| self.type_chirho(item_chirho, depth_chirho + 1))
-                    .collect::<ResultChirho<_>>()?,
-            ),
+            } if elements_chirho.len() != 1 => {
+                self.tuple_arity_chirho(elements_chirho.len(), ty_chirho.span_chirho())?;
+                SurfaceTypeChirho::TupleChirho(
+                    elements_chirho
+                        .iter()
+                        .map(|item_chirho| self.type_chirho(item_chirho, depth_chirho + 1))
+                        .collect::<ResultChirho<_>>()?,
+                )
+            }
             TypeChirho::ParenChirho { inner_chirho, .. } => {
                 self.type_chirho(inner_chirho, depth_chirho + 1)?
             }
@@ -406,7 +430,10 @@ impl LowerChirho<'_> {
             AstExprChirho::IfChirho { cond_chirho, then_chirho, else_chirho, .. } => ExprKindChirho::IfChirho(Box::new(self.expr_chirho(cond_chirho, depth_chirho + 1)?), Box::new(self.expr_chirho(then_chirho, depth_chirho + 1)?), Box::new(self.expr_chirho(else_chirho, depth_chirho + 1)?)),
             AstExprChirho::AnnChirho { expr_chirho, ty_chirho, .. } => ExprKindChirho::AnnChirho(Box::new(self.expr_chirho(expr_chirho, depth_chirho + 1)?), self.type_chirho(ty_chirho, depth_chirho + 1)?),
             AstExprChirho::ListChirho { elements_chirho, .. } => ExprKindChirho::ListChirho(elements_chirho.iter().map(|item_chirho| self.expr_chirho(item_chirho, depth_chirho + 1)).collect::<ResultChirho<_>>()?),
-            AstExprChirho::TupleChirho { elements_chirho, .. } if elements_chirho.len() != 1 => ExprKindChirho::TupleChirho(elements_chirho.iter().map(|item_chirho| self.expr_chirho(item_chirho, depth_chirho + 1)).collect::<ResultChirho<_>>()?),
+            AstExprChirho::TupleChirho { elements_chirho, .. } if elements_chirho.len() != 1 => {
+                self.tuple_arity_chirho(elements_chirho.len(), span_chirho)?;
+                ExprKindChirho::TupleChirho(elements_chirho.iter().map(|item_chirho| self.expr_chirho(item_chirho, depth_chirho + 1)).collect::<ResultChirho<_>>()?)
+            },
             AstExprChirho::ParenChirho { inner_chirho, .. } => return self.expr_chirho(inner_chirho, depth_chirho + 1),
             _ => return Err(self.error_chirho("next does not yet elaborate this expression (numeric literals require the real Num declaration)", span_chirho)),
         };
@@ -498,6 +525,9 @@ pub fn lower_module_with_policy_chirho(
         import_scope_chirho: Default::default(),
         imported_classes_chirho: Vec::new(),
         synonym_names_chirho: HashSet::new(),
+        instance_body_policy_chirho: policy_chirho.instance_bodies_chirho.clone(),
+        declared_bodies_chirho: Default::default(),
+        consumed_bodies_chirho: Default::default(),
         sliced_units_chirho: if policy_chirho.completeness_chirho == CompletenessChirho::SliceChirho
         {
             std::collections::BTreeSet::from([unit_chirho.clone()])
@@ -582,6 +612,7 @@ pub fn lower_module_with_policy_chirho(
         wired_scope_chirho.extend([
             WiredNameChirho::BoolChirho,
             WiredNameChirho::CharChirho,
+            WiredNameChirho::IntChirho,
             WiredNameChirho::TrueChirho,
             WiredNameChirho::FalseChirho,
             WiredNameChirho::OrderingChirho,
@@ -607,6 +638,7 @@ pub fn lower_module_with_policy_chirho(
             .push(id_chirho);
     }
     let wired_exports_chirho = lower_chirho.install_primitive_declarations_chirho(policy_chirho)?;
+    lower_chirho.validate_body_policy_chirho()?;
     lower_chirho.predeclare_type_headers_chirho(&module_chirho.decls_chirho)?;
     let synonyms_chirho = lower_chirho.synonym_declarations_chirho(&module_chirho.decls_chirho)?;
     let data_chirho = lower_chirho.data_declarations_chirho(&module_chirho.decls_chirho)?;
@@ -730,6 +762,12 @@ pub fn lower_module_with_policy_chirho(
     available_classes_chirho.extend(classes_chirho.iter().cloned());
     let instances_chirho = lower_chirho
         .instance_declarations_chirho(&module_chirho.decls_chirho, &available_classes_chirho)?;
+    if lower_chirho.consumed_bodies_chirho.len() != lower_chirho.instance_body_policy_chirho.len() {
+        return Err(lower_chirho.error_chirho(
+            "manifest instance body has no unique explicit source method",
+            module_chirho.span_chirho,
+        ));
+    }
     let mut exports_chirho = lower_chirho.exports_chirho(module_chirho)?;
     exports_chirho.extend(wired_exports_chirho);
     let fixities_chirho = lower_chirho.fixities_chirho(&module_chirho.decls_chirho)?;
@@ -748,5 +786,6 @@ pub fn lower_module_with_policy_chirho(
         instances_chirho,
         bindings_chirho,
         primitive_bindings_chirho,
+        declared_bodies_chirho: lower_chirho.declared_bodies_chirho,
     })
 }

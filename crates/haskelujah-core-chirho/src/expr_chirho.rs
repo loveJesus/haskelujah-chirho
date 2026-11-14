@@ -221,7 +221,7 @@ impl CoreModuleChirho {
 
     /// Every opaque Integer operation needs the same runtime representation capability.
     pub fn requires_opaque_integer_runtime_chirho(&self) -> bool {
-        self.any_primitive_chirho(|name_chirho| name_chirho.starts_with("%next:integer-"))
+        self.any_primitive_chirho(|name_chirho| name_chirho.starts_with("%next:"))
     }
 
     fn any_primitive_chirho(&self, predicate_chirho: impl Fn(&str) -> bool) -> bool {

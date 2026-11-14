@@ -5,12 +5,8 @@
 use super::{NextErrorChirho, NextErrorKindChirho};
 use haskelujah_hir_chirho::*;
 use sha2::{Digest, Sha256};
+pub(super) mod backend_chirho;
 mod boundaries_chirho;
-mod integer_backend_chirho;
-pub(super) use integer_backend_chirho::{
-    install_policy_chirho as install_integer_policy_chirho,
-    operation_chirho as integer_operation_chirho,
-};
 mod facade_chirho;
 mod prelude_scope_chirho;
 pub(super) use facade_chirho::routes_chirho as prelude_routes_chirho;
@@ -51,10 +47,10 @@ const NUM_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Num.hs",
     sha256_chirho: "a35a0fac5e44dde385bc98024d85a82924dac33c59de0996c9978e4295e4077a",
     bytes_chirho: include_str!("vendor-chirho/ghc-internal-chirho/Num.hs"),
-    spans_chirho: &[(1066, 1093), (2395, 3302), (4437, 4637)],
-    imports_chirho: "import GHC.Internal.Bignum.Integer (Integer, integerAdd, integerSub, integerMul, integerNegate, integerAbs, integerSignum)\n",
+    spans_chirho: &[(1066, 1093), (2395, 3302), (3650, 3993), (4437, 4637)],
+    imports_chirho: "import GHC.Internal.Bignum.Integer (Integer, integerAdd, integerSub, integerMul, integerNegate, integerAbs, integerSignum)\nimport GHC.Internal.Classes (eqInt, ltInt, geInt)\nimport GHC.Internal.Base (otherwise)\n",
     primitive_signatures_chirho: false,
-    wired_imports_chirho: &[],
+    wired_imports_chirho: &[WiredNameChirho::IntChirho],
 };
 const INTEGER_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ghc_version_chirho: "9.14.1",
@@ -90,13 +86,24 @@ const CLASSES_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Classes.hs",
     sha256_chirho: "9f07eab1df0c2c9892ba5b8e35236e45868f738cb6a755234a7c49e70fb150cd",
     bytes_chirho: include_str!("vendor-chirho/ghc-internal-chirho/Classes.hs"),
-    spans_chirho: &[(3542, 3573), (6083, 6307), (14188, 15004), (22777, 22882)],
+    spans_chirho: &[
+        (3542, 3573),
+        (6083, 6307),
+        (10435, 10491),
+        (10607, 10642),
+        (14188, 15004),
+        (20595, 20723),
+        (20889, 20938),
+        (21202, 21239),
+        (22777, 22882),
+    ],
     imports_chirho: "",
-    primitive_signatures_chirho: false,
+    primitive_signatures_chirho: true,
     wired_imports_chirho: WIRED_CLASSES_CHIRHO,
 };
 
 const WIRED_CLASSES_CHIRHO: &[WiredNameChirho] = &[
+    WiredNameChirho::IntChirho,
     WiredNameChirho::BoolChirho,
     WiredNameChirho::TrueChirho,
     WiredNameChirho::FalseChirho,
@@ -111,10 +118,14 @@ const BASE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Base.hs",
     sha256_chirho: "bc38ea9356f90aeb38298ef1269fbdc2dee433528374948375da112b273a89e2",
     bytes_chirho: include_str!("vendor-chirho/ghc-internal-chirho/Base.hs"),
-    spans_chirho: &[(64541, 64562)],
+    spans_chirho: &[(62470, 62534), (64541, 64562)],
     imports_chirho: "",
     primitive_signatures_chirho: false,
-    wired_imports_chirho: &[WiredNameChirho::CharChirho],
+    wired_imports_chirho: &[
+        WiredNameChirho::CharChirho,
+        WiredNameChirho::BoolChirho,
+        WiredNameChirho::TrueChirho,
+    ],
 };
 const SHOW_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ghc_version_chirho: "9.14.1",
@@ -188,26 +199,16 @@ impl SourceManifestChirho {
                             "invalid source manifest byte span",
                         )
                     })?;
-            if self.primitive_signatures_chirho {
-                if self.module_chirho != INTEGER_MODULE_CHIRHO {
-                    return Err(NextErrorChirho::new_chirho(
-                        NextErrorKindChirho::UnsupportedChirho,
-                        "source manifest has no primitive-body provider",
-                    ));
-                }
-                if selection_chirho.starts_with("instance ") {
-                    boundaries_chirho::validate_chirho(
-                        self.bytes_chirho,
-                        start_chirho,
-                        end_chirho,
-                    )?;
-                } else {
-                    integer_backend_chirho::validate_signature_span_chirho(
-                        self.bytes_chirho,
-                        start_chirho,
-                        end_chirho,
-                    )?;
-                }
+            if self.primitive_signatures_chirho
+                && selection_chirho.lines().count() == 1
+                && selection_chirho.contains("::")
+            {
+                backend_chirho::validate_signature_span_chirho(
+                    self.module_chirho,
+                    self.bytes_chirho,
+                    start_chirho,
+                    end_chirho,
+                )?;
             } else {
                 boundaries_chirho::validate_chirho(self.bytes_chirho, start_chirho, end_chirho)?;
             }
