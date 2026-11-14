@@ -172,6 +172,7 @@ impl LowerChirho<'_> {
                     // Scope absence comes from the selected names, not scope-hidden type/instance
                     // dependencies. Other occurrence forms retain their conservative decline.
                     if !text_chirho.contains(['.', ':', '(', ')', '[', ']'])
+                        && !text_chirho.starts_with('_') // Typed holes are an unmodeled occurrence form.
                         // A free lowercase type name can introduce an implicit annotation binder.
                         && !implicit_binder_chirho
                         && (self.rebindable_chirho || !self.import_scope_chirho.is_empty())

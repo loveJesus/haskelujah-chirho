@@ -81,6 +81,9 @@ fn absent_or_unchecked_prelude_exports_never_get_a_fabricated_type_chirho() {
         "PreludeUnsupportedSelectionChirho",
         "PreludeOpenChirho",
         "ImplicitAnnotationChirho",
+        "DeclaredAliasChirho",
+        "DeclaredNewtypeChirho",
+        "TypedHoleChirho",
     ] {
         let error_chirho = check_source_chirho(&fixture_chirho(name_chirho, false)).unwrap_err();
         assert_eq!(

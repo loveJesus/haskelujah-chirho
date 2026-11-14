@@ -536,6 +536,24 @@ pub fn lower_module_with_policy_chirho(
             module_chirho.span_chirho,
         ));
     }
+    // Decline unmodeled producers before a use of one can be mistaken for name absence.
+    // In particular, aliases/newtypes must not disappear while ordinary data fields are read.
+    if module_chirho.decls_chirho.iter().any(|declaration_chirho| {
+        !matches!(
+            declaration_chirho,
+            DeclChirho::FunBindChirho { .. }
+                | DeclChirho::TypeSigChirho { .. }
+                | DeclChirho::DataDeclChirho { .. }
+                | DeclChirho::ClassDeclChirho { .. }
+                | DeclChirho::InstanceDeclChirho { .. }
+                | DeclChirho::FixityDeclChirho { .. }
+        )
+    }) {
+        return Err(lower_chirho.error_chirho(
+            "next does not yet elaborate this declaration",
+            module_chirho.span_chirho,
+        ));
+    }
     let imports_chirho = lower_chirho.import_interfaces_chirho(
         module_chirho,
         interfaces_chirho,
