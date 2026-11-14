@@ -29,7 +29,7 @@ TEST_FILTERED_COUNT_CHIRHO="unknown"
 TEST_RESULT_LINES_CHIRHO="unknown"
 TEST_CARGO_STATUS_CHIRHO="unknown"
 TEST_TIMESTAMP_CHIRHO="unknown"
-TEST_COMMAND_CHIRHO="cargo test --workspace --quiet"
+TEST_COMMAND_CHIRHO="./cargo-chirho -- test --workspace --quiet"
 TEST_SOURCE_CHIRHO="none"
 
 load_test_stats_cache_chirho() {
@@ -130,7 +130,7 @@ data_chirho.update(
         "test_filtered_count_chirho": totals_chirho["filtered_out"],
         "test_result_lines_chirho": result_lines_chirho,
         "test_cargo_status_chirho": cargo_status_chirho,
-        "test_command_chirho": "cargo test --workspace --quiet",
+        "test_command_chirho": "./cargo-chirho -- test --workspace --quiet",
         "test_timestamp_chirho": datetime.datetime.now(datetime.UTC)
         .replace(microsecond=0)
         .isoformat()
@@ -150,9 +150,16 @@ PYRUN
 if [ "${1:-}" = "--run-tests" ]; then
     TEST_OUTPUT_CHIRHO="$(mktemp)"
     set +e
-    cargo test --workspace --quiet > "$TEST_OUTPUT_CHIRHO" 2>&1
+    "$REPO_ROOT_CHIRHO/cargo-chirho" --worktree-chirho "$REPO_ROOT_CHIRHO" -- test --workspace --quiet > "$TEST_OUTPUT_CHIRHO" 2>&1
     CARGO_STATUS_CHIRHO=$?
     set -e
+
+    if [ "$CARGO_STATUS_CHIRHO" -eq 74 ]; then
+        cat "$TEST_OUTPUT_CHIRHO" >&2
+        rm -f "$TEST_OUTPUT_CHIRHO"
+        echo "stats-chirho: build storage admission/monitor refused; cached test counts unchanged." >&2
+        exit 74
+    fi
 
     if ! write_test_stats_cache_chirho "$TEST_OUTPUT_CHIRHO" "$CARGO_STATUS_CHIRHO"; then
         cat "$TEST_OUTPUT_CHIRHO" >&2

@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+# For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
+
+from pathlib import Path as PathChirho
+import sys as sys_chirho
+
+sys_chirho.dont_write_bytecode = True
+sys_chirho.path.insert(0, str(PathChirho(__file__).resolve().parent / "spec-chirho/workflows-chirho/development-chirho/build-cache-chirho"))
+from cargo_build_chirho import main_chirho
+
+raise SystemExit(main_chirho())

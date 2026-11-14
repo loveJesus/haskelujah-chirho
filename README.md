@@ -138,27 +138,29 @@ cargo install haskelujah
 cargo install --git https://github.com/loveJesus/haskelujah-chirho haskelujah
 
 # From source
-cargo install --path crates/haskelujah-cli-chirho
+./cargo-chirho -- install --path crates/haskelujah-cli-chirho
 ```
 
 ### Build from source
 
 ```bash
-cargo build --workspace
+./cargo-chirho -- build --workspace
 ```
 
 ### Test
 
 ```bash
 # Run the full test suite
-cargo test --workspace
+./cargo-chirho -- test --workspace
 
 # Run driver/runtime integration tests
-cargo test -p haskelujah-driver-chirho
+./cargo-chirho -- test -p haskelujah-driver
 
 # Run parser golden tests
-cargo test -p haskelujah-parser-chirho --test golden_parse_chirho
+./cargo-chirho -- test -p haskelujah-parser --test golden_parse_chirho
 ```
+
+Developer builds use `cargo-chirho` to select a worktree/profile-isolated Cargo target on OPENALEX when available and a local cache otherwise. The helper is optional on other machines. Builds retain capacity and single-writer gates; a disappearing drive stops the owned build without retry. Runtime test/run/bench/install temporary files stay internal; use `--private-temp-chirho` for other sensitive jobs. See `spec-chirho/workflows-chirho/development-chirho/build-cache-chirho/README-chirho.md` for selected paths and profiles. Existing frozen execution packets keep their original commands.
 
 ### CLI Usage
 
