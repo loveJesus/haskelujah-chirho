@@ -377,3 +377,28 @@ flowchart TD
 ```
 
 The added pass is linear in the retained Wanted records plus their charged normalization/free-variable walks, using a module-local set of blocked variables and first-occurrence candidate order. It shares the existing module allocation ceiling. It does not repair the older repeated whole-module scans during group closure, or the shared runtime's dynamic instruction/root retention cost. Explicit default/default (), named defaults, ExtendedDefaultRules, OverloadedStrings, other standard classes and later default types remain Unsupported. Ordinary Prelude operator identity still needs a checked defining-interface join, so operator controls use explicit checked imports under NoImplicitPrelude. Actual runtime and fixed-profile results are recorded in the unit tasklist and acceptance evidence, not inferred from this diagram.
+
+
+## Unit 757: checked defining names behind Prelude
+
+The actual pinned upstream Prelude export/import header supplies presence paths through the already vendored Num, Integer and Tuple files. GHC 9.14.1 compiles that exact whole Prelude.hs without diagnostics, establishing the unqualified export uniqueness premise. The reader caches candidate original-name routes, not schemes. Qualified/aliased imports cannot forward a route, import lists and hiding constrain it, module re-exports need an actual unqualified import edge, and conditional/defining preprocessor directives in a read region decline. Only inert includes are skipped. Unreadable/non-vendored paths prove nothing for that name.
+
+The source driver uses syntax-use mentions only as dependency-loading hints. A hint can load a module even when the source name later resolves locally. HIR therefore joins a route only with the exact original name in an independently checked terminal export; class members additionally require the checked owning class. The type, fixity, default and instance records come from that interface and normal arena re-interning. No typed Prelude catalogue, shared arena, new dictionary form or legacy interface supplies authority.
+
+```mermaid
+flowchart LR
+    P["Pinned whole Prelude and facade headers"] --> R["Candidate original-name paths"]
+    U["Use-site syntax mentions"] --> D["Demand-load defining source modules"]
+    D --> I["Independent checker: closed defining interfaces"]
+    R --> J{"Exact terminal export and class-child join?"}
+    I --> J
+    J -->|yes| S["Prelude lexical exposure of the existing NameId"]
+    J -->|no| X["Present but Unsupported"]
+    S --> E["Existing equality, evidence, Core linking and runtime"]
+```
+
+A direct import and Prelude exposure of the same original name are one entity. A home top-level conflict or different proved original is ambiguous; nested binders shadow normally. Explicit Prelude item lists admit only proved declarations and checked class members; empty lists bring nothing. Open, hiding, qualified and aliased Prelude imports remain Unsupported, as do a home Prelude and names such as subtract whose bodies have not been checked. Integer remains opaque and defaulting remains the unit 754 rule.
+
+Two absence boundaries are separate from loading hints. A complete home-unit class cannot acquire unseen instances in a library that cannot name it, even when its head is a compiler type. A deliberately sliced home unit remains conservative. Ordinary unqualified-name absence uses the selected lexical scope and complete Prelude name account, not hidden type/instance interfaces or unit incompleteness. Other qualified/builtin occurrence forms, typed holes and implicitly quantified lowercase annotation variables retain their conservative declines. Unmodeled top-level declarations decline before ordinary data fields or class bodies are read, so a declared alias/newtype cannot be mistaken for an absent name. Internal source-route inconsistencies are Unsupported rather than semantic judgments on the user's source.
+
+The carrier, parent/member checks and scope/partiality corrections were reviewed by Claude2 through source reading only (#34365, DM4570, DM4575); no independent execution is implied. Execution counts, fixed-profile movements, source identity and residuals belong to the unit 757 tasklist and acceptance receipt. Full source libraries, ordinary numeric classes beyond Num, native Integer, IO-main/B-run and default-pipeline integration remain open.
