@@ -17,7 +17,7 @@ pub(super) fn parse_chirho(
     file_chirho: FileIdChirho,
 ) -> Result<haskelujah_parser_chirho::lower_chirho::LoweredModuleChirho, NextErrorChirho> {
     parse_with_dependencies_chirho(source_chirho, file_chirho)
-        .map(|(parsed_chirho, _)| parsed_chirho)
+        .map(|(parsed_chirho, _, _)| parsed_chirho)
 }
 
 pub(super) fn parse_with_dependencies_chirho(
@@ -27,6 +27,7 @@ pub(super) fn parse_with_dependencies_chirho(
     (
         haskelujah_parser_chirho::lower_chirho::LoweredModuleChirho,
         bool,
+        std::collections::BTreeSet<String>,
     ),
     NextErrorChirho,
 > {
@@ -128,9 +129,27 @@ pub(super) fn parse_with_dependencies_chirho(
     let mut work_chirho = vec![(green_chirho.as_ref(), 0_usize)];
     let mut nodes_chirho = 0_usize;
     let mut negation_chirho = false;
+    let mut prelude_mentions_chirho = std::collections::BTreeSet::new();
     while let Some((node_chirho, depth_chirho)) = work_chirho.pop() {
         nodes_chirho += 1;
         negation_chirho |= node_chirho.kind_chirho() == SyntaxKindChirho::NegateExprChirho;
+        // A loading hint only: identities still require pinned facade routes and checked exports.
+        if matches!(
+            node_chirho.kind_chirho(),
+            SyntaxKindChirho::NameExprChirho
+                | SyntaxKindChirho::InfixExprChirho
+                | SyntaxKindChirho::ConTypeChirho
+                | SyntaxKindChirho::ContextChirho
+                | SyntaxKindChirho::ImportSpecChirho
+                | SyntaxKindChirho::ExportSpecChirho
+                | SyntaxKindChirho::InstanceDeclChirho
+        ) {
+            for child_chirho in node_chirho.children_chirho() {
+                if let GreenElementChirho::TokenChirho(token_chirho) = child_chirho {
+                    prelude_mentions_chirho.insert(token_chirho.text_chirho().to_string());
+                }
+            }
+        }
         if nodes_chirho > 1 << 20 || depth_chirho > 256 {
             return Err(NextErrorChirho::new_chirho(
                 NextErrorKindChirho::ResourceChirho,
@@ -204,5 +223,5 @@ pub(super) fn parse_with_dependencies_chirho(
             .extensions_chirho
             .iter()
             .any(|flag_chirho| flag_chirho == "RebindableSyntax");
-    Ok((parsed_chirho, numeric_chirho))
+    Ok((parsed_chirho, numeric_chirho, prelude_mentions_chirho))
 }

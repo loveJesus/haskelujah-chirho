@@ -6,7 +6,7 @@ use super::*;
 use haskelujah_parser_chirho::lexer_chirho::{LexerChirho, RawTokenKindChirho};
 use std::collections::BTreeSet;
 use std::sync::{Arc, OnceLock};
-const SOURCE_CHIRHO: &str = include_str!("vendor-chirho/base-chirho/Prelude.hs");
+pub(super) const SOURCE_CHIRHO: &str = include_str!("vendor-chirho/base-chirho/Prelude.hs");
 static EXPORTS_CHIRHO: OnceLock<Result<Arc<PreludeExportsChirho>, String>> = OnceLock::new();
 
 pub(in crate::next_chirho) fn exports_chirho() -> Result<Arc<PreludeExportsChirho>, NextErrorChirho>

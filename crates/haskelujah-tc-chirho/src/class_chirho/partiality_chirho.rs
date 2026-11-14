@@ -43,6 +43,19 @@ impl CheckedModuleChirho {
         class_chirho: NameIdChirho,
         head_chirho: TyChirho,
     ) -> Result<bool, TcErrorChirho> {
+        // A library cannot declare instances of a complete home-unit class it cannot name.
+        // Keep a deliberately sliced home unit conservative as well.
+        if !self.sliced_name_chirho(class_chirho)
+            && self
+                .module_chirho
+                .names_chirho
+                .get(class_chirho.0 as usize)
+                .is_some_and(|info_chirho| {
+                    info_chirho.unit_chirho == UnitIdentityChirho::StandaloneHomeChirho
+                })
+        {
+            return Ok(false);
+        }
         Ok(self.sliced_name_chirho(class_chirho) || self.sliced_head_chirho(head_chirho)?)
     }
     pub(super) fn check_partial_instance_chirho(

@@ -11,7 +11,9 @@ pub(super) use integer_backend_chirho::{
     install_policy_chirho as install_integer_policy_chirho,
     operation_chirho as integer_operation_chirho,
 };
+mod facade_chirho;
 mod prelude_scope_chirho;
+pub(super) use facade_chirho::routes_chirho as prelude_routes_chirho;
 pub(super) use prelude_scope_chirho::exports_chirho as prelude_exports_chirho;
 
 pub(super) const NUM_MODULE_CHIRHO: &str = "GHC.Internal.Num";
@@ -152,3 +154,6 @@ mod defaulting_tests_chirho;
 mod integer_tests_chirho;
 #[cfg(test)]
 mod tests_chirho;
+
+#[cfg(test)]
+mod prelude_tests_chirho;

@@ -113,7 +113,6 @@ fn main_requires_the_real_io_contract_and_library_entry_is_explicit_chirho() {
 fn unchecked_pragma_bodies_and_export_lists_are_never_silently_accepted_chirho() {
     for source_chirho in [
         "module RulesChirho where\n{-# RULES \"badChirho\" forall (fChirho :: aChirho -> _). fChirho = fChirho #-}\n",
-        "module ExportChirho (missingChirho) where\nvalueChirho = 'x'\n",
         "module ImportChirho where\nimport \"absent-unit-chirho\" Prelude\nvalueChirho = True\n",
     ] {
         assert_eq!(
@@ -121,4 +120,10 @@ fn unchecked_pragma_bodies_and_export_lists_are_never_silently_accepted_chirho()
             NextErrorKindChirho::UnsupportedChirho
         );
     }
+    assert_eq!(
+        check_source_chirho("module ExportChirho (missingChirho) where\nvalueChirho = 'x'\n")
+            .unwrap_err()
+            .kind_chirho,
+        NextErrorKindChirho::InvalidChirho
+    );
 }

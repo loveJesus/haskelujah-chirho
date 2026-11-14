@@ -54,6 +54,7 @@ struct LowerChirho<'literals_chirho> {
     rebindable_chirho: bool,
     implicit_prelude_chirho: bool,
     prelude_exports_chirho: Option<std::sync::Arc<PreludeExportsChirho>>,
+    prelude_scope_chirho: std::collections::BTreeMap<(String, NamespaceChirho), NameIdChirho>,
     imported_names_chirho: std::collections::BTreeMap<OriginalNameChirho, NameIdChirho>,
     import_scope_chirho: HashMap<(String, NamespaceChirho), Vec<NameIdChirho>>,
     imported_classes_chirho: Vec<ClassDeclChirho>,
@@ -485,6 +486,7 @@ pub fn lower_module_with_policy_chirho(
                 .any(|import_chirho| import_chirho.module_chirho.full_name_chirho() == "Prelude")
             && module_chirho.name_chirho.full_name_chirho() != "Prelude",
         prelude_exports_chirho: policy_chirho.prelude_exports_chirho.clone(),
+        prelude_scope_chirho: Default::default(),
         imported_names_chirho: Default::default(),
         import_scope_chirho: Default::default(),
         imported_classes_chirho: Vec::new(),
@@ -539,6 +541,7 @@ pub fn lower_module_with_policy_chirho(
         interfaces_chirho,
         &policy_chirho.implicit_interfaces_chirho,
     )?;
+    lower_chirho.install_prelude_chirho(module_chirho, policy_chirho, &imports_chirho)?;
     if lower_chirho.implicit_prelude_chirho {
         for (text_chirho, namespace_chirho, wired_chirho) in [
             (

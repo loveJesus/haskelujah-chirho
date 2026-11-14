@@ -75,8 +75,16 @@ fn program_chirho(
         let mut policy_chirho = haskelujah_hir_chirho::LoweringPolicyChirho {
             completeness_chirho: input_chirho.completeness_chirho,
             prelude_exports_chirho: Some(super::library_chirho::prelude_exports_chirho()?),
+            prelude_routes_chirho: Some(super::library_chirho::prelude_routes_chirho()?),
             ..Default::default()
         };
+        for dependency_chirho in graph_chirho::prelude_modules_chirho(input_chirho)? {
+            policy_chirho.implicit_interfaces_chirho.push(Arc::clone(
+                interfaces_chirho
+                    .get(&dependency_chirho)
+                    .ok_or_else(|| invalid_chirho("Prelude terminal dependency was not checked"))?,
+            ));
+        }
         if key_chirho.unit_chirho == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho
             && key_chirho.module_chirho == super::library_chirho::INTEGER_MODULE_CHIRHO
         {

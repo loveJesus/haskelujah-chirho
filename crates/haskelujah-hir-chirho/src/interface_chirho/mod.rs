@@ -16,10 +16,19 @@ pub enum CompletenessChirho {
 
 pub type PreludeExportsChirho = BTreeSet<(String, crate::NamespaceChirho)>;
 
+/// A pinned source export/import path; the terminal declaration must still be checked.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PreludeRouteChirho {
+    pub original_chirho: OriginalNameChirho,
+    pub parent_chirho: Option<OriginalNameChirho>,
+}
+pub type PreludeRoutesChirho = BTreeMap<(String, crate::NamespaceChirho), Vec<PreludeRouteChirho>>;
+
 #[derive(Debug, Default)]
 pub struct LoweringPolicyChirho {
     /// Checked export names only; no Prelude scheme or instance authority.
     pub prelude_exports_chirho: Option<std::sync::Arc<PreludeExportsChirho>>,
+    pub prelude_routes_chirho: Option<std::sync::Arc<PreludeRoutesChirho>>,
     pub completeness_chirho: CompletenessChirho,
     /// Identity dependencies without lexical import scope (known syntax operations).
     pub implicit_interfaces_chirho: Vec<std::sync::Arc<InterfaceChirho>>,

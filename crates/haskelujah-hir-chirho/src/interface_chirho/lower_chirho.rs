@@ -4,6 +4,7 @@
 use super::*;
 use std::collections::BTreeMap;
 use std::sync::Arc;
+mod prelude_chirho;
 mod scope_chirho;
 
 impl LowerChirho<'_> {
@@ -123,6 +124,19 @@ impl LowerChirho<'_> {
                     ));
                 }
                 if prelude_claim_chirho == Some(true) {
+                    if let Some(expected_chirho) = self
+                        .prelude_scope_chirho
+                        .get(&(prelude_text_chirho.to_string(), namespace_chirho))
+                    {
+                        return if expected_chirho == id_chirho {
+                            Ok(*id_chirho)
+                        } else {
+                            Err(self.invalid_class_chirho(
+                                "ambiguous import and checked Prelude declaration",
+                                span_chirho,
+                            ))
+                        };
+                    }
                     if self.names_chirho[id_chirho.0 as usize].unit_chirho
                         == UnitIdentityChirho::StandaloneHomeChirho
                     {
@@ -137,6 +151,12 @@ impl LowerChirho<'_> {
             }
             Some(_) => Err(self.invalid_class_chirho("ambiguous imported name", span_chirho)),
             None => {
+                if let Some(id_chirho) = self
+                    .prelude_scope_chirho
+                    .get(&(prelude_text_chirho.to_string(), namespace_chirho))
+                {
+                    return Ok(*id_chirho);
+                }
                 if prelude_claim_chirho != Some(false) {
                     return Err(self.error_chirho(
                         "Prelude exports this name without a checked type or instance interface",
@@ -146,9 +166,15 @@ impl LowerChirho<'_> {
                 let message_chirho = format!(
                     "next has no checked declaration for `{text_chirho}`; no placeholder type is supplied"
                 );
+                let implicit_binder_chirho = namespace_chirho == NamespaceChirho::TypeChirho
+                    && text_chirho.starts_with(char::is_lowercase);
                 Err(
-                    if self.sliced_units_chirho.is_empty()
-                        && (self.rebindable_chirho || !self.imported_names_chirho.is_empty())
+                    // Scope absence comes from the selected names, not scope-hidden type/instance
+                    // dependencies. Other occurrence forms retain their conservative decline.
+                    if !text_chirho.contains(['.', ':', '(', ')', '[', ']'])
+                        // A free lowercase type name can introduce an implicit annotation binder.
+                        && !implicit_binder_chirho
+                        && (self.rebindable_chirho || !self.import_scope_chirho.is_empty())
                     {
                         self.invalid_class_chirho(&message_chirho, span_chirho)
                     } else {
@@ -248,6 +274,9 @@ impl LowerChirho<'_> {
         let mut selected_seen_chirho = HashSet::new();
         let mut selected_chirho = Vec::new();
         for import_chirho in &module_chirho.imports_chirho {
+            if import_chirho.module_chirho.full_name_chirho() == "Prelude" {
+                continue; // Source-accounted Prelude exposure is installed after all terminal imports.
+            }
             if import_chirho.qualified_chirho || import_chirho.alias_chirho.is_some() {
                 return Err(self.error_chirho(
                     "next source interfaces currently require a plain import",
