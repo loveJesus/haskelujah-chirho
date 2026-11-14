@@ -19,6 +19,8 @@ pub(super) use prelude_scope_chirho::exports_chirho as prelude_exports_chirho;
 pub(super) const NUM_MODULE_CHIRHO: &str = "GHC.Internal.Num";
 pub(super) const INTEGER_MODULE_CHIRHO: &str = "GHC.Internal.Bignum.Integer";
 pub(super) const CLASSES_MODULE_CHIRHO: &str = "GHC.Internal.Classes";
+pub(super) const BASE_MODULE_CHIRHO: &str = "GHC.Internal.Base";
+pub(super) const SHOW_MODULE_CHIRHO: &str = "GHC.Internal.Show";
 pub(super) const LICENSE_CHIRHO: &str = include_str!("vendor-chirho/ghc-internal-chirho/LICENSE");
 
 pub(super) struct SourceManifestChirho {
@@ -30,6 +32,7 @@ pub(super) struct SourceManifestChirho {
     pub spans_chirho: &'static [(usize, usize)],
     pub imports_chirho: &'static str,
     pub primitive_signatures_chirho: bool,
+    pub wired_imports_chirho: &'static [WiredNameChirho],
 }
 const TUPLE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ghc_version_chirho: "9.14.1",
@@ -40,6 +43,7 @@ const TUPLE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     spans_chirho: &[(926, 993), (1039, 1106)],
     imports_chirho: "",
     primitive_signatures_chirho: false,
+    wired_imports_chirho: &[],
 };
 const NUM_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ghc_version_chirho: "9.14.1",
@@ -50,6 +54,7 @@ const NUM_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     spans_chirho: &[(1066, 1093), (2395, 3302), (4437, 4637)],
     imports_chirho: "import GHC.Internal.Bignum.Integer (Integer, integerAdd, integerSub, integerMul, integerNegate, integerAbs, integerSignum)\n",
     primitive_signatures_chirho: false,
+    wired_imports_chirho: &[],
 };
 const INTEGER_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ghc_version_chirho: "9.14.1",
@@ -76,6 +81,7 @@ const INTEGER_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ],
     imports_chirho: "import GHC.Internal.Classes (Eq(..), Ord(..))\n",
     primitive_signatures_chirho: true,
+    wired_imports_chirho: WIRED_CLASSES_CHIRHO,
 };
 
 const CLASSES_CHIRHO: SourceManifestChirho = SourceManifestChirho {
@@ -87,6 +93,39 @@ const CLASSES_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     spans_chirho: &[(3542, 3573), (6083, 6307), (14188, 15004), (22777, 22882)],
     imports_chirho: "",
     primitive_signatures_chirho: false,
+    wired_imports_chirho: WIRED_CLASSES_CHIRHO,
+};
+
+const WIRED_CLASSES_CHIRHO: &[WiredNameChirho] = &[
+    WiredNameChirho::BoolChirho,
+    WiredNameChirho::TrueChirho,
+    WiredNameChirho::FalseChirho,
+    WiredNameChirho::OrderingChirho,
+    WiredNameChirho::LessChirho,
+    WiredNameChirho::EqualChirho,
+    WiredNameChirho::GreaterChirho,
+];
+const BASE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    ghc_version_chirho: "9.14.1",
+    module_chirho: BASE_MODULE_CHIRHO,
+    upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Base.hs",
+    sha256_chirho: "bc38ea9356f90aeb38298ef1269fbdc2dee433528374948375da112b273a89e2",
+    bytes_chirho: include_str!("vendor-chirho/ghc-internal-chirho/Base.hs"),
+    spans_chirho: &[(64541, 64562)],
+    imports_chirho: "",
+    primitive_signatures_chirho: false,
+    wired_imports_chirho: &[WiredNameChirho::CharChirho],
+};
+const SHOW_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    ghc_version_chirho: "9.14.1",
+    module_chirho: SHOW_MODULE_CHIRHO,
+    upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Show.hs",
+    sha256_chirho: "b37f6d9d376e837785d207f2cf784daf0a53a04db26723a456c073616512be98",
+    bytes_chirho: include_str!("vendor-chirho/ghc-internal-chirho/Show.hs"),
+    spans_chirho: &[(1855, 1885)],
+    imports_chirho: "import GHC.Internal.Base (String)\n",
+    primitive_signatures_chirho: false,
+    wired_imports_chirho: &[],
 };
 
 pub(super) fn manifest_chirho(module_chirho: &str) -> Option<&'static SourceManifestChirho> {
@@ -95,6 +134,8 @@ pub(super) fn manifest_chirho(module_chirho: &str) -> Option<&'static SourceMani
         NUM_MODULE_CHIRHO => Some(&NUM_CHIRHO),
         INTEGER_MODULE_CHIRHO => Some(&INTEGER_CHIRHO),
         CLASSES_MODULE_CHIRHO => Some(&CLASSES_CHIRHO),
+        BASE_MODULE_CHIRHO => Some(&BASE_CHIRHO),
+        SHOW_MODULE_CHIRHO => Some(&SHOW_CHIRHO),
         _ => None,
     }
 }

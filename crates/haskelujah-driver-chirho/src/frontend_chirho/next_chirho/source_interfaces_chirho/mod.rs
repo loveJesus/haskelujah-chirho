@@ -14,6 +14,8 @@ mod graph_chirho;
 mod link_chirho;
 mod rename_chirho;
 #[cfg(test)]
+mod synonym_tests_chirho;
+#[cfg(test)]
 mod tests_chirho;
 
 fn invalid_chirho(message_chirho: &str) -> NextErrorChirho {
@@ -86,23 +88,13 @@ fn program_chirho(
             ));
         }
         if key_chirho.unit_chirho == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho
-            && matches!(
-                key_chirho.module_chirho.as_str(),
-                super::library_chirho::INTEGER_MODULE_CHIRHO
-                    | super::library_chirho::CLASSES_MODULE_CHIRHO
-            )
+            && let Some(manifest_chirho) =
+                super::library_chirho::manifest_chirho(&key_chirho.module_chirho)
         {
-            use haskelujah_hir_chirho::WiredNameChirho;
-            // The manifest header supplies only the GHC-wired Types imports used by this slice.
-            policy_chirho.wired_imports_chirho.extend([
-                WiredNameChirho::BoolChirho,
-                WiredNameChirho::TrueChirho,
-                WiredNameChirho::FalseChirho,
-                WiredNameChirho::OrderingChirho,
-                WiredNameChirho::LessChirho,
-                WiredNameChirho::EqualChirho,
-                WiredNameChirho::GreaterChirho,
-            ]);
+            // Only the driver-admitted manifest supplies these GHC-wired imports.
+            policy_chirho
+                .wired_imports_chirho
+                .extend_from_slice(manifest_chirho.wired_imports_chirho);
         }
         if key_chirho.unit_chirho == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho
             && key_chirho.module_chirho == super::library_chirho::INTEGER_MODULE_CHIRHO

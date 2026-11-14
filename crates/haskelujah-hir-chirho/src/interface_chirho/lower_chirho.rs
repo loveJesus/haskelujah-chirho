@@ -329,6 +329,7 @@ impl LowerChirho<'_> {
             for original_chirho in interface_chirho
                 .data_chirho
                 .keys()
+                .chain(interface_chirho.synonyms_chirho.keys())
                 .chain(interface_chirho.values_chirho.keys())
                 .chain(interface_chirho.classes_chirho.keys())
                 .chain(interface_chirho.wired_types_chirho.keys())
@@ -341,6 +342,10 @@ impl LowerChirho<'_> {
                     span_chirho,
                 )?;
                 names_chirho.insert(original_chirho.clone(), id_chirho);
+            }
+            for original_chirho in interface_chirho.synonyms_chirho.keys() {
+                self.synonym_names_chirho
+                    .insert(names_chirho[original_chirho]);
             }
             for (original_chirho, wired_chirho) in &interface_chirho.wired_types_chirho {
                 if *wired_chirho != WiredNameChirho::IntegerChirho
@@ -439,13 +444,32 @@ impl LowerChirho<'_> {
         let mut result_chirho = Vec::new();
         if let Some(exports_chirho) = &module_chirho.exports_chirho {
             for export_chirho in exports_chirho {
-                let ExportSpecChirho::VarChirho(name_chirho) = export_chirho else {
-                    return Err(self.error_chirho(
-                        "next supports only value-only explicit source exports",
-                        module_chirho.span_chirho,
-                    ));
+                let id_chirho = match export_chirho {
+                    ExportSpecChirho::VarChirho(name_chirho) => {
+                        self.lookup_chirho(name_chirho, NamespaceChirho::ValueChirho)?
+                    }
+                    ExportSpecChirho::TyConChirho {
+                        name_chirho,
+                        members_chirho:
+                            haskelujah_ast_chirho::module_chirho::ExportMembersChirho::NoneChirho,
+                    } => {
+                        let id_chirho =
+                            self.lookup_chirho(name_chirho, NamespaceChirho::TypeChirho)?;
+                        if !self.synonym_names_chirho.contains(&id_chirho) {
+                            return Err(self.error_chirho(
+                                "next explicit type exports currently require a checked synonym",
+                                module_chirho.span_chirho,
+                            ));
+                        }
+                        id_chirho
+                    }
+                    _ => {
+                        return Err(self.error_chirho(
+                            "next supports value and plain synonym exports only",
+                            module_chirho.span_chirho,
+                        ));
+                    }
                 };
-                let id_chirho = self.lookup_chirho(name_chirho, NamespaceChirho::ValueChirho)?;
                 if !result_chirho.contains(&id_chirho) {
                     result_chirho.push(id_chirho);
                 }

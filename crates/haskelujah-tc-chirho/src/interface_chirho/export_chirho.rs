@@ -177,6 +177,7 @@ pub fn project_interface_chirho(
         sliced_units_chirho: module_chirho.sliced_units_chirho.clone(),
         wired_types_chirho: BTreeMap::new(),
         data_chirho: BTreeMap::new(),
+        synonyms_chirho: BTreeMap::new(),
         values_chirho: BTreeMap::new(),
         classes_chirho: BTreeMap::new(),
         instances_chirho: BTreeMap::new(),
@@ -195,6 +196,10 @@ pub fn project_interface_chirho(
         )?;
         merge_chirho(&mut result_chirho.data_chirho, &iface_chirho.data_chirho)?;
         merge_chirho(
+            &mut result_chirho.synonyms_chirho,
+            &iface_chirho.synonyms_chirho,
+        )?;
+        merge_chirho(
             &mut result_chirho.values_chirho,
             &iface_chirho.values_chirho,
         )?;
@@ -208,6 +213,20 @@ pub fn project_interface_chirho(
         )?;
     }
     let mut values_chirho = Vec::new();
+    for declaration_chirho in &module_chirho.synonyms_chirho {
+        let name_chirho = projection_chirho.original_chirho(declaration_chirho.name_chirho)?;
+        let synonym_chirho = checked_chirho
+            .synonyms_chirho
+            .get(&declaration_chirho.name_chirho)
+            .ok_or_else(|| invalid_interface_chirho("synonym export lacks its checked scheme"))?;
+        result_chirho.synonyms_chirho.insert(
+            name_chirho,
+            InterfaceSynonymChirho {
+                scheme_chirho: projection_chirho.scheme_chirho(&synonym_chirho.scheme_chirho)?,
+                higher_kinds_partial_chirho: synonym_chirho.higher_kinds_partial_chirho,
+            },
+        );
+    }
     for declaration_chirho in &module_chirho.data_chirho {
         let name_chirho = projection_chirho.original_chirho(declaration_chirho.name_chirho)?;
         result_chirho
@@ -342,10 +361,19 @@ fn interface_weight_chirho(interface_chirho: &InterfaceChirho) -> Result<usize, 
             .sum::<usize>()
         + interface_chirho.sliced_units_chirho.len()
         + interface_chirho.data_chirho.len()
+        + interface_chirho.synonyms_chirho.len()
         + interface_chirho.values_chirho.len()
         + interface_chirho.classes_chirho.len()
         + interface_chirho.instances_chirho.len();
     let mut trees_chirho = Vec::new();
+    for (name_chirho, synonym_chirho) in &interface_chirho.synonyms_chirho {
+        count_chirho = count_chirho
+            .checked_add(name_chirho.module_chirho.len() + name_chirho.occurrence_chirho.len() + 1)
+            .ok_or_else(|| invalid_interface_chirho("interface size overflow"))?;
+        trees_chirho.extend(synonym_chirho.scheme_chirho.kinds_chirho.iter());
+        trees_chirho.extend(synonym_chirho.scheme_chirho.context_chirho.iter());
+        trees_chirho.push(&synonym_chirho.scheme_chirho.body_chirho);
+    }
     for (name_chirho, value_chirho) in &interface_chirho.values_chirho {
         count_chirho = count_chirho
             .checked_add(name_chirho.module_chirho.len() + name_chirho.occurrence_chirho.len() + 1)

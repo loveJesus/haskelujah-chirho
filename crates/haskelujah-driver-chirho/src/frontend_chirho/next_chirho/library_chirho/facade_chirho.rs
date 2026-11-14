@@ -263,7 +263,13 @@ fn routes_from_chirho(
         .exports_chirho
         .iter()
         .any(|item_chirho| item_chirho.admits_chirho(key_chirho, parent_chirho));
-    if named_chirho && manifest_chirho(module_chirho).is_some() {
+    // A self re-export is only a candidate. Installation still requires the exact
+    // original name to be exported by this module's independently checked slice.
+    let self_chirho = facade_chirho
+        .exports_chirho
+        .iter()
+        .any(|item_chirho| item_chirho.module_chirho && item_chirho.name_chirho == module_chirho);
+    if (named_chirho || self_chirho) && manifest_chirho(module_chirho).is_some() {
         let original_chirho = OriginalNameChirho {
             unit_chirho: UnitIdentityChirho::CompilerChirho,
             module_chirho: module_chirho.into(),
@@ -308,7 +314,7 @@ pub(in crate::next_chirho) fn routes_chirho() -> Result<Arc<RoutesChirho>, NextE
     ROUTES_CHIRHO
         .get_or_init(|| {
             let build_chirho = || -> Result<RoutesChirho, NextErrorChirho> {
-                prelude_exports_chirho()?; // Verifies the whole Prelude file and complete name account.
+                let exports_chirho = prelude_exports_chirho()?;
                 let mut facades_chirho = BTreeMap::from([(
                     "Prelude".into(),
                     read_chirho(prelude_scope_chirho::SOURCE_CHIRHO, "Prelude")?,
@@ -355,6 +361,11 @@ pub(in crate::next_chirho) fn routes_chirho() -> Result<Arc<RoutesChirho>, NextE
                         },
                     ));
                     for (key_chirho, parent_chirho) in queries_chirho {
+                        // Qualified facade spellings are not ordinary occurrences. A
+                        // candidate must belong to the independently read export account.
+                        if !exports_chirho.contains(&key_chirho) {
+                            continue;
+                        }
                         let mut routes_chirho = Vec::new();
                         routes_from_chirho(
                             "Prelude",

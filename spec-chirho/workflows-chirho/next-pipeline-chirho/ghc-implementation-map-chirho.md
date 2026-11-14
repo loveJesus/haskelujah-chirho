@@ -2,7 +2,7 @@
 
 # GHC to Haskelujah implementation map
 
-Implementation scope: isolated `next-pipeline-numeric-defaulting-chirho` (unit 754), based on unit 753 checkpoint `92430836`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release.
+Implementation scope: isolated `next-pipeline-source-synonyms-chirho` (unit 759), extending the unit 758 checkpoint `e5c34c1d`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release. Earlier sections describe their named increments; later sections supersede earlier Unsupported boundaries.
 
 This is the written reading guide L.J. requested. It maps GHC's assumptions to our data as we implement locally. It introduces no runtime dependency on GHC. Reference: retained GHC 9.14.1, commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886.
 
@@ -430,3 +430,35 @@ flowchart TD
 ```
 
 The driver admits wired Types imports only for its compiler-unit manifest modules; it does not claim to check Types.hs. Manifest source instances may belong to another library module's class, while local visible duplicate checking still precedes the partiality exemption. Classes and Integer remain slices: absent Eq Bool, other instances, Show and unmodeled library exports remain Unsupported. Operator chains, full Base bodies, IO-main, native Integer and shared runtime code/root retention are separate boundaries.
+
+
+## Checked source type synonyms (unit 759)
+
+Architecture input: Claude2 DM4689/DM4694, source/design reading only. This is the alias prerequisite of the Show route, not the Show class, source-shaped Int or printing. Source String comes from the actual Base.hs:2030, and ShowS from Show.hs:62, selected from whole unmodified, hash-pinned files with the existing ghc-internal licence. The driver-minted manifests supply the defining unit and explicit dependencies; Base imports only the wired Char needed by its selected declaration. No reference checkout is read by the installed compiler.
+
+| GHC concept | Local representation | Required invariant |
+| --- | --- | --- |
+| A synonym declaration and application before expansion | HIR SynonymChirho head, lexical parameter IDs and every supplied SurfaceType argument | An argument discarded by the RHS must still be kind-checked. A same-spelled consumer declaration cannot capture the RHS. |
+| Synonym dependency validity | Owner-charged dependency graph and Kahn ordering before any expansion | Recursive aliases are semantic refusals, including unused cycles; they never expand until a resource limit is hit. All acyclic RHSs are checked even when unused. |
+| Saturated first-order expansion | Type-kinded rigid parameter scheme plus the existing arena replace operation | Require declared arity, check every argument, then substitute. Extra arguments apply to the expanded result and receive normal kind checking. |
+| Signature ambiguity after synonym expansion | Existing arena free-variable walk on the expanded value type | An erased parameter cannot justify a written class context or become acceptable through later defaulting. |
+| Closed imported synonym definition | InterfaceSynonymChirho over the existing InterfaceSchemeChirho trees and original names | No surface body, NameId, TyChirho, evidence or arena crosses. Re-intern into the consumer after nominal data/class kind headers; hidden nominal dependencies travel without entering source scope. |
+| Prelude String exposure | Base self-re-export candidate joined to the exact checked String export | Candidate keys must belong to the complete Prelude name account. No route supplies a type; checked source-interface ownership does. |
+
+```mermaid
+flowchart TD
+  SourceChirho["Source declarations and lexical names"] --> HeadersChirho["All nominal data/class and alias headers"]
+  HeadersChirho --> DependenciesChirho["Bounded alias dependencies: reject cycles"]
+  DependenciesChirho --> SchemesChirho["Check every RHS in dependency order"]
+  UseChirho["Synonym head and all supplied arguments"] --> KindsChirho["Check kinds and minimum saturation"]
+  SchemesChirho --> KindsChirho
+  KindsChirho --> ExpandChirho["Existing arena replacement and extra arguments"]
+  ExpandChirho --> CheckChirho["Existing equality, ambiguity and evidence checking"]
+  CheckChirho --> ClosedChirho["Closed interface trees over original names"]
+  ClosedChirho --> ConsumerChirho["Fresh consumer arena, same expansion path"]
+  CheckChirho --> CoreChirho["Existing Core / STG / Rust interpreter"]
+```
+
+This increment admits inferred first-order parameter kinds. GHC2021 higher-kinded uses that require PolyKinds generalization decline as Unsupported; defaulting those uses to Type and refuting them would be wrong. Haskell2010 does require the admitted Type parameter kinds, and a synonym in an instance head is refused without TypeSynonymInstances (included in GHC2021). Constraint-kinded aliases and alias contexts decline; no class-name error is inferred from an unexpanded synonym. Before publishing headers, an owner-charged pre-pass over every local data field, class method type and synonym RHS declines applied type variables. This prevents declaration-order-dependent Haskell2010 refusals. Alias-RHS and extra-result kind failures also conservatively decline until joint declaration-kind inference can certify the provisional nominal headers: tc238 exposed a valid higher-kinded data declaration whose aliases were checked before its fields. The final candidate keeps that case Unsupported; use-site checks after data checking retain their ordinary classification. Advanced extension overrides and partially applied synonyms remain outside the subset.
+
+ShowS works through an explicit GHC.Internal.Show (ShowS) import with NoImplicitPrelude. Its default-Prelude exposure remains Unsupported until the Show facade's directive prologue is modeled; String is supported through implicit and selected Prelude imports. A checked alias does not add a representation, runtime primitive or library class. Expansion uses the existing arena DAG, while materializing an interface tree consumes the shared output ceiling; the duplicate-tree control must stop with Resource rather than unbounded allocation.

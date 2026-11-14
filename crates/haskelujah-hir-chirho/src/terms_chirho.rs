@@ -16,6 +16,8 @@ pub enum SurfaceTypeChirho {
     CharChirho,
     IntegerChirho,
     DeclaredChirho(NameIdChirho),
+    /// Retain every supplied argument until the checker validates kinds and saturation.
+    SynonymChirho(NameIdChirho),
     VariableChirho(NameIdChirho),
     AppChirho(Box<Self>, Box<Self>),
     FunChirho(Box<Self>, Box<Self>),
@@ -93,6 +95,15 @@ pub struct DataDeclChirho {
 }
 
 #[derive(Debug, Clone)]
+pub struct SynonymDeclChirho {
+    pub name_chirho: NameIdChirho,
+    pub parameters_chirho: Vec<NameIdChirho>,
+    pub body_chirho: SurfaceTypeChirho,
+    /// The first-order checker must decline, not refute, unimplemented PolyKinds uses.
+    pub higher_kinds_partial_chirho: bool,
+}
+
+#[derive(Debug, Clone)]
 pub struct ConstructorChirho {
     pub name_chirho: NameIdChirho,
     pub fields_chirho: Vec<SurfaceTypeChirho>,
@@ -163,6 +174,7 @@ pub struct ModuleChirho {
     pub completeness_chirho: crate::CompletenessChirho,
     pub sliced_units_chirho: std::collections::BTreeSet<UnitIdentityChirho>,
     pub data_chirho: Vec<DataDeclChirho>,
+    pub synonyms_chirho: Vec<SynonymDeclChirho>,
     pub classes_chirho: Vec<ClassDeclChirho>,
     pub instances_chirho: Vec<InstanceDeclChirho>,
     pub bindings_chirho: Vec<BindingChirho>,

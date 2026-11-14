@@ -23,5 +23,5 @@ pub use terms_chirho::{
     ExprChirho, ExprIdChirho, ExprKindChirho, HirErrorChirho, HirErrorKindChirho,
     InstanceDeclChirho, InstanceMethodChirho, LimitsChirho, MatchArmChirho, ModuleChirho,
     PatternChirho, PatternKindChirho, PrimitiveBindingChirho, SurfacePredicateChirho,
-    SurfaceSignatureChirho, SurfaceTypeChirho,
+    SurfaceSignatureChirho, SurfaceTypeChirho, SynonymDeclChirho,
 };

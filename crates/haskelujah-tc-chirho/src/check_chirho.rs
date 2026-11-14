@@ -28,6 +28,8 @@ mod partiality_chirho;
 mod primitive_signatures_chirho;
 #[path = "signatures_chirho.rs"]
 mod signatures_chirho;
+#[path = "interface_chirho/synonyms_chirho.rs"]
+mod synonyms_chirho;
 
 #[derive(Debug, Clone, Copy)]
 pub enum WrapStepChirho {
@@ -42,6 +44,12 @@ pub struct AbstractionChirho {
     pub scope_chirho: ScopeIdChirho,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct CheckedSynonymChirho {
+    pub scheme_chirho: SchemeChirho,
+    pub higher_kinds_partial_chirho: bool,
+}
+
 #[derive(Debug)]
 pub struct CheckedModuleChirho {
     pub module_chirho: ModuleChirho,
@@ -49,6 +57,7 @@ pub struct CheckedModuleChirho {
     pub expressions_chirho: HashMap<ExprIdChirho, TyChirho>,
     pub names_chirho: HashMap<NameIdChirho, TyChirho>,
     pub schemes_chirho: HashMap<NameIdChirho, SchemeChirho>,
+    pub(crate) synonyms_chirho: HashMap<NameIdChirho, CheckedSynonymChirho>,
     pub wrappers_chirho: HashMap<ExprIdChirho, Vec<WrapStepChirho>>,
     pub abstractions_chirho: HashMap<NameIdChirho, AbstractionChirho>,
     pub patterns_chirho: HashMap<ExprIdChirho, TyChirho>,
@@ -293,6 +302,7 @@ pub fn check_module_chirho(
         expressions_chirho: HashMap::new(),
         names_chirho: HashMap::new(),
         schemes_chirho: HashMap::new(),
+        synonyms_chirho: HashMap::new(),
         wrappers_chirho: HashMap::new(),
         abstractions_chirho: HashMap::new(),
         patterns_chirho: HashMap::new(),
@@ -340,14 +350,18 @@ pub fn check_module_chirho(
         }
     }
     checked_chirho.import_interfaces_chirho()?;
+    let data_chirho = std::mem::take(&mut checked_chirho.module_chirho.data_chirho);
+    let classes_chirho = std::mem::take(&mut checked_chirho.module_chirho.classes_chirho);
+    let synonyms_chirho = std::mem::take(&mut checked_chirho.module_chirho.synonyms_chirho);
+    checked_chirho.first_order_headers_chirho(&data_chirho, &classes_chirho, &synonyms_chirho)?;
+    checked_chirho.class_headers_chirho(&classes_chirho)?;
+    checked_chirho.data_headers_chirho(&data_chirho)?;
+    checked_chirho.synonym_declarations_chirho(&synonyms_chirho)?;
+    checked_chirho.module_chirho.synonyms_chirho = synonyms_chirho;
     let primitive_bindings_chirho =
         std::mem::take(&mut checked_chirho.module_chirho.primitive_bindings_chirho);
     checked_chirho.primitive_signatures_chirho(&primitive_bindings_chirho)?;
     checked_chirho.module_chirho.primitive_bindings_chirho = primitive_bindings_chirho;
-    let data_chirho = std::mem::take(&mut checked_chirho.module_chirho.data_chirho);
-    let classes_chirho = std::mem::take(&mut checked_chirho.module_chirho.classes_chirho);
-    // Class kinds must exist while checking data fields that mention those declarations.
-    checked_chirho.class_headers_chirho(&classes_chirho)?;
     checked_chirho.data_chirho(&data_chirho)?;
     checked_chirho.module_chirho.data_chirho = data_chirho;
     checked_chirho.classes_chirho(&classes_chirho)?;

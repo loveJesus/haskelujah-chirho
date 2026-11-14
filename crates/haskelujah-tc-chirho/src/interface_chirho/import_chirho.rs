@@ -1,6 +1,7 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
 use super::*;
+use crate::check_chirho::CheckedSynonymChirho;
 
 struct ReinternChirho<'checked_chirho> {
     checked_chirho: &'checked_chirho mut CheckedModuleChirho,
@@ -157,6 +158,7 @@ impl CheckedModuleChirho {
             names_chirho,
         };
         let mut data_chirho = BTreeMap::new();
+        let mut synonyms_chirho = BTreeMap::new();
         let mut classes_chirho = BTreeMap::new();
         let mut values_chirho = BTreeMap::new();
         let mut instances_chirho = BTreeMap::new();
@@ -164,6 +166,10 @@ impl CheckedModuleChirho {
             super::export_chirho::merge_chirho(
                 &mut data_chirho,
                 &imported_chirho.interface_chirho.data_chirho,
+            )?;
+            super::export_chirho::merge_chirho(
+                &mut synonyms_chirho,
+                &imported_chirho.interface_chirho.synonyms_chirho,
             )?;
             super::export_chirho::merge_chirho(
                 &mut classes_chirho,
@@ -193,6 +199,27 @@ impl CheckedModuleChirho {
                 .solver_chirho
                 .arena_chirho
                 .declare_class_chirho(id_chirho)?;
+        }
+        for (name_chirho, synonym_chirho) in synonyms_chirho {
+            if !synonym_chirho.scheme_chirho.context_chirho.is_empty() {
+                return Err(invalid_interface_chirho(
+                    "a checked synonym has no dictionary context",
+                ));
+            }
+            let id_chirho = importer_chirho.id_chirho(&name_chirho)?;
+            let scheme_chirho = importer_chirho.scheme_chirho(&synonym_chirho.scheme_chirho)?;
+            importer_chirho
+                .checked_chirho
+                .solver_chirho
+                .arena_chirho
+                .reserve_auxiliary_chirho()?;
+            importer_chirho.checked_chirho.synonyms_chirho.insert(
+                id_chirho,
+                CheckedSynonymChirho {
+                    scheme_chirho,
+                    higher_kinds_partial_chirho: synonym_chirho.higher_kinds_partial_chirho,
+                },
+            );
         }
         for (name_chirho, value_chirho) in values_chirho {
             let id_chirho = importer_chirho.id_chirho(&name_chirho)?;

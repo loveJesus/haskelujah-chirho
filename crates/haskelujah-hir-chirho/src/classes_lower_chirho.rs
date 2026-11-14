@@ -56,6 +56,7 @@ impl LowerChirho<'_> {
         for declaration_chirho in declarations_chirho {
             let name_chirho = match declaration_chirho {
                 DeclChirho::DataDeclChirho { name_chirho, .. }
+                | DeclChirho::TypeAliasDeclChirho { name_chirho, .. }
                 | DeclChirho::ClassDeclChirho { name_chirho, .. } => name_chirho,
                 _ => continue,
             };
@@ -65,13 +66,16 @@ impl LowerChirho<'_> {
                     name_chirho.span_chirho(),
                 ));
             }
-            self.bind_chirho(
+            let id_chirho = self.bind_chirho(
                 name_chirho.text_chirho(),
                 NamespaceChirho::TypeChirho,
                 name_chirho.span_chirho(),
                 false,
                 None,
             )?;
+            if matches!(declaration_chirho, DeclChirho::TypeAliasDeclChirho { .. }) {
+                self.synonym_names_chirho.insert(id_chirho);
+            }
         }
         Ok(())
     }
@@ -194,8 +198,7 @@ impl LowerChirho<'_> {
                         ));
                     }
                     superclasses_chirho.push(SurfacePredicateChirho {
-                        class_chirho: self
-                            .lookup_chirho(superclass_chirho, NamespaceChirho::TypeChirho)?,
+                        class_chirho: self.predicate_name_chirho(superclass_chirho)?,
                         argument_chirho,
                     });
                     superclass_selectors_chirho.push(self.bind_chirho(

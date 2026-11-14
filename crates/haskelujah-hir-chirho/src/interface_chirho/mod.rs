@@ -71,6 +71,12 @@ pub struct InterfaceSchemeChirho {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InterfaceSynonymChirho {
+    pub scheme_chirho: InterfaceSchemeChirho,
+    pub higher_kinds_partial_chirho: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InterfaceValueChirho {
     pub scheme_chirho: InterfaceSchemeChirho,
     /// None is an ordinary value; Some is the checked constructor's field arity.
@@ -125,6 +131,7 @@ pub struct InterfaceChirho {
     /// Driver-provided wired declarations, never inferred from an exported spelling.
     pub wired_types_chirho: BTreeMap<OriginalNameChirho, crate::WiredNameChirho>,
     pub data_chirho: BTreeMap<OriginalNameChirho, usize>,
+    pub synonyms_chirho: BTreeMap<OriginalNameChirho, InterfaceSynonymChirho>,
     pub values_chirho: BTreeMap<OriginalNameChirho, InterfaceValueChirho>,
     pub classes_chirho: BTreeMap<OriginalNameChirho, InterfaceClassChirho>,
     pub instances_chirho: BTreeMap<OriginalNameChirho, InterfaceInstanceChirho>,

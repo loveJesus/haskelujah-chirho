@@ -35,6 +35,8 @@ mod patterns_lower_chirho;
 mod primitive_declarations_chirho;
 #[path = "signatures_chirho.rs"]
 mod signatures_chirho;
+#[path = "syntax_chirho/synonyms_chirho.rs"]
+mod synonyms_chirho;
 #[path = "syntax_chirho/mod.rs"]
 mod syntax_chirho;
 
@@ -58,6 +60,7 @@ struct LowerChirho<'literals_chirho> {
     imported_names_chirho: std::collections::BTreeMap<OriginalNameChirho, NameIdChirho>,
     import_scope_chirho: HashMap<(String, NamespaceChirho), Vec<NameIdChirho>>,
     imported_classes_chirho: Vec<ClassDeclChirho>,
+    synonym_names_chirho: HashSet<NameIdChirho>,
     sliced_units_chirho: std::collections::BTreeSet<UnitIdentityChirho>,
     integer_literals_chirho:
         &'literals_chirho HashMap<haskelujah_ast_chirho::provenance_chirho::OriginIdChirho, String>,
@@ -201,6 +204,9 @@ impl LowerChirho<'_> {
                     Some(WiredNameChirho::OrderingChirho) => SurfaceTypeChirho::OrderingChirho,
                     Some(WiredNameChirho::CharChirho) => SurfaceTypeChirho::CharChirho,
                     Some(WiredNameChirho::IntegerChirho) => SurfaceTypeChirho::IntegerChirho,
+                    _ if self.synonym_names_chirho.contains(&id_chirho) => {
+                        SurfaceTypeChirho::SynonymChirho(id_chirho)
+                    }
                     _ => SurfaceTypeChirho::DeclaredChirho(id_chirho),
                 }
             }
@@ -491,6 +497,7 @@ pub fn lower_module_with_policy_chirho(
         imported_names_chirho: Default::default(),
         import_scope_chirho: Default::default(),
         imported_classes_chirho: Vec::new(),
+        synonym_names_chirho: HashSet::new(),
         sliced_units_chirho: if policy_chirho.completeness_chirho == CompletenessChirho::SliceChirho
         {
             std::collections::BTreeSet::from([unit_chirho.clone()])
@@ -545,6 +552,7 @@ pub fn lower_module_with_policy_chirho(
             DeclChirho::FunBindChirho { .. }
                 | DeclChirho::TypeSigChirho { .. }
                 | DeclChirho::DataDeclChirho { .. }
+                | DeclChirho::TypeAliasDeclChirho { .. }
                 | DeclChirho::ClassDeclChirho { .. }
                 | DeclChirho::InstanceDeclChirho { .. }
                 | DeclChirho::FixityDeclChirho { .. }
@@ -600,6 +608,7 @@ pub fn lower_module_with_policy_chirho(
     }
     let wired_exports_chirho = lower_chirho.install_primitive_declarations_chirho(policy_chirho)?;
     lower_chirho.predeclare_type_headers_chirho(&module_chirho.decls_chirho)?;
+    let synonyms_chirho = lower_chirho.synonym_declarations_chirho(&module_chirho.decls_chirho)?;
     let data_chirho = lower_chirho.data_declarations_chirho(&module_chirho.decls_chirho)?;
     let classes_chirho =
         lower_chirho.class_declarations_chirho(&module_chirho.decls_chirho, &data_chirho)?;
@@ -665,6 +674,7 @@ pub fn lower_module_with_policy_chirho(
                 }
             }
             DeclChirho::DataDeclChirho { .. }
+            | DeclChirho::TypeAliasDeclChirho { .. }
             | DeclChirho::ClassDeclChirho { .. }
             | DeclChirho::InstanceDeclChirho { .. }
             | DeclChirho::FixityDeclChirho { .. } => {}
@@ -733,6 +743,7 @@ pub fn lower_module_with_policy_chirho(
         completeness_chirho: policy_chirho.completeness_chirho,
         sliced_units_chirho: lower_chirho.sliced_units_chirho,
         data_chirho,
+        synonyms_chirho,
         classes_chirho,
         instances_chirho,
         bindings_chirho,

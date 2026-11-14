@@ -24,7 +24,18 @@ impl CheckedModuleChirho {
         surface_chirho: &SurfaceTypeChirho,
         parameters_chirho: &HashMap<NameIdChirho, TyChirho>,
     ) -> Result<TyChirho, TcErrorChirho> {
+        if let Some(ty_chirho) =
+            self.synonym_application_chirho(surface_chirho, parameters_chirho)?
+        {
+            return Ok(ty_chirho);
+        }
         Ok(match surface_chirho {
+            SurfaceTypeChirho::SynonymChirho(_) => {
+                return Err(TcErrorChirho::new_chirho(
+                    TcErrorKindChirho::InvalidReferenceChirho,
+                    "synonym application escaped its checked expander",
+                ));
+            }
             SurfaceTypeChirho::BoolChirho => self
                 .solver_chirho
                 .arena_chirho
@@ -115,7 +126,7 @@ impl CheckedModuleChirho {
         })
     }
 
-    pub(super) fn data_chirho(
+    pub(super) fn data_headers_chirho(
         &mut self,
         declarations_chirho: &[DataDeclChirho],
     ) -> Result<(), TcErrorChirho> {
@@ -125,6 +136,13 @@ impl CheckedModuleChirho {
                 declaration_chirho.parameters_chirho.len(),
             )?;
         }
+        Ok(())
+    }
+
+    pub(super) fn data_chirho(
+        &mut self,
+        declarations_chirho: &[DataDeclChirho],
+    ) -> Result<(), TcErrorChirho> {
         for declaration_chirho in declarations_chirho {
             let mut parameters_chirho = HashMap::new();
             let type_chirho = self

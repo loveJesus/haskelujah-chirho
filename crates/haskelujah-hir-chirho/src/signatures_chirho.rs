@@ -133,7 +133,7 @@ impl LowerChirho<'_> {
                         self.room_chirho(0, *span_chirho)?;
                         self.next_expr_chirho += 1;
                         context_chirho.push((
-                            self.lookup_chirho(class_chirho, NamespaceChirho::TypeChirho)?,
+                            self.predicate_name_chirho(class_chirho)?,
                             argument_chirho.clone(),
                         ));
                     }

@@ -39,7 +39,7 @@ impl LowerChirho<'_> {
                     *span_chirho,
                 ));
             }
-            let class_id_chirho = self.lookup_chirho(class_chirho, NamespaceChirho::TypeChirho)?;
+            let class_id_chirho = self.predicate_name_chirho(class_chirho)?;
             let class_chirho = classes_chirho
                 .iter()
                 .find(|class_chirho| class_chirho.name_chirho == class_id_chirho)
@@ -69,6 +69,7 @@ impl LowerChirho<'_> {
                     )?);
                 }
                 let head_chirho = self.type_chirho(head_chirho, 0)?;
+                self.instance_synonyms_chirho(&head_chirho, *span_chirho)?;
                 let mut predicates_chirho = Vec::new();
                 for predicate_chirho in context_chirho {
                     let ConstraintChirho::ClassChirho {
@@ -109,8 +110,7 @@ impl LowerChirho<'_> {
                     self.room_chirho(0, *span_chirho)?;
                     self.next_expr_chirho += 1;
                     predicates_chirho.push(SurfacePredicateChirho {
-                        class_chirho: self
-                            .lookup_chirho(class_chirho, NamespaceChirho::TypeChirho)?,
+                        class_chirho: self.predicate_name_chirho(class_chirho)?,
                         argument_chirho,
                     });
                 }

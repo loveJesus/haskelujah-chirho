@@ -73,6 +73,8 @@ fn spelling_cannot_supply_a_literal_or_override_the_prelude_chirho() {
 
 #[test]
 fn absent_or_unchecked_prelude_exports_never_get_a_fabricated_type_chirho() {
+    // Ordinary aliases now pass through the independent checked type path.
+    check_source_chirho(&fixture_chirho("DeclaredAliasChirho", false)).unwrap();
     let error_chirho =
         check_source_chirho(&fixture_chirho("PreludeNonexportChirho", false)).unwrap_err();
     assert_eq!(error_chirho.kind_chirho, NextErrorKindChirho::InvalidChirho);
@@ -81,7 +83,6 @@ fn absent_or_unchecked_prelude_exports_never_get_a_fabricated_type_chirho() {
         "PreludeUnsupportedSelectionChirho",
         "PreludeOpenChirho",
         "ImplicitAnnotationChirho",
-        "DeclaredAliasChirho",
         "DeclaredNewtypeChirho",
         "TypedHoleChirho",
     ] {
