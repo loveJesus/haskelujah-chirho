@@ -169,8 +169,7 @@ class CacheTestsChirho(unittest_chirho.TestCase):
             with self.assertRaises(ProcessLookupError):
                 os_chirho.killpg(int(counter_chirho.read_text()), 0)
         finally:
-            os_chirho.killpg(unrelated_chirho.pid, signal_chirho.SIGKILL)
-            unrelated_chirho.wait()
+            monitor_chirho.stop_group_chirho(unrelated_chirho)
 
     def test_runtime_reserve_loss_stops_the_owned_child_chirho(self):
         guard_chirho = monitor_chirho.StorageGuardChirho(self.select_chirho())
@@ -206,12 +205,44 @@ class CacheTestsChirho(unittest_chirho.TestCase):
             with self.assertRaises(ProcessLookupError):
                 os_chirho.killpg(int(marker_chirho.read_text()), 0)
         finally:
-            if marker_chirho.exists():
-                try:
-                    os_chirho.killpg(int(marker_chirho.read_text()), signal_chirho.SIGKILL)
-                except ProcessLookupError:
-                    pass
             monitor_chirho.stop_group_chirho(process_chirho)
+
+    def test_reaped_group_ids_are_never_signalled_chirho(self):
+        process_chirho = mock_chirho.Mock(pid=12345, returncode=0)
+        with mock_chirho.patch.object(monitor_chirho.os_chirho, "killpg") as signal_chirho, mock_chirho.patch.object(monitor_chirho.time_chirho, "sleep") as pause_chirho:
+            monitor_chirho.stop_group_chirho(process_chirho)
+        signal_chirho.assert_not_called()
+        pause_chirho.assert_not_called()
+        process_chirho.wait.assert_not_called()
+
+    def test_both_group_signals_precede_the_single_reap_chirho(self):
+        events_chirho = []
+        process_chirho = mock_chirho.Mock(pid=12345, returncode=None)
+        process_chirho.wait.side_effect = lambda **options_chirho: events_chirho.append(("wait_chirho", options_chirho))
+        with mock_chirho.patch.object(monitor_chirho.os_chirho, "killpg", side_effect=lambda pid_chirho, number_chirho: events_chirho.append((pid_chirho, number_chirho))), mock_chirho.patch.object(monitor_chirho.time_chirho, "sleep", side_effect=lambda seconds_chirho: events_chirho.append(("grace_chirho", seconds_chirho))):
+            monitor_chirho.stop_group_chirho(process_chirho)
+        self.assertEqual(events_chirho, [(12345, signal_chirho.SIGTERM), ("grace_chirho", 3), (12345, signal_chirho.SIGKILL), ("wait_chirho", {"timeout": 3})])
+        process_chirho.poll.assert_not_called()
+
+    def test_signal_between_reap_and_returncode_does_not_signal_group_chirho(self):
+        callbacks_chirho = {}
+        process_chirho = mock_chirho.Mock(pid=12345, returncode=None)
+
+        def poll_chirho():
+            callbacks_chirho[signal_chirho.SIGTERM](signal_chirho.SIGTERM, None)
+            process_chirho.returncode = 0
+            return 0
+
+        process_chirho.poll.side_effect = poll_chirho
+        def handler_chirho(number_chirho, callback_chirho):
+            callbacks_chirho[number_chirho] = callback_chirho
+            return signal_chirho.SIG_DFL
+
+        with mock_chirho.patch.object(monitor_chirho.signal_chirho, "signal", side_effect=handler_chirho), mock_chirho.patch.object(monitor_chirho.subprocess_chirho, "Popen", return_value=process_chirho), mock_chirho.patch.object(monitor_chirho.os_chirho, "killpg") as send_chirho:
+            with self.assertRaises(monitor_chirho.OwnedSignalChirho):
+                monitor_chirho.run_owned_chirho(["mock-child-chirho"], self.worktree_chirho, {}, mock_chirho.Mock())
+        send_chirho.assert_not_called()
+        process_chirho.wait.assert_not_called()
 
 
 if __name__ == "__main__":

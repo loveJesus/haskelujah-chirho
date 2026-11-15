@@ -65,36 +65,50 @@ class StorageGuardChirho:
 
 
 def stop_group_chirho(process_chirho):
+    # A reaped leader no longer pins its PID/PGID. Never signal a stored number
+    # after wait/poll, including the normal-exit finally path.
+    if process_chirho.returncode is not None:
+        return
     try:
         os_chirho.killpg(process_chirho.pid, signal_chirho.SIGTERM)
-    except ProcessLookupError:
+    except (ProcessLookupError, PermissionError):
         pass
-    try:
-        process_chirho.wait(timeout=3)
-    except subprocess_chirho.TimeoutExpired:
-        pass
-    # The group may still contain a child after its leader exits. Clean only this
-    # newly created session/group, never a matching executable in another fleet.
+    # Keep the leader unreaped throughout the bounded grace; a zombie still
+    # pins its group number. KILL precedes the one wait, even if TERM completed.
+    time_chirho.sleep(3)
     try:
         os_chirho.killpg(process_chirho.pid, signal_chirho.SIGKILL)
-    except ProcessLookupError:
+    except (ProcessLookupError, PermissionError):
         pass
-    process_chirho.wait()
+    # An unkillable child is a custody failure, never an unbounded wait or a
+    # claim that cleanup completed. No stored numeric group is signalled later.
+    try:
+        process_chirho.wait(timeout=3)
+    except subprocess_chirho.TimeoutExpired as error_chirho:
+        raise CacheErrorChirho("owned compiler group could not be reaped") from error_chirho
 
 
 def run_owned_chirho(argv_chirho, worktree_chirho, env_chirho, guard_chirho, reserve_chirho=2 << 30):
     previous_chirho = {}
     process_chirho = None
+    stop_signal_chirho = None
 
     def interrupt_chirho(number_chirho, frame_chirho):
-        raise OwnedSignalChirho(number_chirho)
+        nonlocal stop_signal_chirho
+        # Raising inside Popen.poll could interrupt waitpid after reap but
+        # before returncode is assigned. Defer cancellation to a safe boundary.
+        stop_signal_chirho = number_chirho
 
     reason_chirho = "completed_chirho"
     try:
-        for number_chirho in [signal_chirho.SIGTERM, signal_chirho.SIGHUP]:
+        if signal_chirho.getsignal(signal_chirho.SIGCHLD) != signal_chirho.SIG_DFL:
+            raise CacheErrorChirho("owned compiler groups require the default child-reaping handler")
+        for number_chirho in [signal_chirho.SIGINT, signal_chirho.SIGTERM, signal_chirho.SIGHUP]:
             previous_chirho[number_chirho] = signal_chirho.signal(number_chirho, interrupt_chirho)
         process_chirho = subprocess_chirho.Popen(argv_chirho, cwd=worktree_chirho, env=env_chirho, start_new_session=True)
         while process_chirho.poll() is None:
+            if stop_signal_chirho is not None:
+                raise OwnedSignalChirho(stop_signal_chirho)
             if not guard_chirho.valid_chirho():
                 reason_chirho = "selected_backend_disappeared_chirho"
                 stop_group_chirho(process_chirho)
@@ -104,6 +118,8 @@ def run_owned_chirho(argv_chirho, worktree_chirho, env_chirho, guard_chirho, res
                 stop_group_chirho(process_chirho)
                 return 74, reason_chirho
             time_chirho.sleep(0.2)
+        if stop_signal_chirho is not None:
+            raise OwnedSignalChirho(stop_signal_chirho)
         if not guard_chirho.valid_chirho():
             return 74, "selected_backend_disappeared_chirho"
         code_chirho = process_chirho.returncode
