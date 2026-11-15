@@ -2,7 +2,7 @@
 
 # GHC to Haskelujah implementation map
 
-Implementation scope: isolated `next-pipeline-source-int-chirho` (unit 760), extending the unit 759 checkpoint `5bd57c59`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release. Earlier sections describe their named increments; later sections supersede earlier Unsupported boundaries.
+Implementation scope: isolated `next-pipeline-source-list-operators-chirho` (unit 761), extending the unit 760 checkpoint `7660f41a`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release. Earlier sections describe their named increments; later sections supersede earlier Unsupported boundaries.
 
 This is the written reading guide L.J. requested. It maps GHC's assumptions to our data as we implement locally. It introduces no runtime dependency on GHC. Reference: retained GHC 9.14.1, commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886.
 
@@ -495,3 +495,28 @@ The declared-body mechanism substitutes the smallest source method that touches 
 The first expanded profile exposed an older missing boxed-tuple limit once Int fields became available: T18723a has 65 fields. One producer check now applies GHC 9.14.1's 64-field maximum to tuple types, expressions and patterns. This is an arity rule rather than a test-name exception. Compiler-only declared-body invariant failures report Unsupported, rather than accusing the source program of an invalid reference. A separate reviewer prediction was measured as pre-existing: a Haskell2010 tuple section is accepted by both the frozen 759 parent and 760 even though GHC rejects it without TupleSections. That extension-validity gap remains open; explicit GHC2021 pragmas themselves are outside this admission profile.
 
 Show, Show Int/Integer formatting, IO-main/B-run, full source libraries, 32-bit Int targeting, native next primitives and shared runtime code/root retirement remain open. The earlier quadratic Wanted rescans are unchanged. Execution scope, GHC controls, reviewer limits and the unconfigured 353-file profile belong to this unit's receipts; none establishes a whole-library or compatibility ratio.
+
+
+## Resolved source list operators, unit 761
+
+GHC source: Rename/HsType.hs mkOpAppRn, mkConOpPatRn and checkPrecMatch; Types/Fixity.hs compareFixity; Internal/Types.hs:203 and Internal/Base.hs:346,1965-1971. The implementation first resolves every operator in an unparenthesized expression chain, then uses its OriginalName fixity in a bounded stack reducer. Parentheses and non-infix expressions stay atomic. Local value parameters use infixl 9; a complete own producer publishes explicit or default facts for all its values/constructors, including backquoted names. Re-exports carry only defining-interface facts. A slice cannot certify an absent fixity. A conflict refuses only after every operator has a known fixity; pinned compiler slices decline conflicts.
+
+The lossless CST accounts for every fixity declaration before the reused AST can discard a local one. A scoped/unretained declaration declines. Unparenthesized negation and mixed constructor-operator pattern chains remain Unsupported. Pure wired-cons pattern chains are right-folded independently of parser grouping; bare infix-form function-head patterns decline if the CST has not already rejected them. These boundaries preserve GHC's separate expression/pattern precedence checks without pretending the pattern reducer is complete.
+
+Wired (:) has its actual GHC.Internal.Types identity, a freshly instantiated ordinary constructor scheme, and the normal Core constructor worker. It shares the existing list/string runtime identity. It works as syntax under NoImplicitPrelude and remains lazy when unsaturated. Explicit constructor export scope remains Unsupported: fresh GHC controls show that syntax availability alone does not authorize exporting (:).
+
+Base's unmodified append declaration group includes its signature, both equations and phased NOINLINE [2]. A manifest render retains the pragma's exact byte range only when enclosed with its single signature/equation binder. Home input cannot supply that permission. The pragma is inert; the source equations are the sole append implementation. The wired cons fixity is read from the whole, hash-pinned Types.hs. Whole Data/List.hs and Data/OldList.hs are facade-only assets: Prelude's qualified List.++ export follows that exact alias and import filters to the independently checked Base original. The routes supply no types or bodies and no new absence authority. All upstream bytes and licences ship inside the Rust package; the installed compiler reads no developer GHC checkout.
+
+```mermaid
+flowchart TD
+  TokensChirho["Lossless scoped-fixity account"] --> ChainChirho["Flatten only unparenthesized infix expressions"]
+  ChainChirho --> NamesChirho["Resolve each operator's original identity"]
+  NamesChirho --> FactsChirho["Checked defining fixity or complete-producer default"]
+  FactsChirho --> ReduceChirho["Bounded precedence reducer; parentheses remain atoms"]
+  ReduceChirho --> CheckedChirho["Normal application, constructor and dictionary checking"]
+  SourceChirho["Pinned Base append group and retained inert pragma"] --> CheckedChirho
+  CheckedChirho --> CoreChirho["Normal lazy constructor worker and source recursion"]
+  CoreChirho --> MachineChirho["Existing list and packed-string interpreter representation"]
+```
+
+No append primitive, handwritten Prelude scheme, native list implementation or Show/IO-main claim is added. The source package and fixed-profile receipts bind the actual tested checkpoint. Prefix negation regrouping, sections, general constructor-operator patterns, scoped fixity declarations and source Show/printing remain later work.
