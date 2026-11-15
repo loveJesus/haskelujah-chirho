@@ -2,7 +2,7 @@
 
 # GHC to Haskelujah implementation map
 
-Implementation scope: isolated `next-pipeline-numeric-defaulting-chirho` (unit 754), based on unit 753 checkpoint `92430836`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release.
+Implementation scope: isolated `next-pipeline-source-int-chirho` (unit 760), extending the unit 759 checkpoint `5bd57c59`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release. Earlier sections describe their named increments; later sections supersede earlier Unsupported boundaries.
 
 This is the written reading guide L.J. requested. It maps GHC's assumptions to our data as we implement locally. It introduces no runtime dependency on GHC. Reference: retained GHC 9.14.1, commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886.
 
@@ -402,3 +402,96 @@ A direct import and Prelude exposure of the same original name are one entity. A
 Two absence boundaries are separate from loading hints. A complete home-unit class cannot acquire unseen instances in a library that cannot name it, even when its head is a compiler type. A deliberately sliced home unit remains conservative. Ordinary unqualified-name absence uses the selected lexical scope and complete Prelude name account, not hidden type/instance interfaces or unit incompleteness. Other qualified/builtin occurrence forms, typed holes and implicitly quantified lowercase annotation variables retain their conservative declines. Unmodeled top-level declarations decline before ordinary data fields or class bodies are read, so a declared alias/newtype cannot be mistaken for an absent name. Internal source-route inconsistencies are Unsupported rather than semantic judgments on the user's source.
 
 The carrier, parent/member checks and scope/partiality corrections were reviewed by Claude2 through source reading only (#34365, DM4570, DM4575); no independent execution is implied. Execution counts, fixed-profile movements, source identity and residuals belong to the unit 757 tasklist and acceptance receipt. Full source libraries, ordinary numeric classes beyond Num, native Integer, IO-main/B-run and default-pipeline integration remain open.
+
+
+## Checked Integer comparison boundary (unit 758)
+
+Architecture: Claude2 DM4655, source reading only; GPT implements and executes. Reference is GHC 9.14.1 at 902339d3. The new gate results belong to the unit 758 tasklist and receipts; this implementation account does not itself certify their execution.
+
+| GHC representation | Local representation | Required invariant |
+| --- | --- | --- |
+| Classes.hs shared fixity, Eq/Ord declarations and defaults, and not | Whole hash-pinned source file; declared complete groups checked through the existing HIR and TC | Neither a replacement class scheme nor a spelling-based instance table |
+| Builtin/Types.hs wired Ordering and Bool | Wired original identities, closed arena constructors, matching Core constructor keys | Local same-spelled data types stay nominally distinct; runtime produces the constructor values source patterns inspect |
+| Integer.hs comparison signatures and actual Eq/Ord instances | Closed checked Integer argument arrows and a manifest-declared wired result contract | Both TC and elaborator cross-check arity/result before emitting an opaque body |
+| Bangs and equations of Integer comparisons | Existing nested Core cases, left operand then right, underneath every lambda | Saturated demand uses the STG continuation stack; partial application stays lazy, and the primitive never re-enters the evaluator |
+| Primitive mathematical comparison | Immutable Rust BigInt comparison and evaluation-owner allowance | Reserve input-limb work and one constructor result before comparison; exhaustion remains latched and cannot become a successful value |
+| Prelude -> Base -> Classes | Whole pinned Base facade header plus loaded checked Classes exports | The facade supplies candidates and no types; per-name checked export ownership proves the terminal identity |
+| Standard Num/Eq/Ord default group | Exact defining names and a context-free present Integer instance for every member | Num must be present; other classes or non-unary occurrences block the group; compiler-unit modules never default |
+
+```mermaid
+flowchart TD
+  FacadeChirho["Pinned Prelude / Base name route"] --> CheckedChirho["Checked Classes defining exports"]
+  CheckedChirho --> IntegerChirho["Checked Integer source signatures and Eq/Ord instances"]
+  IntegerChirho --> NumChirho["Checked Num Integer"]
+  NumChirho --> HomeChirho["Home inference, ordinary evidence and standard-group defaulting"]
+  IntegerChirho --> DemandChirho["Core lambdas with left/right forcing cases"]
+  DemandChirho --> RuntimeChirho["Bounded opaque comparison, Bool or Ordering constructor"]
+  RuntimeChirho --> PatternChirho["Source pattern or default-method consumer"]
+```
+
+The driver admits wired Types imports only for its compiler-unit manifest modules; it does not claim to check Types.hs. Manifest source instances may belong to another library module's class, while local visible duplicate checking still precedes the partiality exemption. Classes and Integer remain slices: absent Eq Bool, other instances, Show and unmodeled library exports remain Unsupported. Operator chains, full Base bodies, IO-main, native Integer and shared runtime code/root retention are separate boundaries.
+
+
+## Checked source type synonyms (unit 759)
+
+Architecture input: Claude2 DM4689/DM4694, source/design reading only. This is the alias prerequisite of the Show route, not the Show class, source-shaped Int or printing. Source String comes from the actual Base.hs:2030, and ShowS from Show.hs:62, selected from whole unmodified, hash-pinned files with the existing ghc-internal licence. The driver-minted manifests supply the defining unit and explicit dependencies; Base imports only the wired Char needed by its selected declaration. No reference checkout is read by the installed compiler.
+
+| GHC concept | Local representation | Required invariant |
+| --- | --- | --- |
+| A synonym declaration and application before expansion | HIR SynonymChirho head, lexical parameter IDs and every supplied SurfaceType argument | An argument discarded by the RHS must still be kind-checked. A same-spelled consumer declaration cannot capture the RHS. |
+| Synonym dependency validity | Owner-charged dependency graph and Kahn ordering before any expansion | Recursive aliases are semantic refusals, including unused cycles; they never expand until a resource limit is hit. All acyclic RHSs are checked even when unused. |
+| Saturated first-order expansion | Type-kinded rigid parameter scheme plus the existing arena replace operation | Require declared arity, check every argument, then substitute. Extra arguments apply to the expanded result and receive normal kind checking. |
+| Signature ambiguity after synonym expansion | Existing arena free-variable walk on the expanded value type | An erased parameter cannot justify a written class context or become acceptable through later defaulting. |
+| Closed imported synonym definition | InterfaceSynonymChirho over the existing InterfaceSchemeChirho trees and original names | No surface body, NameId, TyChirho, evidence or arena crosses. Re-intern into the consumer after nominal data/class kind headers; hidden nominal dependencies travel without entering source scope. |
+| Prelude String exposure | Base self-re-export candidate joined to the exact checked String export | Candidate keys must belong to the complete Prelude name account. No route supplies a type; checked source-interface ownership does. |
+
+```mermaid
+flowchart TD
+  SourceChirho["Source declarations and lexical names"] --> HeadersChirho["All nominal data/class and alias headers"]
+  HeadersChirho --> DependenciesChirho["Bounded alias dependencies: reject cycles"]
+  DependenciesChirho --> SchemesChirho["Check every RHS in dependency order"]
+  UseChirho["Synonym head and all supplied arguments"] --> KindsChirho["Check kinds and minimum saturation"]
+  SchemesChirho --> KindsChirho
+  KindsChirho --> ExpandChirho["Existing arena replacement and extra arguments"]
+  ExpandChirho --> CheckChirho["Existing equality, ambiguity and evidence checking"]
+  CheckChirho --> ClosedChirho["Closed interface trees over original names"]
+  ClosedChirho --> ConsumerChirho["Fresh consumer arena, same expansion path"]
+  CheckChirho --> CoreChirho["Existing Core / STG / Rust interpreter"]
+```
+
+This increment admits inferred first-order parameter kinds. GHC2021 higher-kinded uses that require PolyKinds generalization decline as Unsupported; defaulting those uses to Type and refuting them would be wrong. Haskell2010 does require the admitted Type parameter kinds, and a synonym in an instance head is refused without TypeSynonymInstances (included in GHC2021). Constraint-kinded aliases and alias contexts decline; no class-name error is inferred from an unexpanded synonym. Before publishing headers, an owner-charged pre-pass over every local data field, class method type and synonym RHS declines applied type variables. This prevents declaration-order-dependent Haskell2010 refusals. Alias-RHS and extra-result kind failures also conservatively decline until joint declaration-kind inference can certify the provisional nominal headers: tc238 exposed a valid higher-kinded data declaration whose aliases were checked before its fields. The final candidate keeps that case Unsupported; use-site checks after data checking retain their ordinary classification. Advanced extension overrides and partially applied synonyms remain outside the subset.
+
+ShowS works through an explicit GHC.Internal.Show (ShowS) import with NoImplicitPrelude. Its default-Prelude exposure remains Unsupported until the Show facade's directive prologue is modeled; String is supported through implicit and selected Prelude imports. A checked alias does not add a representation, runtime primitive or library class. Expansion uses the existing arena DAG, while materializing an interface tree consumes the shared output ceiling; the duplicate-tree control must stop with Resource rather than unbounded allocation.
+
+## Source-shaped 64-bit Int (unit 760)
+
+Architecture: Claude2 DM4689 and DM4724, source reading only; GPT implements and executes. GHC reference remains 9.14.1 at 902339d3. Whole vendored Num, Classes and Base files stay unchanged and hash-pinned. The selected Num Int instance is retained whole. Only its five I#/primop methods receive declared backend bodies; abs and signum are checked from their actual source. Eq/Ord Int are the actual point-free instances over source-typed helpers. Base.otherwise is a checked source binding, including its normal Prelude identity.
+
+| GHC representation | Local carrier | Required invariant |
+| --- | --- | --- |
+| Wired Int and I# layout, Builtin/Types.hs and GHC.Internal.Types | Wired Int original name and opaque wrapping i64; private runtime I# boxing | This checkpoint implements the 64-bit Int contract. A home declaration named Int is distinct; no source-visible I# or machine-width inference grants authority. |
+| Ordinary literals in Num Int and user expressions | Existing exact Integer payload and known fromInteger occurrence, then normal dictionary selection | Int literals always pass through the actual Num Int dictionary. No direct typed-literal shortcut or unique-instance choice. Defaulting continues to choose Integer. |
+| Num Int's five layout-sensitive methods | Driver-only policy keyed by exact defining unit/module, class, wired head and method; one actual binding owner | HIR consumes each policy entry once. Generic TC/Core expression paths reject DeclaredBody. TC checks a closed arena-free contract against the class-instantiated method type; Core repeats the exact provider check. No self Given. |
+| Classes.hs shared helper signature lines | One source signature for every named helper, plus a checked closed type contract | Every name on a selected multi-name signature must have a declared provider. No signature-only group is admitted because of its spelling alone. |
+| Num Int source abs/signum and single-equation Boolean guards | Ordinary source expressions and ordered nested If nodes, ending in an empty match | First True stops evaluation; no True produces an execution failure. Multiple guarded equations and compound/pattern/let guards stay Unsupported rather than losing fallthrough semantics. |
+| Strict I# argument patterns | Core cases underneath every lambda, left operand before right | Saturation precedes demand; partial applications remain lazy. Primitive operands must already be WHNF and may be immediate or boxed Int values; handlers never nest the evaluator. |
+| Wrapping Int arithmetic and integerToInt# | Rust wrapping operations and the low magnitude word modulo 2^64 | Conversion never saturates or reports overflow. MIN negation and abs retain MIN, matching GHC on the measured 64-bit platform. |
+| Primitive work ownership | Existing latched IntegerBudget on the evaluation machine, also spent by Int | Work and cumulative outputs remain bounded across Int/Integer operations and repeated machine entries. Stateless operations refuse without an owner. |
+
+```mermaid
+flowchart TD
+  SourceChirho["Pinned Num Int / Eq Int / Ord Int / otherwise"] --> HIRChirho["Exact manifest owner and one method binding"]
+  HIRChirho --> TCChirho["Source/class type equals closed contract"]
+  LiteralChirho["Exact Integer literal"] --> DictionaryChirho["Actual Num Int fromInteger dictionary"]
+  TCChirho --> DictionaryChirho
+  DictionaryChirho --> CoreChirho["Ordinary source bodies or strict declared Core lambdas"]
+  CoreChirho --> StackChirho["Left-to-right WHNF on the continuation stack"]
+  StackChirho --> RuntimeChirho["Bounded wrapping Int and shared owner allowance"]
+  CoreChirho --> NativeChirho["All next primops refused by unimplemented native/JIT backends"]
+```
+
+The declared-body mechanism substitutes the smallest source method that touches a closed layout. It does not grant bodies by source text, export spelling, or a developer reference path. Contracts reuse existing interface type trees, so no new substitution path or cross-arena handle is introduced. Exact policy entries missing their actual source method refuse, as do repeated consumption and contract disagreement. Installed inputs remain embedded upstream bytes plus the ghc-internal licence; no GHC installation or external bignum library is required.
+
+The first expanded profile exposed an older missing boxed-tuple limit once Int fields became available: T18723a has 65 fields. One producer check now applies GHC 9.14.1's 64-field maximum to tuple types, expressions and patterns. This is an arity rule rather than a test-name exception. Compiler-only declared-body invariant failures report Unsupported, rather than accusing the source program of an invalid reference. A separate reviewer prediction was measured as pre-existing: a Haskell2010 tuple section is accepted by both the frozen 759 parent and 760 even though GHC rejects it without TupleSections. That extension-validity gap remains open; explicit GHC2021 pragmas themselves are outside this admission profile.
+
+Show, Show Int/Integer formatting, IO-main/B-run, full source libraries, 32-bit Int targeting, native next primitives and shared runtime code/root retirement remain open. The earlier quadratic Wanted rescans are unchanged. Execution scope, GHC controls, reviewer limits and the unconfigured 353-file profile belong to this unit's receipts; none establishes a whole-library or compatibility ratio.
