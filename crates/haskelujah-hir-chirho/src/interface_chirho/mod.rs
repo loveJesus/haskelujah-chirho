@@ -38,6 +38,8 @@ pub struct LoweringPolicyChirho {
         BTreeMap<crate::DeclaredBodyKeyChirho, crate::PrimitiveContractChirho>,
     /// Wired language names imported by a driver-admitted compiler module.
     pub wired_imports_chirho: Vec<crate::WiredNameChirho>,
+    /// Exact wired fixities read by the driver from pinned defining source bytes.
+    pub wired_fixities_chirho: BTreeMap<crate::WiredNameChirho, InterfaceFixityChirho>,
     /// Own wired type declarations, distinct from ordinary backend-implemented value names.
     pub wired_declarations_chirho: BTreeMap<OriginalNameChirho, crate::WiredNameChirho>,
 }

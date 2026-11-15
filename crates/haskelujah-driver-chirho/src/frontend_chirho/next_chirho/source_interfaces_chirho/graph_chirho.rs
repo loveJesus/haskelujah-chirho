@@ -130,11 +130,12 @@ pub(super) fn order_chirho(
             let manifest_chirho =
                 super::super::library_chirho::manifest_chirho(&key_chirho.module_chirho)
                     .ok_or_else(|| unsupported_chirho("installed unit has no source manifest"))?;
-            let source_chirho = manifest_chirho.source_chirho()?;
+            let rendered_chirho = manifest_chirho.render_chirho()?;
             let (parsed_chirho, numeric_chirho, prelude_mentions_chirho) =
-                super::super::parse_chirho::parse_with_dependencies_chirho(
-                    &source_chirho,
+                super::super::parse_chirho::parse_with_permitted_pragmas_chirho(
+                    &rendered_chirho.source_chirho,
                     haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
+                    &rendered_chirho.retained_pragmas_chirho,
                 )?;
             sources_chirho.insert(
                 key_chirho.clone(),

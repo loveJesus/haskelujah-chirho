@@ -54,24 +54,8 @@ impl LowerChirho<'_> {
                     })
                     .collect::<ResultChirho<_>>()?,
             ),
-            PatChirho::InfixConChirho {
-                left_chirho,
-                op_chirho,
-                right_chirho,
-                ..
-            } => {
-                let left_chirho =
-                    self.pattern_chirho(left_chirho, seen_chirho, depth_chirho + 1)?;
-                let right_chirho =
-                    self.pattern_chirho(right_chirho, seen_chirho, depth_chirho + 1)?;
-                if op_chirho.text_chirho() == ":" && op_chirho.full_name_chirho() == ":" {
-                    PatternKindChirho::ConsChirho(Box::new(left_chirho), Box::new(right_chirho))
-                } else {
-                    PatternKindChirho::ConstructorChirho(
-                        self.lookup_chirho(op_chirho, NamespaceChirho::ValueChirho)?,
-                        vec![left_chirho, right_chirho],
-                    )
-                }
+            PatChirho::InfixConChirho { .. } => {
+                return self.infix_pattern_chirho(pattern_chirho, seen_chirho, depth_chirho);
             }
             PatChirho::TupleChirho {
                 elements_chirho, ..
@@ -129,6 +113,88 @@ impl LowerChirho<'_> {
         })
     }
 
+    fn infix_pattern_chirho(
+        &mut self,
+        source_chirho: &PatChirho,
+        seen_chirho: &mut HashSet<String>,
+        depth_chirho: usize,
+    ) -> ResultChirho<PatternChirho> {
+        let span_chirho = source_chirho.span_chirho();
+        let mut work_chirho = vec![source_chirho];
+        let mut atoms_chirho = Vec::new();
+        let mut operators_chirho = Vec::new();
+        while let Some(pattern_chirho) = work_chirho.pop() {
+            self.charge_names_chirho(1, span_chirho)?;
+            if let PatChirho::InfixConChirho {
+                left_chirho,
+                op_chirho,
+                right_chirho,
+                ..
+            } = pattern_chirho
+            {
+                operators_chirho.push(op_chirho);
+                work_chirho.extend([right_chirho.as_ref(), left_chirho.as_ref()]);
+            } else {
+                atoms_chirho.push(pattern_chirho);
+            }
+        }
+        if operators_chirho
+            .iter()
+            .any(|operator_chirho| operator_chirho.full_name_chirho() != ":")
+        {
+            if operators_chirho.len() > 1 {
+                return Err(self.error_chirho(
+                    "constructor-operator pattern chain needs resolved fixity checking",
+                    span_chirho,
+                ));
+            }
+            let operator_chirho =
+                self.lookup_chirho(operators_chirho[0], NamespaceChirho::ValueChirho)?;
+            let left_chirho =
+                self.pattern_chirho(atoms_chirho[0], seen_chirho, depth_chirho + 1)?;
+            let right_chirho =
+                self.pattern_chirho(atoms_chirho[1], seen_chirho, depth_chirho + 1)?;
+            self.room_chirho(depth_chirho, span_chirho)?;
+            let id_chirho = ExprIdChirho(self.next_expr_chirho);
+            self.next_expr_chirho += 1;
+            return Ok(PatternChirho {
+                id_chirho,
+                span_chirho,
+                kind_chirho: PatternKindChirho::ConstructorChirho(
+                    operator_chirho,
+                    vec![left_chirho, right_chirho],
+                ),
+            });
+        }
+        // Wired cons cannot be shadowed; normalize a pure chain independently of
+        // the reused parser. Parentheses remained atomic in the walk above.
+        self.room_chirho(
+            depth_chirho.saturating_add(operators_chirho.len()),
+            span_chirho,
+        )?;
+        let mut lowered_chirho = atoms_chirho
+            .into_iter()
+            .map(|atom_chirho| self.pattern_chirho(atom_chirho, seen_chirho, depth_chirho + 1))
+            .collect::<ResultChirho<Vec<_>>>()?;
+        let mut tail_chirho = lowered_chirho
+            .pop()
+            .ok_or_else(|| self.error_chirho("empty cons pattern", span_chirho))?;
+        for head_chirho in lowered_chirho.into_iter().rev() {
+            self.room_chirho(depth_chirho, span_chirho)?;
+            let id_chirho = ExprIdChirho(self.next_expr_chirho);
+            self.next_expr_chirho += 1;
+            tail_chirho = PatternChirho {
+                id_chirho,
+                span_chirho,
+                kind_chirho: PatternKindChirho::ConsChirho(
+                    Box::new(head_chirho),
+                    Box::new(tail_chirho),
+                ),
+            };
+        }
+        Ok(tail_chirho)
+    }
+
     fn row_body_chirho(
         &mut self,
         rhs_chirho: &RhsChirho,
@@ -164,6 +230,13 @@ impl LowerChirho<'_> {
             return Err(self.error_chirho("empty function equation group", span_chirho));
         };
         let arity_chirho = first_chirho.pats_chirho.len();
+        if matches_chirho
+            .iter()
+            .flat_map(|arm_chirho| &arm_chirho.pats_chirho)
+            .any(|pattern_chirho| matches!(pattern_chirho, PatChirho::InfixConChirho { .. }))
+        {
+            return Err(self.error_chirho("unparenthesized constructor operator in a function head needs checked head precedence", span_chirho));
+        }
         if matches_chirho
             .iter()
             .any(|arm_chirho| arm_chirho.pats_chirho.len() != arity_chirho)

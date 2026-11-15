@@ -7,6 +7,87 @@ use super::*;
 use haskelujah_hir_chirho::{DataDeclChirho, MatchArmChirho, PatternChirho, PatternKindChirho};
 
 impl CheckedModuleChirho {
+    pub(super) fn wired_constructors_chirho(&mut self) -> Result<(), TcErrorChirho> {
+        for index_chirho in 0..self.module_chirho.names_chirho.len() {
+            self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
+            let wired_chirho = self.module_chirho.names_chirho[index_chirho].wired_chirho;
+            let id_chirho = NameIdChirho(index_chirho as u32);
+            let (body_chirho, fields_chirho, quantified_chirho) = match wired_chirho {
+                Some(WiredNameChirho::ConsChirho) => {
+                    let type_chirho = self
+                        .solver_chirho
+                        .arena_chirho
+                        .con_chirho(TyConChirho::TypeChirho)?;
+                    let element_chirho = self
+                        .solver_chirho
+                        .arena_chirho
+                        .fresh_meta_chirho(1, type_chirho)?;
+                    let list_chirho = self
+                        .solver_chirho
+                        .arena_chirho
+                        .list_chirho(element_chirho)?;
+                    let tail_chirho = self
+                        .solver_chirho
+                        .arena_chirho
+                        .function_chirho(list_chirho, list_chirho)?;
+                    let body_chirho = self
+                        .solver_chirho
+                        .arena_chirho
+                        .function_chirho(element_chirho, tail_chirho)?;
+                    let quantified_chirho = self
+                        .solver_chirho
+                        .arena_chirho
+                        .quantify_group_chirho(&[body_chirho], 0)?;
+                    (
+                        body_chirho,
+                        vec![element_chirho, list_chirho],
+                        quantified_chirho,
+                    )
+                }
+                Some(
+                    WiredNameChirho::TrueChirho
+                    | WiredNameChirho::FalseChirho
+                    | WiredNameChirho::LessChirho
+                    | WiredNameChirho::EqualChirho
+                    | WiredNameChirho::GreaterChirho,
+                ) => {
+                    let con_chirho = if matches!(
+                        wired_chirho,
+                        Some(WiredNameChirho::TrueChirho | WiredNameChirho::FalseChirho)
+                    ) {
+                        TyConChirho::BoolChirho
+                    } else {
+                        TyConChirho::OrderingChirho
+                    };
+                    (
+                        self.solver_chirho.arena_chirho.con_chirho(con_chirho)?,
+                        vec![],
+                        vec![],
+                    )
+                }
+                _ => continue,
+            };
+            self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
+            for _field_chirho in &fields_chirho {
+                self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
+            }
+            for _parameter_chirho in &quantified_chirho {
+                self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
+            }
+            self.names_chirho.insert(id_chirho, body_chirho);
+            self.constructors_chirho.insert(id_chirho, fields_chirho);
+            self.schemes_chirho.insert(
+                id_chirho,
+                SchemeChirho {
+                    context_chirho: vec![],
+                    body_chirho,
+                    quantified_chirho,
+                },
+            );
+        }
+        Ok(())
+    }
+
     pub(super) fn surface_variable_chirho(
         &self,
         name_chirho: NameIdChirho,

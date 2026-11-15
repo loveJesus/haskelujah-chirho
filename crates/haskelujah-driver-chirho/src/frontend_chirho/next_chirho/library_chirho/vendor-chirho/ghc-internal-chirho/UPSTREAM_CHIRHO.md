@@ -13,3 +13,7 @@ The sibling base-chirho/Prelude.hs is vendored whole (6040 bytes, SHA256 02f4309
 
 - libraries/ghc-internal/src/GHC/Internal/Classes.hs | 78107 bytes | SHA256 9f07eab1df0c2c9892ba5b8e35236e45868f738cb6a755234a7c49e70fb150cd | actual Eq/Ord/not and shared fixity spans checked
 - libraries/ghc-internal/src/GHC/Internal/Base.hs | 79928 bytes | SHA256 bc38ea9356f90aeb38298ef1269fbdc2dee433528374948375da112b273a89e2 | facade header only, no body/type checking claim
+
+- libraries/ghc-internal/src/GHC/Internal/Types.hs | 316020 bytes | SHA256 a8fe6ab5c7a84be9b0710078b549aa63e511e7cb12d056cef91403d05ca6d2bb | wired cons fixity from unconditional bytes 4497..4508 only; no Types body claimed.
+
+Unit 761 facade-only whole files, GHC 9.14.1, original BSD licence retained: `src/GHC/Internal/Data/List.hs` (5161 bytes, SHA256 `9f8f3d2b317b06c1ea65b03d0cd95b50a6125642d6836847e3a755ff1c91d79b`) and `src/GHC/Internal/Data/OldList.hs` (71857 bytes, SHA256 `4b519356f7bcbd705866551e26552c84b08d527fe93b060cc89b27882aec6248`). Only headers/imports prove the qualified Prelude `(List.++)` path through List/OldList to the checked Base original; no bodies from either facade are claimed.

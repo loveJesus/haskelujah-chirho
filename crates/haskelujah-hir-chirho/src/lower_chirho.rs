@@ -27,8 +27,12 @@ mod data_lower_chirho;
 mod declared_bodies_chirho;
 #[path = "defaults_lower_chirho.rs"]
 mod defaults_lower_chirho;
+#[path = "syntax_chirho/fixities_chirho.rs"]
+mod fixities_chirho;
 #[path = "syntax_chirho/guards_chirho.rs"]
 mod guards_chirho;
+#[path = "syntax_chirho/infix_chirho.rs"]
+mod infix_chirho;
 #[path = "instances_lower_chirho.rs"]
 mod instances_lower_chirho;
 #[path = "literals_lower_chirho.rs"]
@@ -69,6 +73,7 @@ struct LowerChirho<'literals_chirho> {
         std::collections::BTreeMap<DeclaredBodyKeyChirho, PrimitiveContractChirho>,
     declared_bodies_chirho: std::collections::BTreeMap<NameIdChirho, DeclaredBodyChirho>,
     consumed_bodies_chirho: std::collections::BTreeSet<DeclaredBodyKeyChirho>,
+    known_fixities_chirho: std::collections::BTreeMap<OriginalNameChirho, InterfaceFixityChirho>,
     sliced_units_chirho: std::collections::BTreeSet<UnitIdentityChirho>,
     integer_literals_chirho:
         &'literals_chirho HashMap<haskelujah_ast_chirho::provenance_chirho::OriginIdChirho, String>,
@@ -121,6 +126,12 @@ impl LowerChirho<'_> {
         local_chirho: bool,
         wired_chirho: Option<WiredNameChirho>,
     ) -> ResultChirho<NameIdChirho> {
+        if text_chirho == ":" && wired_chirho.is_none() {
+            return Err(self.invalid_class_chirho(
+                "the wired list constructor cannot be redeclared",
+                span_chirho,
+            ));
+        }
         self.room_chirho(0, span_chirho)?;
         // Bound the actual name strings before the environment/catalogue copies them.
         let defining_module_chirho = wired_chirho
@@ -182,6 +193,19 @@ impl LowerChirho<'_> {
         namespace_chirho: NamespaceChirho,
     ) -> ResultChirho<NameIdChirho> {
         let text_chirho = name_chirho.text_chirho();
+        if name_chirho.full_name_chirho() == ":" && namespace_chirho == NamespaceChirho::ValueChirho
+        {
+            return self
+                .env_chirho
+                .lookup_chirho(":", NamespaceChirho::ValueChirho)
+                .map(|info_chirho| NameIdChirho(info_chirho.def_id_chirho.0))
+                .ok_or_else(|| {
+                    self.error_chirho(
+                        "wired cons has no checked language binding",
+                        name_chirho.span_chirho(),
+                    )
+                });
+        }
         let tuple_chirho = text_chirho.starts_with('(')
             && text_chirho.ends_with(')')
             && text_chirho[1..text_chirho.len() - 1]
@@ -528,6 +552,11 @@ pub fn lower_module_with_policy_chirho(
         instance_body_policy_chirho: policy_chirho.instance_bodies_chirho.clone(),
         declared_bodies_chirho: Default::default(),
         consumed_bodies_chirho: Default::default(),
+        known_fixities_chirho: policy_chirho
+            .wired_fixities_chirho
+            .iter()
+            .map(|(name_chirho, fixity_chirho)| (name_chirho.original_chirho(), *fixity_chirho))
+            .collect(),
         sliced_units_chirho: if policy_chirho.completeness_chirho == CompletenessChirho::SliceChirho
         {
             std::collections::BTreeSet::from([unit_chirho.clone()])
@@ -608,6 +637,8 @@ pub fn lower_module_with_policy_chirho(
         ));
     }
     let mut wired_scope_chirho = policy_chirho.wired_imports_chirho.clone();
+    // List syntax is in scope even under NoImplicitPrelude/RebindableSyntax.
+    wired_scope_chirho.push(WiredNameChirho::ConsChirho);
     if lower_chirho.implicit_prelude_chirho {
         wired_scope_chirho.extend([
             WiredNameChirho::BoolChirho,
@@ -718,6 +749,11 @@ pub fn lower_module_with_policy_chirho(
             }
         }
     }
+    let fixities_chirho = lower_chirho.prepare_fixities_chirho(
+        &module_chirho.decls_chirho,
+        policy_chirho.completeness_chirho,
+        &imports_chirho,
+    )?;
     let mut bindings_chirho = Vec::new();
     for declaration_chirho in &module_chirho.decls_chirho {
         if let DeclChirho::FunBindChirho {
@@ -770,7 +806,6 @@ pub fn lower_module_with_policy_chirho(
     }
     let mut exports_chirho = lower_chirho.exports_chirho(module_chirho)?;
     exports_chirho.extend(wired_exports_chirho);
-    let fixities_chirho = lower_chirho.fixities_chirho(&module_chirho.decls_chirho)?;
     Ok(ModuleChirho {
         unit_chirho: lower_chirho.unit_chirho,
         module_chirho: lower_chirho.module_chirho,

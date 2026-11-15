@@ -318,45 +318,7 @@ pub fn check_module_chirho(
         declared_body_uses_chirho: Default::default(),
         scope_chirho,
     };
-    for (index_chirho, name_chirho) in checked_chirho.module_chirho.names_chirho.iter().enumerate()
-    {
-        if matches!(
-            name_chirho.wired_chirho,
-            Some(
-                WiredNameChirho::TrueChirho
-                    | WiredNameChirho::FalseChirho
-                    | WiredNameChirho::LessChirho
-                    | WiredNameChirho::EqualChirho
-                    | WiredNameChirho::GreaterChirho
-            )
-        ) {
-            let bool_chirho = checked_chirho.solver_chirho.arena_chirho.con_chirho(
-                if matches!(
-                    name_chirho.wired_chirho,
-                    Some(WiredNameChirho::TrueChirho | WiredNameChirho::FalseChirho)
-                ) {
-                    TyConChirho::BoolChirho
-                } else {
-                    TyConChirho::OrderingChirho
-                },
-            )?;
-            checked_chirho
-                .names_chirho
-                .insert(NameIdChirho(index_chirho as u32), bool_chirho);
-            let id_chirho = NameIdChirho(index_chirho as u32);
-            checked_chirho
-                .constructors_chirho
-                .insert(id_chirho, Vec::new());
-            checked_chirho.schemes_chirho.insert(
-                id_chirho,
-                SchemeChirho {
-                    context_chirho: Vec::new(),
-                    body_chirho: bool_chirho,
-                    quantified_chirho: Vec::new(),
-                },
-            );
-        }
-    }
+    checked_chirho.wired_constructors_chirho()?;
     checked_chirho.import_interfaces_chirho()?;
     let data_chirho = std::mem::take(&mut checked_chirho.module_chirho.data_chirho);
     let classes_chirho = std::mem::take(&mut checked_chirho.module_chirho.classes_chirho);

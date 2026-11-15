@@ -6,7 +6,13 @@ use super::{NextErrorChirho, NextErrorKindChirho};
 use haskelujah_hir_chirho::*;
 use sha2::{Digest, Sha256};
 pub(super) mod backend_chirho;
+#[path = "source_chirho/boundaries_chirho.rs"]
 mod boundaries_chirho;
+#[path = "source_chirho/retained_pragmas_chirho.rs"]
+mod retained_pragmas_chirho;
+#[path = "source_chirho/wired_chirho.rs"]
+mod wired_chirho;
+pub(super) use wired_chirho::cons_fixity_chirho;
 mod facade_chirho;
 mod prelude_scope_chirho;
 pub(super) use facade_chirho::routes_chirho as prelude_routes_chirho;
@@ -118,7 +124,7 @@ const BASE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Base.hs",
     sha256_chirho: "bc38ea9356f90aeb38298ef1269fbdc2dee433528374948375da112b273a89e2",
     bytes_chirho: include_str!("vendor-chirho/ghc-internal-chirho/Base.hs"),
-    spans_chirho: &[(62470, 62534), (64541, 64562)],
+    spans_chirho: &[(7546, 7559), (61798, 62043), (62470, 62534), (64541, 64562)],
     imports_chirho: "",
     primitive_signatures_chirho: false,
     wired_imports_chirho: &[
@@ -171,7 +177,13 @@ fn verify_source_chirho(
 }
 impl SourceManifestChirho {
     /// Hash the whole unmodified upstream file before selecting declared UTF-8 byte spans.
+    #[cfg(test)]
     pub(super) fn source_chirho(&self) -> Result<String, NextErrorChirho> {
+        self.render_chirho()
+            .map(|rendered_chirho| rendered_chirho.source_chirho)
+    }
+
+    pub(super) fn render_chirho(&self) -> Result<RenderedSourceChirho, NextErrorChirho> {
         verify_source_chirho(
             self.bytes_chirho,
             self.sha256_chirho,
@@ -183,6 +195,7 @@ impl SourceManifestChirho {
             self.module_chirho, self.imports_chirho
         );
         let mut previous_chirho = 0;
+        let mut retained_pragmas_chirho = std::collections::BTreeSet::new();
         for &(start_chirho, end_chirho) in self.spans_chirho {
             if start_chirho < previous_chirho || start_chirho >= end_chirho {
                 return Err(NextErrorChirho::new_chirho(
@@ -212,12 +225,24 @@ impl SourceManifestChirho {
             } else {
                 boundaries_chirho::validate_chirho(self.bytes_chirho, start_chirho, end_chirho)?;
             }
+            retained_pragmas_chirho.extend(retained_pragmas_chirho::within_group_chirho(
+                selection_chirho,
+                source_chirho.len(),
+            )?);
             source_chirho.push_str(selection_chirho);
             source_chirho.push('\n');
             previous_chirho = end_chirho;
         }
-        Ok(source_chirho)
+        Ok(RenderedSourceChirho {
+            source_chirho,
+            retained_pragmas_chirho,
+        })
     }
+}
+
+pub(super) struct RenderedSourceChirho {
+    pub source_chirho: String,
+    pub retained_pragmas_chirho: std::collections::BTreeSet<(usize, usize)>,
 }
 
 #[cfg(test)]

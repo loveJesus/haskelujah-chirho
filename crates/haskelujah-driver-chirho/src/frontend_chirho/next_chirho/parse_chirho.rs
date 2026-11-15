@@ -31,6 +31,22 @@ pub(super) fn parse_with_dependencies_chirho(
     ),
     NextErrorChirho,
 > {
+    parse_with_permitted_pragmas_chirho(source_chirho, file_chirho, &Default::default())
+}
+
+/// Called only by the driver-minted manifest source path. Home input supplies no ranges.
+pub(super) fn parse_with_permitted_pragmas_chirho(
+    source_chirho: &str,
+    file_chirho: FileIdChirho,
+    permitted_pragmas_chirho: &std::collections::BTreeSet<(usize, usize)>,
+) -> Result<
+    (
+        haskelujah_parser_chirho::lower_chirho::LoweredModuleChirho,
+        bool,
+        std::collections::BTreeSet<String>,
+    ),
+    NextErrorChirho,
+> {
     if source_chirho.len() > 1 << 20 {
         return Err(NextErrorChirho::new_chirho(
             NextErrorKindChirho::ResourceChirho,
@@ -76,6 +92,14 @@ pub(super) fn parse_with_dependencies_chirho(
             };
             if matches!(keyword_chirho, "MINIMAL" | "INLINE") {
                 owned_pragmas_chirho.push(token_chirho.span_chirho);
+                continue;
+            }
+            if keyword_chirho == "NOINLINE"
+                && permitted_pragmas_chirho.contains(&(
+                    token_chirho.span_chirho.start_chirho().as_usize_chirho(),
+                    token_chirho.span_chirho.end_chirho().as_usize_chirho(),
+                ))
+            {
                 continue;
             }
             if keyword_chirho != "LANGUAGE" {
@@ -128,10 +152,13 @@ pub(super) fn parse_with_dependencies_chirho(
     let green_chirho = ParserChirho::new_chirho(source_chirho, file_chirho).parse_chirho();
     let mut work_chirho = vec![(green_chirho.as_ref(), 0_usize)];
     let mut nodes_chirho = 0_usize;
+    let mut syntax_fixities_chirho = 0_usize;
     let mut negation_chirho = false;
     let mut prelude_mentions_chirho = std::collections::BTreeSet::new();
     while let Some((node_chirho, depth_chirho)) = work_chirho.pop() {
         nodes_chirho += 1;
+        syntax_fixities_chirho +=
+            usize::from(node_chirho.kind_chirho() == SyntaxKindChirho::FixityDeclChirho);
         negation_chirho |= node_chirho.kind_chirho() == SyntaxKindChirho::NegateExprChirho;
         // A loading hint only: identities still require pinned facade routes and checked exports.
         if matches!(
@@ -191,6 +218,23 @@ pub(super) fn parse_with_dependencies_chirho(
             &green_chirho,
             file_chirho,
         );
+    let represented_fixities_chirho = parsed_chirho
+        .module_chirho
+        .decls_chirho
+        .iter()
+        .filter(|declaration_chirho| {
+            matches!(
+                declaration_chirho,
+                haskelujah_ast_chirho::decl_chirho::DeclChirho::FixityDeclChirho { .. }
+            )
+        })
+        .count();
+    if represented_fixities_chirho != syntax_fixities_chirho {
+        return Err(NextErrorChirho::new_chirho(
+            NextErrorKindChirho::UnsupportedChirho,
+            "scoped or unretained fixity declarations need their own checked binding group",
+        ));
+    }
     for span_chirho in owned_pragmas_chirho {
         let owned_chirho =
             parsed_chirho

@@ -111,7 +111,7 @@
     "path_chirho": "FixityChainChirho.hs",
     "compile_accept_chirho": true,
     "run_output_chirho": "'c'\n",
-    "next_outcome_chirho": "UnsupportedChirho"
+    "next_outcome_chirho": "AcceptChirho"
   },
   {
     "path_chirho": "LexicalNumericChirho.hs",

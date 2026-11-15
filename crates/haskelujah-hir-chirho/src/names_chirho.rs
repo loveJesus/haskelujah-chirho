@@ -29,9 +29,19 @@ pub enum WiredNameChirho {
     IntChirho,
     TrueChirho,
     FalseChirho,
+    ConsChirho,
 }
 
 impl WiredNameChirho {
+    pub fn original_chirho(self) -> OriginalNameChirho {
+        OriginalNameChirho {
+            unit_chirho: UnitIdentityChirho::CompilerChirho,
+            module_chirho: self.defining_module_chirho().into(),
+            namespace_chirho: self.namespace_chirho(),
+            occurrence_chirho: self.occurrence_chirho().into(),
+        }
+    }
+
     pub fn occurrence_chirho(self) -> &'static str {
         match self {
             Self::BoolChirho => "Bool",
@@ -44,6 +54,7 @@ impl WiredNameChirho {
             Self::IntChirho => "Int",
             Self::TrueChirho => "True",
             Self::FalseChirho => "False",
+            Self::ConsChirho => ":",
         }
     }
 
@@ -53,7 +64,8 @@ impl WiredNameChirho {
             | Self::FalseChirho
             | Self::LessChirho
             | Self::EqualChirho
-            | Self::GreaterChirho => NamespaceChirho::ValueChirho,
+            | Self::GreaterChirho
+            | Self::ConsChirho => NamespaceChirho::ValueChirho,
             _ => NamespaceChirho::TypeChirho,
         }
     }

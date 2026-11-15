@@ -15,6 +15,9 @@ mod data_patterns_tests_chirho;
 #[cfg(test)]
 mod generalization_tests_chirho;
 mod library_chirho;
+#[cfg(test)]
+#[path = "tests_chirho/list_operators_tests_chirho.rs"]
+mod list_operators_tests_chirho;
 mod parse_chirho;
 mod source_interfaces_chirho;
 pub use source_interfaces_chirho::{

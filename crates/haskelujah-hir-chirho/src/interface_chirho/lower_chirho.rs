@@ -448,6 +448,17 @@ impl LowerChirho<'_> {
         if let Some(exports_chirho) = &module_chirho.exports_chirho {
             for export_chirho in exports_chirho {
                 let id_chirho = match export_chirho {
+                    ExportSpecChirho::VarChirho(name_chirho)
+                    | ExportSpecChirho::TyConChirho { name_chirho, .. }
+                        if name_chirho.full_name_chirho() == ":" =>
+                    {
+                        // Built-in expression syntax is not an import/export scope
+                        // fact (NoImplicitPrelude permits (:) but cannot export it).
+                        return Err(self.error_chirho(
+                            "next does not yet model list-constructor export scope",
+                            module_chirho.span_chirho,
+                        ));
+                    }
                     ExportSpecChirho::VarChirho(name_chirho) => {
                         self.lookup_chirho(name_chirho, NamespaceChirho::ValueChirho)?
                     }

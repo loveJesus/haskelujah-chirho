@@ -64,7 +64,7 @@ fn invalid_chirho(message_chirho: &str) -> NextErrorChirho {
     NextErrorChirho::new_chirho(NextErrorKindChirho::UnsupportedChirho, message_chirho)
 }
 
-fn declarations_chirho(
+pub(super) fn declarations_chirho(
     source_chirho: &str,
 ) -> Result<Vec<std::collections::BTreeSet<String>>, NextErrorChirho> {
     use RawTokenKindChirho::*;

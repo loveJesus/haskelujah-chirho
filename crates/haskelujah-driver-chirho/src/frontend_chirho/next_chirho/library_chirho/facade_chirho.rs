@@ -19,6 +19,7 @@ struct MembersChirho {
 #[derive(Clone)]
 struct ItemChirho {
     name_chirho: String,
+    qualifier_chirho: Option<String>,
     namespace_chirho: NamespaceChirho,
     members_chirho: MembersChirho,
     module_chirho: bool,
@@ -26,6 +27,7 @@ struct ItemChirho {
 impl ItemChirho {
     fn admits_chirho(&self, key_chirho: &KeyChirho, parent_chirho: Option<&str>) -> bool {
         !self.module_chirho
+            && self.qualifier_chirho.is_none()
             && (self.name_chirho == key_chirho.0 && self.namespace_chirho == key_chirho.1
                 || parent_chirho == Some(self.name_chirho.as_str())
                     && (self.members_chirho.all_chirho
@@ -34,19 +36,19 @@ impl ItemChirho {
 }
 struct FacadeImportChirho {
     module_chirho: String,
+    qualifier_chirho: String,
     usable_chirho: bool,
     hiding_chirho: bool,
     items_chirho: Option<Vec<ItemChirho>>,
 }
 impl FacadeImportChirho {
     fn admits_chirho(&self, key_chirho: &KeyChirho, parent_chirho: Option<&str>) -> bool {
-        self.usable_chirho
-            && self.items_chirho.as_ref().is_none_or(|items_chirho| {
-                items_chirho
-                    .iter()
-                    .any(|item_chirho| item_chirho.admits_chirho(key_chirho, parent_chirho))
-                    != self.hiding_chirho
-            })
+        self.items_chirho.as_ref().is_none_or(|items_chirho| {
+            items_chirho
+                .iter()
+                .any(|item_chirho| item_chirho.admits_chirho(key_chirho, parent_chirho))
+                != self.hiding_chirho
+        })
     }
 }
 struct FacadeChirho {
@@ -56,6 +58,25 @@ struct FacadeChirho {
 struct ReaderChirho<'source_chirho> {
     tokens_chirho: Vec<(RawTokenKindChirho, &'source_chirho str)>,
     cursor_chirho: usize,
+}
+fn qualified_name_chirho(written_chirho: &str) -> (Option<String>, String) {
+    let mut occurrence_chirho = written_chirho;
+    let mut qualifier_len_chirho = 0;
+    while let Some((part_chirho, rest_chirho)) = occurrence_chirho.split_once('.') {
+        if !part_chirho.starts_with(char::is_uppercase)
+            || !part_chirho.chars().all(|character_chirho| {
+                character_chirho.is_alphanumeric() || matches!(character_chirho, '_' | '\'')
+            })
+        {
+            break;
+        }
+        qualifier_len_chirho += part_chirho.len() + 1;
+        occurrence_chirho = rest_chirho;
+    }
+    (
+        (qualifier_len_chirho > 0).then(|| written_chirho[..qualifier_len_chirho - 1].to_string()),
+        occurrence_chirho.to_string(),
+    )
 }
 fn unsupported_chirho() -> NextErrorChirho {
     NextErrorChirho::new_chirho(
@@ -115,7 +136,12 @@ impl ReaderChirho<'_> {
         loop {
             let module_chirho = self.take_chirho(ModuleChirho);
             let explicit_type_chirho = self.take_chirho(TypeChirho);
-            let name_chirho = self.name_chirho()?;
+            let written_chirho = self.name_chirho()?;
+            let (qualifier_chirho, name_chirho) = if module_chirho {
+                (None, written_chirho)
+            } else {
+                qualified_name_chirho(&written_chirho)
+            };
             let namespace_chirho =
                 if explicit_type_chirho || name_chirho.starts_with(char::is_uppercase) {
                     NamespaceChirho::TypeChirho
@@ -152,6 +178,7 @@ impl ReaderChirho<'_> {
             };
             result_chirho.push(ItemChirho {
                 name_chirho,
+                qualifier_chirho,
                 namespace_chirho,
                 members_chirho,
                 module_chirho,
@@ -223,9 +250,11 @@ fn read_chirho(source_chirho: &str, module_chirho: &str) -> Result<FacadeChirho,
         let module_chirho = reader_chirho.name_chirho()?;
         let qualified_chirho = reader_chirho.word_chirho("qualified") || qualified_chirho;
         let alias_chirho = reader_chirho.word_chirho("as");
-        if alias_chirho {
-            reader_chirho.name_chirho()?;
-        }
+        let qualifier_chirho = if alias_chirho {
+            reader_chirho.name_chirho()?
+        } else {
+            module_chirho.clone()
+        };
         let hiding_chirho = reader_chirho.word_chirho("hiding");
         let items_chirho = if reader_chirho.take_chirho(LeftParenChirho) {
             Some(reader_chirho.items_chirho()?)
@@ -234,6 +263,7 @@ fn read_chirho(source_chirho: &str, module_chirho: &str) -> Result<FacadeChirho,
         };
         imports_chirho.push(FacadeImportChirho {
             module_chirho,
+            qualifier_chirho,
             usable_chirho: !qualified_chirho && !alias_chirho,
             hiding_chirho,
             items_chirho,
@@ -290,12 +320,19 @@ fn routes_from_chirho(
         }
     }
     for import_chirho in &facade_chirho.imports_chirho {
+        let qualified_chirho = facade_chirho.exports_chirho.iter().any(|item_chirho| {
+            item_chirho.qualifier_chirho.as_deref() == Some(import_chirho.qualifier_chirho.as_str())
+                && item_chirho.name_chirho == key_chirho.0
+                && item_chirho.namespace_chirho == key_chirho.1
+        });
         if import_chirho.admits_chirho(key_chirho, parent_chirho)
-            && (named_chirho
-                || facade_chirho.exports_chirho.iter().any(|item_chirho| {
-                    item_chirho.module_chirho
-                        && item_chirho.name_chirho == import_chirho.module_chirho
-                }))
+            && (qualified_chirho
+                || import_chirho.usable_chirho
+                    && (named_chirho
+                        || facade_chirho.exports_chirho.iter().any(|item_chirho| {
+                            item_chirho.module_chirho
+                                && item_chirho.name_chirho == import_chirho.module_chirho
+                        })))
         {
             routes_from_chirho(
                 &import_chirho.module_chirho,
@@ -345,6 +382,26 @@ pub(in crate::next_chirho) fn routes_chirho() -> Result<Arc<RoutesChirho>, NextE
                     "GHC.Internal.Base".into(),
                     read_chirho(base_chirho, "GHC.Internal.Base")?,
                 );
+                for (module_chirho, path_chirho, bytes_chirho, sha_chirho) in [
+                    (
+                        "GHC.Internal.Data.List",
+                        "libraries/ghc-internal/src/GHC/Internal/Data/List.hs",
+                        include_str!("vendor-chirho/ghc-internal-chirho/data-chirho/List.hs"),
+                        "9f8f3d2b317b06c1ea65b03d0cd95b50a6125642d6836847e3a755ff1c91d79b",
+                    ),
+                    (
+                        "GHC.Internal.Data.OldList",
+                        "libraries/ghc-internal/src/GHC/Internal/Data/OldList.hs",
+                        include_str!("vendor-chirho/ghc-internal-chirho/data-chirho/OldList.hs"),
+                        "4b519356f7bcbd705866551e26552c84b08d527fe93b060cc89b27882aec6248",
+                    ),
+                ] {
+                    verify_source_chirho(bytes_chirho, sha_chirho, path_chirho, "9.14.1")?;
+                    facades_chirho.insert(
+                        module_chirho.into(),
+                        read_chirho(bytes_chirho, module_chirho)?,
+                    );
+                }
                 let mut result_chirho = BTreeMap::new();
                 for item_chirho in &facades_chirho["Prelude"].exports_chirho {
                     let key_chirho = (

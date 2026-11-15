@@ -103,6 +103,9 @@ impl ElaboratorChirho<'_> {
                 let info_chirho = &self.types_chirho.checked_chirho.module_chirho.names_chirho
                     [name_chirho.0 as usize];
                 let mut reference_chirho = match info_chirho.wired_chirho {
+                    Some(WiredNameChirho::ConsChirho) => {
+                        self.constructor_chirho(*name_chirho)?.rhs_chirho
+                    }
                     Some(
                         WiredNameChirho::TrueChirho
                         | WiredNameChirho::FalseChirho

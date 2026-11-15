@@ -80,6 +80,10 @@ fn program_chirho(
             prelude_routes_chirho: Some(super::library_chirho::prelude_routes_chirho()?),
             ..Default::default()
         };
+        policy_chirho.wired_fixities_chirho.insert(
+            haskelujah_hir_chirho::WiredNameChirho::ConsChirho,
+            super::library_chirho::cons_fixity_chirho()?,
+        );
         for dependency_chirho in graph_chirho::prelude_modules_chirho(input_chirho)? {
             policy_chirho.implicit_interfaces_chirho.push(Arc::clone(
                 interfaces_chirho

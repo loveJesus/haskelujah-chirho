@@ -88,16 +88,16 @@ fn ordinary_literal_never_uses_lexical_from_integer_chirho() {
     );
 }
 #[test]
-fn spelling_grouped_operator_chain_is_unsupported_chirho() {
-    let error_chirho =
-        check_source_chirho(include_str!("fixtures-chirho/FixityChainChirho.hs")).unwrap_err();
+fn operator_spellings_do_not_supply_prelude_fixities_chirho() {
+    let (value_chirho, _) = eval_binding_chirho(
+        include_str!("fixtures-chirho/FixityChainChirho.hs"),
+        "resultChirho",
+        100_000,
+    )
+    .unwrap();
     assert_eq!(
-        error_chirho.kind_chirho,
-        NextErrorKindChirho::UnsupportedChirho
-    );
-    assert!(
-        error_chirho.message_chirho.contains("fixity regrouping"),
-        "{error_chirho}"
+        value_chirho,
+        haskelujah_runtime_chirho::ValueChirho::CharChirho('c')
     );
 }
 
@@ -464,19 +464,23 @@ fn all_eight_accepted_oracle_programs_execute_byte_identical_sources_chirho() {
 }
 
 #[test]
-fn self_qualification_and_wired_constructor_forms_never_gain_absence_authority_chirho() {
+fn self_qualification_stays_unsupported_while_wired_cons_is_checked_chirho() {
     let library_chirho = "module AChirho where\naChirho :: Bool\naChirho = True\n";
-    for user_chirho in [
-        "module BChirho where\nimport AChirho\nnot :: Bool -> Bool\nnot bChirho = bChirho\ncChirho :: Bool\ncChirho = BChirho.not aChirho\n",
-        "module BChirho where\nimport AChirho\nxsChirho :: [Bool]\nxsChirho = aChirho : []\n",
-    ] {
-        assert_eq!(
-            super::super::check_sources_chirho(&[library_chirho, user_chirho], "BChirho")
-                .unwrap_err()
-                .kind_chirho,
-            NextErrorKindChirho::UnsupportedChirho
-        );
-    }
+    let user_chirho = "module BChirho where\nimport AChirho\nnot :: Bool -> Bool\nnot bChirho = bChirho\ncChirho :: Bool\ncChirho = BChirho.not aChirho\n";
+    assert_eq!(
+        super::super::check_sources_chirho(&[library_chirho, user_chirho], "BChirho")
+            .unwrap_err()
+            .kind_chirho,
+        NextErrorKindChirho::UnsupportedChirho
+    );
+    super::super::check_sources_chirho(
+        &[
+            library_chirho,
+            "module BChirho where\nimport AChirho\nxsChirho :: [Bool]\nxsChirho = aChirho : []\n",
+        ],
+        "BChirho",
+    )
+    .unwrap();
 }
 #[test]
 fn manifest_cannot_begin_at_a_later_equation_chirho() {
@@ -491,4 +495,33 @@ fn manifest_cannot_begin_at_a_later_equation_chirho() {
             .message_chirho
             .contains("equation group")
     );
+}
+
+#[test]
+fn retained_source_pragma_has_no_authority_in_home_input_chirho() {
+    let rendered_chirho = BASE_CHIRHO.render_chirho().unwrap();
+    assert_eq!(rendered_chirho.retained_pragmas_chirho.len(), 1);
+    assert_eq!(
+        super::super::parse_chirho::parse_chirho(
+            &rendered_chirho.source_chirho,
+            haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO
+        )
+        .err()
+        .expect("home parser must refuse retained NOINLINE")
+        .kind_chirho,
+        NextErrorKindChirho::UnsupportedChirho
+    );
+    for selection_chirho in [
+        "(++) :: [a] -> [a] -> [a]\n{-# NOINLINE [~2] (++) #-}\n(++) x y = x\n",
+        "(++) :: [a] -> [a] -> [a]\n{-# NOINLINE [2] (<+>) #-}\n(++) x y = x\n",
+        "(++) :: [a] -> [a] -> [a]\n{-# NOINLINE [2] (++) #-}\notherChirho x y = x\n",
+        "(++) :: [a] -> [a] -> [a]\n{-# NOINLINE [2] (++) #-}\n(++) x y = x\notherChirho x = x\n",
+    ] {
+        assert_eq!(
+            retained_pragmas_chirho::within_group_chirho(selection_chirho, 0)
+                .unwrap_err()
+                .kind_chirho,
+            NextErrorKindChirho::UnsupportedChirho
+        );
+    }
 }
