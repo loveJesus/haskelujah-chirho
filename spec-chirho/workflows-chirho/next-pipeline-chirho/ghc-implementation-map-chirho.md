@@ -2,7 +2,7 @@
 
 # GHC to Haskelujah implementation map
 
-Implementation scope: isolated `next-pipeline-source-list-operators-chirho` (unit 761), extending the unit 760 checkpoint `7660f41a`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release. Earlier sections describe their named increments; later sections supersede earlier Unsupported boundaries.
+Implementation scope: isolated `next-pipeline-source-io-chirho` (unit 763), implementation checkpoint `f9646539` extending unit762metadata `82884367`. The tasklist records its final source identity and evidence. Main compiler crates remain `04116a69`; this is not a main-source landing or release. Earlier sections describe their named increments; later sections supersede earlier Unsupported boundaries.
 
 This is the written reading guide L.J. requested. It maps GHC's assumptions to our data as we implement locally. It introduces no runtime dependency on GHC. Reference: retained GHC 9.14.1, commit 902339d332fb4ce2b3c87dcac1ee6495d41ad886.
 
@@ -602,5 +602,8 @@ flowchart LR
   OracleChirho --> ClosureChirho["Reference input and custody closure"]
   ClosureChirho --> CliProofChirho["27 CLI controls: PASS"]
   CliProofChirho --> CliClosureChirho["CLI input and custody closure"]
-  CliClosureChirho --> RemainingChirho["Original profile, mover adjudication, package/pin/secret gates: PENDING"]
+  CliClosureChirho --> RemainingChirho["Original353profile, all4movers adjudicated, package/pin/secret gates: PASS"]
 ```
+
+
+Unit763 source closure: the original353profile completed65ACCEPT/50REFUSAL/238Unsupported, no previously-handled movement or Resource/abnormal/unclassified result. All four Unsupported-to-Refusal movers were freshly confirmed by original-file GHC9.14.1fno-code: tcfail030(GHC-67120), tcfail199/ErrorIndexLinks(GHC-83865) and T16874(GHC-27346). The profile omits all.Tflags/ways and is not a configured compatibility ratio. Package--list699entries includes all49frozen driver paths and18vendor/license paths (696local files/4,641,285bytes+3generated), with no actual archive/install/publish claim. Actual releases5206/5207and5215/5216preceded inspection; no next reservation remains. The committed source-io-acceptance-chirho.json binds producer-scoped source acceptance, raw receipts, peer attribution, retained negatives and residual limits; it grants no generalMain/nativeBackend/B-run/main-source/public/release acceptance.

@@ -16,8 +16,8 @@ Architecture input: Claude2 DM5007, source reading only. Follow-up DM5009 asks f
 - [x] Add source-owned opaque Handle, wired IO and typed providers; keep IO completion separate from the lazy result.
 - [x] Keep the streaming writer on the machine stack, with source-shaped buffer commits and a sticky output-byte budget.
 - [x] Validate Main's exact IO identity, export/monomorphic type and execute it through explicit next run without legacy fallback (named216test and27CLI scope; no general Main acceptance).
-- [ ] Run focused/affected tests and original353 comparison, adjudicate every mover, then workspace/lint/standalone/package/pin/secret gates at fresh resource checkpoints.
-- [ ] Push coherent isolated source/metadata, close only canonical row763 and report scoped evidence and residuals.
+- [x] Run focused/affected tests and original353 comparison, adjudicate every mover, then workspace/changed-span-lint/standalone/package/pin/secret gates at fresh resource checkpoints;279outside warnings and upstream EOF remain explicit.
+- [x] Push coherent isolated source/metadata, close only canonical row763 and report scoped evidence and residuals (sourcef9646539/metadata9ac34522/progress notification5202; final closure metadata follows).
 
 At creation no new GHC/compiler/runtime command has run, and no shared-resource reservation is held. User-data/provider/native-device/public/release boundaries remain unchanged. Keep private TMP local and reuse the compatible external target; source preparation is separate from admission for execution.
 
@@ -72,3 +72,9 @@ Fresh offer5189/5191 actually completed5GHC+27frozenCLIcontrols, all exact verdi
 
 
 Current owner HOLD5197: selected SDK OSIS whole35367 plus the promised CLI commit/shared clean workspace gate retain precedence. The new c82d0ceb profile/package proposal is PREPARED/UNADMITTED, no Hask workload or reservation. No old350s remainder or finish estimate. Source checkpoint may be committed/pushed under standing project authority; unit763 remains open, profile/adjudication/package gates pending.
+
+
+Fresh owner5203/AICEO5205entry actually completed original353profile and package--list, released5206/5207before inspection. All353rows complete,65ACCEPT/50REFUSAL/238Unsupported; fourUnsupported-to-Refusal movers, no previously-handled movement/resource/abnormal/unclassified. Package699entries/696localfiles4,641,285bytes+3generated; all49frozen-driver/18vendor-license paths present, no archive/install/publish. Source/443pins intact, closurecca25220,29.760497s required closure/32.008506s through releases. New separate180s version+4same-originalGHCfno-code plan0d96397d/caller63e7cff4 requested5209/5210, PREPARED/UNRUN/unadmitted. All mover verdicts must be established before unit closure; no old offer or next reservation.
+
+
+Unit763 scoped source closure: fresh mover owner5211/AICEO5214entry completed5GHCchildren, version9.14.1then4expectedrc1refusals, all diagnostic checks matched/no warnings/timeouts; input/custody closure preceded actualrelease5215/5216. tcfail030GHC-67120, tcfail199/ErrorIndexLinksGHC-83865, T16874GHC-27346 confirm all4movers. Closureda6a7aaf,1.867509s required closure/4.078668s through releases. Acceptance source-io-acceptance-chirho.json binds21artifacts and scoped producer evidence. Canonicalrow763nowclosed, no other row/featureDB changed; no workload/next reservation. Feature sourcef9646539 alreadypushed/readback, final metadata separately recorded; canonicalcompiler04116a69unchanged. All historical failures/residualholds remain; no generalMain/nativeBackend/B-run/public/release acceptance.

@@ -1,0 +1,258 @@
+{
+  "unit_chirho": 763,
+  "at_chirho": "2026-11-15T12:14:57.043507+00:00",
+  "status_chirho": "SCOPED_SOURCE_CHECKPOINT_ACCEPTED_BY_PRODUCER",
+  "source_commit_chirho": "f96465391dfafee221082f9314e5ffe5b9aed278",
+  "source_branch_chirho": "next-pipeline-source-io-chirho",
+  "source_pushed_and_read_back_chirho": true,
+  "source_basis_sha256_chirho": "c0c8dafb27912aabfeb720c89cdbfc486055019449c94b390f5724a811fb501e",
+  "source_files_chirho": 75,
+  "source_bytes_still_match_chirho": true,
+  "feature_worktree_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho",
+  "canonical_compiler_tree_chirho": "04116a69eca349f4e7493fa60420d5aa53a4fb52",
+  "scope_chirho": "Actual-source stdout print/putStr/putStrLn/hPutStr/hPutStrLn, typed opaque Handle and wired IO, interpreter Main completion and explicit next CLI for the named fixture profile. No canonical source merge/native backend/general Main/B-run/public/release acceptance.",
+  "behavior_chirho": [
+    "Checked original source wrappers; smallest layout-touching stdout/hPutStr' providers owned by complete original name.",
+    "Unconditional CPP-selected spans and facade routes; opaque source Handle with constructors withheld rather than absent; wired IO and canonical import identity.",
+    "IO is World->lifted IORes; Main IO equality before defaulting, completion does not force result; source actions inert before World.",
+    "Machine-stack list/Char demand,2048-character block buffer/2047 prepare boundary; failure discards pending and retains committed UTF-8; latched byte Resource budget.",
+    "Explicit next run print(1+2) emits3\\n; successful closed stdout0, preexisting action error wins closed stdout1; no legacy/GHC fallback."
+  ],
+  "verification_chirho": {
+    "driver_next_tests_chirho": 216,
+    "rts_library_tests_chirho": 96,
+    "runtime_library_tests_chirho": 69,
+    "tc_library_tests_chirho": 26,
+    "hir_library_tests_chirho": 0,
+    "unique_scoped_rust_tests_chirho": 407,
+    "full_next_required_controls_chirho": 15,
+    "affected_required_io_controls_chirho": 4,
+    "failures_skips_warnings_in_named_test_entries_chirho": 0,
+    "supporting_adapter_ownership_tests_chirho": 17,
+    "workspace_all_targets_check_diagnostics_chirho": 0,
+    "changed_span_clippy_command_rc_chirho": 0,
+    "changed_span_clippy_judge_rc_chirho": 0,
+    "changed_span_clippy_new_hits_chirho": 0,
+    "outside_warnings_unattributed_chirho": 279,
+    "whole_tree_lint_green_chirho": false,
+    "dev_cli_build_diagnostics_chirho": 0,
+    "initial_ghc_oracle_children_chirho": 42,
+    "initial_ghc_fixture_compiles_chirho": 22,
+    "initial_ghc_fixture_runs_chirho": 19,
+    "fresh_closed_stdout_ghc_children_chirho": 5,
+    "fresh_mover_ghc_children_chirho": 5,
+    "total_ghc_children_chirho": 52,
+    "frozen_cli_controls_chirho": 27,
+    "cli_fixture_controls_chirho": 22,
+    "closed_stdout_cli_controls_chirho": 2,
+    "isolated_path_cli_controls_chirho": 3,
+    "profile_chirho": {
+      "rows_chirho": 353,
+      "accept_chirho": 65,
+      "refusal_chirho": 50,
+      "unsupported_chirho": 238,
+      "unrun_resource_abnormal_unclassified_chirho": 0,
+      "previously_handled_movers_chirho": 0,
+      "movers_chirho": [
+        {
+          "source_chirho": "ghc-tests-chirho/typecheck-chirho/should_fail/tcfail030.hs",
+          "source_sha256_chirho": "f8ee8f0fa5c997f6c3e7e2373cf620cc4852cd7ca12ff7f0b058c0739b457c1e",
+          "before_chirho": "UNSUPPORTED",
+          "after_chirho": "REFUSAL",
+          "expected_status_chirho": "REJECT",
+          "ghc_rc_chirho": 1,
+          "ghc_codes_chirho": [
+            "GHC-67120"
+          ],
+          "raw_stderr_sha256_chirho": "83a4b11ea03ea155fdd0d41ce483c50a253c791b710abec390ec3ff681250b89",
+          "verdict_only_confirmed_chirho": true
+        },
+        {
+          "source_chirho": "ghc-tests-chirho/typecheck-chirho/should_fail/tcfail199.hs",
+          "source_sha256_chirho": "82d143ab20b337195653c770762ea389df5943563c2a9bfb913ea8e45160efc6",
+          "before_chirho": "UNSUPPORTED",
+          "after_chirho": "REFUSAL",
+          "expected_status_chirho": "REJECT",
+          "ghc_rc_chirho": 1,
+          "ghc_codes_chirho": [
+            "GHC-83865"
+          ],
+          "raw_stderr_sha256_chirho": "9ff68127499a31e138ab32e0834aa5f60470fd9776d9f7216f00e98cee922f36",
+          "verdict_only_confirmed_chirho": true
+        },
+        {
+          "source_chirho": "ghc-tests-chirho/typecheck-chirho/should_fail/T16874.hs",
+          "source_sha256_chirho": "082d54d6e81ea5148170666983823ea2df85024eca78f218a565f5b738b376f3",
+          "before_chirho": "UNSUPPORTED",
+          "after_chirho": "REFUSAL",
+          "expected_status_chirho": "REJECT",
+          "ghc_rc_chirho": 1,
+          "ghc_codes_chirho": [
+            "GHC-27346"
+          ],
+          "raw_stderr_sha256_chirho": "5028d684fc416666b51ca63fccace10e2f0c0773252688ae3980d434ff4b870f",
+          "verdict_only_confirmed_chirho": true
+        },
+        {
+          "source_chirho": "ghc-tests-chirho/typecheck-chirho/should_fail/ErrorIndexLinks.hs",
+          "source_sha256_chirho": "55d19f39d3ed65b0b4c54e6064b7b67ce6fe437ed7a7e704d4d7a2d61293f82f",
+          "before_chirho": "UNSUPPORTED",
+          "after_chirho": "REFUSAL",
+          "expected_status_chirho": "REJECT",
+          "ghc_rc_chirho": 1,
+          "ghc_codes_chirho": [
+            "GHC-83865"
+          ],
+          "raw_stderr_sha256_chirho": "6c36ec0876feb5da00b58153abfbfac920a015cbd33aaf65c3ace6591c7f2a79",
+          "verdict_only_confirmed_chirho": true
+        }
+      ],
+      "method_chirho": "Unconfigured original files, flags/order/15s caps unchanged; all.T flags/ways omitted. Not a compatibility ratio."
+    },
+    "package_list_entries_chirho": 699,
+    "package_local_files_chirho": 696,
+    "package_local_source_bytes_chirho": 4641285,
+    "package_generated_entries_chirho": 3,
+    "package_required_frozen_driver_paths_chirho": 49,
+    "package_required_vendor_and_licence_paths_chirho": 18,
+    "package_missing_required_chirho": [],
+    "package_scope_chirho": "Driver file list only, no archive/install/publish or packaging of every changed runtime crate.",
+    "source_secret_scan_rc_chirho": 0,
+    "outgoing_git_commits_chirho": {
+      "base_chirho": "828843679fad65e74f9dafc042f48c6569a99287",
+      "tip_chirho": "f96465391dfafee221082f9314e5ffe5b9aed278"
+    }
+  },
+  "review_chirho": {
+    "claude2_chirho": "DM5007/5010 architecture/demand;5050r1/r2source and monitor race;5054EPIPEpriority;5098data-head export/IO validation;5108identity design;5113r7source74hashes/no remaining identity/scope/authority pitfall. Reading only, no independent execution.",
+    "attribution_fact_check_chirho": "DM5201 found no misstatement of the prior progress report; optional adapter rule/race attribution included. No final engineering acceptance by peer.",
+    "r8_delta_chirho": "One cfg(test)-only repeated-import fixture premise; all production bytes unchanged from reviewed/tested r7. Later execution and Git custody are GPT producer evidence."
+  },
+  "retained_negatives_chirho": [
+    "First compilation3errors; repaired compilation0diagnostics but144.832631>100caller timingRED retained.",
+    "Initial complete IO entry0PASS7RED at abstract Handle export; data-head repair6PASS1RED at duplicate wired IO; canonical identity repair7PASS.",
+    "Original affected pair second admission predicate/value/traceback missing: exact causeUNKNOWN; later labelled journals do not recover historical cause.",
+    "Original full-next215PASS1RED at incidental fixed Prelude setup budget; r8keeps512/depth256/2000stress and addsone-importbaseline under NoImplicitPrelude, production growth guards unchanged.",
+    "Old5178offer no-birth/refused after caller admission27.42055seconds late despite timely broker delivery; new5189proof was separate.",
+    "All supporting adapter/raw old results and frozen executable/source cuts retained; no result or counter reset.",
+    "Final metadata staged gitleaks initially flagged the known Git commit range under a secret-labelled field (generic-api-key). Both digests verified as actual commits; field renamed to outgoing_git_commits with base/tip, no ignore/rule/baseline change. Original redacted finding retained; subsequent scan recorded separately."
+  ],
+  "explicit_limits_chirho": [
+    "407scoped Rust unit tests, not whole legacy driver/runtime integrations/full compiler soundness. HIR has0separate library unit tests.",
+    "279outside Clippy warnings stayUNATTRIBUTED; unchanged upstream Internals.hs EOF whitespace finding retained, vendor bytes not normalized.",
+    "Deferred fd writes differ from GHC run-time fd buffering beyond measured small-buffer EPIPE cases; no long-stream/backpressure equivalence.",
+    "Resource75mapping source-read plus interpreter Resource controls, no dedicated CLI75probe.",
+    "Do/bind, arbitrary files/handles, stderr handles, terminal line buffering and other encodings remain open; source IO scope is stdout UTF-8/LF block output.",
+    "No general Main/B-run, native backend execution, canonical compiler merge, full library/installation/platform/public/release acceptance.",
+    "Original profile child sessions reaped but childPGIDs unjournalled; Cargo compiler group distinct from outer capture. Before/after metadata is not global quiet/full-descendant/death/peak-I-O proof.",
+    "Required actual closure/release completed before inspection for all final offered entries; no current Hask workload or next reservation.",
+    "New IO logic lives in separate modules; legacy evaluator5578lines with6routing lines added, shared instruction/root retention remains unresolved."
+  ],
+  "artifacts_chirho": [
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/checkpoint-chirho/source-review-basis-r8-chirho.json",
+      "sha256_chirho": "c0c8dafb27912aabfeb720c89cdbfc486055019449c94b390f5724a811fb501e",
+      "bytes_chirho": 18278
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/checkpoint-chirho/cli-r8-chirho/pin-chirho.json",
+      "sha256_chirho": "540c96365938e073a65c8fe805280a89c01ece5afe54c8730276590fd30e336e",
+      "bytes_chirho": 1581
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/analysis-chirho/source-checkpoint-commit-chirho.json",
+      "sha256_chirho": "ef475257c5ffffdeea466c15f98b9f752f891e36831d50bf034cb1e6b393de4e",
+      "bytes_chirho": 1422
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/analysis-chirho/outgoing-source-secret-scan-chirho.json",
+      "sha256_chirho": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "bytes_chirho": 3
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/checks-chirho/affected-libraries-r1-chirho/receipt-chirho.json",
+      "sha256_chirho": "7d0db140d283099891c26329854ac4d2446655eacc2b97211a4a13d1804cbe75",
+      "bytes_chirho": 1301
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/checks-chirho/full-next-r2-chirho/receipt-chirho.json",
+      "sha256_chirho": "645f7e353f101032a2aafb73f6f229969bb0f0e3ef30b0074c61022fc215000e",
+      "bytes_chirho": 1225
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/coordination-chirho/full-next-r2-chirho/closure-chirho.json",
+      "sha256_chirho": "9a1aa27cb96017c465030c3c0467a4ab3962403fd5e9679934cc85c4c686e7dd",
+      "bytes_chirho": 2978
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/coordination-chirho/workspace-r2-chirho/sequence-closure-chirho.json",
+      "sha256_chirho": "8aefe142f8c54e5a7ebaf3cd749be3dc7ef2d9a0530a07012059b0b1e6597f10",
+      "bytes_chirho": 6188
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/analysis-chirho/workspace-clippy-r2-chirho.json",
+      "sha256_chirho": "87db8e594ef9e383c4ed027277c4ccb184fa960c950622bb8b29720fd8e5478f",
+      "bytes_chirho": 71037
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/references-chirho/ghc-r1-chirho/receipt-chirho.json",
+      "sha256_chirho": "1631ee3861dcb42d0aa928510b49d032d1750fc612b1f92719d6c92592cba0a6",
+      "bytes_chirho": 36652
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/coordination-chirho/cli-proof-r2-chirho/sequence-closure-chirho.json",
+      "sha256_chirho": "c33919dfe4dc6c0d7dfb638e361874a11e3bb61fde946339cdc7ec3b7e1c1236",
+      "bytes_chirho": 2825
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/checks-chirho/closed-pipe-reference-r1-chirho/receipt-chirho.json",
+      "sha256_chirho": "3c5a7c0d1c8bf95969e28c3e039e0a8e993647fb219ec32bf672198c4e85a443",
+      "bytes_chirho": 4179
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/checks-chirho/cli-io-r1-chirho/receipt-chirho.json",
+      "sha256_chirho": "2de5f6f4c6d8b51401fee93b5257c2c97ae0cd6b2839dc93fd6d53c6cc2489bf",
+      "bytes_chirho": 26551
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/coordination-chirho/profile-package-r1-chirho/sequence-closure-chirho.json",
+      "sha256_chirho": "cca25220713f1f894dbd9e971839e841eda887de0ef056f87b11c7a0e856991e",
+      "bytes_chirho": 5257
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/checks-chirho/fixed-profile-r1-chirho/observations-chirho.json",
+      "sha256_chirho": "bfb34012cd92ad55aa451902ca8a26f1109373c52c004773557349ca8abc3e65",
+      "bytes_chirho": 660982
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/checks-chirho/package-list-r1-chirho/receipt-chirho.json",
+      "sha256_chirho": "5948c6744ab00d69901a9c49d818700d37fc2cd40dd732e08d94925bd4a18fe7",
+      "bytes_chirho": 1186
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/analysis-chirho/profile-comparison-r1-chirho.json",
+      "sha256_chirho": "4555a5b84b70f14ccfb1733bf703e0c4c98a9078c140bff2a96eab087282a0b0",
+      "bytes_chirho": 1678
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/coordination-chirho/mover-oracle-r1-chirho/closure-chirho.json",
+      "sha256_chirho": "da6a7aaf741c426ce52f3f73607d9dc65fe8ac205892cebf16b99df68f1d059a",
+      "bytes_chirho": 6682
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/references-chirho/movers-r1-chirho/receipt-chirho.json",
+      "sha256_chirho": "6bf5cc758bda22fea4ae33adcafb4d1826c401712ff19e1ef454a0227ad38011",
+      "bytes_chirho": 5524
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/analysis-chirho/source-r8-whitespace-chirho.json",
+      "sha256_chirho": "f054dbb6bb9e1dbcbf4a8265a4c8ff74120057dcd53ea920cf9c5a37d33b1da5",
+      "bytes_chirho": 1168
+    },
+    {
+      "path_chirho": "/Volumes/ENC_4TB_WDB_CHIRHO/dev-aleluya/personal-aleluya/haskelujah-workspaces-chirho/haskelujah-next-pipeline-s0-chirho/tmp-chirho/next-io-763-chirho/checkpoint-chirho/adapter-ownership-basis-r3-chirho.json",
+      "sha256_chirho": "4d98bd640fd86da041c57927e55e55c910a05b1b34269b61063c6c9e732210de",
+      "bytes_chirho": 1421
+    }
+  ]
+}
