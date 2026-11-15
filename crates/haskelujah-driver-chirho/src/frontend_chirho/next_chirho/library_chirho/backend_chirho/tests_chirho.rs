@@ -213,6 +213,17 @@ fn declared_bodies_are_illegal_outside_their_instance_method_root_chirho() {
 
 #[test]
 fn int_only_core_refuses_every_unsupported_native_bridge_chirho() {
+    native_refusal_chirho("%next:int-add-chirho");
+}
+
+#[test]
+fn show_only_core_refuses_every_unsupported_native_bridge_chirho() {
+    for name_chirho in ["%next:show-int-chirho", "%next:show-integer-chirho"] {
+        native_refusal_chirho(name_chirho);
+    }
+}
+
+fn native_refusal_chirho(name_chirho: &str) {
     use haskelujah_core_chirho::expr_chirho::{CoreExprChirho, CoreLitChirho};
     let mut core_chirho = compile_source_chirho(
         "module IntOnlyChirho where\nresultChirho :: Int\nresultChirho = 3\n",
@@ -230,7 +241,7 @@ fn int_only_core_refuses_every_unsupported_native_bridge_chirho() {
         .unwrap()
         .clone();
     binding_chirho.rhs_chirho = CoreExprChirho::PrimOpChirho {
-        name_chirho: "%next:int-add-chirho".into(),
+        name_chirho: name_chirho.into(),
         args_chirho: vec![
             CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
             CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(2)),

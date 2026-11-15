@@ -371,6 +371,19 @@ pub(in crate::next_chirho) fn routes_chirho() -> Result<Arc<RoutesChirho>, NextE
                         facades_chirho.insert(manifest_chirho.module_chirho.into(), facade_chirho);
                     }
                 }
+                verify_source_chirho(
+                    SHOW_CHIRHO.bytes_chirho,
+                    SHOW_CHIRHO.sha256_chirho,
+                    SHOW_CHIRHO.upstream_path_chirho,
+                    SHOW_CHIRHO.ghc_version_chirho,
+                )?;
+                facades_chirho.insert(
+                    SHOW_MODULE_CHIRHO.into(),
+                    read_chirho(
+                        prologue_chirho::validate_chirho(&SHOW_CHIRHO)?,
+                        SHOW_MODULE_CHIRHO,
+                    )?,
+                );
                 let base_chirho = include_str!("vendor-chirho/ghc-internal-chirho/Base.hs");
                 verify_source_chirho(
                     base_chirho,

@@ -41,6 +41,9 @@ impl LowerCtxChirho {
 
 /// Map a primop name from Core to a `PrimOpKindChirho`.
 fn primop_name_to_kind_chirho(name_chirho: &str) -> Option<PrimOpKindChirho> {
+    if let Some(operation_chirho) = haskelujah_runtime_chirho::show_number_chirho::ShowNumberOperationChirho::from_primitive_chirho(name_chirho) {
+        return Some(PrimOpKindChirho::ShowNumberChirho(operation_chirho));
+    }
     if let Some(operation_chirho) =
         haskelujah_runtime_chirho::int_arithmetic_chirho::IntOperationChirho::from_primitive_chirho(
             name_chirho,

@@ -152,9 +152,25 @@ impl IntegerBudgetChirho {
         work_chirho: u64,
         output_bits_chirho: u64,
     ) -> Result<(), IntegerArithmeticErrorChirho> {
-        let output_limbs_chirho = output_bits_chirho.div_ceil(64).max(1);
+        if output_bits_chirho > MAX_INTEGER_BITS_CHIRHO {
+            return self.fail_resource_chirho();
+        }
+        self.reserve_units_chirho(work_chirho, output_bits_chirho.div_ceil(64).max(1))
+    }
+
+    pub(crate) fn fail_resource_chirho<TChirho>(
+        &mut self,
+    ) -> Result<TChirho, IntegerArithmeticErrorChirho> {
+        self.exhausted_chirho = true;
+        Err(IntegerArithmeticErrorChirho::ResourceChirho)
+    }
+
+    pub(crate) fn reserve_units_chirho(
+        &mut self,
+        work_chirho: u64,
+        output_limbs_chirho: u64,
+    ) -> Result<(), IntegerArithmeticErrorChirho> {
         if self.exhausted_chirho
-            || output_bits_chirho > MAX_INTEGER_BITS_CHIRHO
             || work_chirho > self.work_left_chirho
             || output_limbs_chirho > self.output_left_chirho
         {

@@ -377,6 +377,14 @@ impl CheckedModuleChirho {
             {
                 standard_chirho.insert(name_chirho);
             }
+            if info_chirho.unit_chirho == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho
+                && info_chirho.module_chirho == "GHC.Internal.Show"
+                && info_chirho.namespace_chirho
+                    == haskelujah_hir_chirho::NamespaceChirho::TypeChirho
+                && info_chirho.occurrence_chirho == "Show"
+            {
+                standard_chirho.insert(name_chirho);
+            }
         }
         // GHC's ghc-internal unit has no built-in default environment.
         if self.module_chirho.unit_chirho

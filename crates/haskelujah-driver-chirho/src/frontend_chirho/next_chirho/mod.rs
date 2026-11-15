@@ -19,6 +19,9 @@ mod library_chirho;
 #[path = "tests_chirho/list_operators_tests_chirho.rs"]
 mod list_operators_tests_chirho;
 mod parse_chirho;
+#[cfg(test)]
+#[path = "tests_chirho/show_tests_chirho.rs"]
+mod show_tests_chirho;
 mod source_interfaces_chirho;
 pub use source_interfaces_chirho::{
     check_source_file_chirho, check_sources_chirho, compile_source_file_chirho,

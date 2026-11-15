@@ -29,6 +29,7 @@ mod integer_chirho;
 mod integer_tests_chirho;
 mod primitive_operands_chirho;
 mod returns_chirho;
+mod show_number_chirho;
 mod show_text_chirho;
 
 use std::collections::HashMap;
@@ -1604,6 +1605,9 @@ impl MachineChirho {
         op_chirho: PrimOpKindChirho,
         args_chirho: &[ValueChirho],
     ) -> Result<ValueChirho, EvalErrorChirho> {
+        if let PrimOpKindChirho::ShowNumberChirho(operation_chirho) = op_chirho {
+            return self.eval_show_number_chirho(operation_chirho, args_chirho);
+        }
         if let PrimOpKindChirho::IntegerArithmeticChirho(operation_chirho) = op_chirho {
             return self.eval_integer_chirho(operation_chirho, args_chirho);
         }

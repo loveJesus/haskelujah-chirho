@@ -58,7 +58,7 @@ pub fn apply_prim_binop_chirho(
     right_chirho: &ValueChirho,
 ) -> Result<ValueChirho, PrimErrorChirho> {
     match op_chirho {
-        PrimOpKindChirho::IntegerArithmeticChirho(_) | PrimOpKindChirho::IntArithmeticChirho(_) => Err(PrimErrorChirho::MissingIntegerBudgetChirho),
+        PrimOpKindChirho::IntegerArithmeticChirho(_) | PrimOpKindChirho::IntArithmeticChirho(_) | PrimOpKindChirho::ShowNumberChirho(_) => Err(PrimErrorChirho::MissingIntegerBudgetChirho),
         PrimOpKindChirho::IsHeapObjectChirho => Ok(ValueChirho::IntChirho(i64::from(matches!(
             left_chirho, ValueChirho::HeapPtrChirho(_)
         )))),

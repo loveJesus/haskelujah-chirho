@@ -7,28 +7,92 @@ use haskelujah_parser_chirho::lexer_chirho::{LexerChirho, RawTokenKindChirho};
 use haskelujah_runtime_chirho::{
     int_arithmetic_chirho::{IntOperationChirho, IntTypeChirho},
     integer_arithmetic_chirho::{IntegerOperationChirho, IntegerResultChirho},
+    show_number_chirho::ShowNumberOperationChirho,
 };
 use haskelujah_span_chirho::FileIdChirho;
 mod integer_chirho;
+mod show_chirho;
 #[cfg(test)]
 mod tests_chirho;
 
+/// Arithmetic providers share complete positional demand; formatting has a lazy tail.
 #[derive(Clone, Copy)]
 pub(in crate::next_chirho) enum ProviderChirho {
+    ArithmeticChirho(ArithmeticProviderChirho),
+    FormattingChirho(ShowNumberOperationChirho),
+}
+#[derive(Clone, Copy)]
+pub(in crate::next_chirho) enum ArithmeticProviderChirho {
     IntegerChirho(IntegerOperationChirho),
     IntChirho(IntOperationChirho),
 }
+pub(in crate::next_chirho) struct DemandChirho {
+    pub force_order_chirho: &'static [usize],
+    pub arguments_chirho: &'static [usize],
+    pub tail_chirho: Option<usize>,
+}
 impl ProviderChirho {
+    fn integer_chirho(operation_chirho: IntegerOperationChirho) -> Self {
+        Self::ArithmeticChirho(ArithmeticProviderChirho::IntegerChirho(operation_chirho))
+    }
+    fn int_chirho(operation_chirho: IntOperationChirho) -> Self {
+        Self::ArithmeticChirho(ArithmeticProviderChirho::IntChirho(operation_chirho))
+    }
+    pub(in crate::next_chirho) fn demand_chirho(self) -> DemandChirho {
+        match self {
+            Self::FormattingChirho(operation_chirho) => DemandChirho {
+                force_order_chirho: match operation_chirho {
+                    ShowNumberOperationChirho::IntChirho => &[0, 1],
+                    ShowNumberOperationChirho::IntegerChirho => &[1, 0],
+                },
+                arguments_chirho: &[0, 1],
+                tail_chirho: Some(2),
+            },
+            Self::ArithmeticChirho(operation_chirho) => {
+                let arguments_chirho: &'static [usize] = if operation_chirho.arity_chirho() == 1 {
+                    &[0]
+                } else {
+                    &[0, 1]
+                };
+                DemandChirho {
+                    force_order_chirho: arguments_chirho,
+                    arguments_chirho,
+                    tail_chirho: None,
+                }
+            }
+        }
+    }
     pub(in crate::next_chirho) fn primitive_chirho(self) -> &'static str {
+        match self {
+            Self::ArithmeticChirho(operation_chirho) => operation_chirho.primitive_chirho(),
+            Self::FormattingChirho(operation_chirho) => operation_chirho.primitive_chirho(),
+        }
+    }
+    pub(in crate::next_chirho) fn contract_chirho(self) -> PrimitiveContractChirho {
+        match self {
+            Self::ArithmeticChirho(operation_chirho) => operation_chirho.contract_chirho(),
+            Self::FormattingChirho(operation_chirho) => {
+                show_chirho::contract_chirho(operation_chirho)
+            }
+        }
+    }
+}
+impl ArithmeticProviderChirho {
+    fn arity_chirho(self) -> usize {
+        match self {
+            Self::IntegerChirho(operation_chirho) => operation_chirho.arity_chirho(),
+            Self::IntChirho(operation_chirho) => operation_chirho.arity_chirho(),
+        }
+    }
+    fn primitive_chirho(self) -> &'static str {
         match self {
             Self::IntegerChirho(operation_chirho) => operation_chirho.primitive_chirho(),
             Self::IntChirho(operation_chirho) => operation_chirho.primitive_chirho(),
         }
     }
-    pub(in crate::next_chirho) fn contract_chirho(self) -> PrimitiveContractChirho {
-        let (arity_chirho, argument_chirho, result_chirho) = match self {
+    fn contract_chirho(self) -> PrimitiveContractChirho {
+        let (argument_chirho, result_chirho) = match self {
             Self::IntegerChirho(operation_chirho) => (
-                operation_chirho.arity_chirho(),
                 InterfaceBuiltinChirho::IntegerChirho,
                 match operation_chirho.result_chirho() {
                     IntegerResultChirho::IntegerChirho => InterfaceBuiltinChirho::IntegerChirho,
@@ -37,11 +101,11 @@ impl ProviderChirho {
                 },
             ),
             Self::IntChirho(operation_chirho) => (
-                operation_chirho.arity_chirho(),
                 int_type_chirho(operation_chirho.argument_chirho()),
                 int_type_chirho(operation_chirho.result_chirho()),
             ),
         };
+        let arity_chirho = self.arity_chirho();
         let mut ty_chirho = InterfaceTypeChirho::BuiltinChirho(result_chirho);
         for _argument_chirho in 0..arity_chirho {
             ty_chirho = InterfaceTypeChirho::FunChirho(
@@ -55,6 +119,7 @@ impl ProviderChirho {
         }
     }
 }
+
 fn int_type_chirho(ty_chirho: IntTypeChirho) -> InterfaceBuiltinChirho {
     match ty_chirho {
         IntTypeChirho::IntChirho => InterfaceBuiltinChirho::IntChirho,
@@ -94,8 +159,11 @@ const METHODS_CHIRHO: [(&str, IntOperationChirho); 5] = [
 pub(in crate::next_chirho) fn operation_chirho(
     name_chirho: &OriginalNameChirho,
 ) -> Option<ProviderChirho> {
+    if let Some(operation_chirho) = show_chirho::operation_chirho(name_chirho) {
+        return Some(ProviderChirho::FormattingChirho(operation_chirho));
+    }
     if let Some(operation_chirho) = integer_chirho::operation_chirho(name_chirho) {
-        return Some(ProviderChirho::IntegerChirho(operation_chirho));
+        return Some(ProviderChirho::integer_chirho(operation_chirho));
     }
     if name_chirho.unit_chirho != UnitIdentityChirho::CompilerChirho
         || name_chirho.module_chirho != CLASSES_MODULE_CHIRHO
@@ -107,12 +175,15 @@ pub(in crate::next_chirho) fn operation_chirho(
         .iter()
         .find_map(|(text_chirho, operation_chirho)| {
             (*text_chirho == name_chirho.occurrence_chirho)
-                .then_some(ProviderChirho::IntChirho(*operation_chirho))
+                .then_some(ProviderChirho::int_chirho(*operation_chirho))
         })
 }
 pub(in crate::next_chirho) fn declared_operation_chirho(
     key_chirho: &DeclaredBodyKeyChirho,
 ) -> Option<ProviderChirho> {
+    if let Some(operation_chirho) = show_chirho::declared_operation_chirho(key_chirho) {
+        return Some(ProviderChirho::FormattingChirho(operation_chirho));
+    }
     if key_chirho.unit_chirho != UnitIdentityChirho::CompilerChirho
         || key_chirho.module_chirho != NUM_MODULE_CHIRHO
         || key_chirho.head_chirho != WiredNameChirho::IntChirho
@@ -126,13 +197,16 @@ pub(in crate::next_chirho) fn declared_operation_chirho(
         .find_map(|(name_chirho, operation_chirho)| {
             (key_chirho.method_chirho
                 == original_chirho(NUM_MODULE_CHIRHO, name_chirho, NamespaceChirho::ValueChirho))
-            .then_some(ProviderChirho::IntChirho(*operation_chirho))
+            .then_some(ProviderChirho::int_chirho(*operation_chirho))
         })
 }
 pub(in crate::next_chirho) fn install_policy_chirho(
     module_chirho: &str,
     policy_chirho: &mut LoweringPolicyChirho,
 ) {
+    if module_chirho == SHOW_MODULE_CHIRHO {
+        show_chirho::install_policy_chirho(policy_chirho);
+    }
     if module_chirho == INTEGER_MODULE_CHIRHO {
         integer_chirho::install_policy_chirho(policy_chirho);
     }
@@ -144,7 +218,7 @@ pub(in crate::next_chirho) fn install_policy_chirho(
                     name_chirho,
                     NamespaceChirho::ValueChirho,
                 ),
-                ProviderChirho::IntChirho(operation_chirho).contract_chirho(),
+                ProviderChirho::int_chirho(operation_chirho).contract_chirho(),
             );
         }
     }
@@ -166,7 +240,7 @@ pub(in crate::next_chirho) fn install_policy_chirho(
                         NamespaceChirho::ValueChirho,
                     ),
                 },
-                ProviderChirho::IntChirho(operation_chirho).contract_chirho(),
+                ProviderChirho::int_chirho(operation_chirho).contract_chirho(),
             );
         }
     }

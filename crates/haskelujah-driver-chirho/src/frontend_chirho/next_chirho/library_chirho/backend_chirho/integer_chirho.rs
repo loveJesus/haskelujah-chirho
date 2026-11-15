@@ -46,7 +46,7 @@ pub(super) fn install_policy_chirho(policy_chirho: &mut LoweringPolicyChirho) {
                 name_chirho,
                 NamespaceChirho::ValueChirho,
             ),
-            ProviderChirho::IntegerChirho(operation_chirho).contract_chirho(),
+            ProviderChirho::integer_chirho(operation_chirho).contract_chirho(),
         );
     }
     policy_chirho.wired_declarations_chirho.insert(
