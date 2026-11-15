@@ -17,6 +17,7 @@ pub enum PrimErrorChirho {
     IntegerLiteralChirho(haskelujah_rts_chirho::integer_literal_chirho::IntegerLiteralErrorChirho),
     IntegerArithmeticChirho(crate::integer_arithmetic_chirho::IntegerArithmeticErrorChirho),
     MissingIntegerBudgetChirho,
+    NextIoChirho(crate::io_chirho::IoErrorChirho),
     /// Type mismatch: expected a different value kind.
     TypeMismatchChirho {
         op_chirho: PrimOpKindChirho,
@@ -32,6 +33,7 @@ pub enum PrimErrorChirho {
 impl std::fmt::Display for PrimErrorChirho {
     fn fmt(&self, f_chirho: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::NextIoChirho(error_chirho) => error_chirho.fmt(f_chirho),
             Self::IntegerLiteralChirho(error_chirho) => error_chirho.fmt(f_chirho),
             Self::IntegerArithmeticChirho(error_chirho) => error_chirho.fmt(f_chirho),
             Self::MissingIntegerBudgetChirho => f_chirho
@@ -58,6 +60,7 @@ pub fn apply_prim_binop_chirho(
     right_chirho: &ValueChirho,
 ) -> Result<ValueChirho, PrimErrorChirho> {
     match op_chirho {
+        PrimOpKindChirho::NextIoChirho(_) => Err(PrimErrorChirho::NextIoChirho(crate::io_chirho::IoErrorChirho::ContractChirho)),
         PrimOpKindChirho::IntegerArithmeticChirho(_) | PrimOpKindChirho::IntArithmeticChirho(_) | PrimOpKindChirho::ShowNumberChirho(_) => Err(PrimErrorChirho::MissingIntegerBudgetChirho),
         PrimOpKindChirho::IsHeapObjectChirho => Ok(ValueChirho::IntChirho(i64::from(matches!(
             left_chirho, ValueChirho::HeapPtrChirho(_)

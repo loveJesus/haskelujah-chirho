@@ -19,7 +19,54 @@ impl LowerChirho<'_> {
         Ok(())
     }
 
-    pub(super) fn install_primitive_declarations_chirho(
+    pub(super) fn bind_wired_chirho(
+        &mut self,
+        wired_chirho: WiredNameChirho,
+    ) -> ResultChirho<NameIdChirho> {
+        let original_chirho = wired_chirho.original_chirho();
+        if let Some(id_chirho) = self.imported_names_chirho.get(&original_chirho).copied() {
+            let info_chirho = &self.names_chirho[id_chirho.0 as usize];
+            let bound_chirho = self.env_chirho.lookup_chirho(
+                wired_chirho.occurrence_chirho(),
+                wired_chirho.namespace_chirho(),
+            );
+            if info_chirho.original_chirho() != original_chirho
+                || info_chirho.wired_chirho != Some(wired_chirho)
+                || bound_chirho
+                    .is_none_or(|bound_chirho| bound_chirho.def_id_chirho.0 != id_chirho.0)
+            {
+                return Err(self.error_chirho(
+                    "wired seed disagrees with its canonical language binding",
+                    SpanChirho::DUMMY_CHIRHO,
+                ));
+            }
+            return Ok(id_chirho);
+        }
+        let id_chirho = self.bind_chirho(
+            wired_chirho.occurrence_chirho(),
+            wired_chirho.namespace_chirho(),
+            SpanChirho::DUMMY_CHIRHO,
+            false,
+            Some(wired_chirho),
+        )?;
+        let actual_chirho = self.names_chirho[id_chirho.0 as usize].original_chirho();
+        if actual_chirho != original_chirho {
+            return Err(self.error_chirho(
+                "wired seed has no exact original-name identity",
+                SpanChirho::DUMMY_CHIRHO,
+            ));
+        }
+        self.charge_names_chirho(
+            actual_chirho.module_chirho.len()
+                + actual_chirho.occurrence_chirho.len()
+                + std::mem::size_of::<(OriginalNameChirho, NameIdChirho)>(),
+            SpanChirho::DUMMY_CHIRHO,
+        )?;
+        self.imported_names_chirho.insert(actual_chirho, id_chirho);
+        Ok(id_chirho)
+    }
+
+    pub(super) fn install_wired_declarations_chirho(
         &mut self,
         policy_chirho: &LoweringPolicyChirho,
     ) -> ResultChirho<Vec<NameIdChirho>> {
@@ -27,27 +74,31 @@ impl LowerChirho<'_> {
         for (original_chirho, wired_chirho) in &policy_chirho.wired_declarations_chirho {
             self.own_manifest_name_chirho(original_chirho)?;
             if original_chirho.namespace_chirho != NamespaceChirho::TypeChirho
-                || *wired_chirho != WiredNameChirho::IntegerChirho
+                || !matches!(
+                    wired_chirho,
+                    WiredNameChirho::IntegerChirho | WiredNameChirho::IOChirho
+                )
                 || original_chirho.module_chirho != wired_chirho.defining_module_chirho()
-                || original_chirho.occurrence_chirho != "Integer"
+                || original_chirho.occurrence_chirho != wired_chirho.occurrence_chirho()
             {
                 return Err(self.error_chirho(
                     "unsupported own wired declaration",
                     SpanChirho::DUMMY_CHIRHO,
                 ));
             }
-            wired_exports_chirho.push(self.bind_chirho(
-                &original_chirho.occurrence_chirho,
-                NamespaceChirho::TypeChirho,
-                SpanChirho::DUMMY_CHIRHO,
-                false,
-                Some(*wired_chirho),
-            )?);
+            wired_exports_chirho.push(self.bind_wired_chirho(*wired_chirho)?);
         }
+        Ok(wired_exports_chirho)
+    }
+
+    pub(super) fn install_primitive_declarations_chirho(
+        &mut self,
+        policy_chirho: &LoweringPolicyChirho,
+    ) -> ResultChirho<()> {
         for (original_chirho, contract_chirho) in &policy_chirho.primitive_bindings_chirho {
             self.own_manifest_name_chirho(original_chirho)?;
             if original_chirho.namespace_chirho != NamespaceChirho::ValueChirho
-                || !(1..=3).contains(&contract_chirho.arity_chirho)
+                || !(0..=3).contains(&contract_chirho.arity_chirho)
             {
                 return Err(self.error_chirho(
                     "unsupported backend primitive declaration",
@@ -62,7 +113,7 @@ impl LowerChirho<'_> {
                 None,
             )?;
         }
-        Ok(wired_exports_chirho)
+        Ok(())
     }
 
     pub(super) fn primitive_bindings_chirho(

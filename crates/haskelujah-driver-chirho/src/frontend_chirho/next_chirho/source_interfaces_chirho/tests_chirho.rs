@@ -436,31 +436,35 @@ fn repeated_plain_imports_do_not_duplicate_interface_storage_chirho() {
     let interface_chirho = Arc::new(
         haskelujah_tc_chirho::project_interface_chirho(&library_chirho, &mut 100_000).unwrap(),
     );
-    let source_chirho = format!(
-        "module BUseChirho where\n{}resultChirho = fChirho 'a'\n",
-        "import ALibChirho\n".repeat(2000)
-    );
-    let parsed_chirho = super::super::parse_chirho::parse_chirho(
-        &source_chirho,
-        haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
-    )
-    .unwrap();
-    let hir_chirho = haskelujah_hir_chirho::lower_module_with_policy_chirho(
-        &parsed_chirho.module_chirho,
-        haskelujah_hir_chirho::UnitIdentityChirho::StandaloneHomeChirho,
-        haskelujah_hir_chirho::LimitsChirho {
-            nodes_chirho: 512,
-            depth_chirho: 256,
-        },
-        &parsed_chirho.integer_literals_chirho,
-        &BTreeMap::from([("ALibChirho".into(), interface_chirho)]),
-        &haskelujah_hir_chirho::LoweringPolicyChirho {
-            prelude_exports_chirho: Some(
-                super::super::library_chirho::prelude_exports_chirho().unwrap(),
-            ),
-            ..Default::default()
-        },
-    )
-    .unwrap();
-    haskelujah_tc_chirho::check_module_chirho(hir_chirho, 100_000).unwrap();
+    // Isolate imported storage from fixed Prelude seeds. Keep the allowance below
+    // the repetition count: even one retained unit per duplicate would exhaust it.
+    for repetitions_chirho in [1, 2000] {
+        let source_chirho = format!(
+            "{{-# LANGUAGE NoImplicitPrelude #-}}\nmodule BUseChirho where\n{}resultChirho = fChirho 'a'\n",
+            "import ALibChirho\n".repeat(repetitions_chirho)
+        );
+        let parsed_chirho = super::super::parse_chirho::parse_chirho(
+            &source_chirho,
+            haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
+        )
+        .unwrap();
+        let hir_chirho = haskelujah_hir_chirho::lower_module_with_policy_chirho(
+            &parsed_chirho.module_chirho,
+            haskelujah_hir_chirho::UnitIdentityChirho::StandaloneHomeChirho,
+            haskelujah_hir_chirho::LimitsChirho {
+                nodes_chirho: 512,
+                depth_chirho: 256,
+            },
+            &parsed_chirho.integer_literals_chirho,
+            &BTreeMap::from([("ALibChirho".into(), Arc::clone(&interface_chirho))]),
+            &haskelujah_hir_chirho::LoweringPolicyChirho {
+                prelude_exports_chirho: Some(
+                    super::super::library_chirho::prelude_exports_chirho().unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .unwrap_or_else(|error_chirho| panic!("{repetitions_chirho} imports: {error_chirho:?}"));
+        haskelujah_tc_chirho::check_module_chirho(hir_chirho, 100_000).unwrap();
+    }
 }

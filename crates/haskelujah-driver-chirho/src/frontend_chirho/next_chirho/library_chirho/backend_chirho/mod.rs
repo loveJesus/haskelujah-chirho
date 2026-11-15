@@ -11,6 +11,7 @@ use haskelujah_runtime_chirho::{
 };
 use haskelujah_span_chirho::FileIdChirho;
 mod integer_chirho;
+pub(in crate::next_chirho) mod io_chirho;
 mod show_chirho;
 #[cfg(test)]
 mod tests_chirho;
@@ -204,6 +205,7 @@ pub(in crate::next_chirho) fn install_policy_chirho(
     module_chirho: &str,
     policy_chirho: &mut LoweringPolicyChirho,
 ) {
+    io_chirho::install_chirho(module_chirho, policy_chirho);
     if module_chirho == SHOW_MODULE_CHIRHO {
         show_chirho::install_policy_chirho(policy_chirho);
     }
@@ -289,6 +291,12 @@ pub(in crate::next_chirho) fn validate_signature_span_chirho(
             NamespaceChirho::ValueChirho,
         ))
         .is_none()
+            && io_chirho::operation_chirho(&original_chirho(
+                module_chirho,
+                name_chirho,
+                NamespaceChirho::ValueChirho,
+            ))
+            .is_none()
         {
             return Err(error_chirho());
         }
@@ -312,6 +320,8 @@ pub(in crate::next_chirho) fn validate_signature_span_chirho(
                 !matches!(
                     token_chirho.kind_chirho,
                     RawTokenKindChirho::ConIdChirho
+                        | RawTokenKindChirho::LeftParenChirho
+                        | RawTokenKindChirho::RightParenChirho
                         | RawTokenKindChirho::RightArrowChirho
                         | RawTokenKindChirho::EofChirho
                 )

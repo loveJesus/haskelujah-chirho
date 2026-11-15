@@ -14,7 +14,9 @@ mod core_chirho;
 mod data_patterns_tests_chirho;
 #[cfg(test)]
 mod generalization_tests_chirho;
+mod io_chirho;
 mod library_chirho;
+pub use io_chirho::{MainOutcomeChirho, RunLimitsChirho, run_main_chirho, run_main_file_chirho};
 #[cfg(test)]
 #[path = "tests_chirho/list_operators_tests_chirho.rs"]
 mod list_operators_tests_chirho;
@@ -120,12 +122,6 @@ fn check_parsed_with_policy_chirho(
     policy_chirho: &haskelujah_hir_chirho::LoweringPolicyChirho,
 ) -> Result<CheckedModuleChirho, NextErrorChirho> {
     let module_chirho = parsed_chirho.module_chirho;
-    if module_chirho.name_chirho.full_name_chirho() == "Main" {
-        return Err(NextErrorChirho::new_chirho(
-            NextErrorKindChirho::UnsupportedChirho,
-            "next needs the checked IO source declaration to validate Main.main; S0 accepts library modules only",
-        ));
-    }
     let hir_chirho = haskelujah_hir_chirho::lower_module_with_policy_chirho(
         &module_chirho,
         unit_chirho,
@@ -154,10 +150,9 @@ fn check_parsed_with_policy_chirho(
             })?;
         }
     }
-    Ok(haskelujah_tc_chirho::check_module_chirho(
-        hir_chirho,
-        1 << 20,
-    )?)
+    let checked_chirho = haskelujah_tc_chirho::check_module_chirho(hir_chirho, 1 << 20)?;
+    io_chirho::validate_main_chirho(&checked_chirho)?;
+    Ok(checked_chirho)
 }
 
 /// Elaborate checked HIR directly; the Core type compatibility adapter is data conversion only.

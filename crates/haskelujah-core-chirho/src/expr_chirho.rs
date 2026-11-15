@@ -216,15 +216,19 @@ impl CoreModuleChirho {
     /// Capability checks inspect all definitions before reachability rewrites.
     /// workflow: next-pipeline-chirho/ghc-implementation-map-chirho
     pub fn uses_primitive_chirho(&self, primitive_chirho: &str) -> bool {
-        self.any_primitive_chirho(|name_chirho| name_chirho == primitive_chirho)
+        self.any_primitive_chirho(|name_chirho| name_chirho == primitive_chirho, false)
     }
 
     /// Every opaque Integer operation needs the same runtime representation capability.
     pub fn requires_opaque_integer_runtime_chirho(&self) -> bool {
-        self.any_primitive_chirho(|name_chirho| name_chirho.starts_with("%next:"))
+        self.any_primitive_chirho(|name_chirho| name_chirho.starts_with("%next:"), true)
     }
 
-    fn any_primitive_chirho(&self, predicate_chirho: impl Fn(&str) -> bool) -> bool {
+    fn any_primitive_chirho(
+        &self,
+        predicate_chirho: impl Fn(&str) -> bool,
+        opaque_io_chirho: bool,
+    ) -> bool {
         let mut work_chirho: Vec<_> = self
             .bindings_chirho
             .iter()
@@ -241,7 +245,15 @@ impl CoreModuleChirho {
                     }
                     work_chirho.extend(args_chirho);
                 }
-                CoreExprChirho::ConAppChirho { args_chirho, .. } => work_chirho.extend(args_chirho),
+                CoreExprChirho::ConAppChirho {
+                    con_name_chirho,
+                    args_chirho,
+                } => {
+                    if opaque_io_chirho && con_name_chirho.starts_with("%next:io-") {
+                        return true;
+                    }
+                    work_chirho.extend(args_chirho);
+                }
                 CoreExprChirho::AppChirho {
                     fun_chirho,
                     arg_chirho,

@@ -23,10 +23,9 @@ impl PipelineChirho {
 }
 
 pub(super) fn command_chirho(positional_chirho: &[&str], flags_chirho: &FlagsChirho) -> ExitCode {
-    if positional_chirho.first() != Some(&"check") || positional_chirho.len() != 2 {
-        eprintln!(
-            "next currently supports: check <library-module.hs> [--dump-core]; IO programs require the source-library slice"
-        );
+    let command_chirho = positional_chirho.first().copied();
+    if !matches!(command_chirho, Some("check" | "run")) || positional_chirho.len() != 2 {
+        eprintln!("next supports: check <module.hs> [--dump-core], run <Main.hs>");
         return ExitCode::from(2);
     }
     if flags_chirho.emit_llvm_chirho
@@ -36,8 +35,15 @@ pub(super) fn command_chirho(positional_chirho: &[&str], flags_chirho: &FlagsChi
         || flags_chirho.dump_stg_chirho
         || flags_chirho.output_path_chirho.is_some()
     {
-        eprintln!("these backend flags are not supported by next check");
+        eprintln!("these backend flags are not supported by next check/run");
         return ExitCode::from(2);
+    }
+    if command_chirho == Some("run") {
+        if flags_chirho.dump_core_chirho {
+            eprintln!("use next check --dump-core before run");
+            return ExitCode::from(2);
+        }
+        return run_chirho(Path::new(positional_chirho[1]));
     }
     let result_chirho = if flags_chirho.dump_core_chirho {
         haskelujah_driver_chirho::next_chirho::compile_source_file_chirho(Path::new(
@@ -62,4 +68,47 @@ pub(super) fn command_chirho(positional_chirho: &[&str], flags_chirho: &FlagsChi
             ExitCode::from(1)
         }
     }
+}
+
+fn run_chirho(path_chirho: &Path) -> ExitCode {
+    use std::io::Write;
+    match haskelujah_driver_chirho::next_chirho::run_main_file_chirho(
+        path_chirho,
+        Default::default(),
+    ) {
+        Err(error_chirho) => {
+            eprintln!("{}: {error_chirho}", path_chirho.display());
+            run_failure_code_chirho(&error_chirho)
+        }
+        Ok(outcome_chirho) => {
+            let mut stdout_chirho = std::io::stdout().lock();
+            let output_chirho = stdout_chirho
+                .write_all(outcome_chirho.machine_chirho.io_output_chirho.as_bytes())
+                .and_then(|()| stdout_chirho.flush());
+            // A handler's failed output flush cannot replace the program's
+            // original exception. Successful actions may exit quietly on EPIPE.
+            if let Err(error_chirho) = outcome_chirho.result_chirho {
+                eprintln!("{}: {error_chirho}", path_chirho.display());
+                return run_failure_code_chirho(&error_chirho);
+            }
+            if let Err(error_chirho) = output_chirho
+                && error_chirho.kind() != std::io::ErrorKind::BrokenPipe
+            {
+                eprintln!("{}: output error: {error_chirho}", path_chirho.display());
+                return ExitCode::from(1);
+            }
+            ExitCode::SUCCESS
+        }
+    }
+}
+
+fn run_failure_code_chirho(
+    error_chirho: &haskelujah_driver_chirho::next_chirho::NextErrorChirho,
+) -> ExitCode {
+    use haskelujah_driver_chirho::next_chirho::NextErrorKindChirho;
+    ExitCode::from(match error_chirho.kind_chirho {
+        NextErrorKindChirho::ResourceChirho => 75,
+        NextErrorKindChirho::UnsupportedChirho => 64,
+        _ => 1,
+    })
 }

@@ -51,7 +51,7 @@ impl FacadeImportChirho {
         })
     }
 }
-struct FacadeChirho {
+pub(super) struct FacadeChirho {
     exports_chirho: Vec<ItemChirho>,
     imports_chirho: Vec<FacadeImportChirho>,
 }
@@ -196,7 +196,18 @@ impl ReaderChirho<'_> {
         Ok(result_chirho)
     }
 }
-fn read_chirho(source_chirho: &str, module_chirho: &str) -> Result<FacadeChirho, NextErrorChirho> {
+pub(super) fn read_chirho(
+    source_chirho: &str,
+    module_chirho: &str,
+) -> Result<FacadeChirho, NextErrorChirho> {
+    read_with_macros_chirho(source_chirho, module_chirho, &BTreeSet::new())
+}
+
+pub(super) fn read_with_macros_chirho(
+    source_chirho: &str,
+    module_chirho: &str,
+    macros_chirho: &BTreeSet<&str>,
+) -> Result<FacadeChirho, NextErrorChirho> {
     use RawTokenKindChirho::*;
     let mut reader_chirho = ReaderChirho {
         tokens_chirho: LexerChirho::new_chirho(
@@ -268,6 +279,20 @@ fn read_chirho(source_chirho: &str, module_chirho: &str) -> Result<FacadeChirho,
             hiding_chirho,
             items_chirho,
         });
+    }
+    // Check the exact consumed header/import prefix. A macro in a hiding list
+    // can enlarge scope, so blanking just its line would be unsound.
+    if reader_chirho.tokens_chirho[..reader_chirho.cursor_chirho]
+        .iter()
+        .any(|(_, text_chirho)| {
+            text_chirho
+                .split(|character_chirho: char| {
+                    !(character_chirho.is_ascii_alphanumeric() || character_chirho == '_')
+                })
+                .any(|word_chirho| macros_chirho.contains(word_chirho))
+        })
+    {
+        return Err(unsupported_chirho());
     }
     Ok(FacadeChirho {
         exports_chirho,
@@ -380,10 +405,25 @@ pub(in crate::next_chirho) fn routes_chirho() -> Result<Arc<RoutesChirho>, NextE
                 facades_chirho.insert(
                     SHOW_MODULE_CHIRHO.into(),
                     read_chirho(
-                        prologue_chirho::validate_chirho(&SHOW_CHIRHO)?,
+                        &cpp_chirho::facade_chirho(&SHOW_CHIRHO)?,
                         SHOW_MODULE_CHIRHO,
                     )?,
                 );
+                for manifest_chirho in io_chirho::FACADES_CHIRHO {
+                    verify_source_chirho(
+                        manifest_chirho.bytes_chirho,
+                        manifest_chirho.sha256_chirho,
+                        manifest_chirho.upstream_path_chirho,
+                        manifest_chirho.ghc_version_chirho,
+                    )?;
+                    facades_chirho.insert(
+                        manifest_chirho.module_chirho.into(),
+                        read_chirho(
+                            &cpp_chirho::facade_chirho(manifest_chirho)?,
+                            manifest_chirho.module_chirho,
+                        )?,
+                    );
+                }
                 let base_chirho = include_str!("vendor-chirho/ghc-internal-chirho/Base.hs");
                 verify_source_chirho(
                     base_chirho,

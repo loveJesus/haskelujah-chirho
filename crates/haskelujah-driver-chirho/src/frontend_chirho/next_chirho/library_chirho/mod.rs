@@ -8,8 +8,9 @@ use sha2::{Digest, Sha256};
 pub(super) mod backend_chirho;
 #[path = "source_chirho/boundaries_chirho.rs"]
 mod boundaries_chirho;
-#[path = "source_chirho/prologue_chirho.rs"]
-mod prologue_chirho;
+#[path = "source_chirho/cpp_chirho.rs"]
+mod cpp_chirho;
+mod io_chirho;
 #[path = "source_chirho/retained_pragmas_chirho.rs"]
 mod retained_pragmas_chirho;
 #[path = "source_chirho/wired_chirho.rs"]
@@ -29,7 +30,8 @@ pub(super) const LICENSE_CHIRHO: &str = include_str!("vendor-chirho/ghc-internal
 
 pub(super) struct SourceManifestChirho {
     pub ghc_version_chirho: &'static str,
-    pub facade_prologue_chirho: Option<prologue_chirho::FacadePrologueChirho>,
+    pub cpp_chirho: Option<cpp_chirho::SourceCppChirho>,
+    pub exports_chirho: Option<&'static str>,
     pub module_chirho: &'static str,
     pub upstream_path_chirho: &'static str,
     pub sha256_chirho: &'static str,
@@ -41,7 +43,8 @@ pub(super) struct SourceManifestChirho {
 }
 const TUPLE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ghc_version_chirho: "9.14.1",
-    facade_prologue_chirho: None,
+    exports_chirho: None,
+    cpp_chirho: None,
     module_chirho: "GHC.Internal.Data.Tuple",
     upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Data/Tuple.hs",
     sha256_chirho: "97658f1c5b9be7910c23480641fb8f1aedbdbe96d0e2d68b5c6106aa48e7a7ad",
@@ -53,7 +56,8 @@ const TUPLE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
 };
 const NUM_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ghc_version_chirho: "9.14.1",
-    facade_prologue_chirho: None,
+    exports_chirho: None,
+    cpp_chirho: None,
     module_chirho: NUM_MODULE_CHIRHO,
     upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Num.hs",
     sha256_chirho: "a35a0fac5e44dde385bc98024d85a82924dac33c59de0996c9978e4295e4077a",
@@ -65,7 +69,8 @@ const NUM_CHIRHO: SourceManifestChirho = SourceManifestChirho {
 };
 const INTEGER_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ghc_version_chirho: "9.14.1",
-    facade_prologue_chirho: None,
+    exports_chirho: None,
+    cpp_chirho: None,
     module_chirho: INTEGER_MODULE_CHIRHO,
     upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Bignum/Integer.hs",
     sha256_chirho: "1f8ec2a8e12ecbab7eb0b59f249fae663d8066f2fb14224177a4538653bb17f4",
@@ -94,7 +99,8 @@ const INTEGER_CHIRHO: SourceManifestChirho = SourceManifestChirho {
 
 const CLASSES_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ghc_version_chirho: "9.14.1",
-    facade_prologue_chirho: None,
+    exports_chirho: None,
+    cpp_chirho: None,
     module_chirho: CLASSES_MODULE_CHIRHO,
     upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Classes.hs",
     sha256_chirho: "9f07eab1df0c2c9892ba5b8e35236e45868f738cb6a755234a7c49e70fb150cd",
@@ -127,7 +133,8 @@ const WIRED_CLASSES_CHIRHO: &[WiredNameChirho] = &[
 ];
 const BASE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ghc_version_chirho: "9.14.1",
-    facade_prologue_chirho: None,
+    exports_chirho: None,
+    cpp_chirho: None,
     module_chirho: BASE_MODULE_CHIRHO,
     upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Base.hs",
     sha256_chirho: "bc38ea9356f90aeb38298ef1269fbdc2dee433528374948375da112b273a89e2",
@@ -149,9 +156,10 @@ const BASE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
 };
 const SHOW_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ghc_version_chirho: "9.14.1",
-    facade_prologue_chirho: Some(prologue_chirho::FacadePrologueChirho {
-        span_chirho: (176, 574),
-        header_end_chirho: 1855,
+    exports_chirho: None,
+    cpp_chirho: Some(cpp_chirho::SourceCppChirho {
+        header_span_chirho: (1045, 1496),
+        include_premise_chirho: true,
     }),
     module_chirho: SHOW_MODULE_CHIRHO,
     upstream_path_chirho: "libraries/ghc-internal/src/GHC/Internal/Show.hs",
@@ -187,7 +195,7 @@ pub(super) fn manifest_chirho(module_chirho: &str) -> Option<&'static SourceMani
         CLASSES_MODULE_CHIRHO => Some(&CLASSES_CHIRHO),
         BASE_MODULE_CHIRHO => Some(&BASE_CHIRHO),
         SHOW_MODULE_CHIRHO => Some(&SHOW_CHIRHO),
-        _ => None,
+        _ => io_chirho::manifest_chirho(module_chirho),
     }
 }
 fn verify_source_chirho(
@@ -218,16 +226,23 @@ impl SourceManifestChirho {
     }
 
     pub(super) fn render_chirho(&self) -> Result<RenderedSourceChirho, NextErrorChirho> {
+        if self.module_chirho == io_chirho::HANDLE_TEXT_CHIRHO {
+            io_chirho::validate_buffer_chirho()?;
+        }
         verify_source_chirho(
             self.bytes_chirho,
             self.sha256_chirho,
             self.upstream_path_chirho,
             self.ghc_version_chirho,
         )?;
-        prologue_chirho::validate_chirho(self)?;
+        cpp_chirho::validate_chirho(self)?;
+        let exports_chirho = self
+            .exports_chirho
+            .map(|names_chirho| format!(" ({names_chirho})"))
+            .unwrap_or_default();
         let mut source_chirho = format!(
-            "{{-# LANGUAGE Haskell2010, NoImplicitPrelude #-}}\nmodule {} where\n{}",
-            self.module_chirho, self.imports_chirho
+            "{{-# LANGUAGE Haskell2010, NoImplicitPrelude #-}}\nmodule {}{} where\n{}",
+            self.module_chirho, exports_chirho, self.imports_chirho
         );
         let mut previous_chirho = 0;
         let mut retained_pragmas_chirho = std::collections::BTreeSet::new();

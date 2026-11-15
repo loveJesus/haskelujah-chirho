@@ -156,3 +156,31 @@ pub(super) fn link_chirho(
         provenance_chirho: Default::default(),
     })
 }
+
+/// Fresh entry IDs reuse the linker's bounded binder inventory.
+pub(in crate::next_chirho) fn entry_ids_chirho(
+    module_chirho: &CoreModuleChirho,
+) -> Result<[CoreIdChirho; 3], NextErrorChirho> {
+    let mut ids_chirho = BTreeSet::new();
+    let mut left_chirho = 4 << 20;
+    for binding_chirho in &module_chirho.bindings_chirho {
+        charge_chirho(&mut left_chirho)?;
+        ids_chirho.insert(binding_chirho.binder_chirho.id_chirho);
+        collect_binders_chirho(
+            &binding_chirho.rhs_chirho,
+            &mut ids_chirho,
+            &mut left_chirho,
+        )?;
+    }
+    let mut next_chirho = ids_chirho.last().map_or(Ok(0), |id_chirho| {
+        id_chirho
+            .0
+            .checked_add(1)
+            .ok_or_else(|| resource_chirho("IO entry id overflow"))
+    })?;
+    Ok([
+        fresh_chirho(&mut next_chirho)?,
+        fresh_chirho(&mut next_chirho)?,
+        fresh_chirho(&mut next_chirho)?,
+    ])
+}

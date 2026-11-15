@@ -153,6 +153,7 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
                         "%next:compiler:GHC.Internal.Bignum.Integer:Integer"
                     }
                     TyConChirho::ListChirho => "[]",
+                    TyConChirho::IOChirho => "%next:io-type-constructor-chirho",
                     TyConChirho::AnyChirho => "%next:zonked-any:TypeChirho",
                     TyConChirho::DeclaredChirho(name_chirho) => {
                         let info_chirho =
@@ -186,10 +187,26 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
                 self.walk_chirho(*argument_chirho, depth_chirho + 1)?,
                 self.walk_chirho(*result_chirho, depth_chirho + 1)?,
             ),
-            TyNodeChirho::AppChirho(function_chirho, argument_chirho) => CoreTypeChirho::AppChirho(
-                Box::new(self.walk_chirho(*function_chirho, depth_chirho + 1)?),
-                Box::new(self.walk_chirho(*argument_chirho, depth_chirho + 1)?),
-            ),
+            TyNodeChirho::AppChirho(function_chirho, argument_chirho) => {
+                if matches!(
+                    arena_chirho.node_chirho(arena_chirho.resolve_chirho(*function_chirho)?)?,
+                    TyNodeChirho::ConChirho(TyConChirho::IOChirho)
+                ) {
+                    self.reserve_term_chirho()?;
+                    self.reserve_term_chirho()?;
+                    CoreTypeChirho::fun_chirho(
+                        super::io_chirho::world_type_chirho(),
+                        super::io_chirho::result_type_chirho(
+                            self.walk_chirho(*argument_chirho, depth_chirho + 1)?,
+                        ),
+                    )
+                } else {
+                    CoreTypeChirho::AppChirho(
+                        Box::new(self.walk_chirho(*function_chirho, depth_chirho + 1)?),
+                        Box::new(self.walk_chirho(*argument_chirho, depth_chirho + 1)?),
+                    )
+                }
+            }
             TyNodeChirho::TupleChirho(items_chirho) => CoreTypeChirho::TupleChirho(
                 items_chirho
                     .iter()

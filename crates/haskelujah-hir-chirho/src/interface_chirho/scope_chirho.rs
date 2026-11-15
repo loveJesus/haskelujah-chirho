@@ -93,6 +93,16 @@ impl LowerChirho<'_> {
                 import_chirho.span_chirho,
             )?;
             if let Some(members_chirho) = members_chirho {
+                if interface_chirho
+                    .opaque_data_chirho
+                    .contains_key(original_chirho)
+                    && !matches!(members_chirho, ExportMembersChirho::NoneChirho)
+                {
+                    return Err(self.error_chirho(
+                        "opaque source constructors are present but withheld",
+                        import_chirho.span_chirho,
+                    ));
+                }
                 let requested_chirho = match members_chirho {
                     ExportMembersChirho::NoneChirho => continue,
                     ExportMembersChirho::AllChirho => None,

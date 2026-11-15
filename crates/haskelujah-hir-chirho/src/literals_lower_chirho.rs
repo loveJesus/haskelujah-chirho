@@ -41,6 +41,12 @@ impl LowerChirho<'_> {
                 self.imported_names_chirho
                     .get(&original_chirho)
                     .copied()
+                    // Language seeds share this identity index but cannot prove a checked selector.
+                    .filter(|id_chirho| {
+                        self.names_chirho[id_chirho.0 as usize]
+                            .wired_chirho
+                            .is_none()
+                    })
                     .ok_or_else(|| {
                         self.error_chirho(
                             "known numeric selector has no checked defining-unit interface",

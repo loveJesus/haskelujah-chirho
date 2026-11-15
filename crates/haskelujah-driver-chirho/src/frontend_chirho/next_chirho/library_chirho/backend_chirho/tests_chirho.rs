@@ -225,6 +225,90 @@ fn show_only_core_refuses_every_unsupported_native_bridge_chirho() {
 
 fn native_refusal_chirho(name_chirho: &str) {
     use haskelujah_core_chirho::expr_chirho::{CoreExprChirho, CoreLitChirho};
+    native_expression_refusal_chirho(CoreExprChirho::PrimOpChirho {
+        name_chirho: name_chirho.into(),
+        args_chirho: vec![
+            CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
+            CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(2)),
+        ],
+    });
+}
+
+#[test]
+fn stdout_without_a_primop_refuses_every_unsupported_native_bridge_chirho() {
+    native_expression_refusal_chirho(haskelujah_core_chirho::CoreExprChirho::ConAppChirho {
+        con_name_chirho: haskelujah_runtime_chirho::io_chirho::STDOUT_KEY_CHIRHO.into(),
+        args_chirho: Vec::new(),
+    });
+}
+
+#[test]
+fn io_leaves_refuse_every_unsupported_native_bridge_chirho() {
+    for operation_chirho in [
+        haskelujah_runtime_chirho::io_chirho::IoOperationChirho::PREPARE_CHIRHO,
+        haskelujah_runtime_chirho::io_chirho::IoOperationChirho::APPEND_CHIRHO,
+        haskelujah_runtime_chirho::io_chirho::IoOperationChirho::FinishChirho,
+    ] {
+        native_refusal_chirho(operation_chirho.primitive_chirho());
+    }
+}
+
+#[test]
+fn opaque_handle_requires_the_defining_manifest_and_retains_withheld_children_chirho() {
+    use haskelujah_hir_chirho::*;
+    let module_chirho = "GHC.Internal.IO.Handle.Types";
+    let source_chirho = super::super::manifest_chirho(module_chirho)
+        .unwrap()
+        .source_chirho()
+        .unwrap();
+    let parsed_chirho = crate::next_chirho::parse_chirho::parse_chirho(
+        &source_chirho,
+        haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
+    )
+    .unwrap();
+    let mut policy_chirho = LoweringPolicyChirho {
+        completeness_chirho: CompletenessChirho::SliceChirho,
+        ..Default::default()
+    };
+    super::io_chirho::install_chirho(module_chirho, &mut policy_chirho);
+    let lower_chirho = |unit_chirho| {
+        lower_module_with_policy_chirho(
+            &parsed_chirho.module_chirho,
+            unit_chirho,
+            Default::default(),
+            &parsed_chirho.integer_literals_chirho,
+            &Default::default(),
+            &policy_chirho,
+        )
+    };
+    assert!(lower_chirho(UnitIdentityChirho::StandaloneHomeChirho).is_err());
+    let hir_chirho = lower_chirho(UnitIdentityChirho::CompilerChirho).unwrap();
+    assert_eq!(hir_chirho.data_chirho.len(), 1);
+    assert!(hir_chirho.data_chirho[0].constructors_chirho.is_empty());
+    let checked_chirho = haskelujah_tc_chirho::check_module_chirho(hir_chirho, 1 << 20).unwrap();
+    let interface_chirho =
+        haskelujah_tc_chirho::project_interface_chirho(&checked_chirho, &mut (1 << 20)).unwrap();
+    let withheld_chirho = &interface_chirho.opaque_data_chirho[&super::io_chirho::handle_chirho()];
+    assert_eq!(
+        withheld_chirho
+            .iter()
+            .map(|name_chirho| name_chirho.occurrence_chirho.as_str())
+            .collect::<Vec<_>>(),
+        ["FileHandle", "DuplexHandle"]
+    );
+    for source_chirho in [
+        "module HandleAbsenceChirho where\nimport GHC.Internal.IO.StdHandles (stdout)\nresultChirho = stdout == stdout\n",
+        "module HandleAbsenceChirho where\nimport GHC.Internal.IO.StdHandles (stdout)\nresultChirho = show stdout\n",
+        "module HandleAbsenceChirho where\nimport GHC.Internal.IO.Handle.Text (hPutStr')\nresultChirho = True\n",
+    ] {
+        assert_eq!(
+            check_source_chirho(source_chirho).unwrap_err().kind_chirho,
+            NextErrorKindChirho::UnsupportedChirho
+        );
+    }
+}
+
+fn native_expression_refusal_chirho(expression_chirho: haskelujah_core_chirho::CoreExprChirho) {
     let mut core_chirho = compile_source_chirho(
         "module IntOnlyChirho where\nresultChirho :: Int\nresultChirho = 3\n",
     )
@@ -240,13 +324,7 @@ fn native_refusal_chirho(name_chirho: &str) {
         })
         .unwrap()
         .clone();
-    binding_chirho.rhs_chirho = CoreExprChirho::PrimOpChirho {
-        name_chirho: name_chirho.into(),
-        args_chirho: vec![
-            CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(1)),
-            CoreExprChirho::LitChirho(CoreLitChirho::IntChirho(2)),
-        ],
-    };
+    binding_chirho.rhs_chirho = expression_chirho;
     core_chirho.bindings_chirho = vec![binding_chirho];
     assert!(
         !core_chirho.uses_primitive_chirho(

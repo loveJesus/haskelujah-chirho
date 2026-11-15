@@ -17,6 +17,8 @@ use super::{NextErrorChirho, NextErrorKindChirho, types_chirho::CoreTypesChirho}
 
 #[path = "classes_chirho.rs"]
 mod classes_chirho;
+#[path = "library_chirho/backend_chirho/io_core_chirho.rs"]
+mod io_bodies_chirho;
 #[path = "patterns_chirho.rs"]
 mod patterns_chirho;
 #[path = "library_chirho/backend_chirho/core_chirho.rs"]

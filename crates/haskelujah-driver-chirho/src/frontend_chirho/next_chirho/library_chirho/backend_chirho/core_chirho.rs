@@ -107,6 +107,23 @@ impl ElaboratorChirho<'_> {
             .names_chirho
             .get(declaration_chirho.name_chirho.0 as usize)
             .ok_or_else(|| error_chirho("primitive lost its defining name"))?;
+        if let Some(provider_chirho) =
+            backend_chirho::io_chirho::operation_chirho(&info_chirho.original_chirho())
+        {
+            if declaration_chirho.contract_chirho != provider_chirho.contract_chirho() {
+                return Err(error_chirho("IO primitive contract drift"));
+            }
+            let binder_chirho = self.binder_chirho(declaration_chirho.name_chirho)?;
+            let ty_chirho = self.types_chirho.copy_chirho(&binder_chirho.ty_chirho)?;
+            let rhs_chirho =
+                self.io_expression_chirho(ty_chirho, provider_chirho, info_chirho.span_chirho)?;
+            return Ok(CoreBindingChirho {
+                binder_chirho,
+                rhs_chirho,
+                is_rec_chirho: false,
+                inline_chirho: InlineAnnotationChirho::NoneChirho,
+            });
+        }
         let provider_chirho = backend_chirho::operation_chirho(&info_chirho.original_chirho())
             .ok_or_else(|| error_chirho("no backend body for original name"))?;
         if provider_chirho.contract_chirho() != declaration_chirho.contract_chirho {

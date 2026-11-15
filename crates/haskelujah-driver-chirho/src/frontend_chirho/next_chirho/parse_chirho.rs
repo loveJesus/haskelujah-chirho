@@ -9,6 +9,8 @@ use haskelujah_parser_chirho::{
     lexer_chirho::{LexerChirho, RawTokenKindChirho},
 };
 use haskelujah_span_chirho::FileIdChirho;
+#[path = "io_chirho/literals_chirho.rs"]
+mod literal_profile_chirho;
 use haskelujah_syntax_chirho::{cst_chirho::SyntaxKindChirho, green_chirho::GreenElementChirho};
 
 #[cfg(test)]
@@ -64,6 +66,20 @@ pub(super) fn parse_with_permitted_pragmas_chirho(
             NextErrorKindChirho::InvalidChirho,
             "lexical error",
         ));
+    }
+    for token_chirho in &tokens_chirho {
+        if matches!(
+            token_chirho.kind_chirho,
+            RawTokenKindChirho::StringLitChirho | RawTokenKindChirho::CharLitChirho
+        ) {
+            literal_profile_chirho::validate_chirho(
+                token_chirho
+                    .span_chirho
+                    .text_chirho(source_chirho)
+                    .unwrap_or(""),
+                token_chirho.kind_chirho == RawTokenKindChirho::StringLitChirho,
+            )?;
+        }
     }
     // The reused parser can retain a missing closing delimiter without an ErrorNode.
     // Balance actual lexer tokens, so comments and literal contents do not affect it.
@@ -213,11 +229,27 @@ pub(super) fn parse_with_permitted_pragmas_chirho(
             "parser did not retain the complete source",
         ));
     }
-    let parsed_chirho =
+    let mut parsed_chirho =
         haskelujah_parser_chirho::lower_chirho::lower_module_with_integer_literals_chirho(
             &green_chirho,
             file_chirho,
         );
+    if !tokens_chirho
+        .iter()
+        .any(|token_chirho| token_chirho.kind_chirho == RawTokenKindChirho::ModuleChirho)
+    {
+        // Haskell's implicit header exports only main, rather than every helper.
+        parsed_chirho.module_chirho.exports_chirho = Some(vec![
+            haskelujah_ast_chirho::module_chirho::ExportSpecChirho::VarChirho(
+                haskelujah_ast_chirho::name_chirho::NameChirho::RawChirho(
+                    haskelujah_ast_chirho::name_chirho::RawNameChirho::unqualified_chirho(
+                        "main",
+                        haskelujah_span_chirho::SpanChirho::DUMMY_CHIRHO,
+                    ),
+                ),
+            ),
+        ]);
+    }
     let represented_fixities_chirho = parsed_chirho
         .module_chirho
         .decls_chirho

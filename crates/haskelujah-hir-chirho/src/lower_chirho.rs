@@ -65,9 +65,11 @@ struct LowerChirho<'literals_chirho> {
     implicit_prelude_chirho: bool,
     prelude_exports_chirho: Option<std::sync::Arc<PreludeExportsChirho>>,
     prelude_scope_chirho: std::collections::BTreeMap<(String, NamespaceChirho), NameIdChirho>,
+    // Canonical identity index for language seeds and checked imports; it supplies no lexical scope.
     imported_names_chirho: std::collections::BTreeMap<OriginalNameChirho, NameIdChirho>,
     import_scope_chirho: HashMap<(String, NamespaceChirho), Vec<NameIdChirho>>,
     imported_classes_chirho: Vec<ClassDeclChirho>,
+    data_names_chirho: HashSet<NameIdChirho>,
     synonym_names_chirho: HashSet<NameIdChirho>,
     instance_body_policy_chirho:
         std::collections::BTreeMap<DeclaredBodyKeyChirho, PrimitiveContractChirho>,
@@ -249,6 +251,7 @@ impl LowerChirho<'_> {
                     Some(WiredNameChirho::CharChirho) => SurfaceTypeChirho::CharChirho,
                     Some(WiredNameChirho::IntegerChirho) => SurfaceTypeChirho::IntegerChirho,
                     Some(WiredNameChirho::IntChirho) => SurfaceTypeChirho::IntChirho,
+                    Some(WiredNameChirho::IOChirho) => SurfaceTypeChirho::IOChirho,
                     _ if self.synonym_names_chirho.contains(&id_chirho) => {
                         SurfaceTypeChirho::SynonymChirho(id_chirho)
                     }
@@ -548,6 +551,7 @@ pub fn lower_module_with_policy_chirho(
         imported_names_chirho: Default::default(),
         import_scope_chirho: Default::default(),
         imported_classes_chirho: Vec::new(),
+        data_names_chirho: HashSet::new(),
         synonym_names_chirho: HashSet::new(),
         instance_body_policy_chirho: policy_chirho.instance_bodies_chirho.clone(),
         declared_bodies_chirho: Default::default(),
@@ -622,12 +626,6 @@ pub fn lower_module_with_policy_chirho(
             module_chirho.span_chirho,
         ));
     }
-    let imports_chirho = lower_chirho.import_interfaces_chirho(
-        module_chirho,
-        interfaces_chirho,
-        &policy_chirho.implicit_interfaces_chirho,
-    )?;
-    lower_chirho.install_prelude_chirho(module_chirho, policy_chirho, &imports_chirho)?;
     if !policy_chirho.wired_imports_chirho.is_empty()
         && lower_chirho.unit_chirho != UnitIdentityChirho::CompilerChirho
     {
@@ -644,6 +642,7 @@ pub fn lower_module_with_policy_chirho(
             WiredNameChirho::BoolChirho,
             WiredNameChirho::CharChirho,
             WiredNameChirho::IntChirho,
+            WiredNameChirho::IOChirho,
             WiredNameChirho::TrueChirho,
             WiredNameChirho::FalseChirho,
             WiredNameChirho::OrderingChirho,
@@ -655,24 +654,29 @@ pub fn lower_module_with_policy_chirho(
     for wired_chirho in wired_scope_chirho {
         let text_chirho = wired_chirho.occurrence_chirho();
         let namespace_chirho = wired_chirho.namespace_chirho();
-        let id_chirho = lower_chirho.bind_chirho(
-            text_chirho,
-            namespace_chirho,
-            SpanChirho::DUMMY_CHIRHO,
-            false,
-            Some(wired_chirho),
-        )?;
+        let id_chirho = lower_chirho.bind_wired_chirho(wired_chirho)?;
         lower_chirho
             .import_scope_chirho
             .entry((text_chirho.into(), namespace_chirho))
             .or_default()
             .push(id_chirho);
     }
-    let wired_exports_chirho = lower_chirho.install_primitive_declarations_chirho(policy_chirho)?;
+    // Seed defining declarations before imports can intern another ID for the same original.
+    let wired_exports_chirho = lower_chirho.install_wired_declarations_chirho(policy_chirho)?;
+    let imports_chirho = lower_chirho.import_interfaces_chirho(
+        module_chirho,
+        interfaces_chirho,
+        &policy_chirho.implicit_interfaces_chirho,
+    )?;
+    lower_chirho.install_prelude_chirho(module_chirho, policy_chirho, &imports_chirho)?;
+    lower_chirho.install_primitive_declarations_chirho(policy_chirho)?;
     lower_chirho.validate_body_policy_chirho()?;
     lower_chirho.predeclare_type_headers_chirho(&module_chirho.decls_chirho)?;
     let synonyms_chirho = lower_chirho.synonym_declarations_chirho(&module_chirho.decls_chirho)?;
-    let data_chirho = lower_chirho.data_declarations_chirho(&module_chirho.decls_chirho)?;
+    let data_chirho = lower_chirho.data_declarations_chirho(
+        &module_chirho.decls_chirho,
+        &policy_chirho.opaque_data_chirho,
+    )?;
     let classes_chirho =
         lower_chirho.class_declarations_chirho(&module_chirho.decls_chirho, &data_chirho)?;
     let mut signatures_chirho = HashMap::new();

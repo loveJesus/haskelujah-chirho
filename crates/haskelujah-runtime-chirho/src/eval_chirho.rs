@@ -27,6 +27,7 @@ mod int_tests_chirho;
 mod integer_chirho;
 #[cfg(test)]
 mod integer_tests_chirho;
+mod io_chirho;
 mod primitive_operands_chirho;
 mod returns_chirho;
 mod show_number_chirho;
@@ -302,6 +303,7 @@ pub struct MachineChirho {
     pub con_tags_chirho: HashMap<String, u16>,
     /// Captured I/O output (for testing and sandboxed execution).
     pub io_output_chirho: String,
+    pub next_io_chirho: crate::io_chirho::OutputStateChirho,
     /// Stdin input feed (for testing). Lines consumed by getLine/getChar.
     pub io_input_chirho: std::collections::VecDeque<String>,
     /// IORef storage: mutable reference cells indexed by ID.
@@ -330,6 +332,7 @@ impl MachineChirho {
             last_gc_stats_chirho: None,
             con_tags_chirho: HashMap::new(),
             io_output_chirho: String::new(),
+            next_io_chirho: Default::default(),
             io_input_chirho: std::collections::VecDeque::new(),
             iorefs_chirho: HashMap::new(),
             next_ioref_chirho: 0,
@@ -1605,6 +1608,9 @@ impl MachineChirho {
         op_chirho: PrimOpKindChirho,
         args_chirho: &[ValueChirho],
     ) -> Result<ValueChirho, EvalErrorChirho> {
+        if let PrimOpKindChirho::NextIoChirho(operation_chirho) = op_chirho {
+            return self.eval_next_io_chirho(operation_chirho, args_chirho);
+        }
         if let PrimOpKindChirho::ShowNumberChirho(operation_chirho) = op_chirho {
             return self.eval_show_number_chirho(operation_chirho, args_chirho);
         }

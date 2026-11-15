@@ -12,6 +12,7 @@ use std::{
 };
 mod graph_chirho;
 mod link_chirho;
+pub(super) use link_chirho::entry_ids_chirho;
 mod rename_chirho;
 #[cfg(test)]
 mod synonym_tests_chirho;

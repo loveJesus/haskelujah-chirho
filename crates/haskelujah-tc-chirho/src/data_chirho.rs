@@ -133,6 +133,10 @@ impl CheckedModuleChirho {
                 .solver_chirho
                 .arena_chirho
                 .con_chirho(TyConChirho::IntegerChirho)?,
+            SurfaceTypeChirho::IOChirho => self
+                .solver_chirho
+                .arena_chirho
+                .con_chirho(TyConChirho::IOChirho)?,
             SurfaceTypeChirho::IntChirho => self
                 .solver_chirho
                 .arena_chirho

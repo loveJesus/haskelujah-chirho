@@ -99,7 +99,7 @@ fn main_requires_the_real_io_contract_and_library_entry_is_explicit_chirho() {
         check_source_chirho("main = True\n")
             .unwrap_err()
             .kind_chirho,
-        NextErrorKindChirho::UnsupportedChirho
+        NextErrorKindChirho::TypeChirho
     );
     assert_eq!(
         eval_binding_chirho(CHOICE_CHIRHO, "absentChirho", 1_000)

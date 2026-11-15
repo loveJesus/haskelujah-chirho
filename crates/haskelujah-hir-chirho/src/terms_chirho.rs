@@ -16,6 +16,7 @@ pub enum SurfaceTypeChirho {
     CharChirho,
     IntegerChirho,
     IntChirho,
+    IOChirho,
     DeclaredChirho(NameIdChirho),
     /// Retain every supplied argument until the checker validates kinds and saturation.
     SynonymChirho(NameIdChirho),
@@ -95,6 +96,8 @@ pub struct DataDeclChirho {
     pub name_chirho: NameIdChirho,
     pub parameters_chirho: Vec<NameIdChirho>,
     pub constructors_chirho: Vec<ConstructorChirho>,
+    /// Complete source constructors are present but deliberately unavailable.
+    pub withheld_constructors_chirho: Vec<crate::OriginalNameChirho>,
 }
 
 #[derive(Debug, Clone)]

@@ -23,6 +23,7 @@ fn builtin_out_chirho(con_chirho: TyConChirho) -> Option<InterfaceBuiltinChirho>
         TyConChirho::CharChirho => InterfaceBuiltinChirho::CharChirho,
         TyConChirho::IntegerChirho => InterfaceBuiltinChirho::IntegerChirho,
         TyConChirho::IntChirho => InterfaceBuiltinChirho::IntChirho,
+        TyConChirho::IOChirho => InterfaceBuiltinChirho::IOChirho,
         TyConChirho::ListChirho => InterfaceBuiltinChirho::ListChirho,
         TyConChirho::AnyChirho => InterfaceBuiltinChirho::AnyChirho,
         _ => return None,
@@ -37,6 +38,7 @@ fn builtin_in_chirho(con_chirho: InterfaceBuiltinChirho) -> TyConChirho {
         InterfaceBuiltinChirho::CharChirho => TyConChirho::CharChirho,
         InterfaceBuiltinChirho::IntegerChirho => TyConChirho::IntegerChirho,
         InterfaceBuiltinChirho::IntChirho => TyConChirho::IntChirho,
+        InterfaceBuiltinChirho::IOChirho => TyConChirho::IOChirho,
         InterfaceBuiltinChirho::ListChirho => TyConChirho::ListChirho,
         InterfaceBuiltinChirho::AnyChirho => TyConChirho::AnyChirho,
     }

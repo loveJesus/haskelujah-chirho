@@ -177,6 +177,7 @@ pub fn project_interface_chirho(
         sliced_units_chirho: module_chirho.sliced_units_chirho.clone(),
         wired_types_chirho: BTreeMap::new(),
         data_chirho: BTreeMap::new(),
+        opaque_data_chirho: BTreeMap::new(),
         synonyms_chirho: BTreeMap::new(),
         values_chirho: BTreeMap::new(),
         classes_chirho: BTreeMap::new(),
@@ -195,6 +196,10 @@ pub fn project_interface_chirho(
             &iface_chirho.wired_types_chirho,
         )?;
         merge_chirho(&mut result_chirho.data_chirho, &iface_chirho.data_chirho)?;
+        merge_chirho(
+            &mut result_chirho.opaque_data_chirho,
+            &iface_chirho.opaque_data_chirho,
+        )?;
         merge_chirho(
             &mut result_chirho.synonyms_chirho,
             &iface_chirho.synonyms_chirho,
@@ -229,6 +234,21 @@ pub fn project_interface_chirho(
     }
     for declaration_chirho in &module_chirho.data_chirho {
         let name_chirho = projection_chirho.original_chirho(declaration_chirho.name_chirho)?;
+        if !declaration_chirho.withheld_constructors_chirho.is_empty() {
+            projection_chirho.charge_chirho(
+                declaration_chirho
+                    .withheld_constructors_chirho
+                    .iter()
+                    .map(|name_chirho| {
+                        name_chirho.module_chirho.len() + name_chirho.occurrence_chirho.len() + 1
+                    })
+                    .sum(),
+            )?;
+            result_chirho.opaque_data_chirho.insert(
+                name_chirho.clone(),
+                declaration_chirho.withheld_constructors_chirho.clone(),
+            );
+        }
         result_chirho
             .data_chirho
             .insert(name_chirho, declaration_chirho.parameters_chirho.len());
@@ -330,11 +350,14 @@ pub fn project_interface_chirho(
     }
     for id_chirho in &module_chirho.exports_chirho {
         let info_chirho = &module_chirho.names_chirho[id_chirho.0 as usize];
-        if info_chirho.wired_chirho == Some(haskelujah_hir_chirho::WiredNameChirho::IntegerChirho) {
-            result_chirho.wired_types_chirho.insert(
-                info_chirho.original_chirho(),
-                haskelujah_hir_chirho::WiredNameChirho::IntegerChirho,
-            );
+        if let Some(
+            wired_chirho @ (haskelujah_hir_chirho::WiredNameChirho::IntegerChirho
+            | haskelujah_hir_chirho::WiredNameChirho::IOChirho),
+        ) = info_chirho.wired_chirho
+        {
+            result_chirho
+                .wired_types_chirho
+                .insert(info_chirho.original_chirho(), wired_chirho);
         }
         result_chirho
             .exports_chirho
@@ -346,12 +369,26 @@ pub fn project_interface_chirho(
 /// Size accounting is iterative so a pre-existing tree cannot bypass the graph allowance.
 fn interface_weight_chirho(interface_chirho: &InterfaceChirho) -> Result<usize, TcErrorChirho> {
     let mut count_chirho = interface_chirho
-        .fixities_chirho
-        .keys()
-        .map(|name_chirho| {
-            name_chirho.module_chirho.len() + name_chirho.occurrence_chirho.len() + 2
+        .opaque_data_chirho
+        .iter()
+        .map(|(owner_chirho, names_chirho)| {
+            owner_chirho.module_chirho.len()
+                + owner_chirho.occurrence_chirho.len()
+                + names_chirho
+                    .iter()
+                    .map(|name_chirho| {
+                        name_chirho.module_chirho.len() + name_chirho.occurrence_chirho.len() + 1
+                    })
+                    .sum::<usize>()
         })
         .sum::<usize>()
+        + interface_chirho
+            .fixities_chirho
+            .keys()
+            .map(|name_chirho| {
+                name_chirho.module_chirho.len() + name_chirho.occurrence_chirho.len() + 2
+            })
+            .sum::<usize>()
         + interface_chirho
             .wired_types_chirho
             .keys()

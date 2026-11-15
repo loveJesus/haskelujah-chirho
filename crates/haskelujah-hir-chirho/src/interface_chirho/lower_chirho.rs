@@ -207,6 +207,9 @@ impl LowerChirho<'_> {
             InterfaceTypeChirho::BuiltinChirho(InterfaceBuiltinChirho::IntegerChirho) => {
                 SurfaceTypeChirho::IntegerChirho
             }
+            InterfaceTypeChirho::BuiltinChirho(InterfaceBuiltinChirho::IOChirho) => {
+                SurfaceTypeChirho::IOChirho
+            }
             InterfaceTypeChirho::BuiltinChirho(InterfaceBuiltinChirho::IntChirho) => {
                 SurfaceTypeChirho::IntChirho
             }
@@ -350,12 +353,18 @@ impl LowerChirho<'_> {
                 self.synonym_names_chirho
                     .insert(names_chirho[original_chirho]);
             }
+            for original_chirho in interface_chirho.data_chirho.keys() {
+                let id_chirho = names_chirho[original_chirho];
+                if !self.data_names_chirho.contains(&id_chirho) {
+                    self.charge_names_chirho(std::mem::size_of::<NameIdChirho>(), span_chirho)?;
+                    self.data_names_chirho.insert(id_chirho);
+                }
+            }
             for (original_chirho, wired_chirho) in &interface_chirho.wired_types_chirho {
-                if *wired_chirho != WiredNameChirho::IntegerChirho
-                    || original_chirho.unit_chirho != UnitIdentityChirho::CompilerChirho
-                    || original_chirho.module_chirho != "GHC.Internal.Bignum.Integer"
-                    || original_chirho.namespace_chirho != NamespaceChirho::TypeChirho
-                    || original_chirho.occurrence_chirho != "Integer"
+                if !matches!(
+                    wired_chirho,
+                    WiredNameChirho::IntegerChirho | WiredNameChirho::IOChirho
+                ) || *original_chirho != wired_chirho.original_chirho()
                 {
                     return Err(self
                         .invalid_class_chirho("invalid wired declaration identity", span_chirho));
@@ -469,9 +478,16 @@ impl LowerChirho<'_> {
                     } => {
                         let id_chirho =
                             self.lookup_chirho(name_chirho, NamespaceChirho::TypeChirho)?;
-                        if !self.synonym_names_chirho.contains(&id_chirho) {
+                        let wired_chirho = self.names_chirho[id_chirho.0 as usize].wired_chirho;
+                        if !self.synonym_names_chirho.contains(&id_chirho)
+                            && !self.data_names_chirho.contains(&id_chirho)
+                            && !matches!(
+                                wired_chirho,
+                                Some(WiredNameChirho::IntegerChirho | WiredNameChirho::IOChirho)
+                            )
+                        {
                             return Err(self.error_chirho(
-                                "next explicit type exports currently require a checked synonym",
+                                "next abstract type exports require a checked data, synonym or supported wired declaration",
                                 module_chirho.span_chirho,
                             ));
                         }
@@ -479,7 +495,7 @@ impl LowerChirho<'_> {
                     }
                     _ => {
                         return Err(self.error_chirho(
-                            "next supports value and plain synonym exports only",
+                            "next supports value and checked abstract type exports only",
                             module_chirho.span_chirho,
                         ));
                     }

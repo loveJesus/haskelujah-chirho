@@ -38,6 +38,7 @@ pub enum TyConChirho {
     /// GHC's wired Integer, distinct from any same-spelled source declaration.
     IntegerChirho,
     IntChirho,
+    IOChirho,
     ListChirho,
     /// Internal final-zonking image; source never resolves this constructor by spelling.
     AnyChirho,
@@ -379,7 +380,7 @@ impl TypeArenaChirho {
             TyNodeChirho::RigidChirho(rigid_chirho) => {
                 Ok(self.rigid_cell_chirho(rigid_chirho)?.kind_chirho)
             }
-            TyNodeChirho::ConChirho(TyConChirho::ListChirho) => {
+            TyNodeChirho::ConChirho(TyConChirho::ListChirho | TyConChirho::IOChirho) => {
                 let type_chirho = self.con_chirho(TyConChirho::TypeChirho)?;
                 self.intern_chirho(TyNodeChirho::FunChirho(type_chirho, type_chirho))
             }

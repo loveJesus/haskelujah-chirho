@@ -406,7 +406,7 @@ pub(crate) fn closed_contract_chirho(
     checked_chirho: &mut CheckedModuleChirho,
     contract_chirho: &PrimitiveContractChirho,
 ) -> Result<TyChirho, TcErrorChirho> {
-    if !(1..=3).contains(&contract_chirho.arity_chirho) {
+    if !(0..=3).contains(&contract_chirho.arity_chirho) {
         return Err(invalid_interface_chirho(
             "unsupported primitive contract arity",
         ));
@@ -424,8 +424,12 @@ pub(crate) fn closed_contract_chirho(
                 | InterfaceBuiltinChirho::CharChirho
                 | InterfaceBuiltinChirho::IntegerChirho
                 | InterfaceBuiltinChirho::IntChirho
+                | InterfaceBuiltinChirho::IOChirho
                 | InterfaceBuiltinChirho::ListChirho,
             ) => {}
+            InterfaceTypeChirho::DeclaredChirho(original_chirho)
+                if original_chirho.unit_chirho == UnitIdentityChirho::CompilerChirho => {}
+            InterfaceTypeChirho::TupleChirho(items_chirho) if items_chirho.is_empty() => {}
             InterfaceTypeChirho::FunChirho(left_chirho, right_chirho)
             | InterfaceTypeChirho::AppChirho(left_chirho, right_chirho) => {
                 work_chirho.extend([left_chirho.as_ref(), right_chirho.as_ref()])
@@ -437,9 +441,23 @@ pub(crate) fn closed_contract_chirho(
             }
         }
     }
+    let mut names_chirho = BTreeMap::new();
+    for (index_chirho, info_chirho) in checked_chirho.module_chirho.names_chirho.iter().enumerate()
+    {
+        checked_chirho
+            .solver_chirho
+            .arena_chirho
+            .reserve_auxiliary_chirho()?;
+        if info_chirho.namespace_chirho == NamespaceChirho::TypeChirho {
+            names_chirho.insert(
+                info_chirho.original_chirho(),
+                NameIdChirho(index_chirho as u32),
+            );
+        }
+    }
     let mut importer_chirho = ReinternChirho {
         checked_chirho,
-        names_chirho: BTreeMap::new(),
+        names_chirho,
     };
     let ty_chirho = importer_chirho.ty_chirho(&contract_chirho.ty_chirho, &[], 0)?;
     let mut result_chirho = ty_chirho;

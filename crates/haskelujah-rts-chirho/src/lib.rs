@@ -64,3 +64,5 @@ pub mod integer_arithmetic_chirho;
 pub mod integer_literal_chirho;
 #[path = "numeric_chirho/show_number_chirho.rs"]
 pub mod show_number_chirho;
+
+pub mod io_chirho;

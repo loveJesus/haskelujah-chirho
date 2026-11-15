@@ -34,6 +34,8 @@ pub struct LoweringPolicyChirho {
     pub implicit_interfaces_chirho: Vec<std::sync::Arc<InterfaceChirho>>,
     /// Driver manifests may admit checked signatures with explicitly supplied backend bodies.
     pub primitive_bindings_chirho: BTreeMap<OriginalNameChirho, crate::PrimitiveContractChirho>,
+    /// Only a defining-unit manifest may replace a complete source layout with its opaque head.
+    pub opaque_data_chirho: BTreeMap<OriginalNameChirho, Vec<String>>,
     pub instance_bodies_chirho:
         BTreeMap<crate::DeclaredBodyKeyChirho, crate::PrimitiveContractChirho>,
     /// Wired language names imported by a driver-admitted compiler module.
@@ -53,6 +55,7 @@ pub enum InterfaceBuiltinChirho {
     CharChirho,
     IntegerChirho,
     IntChirho,
+    IOChirho,
     ListChirho,
     AnyChirho,
 }
@@ -136,6 +139,7 @@ pub struct InterfaceChirho {
     /// Driver-provided wired declarations, never inferred from an exported spelling.
     pub wired_types_chirho: BTreeMap<OriginalNameChirho, crate::WiredNameChirho>,
     pub data_chirho: BTreeMap<OriginalNameChirho, usize>,
+    pub opaque_data_chirho: BTreeMap<OriginalNameChirho, Vec<OriginalNameChirho>>,
     pub synonyms_chirho: BTreeMap<OriginalNameChirho, InterfaceSynonymChirho>,
     pub values_chirho: BTreeMap<OriginalNameChirho, InterfaceValueChirho>,
     pub classes_chirho: BTreeMap<OriginalNameChirho, InterfaceClassChirho>,

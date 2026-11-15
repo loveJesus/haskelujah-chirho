@@ -68,6 +68,72 @@ pub struct CheckedModuleChirho {
 }
 
 impl CheckedModuleChirho {
+    /// Main's IO equality precedes numeric defaulting. Defaulting its result
+    /// first could choose Integer before the entry's required IO type is known.
+    fn main_contract_chirho(&mut self) -> Result<(), TcErrorChirho> {
+        if self.module_chirho.module_chirho != "Main"
+            || self.module_chirho.unit_chirho
+                != haskelujah_hir_chirho::UnitIdentityChirho::StandaloneHomeChirho
+        {
+            return Ok(());
+        }
+        let name_chirho = self
+            .module_chirho
+            .exports_chirho
+            .iter()
+            .copied()
+            .find(|name_chirho| {
+                let info_chirho = &self.module_chirho.names_chirho[name_chirho.0 as usize];
+                info_chirho.occurrence_chirho == "main"
+                    && info_chirho.namespace_chirho
+                        == haskelujah_hir_chirho::NamespaceChirho::ValueChirho
+            })
+            .ok_or_else(|| {
+                TcErrorChirho::new_chirho(
+                    TcErrorKindChirho::InvalidReferenceChirho,
+                    "Main must export main",
+                )
+            })?;
+        if !self
+            .module_chirho
+            .bindings_chirho
+            .iter()
+            .any(|binding_chirho| binding_chirho.name_chirho == name_chirho)
+        {
+            return Err(TcErrorChirho::new_chirho(
+                TcErrorKindChirho::UnsupportedChirho,
+                "re-exported main needs an original-name entry carrier",
+            ));
+        }
+        let scheme_chirho = self.schemes_chirho.get(&name_chirho).ok_or_else(|| {
+            TcErrorChirho::new_chirho(
+                TcErrorKindChirho::UnsupportedChirho,
+                "main has no checked binding scheme",
+            )
+        })?;
+        if !scheme_chirho.quantified_chirho.is_empty() || !scheme_chirho.context_chirho.is_empty() {
+            return Err(TcErrorChirho::new_chirho(
+                TcErrorKindChirho::UnsupportedChirho,
+                "polymorphic or constrained main is outside the first IO profile",
+            ));
+        }
+        let body_chirho = scheme_chirho.body_chirho;
+        let payload_chirho = self.fresh_chirho()?;
+        let constructor_chirho = self
+            .solver_chirho
+            .arena_chirho
+            .con_chirho(TyConChirho::IOChirho)?;
+        let expected_chirho = self
+            .solver_chirho
+            .arena_chirho
+            .intern_chirho(TyNodeChirho::AppChirho(constructor_chirho, payload_chirho))?;
+        self.solver_chirho
+            .arena_chirho
+            .kind_chirho(expected_chirho)?;
+        self.want_chirho(body_chirho, expected_chirho, SpanChirho::DUMMY_CHIRHO);
+        self.solver_chirho.solve_chirho()
+    }
+
     fn fresh_chirho(&mut self) -> Result<TyChirho, TcErrorChirho> {
         let kind_chirho = self
             .solver_chirho
@@ -352,6 +418,7 @@ pub fn check_module_chirho(
     }
     checked_chirho.module_chirho.instances_chirho = instances_chirho;
     checked_chirho.solver_chirho.solve_chirho()?;
+    checked_chirho.main_contract_chirho()?;
     checked_chirho.finish_dictionaries_chirho()?;
     // Monomorphic recursive occurrences re-apply their group's own type and dictionary binders.
     for (expression_chirho, name_chirho) in &checked_chirho.references_chirho {
