@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, HashMap};
 mod export_chirho;
 mod import_chirho;
 pub use export_chirho::project_interface_chirho;
-pub(crate) use import_chirho::closed_contract_chirho;
+pub(crate) use import_chirho::{closed_contract_chirho, instantiated_contract_chirho};
 
 fn invalid_interface_chirho(message_chirho: &str) -> TcErrorChirho {
     TcErrorChirho::new_chirho(TcErrorKindChirho::InvalidReferenceChirho, message_chirho)

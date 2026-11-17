@@ -14,10 +14,7 @@ impl CheckedModuleChirho {
         declarations_chirho: &[PrimitiveBindingChirho],
     ) -> Result<(), TcErrorChirho> {
         for declaration_chirho in declarations_chirho {
-            if !declaration_chirho
-                .signature_chirho
-                .binders_chirho
-                .is_empty()
+            if self.module_chirho.unit_chirho != UnitIdentityChirho::CompilerChirho
                 || !declaration_chirho
                     .signature_chirho
                     .context_chirho
@@ -29,9 +26,13 @@ impl CheckedModuleChirho {
                 declaration_chirho.name_chirho,
                 &declaration_chirho.signature_chirho,
             )?;
-            let expected_chirho = crate::interface_chirho::closed_contract_chirho(
+            let binders_chirho = self.schemes_chirho[&declaration_chirho.name_chirho]
+                .quantified_chirho
+                .clone();
+            let expected_chirho = crate::interface_chirho::instantiated_contract_chirho(
                 self,
                 &declaration_chirho.contract_chirho,
+                &binders_chirho,
             )?;
             if self.names_chirho[&declaration_chirho.name_chirho] != expected_chirho {
                 return Err(primitive_error_chirho());

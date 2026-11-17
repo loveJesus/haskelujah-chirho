@@ -29,6 +29,7 @@ impl ModuleKeyChirho {
 pub(super) struct SourceInputChirho {
     pub parsed_chirho: LoweredModuleChirho,
     pub numeric_chirho: bool,
+    pub do_syntax_chirho: bool,
     pub prelude_mentions_chirho: BTreeSet<String>,
     pub completeness_chirho: CompletenessChirho,
 }
@@ -46,7 +47,7 @@ pub(super) fn parse_sources_chirho(
         left_chirho = left_chirho
             .checked_sub(source_chirho.len())
             .ok_or_else(|| resource_chirho("source graph byte ceiling exhausted"))?;
-        let (parsed_chirho, numeric_chirho, prelude_mentions_chirho) =
+        let (parsed_chirho, numeric_chirho, do_syntax_chirho, prelude_mentions_chirho) =
             super::super::parse_chirho::parse_with_dependencies_chirho(
                 source_chirho,
                 haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
@@ -60,6 +61,7 @@ pub(super) fn parse_sources_chirho(
                 SourceInputChirho {
                     parsed_chirho,
                     numeric_chirho,
+                    do_syntax_chirho,
                     prelude_mentions_chirho,
                     completeness_chirho: CompletenessChirho::CompleteChirho,
                 },
@@ -131,17 +133,19 @@ pub(super) fn order_chirho(
                 super::super::library_chirho::manifest_chirho(&key_chirho.module_chirho)
                     .ok_or_else(|| unsupported_chirho("installed unit has no source manifest"))?;
             let rendered_chirho = manifest_chirho.render_chirho()?;
-            let (parsed_chirho, numeric_chirho, prelude_mentions_chirho) =
+            let (parsed_chirho, numeric_chirho, do_syntax_chirho, prelude_mentions_chirho) =
                 super::super::parse_chirho::parse_with_permitted_pragmas_chirho(
                     &rendered_chirho.source_chirho,
                     haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
                     &rendered_chirho.retained_pragmas_chirho,
+                    true,
                 )?;
             sources_chirho.insert(
                 key_chirho.clone(),
                 SourceInputChirho {
                     parsed_chirho,
                     numeric_chirho,
+                    do_syntax_chirho,
                     prelude_mentions_chirho,
                     completeness_chirho: CompletenessChirho::SliceChirho,
                 },
@@ -185,6 +189,14 @@ pub(super) fn order_chirho(
         {
             dependencies_chirho.insert(ModuleKeyChirho::library_chirho(
                 super::super::library_chirho::NUM_MODULE_CHIRHO,
+            ));
+        }
+        if source_chirho.do_syntax_chirho
+            && !(key_chirho.unit_chirho == UnitIdentityChirho::CompilerChirho
+                && key_chirho.module_chirho == super::super::library_chirho::BASE_MODULE_CHIRHO)
+        {
+            dependencies_chirho.insert(ModuleKeyChirho::library_chirho(
+                super::super::library_chirho::BASE_MODULE_CHIRHO,
             ));
         }
         for dependency_chirho in dependencies_chirho {
@@ -250,7 +262,7 @@ pub(super) fn load_chirho(path_chirho: &Path) -> Result<(SourcesChirho, String),
             .ok_or_else(|| resource_chirho("source graph byte ceiling exhausted"))?;
         let source_chirho = String::from_utf8(bytes_chirho)
             .map_err(|_| invalid_chirho("source module is not UTF-8"))?;
-        let (parsed_chirho, numeric_chirho, prelude_mentions_chirho) =
+        let (parsed_chirho, numeric_chirho, do_syntax_chirho, prelude_mentions_chirho) =
             super::super::parse_chirho::parse_with_dependencies_chirho(
                 &source_chirho,
                 haskelujah_span_chirho::FileIdChirho::SYNTHETIC_CHIRHO,
@@ -320,6 +332,7 @@ pub(super) fn load_chirho(path_chirho: &Path) -> Result<(SourcesChirho, String),
                 SourceInputChirho {
                     parsed_chirho,
                     numeric_chirho,
+                    do_syntax_chirho,
                     prelude_mentions_chirho,
                     completeness_chirho: CompletenessChirho::CompleteChirho,
                 },

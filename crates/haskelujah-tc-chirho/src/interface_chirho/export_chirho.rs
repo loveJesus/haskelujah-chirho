@@ -177,6 +177,7 @@ pub fn project_interface_chirho(
         sliced_units_chirho: module_chirho.sliced_units_chirho.clone(),
         wired_types_chirho: BTreeMap::new(),
         data_chirho: BTreeMap::new(),
+        open_data_kinds_chirho: BTreeMap::new(),
         opaque_data_chirho: BTreeMap::new(),
         synonyms_chirho: BTreeMap::new(),
         values_chirho: BTreeMap::new(),
@@ -185,6 +186,10 @@ pub fn project_interface_chirho(
     };
     for import_chirho in &module_chirho.imports_chirho {
         let iface_chirho = &import_chirho.interface_chirho;
+        merge_chirho(
+            &mut result_chirho.open_data_kinds_chirho,
+            &iface_chirho.open_data_kinds_chirho,
+        )?;
         // Inherited records were already closed by their producer. Count every retained copy.
         projection_chirho.charge_chirho(interface_weight_chirho(iface_chirho)?)?;
         merge_chirho(
@@ -234,6 +239,21 @@ pub fn project_interface_chirho(
     }
     for declaration_chirho in &module_chirho.data_chirho {
         let name_chirho = projection_chirho.original_chirho(declaration_chirho.name_chirho)?;
+        if let Some(open_chirho) = checked_chirho
+            .solver_chirho
+            .arena_chirho
+            .open_data_kinds_chirho(declaration_chirho.name_chirho)
+        {
+            projection_chirho.charge_chirho(
+                open_chirho.len()
+                    + name_chirho.module_chirho.len()
+                    + name_chirho.occurrence_chirho.len()
+                    + 1,
+            )?;
+            result_chirho
+                .open_data_kinds_chirho
+                .insert(name_chirho.clone(), open_chirho.to_vec());
+        }
         if !declaration_chirho.withheld_constructors_chirho.is_empty() {
             projection_chirho.charge_chirho(
                 declaration_chirho
@@ -419,6 +439,16 @@ fn interface_weight_chirho(interface_chirho: &InterfaceChirho) -> Result<usize, 
         trees_chirho.extend(value_chirho.scheme_chirho.context_chirho.iter());
         trees_chirho.push(&value_chirho.scheme_chirho.body_chirho);
     }
+    count_chirho += interface_chirho
+        .open_data_kinds_chirho
+        .iter()
+        .map(|(name_chirho, open_chirho)| {
+            open_chirho.len()
+                + name_chirho.module_chirho.len()
+                + name_chirho.occurrence_chirho.len()
+                + 1
+        })
+        .sum::<usize>();
     for class_chirho in interface_chirho.classes_chirho.values() {
         trees_chirho.push(&class_chirho.parameter_kind_chirho);
         trees_chirho.extend(class_chirho.superclasses_chirho.iter());

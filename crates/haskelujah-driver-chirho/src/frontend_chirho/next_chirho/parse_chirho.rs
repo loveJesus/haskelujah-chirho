@@ -19,7 +19,7 @@ pub(super) fn parse_chirho(
     file_chirho: FileIdChirho,
 ) -> Result<haskelujah_parser_chirho::lower_chirho::LoweredModuleChirho, NextErrorChirho> {
     parse_with_dependencies_chirho(source_chirho, file_chirho)
-        .map(|(parsed_chirho, _, _)| parsed_chirho)
+        .map(|(parsed_chirho, _, _, _)| parsed_chirho)
 }
 
 pub(super) fn parse_with_dependencies_chirho(
@@ -29,11 +29,12 @@ pub(super) fn parse_with_dependencies_chirho(
     (
         haskelujah_parser_chirho::lower_chirho::LoweredModuleChirho,
         bool,
+        bool,
         std::collections::BTreeSet<String>,
     ),
     NextErrorChirho,
 > {
-    parse_with_permitted_pragmas_chirho(source_chirho, file_chirho, &Default::default())
+    parse_with_permitted_pragmas_chirho(source_chirho, file_chirho, &Default::default(), false)
 }
 
 /// Called only by the driver-minted manifest source path. Home input supplies no ranges.
@@ -41,9 +42,11 @@ pub(super) fn parse_with_permitted_pragmas_chirho(
     source_chirho: &str,
     file_chirho: FileIdChirho,
     permitted_pragmas_chirho: &std::collections::BTreeSet<(usize, usize)>,
+    compiler_source_chirho: bool,
 ) -> Result<
     (
         haskelujah_parser_chirho::lower_chirho::LoweredModuleChirho,
+        bool,
         bool,
         std::collections::BTreeSet<String>,
     ),
@@ -65,6 +68,15 @@ pub(super) fn parse_with_permitted_pragmas_chirho(
         return Err(NextErrorChirho::new_chirho(
             NextErrorKindChirho::InvalidChirho,
             "lexical error",
+        ));
+    }
+    if tokens_chirho
+        .iter()
+        .any(|token_chirho| token_chirho.kind_chirho == RawTokenKindChirho::RecChirho)
+    {
+        return Err(NextErrorChirho::new_chirho(
+            NextErrorKindChirho::UnsupportedChirho,
+            "recursive statements require the RecursiveDo semantics",
         ));
     }
     for token_chirho in &tokens_chirho {
@@ -282,9 +294,9 @@ pub(super) fn parse_with_permitted_pragmas_chirho(
                         unattached_members_chirho
                             .iter()
                             .any(|account_chirho| account_chirho.span_chirho == span_chirho)
-                    } else {
-                        false
-                    }
+                    } else if compiler_source_chirho && let haskelujah_ast_chirho::decl_chirho::DeclChirho::InstanceDeclChirho { unattached_members_chirho,.. } = declaration_chirho {
+                        unattached_members_chirho.iter().any(|account_chirho| account_chirho.span_chirho == span_chirho && account_chirho.kind_chirho == haskelujah_ast_chirho::decl_chirho::UnattachedMemberKindChirho::InlinePragmaChirho)
+                    } else { false }
                 });
         if !owned_chirho {
             return Err(NextErrorChirho::new_chirho(
@@ -299,5 +311,13 @@ pub(super) fn parse_with_permitted_pragmas_chirho(
             .extensions_chirho
             .iter()
             .any(|flag_chirho| flag_chirho == "RebindableSyntax");
-    Ok((parsed_chirho, numeric_chirho, prelude_mentions_chirho))
+    let do_syntax_chirho = tokens_chirho
+        .iter()
+        .any(|token_chirho| token_chirho.kind_chirho == RawTokenKindChirho::DoChirho);
+    Ok((
+        parsed_chirho,
+        numeric_chirho,
+        do_syntax_chirho,
+        prelude_mentions_chirho,
+    ))
 }

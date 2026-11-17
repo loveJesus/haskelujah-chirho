@@ -188,7 +188,7 @@ impl LowerChirho<'_> {
                 context_chirho: predicates_chirho,
                 body_chirho: self.type_chirho(body_chirho, 0)?,
             },
-            explicit_chirho,
+            explicit_chirho && self.ghc2021_chirho,
         ))
     }
 

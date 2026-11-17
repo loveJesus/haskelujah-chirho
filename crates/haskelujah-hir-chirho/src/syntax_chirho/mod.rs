@@ -3,6 +3,7 @@
 //! Bounded syntax whose grouping is independent of the parser's spelling-based fixity table.
 //! workflow: next-pipeline-chirho/ghc-implementation-map-chirho
 use super::*;
+mod do_chirho;
 mod pragmas_chirho;
 
 impl LowerChirho<'_> {

@@ -76,10 +76,32 @@ pub(super) fn validate_main_chirho(
                 "main has no checked binding scheme",
             )
         })?;
+    if !scheme_chirho.context_chirho.is_empty() {
+        return Err(error_chirho(
+            NextErrorKindChirho::UnsupportedChirho,
+            "constrained main is outside the checked IO entry profile",
+        ));
+    }
+    let entry_chirho = checked_chirho
+        .module_chirho
+        .bindings_chirho
+        .iter()
+        .find(|binding_chirho| {
+            checked_chirho.module_chirho.names_chirho[binding_chirho.name_chirho.0 as usize]
+                .occurrence_chirho
+                == haskelujah_tc_chirho::MAIN_ENTRY_CHIRHO
+        })
+        .ok_or_else(|| {
+            error_chirho(
+                NextErrorKindChirho::UnsupportedChirho,
+                "main has no checked entry instantiation",
+            )
+        })?;
+    let scheme_chirho = &checked_chirho.schemes_chirho[&entry_chirho.name_chirho];
     if !scheme_chirho.quantified_chirho.is_empty() || !scheme_chirho.context_chirho.is_empty() {
         return Err(error_chirho(
             NextErrorKindChirho::UnsupportedChirho,
-            "polymorphic or constrained main is outside the first IO profile",
+            "main entry is not monomorphic",
         ));
     }
     let arena_chirho = &checked_chirho.solver_chirho.arena_chirho;
@@ -133,11 +155,13 @@ pub(super) fn run_core_chirho(
     let main_chirho = core_chirho
         .bindings_chirho
         .iter()
-        .find(|binding_chirho| binding_chirho.binder_chirho.name_chirho == "main")
+        .find(|binding_chirho| {
+            binding_chirho.binder_chirho.name_chirho == haskelujah_tc_chirho::MAIN_ENTRY_CHIRHO
+        })
         .ok_or_else(|| {
             error_chirho(
-                NextErrorKindChirho::InvalidChirho,
-                "Main has no main binding",
+                NextErrorKindChirho::UnsupportedChirho,
+                "checked Main entry was not emitted",
             )
         })?
         .binder_chirho
@@ -268,3 +292,6 @@ pub(super) fn run_core_chirho(
 
 #[cfg(test)]
 mod tests_chirho;
+
+#[cfg(test)]
+mod sequencing_tests_chirho;

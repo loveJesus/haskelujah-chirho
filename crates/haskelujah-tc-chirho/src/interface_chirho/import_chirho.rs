@@ -78,12 +78,35 @@ impl ReinternChirho<'_> {
     fn scheme_with_chirho(
         &mut self,
         scheme_chirho: &InterfaceSchemeChirho,
-        binders_chirho: Vec<TyChirho>,
+        mut binders_chirho: Vec<TyChirho>,
     ) -> Result<SchemeChirho, TcErrorChirho> {
-        if binders_chirho.len() != scheme_chirho.kinds_chirho.len() {
+        if binders_chirho.len() > scheme_chirho.kinds_chirho.len() {
             return Err(invalid_interface_chirho(
                 "class method binder catalogue disagrees",
             ));
+        }
+        for (index_chirho, kind_chirho) in scheme_chirho.kinds_chirho.iter().enumerate() {
+            let kind_chirho = self.ty_chirho(kind_chirho, &binders_chirho, 0)?;
+            if let Some(&variable_chirho) = binders_chirho.get(index_chirho) {
+                if self
+                    .checked_chirho
+                    .solver_chirho
+                    .arena_chirho
+                    .kind_chirho(variable_chirho)?
+                    != kind_chirho
+                {
+                    return Err(invalid_interface_chirho(
+                        "class method parameter kind disagrees",
+                    ));
+                }
+            } else {
+                let (_, variable_chirho) = self
+                    .checked_chirho
+                    .solver_chirho
+                    .arena_chirho
+                    .fresh_rigid_chirho(0, kind_chirho)?;
+                binders_chirho.push(variable_chirho);
+            }
         }
         let context_chirho = scheme_chirho
             .context_chirho
@@ -101,17 +124,7 @@ impl ReinternChirho<'_> {
         &mut self,
         scheme_chirho: &InterfaceSchemeChirho,
     ) -> Result<SchemeChirho, TcErrorChirho> {
-        let mut binders_chirho = Vec::new();
-        for kind_chirho in &scheme_chirho.kinds_chirho {
-            let kind_chirho = self.ty_chirho(kind_chirho, &binders_chirho, 0)?;
-            let (_, variable_chirho) = self
-                .checked_chirho
-                .solver_chirho
-                .arena_chirho
-                .fresh_rigid_chirho(0, kind_chirho)?;
-            binders_chirho.push(variable_chirho);
-        }
-        self.scheme_with_chirho(scheme_chirho, binders_chirho)
+        self.scheme_with_chirho(scheme_chirho, Vec::new())
     }
 }
 
@@ -158,11 +171,16 @@ impl CheckedModuleChirho {
             names_chirho,
         };
         let mut data_chirho = BTreeMap::new();
+        let mut open_data_chirho = BTreeMap::new();
         let mut synonyms_chirho = BTreeMap::new();
         let mut classes_chirho = BTreeMap::new();
         let mut values_chirho = BTreeMap::new();
         let mut instances_chirho = BTreeMap::new();
         for imported_chirho in &imports_chirho {
+            super::export_chirho::merge_chirho(
+                &mut open_data_chirho,
+                &imported_chirho.interface_chirho.open_data_kinds_chirho,
+            )?;
             super::export_chirho::merge_chirho(
                 &mut data_chirho,
                 &imported_chirho.interface_chirho.data_chirho,
@@ -191,14 +209,36 @@ impl CheckedModuleChirho {
                 .solver_chirho
                 .arena_chirho
                 .declare_chirho(id_chirho, arity_chirho)?;
+            if let Some(open_chirho) = open_data_chirho.remove(&name_chirho) {
+                if open_chirho.len() != arity_chirho {
+                    return Err(invalid_interface_chirho(
+                        "partial data kind arity disagrees",
+                    ));
+                }
+                importer_chirho
+                    .checked_chirho
+                    .solver_chirho
+                    .arena_chirho
+                    .set_open_data_kinds_chirho(id_chirho, open_chirho)?;
+            }
         }
-        for name_chirho in classes_chirho.keys() {
+        if !open_data_chirho.is_empty() {
+            return Err(invalid_interface_chirho("partial kind has no data owner"));
+        }
+        for (name_chirho, class_chirho) in &classes_chirho {
             let id_chirho = importer_chirho.id_chirho(name_chirho)?;
             importer_chirho
                 .checked_chirho
                 .solver_chirho
                 .arena_chirho
                 .declare_class_chirho(id_chirho)?;
+            let kind_chirho =
+                importer_chirho.ty_chirho(&class_chirho.parameter_kind_chirho, &[], 0)?;
+            importer_chirho
+                .checked_chirho
+                .solver_chirho
+                .arena_chirho
+                .set_class_kind_chirho(id_chirho, kind_chirho)?;
         }
         for (name_chirho, synonym_chirho) in synonyms_chirho {
             if !synonym_chirho.scheme_chirho.context_chirho.is_empty() {
@@ -297,9 +337,15 @@ impl CheckedModuleChirho {
                     .checked_chirho
                     .schemes_chirho
                     .insert(method_id_chirho, scheme_chirho.clone());
+                let field_chirho = importer_chirho
+                    .checked_chirho
+                    .solver_chirho
+                    .arena_chirho
+                    .method_field_chirho(&scheme_chirho)?;
                 methods_chirho.push(MethodInfoChirho {
                     name_chirho: method_id_chirho,
                     scheme_chirho,
+                    field_chirho,
                 });
             }
             importer_chirho
@@ -406,6 +452,24 @@ pub(crate) fn closed_contract_chirho(
     checked_chirho: &mut CheckedModuleChirho,
     contract_chirho: &PrimitiveContractChirho,
 ) -> Result<TyChirho, TcErrorChirho> {
+    if !contract_chirho.kinds_chirho.is_empty() {
+        return Err(invalid_interface_chirho(
+            "closed contract has quantified binders",
+        ));
+    }
+    instantiated_contract_chirho(checked_chirho, contract_chirho, &[])
+}
+
+pub(crate) fn instantiated_contract_chirho(
+    checked_chirho: &mut CheckedModuleChirho,
+    contract_chirho: &PrimitiveContractChirho,
+    binders_chirho: &[TyChirho],
+) -> Result<TyChirho, TcErrorChirho> {
+    if contract_chirho.kinds_chirho.len() != binders_chirho.len() {
+        return Err(invalid_interface_chirho(
+            "backend contract quantifier count disagrees",
+        ));
+    }
     if !(0..=3).contains(&contract_chirho.arity_chirho) {
         return Err(invalid_interface_chirho(
             "unsupported primitive contract arity",
@@ -429,6 +493,8 @@ pub(crate) fn closed_contract_chirho(
             ) => {}
             InterfaceTypeChirho::DeclaredChirho(original_chirho)
                 if original_chirho.unit_chirho == UnitIdentityChirho::CompilerChirho => {}
+            InterfaceTypeChirho::BoundChirho(index_chirho)
+                if (*index_chirho as usize) < binders_chirho.len() => {}
             InterfaceTypeChirho::TupleChirho(items_chirho) if items_chirho.is_empty() => {}
             InterfaceTypeChirho::FunChirho(left_chirho, right_chirho)
             | InterfaceTypeChirho::AppChirho(left_chirho, right_chirho) => {
@@ -459,7 +525,21 @@ pub(crate) fn closed_contract_chirho(
         checked_chirho,
         names_chirho,
     };
-    let ty_chirho = importer_chirho.ty_chirho(&contract_chirho.ty_chirho, &[], 0)?;
+    for (&binder_chirho, kind_chirho) in binders_chirho.iter().zip(&contract_chirho.kinds_chirho) {
+        let kind_chirho = importer_chirho.ty_chirho(kind_chirho, &[], 0)?;
+        if importer_chirho
+            .checked_chirho
+            .solver_chirho
+            .arena_chirho
+            .kind_chirho(binder_chirho)?
+            != kind_chirho
+        {
+            return Err(invalid_interface_chirho(
+                "backend contract quantifier kind disagrees",
+            ));
+        }
+    }
+    let ty_chirho = importer_chirho.ty_chirho(&contract_chirho.ty_chirho, binders_chirho, 0)?;
     let mut result_chirho = ty_chirho;
     for _argument_chirho in 0..contract_chirho.arity_chirho {
         let TyNodeChirho::FunChirho(_, next_chirho) = importer_chirho

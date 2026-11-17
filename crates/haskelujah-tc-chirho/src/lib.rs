@@ -1,6 +1,11 @@
 // For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. — John 3:16 (KJV)
 
+#![forbid(unsafe_code)]
+
 //! An independent, elaborating checker. It never calls legacy typing.
+
+/// Compiler-created, monomorphic application of Main.main; never a source-scope name.
+pub const MAIN_ENTRY_CHIRHO: &str = "%next:checked-main-chirho";
 
 mod check_chirho;
 mod interface_chirho;

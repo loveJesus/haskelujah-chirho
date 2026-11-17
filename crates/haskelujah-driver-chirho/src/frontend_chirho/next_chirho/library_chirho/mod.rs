@@ -29,6 +29,7 @@ pub(super) const SHOW_MODULE_CHIRHO: &str = "GHC.Internal.Show";
 pub(super) const LICENSE_CHIRHO: &str = include_str!("vendor-chirho/ghc-internal-chirho/LICENSE");
 
 pub(super) struct SourceManifestChirho {
+    pub explicit_forall_chirho: bool,
     pub ghc_version_chirho: &'static str,
     pub cpp_chirho: Option<cpp_chirho::SourceCppChirho>,
     pub exports_chirho: Option<&'static str>,
@@ -42,6 +43,7 @@ pub(super) struct SourceManifestChirho {
     pub wired_imports_chirho: &'static [WiredNameChirho],
 }
 const TUPLE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    explicit_forall_chirho: false,
     ghc_version_chirho: "9.14.1",
     exports_chirho: None,
     cpp_chirho: None,
@@ -55,6 +57,7 @@ const TUPLE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     wired_imports_chirho: &[],
 };
 const NUM_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    explicit_forall_chirho: false,
     ghc_version_chirho: "9.14.1",
     exports_chirho: None,
     cpp_chirho: None,
@@ -68,6 +71,7 @@ const NUM_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     wired_imports_chirho: &[WiredNameChirho::IntChirho],
 };
 const INTEGER_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    explicit_forall_chirho: false,
     ghc_version_chirho: "9.14.1",
     exports_chirho: None,
     cpp_chirho: None,
@@ -98,6 +102,7 @@ const INTEGER_CHIRHO: SourceManifestChirho = SourceManifestChirho {
 };
 
 const CLASSES_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    explicit_forall_chirho: false,
     ghc_version_chirho: "9.14.1",
     exports_chirho: None,
     cpp_chirho: None,
@@ -132,6 +137,7 @@ const WIRED_CLASSES_CHIRHO: &[WiredNameChirho] = &[
     WiredNameChirho::GreaterChirho,
 ];
 const BASE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    explicit_forall_chirho: true,
     ghc_version_chirho: "9.14.1",
     exports_chirho: None,
     cpp_chirho: None,
@@ -141,20 +147,36 @@ const BASE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     bytes_chirho: include_str!("vendor-chirho/ghc-internal-chirho/Base.hs"),
     spans_chirho: &[
         (7534, 7559),
+        (7559, 7590),
+        (7621, 7648),
+        (30587, 34690),
+        (34690, 38363),
+        (38363, 38445),
+        (41803, 43354),
+        (46269, 46402),
+        (48672, 48793),
         (61798, 62043),
         (62470, 62534),
         (64541, 64562),
+        (66114, 66177),
+        (67524, 67592),
         (68045, 68110),
+        (72156, 72561),
+        (72893, 72915),
+        (72952, 72990),
+        (73068, 73099),
     ],
     imports_chirho: "",
-    primitive_signatures_chirho: false,
+    primitive_signatures_chirho: true,
     wired_imports_chirho: &[
+        WiredNameChirho::IOChirho,
         WiredNameChirho::CharChirho,
         WiredNameChirho::BoolChirho,
         WiredNameChirho::TrueChirho,
     ],
 };
 const SHOW_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    explicit_forall_chirho: false,
     ghc_version_chirho: "9.14.1",
     exports_chirho: None,
     cpp_chirho: Some(cpp_chirho::SourceCppChirho {
@@ -240,8 +262,13 @@ impl SourceManifestChirho {
             .exports_chirho
             .map(|names_chirho| format!(" ({names_chirho})"))
             .unwrap_or_default();
+        let forall_chirho = if self.explicit_forall_chirho {
+            ", ExplicitForAll"
+        } else {
+            ""
+        };
         let mut source_chirho = format!(
-            "{{-# LANGUAGE Haskell2010, NoImplicitPrelude #-}}\nmodule {}{} where\n{}",
+            "{{-# LANGUAGE Haskell2010, NoImplicitPrelude{forall_chirho} #-}}\nmodule {}{} where\n{}",
             self.module_chirho, exports_chirho, self.imports_chirho
         );
         let mut previous_chirho = 0;

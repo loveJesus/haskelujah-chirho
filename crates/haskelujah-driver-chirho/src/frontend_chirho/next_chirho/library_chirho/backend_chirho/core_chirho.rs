@@ -115,8 +115,24 @@ impl ElaboratorChirho<'_> {
             }
             let binder_chirho = self.binder_chirho(declaration_chirho.name_chirho)?;
             let ty_chirho = self.types_chirho.copy_chirho(&binder_chirho.ty_chirho)?;
-            let rhs_chirho =
+            let (variables_chirho, ty_chirho) = if let CoreTypeChirho::ForallChirho {
+                vars_chirho,
+                body_chirho,
+            } = ty_chirho
+            {
+                (vars_chirho, *body_chirho)
+            } else {
+                (Vec::new(), ty_chirho)
+            };
+            let mut rhs_chirho =
                 self.io_expression_chirho(ty_chirho, provider_chirho, info_chirho.span_chirho)?;
+            for variable_chirho in variables_chirho.into_iter().rev() {
+                self.types_chirho.reserve_term_chirho()?;
+                rhs_chirho = CoreExprChirho::TyLamChirho {
+                    ty_var_chirho: format!("next_type_{}_chirho", variable_chirho.0),
+                    body_chirho: Box::new(rhs_chirho),
+                };
+            }
             return Ok(CoreBindingChirho {
                 binder_chirho,
                 rhs_chirho,

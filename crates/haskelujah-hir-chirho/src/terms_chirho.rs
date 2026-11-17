@@ -127,6 +127,8 @@ pub struct BindingChirho {
 
 #[derive(Debug, Clone)]
 pub struct ClassDeclChirho {
+    /// PolyKinds editions decline unresolved parameter kinds instead of defaulting them.
+    pub higher_kinds_partial_chirho: bool,
     pub name_chirho: NameIdChirho,
     pub parameter_chirho: NameIdChirho,
     pub superclasses_chirho: Vec<SurfacePredicateChirho>,
@@ -136,6 +138,7 @@ pub struct ClassDeclChirho {
 
 #[derive(Debug, Clone)]
 pub struct ClassMethodChirho {
+    pub binders_chirho: Vec<NameIdChirho>,
     pub name_chirho: NameIdChirho,
     /// Ordinary signed binding, selected only when the instance omits this method.
     pub default_chirho: Option<NameIdChirho>,
@@ -169,6 +172,7 @@ pub struct PrimitiveBindingChirho {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PrimitiveContractChirho {
+    pub kinds_chirho: Vec<crate::InterfaceTypeChirho>,
     pub ty_chirho: crate::InterfaceTypeChirho,
     pub arity_chirho: usize,
 }
@@ -190,6 +194,7 @@ pub struct DeclaredBodyChirho {
 
 #[derive(Debug)]
 pub struct ModuleChirho {
+    pub ghc2021_chirho: bool,
     pub unit_chirho: UnitIdentityChirho,
     pub module_chirho: String,
     pub names_chirho: Vec<NameInfoChirho>,

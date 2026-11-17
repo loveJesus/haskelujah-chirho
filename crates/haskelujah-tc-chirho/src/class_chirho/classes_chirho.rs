@@ -28,10 +28,14 @@ impl CheckedModuleChirho {
         declarations_chirho: &[ClassDeclChirho],
     ) -> Result<(), TcErrorChirho> {
         for declaration_chirho in declarations_chirho {
-            let kind_chirho = self
+            let type_chirho = self
                 .solver_chirho
                 .arena_chirho
                 .con_chirho(TyConChirho::TypeChirho)?;
+            let kind_chirho = self
+                .solver_chirho
+                .arena_chirho
+                .class_parameter_kind_chirho(declaration_chirho.name_chirho)?;
             let (_, parameter_chirho) = self
                 .solver_chirho
                 .arena_chirho
@@ -43,9 +47,26 @@ impl CheckedModuleChirho {
                 .predicate_chirho(declaration_chirho.name_chirho, parameter_chirho)?;
             let mut methods_chirho = Vec::new();
             for method_chirho in &declaration_chirho.methods_chirho {
+                let signature_chirho = haskelujah_hir_chirho::SurfaceSignatureChirho {
+                    binders_chirho: method_chirho.binders_chirho.clone(),
+                    context_chirho: vec![],
+                    body_chirho: method_chirho.ty_chirho.clone(),
+                };
+                let kinds_chirho =
+                    self.signature_kinds_chirho(&signature_chirho, &parameters_chirho)?;
+                let mut variables_chirho = parameters_chirho.clone();
+                let mut quantified_chirho = vec![parameter_chirho];
+                for binder_chirho in &method_chirho.binders_chirho {
+                    let (_, variable_chirho) = self
+                        .solver_chirho
+                        .arena_chirho
+                        .fresh_rigid_chirho(0, kinds_chirho[binder_chirho])?;
+                    variables_chirho.insert(*binder_chirho, variable_chirho);
+                    quantified_chirho.push(variable_chirho);
+                }
                 let body_chirho =
-                    self.surface_with_chirho(&method_chirho.ty_chirho, &parameters_chirho)?;
-                if self.solver_chirho.arena_chirho.kind_chirho(body_chirho)? != kind_chirho {
+                    self.surface_with_chirho(&method_chirho.ty_chirho, &variables_chirho)?;
+                if self.solver_chirho.arena_chirho.kind_chirho(body_chirho)? != type_chirho {
                     return Err(TcErrorChirho::new_chirho(
                         TcErrorKindChirho::KindMismatchChirho,
                         "a class method must have kind Type",
@@ -64,7 +85,7 @@ impl CheckedModuleChirho {
                 }
                 let scheme_chirho = SchemeChirho {
                     body_chirho,
-                    quantified_chirho: vec![parameter_chirho],
+                    quantified_chirho,
                     context_chirho: vec![predicate_chirho],
                 };
                 for _entry_chirho in 0..5 {
@@ -74,9 +95,14 @@ impl CheckedModuleChirho {
                     .insert(method_chirho.name_chirho, body_chirho);
                 self.schemes_chirho
                     .insert(method_chirho.name_chirho, scheme_chirho.clone());
+                let field_chirho = self
+                    .solver_chirho
+                    .arena_chirho
+                    .method_field_chirho(&scheme_chirho)?;
                 methods_chirho.push(MethodInfoChirho {
                     name_chirho: method_chirho.name_chirho,
                     scheme_chirho,
+                    field_chirho,
                 });
             }
             let mut superclasses_chirho = Vec::new();
@@ -206,15 +232,30 @@ impl CheckedModuleChirho {
                             "next has no missing-method failure producer",
                         )
                     })?;
-                let expected_chirho = self.solver_chirho.arena_chirho.replace_chirho(
-                    method_chirho.scheme_chirho.body_chirho,
-                    HashMap::from([(class_chirho.parameter_chirho, head_chirho)]),
-                )?;
                 let method_scope_chirho = self.solver_chirho.implication_kind_chirho(
                     scope_chirho,
                     false,
                     ScopeKindChirho::MethodChirho,
                 )?;
+                let mut substitution_chirho =
+                    HashMap::from([(class_chirho.parameter_chirho, head_chirho)]);
+                let mut method_binders_chirho = Vec::new();
+                for &variable_chirho in method_chirho.scheme_chirho.quantified_chirho.iter().skip(1)
+                {
+                    let kind_chirho = self
+                        .solver_chirho
+                        .arena_chirho
+                        .kind_chirho(variable_chirho)?;
+                    let binder_chirho = self
+                        .solver_chirho
+                        .method_variable_chirho(method_scope_chirho, kind_chirho)?;
+                    substitution_chirho.insert(variable_chirho, binder_chirho);
+                    method_binders_chirho.push(binder_chirho);
+                }
+                let expected_chirho = self
+                    .solver_chirho
+                    .arena_chirho
+                    .replace_chirho(method_chirho.scheme_chirho.body_chirho, substitution_chirho)?;
                 self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
                 self.names_chirho.insert(
                     implementation_chirho.binding_chirho.name_chirho,
@@ -223,7 +264,7 @@ impl CheckedModuleChirho {
                 self.abstractions_chirho.insert(
                     implementation_chirho.binding_chirho.name_chirho,
                     AbstractionChirho {
-                        type_binders_chirho: Vec::new(),
+                        type_binders_chirho: method_binders_chirho,
                         dictionary_binders_chirho: Vec::new(),
                         scope_chirho: method_scope_chirho,
                     },

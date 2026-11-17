@@ -139,6 +139,8 @@ pub struct InterfaceChirho {
     /// Driver-provided wired declarations, never inferred from an exported spelling.
     pub wired_types_chirho: BTreeMap<OriginalNameChirho, crate::WiredNameChirho>,
     pub data_chirho: BTreeMap<OriginalNameChirho, usize>,
+    /// True positions retain unmodeled PolyKinds; their Type-shaped headers are provisional.
+    pub open_data_kinds_chirho: BTreeMap<OriginalNameChirho, Vec<bool>>,
     pub opaque_data_chirho: BTreeMap<OriginalNameChirho, Vec<OriginalNameChirho>>,
     pub synonyms_chirho: BTreeMap<OriginalNameChirho, InterfaceSynonymChirho>,
     pub values_chirho: BTreeMap<OriginalNameChirho, InterfaceValueChirho>,

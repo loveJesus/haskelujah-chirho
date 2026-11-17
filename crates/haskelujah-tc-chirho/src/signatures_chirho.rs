@@ -24,13 +24,14 @@ impl CheckedModuleChirho {
             .solver_chirho
             .arena_chirho
             .con_chirho(TyConChirho::TypeChirho)?;
+        let kinds_chirho = self.signature_kinds_chirho(signature_chirho, &HashMap::new())?;
         let mut variables_chirho = HashMap::new();
         let mut quantified_chirho = Vec::new();
         for binder_chirho in &signature_chirho.binders_chirho {
             let variable_chirho = self.solver_chirho.signature_variable_chirho(
                 scope_chirho,
                 *binder_chirho,
-                kind_chirho,
+                kinds_chirho[binder_chirho],
             )?;
             variables_chirho.insert(*binder_chirho, variable_chirho);
             quantified_chirho.push(variable_chirho);

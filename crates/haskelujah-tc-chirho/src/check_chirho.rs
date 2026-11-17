@@ -20,8 +20,14 @@ use crate::{
 mod classes_chirho;
 #[path = "data_chirho.rs"]
 mod data_chirho;
+#[path = "interface_chirho/data_kinds_chirho.rs"]
+mod data_kinds_chirho;
 #[path = "generalization_chirho.rs"]
 mod generalization_chirho;
+#[path = "class_chirho/kinds_chirho.rs"]
+mod kinds_chirho;
+#[path = "interface_chirho/main_chirho.rs"]
+mod main_chirho;
 #[path = "class_chirho/partiality_chirho.rs"]
 mod partiality_chirho;
 #[path = "interface_chirho/primitive_signatures_chirho.rs"]
@@ -105,19 +111,38 @@ impl CheckedModuleChirho {
                 "re-exported main needs an original-name entry carrier",
             ));
         }
-        let scheme_chirho = self.schemes_chirho.get(&name_chirho).ok_or_else(|| {
-            TcErrorChirho::new_chirho(
-                TcErrorKindChirho::UnsupportedChirho,
-                "main has no checked binding scheme",
-            )
-        })?;
-        if !scheme_chirho.quantified_chirho.is_empty() || !scheme_chirho.context_chirho.is_empty() {
+        let scheme_chirho = self
+            .schemes_chirho
+            .get(&name_chirho)
+            .cloned()
+            .ok_or_else(|| {
+                TcErrorChirho::new_chirho(
+                    TcErrorKindChirho::UnsupportedChirho,
+                    "main has no checked binding scheme",
+                )
+            })?;
+        if !scheme_chirho.context_chirho.is_empty() {
             return Err(TcErrorChirho::new_chirho(
                 TcErrorKindChirho::UnsupportedChirho,
-                "polymorphic or constrained main is outside the first IO profile",
+                "constrained main is outside the checked IO entry profile",
             ));
         }
-        let body_chirho = scheme_chirho.body_chirho;
+        let type_chirho = self
+            .solver_chirho
+            .arena_chirho
+            .con_chirho(TyConChirho::TypeChirho)?;
+        for &binder_chirho in &scheme_chirho.quantified_chirho {
+            if self.solver_chirho.arena_chirho.kind_chirho(binder_chirho)? != type_chirho {
+                return Err(TcErrorChirho::new_chirho(
+                    TcErrorKindChirho::UnsupportedChirho,
+                    "main entry instantiation requires Type-kinded variables",
+                ));
+            }
+        }
+        let (body_chirho, arguments_chirho, _) = self
+            .solver_chirho
+            .arena_chirho
+            .instantiate_chirho(&scheme_chirho, 0)?;
         let payload_chirho = self.fresh_chirho()?;
         let constructor_chirho = self
             .solver_chirho
@@ -131,7 +156,8 @@ impl CheckedModuleChirho {
             .arena_chirho
             .kind_chirho(expected_chirho)?;
         self.want_chirho(body_chirho, expected_chirho, SpanChirho::DUMMY_CHIRHO);
-        self.solver_chirho.solve_chirho()
+        self.solver_chirho.solve_chirho()?;
+        self.main_instantiation_chirho(name_chirho, body_chirho, arguments_chirho)
     }
 
     fn fresh_chirho(&mut self) -> Result<TyChirho, TcErrorChirho> {
@@ -389,11 +415,13 @@ pub fn check_module_chirho(
     let data_chirho = std::mem::take(&mut checked_chirho.module_chirho.data_chirho);
     let classes_chirho = std::mem::take(&mut checked_chirho.module_chirho.classes_chirho);
     let synonyms_chirho = std::mem::take(&mut checked_chirho.module_chirho.synonyms_chirho);
-    checked_chirho.first_order_headers_chirho(&data_chirho, &classes_chirho, &synonyms_chirho)?;
+    checked_chirho.first_order_headers_chirho(&data_chirho, &synonyms_chirho)?;
     checked_chirho.class_headers_chirho(&classes_chirho)?;
     checked_chirho.data_headers_chirho(&data_chirho)?;
     checked_chirho.synonym_declarations_chirho(&synonyms_chirho)?;
     checked_chirho.module_chirho.synonyms_chirho = synonyms_chirho;
+    checked_chirho.data_kind_pins_chirho(&data_chirho)?;
+    checked_chirho.infer_class_kinds_chirho(&classes_chirho)?;
     let primitive_bindings_chirho =
         std::mem::take(&mut checked_chirho.module_chirho.primitive_bindings_chirho);
     checked_chirho.primitive_signatures_chirho(&primitive_bindings_chirho)?;

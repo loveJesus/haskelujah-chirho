@@ -1,0 +1,454 @@
+{
+  "schema_chirho": 1,
+  "work_item_chirho": "unit-764-io-sequencing-chirho",
+  "status_chirho": "HELD_SOURCE_CANDIDATE_COMPILE_CHECKED_RUNTIME_UNPROVEN",
+  "git_base_chirho": "a4494857e95c21d0e6b9b0335dbcb5935a585170",
+  "source_basis_sha256_chirho": "68b490a32a4e6f356a231a9c32f214fafbb687e602dc1cd4346bc6bf7a747409",
+  "implementation_chirho": "Actual pinned Functor/Applicative/Monad source and IO instances; layout-only returnIO/bindIO/thenIO providers; known-original do lowering; lazy completion; checked kinds and method-local quantifiers.",
+  "safe_rust_chirho": "HIR crate, TC crate and driver next module forbid unsafe_code; enforced by the complete driver --tests Cargo check on these source bytes.",
+  "executed_check_chirho": {
+    "entry_chirho": "Complete warm locked/offline-j2 driver --tests check, no test execution",
+    "rc_chirho": 0,
+    "compiler_diagnostics_chirho": 0,
+    "receipt_sha256_chirho": "f806efee4f1f2b5ae9cf57c96d3f2632354ccd29da1fd55c302a104a5d883e83",
+    "closure_sha256_chirho": "8ae2c21d2abbf410bb4450af541655db4b47f6f50823b023cde983461e64794e",
+    "release_message_chirho": 5687
+  },
+  "executed_functional_attempt_chirho": {
+    "entry_chirho": "Complete18IOtest invocation, timed out during test binary compilation",
+    "adapter_rc_chirho": 143,
+    "timeout_chirho": true,
+    "recorded_test_outcomes_chirho": 0,
+    "receipt_sha256_chirho": "1e4ba9ee3ca2cb9f777d046083b5345ae327481609342aa9d1d7c4372800e264",
+    "original_release_message_chirho": 5699,
+    "custody_qualification_message_chirho": 5703,
+    "custody_disposition_message_chirho": 5707,
+    "qualification_chirho": "Positive143 source-bound monitored-adapter/direct-leader custody inference only. No independent compiler-group/full-descendant/death/peak proof; no functional PASS."
+  },
+  "pending_chirho": {
+    "complete_io_controls_chirho": 18,
+    "ghc_reference_children_chirho": 61,
+    "ghc_reference_execution_chirho": "UNRUN",
+    "current_functional_proposal_chirho": 5733,
+    "current_functional_plan_sha256_chirho": "2fe2b70c12f19ec2ae8aa5af56ad2aa620e57525b007d696f552861af1b52a3e",
+    "current_functional_proposal_state_chirho": "PREPARED_UNADMITTED_NO_RESERVATION"
+  },
+  "preserved_boundaries_chirho": [
+    "Opt-in next pipeline; canonical compiler remains unchanged",
+    "No new runtime/native/Main/B-run/install/IDE/public/release acceptance",
+    "No shared-resource grant or retry from this checkpoint",
+    "All earlier raw failures, timing and custody qualifications retained"
+  ],
+  "files_chirho": [
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/classes_chirho.rs",
+      "sha256_chirho": "9bce38944ca818bb42d26faa08c4703f9ed0216a20840d1721b0e8c62ef74f4c",
+      "bytes_chirho": 18420
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/core_chirho.rs",
+      "sha256_chirho": "fa427585d112b0eaf199b8647b8c7a543421fa195a3b1a15a291f55e5c0c7c39",
+      "bytes_chirho": 14531
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/boundary-chirho/ClassGroupPolyChirho.hs",
+      "sha256_chirho": "905f937d3a32f641ee024bc23780c9bc5b7e846817e84cda90c77ae4100333b5",
+      "bytes_chirho": 455
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/boundary-chirho/PhantomClassPolyChirho.hs",
+      "sha256_chirho": "0d3282d02e019400325123150b78919441e5d949c388864c84e99a9b2fcb9036",
+      "bytes_chirho": 401
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/boundary-chirho/PhantomUsePolyChirho.hs",
+      "sha256_chirho": "71699080a85cc4739a66b7d5b0d30639d5f8d32a89cf50ad6f5b9cb71c9cbed5",
+      "bytes_chirho": 329
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/boundary-chirho/RecursiveHeaderH98Chirho.hs",
+      "sha256_chirho": "dc414029d00bc05dd782601c7a13722c548704cfad2999575d8cbabc1b258fd4",
+      "bytes_chirho": 260
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/boundary-chirho/RefutableBindChirho.hs",
+      "sha256_chirho": "398f65192fa7a05045236abe272b17da617b8ab06aa7afd2634be5c6dd87ff5f",
+      "bytes_chirho": 284
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/boundary-chirho/SignatureKindPolyChirho.hs",
+      "sha256_chirho": "2ab68968199731424e060c7544f4f4c4079b8cae65cd6d255879a73525650e8f",
+      "bytes_chirho": 482
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/failure-chirho/BottomActionChirho.hs",
+      "sha256_chirho": "5c4776ccff2e8a3afdc34eafa5b29d95df9f4030c009c1cba00125b508833ec6",
+      "bytes_chirho": 330
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/failure-chirho/BottomContinuationChirho.hs",
+      "sha256_chirho": "59eeb5387e92feab5ad550e4b40aaf16d5759cdfcd92df9a802ab06f400d26ba",
+      "bytes_chirho": 316
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/failure-chirho/BufferedSecondFailureChirho.hs",
+      "sha256_chirho": "8c37cf5bad8c7adda0fdb4e18d4d943e639260fe3f1c4e8897c8d2420386d363",
+      "bytes_chirho": 365
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/failure-chirho/MiddleFailureChirho.hs",
+      "sha256_chirho": "b51f49db02e63bce98adff799801cd902a425ed94fe2f16ed35b5548a18502ea",
+      "bytes_chirho": 345
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/negative-chirho/ClassGroupH98Chirho.hs",
+      "sha256_chirho": "69e39818e084625a11effc23c65e24651b0b1b45eef4c3dc99f0b75a7114252a",
+      "bytes_chirho": 371
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/negative-chirho/ForallWithoutScopedChirho.hs",
+      "sha256_chirho": "72e25c593a9df08ee1187ec369c54f11cdad90a46a5c1bbad02ce8632d68ded3",
+      "bytes_chirho": 371
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/negative-chirho/ImplicitMethodScopeChirho.hs",
+      "sha256_chirho": "308dc439f01c0d6cb8b3c178a1e1e50e7e45a712ad056720072bd204be21863e",
+      "bytes_chirho": 372
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/negative-chirho/LastBindChirho.hs",
+      "sha256_chirho": "a2fced1e91f81d0c7e5478f9dda82bf96b5bd82f6bcf0622b8ac2dbb83348a56",
+      "bytes_chirho": 209
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/negative-chirho/PhantomClassH98Chirho.hs",
+      "sha256_chirho": "c4d83e9d53e1efe2f377c90c9eec26a163e53220bf082d488575e29d21ca0c04",
+      "bytes_chirho": 405
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/negative-chirho/PhantomUseH98Chirho.hs",
+      "sha256_chirho": "5c715c8df6bcbc7005ea64014d3719457a388e6c3b52bd87d7cbf2dc7fedb507",
+      "bytes_chirho": 333
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/negative-chirho/SignatureKindH98Chirho.hs",
+      "sha256_chirho": "860e28db2466d07e46ebe8bd02f4afbfb0f308e6d54b958878fd711d26c93384",
+      "bytes_chirho": 486
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/negative-chirho/WrongClassKindChirho.hs",
+      "sha256_chirho": "3dedcafa70720f10827f6ee4bed02bdebc72b761d9591b151d0f0c8a90e4a387",
+      "bytes_chirho": 345
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/positive-chirho/ApplicativeResultChirho.hs",
+      "sha256_chirho": "4f097196d18a50424c7cd34c1e47001a37febbca50c4e69870c9ecfe906c70ac",
+      "bytes_chirho": 230
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/positive-chirho/BoundNumberChirho.hs",
+      "sha256_chirho": "de5cc9656c4e0222625b2e88f186da8b475c64ea0489e75a4aa469549111e606",
+      "bytes_chirho": 220
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/positive-chirho/FmapLazyChirho.hs",
+      "sha256_chirho": "b1294d84c063ed95c77c2e12d239219e08fbf88743058c110dd9f4788c6f86ad",
+      "bytes_chirho": 345
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/positive-chirho/FmapResultChirho.hs",
+      "sha256_chirho": "3a551759defceffdd0f27fed8141e040755d1778e75a470168d686066f57813a",
+      "bytes_chirho": 237
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/positive-chirho/LazyBindChirho.hs",
+      "sha256_chirho": "7b5dae7bf19748d3d6568552fc75837803884254cd0d2ea674a822537ea9b72f",
+      "bytes_chirho": 353
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/positive-chirho/LazyThenChirho.hs",
+      "sha256_chirho": "5a95750da69a744a5f10e285afc0d21b7bc860070f527aec46477f6a58893f9a",
+      "bytes_chirho": 336
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/positive-chirho/PinnedDataPositionsChirho.hs",
+      "sha256_chirho": "53d09ce0d90f65bbe0915f00a70d8fac3cf8d2516c3b73f2ed197717ecd1e95f",
+      "bytes_chirho": 496
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/positive-chirho/RepeatedActionChirho.hs",
+      "sha256_chirho": "840511085fe2eb0c5dd15faf62027054d340f8fa9c569840c62d1e4e7e2b93ae",
+      "bytes_chirho": 228
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/positive-chirho/StoredSequenceChirho.hs",
+      "sha256_chirho": "51b5b6781aff3005522ec25c3d9458b4480ab29b7596ab40dbe2c8348734c82a",
+      "bytes_chirho": 367
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/positive-chirho/TwoLinesChirho.hs",
+      "sha256_chirho": "8ca08ac8675a45d1b3d0eb67a44cfcecbb684d038a0d0d02c4d76e4db6e9f220",
+      "bytes_chirho": 204
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/scope-chirho/DoLetScopeChirho.hs",
+      "sha256_chirho": "272336afec2df7aac6856c34f1bea47e1e069cfef26073b0149fc3113220ef93",
+      "bytes_chirho": 239
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/scope-chirho/HomeBindShadowChirho.hs",
+      "sha256_chirho": "f616ecb32288a7c72a49ad44624b277c69733dc7eb3d542e3d04e008675fd886",
+      "bytes_chirho": 263
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/scope-chirho/HomeHigherClassChirho.hs",
+      "sha256_chirho": "c3b11c0512a26fa00afc48265d963b1a35551d189dd0d1bdb6e3c201c57d9558",
+      "bytes_chirho": 675
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/scope-chirho/LazyMainResultChirho.hs",
+      "sha256_chirho": "72270203992e047cff6a0e27c78e449d08058589daef31058745c56c4349692f",
+      "bytes_chirho": 323
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/scope-chirho/MethodPolymorphismChirho.hs",
+      "sha256_chirho": "93e18cd9897ae4d6d53cacaa8a280f91871f0cc0c8b716d053d0ff55870ae87f",
+      "bytes_chirho": 380
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/fixtures_chirho/io_sequencing_chirho/scope-chirho/NoPreludeDoChirho.hs",
+      "sha256_chirho": "bd80872ed46707ff163d1644dd89f178cec282d6a4fc7924cfb650dd0c864485",
+      "bytes_chirho": 267
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/io_chirho/mod.rs",
+      "sha256_chirho": "319c76c666ebed9f5a4fae329ea36f8d64b41fff5acb883be2ccdb79f677fa65",
+      "bytes_chirho": 11357
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/io_chirho/sequencing_tests_chirho.rs",
+      "sha256_chirho": "38034af19cf6157eb02d475e1dd4e5f5de503d5941f03560dd09307fb26f7293",
+      "bytes_chirho": 9631
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/library_chirho/backend_chirho/core_chirho.rs",
+      "sha256_chirho": "94d335fd7983c4e232b27da58c8d5be9d1c4c3d08104c7f5a61ad8eef87ef025",
+      "bytes_chirho": 15568
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/library_chirho/backend_chirho/io_chirho.rs",
+      "sha256_chirho": "257790f65d86ba5a6894ad8e7c5bb3996ef41346492c48053bbc7d54b5bb27e9",
+      "bytes_chirho": 6520
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/library_chirho/backend_chirho/io_completion_chirho.rs",
+      "sha256_chirho": "d7ad93a32f065d8aad8b9cbcce53e6dd0ef2cdb88cf5b5a65a76a6ee2d0e82a8",
+      "bytes_chirho": 4660
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/library_chirho/backend_chirho/io_core_chirho.rs",
+      "sha256_chirho": "7170eb159b88a17d773c5ed824123b6cf623014f8619fef9c5c996700a01c71c",
+      "bytes_chirho": 8818
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/library_chirho/backend_chirho/mod.rs",
+      "sha256_chirho": "133d907f0141d4fd61fbe39d119d3ead73a0b00ac14a6cc9167484413f4940b2",
+      "bytes_chirho": 13341
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/library_chirho/backend_chirho/show_chirho.rs",
+      "sha256_chirho": "0b52bda6e6ff5378474ec339823bb90c153958663d3a0b57edb07e64271c9ea9",
+      "bytes_chirho": 2813
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/library_chirho/io_chirho.rs",
+      "sha256_chirho": "4abcaf068cf24c39ab42de1fcf685e5fe16eb91880bbd8c20163244b96561960",
+      "bytes_chirho": 6566
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/library_chirho/mod.rs",
+      "sha256_chirho": "25cb7efa3fa75a09b0f2ea1146e1182874ff0d7e2aabf1f051147f5f03ec9b70",
+      "bytes_chirho": 12610
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/mod.rs",
+      "sha256_chirho": "569fcdf7d53dd2d5de1b1950773decb0faa172fc0ae66970cc18e706d4189fca",
+      "bytes_chirho": 8683
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/parse_chirho.rs",
+      "sha256_chirho": "9e4ac4275b51ef777c7965c24ddcb14bea70913b31df129db0610e8228e789b2",
+      "bytes_chirho": 13733
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/source_interfaces_chirho/graph_chirho.rs",
+      "sha256_chirho": "e2eb5bfa233d8b8ee7d292196e51a44a4bb78208f7dae0e22a86cef13de19321",
+      "bytes_chirho": 16460
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/source_interfaces_chirho/mod.rs",
+      "sha256_chirho": "43539fba80f64e5bace2d7e0c313b439caf120544af438e11376f7c13a9c4f40",
+      "bytes_chirho": 11696
+    },
+    {
+      "path_chirho": "crates/haskelujah-driver-chirho/src/frontend_chirho/next_chirho/types_chirho.rs",
+      "sha256_chirho": "381df4da00b269bb3fb89b845ff7306af4400b913cac3fcf997eed6f99fb2ef0",
+      "bytes_chirho": 10425
+    },
+    {
+      "path_chirho": "crates/haskelujah-hir-chirho/src/classes_lower_chirho.rs",
+      "sha256_chirho": "8f2ddea2518f48726be0ff5e8bb4a7667fba7ccf4b65ea7cd724c9d0477d237c",
+      "bytes_chirho": 11588
+    },
+    {
+      "path_chirho": "crates/haskelujah-hir-chirho/src/defaults_lower_chirho.rs",
+      "sha256_chirho": "766cf0fc53ae189351e9ad998ea95a6e56d0903794fd3be2f0e32c1311a08c4e",
+      "bytes_chirho": 5130
+    },
+    {
+      "path_chirho": "crates/haskelujah-hir-chirho/src/instances_lower_chirho.rs",
+      "sha256_chirho": "e544e4a0788d52fb15f4ccfd36ab327a11db598e05f72e6735d4c3207e74e2ab",
+      "bytes_chirho": 12968
+    },
+    {
+      "path_chirho": "crates/haskelujah-hir-chirho/src/interface_chirho/lower_chirho.rs",
+      "sha256_chirho": "ecd5de28e9553a13904d65ccda919a336ae60d2538c12c54b21daa03a62cbe1d",
+      "bytes_chirho": 25379
+    },
+    {
+      "path_chirho": "crates/haskelujah-hir-chirho/src/interface_chirho/mod.rs",
+      "sha256_chirho": "cb351ea03a1d5e11a7b401fb77f89b6cd9b610c020e54eb311dc55d1a5bd84c2",
+      "bytes_chirho": 6323
+    },
+    {
+      "path_chirho": "crates/haskelujah-hir-chirho/src/lib.rs",
+      "sha256_chirho": "170e4a3741866e51f25bdbffdd1cba69942ed376294efbcb75af7b36f42cfa75",
+      "bytes_chirho": 1266
+    },
+    {
+      "path_chirho": "crates/haskelujah-hir-chirho/src/literals_lower_chirho.rs",
+      "sha256_chirho": "4f2b7a06af061e224bcfdc9c8a178746310d7b5c17fc892e5073e40d6f3b4530",
+      "bytes_chirho": 4784
+    },
+    {
+      "path_chirho": "crates/haskelujah-hir-chirho/src/lower_chirho.rs",
+      "sha256_chirho": "5d711a652ce13295102172423ec3ebd72a2b26849dfc31693982cae754facb1f",
+      "bytes_chirho": 36245
+    },
+    {
+      "path_chirho": "crates/haskelujah-hir-chirho/src/signatures_chirho.rs",
+      "sha256_chirho": "84a72862b4573a6d85c6dff0dcca998e6182408ac495fbc8159117ac8a0eb027",
+      "bytes_chirho": 10746
+    },
+    {
+      "path_chirho": "crates/haskelujah-hir-chirho/src/syntax_chirho/do_chirho.rs",
+      "sha256_chirho": "4a74289056c617260787ee01f4d91fea404057d3a83719ea7fcf7254223be5eb",
+      "bytes_chirho": 4469
+    },
+    {
+      "path_chirho": "crates/haskelujah-hir-chirho/src/syntax_chirho/mod.rs",
+      "sha256_chirho": "1fa49d20d39dcce96fe0f0819d191d2218f3e10a8800d8f36690399208892c6f",
+      "bytes_chirho": 1013
+    },
+    {
+      "path_chirho": "crates/haskelujah-hir-chirho/src/syntax_chirho/pragmas_chirho.rs",
+      "sha256_chirho": "93c725554f7860aef69abb602a5bf68c756afb058b76d569453df9ad6d4be232",
+      "bytes_chirho": 9853
+    },
+    {
+      "path_chirho": "crates/haskelujah-hir-chirho/src/syntax_chirho/synonyms_chirho.rs",
+      "sha256_chirho": "5f254862a39723496ae8aed6049b32a1439352583c2ad24d440b314187a9b644",
+      "bytes_chirho": 4436
+    },
+    {
+      "path_chirho": "crates/haskelujah-hir-chirho/src/terms_chirho.rs",
+      "sha256_chirho": "b1a5fc6831861c3a2b20590936440f637a2cbffd7c1ecd12db4e3d9c8138dc06",
+      "bytes_chirho": 7695
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/check_chirho.rs",
+      "sha256_chirho": "c6c0773fc3bf30845819f3e48f3a8165de0cf656824cf2281c732b77f98e6b46",
+      "bytes_chirho": 20835
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/class_chirho/classes_chirho.rs",
+      "sha256_chirho": "db101104b9fd36ca7ff5dadd4f550fbfe1b8517b7d7fc118e694b058d70ab8f3",
+      "bytes_chirho": 26473
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/class_chirho/evidence_chirho.rs",
+      "sha256_chirho": "2aa8c9cf06af2b6dd6d98044717d3e5f7010d190a034cfcbb8daebf7f9d5f7bf",
+      "bytes_chirho": 27150
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/class_chirho/kinds_chirho.rs",
+      "sha256_chirho": "47f21c2192466c4a017c1b6ef8011a7cbb6a90228025dc741dd045df55630ca1",
+      "bytes_chirho": 27153
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/class_chirho/superclasses_chirho.rs",
+      "sha256_chirho": "fa6a32390edcc39089e39c8e7c7f2d07ca691ebe2cfab5801adccfb32ac743a3",
+      "bytes_chirho": 13664
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/data_chirho.rs",
+      "sha256_chirho": "ed9df8be22a646187049a1ebf31dba3f34895ba93ae32c78b1664eb8df89e68d",
+      "bytes_chirho": 19409
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/interface_chirho/data_kinds_chirho.rs",
+      "sha256_chirho": "7ef6b23d9ac6d9b82bda6f79542f1ba26778a4047795ea2dd20aa643ff4e387f",
+      "bytes_chirho": 20836
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/interface_chirho/export_chirho.rs",
+      "sha256_chirho": "4fca0c89c767ead833278f5e4ee9e3c0e5fc8b915f2586874925b2fff8645f6c",
+      "bytes_chirho": 20890
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/interface_chirho/import_chirho.rs",
+      "sha256_chirho": "6da842789826a098ba31975d84d5678a9fbf4ed0530c1ba12c9e3b8656857b09",
+      "bytes_chirho": 23843
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/interface_chirho/main_chirho.rs",
+      "sha256_chirho": "12c0746185e353762f78a16408aa2b70ed8b3deb02cfda2ce010639d1b4d31a5",
+      "bytes_chirho": 3748
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/interface_chirho/mod.rs",
+      "sha256_chirho": "2260a8c19627290bc65ed977f40b8bf09a634839b6f61be61c170e2c21e84da4",
+      "bytes_chirho": 2427
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/interface_chirho/primitive_signatures_chirho.rs",
+      "sha256_chirho": "5ac8a6f406d8423560111cf5211fa6a8d56a262720b15d6b61b3f828b90880c7",
+      "bytes_chirho": 4580
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/interface_chirho/synonyms_chirho.rs",
+      "sha256_chirho": "99b62fb2c5b8c9782acaa182e6ad1cc360ddecc797b43b4f3b43dd560b4a1d0e",
+      "bytes_chirho": 12823
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/lib.rs",
+      "sha256_chirho": "fb041def9707d00106eae7c064ee921b2e121eb03a4993803449aea114237128",
+      "bytes_chirho": 1237
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/signatures_chirho.rs",
+      "sha256_chirho": "36d89a003328c1b3bb9db10ddde2a5822f9440c99e34ea485a6b2845c4112ed5",
+      "bytes_chirho": 5832
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/solver_chirho.rs",
+      "sha256_chirho": "5d4fc2eb5f39fdcbe80bc81253fcebf35abd69d78612222d59c44f0aefec5c64",
+      "bytes_chirho": 21217
+    },
+    {
+      "path_chirho": "crates/haskelujah-tc-chirho/src/types_chirho.rs",
+      "sha256_chirho": "b3bdf8bb658ae1bde164c52e83dcf2f1cf268c9b0fd1d0620a0d5fc6769158e1",
+      "bytes_chirho": 24134
+    }
+  ]
+}

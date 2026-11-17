@@ -189,7 +189,7 @@ impl LowerChirho<'_> {
     fn imported_surface_chirho(
         &mut self,
         ty_chirho: &InterfaceTypeChirho,
-        binder_chirho: NameIdChirho,
+        binders_chirho: &[NameIdChirho],
         depth_chirho: usize,
     ) -> ResultChirho<SurfaceTypeChirho> {
         self.room_chirho(depth_chirho, SpanChirho::DUMMY_CHIRHO)?;
@@ -216,7 +216,14 @@ impl LowerChirho<'_> {
             InterfaceTypeChirho::DeclaredChirho(name_chirho) => {
                 SurfaceTypeChirho::DeclaredChirho(self.imported_name_chirho(name_chirho)?)
             }
-            InterfaceTypeChirho::BoundChirho(0) => SurfaceTypeChirho::VariableChirho(binder_chirho),
+            InterfaceTypeChirho::BoundChirho(index_chirho) => SurfaceTypeChirho::VariableChirho(
+                *binders_chirho.get(*index_chirho as usize).ok_or_else(|| {
+                    self.error_chirho(
+                        "checked method binder is outside its scheme",
+                        SpanChirho::DUMMY_CHIRHO,
+                    )
+                })?,
+            ),
             InterfaceTypeChirho::AppChirho(fun_chirho, arg_chirho) => {
                 if matches!(
                     fun_chirho.as_ref(),
@@ -224,19 +231,19 @@ impl LowerChirho<'_> {
                 ) {
                     SurfaceTypeChirho::ListChirho(Box::new(self.imported_surface_chirho(
                         arg_chirho,
-                        binder_chirho,
+                        binders_chirho,
                         depth_chirho + 1,
                     )?))
                 } else {
                     SurfaceTypeChirho::AppChirho(
                         Box::new(self.imported_surface_chirho(
                             fun_chirho,
-                            binder_chirho,
+                            binders_chirho,
                             depth_chirho + 1,
                         )?),
                         Box::new(self.imported_surface_chirho(
                             arg_chirho,
-                            binder_chirho,
+                            binders_chirho,
                             depth_chirho + 1,
                         )?),
                     )
@@ -246,12 +253,12 @@ impl LowerChirho<'_> {
                 SurfaceTypeChirho::FunChirho(
                     Box::new(self.imported_surface_chirho(
                         arg_chirho,
-                        binder_chirho,
+                        binders_chirho,
                         depth_chirho + 1,
                     )?),
                     Box::new(self.imported_surface_chirho(
                         result_chirho,
-                        binder_chirho,
+                        binders_chirho,
                         depth_chirho + 1,
                     )?),
                 )
@@ -260,7 +267,7 @@ impl LowerChirho<'_> {
                 items_chirho
                     .iter()
                     .map(|item_chirho| {
-                        self.imported_surface_chirho(item_chirho, binder_chirho, depth_chirho + 1)
+                        self.imported_surface_chirho(item_chirho, binders_chirho, depth_chirho + 1)
                     })
                     .collect::<ResultChirho<_>>()?,
             ),
@@ -411,7 +418,22 @@ impl LowerChirho<'_> {
                 });
                 let mut methods_chirho = Vec::new();
                 for method_chirho in &class_chirho.methods_chirho {
+                    let mut binders_chirho = vec![parameter_chirho];
+                    for _kind_chirho in method_chirho.scheme_chirho.kinds_chirho.iter().skip(1) {
+                        self.charge_names_chirho(
+                            self.module_chirho.len() + 48,
+                            SpanChirho::DUMMY_CHIRHO,
+                        )?;
+                        let id_chirho = NameIdChirho(self.env_chirho.fresh_def_id_chirho().0);
+                        let mut info_chirho =
+                            self.names_chirho[parameter_chirho.0 as usize].clone();
+                        info_chirho.occurrence_chirho =
+                            format!("%next:import-method-parameter:{}Chirho", id_chirho.0);
+                        self.names_chirho.push(info_chirho);
+                        binders_chirho.push(id_chirho);
+                    }
                     methods_chirho.push(ClassMethodChirho {
+                        binders_chirho: binders_chirho[1..].to_vec(),
                         name_chirho: self.imported_name_chirho(&method_chirho.name_chirho)?,
                         default_chirho: method_chirho
                             .default_chirho
@@ -420,7 +442,7 @@ impl LowerChirho<'_> {
                             .transpose()?,
                         ty_chirho: self.imported_surface_chirho(
                             &method_chirho.scheme_chirho.body_chirho,
-                            parameter_chirho,
+                            &binders_chirho,
                             0,
                         )?,
                         span_chirho: SpanChirho::DUMMY_CHIRHO,
@@ -428,6 +450,7 @@ impl LowerChirho<'_> {
                 }
                 let name_chirho = self.imported_name_chirho(&class_chirho.name_chirho)?;
                 self.imported_classes_chirho.push(ClassDeclChirho {
+                    higher_kinds_partial_chirho: false,
                     name_chirho,
                     parameter_chirho,
                     superclasses_chirho: Vec::new(),

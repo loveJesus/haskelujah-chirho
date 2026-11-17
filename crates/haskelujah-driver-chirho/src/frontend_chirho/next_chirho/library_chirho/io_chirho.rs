@@ -8,6 +8,7 @@ pub(super) const HANDLE_TEXT_CHIRHO: &str = "GHC.Internal.IO.Handle.Text";
 pub(super) const STD_HANDLES_CHIRHO: &str = "GHC.Internal.IO.StdHandles";
 pub(super) const HANDLE_TYPES_CHIRHO: &str = "GHC.Internal.IO.Handle.Types";
 const SYSTEM_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    explicit_forall_chirho: false,
     ghc_version_chirho: "9.14.1",
     exports_chirho: Some("print, putStr, putStrLn"),
     cpp_chirho: Some(cpp_chirho::SourceCppChirho {
@@ -24,6 +25,7 @@ const SYSTEM_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     wired_imports_chirho: &[WiredNameChirho::IOChirho],
 };
 const TEXT_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    explicit_forall_chirho: false,
     ghc_version_chirho: "9.14.1",
     exports_chirho: Some("hPutStr, hPutStrLn"),
     cpp_chirho: Some(cpp_chirho::SourceCppChirho {
@@ -45,6 +47,7 @@ const TEXT_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     ],
 };
 const STD_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    explicit_forall_chirho: false,
     ghc_version_chirho: "9.14.1",
     exports_chirho: Some("stdout"),
     cpp_chirho: Some(cpp_chirho::SourceCppChirho {
@@ -61,6 +64,7 @@ const STD_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     wired_imports_chirho: &[],
 };
 const HANDLE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    explicit_forall_chirho: false,
     ghc_version_chirho: "9.14.1",
     exports_chirho: Some("Handle"),
     cpp_chirho: Some(cpp_chirho::SourceCppChirho {
@@ -79,6 +83,7 @@ const HANDLE_CHIRHO: SourceManifestChirho = SourceManifestChirho {
     wired_imports_chirho: &[],
 };
 const TYPES_CHIRHO: SourceManifestChirho = SourceManifestChirho {
+    explicit_forall_chirho: false,
     ghc_version_chirho: "9.14.1",
     exports_chirho: Some("IO"),
     cpp_chirho: None,

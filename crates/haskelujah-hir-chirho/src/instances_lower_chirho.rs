@@ -26,7 +26,7 @@ impl LowerChirho<'_> {
             else {
                 continue;
             };
-            self.check_member_accounts_chirho(unattached_members_chirho)?;
+            self.instance_pragma_accounts_chirho(unattached_members_chirho, methods_chirho)?;
             let [head_chirho] = types_chirho.as_slice() else {
                 return Err(self.error_chirho(
                     "next instances currently require one class argument",
@@ -116,7 +116,7 @@ impl LowerChirho<'_> {
                 }
                 // GHC2021 scopes an instance's implicit binders over its methods.
                 // Haskell2010 keeps those binders in the head/context only.
-                if !self.explicit_forall_chirho {
+                if !self.ghc2021_chirho {
                     self.env_chirho.pop_scope_chirho();
                     self.env_chirho.push_scope_chirho();
                 }

@@ -115,6 +115,7 @@ impl ArithmeticProviderChirho {
             );
         }
         PrimitiveContractChirho {
+            kinds_chirho: Vec::new(),
             ty_chirho,
             arity_chirho,
         }
@@ -320,6 +321,7 @@ pub(in crate::next_chirho) fn validate_signature_span_chirho(
                 !matches!(
                     token_chirho.kind_chirho,
                     RawTokenKindChirho::ConIdChirho
+                        | RawTokenKindChirho::VarIdChirho
                         | RawTokenKindChirho::LeftParenChirho
                         | RawTokenKindChirho::RightParenChirho
                         | RawTokenKindChirho::RightArrowChirho

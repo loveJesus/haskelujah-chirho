@@ -3,14 +3,13 @@
 //! Check dependencies before expansion; argument kinds are checked even when erased.
 //! workflow: next-pipeline-chirho/ghc-implementation-map-chirho
 use super::*;
-use haskelujah_hir_chirho::{ClassDeclChirho, DataDeclChirho, SynonymDeclChirho};
+use haskelujah_hir_chirho::{DataDeclChirho, SynonymDeclChirho};
 use std::collections::HashSet;
 
 impl CheckedModuleChirho {
     pub(super) fn first_order_headers_chirho(
         &mut self,
         data_chirho: &[DataDeclChirho],
-        classes_chirho: &[ClassDeclChirho],
         synonyms_chirho: &[SynonymDeclChirho],
     ) -> Result<(), TcErrorChirho> {
         // Certify the admitted declaration subset before a consumer uses its headers.
@@ -22,12 +21,6 @@ impl CheckedModuleChirho {
                     self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
                     work_chirho.push(field_chirho);
                 }
-            }
-        }
-        for declaration_chirho in classes_chirho {
-            for method_chirho in &declaration_chirho.methods_chirho {
-                self.solver_chirho.arena_chirho.reserve_auxiliary_chirho()?;
-                work_chirho.push(&method_chirho.ty_chirho);
             }
         }
         for declaration_chirho in synonyms_chirho {

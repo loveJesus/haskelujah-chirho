@@ -51,7 +51,7 @@ impl LowerChirho<'_> {
                     name_chirho: id_chirho,
                     parameters_chirho,
                     body_chirho: self.type_chirho(rhs_chirho, 0)?,
-                    higher_kinds_partial_chirho: self.explicit_forall_chirho,
+                    higher_kinds_partial_chirho: self.ghc2021_chirho,
                 })
             })();
             self.env_chirho.pop_scope_chirho();
@@ -79,7 +79,7 @@ impl LowerChirho<'_> {
         head_chirho: &SurfaceTypeChirho,
         span_chirho: SpanChirho,
     ) -> ResultChirho<()> {
-        if self.explicit_forall_chirho {
+        if self.ghc2021_chirho {
             return Ok(());
         }
         let mut work_chirho = vec![head_chirho];

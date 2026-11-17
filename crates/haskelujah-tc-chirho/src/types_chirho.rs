@@ -84,6 +84,7 @@ pub struct TypeArenaChirho {
     pub(crate) metas_chirho: Vec<MetaCellChirho>,
     pub(crate) rigids_chirho: Vec<RigidCellChirho>,
     declared_kinds_chirho: HashMap<haskelujah_hir_chirho::NameIdChirho, TyChirho>,
+    open_data_kinds_chirho: HashMap<haskelujah_hir_chirho::NameIdChirho, Vec<bool>>,
 }
 
 impl TypeArenaChirho {
@@ -97,6 +98,7 @@ impl TypeArenaChirho {
             metas_chirho: Vec::new(),
             rigids_chirho: Vec::new(),
             declared_kinds_chirho: HashMap::new(),
+            open_data_kinds_chirho: HashMap::new(),
         }
     }
 
@@ -395,7 +397,19 @@ impl TypeArenaChirho {
                     head_chirho = self.resolve_chirho(*function_chirho)?;
                 }
                 let mut kind_chirho = self.kind_chirho(head_chirho)?;
-                for argument_chirho in arguments_chirho.into_iter().rev() {
+                let open_chirho =
+                    if let TyNodeChirho::ConChirho(TyConChirho::DeclaredChirho(name_chirho)) =
+                        self.node_chirho(head_chirho)?
+                    {
+                        self.open_data_kinds_chirho(*name_chirho)
+                            .map(<[bool]>::to_vec)
+                            .unwrap_or_default()
+                    } else {
+                        Vec::new()
+                    };
+                for (position_chirho, argument_chirho) in
+                    arguments_chirho.into_iter().rev().enumerate()
+                {
                     let TyNodeChirho::FunChirho(expected_chirho, result_chirho) =
                         self.node_chirho(self.resolve_chirho(kind_chirho)?)?.clone()
                     else {
@@ -408,9 +422,20 @@ impl TypeArenaChirho {
                     if self.resolve_chirho(expected_chirho)?
                         != self.resolve_chirho(actual_chirho)?
                     {
+                        let partial_chirho =
+                            open_chirho.get(position_chirho).copied().unwrap_or(false)
+                                || self.kind_is_partial_chirho(argument_chirho)?;
                         return Err(TcErrorChirho::new_chirho(
-                            TcErrorKindChirho::KindMismatchChirho,
-                            "type argument has the wrong kind",
+                            if partial_chirho {
+                                TcErrorKindChirho::UnsupportedChirho
+                            } else {
+                                TcErrorKindChirho::KindMismatchChirho
+                            },
+                            if partial_chirho {
+                                "next cannot refute an unmodeled polymorphic data kind"
+                            } else {
+                                "type argument has the wrong kind"
+                            },
                         ));
                     }
                     kind_chirho = result_chirho;
@@ -448,6 +473,148 @@ impl TypeArenaChirho {
 
     pub(crate) fn identity_chirho(&self) -> u64 {
         self.arena_chirho
+    }
+
+    pub(crate) fn open_data_kinds_chirho(
+        &self,
+        name_chirho: haskelujah_hir_chirho::NameIdChirho,
+    ) -> Option<&[bool]> {
+        self.open_data_kinds_chirho
+            .get(&name_chirho)
+            .map(Vec::as_slice)
+    }
+    pub(crate) fn set_open_data_kinds_chirho(
+        &mut self,
+        name_chirho: haskelujah_hir_chirho::NameIdChirho,
+        open_chirho: Vec<bool>,
+    ) -> Result<(), TcErrorChirho> {
+        let mut kind_chirho = *self
+            .declared_kinds_chirho
+            .get(&name_chirho)
+            .ok_or_else(Self::invalid_chirho)?;
+        for _position_chirho in &open_chirho {
+            self.reserve_auxiliary_chirho()?;
+            let TyNodeChirho::FunChirho(_, next_chirho) = *self.node_chirho(kind_chirho)? else {
+                return Err(Self::invalid_chirho());
+            };
+            kind_chirho = next_chirho;
+        }
+        if !matches!(
+            self.node_chirho(kind_chirho)?,
+            TyNodeChirho::ConChirho(TyConChirho::TypeChirho)
+        ) {
+            return Err(Self::invalid_chirho());
+        }
+        if open_chirho.iter().any(|open_chirho| *open_chirho) {
+            self.open_data_kinds_chirho.insert(name_chirho, open_chirho);
+        } else {
+            self.open_data_kinds_chirho.remove(&name_chirho);
+        }
+        Ok(())
+    }
+    pub(crate) fn kind_is_partial_chirho(
+        &mut self,
+        mut ty_chirho: TyChirho,
+    ) -> Result<bool, TcErrorChirho> {
+        let mut supplied_chirho = 0;
+        loop {
+            self.reserve_auxiliary_chirho()?;
+            ty_chirho = self.resolve_chirho(ty_chirho)?;
+            match *self.node_chirho(ty_chirho)? {
+                TyNodeChirho::AppChirho(function_chirho, _) => {
+                    supplied_chirho += 1;
+                    ty_chirho = function_chirho;
+                }
+                TyNodeChirho::ConChirho(TyConChirho::DeclaredChirho(name_chirho)) => {
+                    return Ok(self.open_data_kinds_chirho(name_chirho).is_some_and(
+                        |open_chirho| {
+                            open_chirho
+                                .iter()
+                                .skip(supplied_chirho)
+                                .any(|open_chirho| *open_chirho)
+                        },
+                    ));
+                }
+                _ => return Ok(false),
+            }
+        }
+    }
+
+    pub fn interned_rigid_chirho(
+        &self,
+        rigid_chirho: RigidIdChirho,
+    ) -> Result<TyChirho, TcErrorChirho> {
+        self.rigid_cell_chirho(rigid_chirho)?;
+        self.index_chirho
+            .get(&TyNodeChirho::RigidChirho(rigid_chirho))
+            .copied()
+            .ok_or_else(Self::invalid_chirho)
+    }
+
+    pub(crate) fn class_parameter_kind_chirho(
+        &self,
+        name_chirho: haskelujah_hir_chirho::NameIdChirho,
+    ) -> Result<TyChirho, TcErrorChirho> {
+        let kind_chirho = *self
+            .declared_kinds_chirho
+            .get(&name_chirho)
+            .ok_or_else(Self::invalid_chirho)?;
+        match self.node_chirho(kind_chirho)? {
+            TyNodeChirho::FunChirho(argument_chirho, result_chirho)
+                if matches!(
+                    self.node_chirho(*result_chirho)?,
+                    TyNodeChirho::ConChirho(TyConChirho::ConstraintChirho)
+                ) =>
+            {
+                Ok(*argument_chirho)
+            }
+            _ => Err(Self::invalid_chirho()),
+        }
+    }
+    pub(crate) fn set_class_kind_chirho(
+        &mut self,
+        name_chirho: haskelujah_hir_chirho::NameIdChirho,
+        parameter_chirho: TyChirho,
+    ) -> Result<(), TcErrorChirho> {
+        self.class_parameter_kind_chirho(name_chirho)?;
+        let mut work_chirho = vec![parameter_chirho];
+        while let Some(kind_chirho) = work_chirho.pop() {
+            self.reserve_auxiliary_chirho()?;
+            match self.node_chirho(kind_chirho)? {
+                TyNodeChirho::ConChirho(TyConChirho::TypeChirho) => {}
+                TyNodeChirho::FunChirho(a_chirho, b_chirho) => {
+                    work_chirho.extend([*a_chirho, *b_chirho])
+                }
+                _ => {
+                    return Err(TcErrorChirho::new_chirho(
+                        TcErrorKindChirho::UnsupportedChirho,
+                        "next class kinds are monomorphic Type/arrow kinds",
+                    ));
+                }
+            }
+        }
+        let constraint_chirho = self.con_chirho(TyConChirho::ConstraintChirho)?;
+        let kind_chirho =
+            self.intern_chirho(TyNodeChirho::FunChirho(parameter_chirho, constraint_chirho))?;
+        self.declared_kinds_chirho.insert(name_chirho, kind_chirho);
+        Ok(())
+    }
+    pub(crate) fn method_field_chirho(
+        &mut self,
+        scheme_chirho: &crate::SchemeChirho,
+    ) -> Result<TyChirho, TcErrorChirho> {
+        let mut body_chirho = scheme_chirho.body_chirho;
+        for &variable_chirho in scheme_chirho.quantified_chirho.iter().skip(1).rev() {
+            let TyNodeChirho::RigidChirho(binder_chirho) = *self.node_chirho(variable_chirho)?
+            else {
+                return Err(Self::invalid_chirho());
+            };
+            body_chirho = self.intern_chirho(TyNodeChirho::ForallChirho {
+                binder_chirho,
+                body_chirho,
+            })?;
+        }
+        Ok(body_chirho)
     }
 
     pub fn allocation_count_chirho(&self) -> usize {

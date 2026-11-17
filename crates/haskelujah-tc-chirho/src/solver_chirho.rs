@@ -143,6 +143,28 @@ impl SolverChirho {
         Ok(ty_chirho)
     }
 
+    pub(crate) fn method_variable_chirho(
+        &mut self,
+        scope_chirho: ScopeIdChirho,
+        kind_chirho: TyChirho,
+    ) -> Result<TyChirho, TcErrorChirho> {
+        if self.scope_kind_chirho(scope_chirho)? != ScopeKindChirho::MethodChirho {
+            return Err(TcErrorChirho::new_chirho(
+                TcErrorKindChirho::InvalidReferenceChirho,
+                "method skolem has no method scope",
+            ));
+        }
+        let level_chirho = self.level_chirho(scope_chirho)?;
+        let (rigid_chirho, ty_chirho) = self
+            .arena_chirho
+            .fresh_rigid_chirho(level_chirho, kind_chirho)?;
+        self.arena_chirho.reserve_auxiliary_chirho()?;
+        self.scopes_chirho[scope_chirho.index_chirho]
+            .skolems_chirho
+            .push(rigid_chirho);
+        Ok(ty_chirho)
+    }
+
     pub(crate) fn scoped_type_variable_chirho(
         &self,
         mut scope_chirho: ScopeIdChirho,
@@ -347,7 +369,11 @@ impl SolverChirho {
             != self.arena_chirho.resolve_chirho(actual_kind_chirho)?
         {
             return Err(TcErrorChirho::new_chirho(
-                TcErrorKindChirho::KindMismatchChirho,
+                if self.arena_chirho.kind_is_partial_chirho(image_chirho)? {
+                    TcErrorKindChirho::UnsupportedChirho
+                } else {
+                    TcErrorKindChirho::KindMismatchChirho
+                },
                 "metavariable and image have different checked kinds",
             ));
         }

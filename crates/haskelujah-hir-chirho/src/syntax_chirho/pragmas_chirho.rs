@@ -95,6 +95,49 @@ fn tokens_chirho(text_chirho: &str) -> Vec<&str> {
     result_chirho
 }
 impl LowerChirho<'_> {
+    pub(in crate::lower_chirho) fn instance_pragma_accounts_chirho(
+        &mut self,
+        accounts_chirho: &[UnattachedMemberChirho],
+        methods_chirho: &[LocalBindChirho],
+    ) -> ResultChirho<()> {
+        let mut remaining_chirho = Vec::new();
+        let mut seen_chirho = HashSet::new();
+        for account_chirho in accounts_chirho {
+            if account_chirho.kind_chirho != UnattachedMemberKindChirho::InlinePragmaChirho {
+                remaining_chirho.push(account_chirho.clone());
+                continue;
+            }
+            if self.unit_chirho != UnitIdentityChirho::CompilerChirho {
+                return Err(self.error_chirho(
+                    "instance INLINE is only retained inside a compiler-unit source group",
+                    account_chirho.span_chirho,
+                ));
+            }
+            let text_chirho = account_chirho.name_chirho.as_deref().ok_or_else(|| {
+                self.error_chirho(
+                    "instance INLINE lacks its target",
+                    account_chirho.span_chirho,
+                )
+            })?;
+            self.charge_names_chirho(text_chirho.len() + 1, account_chirho.span_chirho)?;
+            let tokens_chirho = tokens_chirho(text_chirho);
+            let name_chirho = match tokens_chirho.as_slice() {
+                [name_chirho] if identifier_chirho(name_chirho) => *name_chirho,
+                ["(", name_chirho, ")"] => *name_chirho,
+                _ => {
+                    return Err(self.error_chirho(
+                        "instance INLINE requires one plain method target",
+                        account_chirho.span_chirho,
+                    ));
+                }
+            };
+            if !seen_chirho.insert(name_chirho) || !methods_chirho.iter().any(|method_chirho| matches!(method_chirho,LocalBindChirho::FunBindChirho { name_chirho: method_name_chirho,.. } if method_name_chirho.text_chirho() == name_chirho)) {
+                return Err(self.error_chirho("instance INLINE does not own one method binding",account_chirho.span_chirho));
+            }
+        }
+        self.check_member_accounts_chirho(&remaining_chirho)
+    }
+
     pub(in crate::lower_chirho) fn class_pragma_accounts_chirho(
         &mut self,
         accounts_chirho: &[UnattachedMemberChirho],

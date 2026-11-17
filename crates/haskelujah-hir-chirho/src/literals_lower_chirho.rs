@@ -15,47 +15,57 @@ impl LowerChirho<'_> {
         let name_chirho = if self.rebindable_chirho {
             self.lookup_text_chirho(operation_chirho, NamespaceChirho::ValueChirho, span_chirho)?
         } else {
-            let original_chirho = OriginalNameChirho {
-                unit_chirho: UnitIdentityChirho::CompilerChirho,
-                module_chirho: "GHC.Internal.Num".into(),
-                namespace_chirho: NamespaceChirho::ValueChirho,
-                occurrence_chirho: operation_chirho.into(),
-            };
-            if self.unit_chirho == original_chirho.unit_chirho
-                && self.module_chirho == original_chirho.module_chirho
-            {
-                let own_chirho = self
-                    .env_chirho
-                    .lookup_chirho(operation_chirho, NamespaceChirho::ValueChirho)
-                    .map(|info_chirho| NameIdChirho(info_chirho.def_id_chirho.0))
-                    .filter(|id_chirho| {
-                        self.names_chirho[id_chirho.0 as usize].original_chirho() == original_chirho
-                    });
-                own_chirho.ok_or_else(|| {
-                    self.invalid_class_chirho(
-                        "defining numeric source lacks its known selector",
+            self.known_syntax_name_chirho("GHC.Internal.Num", operation_chirho, span_chirho)?
+        };
+        self.apply_name_chirho(name_chirho, arguments_chirho, span_chirho)
+    }
+
+    pub(super) fn known_syntax_name_chirho(
+        &self,
+        module_chirho: &str,
+        operation_chirho: &str,
+        span_chirho: SpanChirho,
+    ) -> ResultChirho<NameIdChirho> {
+        let original_chirho = OriginalNameChirho {
+            unit_chirho: UnitIdentityChirho::CompilerChirho,
+            module_chirho: module_chirho.into(),
+            namespace_chirho: NamespaceChirho::ValueChirho,
+            occurrence_chirho: operation_chirho.into(),
+        };
+        let name_chirho = if self.unit_chirho == original_chirho.unit_chirho
+            && self.module_chirho == original_chirho.module_chirho
+        {
+            let own_chirho = self
+                .env_chirho
+                .lookup_chirho(operation_chirho, NamespaceChirho::ValueChirho)
+                .map(|info_chirho| NameIdChirho(info_chirho.def_id_chirho.0))
+                .filter(|id_chirho| {
+                    self.names_chirho[id_chirho.0 as usize].original_chirho() == original_chirho
+                });
+            own_chirho.ok_or_else(|| {
+                self.invalid_class_chirho(
+                    "defining syntax source lacks its known selector",
+                    span_chirho,
+                )
+            })?
+        } else {
+            self.imported_names_chirho
+                .get(&original_chirho)
+                .copied()
+                // Language seeds share this identity index but cannot prove a checked selector.
+                .filter(|id_chirho| {
+                    self.names_chirho[id_chirho.0 as usize]
+                        .wired_chirho
+                        .is_none()
+                })
+                .ok_or_else(|| {
+                    self.error_chirho(
+                        "known syntax selector has no checked defining-unit interface",
                         span_chirho,
                     )
                 })?
-            } else {
-                self.imported_names_chirho
-                    .get(&original_chirho)
-                    .copied()
-                    // Language seeds share this identity index but cannot prove a checked selector.
-                    .filter(|id_chirho| {
-                        self.names_chirho[id_chirho.0 as usize]
-                            .wired_chirho
-                            .is_none()
-                    })
-                    .ok_or_else(|| {
-                        self.error_chirho(
-                            "known numeric selector has no checked defining-unit interface",
-                            span_chirho,
-                        )
-                    })?
-            }
         };
-        self.apply_name_chirho(name_chirho, arguments_chirho, span_chirho)
+        Ok(name_chirho)
     }
 
     pub(super) fn integer_expression_chirho(
@@ -72,7 +82,7 @@ impl LowerChirho<'_> {
                     span_chirho,
                 )
             })?;
-        if !self.explicit_forall_chirho
+        if !self.ghc2021_chirho
             && (source_chirho.contains('_')
                 || source_chirho.starts_with("0b")
                 || source_chirho.starts_with("0B"))

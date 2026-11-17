@@ -24,12 +24,12 @@ impl SolverChirho {
             .iter()
             .copied()
             .zip(info_chirho.superclasses_chirho.iter().copied())
-            .chain(info_chirho.methods_chirho.iter().map(|method_chirho| {
-                (
-                    method_chirho.name_chirho,
-                    method_chirho.scheme_chirho.body_chirho,
-                )
-            }))
+            .chain(
+                info_chirho
+                    .methods_chirho
+                    .iter()
+                    .map(|method_chirho| (method_chirho.name_chirho, method_chirho.field_chirho)),
+            )
             .collect())
     }
 

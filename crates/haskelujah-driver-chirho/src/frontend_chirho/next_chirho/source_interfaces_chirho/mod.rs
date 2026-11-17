@@ -125,6 +125,21 @@ fn program_chirho(
         let input_chirho = sources_chirho
             .remove(&key_chirho)
             .ok_or_else(|| invalid_chirho("source graph lost a producer"))?;
+        if input_chirho.do_syntax_chirho
+            && !(key_chirho.unit_chirho
+                == haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho
+                && key_chirho.module_chirho == super::library_chirho::BASE_MODULE_CHIRHO)
+        {
+            let dependency_chirho = graph_chirho::ModuleKeyChirho {
+                unit_chirho: haskelujah_hir_chirho::UnitIdentityChirho::CompilerChirho,
+                module_chirho: super::library_chirho::BASE_MODULE_CHIRHO.into(),
+            };
+            policy_chirho.implicit_interfaces_chirho.push(Arc::clone(
+                interfaces_chirho.get(&dependency_chirho).ok_or_else(|| {
+                    invalid_chirho("do needs its checked defining Monad interface")
+                })?,
+            ));
+        }
         let checked_chirho = super::check_parsed_with_policy_chirho(
             input_chirho.parsed_chirho,
             key_chirho.unit_chirho.clone(),

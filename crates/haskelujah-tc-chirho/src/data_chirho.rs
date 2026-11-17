@@ -162,17 +162,6 @@ impl CheckedModuleChirho {
                     self.surface_with_chirho(function_chirho, parameters_chirho)?;
                 let argument_chirho =
                     self.surface_with_chirho(argument_chirho, parameters_chirho)?;
-                if matches!(
-                    self.solver_chirho
-                        .arena_chirho
-                        .node_chirho(function_chirho)?,
-                    TyNodeChirho::MetaChirho(_) | TyNodeChirho::RigidChirho(_)
-                ) {
-                    return Err(TcErrorChirho::new_chirho(
-                        TcErrorKindChirho::UnsupportedChirho,
-                        "next does not yet infer higher-kinded data parameters",
-                    ));
-                }
                 let ty_chirho = self
                     .solver_chirho
                     .arena_chirho
@@ -223,6 +212,10 @@ impl CheckedModuleChirho {
             self.solver_chirho.arena_chirho.declare_chirho(
                 declaration_chirho.name_chirho,
                 declaration_chirho.parameters_chirho.len(),
+            )?;
+            self.solver_chirho.arena_chirho.set_open_data_kinds_chirho(
+                declaration_chirho.name_chirho,
+                vec![self.module_chirho.ghc2021_chirho; declaration_chirho.parameters_chirho.len()],
             )?;
         }
         Ok(())

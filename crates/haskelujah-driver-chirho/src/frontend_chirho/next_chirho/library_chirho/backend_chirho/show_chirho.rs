@@ -55,6 +55,7 @@ pub(super) fn contract_chirho(
         ty_chirho = InterfaceTypeChirho::FunChirho(Box::new(argument_chirho), Box::new(ty_chirho));
     }
     PrimitiveContractChirho {
+        kinds_chirho: Vec::new(),
         ty_chirho,
         arity_chirho: 3,
     }

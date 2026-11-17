@@ -226,14 +226,26 @@ impl LowerChirho<'_> {
                     } else {
                         None
                     };
+                    self.env_chirho.push_scope_chirho();
+                    let signature_chirho = self.signature_body_chirho(&method_chirho.ty_chirho);
+                    self.env_chirho.pop_scope_chirho();
+                    let (signature_chirho, _) = signature_chirho?;
+                    if !signature_chirho.context_chirho.is_empty() {
+                        return Err(self.error_chirho(
+                            "next does not yet check method-local contexts",
+                            method_chirho.span_chirho,
+                        ));
+                    }
                     lowered_methods_chirho.push(ClassMethodChirho {
                         name_chirho,
                         default_chirho,
-                        ty_chirho: self.type_chirho(&method_chirho.ty_chirho, 0)?,
+                        binders_chirho: signature_chirho.binders_chirho,
+                        ty_chirho: signature_chirho.body_chirho,
                         span_chirho: method_chirho.span_chirho,
                     });
                 }
                 Ok(ClassDeclChirho {
+                    higher_kinds_partial_chirho: self.ghc2021_chirho,
                     name_chirho: class_chirho,
                     parameter_chirho,
                     superclasses_chirho,

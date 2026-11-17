@@ -61,6 +61,7 @@ struct LowerChirho<'literals_chirho> {
     next_expr_chirho: u32,
     limits_chirho: LimitsChirho,
     explicit_forall_chirho: bool,
+    ghc2021_chirho: bool,
     rebindable_chirho: bool,
     implicit_prelude_chirho: bool,
     prelude_exports_chirho: Option<std::sync::Arc<PreludeExportsChirho>>,
@@ -422,6 +423,10 @@ impl LowerChirho<'_> {
         let span_chirho = expression_chirho.span_chirho();
         self.room_chirho(depth_chirho, span_chirho)?;
         let kind_chirho = match expression_chirho {
+            AstExprChirho::DoChirho { qualifier_chirho,stmts_chirho,.. } => {
+                if self.rebindable_chirho || qualifier_chirho.is_some() { return Err(self.error_chirho("next does not yet check RebindableSyntax or qualified do",span_chirho)); }
+                return self.do_chirho(stmts_chirho,span_chirho,depth_chirho+1);
+            }
             AstExprChirho::VarChirho(name_chirho) | AstExprChirho::ConChirho(name_chirho) => ExprKindChirho::VarChirho(self.lookup_chirho(name_chirho, NamespaceChirho::ValueChirho)?),
             AstExprChirho::LitChirho(literal_chirho @ LitChirho::IntChirho(..)) => return self.integer_expression_chirho(literal_chirho),
             AstExprChirho::NegChirho { expr_chirho, .. } => {
@@ -577,6 +582,18 @@ pub fn lower_module_with_policy_chirho(
         explicit_forall_chirho: module_chirho
             .extensions_chirho
             .iter()
+            .any(|extension_chirho| extension_chirho == "ExplicitForAll")
+            || module_chirho
+                .extensions_chirho
+                .iter()
+                .rev()
+                .find(|extension_chirho| {
+                    matches!(extension_chirho.as_str(), "GHC2021" | "Haskell2010")
+                })
+                .is_none_or(|edition_chirho| edition_chirho == "GHC2021"),
+        ghc2021_chirho: module_chirho
+            .extensions_chirho
+            .iter()
             .rev()
             .find(|extension_chirho| matches!(extension_chirho.as_str(), "GHC2021" | "Haskell2010"))
             .is_none_or(|edition_chirho| edition_chirho == "GHC2021"),
@@ -598,6 +615,7 @@ pub fn lower_module_with_policy_chirho(
                     | "GHC2021"
                     | "NoImplicitPrelude"
                     | "DefaultSignatures"
+                    | "ExplicitForAll"
                     | "RebindableSyntax"
             )
         })
@@ -811,6 +829,7 @@ pub fn lower_module_with_policy_chirho(
     let mut exports_chirho = lower_chirho.exports_chirho(module_chirho)?;
     exports_chirho.extend(wired_exports_chirho);
     Ok(ModuleChirho {
+        ghc2021_chirho: lower_chirho.ghc2021_chirho,
         unit_chirho: lower_chirho.unit_chirho,
         module_chirho: lower_chirho.module_chirho,
         names_chirho: lower_chirho.names_chirho,

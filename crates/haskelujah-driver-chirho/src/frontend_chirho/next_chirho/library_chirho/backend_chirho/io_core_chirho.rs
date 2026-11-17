@@ -38,6 +38,14 @@ impl ElaboratorChirho<'_> {
         provider_chirho: IoProviderChirho,
         span_chirho: haskelujah_span_chirho::SpanChirho,
     ) -> Result<CoreExprChirho, NextErrorChirho> {
+        if matches!(
+            provider_chirho,
+            IoProviderChirho::ReturnChirho
+                | IoProviderChirho::BindChirho
+                | IoProviderChirho::ThenChirho
+        ) {
+            return self.io_completion_chirho(ty_chirho, provider_chirho, span_chirho);
+        }
         // The template's term count is constant and charged before allocation.
         for _term_chirho in 0..160 {
             self.types_chirho.reserve_term_chirho()?;
@@ -183,6 +191,6 @@ impl ElaboratorChirho<'_> {
     }
 }
 
-fn error_chirho(message_chirho: &str) -> NextErrorChirho {
+pub(super) fn error_chirho(message_chirho: &str) -> NextErrorChirho {
     NextErrorChirho::new_chirho(NextErrorKindChirho::UnsupportedChirho, message_chirho)
 }

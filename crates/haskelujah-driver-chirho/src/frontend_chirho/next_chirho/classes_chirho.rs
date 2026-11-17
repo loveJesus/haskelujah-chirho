@@ -263,15 +263,37 @@ impl ElaboratorChirho<'_> {
                     .push(self.fresh_binder_chirho(field_type_chirho, SpanChirho::DUMMY_CHIRHO)?);
             }
             self.types_chirho.reserve_term_chirho()?;
+            let mut selected_chirho =
+                CoreExprChirho::VarChirho(fields_chirho[index_chirho].id_chirho);
+            let mut result_chirho = *field_type_chirho;
+            for &variable_chirho in scheme_chirho.quantified_chirho.iter().skip(1) {
+                self.types_chirho.reserve_term_chirho()?;
+                selected_chirho = CoreExprChirho::TyAppChirho {
+                    expr_chirho: Box::new(selected_chirho),
+                    ty_chirho: self.types_chirho.convert_chirho(variable_chirho)?,
+                };
+                if let haskelujah_tc_chirho::TyNodeChirho::ForallChirho { body_chirho, .. } =
+                    checked_chirho
+                        .solver_chirho
+                        .arena_chirho
+                        .node_chirho(result_chirho)?
+                {
+                    result_chirho = *body_chirho;
+                } else {
+                    return Err(invalid_evidence_chirho(
+                        "method dictionary field lost its local quantifier",
+                    ));
+                }
+            }
             let mut body_chirho = CoreExprChirho::CaseChirho {
                 scrutinee_chirho: Box::new(CoreExprChirho::VarChirho(dictionary_chirho.id_chirho)),
                 bind_chirho: case_binder_chirho,
-                result_ty_chirho: self.types_chirho.convert_chirho(*field_type_chirho)?,
+                result_ty_chirho: self.types_chirho.convert_chirho(result_chirho)?,
                 alts_chirho: vec![CoreAltChirho {
                     con_chirho: AltConChirho::DataConChirho(
                         self.dictionary_key_chirho(class_chirho),
                     ),
-                    rhs_chirho: CoreExprChirho::VarChirho(fields_chirho[index_chirho].id_chirho),
+                    rhs_chirho: selected_chirho,
                     binders_chirho: fields_chirho,
                 }],
             };

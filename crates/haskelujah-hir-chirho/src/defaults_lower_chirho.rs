@@ -65,26 +65,39 @@ impl LowerChirho<'_> {
                         true,
                         None,
                     )?;
-                    let signature_chirho = SurfaceSignatureChirho {
-                        binders_chirho: vec![parameter_chirho],
-                        context_chirho: vec![SurfacePredicateChirho {
+                    self.env_chirho.push_scope_chirho();
+                    let signature_chirho = self.signature_body_chirho(&method_chirho.ty_chirho);
+                    let (mut signature_chirho, scoped_chirho) = match signature_chirho {
+                        Ok(signature_chirho) => signature_chirho,
+                        Err(error_chirho) => {
+                            self.env_chirho.pop_scope_chirho();
+                            return Err(error_chirho);
+                        }
+                    };
+                    signature_chirho.binders_chirho.insert(0, parameter_chirho);
+                    signature_chirho.context_chirho.insert(
+                        0,
+                        SurfacePredicateChirho {
                             class_chirho: class_chirho.name_chirho,
                             argument_chirho: parameter_chirho,
-                        }],
-                        body_chirho: self.type_chirho(&method_chirho.ty_chirho, 0)?,
-                    };
-                    // Only the GHC2021 profile scopes the class parameter over its RHS.
-                    if !self.explicit_forall_chirho {
+                        },
+                    );
+                    if !scoped_chirho {
                         self.env_chirho.pop_scope_chirho();
                         self.env_chirho.push_scope_chirho();
                     }
+                    if !self.ghc2021_chirho {
+                        self.env_chirho.pop_scope_chirho();
+                        self.env_chirho.pop_scope_chirho();
+                        self.env_chirho.push_scope_chirho();
+                        self.env_chirho.push_scope_chirho();
+                    }
+                    let body_chirho =
+                        self.equation_chirho(matches_chirho, method_chirho.span_chirho, 0);
+                    self.env_chirho.pop_scope_chirho();
                     Ok(BindingChirho {
                         name_chirho,
-                        body_chirho: self.equation_chirho(
-                            matches_chirho,
-                            method_chirho.span_chirho,
-                            0,
-                        )?,
+                        body_chirho: body_chirho?,
                         signature_chirho: Some(signature_chirho),
                         restricted_chirho: false,
                         span_chirho: method_chirho.span_chirho,

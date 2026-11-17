@@ -98,6 +98,7 @@ pub(super) struct EvidenceRecordChirho {
 pub struct MethodInfoChirho {
     pub name_chirho: NameIdChirho,
     pub scheme_chirho: crate::SchemeChirho,
+    pub field_chirho: TyChirho,
 }
 
 #[derive(Debug, Clone)]

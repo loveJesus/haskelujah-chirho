@@ -213,11 +213,17 @@ impl<'checked_chirho> CoreTypesChirho<'checked_chirho> {
                     .map(|item_chirho| self.walk_chirho(*item_chirho, depth_chirho + 1))
                     .collect::<Result<_, _>>()?,
             ),
-            TyNodeChirho::ForallChirho { .. } => {
-                return Err(NextErrorChirho::new_chirho(
-                    NextErrorKindChirho::UnsupportedChirho,
-                    "next S0 Core adapter does not yet elaborate quantified evidence",
-                ));
+            TyNodeChirho::ForallChirho {
+                binder_chirho,
+                body_chirho,
+            } => {
+                let variable_chirho = arena_chirho.interned_rigid_chirho(*binder_chirho)?;
+                let variable_chirho =
+                    TyVarChirho(arena_chirho.variable_id_chirho(variable_chirho)?);
+                CoreTypeChirho::ForallChirho {
+                    vars_chirho: vec![variable_chirho],
+                    body_chirho: Box::new(self.walk_chirho(*body_chirho, depth_chirho + 1)?),
+                }
             }
         })
     }
