@@ -156,6 +156,8 @@ Wired-in and known-key names mirror `GHC.Builtin.Names`, `GHC.Builtin.Types` and
 
 ## 10. Libraries and interfaces
 
+Amended on 2026-11-25 by `26-11-25-plan-revision-chirho.md`, R1 to R3: the library loads as whole modules with a level per declaration, a module no longer has to compile completely to count, `Integer` comes from source, and the interim code is a listed set of bodies and abstract types. The ladder order below stands.
+
 - In 9.14.1 the whole core library is one package, ghc-internal, with modules named `GHC.Internal.*`. ghc-prim and ghc-bignum are five-line shims, and base is 259 re-export modules.
 - The ladder, under `GHC.Internal`: `Types`, `Classes`, `CString`, `Magic`, `Tuple`; then `Base`, `Maybe`, `List`, `Char`, `Show`, `Num` with the `Bignum` modules, `Real`, `Enum`; then errors, call stacks, exceptions and Typeable; then ST, IORef, arrays, bits, words; then `GHC.Float`, Read, Generics, Foldable and Traversable; then the IO and Handle stack, concurrency and Foreign; then all of base.
 - A module counts when it compiles from unmodified source. A temporary patch is recorded in a patch series that must shrink to nothing by G3.
@@ -164,6 +166,8 @@ Wired-in and known-key names mirror `GHC.Builtin.Names`, `GHC.Builtin.Types` and
 - Interface files are our own format with a version hash: exports, fixities, types, classes, constructors, pattern synonyms, instances with orphan flags, defaults, and unfoldings for INLINE bindings. `.hs-boot` modules are supported from slice S2, because base needs them.
 
 ## 11. Build order
+
+Amended on 2026-11-25 by `26-11-25-plan-revision-chirho.md`, R6: slice S1 also takes bang patterns, stock deriving of `Eq` and `Ord`, `hs-boot` imports and the Rust preprocessor; slices S3 to S7 are chosen by the scoreboard's top blocker, not in fixed order.
 
 Each slice ends with a scoreboard bucket that must be green and a set of real modules that must compile.
 

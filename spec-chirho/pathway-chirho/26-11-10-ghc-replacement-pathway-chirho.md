@@ -6,6 +6,8 @@
 
 Companion design: `26-11-10-faithful-pipeline-architecture-chirho.md` in this directory.
 
+Revised on 2026-11-25 by `26-11-25-plan-revision-chirho.md`. That document carries the current state, the precise meaning of "drop-in replacement for GHC" and the one-binary toolchain (it replaces the opening sentence of section 3 and all of section 8 here), and the working method (it replaces the first steps of section 5 and the landing gate of section 6). The gates G1 to G6 and decisions A1 to A7 are unchanged.
+
 ## 1. Where we are, measured
 
 Private integration `5b76a1c6` (strict "dependable" profile), GHC 9.14.1 as oracle.
