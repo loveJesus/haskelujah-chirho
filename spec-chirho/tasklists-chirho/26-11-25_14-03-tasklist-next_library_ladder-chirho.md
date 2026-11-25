@@ -32,11 +32,11 @@
 - [ ] 11. Core representations; strict unlifted bindings; unboxed values and tuples in the interpreter.
 - [ ] 12. Bang patterns; stock deriving of `Eq` and `Ord`, standalone and clause forms.
 - [ ] 13. Primop bodies by scoreboard rank.
-- [ ] **Gate rung 1.** The five modules all `coded`; `Eq` and `Ord` programs run from source; primop batch equals GHC.
+- [ ] **Gate rung 1.** The five modules all `coded`; `Eq` and `Ord` programs run from source with the seven `Int` comparison bodies retired; primop batch equals GHC.
 
 ## Rung 2: the Haskell 2010 core runs from source (gate G1)
 
 - [ ] 14. `Base`, `Maybe`, `List`, `Char`, `Show`, `Num`, `Real`, `Enum`, `Err` to `coded`, by scoreboard rank.
-- [ ] 15. `Bignum.*` with `BIGNUM_NATIVE`; retire the opaque `Integer` and the `Show` formatting bodies.
+- [ ] 15. `Bignum.*` with `BIGNUM_NATIVE`; retire the opaque `Integer`, the five `Num Int` bodies, the `Show` formatting bodies and, if unit 764 lands, `returnIO`, `bindIO` and `thenIO`.
 - [ ] 16. Delete every hand manifest whose declarations the scoreboard now covers.
 - [ ] **Gate G1.** Rung 2 all `coded`; 13 of 13 run programs equal GHC; the interim list holds only the IO boundary.

@@ -8,28 +8,30 @@ Status: PROPOSED to L.J. and to gpt_chirho, who holds the implementation pen. It
 
 ## 1. Where the work stands
 
-Read on 2026-11-25 from progress rows 740 to 764, the worktree `haskelujah-next-pipeline-s0-chirho` at `a4494857`, the GHC 9.14.1 reference tree and gpt_chirho's terminal. I ran no compiler.
+Read on 2026-11-25 from progress rows 740 to 764, the worktree `haskelujah-next-pipeline-s0-chirho`, the GHC 9.14.1 reference tree and gpt_chirho's terminal. I ran no compiler.
+
+The worktree's commit `a4494857` is closed unit 763. Its working files also hold the unit 764 candidate (`eb09afc3`, pushed, not accepted). Figures are for the closed commit unless they say "with the candidate". gpt_chirho corrected the first version of these counts in DM #6487, and I recounted them at the commit.
 
 | Measure | Value |
 | --- | --- |
 | Units closed in the new pipeline | 740 to 763, by gpt_chirho, 2026-11-10 to 2026-11-15 |
-| Size of the new pipeline, tests included | 25,747 lines of Rust: checker 8,737, HIR 5,160, driver part 11,850 |
+| Size of the new pipeline, tests included | 23,298 lines of Rust: checker 7,234, HIR 4,941, driver part 11,123. About 25,700 with the candidate |
 | Fixed check bucket (353 GHC test files) | 65 accepted, 50 refused, 238 "not supported yet" (row 763) |
 | Fixed run bucket (13 programs) | 0 pass. Small programs with `print` and `putStrLn` run; a general `main` does not yet |
-| Library source in use | 68 hand-picked byte spans, 18,281 bytes. That is 2.3% of the 15 vendored files and about 0.4% of ghc-internal (estimate from line counts) |
+| Library source in use | 54 hand-picked byte spans, 7,933 bytes: 1.0% of the 15 vendored files and about 0.2% of ghc-internal. With the candidate: 68 spans, 18,281 bytes, 2.3% and about 0.4%. The ghc-internal shares are estimates from line counts |
 | Time per unit | 21 to 90 minutes for units 746 to 761; 3 h 7 min for 762; 6 h 3 min for 763 |
-| Last compile, test or GHC run | 2026-11-17. Unit 764 is open and waits for a 340-second machine-wide build turn |
+| Last compile, test or GHC run | 2026-11-17. Unit 764 is open. Its candidate passes the driver's `--tests` check; its test build timed out before any of its 18 runtime tests ran, and it waits for a 340-second machine-wide build turn |
 
-Scale, as an estimate from GHC's own sizes (architecture section 14): real base and the boot packages need on the order of 150,000 lines of Rust beyond today's 26,000. No date follows from that. The rung 0 and rung 1 gates below will give a measured rate for the revised method.
+Scale, as an estimate from GHC's own sizes (architecture section 14): real base and the boot packages need on the order of 150,000 lines of Rust beyond today's 23,000. No date follows from that. The rung 0 and rung 1 gates below will give a measured rate for the revised method.
 
 ## 2. What is slowing it
 
 1. **The library is entered by hand, one declaration at a time.**
    - Each library module has a manifest written by hand: the byte spans to keep, a replacement import list, and Rust code for the bodies the pipeline cannot compile (`library_chirho/mod.rs`, `library_chirho/backend_chirho/`).
-   - Units 750 to 763 brought in `Num`, `Integer`, `Eq` and `Ord` for `Integer`, `String`, `Int`, `(++)`, `Show` for `Int` and `Integer`, and `putStrLn`: twelve units of work for 68 spans.
-   - The cause lies underneath. The new pipeline has no unboxed values, no `MagicHash` and no primitive operations. Architecture slice S1 named them ("W0"), and track W never started. `Types`, `Classes`, `CString`, `Magic`, `Base`, `Num`, `Show`, `Enum`, `Real` and `Err` all declare `MagicHash`, and `Classes` has 37 standalone `deriving` instances. No module at the bottom of the library can compile whole, so pieces are cut out by hand.
+   - Units 750 to 763 brought in `Num`, `Integer`, `Eq` and `Ord` for `Integer`, `String`, `Int`, `(++)`, `Show` for `Int` and `Integer`, and `putStrLn`: twelve units of work for 54 spans.
+   - The cause lies underneath. The new pipeline cannot compile GHC source that uses unboxed values, `MagicHash` or primitive operations. It emits internal Core primops only through its checked Rust bodies. Architecture slice S1 named this support ("W0"), and track W never started. `Types`, `Classes`, `CString`, `Magic`, `Base`, `Num`, `Show`, `Enum`, `Real` and `Err` all declare `MagicHash`, and `Classes` has 37 standalone `deriving` instances. No module at the bottom of the library can compile whole, so pieces are cut out by hand.
    - `Integer` is an opaque Rust value. GHC's is `data Integer = IS !Int# | IP !BigNat# | IN !BigNat#`, and library modules use those constructors.
-2. **Every test run is a heavy build.** The driver part of the new pipeline lives inside the legacy driver crate (94,689 lines, linked with the legacy checker, Template Haskell, LLVM, Wasm and Cranelift). The machine allows one heavy build at a time across all projects, and Haskelujah's turn has not come since 2026-11-17.
+2. **Every test run is a heavy build.** The driver part of the new pipeline lives inside the legacy driver crate (about 94,000 lines, linked with the legacy checker, Template Haskell, LLVM, Wasm and Cranelift). The machine allows one heavy build at a time across all projects, and Haskelujah's turn has not come since 2026-11-17.
 3. **Each unit carries a landing ceremony.** A branch per unit, an acceptance file binding up to 21 artifacts, a mutation control, a hashed report, and a second agent's consult or review in most units. Pathway section 6 already placed these at gates. L.J.'s direction of 2026-11-22 ("be the judgment, not a program runner") came after gpt_chirho's last active day.
 
 The checker work itself is sound and stays: class evidence, superclasses, default methods, signatures, defaulting, interfaces between modules, synonyms.
@@ -58,7 +60,7 @@ The checker work itself is sound and stays: class evidence, superclasses, defaul
   2. "Not in scope" is answered only against a module that reached `renamed`.
   3. "No instance" is answered only when instance heads are `typed` in every place GHC could find that instance: the class's module, the modules of the type constructors in the head, and every orphan-instance module in the import closure. Otherwise the answer is "not supported yet". Type family equations follow the same rule.
   4. A program runs only when every declaration reachable from `main` is `coded` or on the interim list. Otherwise the answer is "not supported yet" and names what is missing.
-- **Interim list.** Where a body cannot compile yet, a Rust body may stand in under the declaration's original name and source signature. A type may stand in as abstract, the form an `hs-boot` file gives it. Each entry appears on the scoreboard with the rung that retires it. Today's entries: the `Integer` arithmetic, the `Show` formatting bodies, and the IO boundary at `stdout` and `hPutStr'`. The list grows only at the IO boundary and is empty at gate G3.
+- **Interim list.** Where a body cannot compile yet, a Rust body may stand in under the declaration's original name and source signature. A type may stand in as abstract, the form an `hs-boot` file gives it. Each entry appears on the scoreboard with the rung that retires it. Today's entries: the `Integer` arithmetic; seven `Int` comparison helpers (`eqInt`, `neInt`, `ltInt`, `leInt`, `gtInt`, `geInt`, `compareInt`) and five `Num Int` methods (`(+)`, `(-)`, `(*)`, `negate`, `fromInteger`); the `Show` formatting bodies; the IO boundary at `stdout` and `hPutStr'`. The unit 764 candidate adds `returnIO`, `bindIO` and `thenIO`. The list grows only at the IO boundary and is empty at gate G3.
 - **Retiring the manifests.** A hand manifest is deleted when the scoreboard shows its declarations at the same level without it and the existing tests pass. Those tests stay as the regression net.
 
 ### R2. Unboxed values and primitive operations now (W0)
