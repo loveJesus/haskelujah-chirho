@@ -59,7 +59,7 @@ The checker work itself is sound and stays: class evidence, superclasses, defaul
   1. A use of a name below `typed` answers "not supported yet" and names the blocker.
   2. "Not in scope" is answered only against a module that reached `renamed`.
   3. "No instance" is answered only when instance heads are `typed` in every place GHC could find that instance: the class's module, the modules of the type constructors in the head, and every orphan-instance module in the import closure. Otherwise the answer is "not supported yet". Type family equations follow the same rule.
-  4. A program runs only when every declaration reachable from `main` is `coded` or on the interim list. Otherwise the answer is "not supported yet" and names what is missing.
+  4. Entering a declaration that is neither `coded` nor on the interim list stops the run with "not supported yet" and names what is missing. The stop is a runtime abort that Haskell code cannot catch. (Changed by R7 from a check before the run.)
 - **Interim list.** Where a body cannot compile yet, a Rust body may stand in under the declaration's original name and source signature. A type may stand in as abstract, the form an `hs-boot` file gives it. Each entry appears on the scoreboard with the rung that retires it. Today's entries: the `Integer` arithmetic; seven `Int` comparison helpers (`eqInt`, `neInt`, `ltInt`, `leInt`, `gtInt`, `geInt`, `compareInt`) and five `Num Int` methods (`(+)`, `(-)`, `(*)`, `negate`, `fromInteger`); the `Show` formatting bodies; the IO boundary at `stdout` and `hPutStr'`. The unit 764 candidate adds `returnIO`, `bindIO` and `thenIO`. The list grows only at the IO boundary and is empty at gate G3.
 - **Retiring the manifests.** A hand manifest is deleted when the scoreboard shows its declarations at the same level without it and the existing tests pass. Those tests stay as the regression net.
 
@@ -102,8 +102,16 @@ Dropped from units: a branch per unit, acceptance files, mutation controls, hash
 | --- | --- | --- |
 | 0 | all of ghc-internal and base | every module has a level; the type of every `typed` export equals GHC's; the check bucket is measured again |
 | 1 | `Types`, `Classes`, `CString`, `Magic`, `Tuple` | all `coded`; `Eq` and `Ord` run from source |
-| 2 | `Base`, `Maybe`, `List`, `Char`, `Show`, `Num`, `Bignum.*`, `Real`, `Enum`, `Err` | all `coded`; the 13 run programs pass; the interim list holds only the IO boundary. This is pathway gate G1 |
+| 2 | `Base`, `Maybe`, `List`, `Char`, `Show`, `Num`, `Bignum.*`, `Real`, `Enum`, `Err` | the declaration closure of their exports and of the 13 run programs' `main` is `coded`; the 13 run programs pass; the interim list holds only the IO boundary. This is pathway gate G1. Its added needs are listed in R7 |
 | 3 on | the ladder of architecture section 10 | as written there |
+
+### R7. Inputs and the size of G1 (added 2026-11-25 evening)
+
+Details: `26-11-25-rung0-inputs-chirho.md`.
+- The module imports of rung 2 reach 205 of ghc-internal's 295 modules. Since GHC 9.10, `error` and `throwIO` attach backtraces, and `Exception` needs `Typeable`. The scoreboard therefore follows declarations, and rung gates are stated over declaration closures.
+- Rule 4 is checked at run time. Checked in advance, it would hold every program that can call `error` until three backtrace mechanisms that are off by default compile.
+- Rung 2 adds built-in `Typeable` evidence, `SomeException` with its context, the `HasCallStack` backtrace path, top-level `IORef` constants, the exception primops, `runMainIO` and `hsc2hs` typing mode.
+- The preprocessor takes a target profile written in Rust and checked against the installed GHC 9.14.1's generated headers. `hsc2hs` is ours in Rust: typing mode first, values from the target profile and our runtime's layout table later.
 
 ## 4. The product
 

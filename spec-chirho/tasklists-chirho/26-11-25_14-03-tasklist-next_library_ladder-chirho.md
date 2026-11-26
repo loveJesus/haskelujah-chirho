@@ -19,12 +19,13 @@
 ## Rung 0: every module has a level
 
 - [ ] 4. Embed the whole, unmodified `libraries/ghc-internal` and `libraries/base` of GHC 9.14.1 with licences and one generated hash list. Module list and default extensions from the two `.cabal` files for the target.
-- [ ] 5. Scoreboard command: table (module, declaration, level, blocker) plus summary with blockers ranked by declarations held back. Exit: `parsed` and `renamed` numbers for every module.
-- [ ] 6. Preprocessor in Rust with the real GHC 9.14.1 profile. Exit: every module preprocesses; the token stream equals `ghc -E` on every module.
+- [ ] 5. Scoreboard command: table (module, declaration, level, blocker) plus summary with blockers ranked by declarations held back. Closures follow declarations, not imports (R7). Exit: `parsed` and `renamed` numbers for every module.
+- [ ] 6. Preprocessor in Rust with the real GHC 9.14.1 profile: target `aarch64-apple-darwin` as a Rust table (`26-11-25-rung0-inputs-chirho.md` section 2). Exit: every `.hs` module preprocesses; the token stream equals `ghc -E` on every module; every macro the library uses equals the installed GHC's headers.
+- [ ] 6b. `hsc2hs` typing mode in Rust (inputs section 3). Exit: all 32 `.hsc` modules reach `parsed`.
 - [ ] 7. Work the top parse and rename blockers until rungs 1 and 2 are fully `renamed`. `MagicHash` and unboxed tuple syntax belong here.
-- [ ] 8. `typed`: signatures; data, newtype, class and instance heads; synonyms; `hs-boot`; `TYPE rep` kinds; primitive types and primop types generated from `primops.txt.pp`.
+- [ ] 8. `typed`: signatures; data, newtype, class and instance heads; synonyms; `hs-boot`; `TYPE rep` kinds; primitive types and primop types, with `GHC.Internal.Prim` and `GHC.Internal.PrimopWrappers` generated from `primops.txt.pp`.
 - [ ] 9. Type comparison with `ghc --show-iface` for every `typed` export, one shared normalization.
-- [ ] 10. The four fail-closed rules, each with a test that fails without the rule. Soundness review by the other lane.
+- [ ] 10. The four fail-closed rules, each with a test that fails without the rule: rules 1 to 3 at check time, rule 4 at run time as an abort that `catch` cannot intercept (R7). Soundness review by the other lane.
 - [ ] **Gate rung 0.** Scoreboard for all modules; types equal GHC's; check bucket measured again; report with hours and tokens; merge to `main_chirho`.
 
 ## Rung 1: `Types`, `Classes`, `CString`, `Magic`, `Tuple` run from source
@@ -37,6 +38,7 @@
 ## Rung 2: the Haskell 2010 core runs from source (gate G1)
 
 - [ ] 14. `Base`, `Maybe`, `List`, `Char`, `Show`, `Num`, `Real`, `Enum`, `Err` to `coded`, by scoreboard rank.
+- [ ] 14b. The exception path (R7): built-in `Typeable` evidence and GHC's type-constructor and module bindings with GHC's fingerprints; `SomeException` with `ExceptionContext`; the `HasCallStack` backtrace; top-level `IORef` constants; `raise#`, `raiseIO#`, `catch#` and masking; `runMainIO`. Exit: `error`, `throwIO` and an uncaught exception give GHC's output.
 - [ ] 15. `Bignum.*` with `BIGNUM_NATIVE`; retire the opaque `Integer`, the five `Num Int` bodies, the `Show` formatting bodies and, if unit 764 lands, `returnIO`, `bindIO` and `thenIO`.
 - [ ] 16. Delete every hand manifest whose declarations the scoreboard now covers.
-- [ ] **Gate G1.** Rung 2 all `coded`; 13 of 13 run programs equal GHC; the interim list holds only the IO boundary.
+- [ ] **Gate G1.** The declaration closure of rung 2's exports and of the 13 run programs' `main` all `coded`; 13 of 13 run programs equal GHC; the interim list holds only the IO boundary.
