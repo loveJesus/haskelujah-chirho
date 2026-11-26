@@ -58,15 +58,34 @@ Rung 2's fourteen root modules import 205 of ghc-internal's 295 modules, 83,481 
 - `class (Typeable e, Show e) => Exception e`, so every exception needs `Typeable` evidence. The next checker has no `Typeable` support today: no mention in `tc`, `hir` or the next crate at 3028d1b3.
 - In the rung 2 closure there are 155 `ccall`, 36 `capi` and 21 `prim` foreign imports, counted without the preprocessor, so these are upper bounds.
 
-## 5. R7, proposed
+## 5. R7, proposed; soundness review by gpt_chirho folded in (DM #6499)
 
-1. **Closures by declaration.** The scoreboard follows declaration dependencies, not module imports. A rung gate is stated over the closure of named roots: the rung's exports and each run program's `main`.
-2. **Rule 4 checks at run time.** A program runs. Entering a declaration that is neither `coded` nor on the interim list stops the run with "not supported yet: <name>" and its blocker. The stop is a runtime abort that Haskell code cannot catch, with its own exit code. Output already written stays. A run counts as passing only when it completes and equals GHC, so no wrong result is possible. Checked in advance, every program that can call `error` would wait for three backtrace mechanisms that are off by default.
-3. **Rung 2 also needs:**
+1. **The scoreboard follows declarations.** It ranks blockers over static declaration dependencies, not module imports. That static closure serves ranking only. No gate requires it to be `coded`: every program that can call `error` would then wait for three backtrace mechanisms that are off by default.
+2. **Gates state coverage and running separately.**
+   - Coverage: every exported declaration of the rung's modules is `coded`. Coding a body needs the types of what it uses, not their code.
+   - Running: each run program completes with no unsupported stop and with results equal to GHC's. Everything it actually demanded was `coded` or on the interim list.
+   - A passing program does not credit the definitions it never reached as `coded`, and it does not show that the whole library runs.
+3. **Rule 4 at run time is a typed trap.**
+   - Only a definition the scoreboard names as unavailable can trap: one that is `typed` but not `coded`, identified by its checked signature and original name.
+   - The reference links to a trapping thunk through linkage of its own, never through a looser fallback for missing symbols.
+   - An unresolved symbol, missing evidence, an unsupported representation or an incomplete instance search still fails at its earlier boundary at check time.
+   - Nothing is built from the signature: no lambda, constructor or dictionary. Even `missing :: Int -> Int` may be bottom, and `seq missing` demands its weak head normal form.
+   - The trap fires only when evaluation demands the definition. A reference in an untaken branch, an ignored argument or an unused lazy IO result does not fire it.
+4. **The trap is a host outcome, not a guest exception.**
+   - It never passes through `RuntimeErrorChirho`, `raise#`, `catch#` or `try`, masking, guest `finally` handlers or `process::exit`.
+   - The common post-run path discards pending text. It keeps committed output and the latched resource result, and returns Unsupported with the original name and blocker. Budget exhaustion keeps its precedence.
+   - The command line may reuse its Unsupported exit code. Comparison checks the structured outcome before output and exit status, because a guest program can choose the same number.
+   - A trap never counts as a pass. A real uncaught guest exception stays comparable.
+5. **Controls.** These are the tests that fail without rule 4:
+   - an unavailable definition in an untaken branch or an ignored IO result: the run completes;
+   - demanding its weak head normal form under `catch`: the run stops with Unsupported and never runs the handler;
+   - a normal guest exception in the same setup: the handler runs;
+   - a committed write, then a partly buffered write, then the demand: the committed prefix is kept, and the stop kind is Unsupported.
+6. **Rung 2 also needs:**
    - built-in `Typeable` evidence, with the type-constructor and module bindings GHC writes for each data type and its fingerprints computed as GHC computes them;
    - `SomeException` with `ExceptionContext`, and the `HasCallStack` backtrace path;
    - top-level `IORef` constants (`unsafePerformIO` with `NOINLINE`);
    - the primops `raise#`, `raiseIO#`, `catch#` and masking;
    - `hsc2hs` typing mode;
    - GHC's top-level handler `runMainIO`, where a run program's uncaught exception text is compared with GHC.
-4. **Rule 1 is unchanged.** Rules 1 to 3 still decide every check verdict. Only running moves to run time.
+7. **Rules 1 to 3 are unchanged.** They still decide every check verdict. Only rule 4 moves to run time, and until the trap exists it stays a check before the run.
